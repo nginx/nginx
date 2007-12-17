@@ -26,9 +26,8 @@ static ngx_rbtree_node_t          ngx_event_timer_sentinel;
 ngx_int_t
 ngx_event_timer_init(ngx_log_t *log)
 {
-    ngx_event_timer_rbtree.root = &ngx_event_timer_sentinel;
-    ngx_event_timer_rbtree.sentinel = &ngx_event_timer_sentinel;
-    ngx_event_timer_rbtree.insert = ngx_rbtree_insert_timer_value;
+    ngx_rbtree_init(&ngx_event_timer_rbtree, &ngx_event_timer_sentinel,
+                    ngx_rbtree_insert_timer_value);
 
 #if (NGX_THREADS)
 

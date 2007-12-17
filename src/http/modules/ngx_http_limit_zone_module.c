@@ -239,54 +239,36 @@ static void
 ngx_http_limit_zone_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    ngx_http_limit_zone_node_t  *lzn, *lznt;
+    ngx_rbtree_node_t           **p;
+    ngx_http_limit_zone_node_t   *lzn, *lznt;
 
     for ( ;; ) {
 
         if (node->key < temp->key) {
 
-            if (temp->left == sentinel) {
-                temp->left = node;
-                break;
-            }
-
-            temp = temp->left;
+            p = &temp->left;
 
         } else if (node->key > temp->key) {
 
-            if (temp->right == sentinel) {
-                temp->right = node;
-                break;
-            }
-
-            temp = temp->right;
+            p = &temp->right;
 
         } else { /* node->key == temp->key */
 
             lzn = (ngx_http_limit_zone_node_t *) &node->color;
             lznt = (ngx_http_limit_zone_node_t *) &temp->color;
 
-            if (ngx_memn2cmp(lzn->data, lznt->data, lzn->len, lznt->len) < 0) {
-
-                if (temp->left == sentinel) {
-                    temp->left = node;
-                    break;
-                }
-
-                temp = temp->left;
-
-            } else {
-
-                if (temp->right == sentinel) {
-                    temp->right = node;
-                    break;
-                }
-
-                temp = temp->right;
-            }
+            p = (ngx_memn2cmp(lzn->data, lznt->data, lzn->len, lznt->len) < 0)
+                ? &temp->left : &temp->right;
         }
+
+        if (*p == sentinel) {
+            break;
+        }
+
+        temp = *p;
     }
 
+    *p = node;
     node->parent = temp;
     node->left = sentinel;
     node->right = sentinel;
@@ -362,11 +344,8 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
         return NGX_ERROR;
     }
 
-    ngx_rbtree_sentinel_init(sentinel);
-
-    ctx->rbtree->root = sentinel;
-    ctx->rbtree->sentinel = sentinel;
-    ctx->rbtree->insert = ngx_http_limit_zone_rbtree_insert_value;
+    ngx_rbtree_init(ctx->rbtree, sentinel,
+                    ngx_http_limit_zone_rbtree_insert_value);
 
     return NGX_OK;
 }

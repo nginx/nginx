@@ -97,28 +97,20 @@ void
 ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel)
 {
+    ngx_rbtree_node_t  **p;
+
     for ( ;; ) {
 
-        if (node->key < temp->key) {
+        p = (node->key < temp->key) ? &temp->left : &temp->right;
 
-            if (temp->left == sentinel) {
-                temp->left = node;
-                break;
-            }
-
-            temp = temp->left;
-
-        } else {
-
-            if (temp->right == sentinel) {
-                temp->right = node;
-                break;
-            }
-
-            temp = temp->right;
+        if (*p == sentinel) {
+            break;
         }
+
+        temp = *p;
     }
 
+    *p = node;
     node->parent = temp;
     node->left = sentinel;
     node->right = sentinel;
@@ -130,6 +122,8 @@ void
 ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel)
 {
+    ngx_rbtree_node_t  **p;
+
     for ( ;; ) {
 
         /*
@@ -139,29 +133,20 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
          * The comparison takes into account that overflow.
          */
 
-        if ((ngx_rbtree_key_int_t) node->key - (ngx_rbtree_key_int_t) temp->key
-            < 0)
-        {
-            /*  node->key < temp->key */
+        /*  node->key < temp->key */
 
-            if (temp->left == sentinel) {
-                temp->left = node;
-                break;
-            }
+        p = ((ngx_rbtree_key_int_t) node->key - (ngx_rbtree_key_int_t) temp->key
+              < 0)
+            ? &temp->left : &temp->right;
 
-            temp = temp->left;
-
-        } else {
-
-            if (temp->right == sentinel) {
-                temp->right = node;
-                break;
-            }
-
-            temp = temp->right;
+        if (*p == sentinel) {
+            break;
         }
-    }
 
+        temp = *p;
+    }
+      
+    *p = node;
     node->parent = temp;
     node->left = sentinel;
     node->right = sentinel;

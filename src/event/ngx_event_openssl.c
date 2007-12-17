@@ -1241,11 +1241,8 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
         return NGX_ERROR;
     }
 
-    ngx_rbtree_sentinel_init(sentinel);
-
-    cache->session_rbtree->root = sentinel;
-    cache->session_rbtree->sentinel = sentinel;
-    cache->session_rbtree->insert = ngx_ssl_session_rbtree_insert_value;
+    ngx_rbtree_init(cache->session_rbtree, sentinel,
+                    ngx_ssl_session_rbtree_insert_value);
 
     shm_zone->data = cache;
 
@@ -1625,56 +1622,37 @@ static void
 ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    ngx_ssl_sess_id_t  *sess_id, *sess_id_temp;
+    ngx_rbtree_node_t  **p;
+    ngx_ssl_sess_id_t   *sess_id, *sess_id_temp;
 
     for ( ;; ) {
 
         if (node->key < temp->key) {
 
-            if (temp->left == sentinel) {
-                temp->left = node;
-                break;
-            }
-
-            temp = temp->left;
+            p = &temp->left;
 
         } else if (node->key > temp->key) {
 
-            if (temp->right == sentinel) {
-                temp->right = node;
-                break;
-            }
-
-            temp = temp->right;
+            p = &temp->right;
 
         } else { /* node->key == temp->key */
 
             sess_id = (ngx_ssl_sess_id_t *) node;
             sess_id_temp = (ngx_ssl_sess_id_t *) temp;
 
-            if (ngx_memn2cmp(sess_id->id, sess_id_temp->id,
-                             (size_t) node->data, (size_t) temp->data)
-                < 0)
-            {
-                if (temp->left == sentinel) {
-                    temp->left = node;
-                    break;
-                }
-
-                temp = temp->left;
-
-            } else {
-
-                if (temp->right == sentinel) {
-                    temp->right = node;
-                    break;
-                }
-
-                temp = temp->right;
-            }
+            p = (ngx_memn2cmp(sess_id->id, sess_id_temp->id,
+                              (size_t) node->data, (size_t) temp->data)
+                 < 0) ? &temp->left : &temp->right;
         }
+
+        if (*p == sentinel) {
+            break;
+        }
+
+        temp = *p;
     }
 
+    *p = node;
     node->parent = temp;
     node->left = sentinel;
     node->right = sentinel;

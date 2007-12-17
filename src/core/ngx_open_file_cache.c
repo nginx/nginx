@@ -53,11 +53,8 @@ ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
         return NULL;
     }
 
-    ngx_rbtree_sentinel_init(sentinel);
-
-    cache->rbtree.root = sentinel;
-    cache->rbtree.sentinel = sentinel;
-    cache->rbtree.insert = ngx_open_file_cache_rbtree_insert_value;
+    ngx_rbtree_init(&cache->rbtree, sentinel,
+                    ngx_open_file_cache_rbtree_insert_value);
 
     cache->current = 0;
     cache->max = max;
