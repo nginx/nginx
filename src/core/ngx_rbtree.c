@@ -145,7 +145,7 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
 
         temp = *p;
     }
-      
+
     *p = node;
     node->parent = temp;
     node->left = sentinel;
