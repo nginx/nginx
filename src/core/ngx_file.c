@@ -61,16 +61,16 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
     n = (uint32_t) ngx_next_temp_number(0);
 
+    cln = ngx_pool_cleanup_add(pool, sizeof(ngx_pool_cleanup_file_t));
+    if (cln == NULL) {
+        return NGX_ERROR;
+    }
+
     for ( ;; ) {
         (void) ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
                            "%010uD%Z", n);
 
         ngx_create_hashed_filename(file, path);
-
-        cln = ngx_pool_cleanup_add(pool, sizeof(ngx_pool_cleanup_file_t));
-        if (cln == NULL) {
-            return NGX_ERROR;
-        }
 
         file->fd = ngx_open_tempfile(file->name.data, persistent, access);
 
