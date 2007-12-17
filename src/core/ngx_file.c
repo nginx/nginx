@@ -70,7 +70,10 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
         (void) ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
                            "%010uD%Z", n);
 
-        ngx_create_hashed_filename(file, path);
+        ngx_create_hashed_filename(path, file->name.data, file->name.len);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
+                       "hashed path: %s", file->name.data);
 
         file->fd = ngx_open_tempfile(file->name.data, persistent, access);
 
@@ -117,31 +120,27 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
 
 void
-ngx_create_hashed_filename(ngx_file_t *file, ngx_path_t *path)
+ngx_create_hashed_filename(ngx_path_t *path, u_char *file, size_t len)
 {
-    size_t      name, pos, level;
-    ngx_uint_t  i;
+    size_t      i, level;
+    ngx_uint_t  n;
 
-    name = file->name.len;
-    pos = path->name.len + 1;
+    i = path->name.len + 1;
 
-    file->name.data[path->name.len + path->len]  = '/';
+    file[path->name.len + path->len]  = '/';
 
-    for (i = 0; i < 3; i++) {
-        level = path->level[i];
+    for (n = 0; n < 3; n++) {
+        level = path->level[n];
 
         if (level == 0) {
             break;
         }
 
-        name -= level;
-        file->name.data[pos - 1] = '/';
-        ngx_memcpy(&file->name.data[pos], &file->name.data[name], level);
-        pos += level + 1;
+        len -= level;
+        file[i - 1] = '/';
+        ngx_memcpy(&file[i], &file[len], level);
+        i += level + 1;
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
-                   "hashed path: %s", file->name.data);
 }
 
 
