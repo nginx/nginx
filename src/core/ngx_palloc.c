@@ -40,6 +40,8 @@ ngx_destroy_pool(ngx_pool_t *pool)
 
     for (c = pool->cleanup; c; c = c->next) {
         if (c->handler) {
+            ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
+                           "run cleanup: %p", c);
             c->handler(c->data);
         }
     }
@@ -245,8 +247,8 @@ ngx_pool_cleanup_file(void *data)
 {
     ngx_pool_cleanup_file_t  *c = data;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, c->log, 0, "run cleanup: %p, fd:%d",
-                   c, c->fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, c->log, 0, "file cleanup: fd:%d",
+                   c->fd);
 
     if (ngx_close_file(c->fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
@@ -262,8 +264,8 @@ ngx_pool_delete_file(void *data)
 
     ngx_err_t  err;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_ALLOC, c->log, 0, "run cleanup: %p, fd:%d %s",
-                   c, c->fd, c->name);
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, c->log, 0, "file cleanup: fd:%d %s",
+                   c->fd, c->name);
 
     if (ngx_delete_file(c->name) == NGX_FILE_ERROR) {
         err = ngx_errno;
