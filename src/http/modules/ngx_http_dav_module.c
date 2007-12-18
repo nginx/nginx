@@ -969,7 +969,7 @@ ngx_http_dav_delete_path(ngx_http_request_t *r, ngx_str_t *path, ngx_uint_t dir)
         tree.alloc = 0;
         tree.log = r->connection->log;
 
-        /* todo: 207 */
+        /* TODO: 207 */
 
         if (ngx_walk_tree(&tree, path) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
