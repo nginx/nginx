@@ -9,6 +9,113 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.22" date="19.12.2007">
+
+<change type="change">
+<para lang="ru">
+теперь все методы модуля ngx_http_perl_module
+возвращают значения, скопированные в память, выделенную perl'ом.
+</para>
+<para lang="en">
+now all ngx_http_perl_module methods return values copied to perl's
+allocated memory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_perl_module,
+использовался perl до версии 5.8.6 и perl поддерживал потоки,
+то во время переконфигурации основной процесс аварийно выходил;
+ошибка появилась в 0.5.9.<br/>
+Спасибо Борису Жмурову.
+</para>
+<para lang="en">
+if nginx was built with ngx_http_perl_module,
+the perl before 5.8.6 was used, and perl supported threads,
+then during reconfiguration the master process aborted;
+bug appeared in 0.5.9.<br/>
+Thanks to Boris Zhmurov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в методы модуля ngx_http_perl_module
+могли передаваться неверные результаты выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the ngx_http_perl_module methods may get invalid values of the regex captures.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если метод $r->has_request_body() вызывался для запроса,
+у которого небольшое тело запроса было уже полностью получено,
+то в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if the $r->has_request_body() method was called for a request
+whose small request body was already received.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+large_client_header_buffers не освобождались перед переходом в состояние
+keep-alive.<br/>
+Спасибо Олександру Штепе.
+</para>
+<para lang="en">
+large_client_header_buffers did not freed before going to keep-alive state.<br/>
+Thanks to Olexander Shtepa.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $upstream_addr не записывался последний адрес;
+ошибка появилась в 0.6.18.
+</para>
+<para lang="en">
+the last address was missed in the $upstream_addr variable;
+bug appeared in 0.6.18.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива fastcgi_catch_stderr не возвращала ошибку;
+теперь она возвращает ошибку 502, которую можно направить на следующий сервер
+с помощью "fastcgi_next_upstream invalid_header".
+</para>
+<para lang="en">
+the "fastcgi_catch_stderr" directive did return error code;
+now it returns 502 code, that can be rerouted to a next server using
+the "fastcgi_next_upstream invalid_header" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы fastcgi_catch_stderr
+в основном процессе происходил segmentation fault;
+ошибка появилась в 0.6.10.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+a segmentation fault occurred in master process
+if the "fastcgi_catch_stderr" directive was used;
+bug appeared in 0.6.10.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.21" date="03.12.2007">
 
 <change type="change">
