@@ -22,6 +22,7 @@ static void ngx_ssl_read_handler(ngx_event_t *rev);
 static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
+static void ngx_ssl_clear_error(ngx_log_t *log);
 
 static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone,
     void *data);
@@ -404,6 +405,8 @@ ngx_ssl_handshake(ngx_connection_t *c)
     int        n, sslerr;
     ngx_err_t  err;
 
+    ngx_ssl_clear_error(c->log);
+
     n = SSL_do_handshake(c->ssl->connection);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
@@ -604,6 +607,8 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     bytes = 0;
+
+    ngx_ssl_clear_error(c->log);
 
     /*
      * SSL_read() may return data in parts, so try to read
@@ -895,6 +900,8 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     int        n, sslerr;
     ngx_err_t  err;
 
+    ngx_ssl_clear_error(c->log);
+
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
 
     n = SSL_write(c->ssl->connection, data, size);
@@ -997,6 +1004,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     }
 
     SSL_set_shutdown(c->ssl->connection, mode);
+
+    ngx_ssl_clear_error(c->log);
 
     n = SSL_shutdown(c->ssl->connection);
 
@@ -1113,6 +1122,15 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
     }
 
     ngx_ssl_error(level, c->log, err, text);
+}
+
+
+static void
+ngx_ssl_clear_error(ngx_log_t *log)
+{
+    if (ERR_peek_error()) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "ignoring stale global SSL error");
+    }
 }
 
 
