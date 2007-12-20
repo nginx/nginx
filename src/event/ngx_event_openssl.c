@@ -1426,10 +1426,6 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
 
     cache = shm_zone->data;
 
-    if (cache->session_rbtree == NULL) {
-        return NULL;
-    }
-
     sess = NULL;
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
