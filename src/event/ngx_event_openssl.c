@@ -978,9 +978,8 @@ ngx_ssl_read_handler(ngx_event_t *rev)
 ngx_int_t
 ngx_ssl_shutdown(ngx_connection_t *c)
 {
-    int         n, sslerr, mode;
-    ngx_err_t   err;
-    ngx_uint_t  again;
+    int        n, sslerr, mode;
+    ngx_err_t  err;
 
     if (c->timedout) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
@@ -999,40 +998,32 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     SSL_set_shutdown(c->ssl->connection, mode);
 
-    again = 0;
+    n = SSL_shutdown(c->ssl->connection);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
+
     sslerr = 0;
 
-    for ( ;; ) {
-        n = SSL_shutdown(c->ssl->connection);
+    /* SSL_shutdown() never return -1, on error it return 0 */
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
-
-        if (n == 1 || (n == 0 && c->timedout)) {
-            SSL_free(c->ssl->connection);
-            c->ssl = NULL;
-
-            return NGX_OK;
-        }
-
-        if (n == 0) {
-            again = 1;
-            break;
-        }
-
-        break;
-    }
-
-    if (!again) {
+    if (n != 1) {
         sslerr = SSL_get_error(c->ssl->connection, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error: %d", sslerr);
     }
 
-    if (again
-        || sslerr == SSL_ERROR_WANT_READ
-        || sslerr == SSL_ERROR_WANT_WRITE)
+    if (n == 1
+        || sslerr == SSL_ERROR_ZERO_RETURN
+        || (sslerr == 0 && c->timedout))
     {
+        SSL_free(c->ssl->connection);
+        c->ssl = NULL;
+
+        return NGX_OK;
+    }
+
+    if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_WRITE) {
         c->read->handler = ngx_ssl_shutdown_handler;
         c->write->handler = ngx_ssl_shutdown_handler;
 
@@ -1044,7 +1035,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             return NGX_ERROR;
         }
 
-        if (again || sslerr == SSL_ERROR_WANT_READ) {
+        if (sslerr == SSL_ERROR_WANT_READ) {
             ngx_add_timer(c->read, 30000);
         }
 
