@@ -1281,7 +1281,6 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     u_char                   *p, *id, *cached_sess;
     uint32_t                  hash;
     SSL_CTX                  *ssl_ctx;
-    ngx_time_t               *tp;
     ngx_shm_zone_t           *shm_zone;
     ngx_connection_t         *c;
     ngx_slab_pool_t          *shpool;
@@ -1357,15 +1356,13 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
                    "http ssl new session: %08XD:%d:%d",
                    hash, sess->session_id_length, len);
 
-    tp = ngx_timeofday();
-
     sess_id->node.key = hash;
     sess_id->node.data = (u_char) sess->session_id_length;
     sess_id->id = id;
     sess_id->len = len;
     sess_id->session = cached_sess;
 
-    sess_id->expire = tp->sec + SSL_CTX_get_timeout(ssl_ctx);
+    sess_id->expire = ngx_time() + SSL_CTX_get_timeout(ssl_ctx);
 
     sess_id->next = cache->session_cache_head.next;
     sess_id->next->prev = sess_id;
@@ -1407,7 +1404,6 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     u_char                   *p;
     uint32_t                  hash;
     ngx_int_t                 rc;
-    ngx_time_t               *tp;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
     ngx_connection_t         *c;
@@ -1464,9 +1460,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
                               (size_t) len, (size_t) node->data);
             if (rc == 0) {
 
-                tp = ngx_timeofday();
-
-                if (sess_id->expire > tp->sec) {
+                if (sess_id->expire > ngx_time()) {
                     ngx_memcpy(buf, sess_id->session, sess_id->len);
 
                     ngx_shmtx_unlock(&shpool->mutex);
@@ -1591,10 +1585,10 @@ static void
 ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
     ngx_slab_pool_t *shpool, ngx_uint_t n)
 {
-    ngx_time_t         *tp;
+    time_t              now;
     ngx_ssl_sess_id_t  *sess_id;
 
-    tp = ngx_timeofday();
+    now = ngx_time();
 
     while (n < 3) {
 
@@ -1604,7 +1598,7 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
             return;
         }
 
-        if (n++ != 0 && sess_id->expire > tp->sec) {
+        if (n++ != 0 && sess_id->expire > now) {
             return;
         }
 
