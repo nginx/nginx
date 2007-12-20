@@ -1234,11 +1234,7 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     ngx_rbtree_init(&cache->session_rbtree, &cache->sentinel,
                     ngx_ssl_session_rbtree_insert_value);
 
-    cache->session_cache_head.prev = NULL;
-    cache->session_cache_head.next = &cache->session_cache_tail;
-
-    cache->session_cache_tail.prev = &cache->session_cache_head;
-    cache->session_cache_tail.next = NULL;
+    ngx_queue_init(&cache->expire_queue);
 
     shm_zone->data = cache;
 
@@ -1353,10 +1349,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     sess_id->expire = ngx_time() + SSL_CTX_get_timeout(ssl_ctx);
 
-    sess_id->next = cache->session_cache_head.next;
-    sess_id->next->prev = sess_id;
-    sess_id->prev = &cache->session_cache_head;
-    cache->session_cache_head.next = sess_id;
+    ngx_queue_insert_head(&cache->expire_queue, &sess_id->queue);
 
     ngx_rbtree_insert(&cache->session_rbtree, &sess_id->node);
 
@@ -1456,8 +1449,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
                     return sess;
                 }
 
-                sess_id->next->prev = sess_id->prev;
-                sess_id->prev->next = sess_id->next;
+                ngx_queue_remove(&sess_id->queue);
 
                 ngx_rbtree_delete(&cache->session_rbtree, node);
 
@@ -1539,8 +1531,8 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
             rc = ngx_memn2cmp(id, sess_id->id, len, (size_t) node->data);
 
             if (rc == 0) {
-                sess_id->next->prev = sess_id->prev;
-                sess_id->prev->next = sess_id->next;
+
+                ngx_queue_remove(&sess_id->queue);
 
                 ngx_rbtree_delete(&cache->session_rbtree, node);
 
@@ -1571,29 +1563,31 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
     ngx_slab_pool_t *shpool, ngx_uint_t n)
 {
     time_t              now;
+    ngx_queue_t        *q;
     ngx_ssl_sess_id_t  *sess_id;
 
     now = ngx_time();
 
     while (n < 3) {
 
-        sess_id = cache->session_cache_tail.prev;
-
-        if (sess_id == &cache->session_cache_head) {
+        if (ngx_queue_empty(&cache->expire_queue)) {
             return;
         }
+
+        q = ngx_queue_last(&cache->expire_queue);
+
+        sess_id = ngx_queue_data(q, ngx_ssl_sess_id_t, queue);
 
         if (n++ != 0 && sess_id->expire > now) {
             return;
         }
 
-        sess_id->next->prev = sess_id->prev;
-        sess_id->prev->next = sess_id->next;
-
-        ngx_rbtree_delete(&cache->session_rbtree, &sess_id->node);
+        ngx_queue_remove(q);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
                        "expire session: %08Xi", sess_id->node.key);
+
+        ngx_rbtree_delete(&cache->session_rbtree, &sess_id->node);
 
         ngx_slab_free_locked(shpool, sess_id->session);
 #if (NGX_PTR_SIZE == 4)
