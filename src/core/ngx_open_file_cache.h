@@ -63,6 +63,7 @@ struct ngx_cached_open_file_s {
 
 typedef struct {
     ngx_rbtree_t             rbtree;
+    ngx_rbtree_node_t        sentinel;
     ngx_cached_open_file_t   list_head;
     ngx_cached_open_file_t   list_tail;
 

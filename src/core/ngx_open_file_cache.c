@@ -33,7 +33,6 @@ static void ngx_open_file_cache_remove(ngx_event_t *ev);
 ngx_open_file_cache_t *
 ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
 {
-    ngx_rbtree_node_t      *sentinel;
     ngx_pool_cleanup_t     *cln;
     ngx_open_file_cache_t  *cache;
 
@@ -48,12 +47,7 @@ ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
     cache->list_tail.prev = &cache->list_head;
     cache->list_tail.next = NULL;
 
-    sentinel = ngx_palloc(pool, sizeof(ngx_rbtree_node_t));
-    if (sentinel == NULL) {
-        return NULL;
-    }
-
-    ngx_rbtree_init(&cache->rbtree, sentinel,
+    ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
                     ngx_open_file_cache_rbtree_insert_value);
 
     cache->current = 0;
