@@ -1217,7 +1217,6 @@ static ngx_int_t
 ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 {
     ngx_slab_pool_t          *shpool;
-    ngx_rbtree_node_t        *sentinel;
     ngx_ssl_session_cache_t  *cache;
 
     if (data) {
@@ -1232,24 +1231,14 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
         return NGX_ERROR;
     }
 
+    ngx_rbtree_init(&cache->session_rbtree, &cache->sentinel,
+                    ngx_ssl_session_rbtree_insert_value);
+
     cache->session_cache_head.prev = NULL;
     cache->session_cache_head.next = &cache->session_cache_tail;
 
     cache->session_cache_tail.prev = &cache->session_cache_head;
     cache->session_cache_tail.next = NULL;
-
-    cache->session_rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
-    if (cache->session_rbtree == NULL) {
-        return NGX_ERROR;
-    }
-
-    sentinel = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_node_t));
-    if (sentinel == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_rbtree_init(cache->session_rbtree, sentinel,
-                    ngx_ssl_session_rbtree_insert_value);
 
     shm_zone->data = cache;
 
@@ -1369,7 +1358,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     sess_id->prev = &cache->session_cache_head;
     cache->session_cache_head.next = sess_id;
 
-    ngx_rbtree_insert(cache->session_rbtree, &sess_id->node);
+    ngx_rbtree_insert(&cache->session_rbtree, &sess_id->node);
 
     ngx_shmtx_unlock(&shpool->mutex);
 
@@ -1432,8 +1421,8 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    node = cache->session_rbtree->root;
-    sentinel = cache->session_rbtree->sentinel;
+    node = cache->session_rbtree.root;
+    sentinel = cache->session_rbtree.sentinel;
 
     while (node != sentinel) {
 
@@ -1470,7 +1459,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
                 sess_id->next->prev = sess_id->prev;
                 sess_id->prev->next = sess_id->next;
 
-                ngx_rbtree_delete(cache->session_rbtree, node);
+                ngx_rbtree_delete(&cache->session_rbtree, node);
 
                 ngx_slab_free_locked(shpool, sess_id->session);
 #if (NGX_PTR_SIZE == 4)
@@ -1527,8 +1516,8 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    node = cache->session_rbtree->root;
-    sentinel = cache->session_rbtree->sentinel;
+    node = cache->session_rbtree.root;
+    sentinel = cache->session_rbtree.sentinel;
 
     while (node != sentinel) {
 
@@ -1553,7 +1542,7 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
                 sess_id->next->prev = sess_id->prev;
                 sess_id->prev->next = sess_id->next;
 
-                ngx_rbtree_delete(cache->session_rbtree, node);
+                ngx_rbtree_delete(&cache->session_rbtree, node);
 
                 ngx_slab_free_locked(shpool, sess_id->session);
 #if (NGX_PTR_SIZE == 4)
@@ -1601,7 +1590,7 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
         sess_id->next->prev = sess_id->prev;
         sess_id->prev->next = sess_id->next;
 
-        ngx_rbtree_delete(cache->session_rbtree, &sess_id->node);
+        ngx_rbtree_delete(&cache->session_rbtree, &sess_id->node);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
                        "expire session: %08Xi", sess_id->node.key);

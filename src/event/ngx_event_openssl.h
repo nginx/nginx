@@ -75,7 +75,8 @@ struct ngx_ssl_sess_id_s {
 
 
 typedef struct {
-    ngx_rbtree_t               *session_rbtree;
+    ngx_rbtree_t                session_rbtree;
+    ngx_rbtree_node_t           sentinel;
     ngx_ssl_sess_id_t           session_cache_head;
     ngx_ssl_sess_id_t           session_cache_tail;
 } ngx_ssl_session_cache_t;
