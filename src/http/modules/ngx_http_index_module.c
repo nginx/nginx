@@ -209,7 +209,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "open index \"%V\"", &path);
 
         of.test_dir = 0;
-        of.retest = clcf->open_file_cache_retest;
+        of.valid = clcf->open_file_cache_valid;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
 
@@ -292,7 +292,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
                    "http index check dir: \"%V\"", &dir);
 
     of.test_dir = 1;
-    of.retest = clcf->open_file_cache_retest;
+    of.valid = clcf->open_file_cache_valid;
     of.errors = clcf->open_file_cache_errors;
 
     if (ngx_open_cached_file(clcf->open_file_cache, &dir, &of, r->pool)

@@ -85,6 +85,10 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_host_names = {
     ngx_conf_deprecated, "optimize_host_names", "optimize_server_names"
 };
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_open_file_cache_retest = {
+    ngx_conf_deprecated, "open_file_cache_retest", "open_file_cache_valid"
+};
+
 
 static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("off"), NGX_HTTP_REQUEST_BODY_FILE_OFF },
@@ -473,12 +477,19 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, open_file_cache),
       NULL },
 
+    { ngx_string("open_file_cache_valid"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_sec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_valid),
+      NULL },
+
     { ngx_string("open_file_cache_retest"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, open_file_cache_retest),
-      NULL },
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_valid),
+      &ngx_conf_deprecated_open_file_cache_retest },
 
     { ngx_string("open_file_cache_errors"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -2417,7 +2428,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
     lcf->open_file_cache = NGX_CONF_UNSET_PTR;
-    lcf->open_file_cache_retest = NGX_CONF_UNSET;
+    lcf->open_file_cache_valid = NGX_CONF_UNSET;
     lcf->open_file_cache_errors = NGX_CONF_UNSET;
     lcf->open_file_cache_events = NGX_CONF_UNSET;
 
@@ -2620,8 +2631,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->open_file_cache,
                              prev->open_file_cache, NULL);
 
-    ngx_conf_merge_sec_value(conf->open_file_cache_retest,
-                             prev->open_file_cache_retest, 60);
+    ngx_conf_merge_sec_value(conf->open_file_cache_valid,
+                             prev->open_file_cache_valid, 60);
 
     ngx_conf_merge_sec_value(conf->open_file_cache_errors,
                              prev->open_file_cache_errors, 0);

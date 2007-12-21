@@ -189,7 +189,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
                 ngx_queue_remove(&file->queue);
 
-                if (file->event || now - file->created < of->retest) {
+                if (file->event || now - file->created < of->valid) {
                     if (file->err == 0) {
                         of->fd = file->fd;
                         of->uniq = file->uniq;

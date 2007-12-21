@@ -19,7 +19,7 @@ typedef struct {
     off_t                    size;
     ngx_err_t                err;
 
-    time_t                   retest;
+    time_t                   valid;
 
     unsigned                 test_dir:1;
     unsigned                 errors:1;
