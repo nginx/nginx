@@ -41,14 +41,10 @@ ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
         return NULL;
     }
 
-    cache->list_head.prev = NULL;
-    cache->list_head.next = &cache->list_tail;
-
-    cache->list_tail.prev = &cache->list_head;
-    cache->list_tail.next = NULL;
-
     ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
                     ngx_open_file_cache_rbtree_insert_value);
+
+    ngx_queue_init(&cache->expire_queue);
 
     cache->current = 0;
     cache->max = max;
@@ -71,6 +67,7 @@ ngx_open_file_cache_cleanup(void *data)
 {
     ngx_open_file_cache_t  *cache = data;
 
+    ngx_queue_t             *q;
     ngx_cached_open_file_t  *file;
 
     ngx_log_debug0(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
@@ -78,14 +75,15 @@ ngx_open_file_cache_cleanup(void *data)
 
     for ( ;; ) {
 
-        file = cache->list_tail.prev;
-
-        if (file == &cache->list_head) {
-            break;
+        if (ngx_queue_empty(&cache->expire_queue)) {
+            return;
         }
 
-        file->next->prev = file->prev;
-        file->prev->next = file->next;
+        q = ngx_queue_last(&cache->expire_queue);
+
+        file = ngx_queue_data(q, ngx_cached_open_file_t, queue);
+
+        ngx_queue_remove(q);
 
         ngx_rbtree_delete(&cache->rbtree, &file->node);
 
@@ -189,8 +187,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
             if (rc == 0) {
 
-                file->next->prev = file->prev;
-                file->prev->next = file->next;
+                ngx_queue_remove(&file->queue);
 
                 if (file->event || now - file->created < of->retest) {
                     if (file->err == 0) {
@@ -413,12 +410,7 @@ found:
 
     file->accessed = now;
 
-    /* add to the inactive list head */
-
-    file->next = cache->list_head.next;
-    file->next->prev = file;
-    file->prev = &cache->list_head;
-    cache->list_head.next = file;
+    ngx_queue_insert_head(&cache->expire_queue, &file->queue);
 
     ngx_log_debug4(NGX_LOG_DEBUG_CORE, pool->log, 0,
                    "cached open file: %s, fd:%d, c:%d, e:%d",
@@ -563,20 +555,9 @@ ngx_close_cached_file(ngx_open_file_cache_t *cache,
 
         file->accessed = ngx_time();
 
-        if (cache->list_head.next != file) {
+        ngx_queue_remove(&file->queue);
 
-            /* delete from inactive list */
-
-            file->next->prev = file->prev;
-            file->prev->next = file->next;
-
-            /* add to the inactive list head */
-
-            file->next = cache->list_head.next;
-            file->next->prev = file;
-            file->prev = &cache->list_head;
-            cache->list_head.next = file;
-        }
+        ngx_queue_insert_head(&cache->expire_queue, &file->queue);
 
         return;
     }
@@ -609,6 +590,7 @@ ngx_expire_old_cached_files(ngx_open_file_cache_t *cache, ngx_uint_t n,
     ngx_log_t *log)
 {
     time_t                   now;
+    ngx_queue_t             *q;
     ngx_cached_open_file_t  *file;
 
     now = ngx_time();
@@ -621,18 +603,19 @@ ngx_expire_old_cached_files(ngx_open_file_cache_t *cache, ngx_uint_t n,
 
     while (n < 3) {
 
-        file = cache->list_tail.prev;
-
-        if (file == &cache->list_head) {
+        if (ngx_queue_empty(&cache->expire_queue)) {
             return;
         }
+
+        q = ngx_queue_last(&cache->expire_queue);
+
+        file = ngx_queue_data(q, ngx_cached_open_file_t, queue);
 
         if (n++ != 0 && now - file->accessed <= cache->inactive) {
             return;
         }
 
-        file->next->prev = file->prev;
-        file->prev->next = file->next;
+        ngx_queue_remove(q);
 
         ngx_rbtree_delete(&cache->rbtree, &file->node);
 
@@ -703,8 +686,7 @@ ngx_open_file_cache_remove(ngx_event_t *ev)
     fev = ev->data;
     file = fev->file;
 
-    file->next->prev = file->prev;
-    file->prev->next = file->next;
+    ngx_queue_remove(&file->queue);
 
     ngx_rbtree_delete(&fev->cache->rbtree, &file->node);
 

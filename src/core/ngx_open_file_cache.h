@@ -36,8 +36,7 @@ typedef struct ngx_cached_open_file_s  ngx_cached_open_file_t;
 
 struct ngx_cached_open_file_s {
     ngx_rbtree_node_t        node;
-    ngx_cached_open_file_t  *prev;
-    ngx_cached_open_file_t  *next;
+    ngx_queue_t              queue;
 
     u_char                  *name;
     time_t                   created;
@@ -64,8 +63,7 @@ struct ngx_cached_open_file_s {
 typedef struct {
     ngx_rbtree_t             rbtree;
     ngx_rbtree_node_t        sentinel;
-    ngx_cached_open_file_t   list_head;
-    ngx_cached_open_file_t   list_tail;
+    ngx_queue_t              expire_queue;
 
     ngx_uint_t               current;
     ngx_uint_t               max;
