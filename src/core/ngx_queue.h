@@ -22,7 +22,7 @@ struct ngx_queue_s {
 
 #define ngx_queue_init(q)                                                     \
     (q)->prev = q;                                                            \
-    (q)->next = q;
+    (q)->next = q
 
 
 #define ngx_queue_empty(h)                                                    \
