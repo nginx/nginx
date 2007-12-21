@@ -76,7 +76,7 @@ ngx_open_file_cache_cleanup(void *data)
     for ( ;; ) {
 
         if (ngx_queue_empty(&cache->expire_queue)) {
-            return;
+            break;
         }
 
         q = ngx_queue_last(&cache->expire_queue);
