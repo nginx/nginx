@@ -242,13 +242,13 @@ ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
         if (subst->right != sentinel) {
             subst->right->parent = subst;
         }
-
-        /* DEBUG stuff */
-        node->left = NULL;
-        node->right = NULL;
-        node->parent = NULL;
-        node->key = 0;
     }
+
+    /* DEBUG stuff */
+    node->left = NULL;
+    node->right = NULL;
+    node->parent = NULL;
+    node->key = 0;
 
     if (red) {
         return;
