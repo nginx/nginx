@@ -37,7 +37,6 @@ static ngx_int_t ngx_http_dav_handler(ngx_http_request_t *r);
 static void ngx_http_dav_put_handler(ngx_http_request_t *r);
 
 static ngx_int_t ngx_http_dav_delete_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_dav_no_init(void *ctx, void *prev);
 static ngx_int_t ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
@@ -409,13 +408,6 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_dav_no_init(void *ctx, void *prev)
-{
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
     return NGX_OK;
@@ -710,7 +702,7 @@ overwrite_done:
 
         copy.len = path.len;
 
-        tree.init_handler = ngx_http_dav_no_init;
+        tree.init_handler = NULL;
         tree.file_handler = ngx_http_dav_copy_file;
         tree.pre_tree_handler = ngx_http_dav_copy_dir;
         tree.post_tree_handler = ngx_http_dav_copy_dir_time;
@@ -960,7 +952,7 @@ ngx_http_dav_delete_path(ngx_http_request_t *r, ngx_str_t *path, ngx_uint_t dir)
 
     if (dir) {
 
-        tree.init_handler = ngx_http_dav_no_init;
+        tree.init_handler = NULL;
         tree.file_handler = ngx_http_dav_delete_file;
         tree.pre_tree_handler = ngx_http_dav_noop;
         tree.post_tree_handler = ngx_http_dav_delete_dir;
