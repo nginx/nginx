@@ -29,6 +29,7 @@ static void ngx_mail_smtp_log_rejected_command(ngx_mail_session_t *s,
 
 static u_char  smtp_ok[] = "250 2.0.0 OK" CRLF;
 static u_char  smtp_bye[] = "221 2.0.0 Bye" CRLF;
+static u_char  smtp_starttls[] = "220 2.0.0 Start TLS" CRLF;
 static u_char  smtp_next[] = "334 " CRLF;
 static u_char  smtp_username[] = "334 VXNlcm5hbWU6" CRLF;
 static u_char  smtp_password[] = "334 UGFzc3dvcmQ6" CRLF;
@@ -250,6 +251,8 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
 
             case NGX_SMTP_STARTTLS:
                 rc = ngx_mail_smtp_starttls(s, c);
+                s->out.len = sizeof(smtp_starttls) - 1;
+                s->out.data = smtp_starttls;
                 break;
 
             default:
