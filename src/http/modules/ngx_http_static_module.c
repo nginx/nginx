@@ -98,6 +98,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     of.test_dir = 0;
     of.valid = clcf->open_file_cache_valid;
+    of.min_uses = clcf->open_file_cache_min_uses;
     of.errors = clcf->open_file_cache_errors;
     of.events = clcf->open_file_cache_events;
 

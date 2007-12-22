@@ -210,6 +210,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
         of.test_dir = 0;
         of.valid = clcf->open_file_cache_valid;
+        of.min_uses = clcf->open_file_cache_min_uses;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
 
@@ -293,6 +294,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
 
     of.test_dir = 1;
     of.valid = clcf->open_file_cache_valid;
+    of.min_uses = 0;
     of.errors = clcf->open_file_cache_errors;
 
     if (ngx_open_cached_file(clcf->open_file_cache, &dir, &of, r->pool)

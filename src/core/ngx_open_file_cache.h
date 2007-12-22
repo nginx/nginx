@@ -21,6 +21,8 @@ typedef struct {
 
     time_t                   valid;
 
+    ngx_uint_t               min_uses;
+
     unsigned                 test_dir:1;
     unsigned                 errors:1;
     unsigned                 events:1;
@@ -48,6 +50,8 @@ struct ngx_cached_open_file_s {
     off_t                    size;
     ngx_err_t                err;
 
+    uint32_t                 uses;
+
     unsigned                 count:24;
     unsigned                 close:1;
 
@@ -74,6 +78,7 @@ typedef struct {
 typedef struct {
     ngx_open_file_cache_t   *cache;
     ngx_cached_open_file_t  *file;
+    ngx_uint_t               min_uses;
     ngx_log_t               *log;
 } ngx_open_file_cache_cleanup_t;
 

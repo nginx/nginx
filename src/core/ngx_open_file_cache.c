@@ -20,7 +20,7 @@
 static void ngx_open_file_cache_cleanup(void *data);
 static void ngx_open_file_cleanup(void *data);
 static void ngx_close_cached_file(ngx_open_file_cache_t *cache,
-    ngx_cached_open_file_t *file, ngx_log_t *log);
+    ngx_cached_open_file_t *file, ngx_uint_t min_uses, ngx_log_t *log);
 static ngx_int_t ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of,
     ngx_log_t *log);
 static void ngx_expire_old_cached_files(ngx_open_file_cache_t *cache,
@@ -95,7 +95,7 @@ ngx_open_file_cache_cleanup(void *data)
         if (!file->err && !file->is_dir) {
             file->close = 1;
             file->count = 0;
-            ngx_close_cached_file(cache, file, ngx_cycle->log);
+            ngx_close_cached_file(cache, file, 0, ngx_cycle->log);
 
         } else {
             ngx_free(file->name);
@@ -187,10 +187,29 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
             if (rc == 0) {
 
+                file->uses++;
+
                 ngx_queue_remove(&file->queue);
 
+                if (file->fd == NGX_INVALID_FILE
+                    && file->err == 0
+                    && !file->is_dir)
+                {
+                    /* file was not used often enough to be open */
+
+                    rc = ngx_open_and_stat_file(name->data, of, pool->log);
+
+                    if (rc != NGX_OK && (of->err == 0 || !of->errors)) {
+                        goto failed;
+                    }
+
+                    goto update;
+                }
+
                 if (file->event || now - file->created < of->valid) {
+
                     if (file->err == 0) {
+
                         of->fd = file->fd;
                         of->uniq = file->uniq;
                         of->mtime = file->mtime;
@@ -338,6 +357,7 @@ create:
     cache->current++;
 
     file->count = 0;
+    file->uses = 1;
 
 update:
 
@@ -412,9 +432,9 @@ found:
 
     ngx_queue_insert_head(&cache->expire_queue, &file->queue);
 
-    ngx_log_debug4(NGX_LOG_DEBUG_CORE, pool->log, 0,
-                   "cached open file: %s, fd:%d, c:%d, e:%d",
-                   file->name, file->fd, file->count, file->err);
+    ngx_log_debug5(NGX_LOG_DEBUG_CORE, pool->log, 0,
+                   "cached open file: %s, fd:%d, c:%d, e:%d, u:%d",
+                   file->name, file->fd, file->count, file->err, file->uses);
 
     if (of->err == 0) {
 
@@ -424,6 +444,7 @@ found:
 
             ofcln->cache = cache;
             ofcln->file = file;
+            ofcln->min_uses = of->min_uses;
             ofcln->log = pool->log;
         }
 
@@ -536,7 +557,7 @@ ngx_open_file_cleanup(void *data)
 
     c->file->count--;
 
-    ngx_close_cached_file(c->cache, c->file, c->log);
+    ngx_close_cached_file(c->cache, c->file, c->min_uses, c->log);
 
     /* drop one or two expired open files */
     ngx_expire_old_cached_files(c->cache, 1, c->log);
@@ -545,11 +566,11 @@ ngx_open_file_cleanup(void *data)
 
 static void
 ngx_close_cached_file(ngx_open_file_cache_t *cache,
-    ngx_cached_open_file_t *file, ngx_log_t *log)
+    ngx_cached_open_file_t *file, ngx_uint_t min_uses, ngx_log_t *log)
 {
-    ngx_log_debug4(NGX_LOG_DEBUG_CORE, log, 0,
-                   "close cached open file: %s, fd:%d, c:%d, %d",
-                   file->name, file->fd, file->count, file->close);
+    ngx_log_debug5(NGX_LOG_DEBUG_CORE, log, 0,
+                   "close cached open file: %s, fd:%d, c:%d, u:%d, %d",
+                   file->name, file->fd, file->count, file->uses, file->close);
 
     if (!file->close) {
 
@@ -559,7 +580,9 @@ ngx_close_cached_file(ngx_open_file_cache_t *cache,
 
         ngx_queue_insert_head(&cache->expire_queue, &file->queue);
 
-        return;
+        if (file->uses >= min_uses || file->count) {
+            return;
+        }
     }
 
     if (file->event) {
@@ -575,9 +598,18 @@ ngx_close_cached_file(ngx_open_file_cache_t *cache,
         return;
     }
 
-    if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", file->name);
+    if (file->fd != NGX_INVALID_FILE) {
+
+        if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed", file->name);
+        }
+
+        file->fd = NGX_INVALID_FILE;
+    }
+
+    if (!file->close) {
+        return;
     }
 
     ngx_free(file->name);
@@ -626,7 +658,7 @@ ngx_expire_old_cached_files(ngx_open_file_cache_t *cache, ngx_uint_t n,
 
         if (!file->err && !file->is_dir) {
             file->close = 1;
-            ngx_close_cached_file(cache, file, log);
+            ngx_close_cached_file(cache, file, 0, log);
 
         } else {
             ngx_free(file->name);
@@ -697,7 +729,7 @@ ngx_open_file_cache_remove(ngx_event_t *ev)
 
     file->close = 1;
 
-    ngx_close_cached_file(fev->cache, file, ev->log);
+    ngx_close_cached_file(fev->cache, file, 0, ev->log);
 
     /* free memory only when fev->cache and fev->file are already not needed */
 

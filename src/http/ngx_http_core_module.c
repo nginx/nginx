@@ -491,6 +491,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, open_file_cache_valid),
       &ngx_conf_deprecated_open_file_cache_retest },
 
+    { ngx_string("open_file_cache_min_uses"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, open_file_cache_min_uses),
+      NULL },
+
     { ngx_string("open_file_cache_errors"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -2429,6 +2436,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
     lcf->open_file_cache = NGX_CONF_UNSET_PTR;
     lcf->open_file_cache_valid = NGX_CONF_UNSET;
+    lcf->open_file_cache_min_uses = NGX_CONF_UNSET_UINT;
     lcf->open_file_cache_errors = NGX_CONF_UNSET;
     lcf->open_file_cache_events = NGX_CONF_UNSET;
 
@@ -2633,6 +2641,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_sec_value(conf->open_file_cache_valid,
                              prev->open_file_cache_valid, 60);
+
+    ngx_conf_merge_uint_value(conf->open_file_cache_min_uses,
+                             prev->open_file_cache_min_uses, 1);
 
     ngx_conf_merge_sec_value(conf->open_file_cache_errors,
                              prev->open_file_cache_errors, 0);
