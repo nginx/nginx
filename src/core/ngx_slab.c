@@ -58,9 +58,22 @@
 
 
 #if (NGX_DEBUG_MALLOC)
-#define ngx_slab_junk(p, size)  ngx_memset(p, 0xD0, size)
+
+#define ngx_slab_junk(p, size)     ngx_memset(p, 0xD0, size)
+
 #else
+
+#if (NGX_FREEBSD)
+
+#define ngx_slab_junk(p, size)                                                \
+    if (ngx_freebsd_debug_malloc)  ngx_memset(p, 0xD0, size)
+
+#else
+
 #define ngx_slab_junk(p, size)
+
+#endif
+
 #endif
 
 static ngx_slab_page_t *ngx_slab_alloc_pages(ngx_slab_pool_t *pool,
