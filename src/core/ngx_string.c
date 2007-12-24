@@ -63,6 +63,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %V                        ngx_str_t *
  *    %v                        ngx_variable_value_t *
  *    %s                        null-terminated string
+ *    %*s                       length and string
  *    %Z                        '\0'
  *    %N                        '\n'
  *    %c                        char
@@ -112,7 +113,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                                      * but icc issues the warning
                                      */
     int                    d;
-    size_t                 len;
+    size_t                 len, slen;
     uint32_t               ui32;
     int64_t                i64;
     uint64_t               ui64;
@@ -146,6 +147,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             sign = 1;
             hexadecimal = 0;
             max_width = 0;
+            slen = 0;
 
             p = temp + NGX_INT64_LEN;
 
@@ -176,6 +178,11 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                 case 'x':
                     hexadecimal = 1;
                     sign = 0;
+                    fmt++;
+                    continue;
+
+                case '*':
+                    slen = va_arg(args, u_int);
                     fmt++;
                     continue;
 
@@ -214,9 +221,15 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
             case 's':
                 p = va_arg(args, u_char *);
 
-                while (*p && buf < last) {
-                    *buf++ = *p++;
+                if (slen == 0) {
+                    while (*p && buf < last) {
+                        *buf++ = *p++;
+                    }
+
+                } else {
+                    buf = ngx_cpymem(buf, p, slen);
                 }
+
                 fmt++;
 
                 continue;
