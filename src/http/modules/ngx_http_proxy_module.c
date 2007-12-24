@@ -880,16 +880,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         b->last = e.pos;
     }
 
-#if (NGX_DEBUG)
-    {
-    ngx_str_t  s;
-
-    s.len = b->last - b->pos;
-    s.data = b->pos;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy header:\n\"%V\"", &s);
-    }
-#endif
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http proxy header:\n\"%*s\"",
+                   (size_t) (b->last - b->pos), b->pos);
 
     if (plcf->body_set == NULL && plcf->upstream.pass_request_body) {
 

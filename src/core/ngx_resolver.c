@@ -669,17 +669,8 @@ ngx_resolver_expire(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
             return;
         }
 
-#if (NGX_DEBUG)
-        {
-        ngx_str_t  s;
-
-        s.len = rn->nlen;
-        s.data = rn->name;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
-                       "resolver expire \"%V\"", &s);
-        }
-#endif
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, r->log, 0,
+                       "resolver expire \"%*s\"", (size_t) rn->nlen, rn->name);
 
         ngx_queue_remove(q);
 
@@ -783,17 +774,9 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
             return rn->expire - now;
         }
 
-#if (NGX_DEBUG)
-        {
-        ngx_str_t  s;
-
-        s.len = rn->nlen;
-        s.data = rn->name;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver resend \"%V\" %p", &s, rn->waiting);
-        }
-#endif
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
+                       "resolver resend \"%*s\" %p",
+                       (size_t) rn->nlen, rn->name, rn->waiting);
 
         ngx_queue_remove(q);
 
