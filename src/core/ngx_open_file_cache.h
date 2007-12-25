@@ -54,6 +54,7 @@ struct ngx_cached_open_file_s {
 
     unsigned                 count:24;
     unsigned                 close:1;
+    unsigned                 use_event:1;
 
     unsigned                 is_dir:1;
     unsigned                 is_file:1;
