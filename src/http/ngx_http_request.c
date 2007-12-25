@@ -1677,8 +1677,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http fast subrequest: \"%V?%V\" done",
-                           &r->uri, &r->args);
+                               "http fast subrequest: \"%V?%V\" done",
+                               &r->uri, &r->args);
                 return;
             }
 
