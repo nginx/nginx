@@ -132,6 +132,7 @@ ssize_t ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size);
 ssize_t ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl);
 ngx_chain_t *ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit);
+void ngx_ssl_free_buffer(ngx_connection_t *c);
 ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
 void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     char *fmt, ...);

@@ -2112,6 +2112,12 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         hc->nbusy = 0;
     }
 
+#if (NGX_HTTP_SSL)
+    if (c->ssl) {
+        ngx_ssl_free_buffer(c);
+    }
+#endif
+
     rev->handler = ngx_http_keepalive_handler;
 
     if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {

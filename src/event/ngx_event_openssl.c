@@ -344,14 +344,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
-    if (flags & NGX_SSL_BUFFER) {
-        sc->buffer = 1;
-
-        sc->buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE);
-        if (sc->buf == NULL) {
-            return NGX_ERROR;
-        }
-    }
+    sc->buffer = ((flags & NGX_SSL_BUFFER) != 0);
 
     sc->connection = SSL_new(ssl->ctx);
 
@@ -804,8 +797,28 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
     }
 
-
     buf = c->ssl->buf;
+
+    if (buf == NULL) {
+        buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE);
+        if (buf == NULL) {
+            return NGX_CHAIN_ERROR;
+        }
+
+        c->ssl->buf = buf;
+    }
+
+    if (buf->start == NULL) {
+        buf->start = ngx_palloc(c->pool, NGX_SSL_BUFSIZE);
+        if (buf->start == NULL) {
+            return NGX_CHAIN_ERROR;
+        }
+
+        buf->pos = buf->start;
+        buf->last = buf->start;
+        buf->end = buf->start + NGX_SSL_BUFSIZE;
+    }
+
     send = 0;
     flush = (in == NULL) ? 1 : 0;
 
@@ -977,6 +990,15 @@ ngx_ssl_read_handler(ngx_event_t *rev)
     c = rev->data;
 
     c->write->handler(c->write);
+}
+
+
+void
+ngx_ssl_free_buffer(ngx_connection_t *c)
+{
+    if (ngx_pfree(c->pool, c->ssl->buf->start) == NGX_OK) {
+        c->ssl->buf->start = NULL;
+    }
 }
 
 
