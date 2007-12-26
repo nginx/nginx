@@ -2123,7 +2123,9 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_str_t        *temp, path, *last_modified;
     ngx_temp_file_t  *tf;
 
-    if (u->pipe->temp_file->file.fd == NGX_INVALID_FILE) {
+    tf = u->pipe->temp_file;
+
+    if (tf->file.fd == NGX_INVALID_FILE) {
 
         /* create file for empty 200 response */
 
@@ -2148,7 +2150,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
         u->pipe->temp_file = tf;
     }
 
-    temp = &u->pipe->temp_file->file.name;
+    temp = &tf->file.name;
 
 #if !(NGX_WIN32)
 
@@ -2171,9 +2173,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
         lm = ngx_http_parse_time(last_modified->data, last_modified->len);
 
         if (lm != NGX_ERROR) {
-            if (ngx_set_file_time(temp->data, u->pipe->temp_file->file.fd, lm)
-                != NGX_OK)
-            {
+            if (ngx_set_file_time(temp->data, tf->file.fd, lm) != NGX_OK) {
                 err = ngx_errno;
                 failed = ngx_set_file_time_n;
                 name = temp->data;
