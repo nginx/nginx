@@ -1174,6 +1174,11 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 {
     long  cache_mode;
 
+    if (builtin_session_cache == NGX_SSL_NO_SCACHE) {
+        SSL_CTX_set_session_cache_mode(ssl->ctx, SSL_SESS_CACHE_OFF);
+        return NGX_OK;
+    }
+
     cache_mode = SSL_SESS_CACHE_SERVER;
 
     if (shm_zone && builtin_session_cache == NGX_SSL_NO_BUILTIN_SCACHE) {

@@ -53,9 +53,10 @@ typedef struct {
 
 #define NGX_SSL_DFLT_BUILTIN_SCACHE  -2
 #define NGX_SSL_NO_BUILTIN_SCACHE    -3
+#define NGX_SSL_NO_SCACHE            -4
 
 
-#define NGX_SSL_MAX_SESSION_SIZE (4096)
+#define NGX_SSL_MAX_SESSION_SIZE  4096
 
 typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 

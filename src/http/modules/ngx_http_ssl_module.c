@@ -415,8 +415,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_value(conf->builtin_session_cache,
-                         prev->builtin_session_cache,
-                         NGX_SSL_DFLT_BUILTIN_SCACHE);
+                         prev->builtin_session_cache, NGX_SSL_NO_SCACHE);
 
     if (conf->shm_zone == NULL) {
         conf->shm_zone = prev->shm_zone;
@@ -447,6 +446,11 @@ ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "off") == 0) {
+            sscf->builtin_session_cache = NGX_SSL_NO_SCACHE;
+            continue;
+        }
 
         if (ngx_strcmp(value[i].data, "builtin") == 0) {
             sscf->builtin_session_cache = NGX_SSL_DFLT_BUILTIN_SCACHE;

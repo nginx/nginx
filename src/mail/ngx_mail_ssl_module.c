@@ -208,10 +208,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                           |NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1));
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate,
-                             NGX_DEFLAUT_CERTIFICATE);
+                         NGX_DEFLAUT_CERTIFICATE);
 
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
-                             NGX_DEFLAUT_CERTIFICATE_KEY);
+                         NGX_DEFLAUT_CERTIFICATE_KEY);
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFLAUT_CIPHERS);
 
@@ -261,8 +261,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_value(conf->builtin_session_cache,
-                         prev->builtin_session_cache,
-                         NGX_SSL_DFLT_BUILTIN_SCACHE);
+                         prev->builtin_session_cache, NGX_SSL_NO_SCACHE);
 
     if (conf->shm_zone == NULL) {
         conf->shm_zone = prev->shm_zone;
@@ -293,6 +292,11 @@ ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "off") == 0) {
+            scf->builtin_session_cache = NGX_SSL_NO_SCACHE;
+            continue;
+        }
 
         if (ngx_strcmp(value[i].data, "builtin") == 0) {
             scf->builtin_session_cache = NGX_SSL_DFLT_BUILTIN_SCACHE;
