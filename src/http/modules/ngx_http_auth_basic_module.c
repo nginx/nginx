@@ -113,7 +113,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_basic_module);
 
     if (alcf->realm.len == 0 || alcf->user_file.len == 0) {
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_auth_basic_module);

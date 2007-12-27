@@ -98,7 +98,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_access_module);
 
     if (alcf->rules == NULL) {
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     /* AF_INET only */
@@ -128,7 +128,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
         }
     }
 
-    return NGX_OK;
+    return NGX_DECLINED;
 }
 
 
