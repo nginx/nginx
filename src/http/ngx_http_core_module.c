@@ -2637,19 +2637,19 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->server_tokens, prev->server_tokens, 1);
 
     ngx_conf_merge_ptr_value(conf->open_file_cache,
-                             prev->open_file_cache, NULL);
+                              prev->open_file_cache, NULL);
 
     ngx_conf_merge_sec_value(conf->open_file_cache_valid,
-                             prev->open_file_cache_valid, 60);
+                              prev->open_file_cache_valid, 60);
 
     ngx_conf_merge_uint_value(conf->open_file_cache_min_uses,
-                             prev->open_file_cache_min_uses, 1);
+                              prev->open_file_cache_min_uses, 1);
 
     ngx_conf_merge_sec_value(conf->open_file_cache_errors,
-                             prev->open_file_cache_errors, 0);
+                              prev->open_file_cache_errors, 0);
 
     ngx_conf_merge_sec_value(conf->open_file_cache_events,
-                             prev->open_file_cache_events, 0);
+                              prev->open_file_cache_events, 0);
 
     return NGX_CONF_OK;
 }
