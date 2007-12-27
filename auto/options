@@ -76,6 +76,7 @@ HTTP_LIMIT_ZONE=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
 HTTP_FLV=NO
+HTTP_GZIP_STATIC=NO
 HTTP_UPSTREAM_IP_HASH=YES
 
 # STUB
@@ -162,6 +163,7 @@ do
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
+        --with-http_gzip_static_module)  HTTP_GZIP_STATIC=YES       ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
@@ -273,6 +275,7 @@ cat << END
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
+  --with-http_gzip_static_module     enable ngx_http_gzip_static_module
   --with-http_stub_status_module     enable ngx_http_stub_status_module
 
   --without-http_charset_module      disable ngx_http_charset_module

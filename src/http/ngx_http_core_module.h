@@ -13,6 +13,17 @@
 #include <ngx_http.h>
 
 
+#define NGX_HTTP_GZIP_PROXIED_OFF       0x0002
+#define NGX_HTTP_GZIP_PROXIED_EXPIRED   0x0004
+#define NGX_HTTP_GZIP_PROXIED_NO_CACHE  0x0008
+#define NGX_HTTP_GZIP_PROXIED_NO_STORE  0x0010
+#define NGX_HTTP_GZIP_PROXIED_PRIVATE   0x0020
+#define NGX_HTTP_GZIP_PROXIED_NO_LM     0x0040
+#define NGX_HTTP_GZIP_PROXIED_NO_ETAG   0x0080
+#define NGX_HTTP_GZIP_PROXIED_AUTH      0x0100
+#define NGX_HTTP_GZIP_PROXIED_ANY       0x0200
+
+
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
@@ -290,6 +301,17 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    recursive_error_pages;   /* recursive_error_pages */
     ngx_flag_t    server_tokens;           /* server_tokens */
 
+#if (NGX_HTTP_GZIP)
+    ngx_flag_t    gzip_vary;               /* gzip_vary */
+
+    ngx_uint_t    gzip_http_version;       /* gzip_http_version */
+    ngx_uint_t    gzip_proxied;            /* gzip_proxied */
+
+#if (NGX_PCRE)
+    ngx_array_t  *gzip_disable;            /* gzip_disable */
+#endif
+#endif
+
     ngx_array_t  *error_pages;             /* error_page */
 
     ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
@@ -330,6 +352,10 @@ ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,
     size_t *root_length, size_t reserved);
 ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
+#if (NGX_HTTP_GZIP)
+ngx_int_t ngx_http_gzip_ok(ngx_http_request_t *r);
+#endif
+
 
 ngx_int_t ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **sr,

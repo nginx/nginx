@@ -430,6 +430,8 @@ struct ngx_http_request_s {
 
     unsigned                          header_timeout_set:1;
 
+    unsigned                          gzip:2;
+
     unsigned                          proxy:1;
     unsigned                          bypass_cache:1;
     unsigned                          no_cache:1;

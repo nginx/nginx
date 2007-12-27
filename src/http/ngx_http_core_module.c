@@ -71,6 +71,10 @@ static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+#if (NGX_HTTP_GZIP)
+static char *ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+#endif
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data);
@@ -96,6 +100,36 @@ static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("clean"), NGX_HTTP_REQUEST_BODY_FILE_CLEAN },
     { ngx_null_string, 0 }
 };
+
+
+#if (NGX_HTTP_GZIP)
+
+static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
+    { ngx_string("1.0"), NGX_HTTP_VERSION_10 },
+    { ngx_string("1.1"), NGX_HTTP_VERSION_11 },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_conf_bitmask_t  ngx_http_gzip_proxied_mask[] = {
+    { ngx_string("off"), NGX_HTTP_GZIP_PROXIED_OFF },
+    { ngx_string("expired"), NGX_HTTP_GZIP_PROXIED_EXPIRED },
+    { ngx_string("no-cache"), NGX_HTTP_GZIP_PROXIED_NO_CACHE },
+    { ngx_string("no-store"), NGX_HTTP_GZIP_PROXIED_NO_STORE },
+    { ngx_string("private"), NGX_HTTP_GZIP_PROXIED_PRIVATE },
+    { ngx_string("no_last_modified"), NGX_HTTP_GZIP_PROXIED_NO_LM },
+    { ngx_string("no_etag"), NGX_HTTP_GZIP_PROXIED_NO_ETAG },
+    { ngx_string("auth"), NGX_HTTP_GZIP_PROXIED_AUTH },
+    { ngx_string("any"), NGX_HTTP_GZIP_PROXIED_ANY },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_str_t  ngx_http_gzip_no_cache = ngx_string("no-cache");
+static ngx_str_t  ngx_http_gzip_no_store = ngx_string("no-store");
+static ngx_str_t  ngx_http_gzip_private = ngx_string("private");
+
+#endif
 
 
 static ngx_command_t  ngx_http_core_commands[] = {
@@ -526,6 +560,38 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, resolver_timeout),
       NULL },
 
+#if (NGX_HTTP_GZIP)
+
+    { ngx_string("gzip_vary"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, gzip_vary),
+      NULL },
+
+    { ngx_string("gzip_http_version"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, gzip_http_version),
+      &ngx_http_gzip_http_version },
+
+    { ngx_string("gzip_proxied"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_conf_set_bitmask_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, gzip_proxied),
+      &ngx_http_gzip_proxied_mask },
+
+    { ngx_string("gzip_disable"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_gzip_disable,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+#endif
+
       ngx_null_command
 };
 
@@ -618,6 +684,7 @@ ngx_http_handler(ngx_http_request_t *r)
     }
 
     r->valid_location = 1;
+    r->gzip = 0;
 
     r->write_event_handler = ngx_http_core_run_phases;
     ngx_http_core_run_phases(r);
@@ -1402,6 +1469,164 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 
     return NGX_OK;
 }
+
+
+#if (NGX_HTTP_GZIP)
+
+ngx_int_t
+ngx_http_gzip_ok(ngx_http_request_t *r)
+{
+    time_t                     date, expires;
+    ngx_uint_t                 p;
+    ngx_array_t               *cc;
+    ngx_table_elt_t           *e, *d;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->gzip == 1) {
+        return NGX_OK;
+    }
+
+    if (r->gzip == 2) {
+        return NGX_DECLINED;
+    }
+
+    r->gzip = 2;
+
+    if (r != r->main
+        || r->headers_in.accept_encoding == NULL
+        || ngx_strcasestrn(r->headers_in.accept_encoding->value.data,
+                           "gzip", 4 - 1)
+           == NULL
+
+        /*
+         * if the URL (without the "http://" prefix) is longer than 253 bytes,
+         * then MSIE 4.x can not handle the compressed stream - it waits
+         * too long, hangs up or crashes
+         */
+
+        || (r->headers_in.msie4 && r->unparsed_uri.len > 200))
+    {
+        return NGX_DECLINED;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->http_version < clcf->gzip_http_version) {
+        return NGX_DECLINED;
+    }
+
+    if (r->headers_in.via == NULL) {
+        goto ok;
+    }
+
+    p = clcf->gzip_proxied;
+
+    if (p & NGX_HTTP_GZIP_PROXIED_OFF) {
+        return NGX_DECLINED;
+    }
+
+    if (p & NGX_HTTP_GZIP_PROXIED_ANY) {
+        goto ok;
+    }
+
+    if (r->headers_in.authorization && (p & NGX_HTTP_GZIP_PROXIED_AUTH)) {
+        goto ok;
+    }
+
+    e = r->headers_out.expires;
+
+    if (e) {
+
+        if (!(p & NGX_HTTP_GZIP_PROXIED_EXPIRED)) {
+            return NGX_DECLINED;
+        }
+
+        expires = ngx_http_parse_time(e->value.data, e->value.len);
+        if (expires == NGX_ERROR) {
+            return NGX_DECLINED;
+        }
+
+        d = r->headers_out.date;
+
+        if (d) {
+            date = ngx_http_parse_time(d->value.data, d->value.len);
+            if (date == NGX_ERROR) {
+                return NGX_DECLINED;
+            }
+
+        } else {
+            date = ngx_time();
+        }
+
+        if (expires < date) {
+            goto ok;
+        }
+
+        return NGX_DECLINED;
+    }
+
+    cc = &r->headers_out.cache_control;
+
+    if (cc->elts) {
+
+        if ((p & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
+            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_cache,
+                                                 NULL)
+               >= 0)
+        {
+            goto ok;
+        }
+
+        if ((p & NGX_HTTP_GZIP_PROXIED_NO_STORE)
+            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_store,
+                                                 NULL)
+               >= 0)
+        {
+            goto ok;
+        }
+
+        if ((p & NGX_HTTP_GZIP_PROXIED_PRIVATE)
+            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_private,
+                                                 NULL)
+               >= 0)
+        {
+            goto ok;
+        }
+
+        return NGX_DECLINED;
+    }
+
+    if ((p & NGX_HTTP_GZIP_PROXIED_NO_LM) && r->headers_out.last_modified) {
+        return NGX_DECLINED;
+    }
+
+    if ((p & NGX_HTTP_GZIP_PROXIED_NO_ETAG) && r->headers_out.etag) {
+        return NGX_DECLINED;
+    }
+
+ok:
+
+#if (NGX_PCRE)
+
+    if (clcf->gzip_disable && r->headers_in.user_agent) {
+
+        if (ngx_regex_exec_array(clcf->gzip_disable, 
+                                 &r->headers_in.user_agent->value,
+                                 r->connection->log)
+            != NGX_DECLINED)
+        {
+            return NGX_DECLINED;
+        }
+    }
+
+#endif
+
+    r->gzip = 1;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 ngx_int_t
@@ -2404,6 +2629,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     lcf->exact_match = 0;
      *     lcf->auto_redirect = 0;
      *     lcf->alias = 0;
+     *     lcf->gzip_proxied = 0;
      */
 
     lcf->client_max_body_size = NGX_CONF_UNSET;
@@ -2434,11 +2660,18 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->server_tokens = NGX_CONF_UNSET;
     lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
+
     lcf->open_file_cache = NGX_CONF_UNSET_PTR;
     lcf->open_file_cache_valid = NGX_CONF_UNSET;
     lcf->open_file_cache_min_uses = NGX_CONF_UNSET_UINT;
     lcf->open_file_cache_errors = NGX_CONF_UNSET;
     lcf->open_file_cache_events = NGX_CONF_UNSET;
+
+#if (NGX_HTTP_GZIP)
+    lcf->gzip_vary = NGX_CONF_UNSET;
+    lcf->gzip_http_version = NGX_CONF_UNSET_UINT;
+    lcf->gzip_disable = NGX_CONF_UNSET_PTR;
+#endif
 
     return lcf;
 }
@@ -2650,6 +2883,17 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_sec_value(conf->open_file_cache_events,
                               prev->open_file_cache_events, 0);
+#if (NGX_HTTP_GZIP)
+
+    ngx_conf_merge_value(conf->gzip_vary, prev->gzip_vary, 0);
+    ngx_conf_merge_uint_value(conf->gzip_http_version, prev->gzip_http_version,
+                              NGX_HTTP_VERSION_11);
+    ngx_conf_merge_bitmask_value(conf->gzip_proxied, prev->gzip_proxied,
+                              (NGX_CONF_BITMASK_SET|NGX_HTTP_GZIP_PROXIED_OFF));
+
+    ngx_conf_merge_ptr_value(conf->gzip_disable, prev->gzip_disable, NULL);
+
+#endif
 
     return NGX_CONF_OK;
 }
@@ -3436,6 +3680,63 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+#if (NGX_HTTP_GZIP)
+
+static char *
+ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (NGX_PCRE)
+    ngx_http_core_loc_conf_t  *clcf = conf;
+
+    ngx_str_t         err, *value;
+    ngx_uint_t        i;
+    ngx_regex_elt_t  *re;
+    u_char            errstr[NGX_MAX_CONF_ERRSTR];
+
+    if (clcf->gzip_disable == NGX_CONF_UNSET_PTR) {
+        clcf->gzip_disable = ngx_array_create(cf->pool, 2,
+                                              sizeof(ngx_regex_elt_t));
+        if (clcf->gzip_disable == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    value = cf->args->elts;
+
+    err.len = NGX_MAX_CONF_ERRSTR;
+    err.data = errstr;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        re = ngx_array_push(clcf->gzip_disable);
+        if (re == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        re->regex = ngx_regex_compile(&value[i], NGX_REGEX_CASELESS, cf->pool,
+                                      &err);
+
+        if (re->regex == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+            return NGX_CONF_ERROR;
+        }
+
+        re->name = value[i].data;
+    }
+
+    return NGX_CONF_OK;
+
+#else
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"gzip_disable\" requires PCRE library");
+
+    return NGX_CONF_ERROR;
+#endif
+}
+
+#endif
 
 
 static char *
