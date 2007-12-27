@@ -9,6 +9,145 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.23" date="27.12.2007">
+
+<change type="change">
+<para lang="ru">
+параметр "off" в директиве ssl_session_cache;
+теперь этот параметр используется по умолчанию.
+</para>
+<para lang="en">
+the "off" parameter in the "ssl_session_cache" directive;
+now this is default parameter.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива open_file_cache_retest переименована в open_file_cache_valid.
+</para>
+<para lang="en">
+the "open_file_cache_retest" directive was renamed
+to the "open_file_cache_valid".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива open_file_cache_min_uses.
+</para>
+<para lang="en">
+the "open_file_cache_min_uses" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_gzip_static_module.
+</para>
+<para lang="en">
+the ngx_http_gzip_static_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива gzip_disable.
+</para>
+<para lang="en">
+the "gzip_disable" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву memcached_pass можно использовать внутри блока if.
+</para>
+<para lang="en">
+the "memcached_pass" directive may be used inside the "if" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если внутри одного location'а использовались директивы "memcached_pass" и "if",
+то в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if the "memcached_pass" and "if" directives were used in the same location.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании директивы satisfy_any on" были заданы директивы
+не всех модулей доступа, то заданные директивы не проверялись.
+</para>
+<para lang="en">
+if a "satisfy_any on" directive was used and not all access and auth modules
+directives were set, then other given access and auth directives
+were not tested;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметры, заданные регулярным выражением в директиве valid_referers,
+не наследовалась с предыдущего уровня.
+</para>
+<para lang="en">
+regex parameters in a "valid_referers" directive were not inherited
+from previous level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива post_action не работала, если запрос завершался с кодом 499.
+</para>
+<para lang="en">
+a "post_action" directive did run if a request was completed
+with 499 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+оптимизация использования 16K буфера для SSL-соединения.<br/>
+Спасибо Ben Maurer.
+</para>
+<para lang="en">
+optimization of 16K buffer usage in a SSL connection.<br/>
+Thanks to Ben Maurer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+STARTTLS в режиме SMTP не работал.<br/>
+Спасибо Олегу Мотиенко.
+</para>
+<para lang="en">
+the STARTTLS in SMTP mode did not work.<br/>
+Thanks to Oleg Motienko.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry";
+ошибка появилась в 0.5.13.
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error;
+bug appeared in 0.5.13.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.22" date="19.12.2007">
 
 <change type="change">
@@ -249,7 +388,7 @@ variables support in the "proxy_pass" directive.
 
 <change type="feature">
 <para lang="ru">
-директива resolver и resolver_timeout.
+директивы resolver и resolver_timeout.
 </para>
 <para lang="en">
 the "resolver" and "resolver_timeout" directives.
