@@ -58,7 +58,7 @@ static ngx_conf_bitmask_t  ngx_http_memcached_next_upstream_masks[] = {
 static ngx_command_t  ngx_http_memcached_commands[] = {
 
     { ngx_string("memcached_pass"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
       ngx_http_memcached_pass,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
