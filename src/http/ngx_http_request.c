@@ -1595,7 +1595,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
 
-    if (rc == NGX_ERROR || rc == NGX_HTTP_REQUEST_TIME_OUT || c->error) {
+    if (rc == NGX_ERROR
+        || rc == NGX_HTTP_REQUEST_TIME_OUT
+        || rc == NGX_HTTP_CLIENT_CLOSED_REQUEST
+        || c->error)
+    {
         if (rc > 0 && r->headers_out.status == 0) {
             r->headers_out.status = rc;
         }
