@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.24" date="27.12.2007">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS в рабочем процессе мог произойти segmentation fault.
+ошибка появилась в 0.6.23.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process if HTTPS was used;
+bug appeared in 0.6.23.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.23" date="27.12.2007">
 
 <change type="change">
