@@ -613,7 +613,6 @@ sendfile(r, filename, offset = -1, bytes = 0)
     char                      *filename;
     int                        offset;
     size_t                     bytes;
-    ngx_int_t                  rc;
     ngx_str_t                  path;
     ngx_buf_t                 *b;
     ngx_open_file_info_t       of;
@@ -657,10 +656,9 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     (void) ngx_cpystrn(path.data, filename, path.len + 1);
 
-    rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
-
-    if (rc == NGX_ERROR) {
-
+    if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
+        != NGX_OK)
+    {
         if (of.err == 0) {
             XSRETURN_EMPTY;
         }

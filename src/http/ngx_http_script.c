@@ -982,7 +982,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     of.events = clcf->open_file_cache_events;
 
     if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
-        == NGX_ERROR)
+        != NGX_OK)
     {
         if (of.err != NGX_ENOENT && of.err != NGX_ENOTDIR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,

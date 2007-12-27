@@ -214,10 +214,9 @@ ngx_http_index_handler(ngx_http_request_t *r)
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
 
-        rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
-
-        if (rc == NGX_ERROR) {
-
+        if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
+            != NGX_OK)
+        {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, of.err,
                            ngx_open_file_n " \"%s\" failed", path.data);
 

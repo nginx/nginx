@@ -102,10 +102,9 @@ ngx_http_static_handler(ngx_http_request_t *r)
     of.errors = clcf->open_file_cache_errors;
     of.events = clcf->open_file_cache_events;
 
-    rc = ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool);
-
-    if (rc == NGX_ERROR) {
-
+    if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
+        != NGX_OK)
+    {
         switch (of.err) {
 
         case 0:
