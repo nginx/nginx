@@ -1641,14 +1641,14 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         }
     }
 
+    r->done = 1;
+
     if (r != c->data) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http finalize non-active request: \"%V?%V\"",
                        &r->uri, &r->args);
         return;
     }
-
-    r->done = 1;
 
     if (r != r->main) {
 
