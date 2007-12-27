@@ -114,6 +114,39 @@ ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_int_t size)
 }
 
 
+ngx_int_t
+ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log)
+{
+    ngx_int_t         n;
+    ngx_uint_t        i;
+    ngx_regex_elt_t  *re;
+
+    re = a->elts;
+
+    for (i = 0; i < a->nelts; i++) {
+
+        n = ngx_regex_exec(re[i].regex, s, NULL, 0);
+
+        if (n == NGX_REGEX_NO_MATCHED) {
+            continue;
+        }
+
+        if (n < 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          ngx_regex_exec_n " failed: %d on \"%V\" using \"%s\"",
+                          n, s, re[i].name);
+            return NGX_ERROR;
+        }
+
+        /* match */
+
+        return NGX_OK;
+    }
+
+    return NGX_DECLINED;
+}
+
+
 static void * ngx_libc_cdecl
 ngx_regex_malloc(size_t size)
 {

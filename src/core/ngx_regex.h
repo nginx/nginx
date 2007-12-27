@@ -20,12 +20,20 @@
 
 typedef pcre  ngx_regex_t;
 
+typedef struct {
+    ngx_regex_t   *regex;
+    u_char        *name;
+} ngx_regex_elt_t;
+
+
 void ngx_regex_init(void);
 ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
     ngx_pool_t *pool, ngx_str_t *err);
 ngx_int_t ngx_regex_capture_count(ngx_regex_t *re);
 ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures,
     ngx_int_t size);
+ngx_int_t ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log);
+
 
 #define ngx_regex_exec_n           "pcre_exec()"
 #define ngx_regex_capture_count_n  "pcre_fullinfo()"
