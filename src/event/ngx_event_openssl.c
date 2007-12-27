@@ -996,8 +996,10 @@ ngx_ssl_read_handler(ngx_event_t *rev)
 void
 ngx_ssl_free_buffer(ngx_connection_t *c)
 {
-    if (ngx_pfree(c->pool, c->ssl->buf->start) == NGX_OK) {
-        c->ssl->buf->start = NULL;
+    if (c->ssl->buf && c->ssl->buf->start) {
+        if (ngx_pfree(c->pool, c->ssl->buf->start) == NGX_OK) {
+            c->ssl->buf->start = NULL;
+        }
     }
 }
 
