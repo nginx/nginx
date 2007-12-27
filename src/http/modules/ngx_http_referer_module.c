@@ -11,14 +11,7 @@
 
 #define NGX_HTTP_REFERER_NO_URI_PART  ((void *) 4)
 
-#if (NGX_PCRE)
-
-typedef struct {
-    ngx_regex_t             *regex;
-    ngx_str_t                name;
-} ngx_http_referer_regex_t;
-
-#else
+#if !(NGX_PCRE)
 
 #define ngx_regex_t          void
 
@@ -168,34 +161,23 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 #if (NGX_PCRE)
 
     if (rlcf->regex) {
-        ngx_int_t                  n;
-        ngx_str_t                  referer;
-        ngx_http_referer_regex_t  *regex;
+        ngx_int_t  rc;
+        ngx_str_t  referer;
 
         referer.len = len - 7;
         referer.data = ref;
 
-        regex = rlcf->regex->elts;
+        rc = ngx_regex_exec_array(rlcf->regex, &referer, r->connection->log);
 
-        for (i = 0; i < rlcf->regex->nelts; i++) {
-            n = ngx_regex_exec(regex[i].regex, &referer, NULL, 0);
-
-            if (n == NGX_REGEX_NO_MATCHED) {
-                continue;
-            }
-
-            if (n < 0) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              ngx_regex_exec_n
-                              " failed: %d on \"%V\" using \"%V\"",
-                              n, &referer, &regex[i].name);
-                return NGX_ERROR;
-            }
-
-            /* match */
-
+        if (rc == NGX_OK) {
             goto valid;
         }
+
+        if (rc == NGX_ERROR) {
+            return rc;
+        }
+
+        /* NGX_DECLINED */
     }
 
 #endif
@@ -516,26 +498,25 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
     ngx_str_t *name, ngx_regex_t *regex)
 {
 #if (NGX_PCRE)
-    ngx_str_t                  err;
-    ngx_http_referer_regex_t  *rr;
-    u_char                     errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_str_t         err;
+    ngx_regex_elt_t  *re;
+    u_char            errstr[NGX_MAX_CONF_ERRSTR];
 
     if (rlcf->regex == NGX_CONF_UNSET_PTR) {
-        rlcf->regex = ngx_array_create(cf->pool, 2,
-                                       sizeof(ngx_http_referer_regex_t));
+        rlcf->regex = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
         if (rlcf->regex == NULL) {
             return NGX_CONF_ERROR;
         }
     }
 
-    rr = ngx_array_push(rlcf->regex);
-    if (rr == NULL) {
+    re = ngx_array_push(rlcf->regex);
+    if (re == NULL) {
         return NGX_CONF_ERROR;
     }
 
     if (regex) {
-        rr->regex = regex;
-        rr->name = *name;
+        re->regex = regex;
+        re->name = name->data;
 
         return NGX_CONF_OK;
     }
@@ -546,14 +527,14 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
     name->len--;
     name->data++;
 
-    rr->regex = ngx_regex_compile(name, NGX_REGEX_CASELESS, cf->pool, &err);
+    re->regex = ngx_regex_compile(name, NGX_REGEX_CASELESS, cf->pool, &err);
 
-    if (rr->regex == NULL) {
+    if (re->regex == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
         return NGX_CONF_ERROR;
     }
 
-    rr->name = *name;
+    re->name = name->data;
 
     return NGX_CONF_OK;
 
