@@ -524,8 +524,6 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
-     *
-     *     conf->index = 0;
      */
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -547,6 +545,8 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.intercept_404 = 1;
     conf->upstream.pass_request_headers = 0;
     conf->upstream.pass_request_body = 0;
+
+    conf->index = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -580,6 +580,15 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) {
         conf->upstream.next_upstream = NGX_CONF_BITMASK_SET
                                        |NGX_HTTP_UPSTREAM_FT_OFF;
+    }
+
+    if (conf->upstream.upstream == NULL) {
+        conf->upstream.upstream = prev->upstream.upstream;
+        conf->upstream.schema = prev->upstream.schema;
+    }
+
+    if (conf->index == NGX_CONF_UNSET) {
+        conf->index = prev->index;
     }
 
     return NGX_CONF_OK;
