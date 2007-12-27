@@ -2891,8 +2891,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sn->regex = NULL;
 #endif
         sn->core_srv_conf = cscf;
-        sn->name.len = value[i].len;
-        sn->name.data = value[i].data;
+        sn->name = value[i];
 
         if (value[i].data[0] != '~') {
             continue;
@@ -2917,8 +2916,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        sn->name.len = value[i].len;
-        sn->name.data = value[i].data;
+        sn->name = value[i];
         }
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
