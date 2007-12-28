@@ -2670,7 +2670,9 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 #if (NGX_HTTP_GZIP)
     lcf->gzip_vary = NGX_CONF_UNSET;
     lcf->gzip_http_version = NGX_CONF_UNSET_UINT;
+#if (NGX_PCRE)
     lcf->gzip_disable = NGX_CONF_UNSET_PTR;
+#endif
 #endif
 
     return lcf;
@@ -2891,7 +2893,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_bitmask_value(conf->gzip_proxied, prev->gzip_proxied,
                               (NGX_CONF_BITMASK_SET|NGX_HTTP_GZIP_PROXIED_OFF));
 
+#if (NGX_PCRE)
     ngx_conf_merge_ptr_value(conf->gzip_disable, prev->gzip_disable, NULL);
+#endif
 
 #endif
 

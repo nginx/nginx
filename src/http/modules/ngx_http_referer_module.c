@@ -246,7 +246,9 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->keys == NULL) {
         conf->hash = prev->hash;
 
+#if (NGX_PCRE)
         ngx_conf_merge_ptr_value(conf->regex, prev->regex, NULL);
+#endif
         ngx_conf_merge_value(conf->no_referer, prev->no_referer, 0);
         ngx_conf_merge_value(conf->blocked_referer, prev->blocked_referer, 0);
 
@@ -322,7 +324,9 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->hash.wc_tail = (ngx_hash_wildcard_t *) hash.hash;
     }
 
+#if (NGX_PCRE)
     ngx_conf_merge_ptr_value(conf->regex, prev->regex, NULL);
+#endif
 
     if (conf->no_referer == NGX_CONF_UNSET) {
         conf->no_referer = 0;
