@@ -1610,7 +1610,7 @@ ok:
 
     if (clcf->gzip_disable && r->headers_in.user_agent) {
 
-        if (ngx_regex_exec_array(clcf->gzip_disable, 
+        if (ngx_regex_exec_array(clcf->gzip_disable,
                                  &r->headers_in.user_agent->value,
                                  r->connection->log)
             != NGX_DECLINED)
