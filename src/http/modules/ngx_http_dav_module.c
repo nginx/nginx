@@ -799,9 +799,6 @@ ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     u_char                   *p, *dir;
     size_t                    len;
     ngx_http_dav_copy_ctx_t  *copy;
-#if (WIN32)
-    ngx_fd_t                  fd;
-#endif
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ctx->log, 0,
                    "http copy dir time: \"%s\"", path->data);
@@ -821,7 +818,9 @@ ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ctx->log, 0,
                    "http copy dir time to: \"%s\"", dir);
 
-#if (WIN32)
+#if (NGX_WIN32)
+    {
+    ngx_fd_t  fd;
 
     fd = ngx_open_file(dir, NGX_FILE_RDWR, NGX_FILE_OPEN, 0);
 
@@ -838,6 +837,7 @@ ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     if (ngx_close_file(fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, ctx->log, ngx_errno,
                       ngx_close_file_n " \"%s\" failed", dir);
+    }
     }
 
 failed:
