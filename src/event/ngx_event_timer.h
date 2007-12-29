@@ -65,9 +65,9 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     if (ev->timer_set) {
 
         /*
-         * Use the previous timer value if a difference between them is less
-         * then NGX_TIMER_LAZY_DELAY milliseconds.  It allows to minimize
-         * the rbtree operations for the fast connections.
+         * Use a previous timer value if difference between it and a new
+         * value is less than NGX_TIMER_LAZY_DELAY milliseconds: this allows
+         * to minimize the rbtree operations for fast connections.
          */
 
         diff = (ngx_msec_int_t) (key - ev->timer.key);
