@@ -300,12 +300,10 @@ static ngx_int_t
 ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    u_char              *cookie, *p;
-    size_t               len;
-    socklen_t            slen;
-    struct sockaddr_in   sin;
-    ngx_str_t            src, dst;
-    ngx_table_elt_t     *set_cookie, *p3p;
+    u_char           *cookie, *p;
+    size_t            len;
+    ngx_str_t         src, dst;
+    ngx_table_elt_t  *set_cookie, *p3p;
 
     /*
      * TODO: in the threaded mode the sequencers should be in TLS and their
@@ -327,18 +325,8 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 
         } else {
             if (conf->service == NGX_CONF_UNSET) {
-                if (r->in_addr == 0) {
-                    slen = sizeof(struct sockaddr_in);
-                    if (getsockname(r->connection->fd,
-                                    (struct sockaddr *) &sin, &slen)
-                        == -1)
-                    {
-                        ngx_connection_error(r->connection, ngx_socket_errno,
-                                             "getsockname() failed");
-                        return NGX_ERROR;
-                    }
-
-                    r->in_addr = sin.sin_addr.s_addr;
+                if (ngx_http_server_addr(r, NULL) != NGX_OK) {
+                    return NGX_ERROR;
                 }
 
                 ctx->uid_set[0] = htonl(r->in_addr);

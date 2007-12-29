@@ -220,9 +220,7 @@ static void
 ngx_http_init_request(ngx_event_t *rev)
 {
     ngx_time_t                 *tp;
-    socklen_t                   len;
     ngx_uint_t                  i;
-    struct sockaddr_in          sin;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
     ngx_http_in_port_t         *hip;
@@ -295,6 +293,8 @@ ngx_http_init_request(ngx_event_t *rev)
 
     i = 0;
 
+    r->connection = c;
+
     if (hip->naddrs > 1) {
 
         /*
@@ -302,7 +302,7 @@ ngx_http_init_request(ngx_event_t *rev)
          * is the "*:port" wildcard so getsockname() is needed to determine
          * the server address.
          *
-         * AcceptEx() already gave this address.
+         * AcceptEx() already has given this address.
          */
 
 #if (NGX_WIN32)
@@ -313,15 +313,10 @@ ngx_http_init_request(ngx_event_t *rev)
         } else
 #endif
         {
-            len = sizeof(struct sockaddr_in);
-            if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
-                ngx_connection_error(c, ngx_socket_errno,
-                                     "getsockname() failed");
+            if (ngx_http_server_addr(r, NULL) != NGX_OK) {
                 ngx_http_close_connection(c);
                 return;
             }
-
-            r->in_addr = sin.sin_addr.s_addr;
         }
 
         /* the last address is "*" */
@@ -425,8 +420,6 @@ ngx_http_init_request(ngx_event_t *rev)
 
     c->single_connection = 1;
     c->destroyed = 0;
-
-    r->connection = c;
 
     r->main = r;
 

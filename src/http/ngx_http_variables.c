@@ -808,32 +808,22 @@ static ngx_int_t
 ngx_http_variable_server_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    socklen_t            len;
-    ngx_connection_t    *c;
-    struct sockaddr_in   sin;
+    ngx_str_t  s;
 
-    v->data = ngx_palloc(r->pool, INET_ADDRSTRLEN);
-    if (v->data == NULL) {
+    s.data = ngx_palloc(r->pool, INET_ADDRSTRLEN);
+    if (s.data == NULL) {
         return NGX_ERROR;
     }
 
-    c = r->connection;
-
-    if (r->in_addr == 0) {
-        len = sizeof(struct sockaddr_in);
-        if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
-            ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
-            return NGX_ERROR;
-        }
-
-        r->in_addr = sin.sin_addr.s_addr;
+    if (ngx_http_server_addr(r, &s) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    v->len = ngx_inet_ntop(c->listening->family, &r->in_addr,
-                           v->data, INET_ADDRSTRLEN);
+    v->len = s.len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
+    v->data = s.data;
 
     return NGX_OK;
 }
