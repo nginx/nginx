@@ -93,11 +93,22 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_open_file_cache_retest = {
     ngx_conf_deprecated, "open_file_cache_retest", "open_file_cache_valid"
 };
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_satisfy_any = {
+    ngx_conf_deprecated, "satisfy_any", "satisfy"
+};
+
 
 static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("off"), NGX_HTTP_REQUEST_BODY_FILE_OFF },
     { ngx_string("on"), NGX_HTTP_REQUEST_BODY_FILE_ON },
     { ngx_string("clean"), NGX_HTTP_REQUEST_BODY_FILE_CLEAN },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
+    { ngx_string("all"), NGX_HTTP_SATISFY_ALL },
+    { ngx_string("any"), NGX_HTTP_SATISFY_ANY },
     { ngx_null_string, 0 }
 };
 
@@ -404,12 +415,19 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("satisfy"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, satisfy),
+      &ngx_http_core_satisfy },
+
     { ngx_string("satisfy_any"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, satisfy_any),
-      NULL },
+      offsetof(ngx_http_core_loc_conf_t, satisfy),
+      &ngx_conf_deprecated_satisfy_any },
 
     { ngx_string("internal"),
       NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
@@ -918,7 +936,7 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (clcf->satisfy_any == 0) {
+    if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
 
         if (rc == NGX_OK) {
             r->phase_handler++;
@@ -2674,7 +2692,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_max_body_size = NGX_CONF_UNSET;
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->satisfy_any = NGX_CONF_UNSET;
+    lcf->satisfy = NGX_CONF_UNSET;
     lcf->internal = NGX_CONF_UNSET;
     lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
@@ -2859,7 +2877,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
 
-    ngx_conf_merge_value(conf->satisfy_any, prev->satisfy_any, 0);
+    ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
+                              NGX_HTTP_SATISFY_ALL);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->client_body_in_file_only,
                               prev->client_body_in_file_only, 0);

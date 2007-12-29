@@ -24,6 +24,10 @@
 #define NGX_HTTP_GZIP_PROXIED_ANY       0x0200
 
 
+#define NGX_HTTP_SATISFY_ALL            0
+#define NGX_HTTP_SATISFY_ANY            1
+
+
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
@@ -286,7 +290,8 @@ struct ngx_http_core_loc_conf_s {
 
     time_t        keepalive_header;        /* keepalive_timeout */
 
-    ngx_flag_t    satisfy_any;             /* satisfy_any */
+    ngx_uint_t    satisfy;                 /* satisfy */
+
     ngx_flag_t    internal;                /* internal */
     ngx_flag_t    client_body_in_file_only; /* client_body_in_file_only */
     ngx_flag_t    sendfile;                /* sendfile */

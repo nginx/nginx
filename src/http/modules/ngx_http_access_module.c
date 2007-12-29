@@ -116,7 +116,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
             if (rule[i].deny) {
                 clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-                if (!clcf->satisfy_any) {
+                if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "access forbidden by rule");
                 }
