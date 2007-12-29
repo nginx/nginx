@@ -439,6 +439,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, reset_timedout_connection),
       NULL },
 
+    { ngx_string("server_name_in_redirect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, server_name_in_redirect),
+      NULL },
+
     { ngx_string("port_in_redirect"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -1466,6 +1473,38 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
     r->headers_in.user.data = auth.data;
     r->headers_in.passwd.len = auth.len - len - 1;
     r->headers_in.passwd.data = &auth.data[len + 1];
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
+{
+    socklen_t            len;
+    ngx_connection_t    *c;
+    struct sockaddr_in   sin;
+
+    /* AF_INET only */
+
+    c = r->connection;
+
+    if (r->in_addr == 0) {
+        len = sizeof(struct sockaddr_in);
+        if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
+            ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
+            return NGX_ERROR;
+        }
+
+        r->in_addr = sin.sin_addr.s_addr;
+    }
+
+    if (s == NULL) {
+        return NGX_OK;
+    }
+
+    s->len = ngx_inet_ntop(c->listening->family, &r->in_addr,
+                           s->data, INET_ADDRSTRLEN);
 
     return NGX_OK;
 }
@@ -2652,6 +2691,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     lcf->reset_timedout_connection = NGX_CONF_UNSET;
+    lcf->server_name_in_redirect = NGX_CONF_UNSET;
     lcf->port_in_redirect = NGX_CONF_UNSET;
     lcf->msie_padding = NGX_CONF_UNSET;
     lcf->msie_refresh = NGX_CONF_UNSET;
@@ -2863,6 +2903,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
+    ngx_conf_merge_value(conf->server_name_in_redirect,
+                              prev->server_name_in_redirect, 1);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
     ngx_conf_merge_value(conf->msie_refresh, prev->msie_refresh, 0);
@@ -3078,20 +3120,6 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ch = value[1].data[0];
 
     if (cscf->server_name.data == NULL && value[1].len) {
-        if (ngx_strchr(value[1].data, '*')) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "first server name \"%V\" must not be wildcard",
-                               &value[1]);
-            return NGX_CONF_ERROR;
-        }
-
-        if (value[1].data[0] == '~') {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "first server name \"%V\" "
-                               "must not be regular expression", &value[1]);
-            return NGX_CONF_ERROR;
-        }
-
         name = value[1];
 
         if (ch == '.') {
@@ -3109,11 +3137,6 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
 
         ch = value[i].data[0];
-
-        if (value[i].len == 1 && ch == '*') {
-            cscf->wildcard = 1;
-            continue;
-        }
 
         if (value[i].len == 0
             || (ch == '*' && (value[i].len < 3 || value[i].data[1] != '.'))

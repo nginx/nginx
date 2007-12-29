@@ -131,7 +131,6 @@ typedef struct {
 
     unsigned                   regex_start:15;
     unsigned                   named_start:15;
-    unsigned                   wildcard:1;
 
     /* array of the ngx_http_listen_t, "listen" directive */
     ngx_array_t                listen;
@@ -294,6 +293,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
+    ngx_flag_t    server_name_in_redirect; /* server_name_in_redirect */
     ngx_flag_t    port_in_redirect;        /* port_in_redirect */
     ngx_flag_t    msie_padding;            /* msie_padding */
     ngx_flag_t    msie_refresh;            /* msie_refresh */
@@ -352,6 +352,7 @@ ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,
     size_t *root_length, size_t reserved);
 ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
+ngx_int_t ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s);
 #if (NGX_HTTP_GZIP)
 ngx_int_t ngx_http_gzip_ok(ngx_http_request_t *r);
 #endif

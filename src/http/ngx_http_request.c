@@ -1515,13 +1515,6 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
 
 #endif
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    if (cscf->wildcard) {
-        r->server_name.len = len;
-        r->server_name.data = host;
-    }
-
     return;
 
 found:

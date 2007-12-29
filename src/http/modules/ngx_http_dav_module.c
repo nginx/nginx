@@ -491,15 +491,15 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
 static ngx_int_t
 ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
 {
-    u_char                   *p, *host, *last, ch;
-    size_t                    root;
+    u_char                   *p, *desthost, *last, ch;
+    size_t                    len, root;
     ngx_err_t                 err;
     ngx_int_t                 rc, depth;
     ngx_uint_t                overwrite, slash;
     ngx_str_t                 path, uri;
     ngx_tree_ctx_t            tree;
     ngx_file_info_t           fi;
-    ngx_table_elt_t          *dest, *over;
+    ngx_table_elt_t          *host, *dest, *over;
     ngx_http_dav_copy_ctx_t   copy;
 
     if (r->headers_in.content_length_n > 0) {
@@ -514,8 +514,12 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
         return NGX_HTTP_BAD_REQUEST;
     }
 
-    if (dest->value.len < sizeof("http://") - 1 + r->server_name.len + 1) {
-        goto invalid_destination;
+    host = r->headers_in.host;
+
+    if (host == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client sent no \"Host\" header");
+        return NGX_HTTP_BAD_REQUEST;
     }
 
 #if (NGX_HTTP_SSL)
@@ -527,7 +531,7 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
             goto invalid_destination;
         }
 
-        host = dest->value.data + sizeof("https://") - 1;
+        desthost = dest->value.data + sizeof("https://") - 1;
 
     } else
 #endif
@@ -538,10 +542,12 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
             goto invalid_destination;
         }
 
-        host = dest->value.data + sizeof("http://") - 1;
+        desthost = dest->value.data + sizeof("http://") - 1;
     }
 
-    if (ngx_strncmp(host, r->server_name.data, r->server_name.len) != 0) {
+    len = r->headers_in.host_name_len;
+
+    if (ngx_strncmp(desthost, host->value.data, len) != 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "Destination URI \"%V\" is handled by "
                       "different repository than the source URI",
@@ -552,7 +558,7 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
 
     last = dest->value.data + dest->value.len;
 
-    for (p = host + r->server_name.len; p < last; p++) {
+    for (p = desthost + len; p < last; p++) {
         if (*p == '/') {
             goto destination_done;
         }
