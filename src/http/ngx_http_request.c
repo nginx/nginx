@@ -173,7 +173,7 @@ ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-    ctx->client = &c->addr_text;
+    ctx->connection = c;
     ctx->request = NULL;
     ctx->current_request = NULL;
 
@@ -2584,13 +2584,17 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
     ctx = log->data;
 
-    p = ngx_snprintf(buf, len, ", client: %V", ctx->client);
+    p = ngx_snprintf(buf, len, ", client: %V", &ctx->connection->addr_text);
     len -= p - buf;
 
     r = ctx->request;
 
     if (r) {
         return r->log_handler(r, ctx->current_request, p, len);
+
+    } else {
+        p = ngx_snprintf(p, len, ", server: %V",
+                         &ctx->connection->listening->addr_text);
     }
 
     return p;
