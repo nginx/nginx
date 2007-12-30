@@ -345,12 +345,15 @@ static ngx_int_t
 ngx_http_dav_delete_handler(ngx_http_request_t *r)
 {
     size_t           root;
+    ngx_err_t        err;
     ngx_int_t        rc, depth;
     ngx_uint_t       dir;
     ngx_str_t        path;
     ngx_file_info_t  fi;
 
     if (r->headers_in.content_length_n > 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "DELETE with body is unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
 
@@ -360,21 +363,27 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
                    "http delete filename: \"%s\"", path.data);
 
     if (ngx_file_info(path.data, &fi) == -1) {
-        return ngx_http_dav_error(r->connection->log, ngx_errno,
-                                  NGX_HTTP_NOT_FOUND, ngx_file_info_n,
-                                  path.data);
+        err = ngx_errno;
+
+        rc = (err == NGX_ENOTDIR) ? NGX_HTTP_CONFLICT : NGX_HTTP_NOT_FOUND;
+
+        return ngx_http_dav_error(r->connection->log, err,
+                                  rc, ngx_file_info_n, path.data);
     }
 
     if (ngx_is_dir(&fi)) {
 
         if (r->uri.data[r->uri.len - 1] != '/') {
-            /* TODO: 301 */
-            return NGX_HTTP_BAD_REQUEST;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EISDIR,
+                          "DELETE \"%s\" failed", path.data);
+            return NGX_HTTP_CONFLICT;
         }
 
         depth = ngx_http_dav_depth(r, NGX_HTTP_DAV_INFINITY_DEPTH);
 
         if (depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"Depth\" header must be infinity");
             return NGX_HTTP_BAD_REQUEST;
         }
 
@@ -387,6 +396,8 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
         depth = ngx_http_dav_depth(r, 0);
 
         if (depth != 0 && depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"Depth\" header must be 0 or infinity");
             return NGX_HTTP_BAD_REQUEST;
         }
 
