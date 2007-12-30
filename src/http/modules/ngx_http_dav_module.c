@@ -21,8 +21,9 @@
 
 typedef struct {
     ngx_uint_t  methods;
-    ngx_flag_t  create_full_put_path;
     ngx_uint_t  access;
+    ngx_uint_t  min_delete_depth;
+    ngx_flag_t  create_full_put_path;
 } ngx_http_dav_loc_conf_t;
 
 
@@ -87,6 +88,13 @@ static ngx_command_t  ngx_http_dav_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_dav_loc_conf_t, create_full_put_path),
+      NULL },
+
+    { ngx_string("min_delete_depth"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_dav_loc_conf_t, min_delete_depth),
       NULL },
 
     { ngx_string("dav_access"),
@@ -344,18 +352,39 @@ ok:
 static ngx_int_t
 ngx_http_dav_delete_handler(ngx_http_request_t *r)
 {
-    size_t           root;
-    ngx_err_t        err;
-    ngx_int_t        rc, depth;
-    ngx_uint_t       dir;
-    ngx_str_t        path;
-    ngx_file_info_t  fi;
+    size_t                    root;
+    ngx_err_t                 err;
+    ngx_int_t                 rc, depth;
+    ngx_uint_t                i, d, dir;
+    ngx_str_t                 path;
+    ngx_file_info_t           fi;
+    ngx_http_dav_loc_conf_t  *dlcf;
 
     if (r->headers_in.content_length_n > 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "DELETE with body is unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
+
+    dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
+
+    if (dlcf->min_delete_depth) {
+        d = 0;
+
+        for (i = 0; i < r->uri.len; /* void */) {
+            if (r->uri.data[i++] == '/') {
+                if (++d >= dlcf->min_delete_depth && i < r->uri.len) {
+                    goto ok;
+                }
+            }
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient URI depth:%i to DELETE", d);
+        return NGX_HTTP_CONFLICT;
+    }
+
+ok:
 
     ngx_http_map_uri_to_path(r, &path, &root, 0);
 
@@ -1125,8 +1154,9 @@ ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
      *     conf->methods = 0;
      */
 
-    conf->create_full_put_path = NGX_CONF_UNSET;
+    conf->min_delete_depth = NGX_CONF_UNSET;
     conf->access = NGX_CONF_UNSET_UINT;
+    conf->create_full_put_path = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1141,10 +1171,13 @@ ngx_http_dav_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_bitmask_value(conf->methods, prev->methods,
                          (NGX_CONF_BITMASK_SET|NGX_HTTP_DAV_OFF));
 
-    ngx_conf_merge_value(conf->create_full_put_path, prev->create_full_put_path,
-                         0);
+    ngx_conf_merge_uint_value(conf->min_delete_depth,
+                         prev->min_delete_depth, 0);
 
     ngx_conf_merge_uint_value(conf->access, prev->access, 0600);
+
+    ngx_conf_merge_value(conf->create_full_put_path,
+                         prev->create_full_put_path, 0);
 
     return NGX_CONF_OK;
 }
