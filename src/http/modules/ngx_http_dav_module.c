@@ -153,7 +153,9 @@ ngx_http_dav_handler(ngx_http_request_t *r)
     case NGX_HTTP_PUT:
 
         if (r->uri.data[r->uri.len - 1] == '/') {
-            return NGX_HTTP_BAD_REQUEST;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "can not PUT to a collection");
+            return NGX_HTTP_CONFLICT;
         }
 
         r->request_body_in_file_only = 1;
