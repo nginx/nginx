@@ -160,6 +160,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
     /* AF_INET only */
     u_char                     addr[INET_ADDRSTRLEN];
 
@@ -282,7 +283,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
         r->headers_out.location->hash = 0;
 
         if (clcf->server_name_in_redirect) {
-            host = r->server_name;
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+            host = cscf->server_name;
 
         } else if (r->headers_in.host) {
             host.len = r->headers_in.host_name_len;

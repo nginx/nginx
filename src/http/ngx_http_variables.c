@@ -47,6 +47,8 @@ static ngx_int_t ngx_http_variable_document_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_filename(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_server_name(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_method(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_remote_user(ngx_http_request_t *r,
@@ -172,8 +174,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       ngx_http_variable_request_filename, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
-    { ngx_string("server_name"), NULL, ngx_http_variable_request,
-      offsetof(ngx_http_request_t, server_name), 0, 0 },
+    { ngx_string("server_name"), NULL, ngx_http_variable_server_name, 0, 0, 0 },
 
     { ngx_string("request_method"), NULL,
       ngx_http_variable_request_method, 0, 0, 0 },
@@ -709,6 +710,8 @@ static ngx_int_t
 ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
+    ngx_http_core_srv_conf_t  *cscf;
+
     if (r->host_start == NULL) {
 
         if (r->headers_in.host) {
@@ -716,8 +719,10 @@ ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
             v->data = r->headers_in.host->value.data;
 
         } else {
-            v->len = r->server_name.len;
-            v->data = r->server_name.data;
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+            v->len = cscf->server_name.len;
+            v->data = cscf->server_name.data;
         }
 
     } else if (r->host_end) {
@@ -951,6 +956,24 @@ ngx_http_variable_request_filename(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = path.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_server_name(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_http_core_srv_conf_t  *cscf;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    v->len = cscf->server_name.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = cscf->server_name.data;
 
     return NGX_OK;
 }

@@ -340,8 +340,6 @@ ngx_http_init_request(ngx_event_t *rev)
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
-    r->server_name = cscf->server_name;
-
     rev->handler = ngx_http_process_request_line;
 
 #if (NGX_HTTP_SSL)
@@ -1512,9 +1510,6 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len,
 
 found:
 
-    r->server_name.len = len;
-    r->server_name.data = host;
-
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
 
@@ -2605,15 +2600,16 @@ static u_char *
 ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
     u_char *buf, size_t len)
 {
-    char                 *uri_separator;
-    u_char               *p;
-    ngx_http_upstream_t  *u;
+    char                      *uri_separator;
+    u_char                    *p;
+    ngx_http_upstream_t       *u;
+    ngx_http_core_srv_conf_t  *cscf;
 
-    if (r->server_name.data) {
-        p = ngx_snprintf(buf, len, ", server: %V", &r->server_name);
-        len -= p - buf;
-        buf = p;
-    }
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    p = ngx_snprintf(buf, len, ", server: %V", &cscf->server_name);
+    len -= p - buf;
+    buf = p;
 
     if (r->request_line.data == NULL && r->request_start) {
         for (p = r->request_start; p < r->header_in->last; p++) {

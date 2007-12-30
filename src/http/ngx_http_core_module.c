@@ -1780,7 +1780,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->in_addr = r->in_addr;
     sr->port = r->port;
     sr->port_text = r->port_text;
-    sr->server_name = r->server_name;
 
     sr->variables = r->variables;
 
