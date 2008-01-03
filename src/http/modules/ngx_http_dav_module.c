@@ -588,7 +588,6 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
                       "Destination URI \"%V\" is handled by "
                       "different repository than the source URI",
                       &dest->value);
-
         return NGX_HTTP_BAD_REQUEST;
     }
 
@@ -605,7 +604,6 @@ invalid_destination:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "client sent invalid \"Destination\" header: \"%V\"",
                   &dest->value);
-
     return NGX_HTTP_BAD_REQUEST;
 
 destination_done:
@@ -637,7 +635,6 @@ destination_done:
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "client sent invalid \"Overwrite\" header: \"%V\"",
                       &over->value);
-
         return NGX_HTTP_BAD_REQUEST;
     }
 
