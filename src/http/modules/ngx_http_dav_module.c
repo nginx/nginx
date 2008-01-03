@@ -631,7 +631,7 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
 
     if (ngx_strncmp(desthost, host->value.data, len) != 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "Destination URI \"%V\" is handled by "
+                      "\"Destination\" URI \"%V\" is handled by "
                       "different repository than the source URI",
                       &dest->value);
         return NGX_HTTP_BAD_REQUEST;
@@ -654,10 +654,32 @@ invalid_destination:
 
 destination_done:
 
-    depth = ngx_http_dav_depth(r, 0);
+    if ((r->uri.data[r->uri.len - 1] == '/' && *(last - 1) != '/')
+        || (r->uri.data[r->uri.len - 1] != '/' && *(last - 1) == '/'))
+    {
+         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                       "both URI \"%V\" and \"Destination\" URI \"%V\" "
+                       "should be either collections or non-collections", 
+                       &r->uri, &dest->value);
+         return NGX_HTTP_CONFLICT;
+    }
 
-    if (depth != 0 && depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
-        return NGX_HTTP_BAD_REQUEST;
+    depth = ngx_http_dav_depth(r, NGX_HTTP_DAV_INFINITY_DEPTH);
+
+    if (depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
+
+        if (r->method == NGX_HTTP_COPY) {
+            if (depth != 0) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "\"Depth\" header must be 0 or infinity");
+                return NGX_HTTP_BAD_REQUEST;
+            }
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"Depth\" header must be infinity");
+            return NGX_HTTP_BAD_REQUEST;
+        }
     }
 
     over = r->headers_in.overwrite;
