@@ -688,12 +688,6 @@ destination_done:
 
 overwrite_done:
 
-    rc = ngx_http_discard_request_body(r);
-
-    if (rc != NGX_OK) {
-        return rc;
-    }
-
     ngx_http_map_uri_to_path(r, &path, &root, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
