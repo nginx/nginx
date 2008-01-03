@@ -207,14 +207,12 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 static void
 ngx_http_dav_put_handler(ngx_http_request_t *r)
 {
-    char                     *failed;
-    u_char                   *name;
     size_t                    root;
     time_t                    date;
-    ngx_err_t                 err;
     ngx_str_t                *temp, path;
-    ngx_uint_t                status, not_found;
+    ngx_uint_t                status;
     ngx_file_info_t           fi;
+    ngx_ext_rename_file_t     ext;
     ngx_http_dav_loc_conf_t  *dlcf;
 
     ngx_http_map_uri_to_path(r, &path, &root, 0);
@@ -247,93 +245,26 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
     dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
 
-#if !(NGX_WIN32)
-
-    if (ngx_change_file_access(temp->data, dlcf->access) == NGX_FILE_ERROR) {
-        err = ngx_errno;
-        not_found = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        failed = ngx_change_file_access_n;
-        name = temp->data;
-
-        goto failed;
-    }
-
-#endif
+    ext.access = dlcf->access;
+    ext.time = -1;
+    ext.create_path = dlcf->create_full_put_path;
+    ext.delete = 1;
+    ext.log = r->connection->log;
 
     if (r->headers_in.date) {
         date = ngx_http_parse_time(r->headers_in.date->value.data,
                                    r->headers_in.date->value.len);
 
         if (date != NGX_ERROR) {
-            if (ngx_set_file_time(temp->data,
-                                  r->request_body->temp_file->file.fd, date)
-                != NGX_OK)
-            {
-                err = ngx_errno;
-                not_found = NGX_HTTP_INTERNAL_SERVER_ERROR;
-                failed = ngx_set_file_time_n;
-                name = temp->data;
-
-                goto failed;
-            }
+            ext.time = date;
+            ext.fd = r->request_body->temp_file->file.fd;
         }
     }
 
-    not_found = NGX_HTTP_CONFLICT;
-    failed = ngx_rename_file_n;
-    name = path.data;
-
-    if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-        goto ok;
+    if (ngx_ext_rename_file(temp, &path, &ext) != NGX_OK) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
     }
-
-    err = ngx_errno;
-
-    if (err == NGX_ENOENT) {
-
-        if (dlcf->create_full_put_path) {
-            err = ngx_create_full_path(path.data, ngx_dir_access(dlcf->access));
-
-            if (err == 0) {
-                if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-                    goto ok;
-                }
-
-                err = ngx_errno;
-            }
-        }
-    }
-
-#if (NGX_WIN32)
-
-    if (err == NGX_EEXIST) {
-        if (ngx_win32_rename_file(temp, &path, r->connection->log) == NGX_OK) {
-
-            if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-                goto ok;
-            }
-        }
-
-        err = ngx_errno;
-    }
-
-#endif
-
-failed:
-
-    if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      ngx_delete_file_n " \"%s\" failed",
-                      temp->data);
-    }
-
-    ngx_http_finalize_request(r,
-                              ngx_http_dav_error(r->connection->log, err,
-                                                 not_found, failed, name));
-
-    return;
-
-ok:
 
     if (status == NGX_HTTP_CREATED) {
         if (ngx_http_dav_location(r, path.data) != NGX_OK) {
