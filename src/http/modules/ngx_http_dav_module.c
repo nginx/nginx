@@ -759,10 +759,15 @@ overwrite_done:
         /* destination exists */
 
         if (ngx_is_dir(&fi) && !slash) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"%V\" could not be %Ved to collection \"%V\"",
+                          &r->uri, &r->method_name, &dest->value);
             return NGX_HTTP_CONFLICT;
         }
 
         if (!overwrite) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EEXIST,
+                          "\"%s\" could not be created", copy.path.data);
             return NGX_HTTP_PRECONDITION_FAILED;
         }
 
