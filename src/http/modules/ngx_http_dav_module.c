@@ -489,21 +489,25 @@ ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 static ngx_int_t
 ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
 {
+    u_char    *p;
     size_t     root;
-    ngx_int_t  rc;
     ngx_str_t  path;
 
     if (r->headers_in.content_length_n > 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "MKCOL with body is unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
 
-    rc = ngx_http_discard_request_body(r);
-
-    if (rc != NGX_OK) {
-        return rc;
+    if (r->uri.data[r->uri.len - 1] != '/') {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "MKCOL can create a collection only");
+        return NGX_HTTP_CONFLICT;
     }
 
-    ngx_http_map_uri_to_path(r, &path, &root, 0);
+    p = ngx_http_map_uri_to_path(r, &path, &root, 0);
+
+    *(p - 1) = '\0';
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http mkcol path: \"%s\"", path.data);
@@ -519,8 +523,7 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
     }
 
     return ngx_http_dav_error(r->connection->log, ngx_errno,
-                              NGX_HTTP_BAD_REQUEST, ngx_create_dir_n,
-                              path.data);
+                              NGX_HTTP_CONFLICT, ngx_create_dir_n, path.data);
 }
 
 
