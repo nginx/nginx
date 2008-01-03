@@ -422,6 +422,11 @@ ok:
 
     } else {
 
+        /*
+         * we do not need to test (r->uri.data[r->uri.len - 1] == '/')
+         * because it ngx_file_info("/file/") returned NGX_ENOTDIR above
+         */
+
         depth = ngx_http_dav_depth(r, 0);
 
         if (depth != 0 && depth != NGX_HTTP_DAV_INFINITY_DEPTH) {
