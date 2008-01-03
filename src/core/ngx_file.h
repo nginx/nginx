@@ -57,6 +57,18 @@ typedef struct {
 } ngx_temp_file_t;
 
 
+typedef struct {
+    ngx_uint_t          access;
+    time_t              time;
+    ngx_fd_t            fd;
+
+    unsigned            create_path:1;
+    unsigned            delete:1;
+
+    ngx_log_t          *log;
+} ngx_ext_rename_file_t;
+
+
 typedef struct ngx_tree_ctx_s  ngx_tree_ctx_t;
 
 typedef ngx_int_t (*ngx_tree_init_handler_pt) (void *ctx, void *prev);
@@ -89,8 +101,8 @@ ngx_int_t ngx_create_path(ngx_file_t *file, ngx_path_t *path);
 ngx_err_t ngx_create_full_path(u_char *dir, ngx_uint_t access);
 ngx_int_t ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot);
 ngx_int_t ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user);
-ngx_int_t ngx_create_path_and_rename_file(ngx_str_t *src, ngx_str_t *to,
-    ngx_uint_t access, ngx_uint_t full_path, ngx_uint_t delete, ngx_log_t *log);
+ngx_int_t ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to,
+    ngx_ext_rename_file_t *ext);
 ngx_int_t ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree);
 
 void ngx_init_temp_number(void);
