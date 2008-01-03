@@ -38,9 +38,11 @@ static ngx_int_t ngx_http_dav_handler(ngx_http_request_t *r);
 static void ngx_http_dav_put_handler(ngx_http_request_t *r);
 
 static ngx_int_t ngx_http_dav_delete_handler(ngx_http_request_t *r);
-static ngx_int_t ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path);
+static ngx_int_t ngx_http_dav_delete_path(ngx_http_request_t *r,
+    ngx_str_t *path, ngx_uint_t dir);
 static ngx_int_t ngx_http_dav_delete_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
+static ngx_int_t ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 
 static ngx_int_t ngx_http_dav_mkcol_handler(ngx_http_request_t *r,
     ngx_http_dav_loc_conf_t *dlcf);
@@ -51,8 +53,6 @@ static ngx_int_t ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 static ngx_int_t ngx_http_dav_copy_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 
-static ngx_int_t ngx_http_dav_delete_path(ngx_http_request_t *r,
-    ngx_str_t *path, ngx_uint_t dir);
 static ngx_int_t ngx_http_dav_depth(ngx_http_request_t *r, ngx_int_t dflt);
 static ngx_int_t ngx_http_dav_error(ngx_log_t *log, ngx_err_t err,
     ngx_int_t not_found, char *failed, u_char *path);
@@ -444,9 +444,45 @@ ok:
 
 
 static ngx_int_t
-ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+ngx_http_dav_delete_path(ngx_http_request_t *r, ngx_str_t *path, ngx_uint_t dir)
 {
-    return NGX_OK;
+    char            *failed;
+    ngx_tree_ctx_t   tree;
+
+    if (dir) {
+
+        tree.init_handler = NULL;
+        tree.file_handler = ngx_http_dav_delete_file;
+        tree.pre_tree_handler = ngx_http_dav_noop;
+        tree.post_tree_handler = ngx_http_dav_delete_dir;
+        tree.spec_handler = ngx_http_dav_delete_file;
+        tree.data = NULL;
+        tree.alloc = 0;
+        tree.log = r->connection->log;
+
+        /* TODO: 207 */
+
+        if (ngx_walk_tree(&tree, path) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        if (ngx_delete_dir(path->data) != NGX_FILE_ERROR) {
+            return NGX_OK;
+        }
+
+        failed = ngx_delete_dir_n;
+
+    } else {
+
+        if (ngx_delete_file(path->data) != NGX_FILE_ERROR) {
+            return NGX_OK;
+        }
+
+        failed = ngx_delete_file_n;
+    }
+
+    return ngx_http_dav_error(r->connection->log, ngx_errno,
+                              NGX_HTTP_NOT_FOUND, failed, path->data);
 }
 
 
@@ -482,6 +518,13 @@ ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
                                   path->data);
     }
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+{
     return NGX_OK;
 }
 
@@ -983,49 +1026,6 @@ failed:
     ngx_free(file);
 
     return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_dav_delete_path(ngx_http_request_t *r, ngx_str_t *path, ngx_uint_t dir)
-{
-    char            *failed;
-    ngx_tree_ctx_t   tree;
-
-    if (dir) {
-
-        tree.init_handler = NULL;
-        tree.file_handler = ngx_http_dav_delete_file;
-        tree.pre_tree_handler = ngx_http_dav_noop;
-        tree.post_tree_handler = ngx_http_dav_delete_dir;
-        tree.spec_handler = ngx_http_dav_delete_file;
-        tree.data = NULL;
-        tree.alloc = 0;
-        tree.log = r->connection->log;
-
-        /* TODO: 207 */
-
-        if (ngx_walk_tree(&tree, path) != NGX_OK) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        if (ngx_delete_dir(path->data) != NGX_FILE_ERROR) {
-            return NGX_OK;
-        }
-
-        failed = ngx_delete_dir_n;
-
-    } else {
-
-        if (ngx_delete_file(path->data) != NGX_FILE_ERROR) {
-            return NGX_OK;
-        }
-
-        failed = ngx_delete_file_n;
-    }
-
-    return ngx_http_dav_error(r->connection->log, ngx_errno,
-                              NGX_HTTP_NOT_FOUND, failed, path->data);
 }
 
 
