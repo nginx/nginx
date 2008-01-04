@@ -490,6 +490,11 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
             rc = ngx_ssl_handshake(c);
 
             if (rc == NGX_AGAIN) {
+
+                if (!rev->timer_set) {
+                    ngx_add_timer(rev, c->listening->post_accept_timeout);
+                }
+
                 c->ssl->handler = ngx_http_ssl_handshake_handler;
                 return;
             }
