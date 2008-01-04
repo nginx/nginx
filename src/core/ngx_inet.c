@@ -8,6 +8,9 @@
 #include <ngx_core.h>
 
 
+static size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len);
+
+
 /* AF_INET only */
 
 in_addr_t
@@ -62,50 +65,6 @@ ngx_inet_addr(u_char *text, size_t len)
  * By the way, the implementation using ngx_sprintf() is faster by 2.5-3 times
  * than using FreeBSD libc's snprintf().
  */
-
-
-static ngx_inline size_t
-ngx_sprint_uchar(u_char *text, u_char c, size_t len)
-{
-    size_t      n;
-    ngx_uint_t  c1, c2;
-
-    n = 0;
-
-    if (len == n) {
-        return n;
-    }
-
-    c1 = c / 100;
-
-    if (c1) {
-        *text++ = (u_char) (c1 + '0');
-        n++;
-
-        if (len == n) {
-            return n;
-        }
-    }
-
-    c2 = (c % 100) / 10;
-
-    if (c1 || c2) {
-        *text++ = (u_char) (c2 + '0');
-        n++;
-
-        if (len == n) {
-            return n;
-        }
-    }
-
-    c2 = c % 10;
-
-    *text++ = (u_char) (c2 + '0');
-    n++;
-
-    return n;
-}
-
 
 /* AF_INET only */
 
@@ -163,6 +122,7 @@ ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len)
     return n;
 }
 
+
 size_t
 ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 {
@@ -211,6 +171,49 @@ ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
     }
 
     text[n] = '\0';
+
+    return n;
+}
+
+
+static size_t
+ngx_sprint_uchar(u_char *text, u_char c, size_t len)
+{
+    size_t      n;
+    ngx_uint_t  c1, c2;
+
+    n = 0;
+
+    if (len == n) {
+        return n;
+    }
+
+    c1 = c / 100;
+
+    if (c1) {
+        *text++ = (u_char) (c1 + '0');
+        n++;
+
+        if (len == n) {
+            return n;
+        }
+    }
+
+    c2 = (c % 100) / 10;
+
+    if (c1 || c2) {
+        *text++ = (u_char) (c2 + '0');
+        n++;
+
+        if (len == n) {
+            return n;
+        }
+    }
+
+    c2 = c % 10;
+
+    *text++ = (u_char) (c2 + '0');
+    n++;
 
     return n;
 }
