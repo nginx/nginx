@@ -358,7 +358,7 @@ ok:
 
         /*
          * we do not need to test (r->uri.data[r->uri.len - 1] == '/')
-         * because it ngx_file_info("/file/") returned NGX_ENOTDIR above
+         * because ngx_file_info("/file/") returned NGX_ENOTDIR above
          */
 
         depth = ngx_http_dav_depth(r, 0);
