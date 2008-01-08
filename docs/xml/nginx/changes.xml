@@ -9,11 +9,109 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.25" date="08.01.2008">
+
+<change type="change">
+<para lang="ru">
+вместо специального параметра "*" в директиве server_name теперь
+используется директива server_name_in_redirect.
+</para>
+<para lang="en">
+now the "server_name_in_redirect" directive is used instead of
+the "server_name" directive's special "*" parameter.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в качестве основного имени в директиве server_name теперь
+можно использовать имена с масками и регулярными выражениями.
+</para>
+<para lang="en">
+now wildcard and regex names can be used as main name in
+a "server_name" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива satisfy_any заменена директивой satisfy.
+</para>
+<para lang="en">
+the "satisfy_any" directive was replaced by the "satisfy" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+после переконфигурации старые рабочие процесс могли сильно нагружать процессор
+при запуске под Linux OpenVZ.
+</para>
+<para lang="en">
+old worker processes might hog CPU after reconfiguration if they was run
+under Linux OpenVZ.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива min_delete_depth.
+</para>
+<para lang="en">
+the "min_delete_depth" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+методы COPY и MOVE не работали с одиночными файлами.
+</para>
+<para lang="en">
+the COPY and MOVE methods did not work with single files.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_gzip_static_module не позволял работать модулю
+ngx_http_dav_module;
+ошибка появилась в 0.6.23.
+</para>
+<para lang="en">
+the ngx_http_gzip_static_module did not allow the ngx_http_dav_module to work;
+bug appeared in 0.6.23.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов в режиме HTTPS при использовании отложенного accept'а.<br/>
+Спасибо Ben Maurer.
+</para>
+<para lang="en">
+socket leak in HTTPS mode if deferred accept was used.<br/>
+Thanks to Ben Maurer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без библиотеки PCRE-6.5;
+ошибка появилась в 0.6.23.
+</para>
+<para lang="en">
+nginx could not be built without PCRE-6.5 library;
+bug appeared in 0.6.23.
+</para>
+</change>
+
+</changes>
+
 <changes ver="0.6.24" date="27.12.2007">
 
 <change type="bugfix">
 <para lang="ru">
-при использовании HTTPS в рабочем процессе мог произойти segmentation fault.
+при использовании HTTPS в рабочем процессе мог произойти segmentation fault;
 ошибка появилась в 0.6.23.
 </para>
 <para lang="en">
