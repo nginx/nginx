@@ -96,11 +96,11 @@ Thanks to Ben Maurer.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без библиотеки PCRE-6.5;
+nginx не собирался без библиотеки PCRE;
 ошибка появилась в 0.6.23.
 </para>
 <para lang="en">
-nginx could not be built without PCRE-6.5 library;
+nginx could not be built without PCRE library;
 bug appeared in 0.6.23.
 </para>
 </change>
