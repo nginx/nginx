@@ -134,6 +134,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     u_char                       *p;
     size_t                        len;
     off_t                         start, end;
+    time_t                        if_range;
     ngx_int_t                     rc;
     ngx_uint_t                    suffix, i;
     ngx_atomic_uint_t             boundary;
@@ -156,18 +157,21 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
                            (u_char *) "bytes=", 6)
            != 0)
     {
-        r->headers_out.accept_ranges = ngx_list_push(&r->headers_out.headers);
-        if (r->headers_out.accept_ranges == NULL) {
-            return NGX_ERROR;
+        goto next_filter;
+    }
+
+    if (r->headers_in.if_range && r->headers_out.last_modified_time != -1) {
+
+        if_range = ngx_http_parse_time(r->headers_in.if_range->value.data,
+                                       r->headers_in.if_range->value.len);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http ir:%d lm:%d",
+                       if_range, r->headers_out.last_modified_time);
+
+        if (if_range != r->headers_out.last_modified_time) {
+            goto next_filter;
         }
-
-        r->headers_out.accept_ranges->hash = 1;
-        r->headers_out.accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
-        r->headers_out.accept_ranges->key.data = (u_char *) "Accept-Ranges";
-        r->headers_out.accept_ranges->value.len = sizeof("bytes") - 1;
-        r->headers_out.accept_ranges->value.data = (u_char *) "bytes";
-
-        return ngx_http_next_header_filter(r);
     }
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_range_filter_ctx_t));
@@ -459,6 +463,21 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         r->headers_out.content_length->hash = 0;
         r->headers_out.content_length = NULL;
     }
+
+    return ngx_http_next_header_filter(r);
+
+next_filter:
+
+    r->headers_out.accept_ranges = ngx_list_push(&r->headers_out.headers);
+    if (r->headers_out.accept_ranges == NULL) {
+        return NGX_ERROR;
+    }
+
+    r->headers_out.accept_ranges->hash = 1;
+    r->headers_out.accept_ranges->key.len = sizeof("Accept-Ranges") - 1;
+    r->headers_out.accept_ranges->key.data = (u_char *) "Accept-Ranges";
+    r->headers_out.accept_ranges->value.len = sizeof("bytes") - 1;
+    r->headers_out.accept_ranges->value.data = (u_char *) "bytes";
 
     return ngx_http_next_header_filter(r);
 }
