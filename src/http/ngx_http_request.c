@@ -2085,7 +2085,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     if (hc->free) {
         for (i = 0; i < hc->nfree; i++) {
-            ngx_pfree(c->pool, hc->free[i]);
+            ngx_pfree(c->pool, hc->free[i]->start);
             hc->free[i] = NULL;
         }
 
@@ -2097,7 +2097,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     if (hc->busy) {
         for (i = 0; i < hc->nbusy; i++) {
-            ngx_pfree(c->pool, hc->busy[i]);
+            ngx_pfree(c->pool, hc->busy[i]->start);
             hc->busy[i] = NULL;
         }
 
