@@ -427,8 +427,6 @@ struct ngx_http_request_s {
     unsigned                          fast_subrequest:1;
     unsigned                          subrequest_in_memory:1;
 
-    unsigned                          header_timeout_set:1;
-
     unsigned                          gzip:2;
 
     unsigned                          proxy:1;
