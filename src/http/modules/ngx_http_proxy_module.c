@@ -860,7 +860,8 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 #endif
 
         r->http_version = NGX_HTTP_VERSION_9;
-        p->status = NGX_HTTP_OK;
+        u->headers_in.status_n = NGX_HTTP_OK;
+        u->state->status = NGX_HTTP_OK;
 
         return NGX_OK;
     }
