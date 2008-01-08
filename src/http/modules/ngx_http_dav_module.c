@@ -599,7 +599,7 @@ destination_done:
     {
          ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                        "both URI \"%V\" and \"Destination\" URI \"%V\" "
-                       "should be either collections or non-collections", 
+                       "should be either collections or non-collections",
                        &r->uri, &dest->value);
          return NGX_HTTP_CONFLICT;
     }
