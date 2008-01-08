@@ -479,6 +479,11 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     n = recv(c->fd, (char *) buf, 1, MSG_PEEK);
 
     if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
+
+        if (!rev->timer_set) {
+            ngx_add_timer(rev, c->listening->post_accept_timeout);
+        }
+
         return;
     }
 
