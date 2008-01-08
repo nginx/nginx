@@ -22,6 +22,7 @@ static void ngx_ssl_read_handler(ngx_event_t *rev);
 static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
+static void ngx_ssl_clear_error(ngx_log_t *log);
 
 static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone,
     void *data);
@@ -185,8 +186,6 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     if (ngx_ssl_protocols[protocols >> 1] != 0) {
         SSL_CTX_set_options(ssl->ctx, ngx_ssl_protocols[protocols >> 1]);
     }
-
-    SSL_CTX_set_mode(ssl->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
 
@@ -404,6 +403,8 @@ ngx_ssl_handshake(ngx_connection_t *c)
     int        n, sslerr;
     ngx_err_t  err;
 
+    ngx_ssl_clear_error(c->log);
+
     n = SSL_do_handshake(c->ssl->connection);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
@@ -601,6 +602,8 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     bytes = 0;
+
+    ngx_ssl_clear_error(c->log);
 
     /*
      * SSL_read() may return data in parts, so try to read
@@ -882,6 +885,8 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     int        n, sslerr;
     ngx_err_t  err;
 
+    ngx_ssl_clear_error(c->log);
+
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
 
     n = SSL_write(c->ssl->connection, data, size);
@@ -965,9 +970,8 @@ ngx_ssl_read_handler(ngx_event_t *rev)
 ngx_int_t
 ngx_ssl_shutdown(ngx_connection_t *c)
 {
-    int         n, sslerr, mode;
-    ngx_err_t   err;
-    ngx_uint_t  again;
+    int        n, sslerr, mode;
+    ngx_err_t  err;
 
     if (c->timedout) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
@@ -986,40 +990,34 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     SSL_set_shutdown(c->ssl->connection, mode);
 
-    again = 0;
+    ngx_ssl_clear_error(c->log);
+
+    n = SSL_shutdown(c->ssl->connection);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
+
     sslerr = 0;
 
-    for ( ;; ) {
-        n = SSL_shutdown(c->ssl->connection);
+    /* SSL_shutdown() never return -1, on error it return 0 */
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
-
-        if (n == 1 || (n == 0 && c->timedout)) {
-            SSL_free(c->ssl->connection);
-            c->ssl = NULL;
-
-            return NGX_OK;
-        }
-
-        if (n == 0) {
-            again = 1;
-            break;
-        }
-
-        break;
-    }
-
-    if (!again) {
+    if (n != 1) {
         sslerr = SSL_get_error(c->ssl->connection, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error: %d", sslerr);
     }
 
-    if (again
-        || sslerr == SSL_ERROR_WANT_READ
-        || sslerr == SSL_ERROR_WANT_WRITE)
+    if (n == 1
+        || sslerr == SSL_ERROR_ZERO_RETURN
+        || (sslerr == 0 && c->timedout))
     {
+        SSL_free(c->ssl->connection);
+        c->ssl = NULL;
+
+        return NGX_OK;
+    }
+
+    if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_WRITE) {
         c->read->handler = ngx_ssl_shutdown_handler;
         c->write->handler = ngx_ssl_shutdown_handler;
 
@@ -1031,7 +1029,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             return NGX_ERROR;
         }
 
-        if (again || sslerr == SSL_ERROR_WANT_READ) {
+        if (sslerr == SSL_ERROR_WANT_READ) {
             ngx_add_timer(c->read, 30000);
         }
 
@@ -1109,6 +1107,15 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
     }
 
     ngx_ssl_error(level, c->log, err, text);
+}
+
+
+static void
+ngx_ssl_clear_error(ngx_log_t *log)
+{
+    if (ERR_peek_error()) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "ignoring stale global SSL error");
+    }
 }
 
 
