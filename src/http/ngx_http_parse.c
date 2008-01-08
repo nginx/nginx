@@ -1039,7 +1039,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
 #endif
             case '/':
-                if (merge_slashes) {
+                if (!merge_slashes) {
                     *u++ = ch;
                 }
                 break;
