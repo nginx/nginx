@@ -537,13 +537,21 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         c = ls[i].connection;
 
-        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (c->read->active) {
+        if (c->read->active) {
+            if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
                 ngx_del_conn(c, NGX_CLOSE_EVENT);
-            }
 
-        } else {
-            if (c->read->active) {
+            } else if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+
+                /*
+                 * it seems that Linux-2.6.x OpenVZ sends events
+                 * for closed shared listening sockets unless
+                 * the events was explicity deleted
+                 */
+
+                ngx_del_event(c->read, NGX_READ_EVENT, 0);
+
+            } else {
                 ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             }
         }
