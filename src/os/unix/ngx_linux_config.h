@@ -50,6 +50,7 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <crypt.h>
+#include <sys/utsname.h>        /* uname() */
 
 
 #include <ngx_auto_config.h>
