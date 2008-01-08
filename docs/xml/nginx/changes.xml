@@ -9,6 +9,113 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.35" date="08.01.2008">
+
+<change type="change">
+<para lang="ru">
+теперь модуль ngx_http_userid_module в поле куки с номером процесса
+добавляет микросекунды на время старта.
+</para>
+<para lang="en">
+now the ngx_http_userid_module adds start time microseconds
+to the cookie field contains a pid value.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь на Linux используется uname(2) вместо procfs.<br/>
+Спасибо Илье Новикову.
+</para>
+<para lang="en">
+now the uname(2) is used on Linux instead of procfs.<br/>
+Thanks to Ilya Novikov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка строки "If-Range" в заголовке запроса.<br/>
+Спасибо Александру Инюхину.
+</para>
+<para lang="en">
+the "If-Range" request header line support.<br/>
+Thanks to Alexander V. Inyukhin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry";
+ошибка появилась в 0.5.13.
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error;
+bug appeared in 0.5.13.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+STARTTLS в режиме SMTP не работал.<br/>
+Спасибо Олегу Мотиенко.
+</para>
+<para lang="en">
+the STARTTLS in SMTP mode did not work.<br/>
+Thanks to Oleg Motienko.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+large_client_header_buffers не освобождались перед переходом в состояние
+keep-alive.<br/>
+Спасибо Олександру Штепе.
+</para>
+<para lang="en">
+large_client_header_buffers did not freed before going to keep-alive state.<br/>
+Thanks to Olexander Shtepa.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_rate не позволяла передавать на полной скорости,
+даже если был указан очень большой лимит.
+</para>
+<para lang="en">
+the "limit_rate" directive did not allow to use full throughput,
+even if limit value was very high.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ответ проксированного сервера был версии HTTP/0.9,
+то переменная $status была равна 0.
+</para>
+<para lang="en">
+the $status variable was equal to 0 if a proxied server returned response
+in HTTP/0.9 version.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве error_page использовался символ "?", то он экранировался
+при проксировании запроса;
+ошибка появилась в 0.5.32.
+</para>
+<para lang="en">
+if the "?" character was in a "error_page" directive, then it was escaped
+in a proxied request;
+bug appeared in 0.5.32.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.34" date="13.12.2007">
 
 <change type="change">
