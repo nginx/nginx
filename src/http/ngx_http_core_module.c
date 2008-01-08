@@ -113,6 +113,9 @@ static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
 };
 
 
+static ngx_str_t  ngx_http_core_get_method = { 3, "GET " };
+
+
 #if (NGX_HTTP_GZIP)
 
 static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
@@ -1760,7 +1763,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->subrequest_in_memory = (flags & NGX_HTTP_SUBREQUEST_IN_MEMORY) != 0;
 
     sr->unparsed_uri = r->unparsed_uri;
-    sr->method_name = r->method_name;
+    sr->method_name = ngx_http_core_get_method;
     sr->http_protocol = r->http_protocol;
 
     if (ngx_http_set_exten(sr) != NGX_OK) {
