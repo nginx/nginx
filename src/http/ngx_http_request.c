@@ -484,6 +484,10 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
             ngx_add_timer(rev, c->listening->post_accept_timeout);
         }
 
+        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        }
+
         return;
     }
 
