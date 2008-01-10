@@ -1035,7 +1035,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     sslerr = 0;
 
-    /* SSL_shutdown() never return -1, on error it return 0 */
+    /* SSL_shutdown() never returns -1, on error it returns 0 */
 
     if (n != 1) {
         sslerr = SSL_get_error(c->ssl->connection, n);
