@@ -1159,9 +1159,10 @@ ngx_ssl_clear_error(ngx_log_t *log)
 void ngx_cdecl
 ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 {
-    u_long   n;
-    va_list  args;
-    u_char   errstr[NGX_MAX_CONF_ERRSTR], *p, *last;
+    u_long    n;
+    va_list   args;
+    u_char   *p, *last;
+    u_char    errstr[NGX_MAX_CONF_ERRSTR];
 
     last = errstr + NGX_MAX_CONF_ERRSTR;
 
@@ -1171,12 +1172,16 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 
     p = ngx_cpystrn(p, (u_char *) " (SSL:", last - p);
 
-    while (p < last) {
+    for ( ;; ) {
 
         n = ERR_get_error();
 
         if (n == 0) {
             break;
+        }
+
+        if (p >= last) {
+            continue;
         }
 
         *p++ = ' ';
