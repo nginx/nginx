@@ -1037,17 +1037,14 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     /* SSL_shutdown() never returns -1, on error it returns 0 */
 
-    if (n != 1) {
+    if (n != 1 && ERR_peek_error()) {
         sslerr = SSL_get_error(c->ssl->connection, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error: %d", sslerr);
     }
 
-    if (n == 1
-        || sslerr == SSL_ERROR_ZERO_RETURN
-        || (sslerr == 0 && c->timedout))
-    {
+    if (n == 1 || sslerr == 0 || sslerr == SSL_ERROR_ZERO_RETURN) {
         SSL_free(c->ssl->connection);
         c->ssl = NULL;
 
