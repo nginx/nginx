@@ -212,7 +212,7 @@ ngx_sprint_uchar(u_char *text, u_char c, size_t len)
 
     c2 = c % 10;
 
-    *text++ = (u_char) (c2 + '0');
+    *text = (u_char) (c2 + '0');
     n++;
 
     return n;
