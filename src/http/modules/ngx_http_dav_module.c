@@ -1140,7 +1140,7 @@ ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
      *     conf->methods = 0;
      */
 
-    conf->min_delete_depth = NGX_CONF_UNSET;
+    conf->min_delete_depth = NGX_CONF_UNSET_UINT;
     conf->access = NGX_CONF_UNSET_UINT;
     conf->create_full_put_path = NGX_CONF_UNSET;
 
