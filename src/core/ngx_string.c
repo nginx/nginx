@@ -227,7 +227,9 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                     }
 
                 } else {
-                    buf = ngx_cpymem(buf, p, slen);
+                    len = (buf + slen < last) ? slen : (size_t) (last - buf);
+
+                    buf = ngx_cpymem(buf, p, len);
                 }
 
                 fmt++;
