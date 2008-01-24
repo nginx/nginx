@@ -182,7 +182,7 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
                     continue;
 
                 case '*':
-                    slen = va_arg(args, u_int);
+                    slen = va_arg(args, size_t);
                     fmt++;
                     continue;
 
