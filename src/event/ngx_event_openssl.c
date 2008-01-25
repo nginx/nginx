@@ -1147,9 +1147,11 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 static void
 ngx_ssl_clear_error(ngx_log_t *log)
 {
-    if (ERR_peek_error()) {
+    while (ERR_peek_error()) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "ignoring stale global SSL error");
     }
+
+    ERR_clear_error();
 }
 
 
