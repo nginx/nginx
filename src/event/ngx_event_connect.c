@@ -143,8 +143,14 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
 
-            if (err == NGX_ECONNREFUSED || err == NGX_EHOSTUNREACH) {
+            if (err == NGX_ECONNREFUSED
+                || err == NGX_ENETDOWN
+                || err == NGX_ENETUNREACH
+                || err == NGX_EHOSTDOWN
+                || err == NGX_EHOSTUNREACH)
+            {
                 level = NGX_LOG_ERR;
+
             } else {
                 level = NGX_LOG_CRIT;
             }

@@ -1121,6 +1121,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || err == NGX_ETIMEDOUT
 #endif
             || err == NGX_ECONNREFUSED
+            || err == NGX_ENETDOWN
+            || err == NGX_ENETUNREACH
+            || err == NGX_EHOSTDOWN
             || err == NGX_EHOSTUNREACH)
         {
             switch (c->log_error) {

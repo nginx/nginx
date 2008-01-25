@@ -767,6 +767,9 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         || err == NGX_ENOTCONN
         || err == NGX_ETIMEDOUT
         || err == NGX_ECONNREFUSED
+        || err == NGX_ENETDOWN
+        || err == NGX_ENETUNREACH
+        || err == NGX_EHOSTDOWN
         || err == NGX_EHOSTUNREACH)
     {
         switch (c->log_error) {
