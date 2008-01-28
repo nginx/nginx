@@ -12,8 +12,7 @@
 #if (NGX_TEST_BUILD_RTSIG)
 
 #define F_SETSIG       10
-#define SIGRTMIN       33
-#define si_fd          __spare__[0]
+#define si_fd          _reason.__spare__.__spare2__[0]
 #define KERN_RTSIGNR   30
 #define KERN_RTSIGMAX  31
 
