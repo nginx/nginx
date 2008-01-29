@@ -92,7 +92,7 @@ ngx_cpuinfo(void)
 
     if (ngx_strcmp(vendor, "GenuineIntel") == 0) {
 
-        switch (cpu[0] & 0xf00) {
+        switch ((cpu[0] & 0xf00) >> 8) {
 
         /* Pentium */
         case 5:
