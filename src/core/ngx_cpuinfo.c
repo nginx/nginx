@@ -96,9 +96,18 @@ ngx_cpuinfo(void)
 
         /* Pentium */
         case 5:
+            ngx_cacheline_size = 32;
+            break;
+
         /* Pentium Pro, II, III */
         case 6:
             ngx_cacheline_size = 32;
+
+            if ((cpu[0] & 0xf0) >= 0xd0) {
+                /* Intel Core */
+                ngx_cacheline_size = 64;
+            }
+
             break;
 
         /*
