@@ -41,6 +41,7 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                 return 0;
 
             } else {
+                rev->ready = 0;
                 return NGX_AGAIN;
             }
         }
