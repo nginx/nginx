@@ -203,18 +203,21 @@ ngx_http_cookie_time(u_char *buf, time_t t)
 void
 ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
-    ngx_int_t  sec, min, hour, mday, mon, year, wday, yday, days;
+    ngx_uint_t  n, sec, min, hour, mday, mon, year, wday, yday, days;
 
-    days = (ngx_int_t) (t / 86400);
+    /* the calculation is valid for positive time_t only */
+    n = (ngx_uint_t) t;
+
+    days = n / 86400;
 
     /* Jaunary 1, 1970 was Thursday */
     wday = (4 + days) % 7;
 
-    t %= 86400;
-    hour = (ngx_int_t) (t / 3600);
-    t %= 3600;
-    min = (ngx_int_t) (t / 60);
-    sec = (ngx_int_t) (t % 60);
+    n %= 86400;
+    hour = n / 3600;
+    n %= 3600;
+    min = n / 60;
+    sec = n % 60;
 
     /* the algorithm based on Gauss's formula */
 
