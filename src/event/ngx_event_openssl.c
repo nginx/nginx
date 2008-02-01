@@ -1115,6 +1115,7 @@ static void
 ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
     char *text)
 {
+    int         n;
     ngx_uint_t  level;
 
     level = NGX_LOG_CRIT;
@@ -1132,6 +1133,34 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || err == NGX_ENETUNREACH
             || err == NGX_EHOSTDOWN
             || err == NGX_EHOSTUNREACH)
+        {
+            switch (c->log_error) {
+
+            case NGX_ERROR_IGNORE_ECONNRESET:
+            case NGX_ERROR_INFO:
+                level = NGX_LOG_INFO;
+                break;
+
+            case NGX_ERROR_ERR:
+                level = NGX_LOG_ERR;
+                break;
+
+            default:
+                break;
+            }
+        }
+
+    } else if (sslerr == SSL_ERROR_SSL) {
+
+        n = ERR_GET_REASON(ERR_peek_error());
+
+            /* handshake failures */
+        if (n == SSL_R_NO_SHARED_CIPHER
+            || n == SSL_R_UNEXPECTED_MESSAGE
+            || n == SSL_R_WRONG_VERSION_NUMBER
+            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED
+            || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER
+            || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA)
         {
             switch (c->log_error) {
 
