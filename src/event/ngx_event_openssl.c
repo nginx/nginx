@@ -1158,6 +1158,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         if (n == SSL_R_NO_SHARED_CIPHER
             || n == SSL_R_UNEXPECTED_MESSAGE
             || n == SSL_R_WRONG_VERSION_NUMBER
+            || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
             || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED
             || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER
             || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA)
