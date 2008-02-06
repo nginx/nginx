@@ -217,8 +217,6 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
         ngx_resolver_free_locked(r, ctx->event);
     }
 
-    ngx_resolver_free_locked(r, ctx);
-
     /* unlock alloc mutex */
 
     return NGX_ERROR;
