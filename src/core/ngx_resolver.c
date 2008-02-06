@@ -785,9 +785,9 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
                 rn->expire = now + r->resend_timeout;
 
                 ngx_queue_insert_head(queue, &rn->queue);
-
-                continue;
             }
+
+            continue;
         }
 
         ngx_rbtree_delete(tree, &rn->node);
