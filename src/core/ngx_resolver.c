@@ -215,6 +215,7 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
 
     if (ctx->event) {
         ngx_resolver_free_locked(r, ctx->event);
+        ctx->event = NULL;
     }
 
     /* unlock alloc mutex */
