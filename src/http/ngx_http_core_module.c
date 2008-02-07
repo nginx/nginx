@@ -113,9 +113,6 @@ static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
 };
 
 
-static ngx_str_t  ngx_http_core_get_method = { 3, (u_char *) "GET " };
-
-
 #if (NGX_HTTP_GZIP)
 
 static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
@@ -653,6 +650,9 @@ ngx_module_t  ngx_http_core_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+
+static ngx_str_t  ngx_http_core_get_method = { 3, (u_char *) "GET " };
 
 
 void
