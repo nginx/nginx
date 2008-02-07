@@ -2912,7 +2912,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         if (conf->resolver == NULL) {
             conf->resolver = ngx_resolver_create(NULL, cf->cycle->new_log);
             if (conf->resolver == NULL) {
-                return NGX_OK;
+                return NGX_CONF_ERROR;
             }
         }
     }
