@@ -135,10 +135,6 @@ static char *ngx_http_fastcgi_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 
-static ngx_str_t  ngx_http_fastcgi_script_name =
-    ngx_string("fastcgi_script_name");
-
-
 static ngx_conf_post_t  ngx_http_fastcgi_lowat_post =
     { ngx_http_fastcgi_lowat_check };
 
@@ -410,6 +406,10 @@ static ngx_http_fastcgi_request_start_t  ngx_http_fastcgi_request_start = {
       1 },                                             /* request_id_lo */
 
 };
+
+
+static ngx_str_t  ngx_http_fastcgi_script_name =
+    ngx_string("fastcgi_script_name");
 
 
 static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
