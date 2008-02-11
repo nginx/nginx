@@ -417,7 +417,8 @@ static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
     ngx_string("X-Accel-Expires"),
     ngx_string("X-Accel-Redirect"),
     ngx_string("X-Accel-Limit-Rate"),
-    ngx_string("X-Accel-Buffer"),
+    ngx_string("X-Accel-Buffering"),
+    ngx_string("X-Accel-Charset"),
     ngx_null_string
 };
 
