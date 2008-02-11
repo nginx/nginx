@@ -9,6 +9,89 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.26" date="11.02.2008">
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_store и fastcgi_store не проверяли длину ответа.
+</para>
+<para lang="en">
+the "proxy_store" and "fastcgi_store" directives did not check
+a response length.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании большого значения в директиве expires
+в рабочем процессе происходил segmentation fault.<br/>
+Спасибо Joaquin Cuenca Abela.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if big value was used in a "expires" directive.<br/>
+Thanks to Joaquin Cuenca Abela.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неверно определял длину строки кэша на <nobr>Pentium 4.</nobr><br/>
+Спасибо Gena Makhomed.
+</para>
+<para lang="en">
+nginx incorrectly detected cache line size on Pentium 4.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в проксированных подзапросах и подзапросах к FastCGI-серверу
+вместо метода GET использовался оригинальный метод клиента.
+</para>
+<para lang="en">
+in proxied or FastCGI subrequests a client original method was used
+instead of the GET method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов в режиме HTTPS при использовании отложенного accept'а.<br/>
+Спасибо Ben Maurer.
+</para>
+<para lang="en">
+socket leak in HTTPS mode if deferred accept was used.<br/>
+Thanks to Ben Maurer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx выдавал ошибочное сообщение "SSL_shutdown() failed (SSL: )";
+ошибка появилась в 0.6.23.
+</para>
+<para lang="en">
+nginx issued the bogus error message "SSL_shutdown() failed (SSL: )";
+bug appeared in 0.6.23.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry";
+ошибка появилась в 0.6.23.
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error;
+bug appeared in 0.6.23.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.25" date="08.01.2008">
 
 <change type="change">
