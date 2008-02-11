@@ -1352,6 +1352,8 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
     r->headers_out.status = u->headers_in.status_n;
     r->headers_out.status_line = u->headers_in.status_line;
 
+    u->headers_in.content_length_n = r->headers_out.content_length_n;
+
     if (r->headers_out.content_length_n != -1) {
         u->length = (size_t) r->headers_out.content_length_n;
 
@@ -1955,6 +1957,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
 static void
 ngx_http_upstream_process_body(ngx_event_t *ev)
 {
+    ngx_temp_file_t      *tf;
     ngx_event_pipe_t     *p;
     ngx_connection_t     *c, *downstream;
     ngx_http_log_ctx_t   *ctx;
@@ -2049,18 +2052,22 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 
         if (u->store) {
 
-            if (p->upstream_eof && u->headers_in.status_n == NGX_HTTP_OK) {
+            tf = u->pipe->temp_file;
 
+            if (p->upstream_eof
+                && u->headers_in.status_n == NGX_HTTP_OK
+                && (u->headers_in.content_length_n == -1
+                    || (u->headers_in.content_length_n == tf->offset)))
+            {
                 ngx_http_upstream_store(r, u);
 
             } else if ((p->upstream_error
                         || (p->upstream_eof
                             && u->headers_in.status_n != NGX_HTTP_OK))
-                       && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
+                       && tf->file.fd != NGX_INVALID_FILE)
             {
-                if (ngx_delete_file(u->pipe->temp_file->file.name.data)
-                    == NGX_FILE_ERROR)
-                {
+                if (ngx_delete_file(tf->file.name.data) == NGX_FILE_ERROR) {
+
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                                   ngx_delete_file_n " \"%s\" failed",
                                   u->pipe->temp_file->file.name.data);
