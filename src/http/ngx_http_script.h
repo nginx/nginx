@@ -27,6 +27,7 @@ typedef struct {
     unsigned                    flushed:1;
     unsigned                    skip:1;
     unsigned                    quote:1;
+    unsigned                    is_args:1;
     unsigned                    log:1;
 
     int                        *captures;
@@ -194,6 +195,7 @@ size_t ngx_http_script_copy_var_len_code(ngx_http_script_engine_t *e);
 void ngx_http_script_copy_var_code(ngx_http_script_engine_t *e);
 size_t ngx_http_script_copy_capture_len_code(ngx_http_script_engine_t *e);
 void ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e);
+size_t ngx_http_script_mark_args_code(ngx_http_script_engine_t *e);
 void ngx_http_script_start_args_code(ngx_http_script_engine_t *e);
 #if (NGX_PCRE)
 void ngx_http_script_regex_start_code(ngx_http_script_engine_t *e);

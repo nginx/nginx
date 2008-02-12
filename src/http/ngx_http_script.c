@@ -221,6 +221,14 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
             sc->args = 1;
             sc->compile_args = 0;
 
+            code = ngx_http_script_add_code(*sc->lengths, sizeof(uintptr_t),
+                                            NULL);
+            if (code == NULL) {
+                return NGX_ERROR;
+            }
+
+            *code = (uintptr_t) ngx_http_script_mark_args_code;
+
             code = ngx_http_script_add_code(*sc->values, sizeof(uintptr_t),
                                             &sc->main);
             if (code == NULL) {
@@ -504,7 +512,7 @@ ngx_http_script_copy_capture_len_code(ngx_http_script_engine_t *e)
     e->ip += sizeof(ngx_http_script_copy_capture_code_t);
 
     if (code->n < e->ncaptures) {
-        if ((e->args || e->quote)
+        if ((e->is_args || e->quote)
             && (e->request->quoted_uri || e->request->plus_in_uri))
         {
             return e->captures[code->n + 1] - e->captures[code->n]
@@ -531,7 +539,7 @@ ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e)
     e->ip += sizeof(ngx_http_script_copy_capture_code_t);
 
     if (code->n < e->ncaptures) {
-        if ((e->args || e->quote)
+        if ((e->is_args || e->quote)
             && (e->request->quoted_uri || e->request->plus_in_uri))
         {
             e->pos = (u_char *) ngx_escape_uri(e->pos,
@@ -547,6 +555,16 @@ ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script capture: \"%V\"", &e->buf);
+}
+
+
+size_t
+ngx_http_script_mark_args_code(ngx_http_script_engine_t *e)
+{
+    e->is_args = 1;
+    e->ip += sizeof(uintptr_t);
+
+    return 1;
 }
 
 
@@ -700,7 +718,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         le.ncaptures = e->ncaptures;
         le.quote = code->redirect;
 
-        len = 1;  /* reserve 1 byte for possible "?" */
+        len = 0;
 
         while (*(uintptr_t *) le.ip) {
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
@@ -708,6 +726,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         }
 
         e->buf.len = len;
+        e->is_args = le.is_args;
     }
 
     if (code->add_args && r->args.len) {
