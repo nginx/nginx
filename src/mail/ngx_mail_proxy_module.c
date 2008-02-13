@@ -528,10 +528,10 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
 
         s->connection->log->action = "sending XCLIENT to upstream";
 
-        line.len = sizeof("XCLIENT PROTO=SMTP HELO= ADDR= LOGIN= "
-                          "NAME=[UNAVAILABLE]" CRLF) - 1
+        line.len = sizeof("XCLIENT PROTO=SMTP HELO= ADDR= LOGIN= NAME="
+                          CRLF) - 1
                    + s->esmtp + s->smtp_helo.len
-                   + s->connection->addr_text.len + s->login.len;
+                   + s->connection->addr_text.len + s->login.len + s->host.len;
 
         line.data = ngx_palloc(c->pool, line.len);
         if (line.data == NULL) {
@@ -542,15 +542,14 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         if (s->smtp_helo.len) {
             line.len = ngx_sprintf(line.data,
                            "XCLIENT PROTO=%sSMTP HELO=%V ADDR=%V LOGIN=%V "
-                           "NAME=[UNAVAILABLE]" CRLF,
+                           "NAME=%V" CRLF,
                            (s->esmtp ? "E" : ""), &s->smtp_helo,
-                           &s->connection->addr_text, &s->login)
+                           &s->connection->addr_text, &s->login, &s->host)
                        - line.data;
         } else {
             line.len = ngx_sprintf(line.data,
-                           "XCLIENT PROTO=SMTP ADDR=%V LOGIN=%V "
-                           "NAME=[UNAVAILABLE]" CRLF,
-                           &s->connection->addr_text, &s->login)
+                           "XCLIENT PROTO=SMTP ADDR=%V LOGIN=%V NAME=%V" CRLF,
+                           &s->connection->addr_text, &s->login, &s->host)
                        - line.data;
         }
 

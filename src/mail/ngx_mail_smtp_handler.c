@@ -11,6 +11,9 @@
 #include <ngx_mail_smtp_module.h>
 
 
+static void ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx);
+static void ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx);
+static void ngx_mail_smtp_greeting(ngx_mail_session_t *s, ngx_connection_t *c);
 static void ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev);
 static ngx_int_t ngx_mail_smtp_create_buffer(ngx_mail_session_t *s,
     ngx_connection_t *c);
@@ -40,12 +43,175 @@ static u_char  smtp_invalid_argument[] = "501 5.5.4 Invalid argument" CRLF;
 static u_char  smtp_auth_required[] = "530 5.7.1 Authentication required" CRLF;
 
 
+static ngx_str_t  smtp_unavailable = ngx_string("[UNAVAILABLE]");
+static ngx_str_t  smtp_tempunavail = ngx_string("[TEMPUNAVAIL]");
+
+
 void
 ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
+{
+    struct sockaddr_in        *sin;
+    ngx_resolver_ctx_t        *ctx;
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    c->log->action = "in resolving client address";
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    ctx = ngx_resolve_start(cscf->resolver, NULL);
+    if (ctx == NULL) {
+        ngx_mail_close_connection(c);
+        return;
+    }
+
+    /* AF_INET only */
+
+    sin = (struct sockaddr_in *) c->sockaddr;
+
+    ctx->addr = sin->sin_addr.s_addr;
+    ctx->handler = ngx_mail_smtp_resolve_addr_handler;
+    ctx->data = s;
+    ctx->timeout = cscf->resolver_timeout;
+
+    if (ngx_resolve_addr(ctx) != NGX_OK) {
+        ngx_mail_close_connection(c);
+    }
+}
+
+
+static void
+ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx)
+{
+    ngx_connection_t          *c;
+    ngx_mail_session_t        *s;
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    s = ctx->data;
+    c = s->connection;
+
+    if (ctx->state) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "%V could not be resolved (%i: %s)",
+                      &c->addr_text, ctx->state,
+                      ngx_resolver_strerror(ctx->state));
+
+        if (ctx->state == NGX_RESOLVE_NXDOMAIN) {
+            s->host = smtp_unavailable;
+
+        } else {
+            s->host = smtp_tempunavail;
+        }
+
+        ngx_resolve_addr_done(ctx);
+
+        ngx_mail_smtp_greeting(s, s->connection);
+
+        return;
+    }
+
+    c->log->action = "in resolving client hostname";
+
+    s->host.data = ngx_pstrdup(c->pool, &ctx->name);
+    if (s->host.data == NULL) {
+        ngx_resolve_addr_done(ctx);
+        ngx_mail_close_connection(c);
+        return;
+    }
+
+    s->host.len = ctx->name.len;
+
+    ngx_resolve_addr_done(ctx);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "address resolved: %V", &s->host);
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    ctx = ngx_resolve_start(cscf->resolver, NULL);
+    if (ctx == NULL) {
+        ngx_mail_close_connection(c);
+        return;
+    }
+
+    ctx->name = s->host;
+    ctx->type = NGX_RESOLVE_A;
+    ctx->handler = ngx_mail_smtp_resolve_name_handler;
+    ctx->data = s;
+    ctx->timeout = cscf->resolver_timeout;
+
+    if (ngx_resolve_name(ctx) != NGX_OK) {
+        ngx_mail_close_connection(c);
+    }
+}
+
+
+static void
+ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx)
+{
+    in_addr_t            addr;
+    ngx_uint_t           i;
+    ngx_connection_t    *c;
+    struct sockaddr_in  *sin;
+    ngx_mail_session_t  *s;
+
+    s = ctx->data;
+    c = s->connection;
+
+    if (ctx->state) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "%V could not be resolved (%i: %s)",
+                      &ctx->name, ctx->state,
+                      ngx_resolver_strerror(ctx->state));
+
+        if (ctx->state == NGX_RESOLVE_NXDOMAIN) {
+            s->host = smtp_unavailable;
+
+        } else {
+            s->host = smtp_tempunavail;
+        }
+
+    } else {
+
+        /* AF_INET only */
+
+        sin = (struct sockaddr_in *) c->sockaddr;
+
+        for (i = 0; i < ctx->naddrs; i++) {
+
+            addr = ctx->addrs[i];
+
+            ngx_log_debug4(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "name was resolved to %ud.%ud.%ud.%ud",
+                           (ntohl(addr) >> 24) & 0xff,
+                           (ntohl(addr) >> 16) & 0xff,
+                           (ntohl(addr) >> 8) & 0xff,
+                           ntohl(addr) & 0xff);
+
+            if (addr == sin->sin_addr.s_addr) {
+                goto found;
+            }
+        }
+
+        s->host = smtp_unavailable;
+    }
+
+found:
+
+    ngx_resolve_name_done(ctx);
+
+    ngx_mail_smtp_greeting(s, c);
+}
+
+
+static void
+ngx_mail_smtp_greeting(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_msec_t                 timeout;
     ngx_mail_core_srv_conf_t  *cscf;
     ngx_mail_smtp_srv_conf_t  *sscf;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "smtp greeting for \"%V\"", &s->host);
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
     sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);

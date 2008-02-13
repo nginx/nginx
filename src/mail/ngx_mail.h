@@ -81,6 +81,7 @@ typedef struct {
     ngx_mail_protocol_t    *protocol;
 
     ngx_msec_t              timeout;
+    ngx_msec_t              resolver_timeout;
 
     ngx_flag_t              so_keepalive;
 
@@ -88,6 +89,8 @@ typedef struct {
 
     u_char                 *file_name;
     ngx_int_t               line;
+
+    ngx_resolver_t         *resolver;
 
     /* server ctx */
     ngx_mail_conf_ctx_t    *ctx;
@@ -147,6 +150,8 @@ typedef struct {
     void                  **main_conf;
     void                  **srv_conf;
 
+    ngx_resolver_ctx_t     *resolver_ctx;
+
     ngx_mail_proxy_ctx_t   *proxy;
 
     ngx_uint_t              mail_state;
@@ -171,6 +176,7 @@ typedef struct {
     ngx_str_t               text;
 
     ngx_str_t              *addr_text;
+    ngx_str_t               host;
     ngx_str_t               smtp_helo;
 
     ngx_uint_t              command;

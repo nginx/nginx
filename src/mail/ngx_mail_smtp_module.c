@@ -158,6 +158,15 @@ ngx_mail_smtp_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cscf = ngx_mail_conf_get_module_srv_conf(cf, ngx_mail_core_module);
 
+    if (cscf->protocol->type == NGX_MAIL_SMTP_PROTOCOL
+        && cscf->resolver == NULL)
+    {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "undefined resolver for server in %s:%ui",
+                      cscf->file_name, cscf->line);
+        return NGX_CONF_ERROR;
+    }
+
     size = sizeof("220  ESMTP ready" CRLF) - 1 + cscf->server_name.len;
 
     p = ngx_palloc(cf->pool, size);
