@@ -933,7 +933,6 @@ void
 sleep(r, sleep, next)
     CODE:
 
-    dXSTARG;
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
 
