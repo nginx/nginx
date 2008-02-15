@@ -2448,7 +2448,12 @@ ngx_http_post_action(ngx_http_request_t *r)
 
     r->read_event_handler = ngx_http_block_reading;
 
-    ngx_http_internal_redirect(r, &clcf->post_action, NULL);
+    if (clcf->post_action.data[0] == '/') {
+        ngx_http_internal_redirect(r, &clcf->post_action, NULL);
+
+    } else {
+        ngx_http_named_location(r, &clcf->post_action);
+    }
 
     return NGX_OK;
 }
