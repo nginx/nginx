@@ -25,9 +25,8 @@ typedef struct {
     ngx_str_t                 redirect_args;
 
     SV                       *next;
-    int                       sleep;
 
-    ngx_uint_t                done;   /* unsigned  done:1; */
+    ngx_uint_t                done;       /* unsigned  done:1; */
 
     ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
 
@@ -61,6 +60,7 @@ extern void boot_DynaLoader(pTHX_ CV* cv);
 
 
 void ngx_http_perl_handle_request(ngx_http_request_t *r);
+void ngx_http_perl_sleep_handler(ngx_http_request_t *r);
 
 
 #endif /* _NGX_HTTP_PERL_MODULE_H_INCLUDED_ */

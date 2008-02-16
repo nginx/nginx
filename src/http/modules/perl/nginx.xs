@@ -934,17 +934,23 @@ sleep(r, sleep, next)
     CODE:
 
     ngx_http_request_t   *r;
+    ngx_msec_t            sleep;
     ngx_http_perl_ctx_t  *ctx;
 
     ngx_http_perl_set_request(r);
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
-
-    ctx->sleep = SvIV(ST(1));
-    ctx->next = SvRV(ST(2));
+    sleep = SvIV(ST(1));
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "perl sleep: %d", ctx->sleep);
+                   "perl sleep: %M", sleep);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_perl_module);
+
+    ctx->next = SvRV(ST(2));
+
+    ngx_add_timer(r->connection->write, sleep);
+
+    r->write_event_handler = ngx_http_perl_sleep_handler;
 
 
 void
