@@ -54,9 +54,15 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_resolver_ctx_t        *ctx;
     ngx_mail_core_srv_conf_t  *cscf;
 
-    c->log->action = "in resolving client address";
-
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    if (cscf->resolver == NULL) {
+        s->host = smtp_unavailable;
+        ngx_mail_smtp_greeting(s, c);
+        return;
+    }
+
+    c->log->action = "in resolving client address";
 
     ctx = ngx_resolve_start(cscf->resolver, NULL);
     if (ctx == NULL) {
