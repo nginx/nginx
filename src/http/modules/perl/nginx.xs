@@ -939,7 +939,7 @@ sleep(r, sleep, next)
 
     ngx_http_perl_set_request(r);
 
-    sleep = SvIV(ST(1));
+    sleep = (ngx_msec_t) SvIV(ST(1));
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl sleep: %M", sleep);
