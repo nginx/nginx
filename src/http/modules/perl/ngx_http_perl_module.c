@@ -48,7 +48,7 @@ static PerlInterpreter *ngx_http_perl_create_interpreter(ngx_conf_t *cf,
 static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
-    HV *nginx, SV *sub, ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv);
+    HV *nginx, SV *sub, SV **args, ngx_str_t *handler, ngx_str_t *rv);
 static void ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv);
 
 static ngx_int_t ngx_http_perl_preconfiguration(ngx_conf_t *cf);
@@ -357,9 +357,10 @@ static ngx_int_t
 ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     ngx_str_t **params)
 {
-    SV                         *sv;
+    SV                         *sv, **asv;
     ngx_int_t                   rc;
-    ngx_str_t                  *handler;
+    ngx_str_t                  *handler, **args;
+    ngx_uint_t                  i;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -409,9 +410,31 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     sv = newSVpvn((char *) handler->data, handler->len);
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sv,
-                                    &params[NGX_HTTP_PERL_SSI_ARG],
-                                    handler, NULL);
+    args = &params[NGX_HTTP_PERL_SSI_ARG];
+
+    if (args) {
+
+        for (i = 0; args[i]; i++) { /* void */ }
+
+        asv = ngx_pcalloc(r->pool, (i + 1) * sizeof(SV *));
+
+        if (asv == NULL) {
+            SvREFCNT_dec(sv);
+            return NGX_ERROR;
+        }
+
+        asv[0] = (SV *) i;
+
+        for (i = 0; args[i]; i++) {
+            asv[i + 1] = newSVpvn((char *) args[i]->data, args[i]->len);
+        }
+
+    } else {
+        asv = NULL;
+    }
+
+    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sv, asv, handler,
+                                    NULL);
 
     SvREFCNT_dec(sv);
 
@@ -622,7 +645,7 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
 static ngx_int_t
 ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
-    ngx_str_t **args, ngx_str_t *handler, ngx_str_t *rv)
+    SV **args, ngx_str_t *handler, ngx_str_t *rv)
 {
     SV                *sv;
     int                n, status;
@@ -645,12 +668,10 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     XPUSHs(sv);
 
     if (args) {
-        for (i = 0; args[i]; i++) { /* void */ }
+        EXTEND(sp, (int) args[0]);
 
-        EXTEND(sp, (int) i);
-
-        for (i = 0; args[i]; i++) {
-            PUSHs(sv_2mortal(newSVpvn((char *) args[i]->data, args[i]->len)));
+        for (i = 1; i <= (ngx_uint_t) args[0]; i++) {
+            PUSHs(sv_2mortal(args[i]));
         }
     }
 
