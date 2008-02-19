@@ -1059,6 +1059,11 @@ ngx_channel_handler(ngx_event_t *ev)
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
     if (n == NGX_ERROR) {
+
+        if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+            ngx_del_conn(c, 0);
+        }
+
         ngx_close_connection(c);
         return;
     }
