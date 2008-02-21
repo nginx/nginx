@@ -392,6 +392,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
             uscf = uscfp[i];
 
             if (uscf->host.len == host->len
+                && uscf->port == u->resolved->port
                 && ngx_memcmp(uscf->host.data, host->data, host->len) == 0)
             {
                 goto found;
