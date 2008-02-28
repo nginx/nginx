@@ -212,14 +212,13 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
         return NGX_OK;
     }
 
-    /* lock alloc mutex */
+    /* NGX_ERROR */
 
     if (ctx->event) {
-        ngx_resolver_free_locked(r, ctx->event);
-        ctx->event = NULL;
+        ngx_resolver_free(r, ctx->event);
     }
 
-    /* unlock alloc mutex */
+    ngx_resolver_free(r, ctx);
 
     return NGX_ERROR;
 }
@@ -280,7 +279,15 @@ done:
 
     /* unlock name mutex */
 
-    ngx_resolver_free(r, ctx);
+    /* lock alloc mutex */
+
+    if (ctx->event) {
+        ngx_resolver_free_locked(r, ctx->event);
+    }
+
+    ngx_resolver_free_locked(r, ctx);
+
+    /* unlock alloc mutex */
 }
 
 
@@ -573,15 +580,11 @@ failed:
 
     /* unlock addr mutex */
 
-    /* lock alloc mutex */
-
     if (ctx->event) {
-        ngx_resolver_free_locked(r, ctx->event);
+        ngx_resolver_free(r, ctx->event);
     }
 
-    ngx_resolver_free_locked(r, ctx);
-
-    /* unlock alloc mutex */
+    ngx_resolver_free(r, ctx);
 
     return NGX_ERROR;
 }
@@ -640,7 +643,15 @@ done:
 
     /* unlock addr mutex */
 
-    ngx_resolver_free(r, ctx);
+    /* lock alloc mutex */
+
+    if (ctx->event) {
+        ngx_resolver_free_locked(r, ctx->event);
+    }
+
+    ngx_resolver_free_locked(r, ctx);
+
+    /* unlock alloc mutex */
 }
 
 
