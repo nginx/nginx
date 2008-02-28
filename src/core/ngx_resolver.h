@@ -138,7 +138,6 @@ ngx_int_t ngx_resolve_name(ngx_resolver_ctx_t *ctx);
 void ngx_resolve_name_done(ngx_resolver_ctx_t *ctx);
 ngx_int_t ngx_resolve_addr(ngx_resolver_ctx_t *ctx);
 void ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx);
-void *ngx_resolver_calloc(ngx_resolver_t *r, size_t size);
 char *ngx_resolver_strerror(ngx_int_t err);
 
 

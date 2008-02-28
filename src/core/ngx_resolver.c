@@ -81,6 +81,7 @@ static ngx_int_t ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name,
 static void ngx_resolver_timeout_handler(ngx_event_t *ev);
 static void ngx_resolver_free_node(ngx_resolver_t *r, ngx_resolver_node_t *rn);
 static void *ngx_resolver_alloc(ngx_resolver_t *r, size_t size);
+static void *ngx_resolver_calloc(ngx_resolver_t *r, size_t size);
 static void ngx_resolver_free(ngx_resolver_t *r, void *p);
 static void ngx_resolver_free_locked(ngx_resolver_t *r, void *p);
 static void *ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size);
@@ -1813,7 +1814,7 @@ ngx_resolver_alloc(ngx_resolver_t *r, size_t size)
 }
 
 
-void *
+static void *
 ngx_resolver_calloc(ngx_resolver_t *r, size_t size)
 {
     u_char  *p;
