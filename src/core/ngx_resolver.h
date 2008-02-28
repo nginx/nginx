@@ -131,7 +131,7 @@ struct ngx_resolver_ctx_s {
 };
 
 
-ngx_resolver_t *ngx_resolver_create(ngx_peer_addr_t *addr, ngx_log_t *log);
+ngx_resolver_t *ngx_resolver_create(ngx_pool_t *pool, ngx_peer_addr_t *addr);
 ngx_resolver_ctx_t *ngx_resolve_start(ngx_resolver_t *r,
     ngx_resolver_ctx_t *temp);
 ngx_int_t ngx_resolve_name(ngx_resolver_ctx_t *ctx);
