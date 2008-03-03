@@ -1937,6 +1937,7 @@ ngx_http_upstream_non_buffered_filter(void *data, ssize_t bytes)
     cl->buf->pos = b->last;
     b->last += bytes;
     cl->buf->last = b->last;
+    cl->buf->tag = u->output.tag;
 
     if (u->length == NGX_MAX_SIZE_T_VALUE) {
         return NGX_OK;
