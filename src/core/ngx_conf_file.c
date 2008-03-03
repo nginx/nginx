@@ -633,7 +633,7 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char        *rv;
     ngx_int_t    n;
-    ngx_str_t   *value, file;
+    ngx_str_t   *value, file, name;
     ngx_glob_t   gl;
 
     value = cf->args->elts;
@@ -659,11 +659,14 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     rv = NGX_CONF_OK;
 
     for ( ;; ) {
-        n = ngx_read_glob(&gl, &file);
+        n = ngx_read_glob(&gl, &name);
 
         if (n != NGX_OK) {
             break;
         }
+
+        file.len = name.len++;
+        file.data = ngx_pstrdup(cf->pool, &name);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
