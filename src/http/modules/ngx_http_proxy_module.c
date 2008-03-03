@@ -611,6 +611,7 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     r->upstream->resolved->host = u.host;
     r->upstream->resolved->port = (in_port_t) (u.no_port ? u.default_port:
                                                            u.port);
+    r->upstream->resolved->default_port = u.default_port;
 
     return NGX_OK;
 }
