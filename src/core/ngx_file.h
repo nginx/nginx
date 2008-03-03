@@ -63,7 +63,7 @@ typedef struct {
     ngx_fd_t            fd;
 
     unsigned            create_path:1;
-    unsigned            delete:1;
+    unsigned            delete_file:1;
 
     ngx_log_t          *log;
 } ngx_ext_rename_file_t;

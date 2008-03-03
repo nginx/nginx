@@ -554,7 +554,7 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
 failed:
 
-    if (ext->delete) {
+    if (ext->delete_file) {
         if (ngx_delete_file(src->data) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
                           ngx_delete_file_n " \"%s\" failed", src->data);

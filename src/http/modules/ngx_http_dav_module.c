@@ -248,7 +248,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     ext.access = dlcf->access;
     ext.time = -1;
     ext.create_path = dlcf->create_full_put_path;
-    ext.delete = 1;
+    ext.delete_file = 1;
     ext.log = r->connection->log;
 
     if (r->headers_in.date) {
