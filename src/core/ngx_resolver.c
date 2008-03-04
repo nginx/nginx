@@ -152,7 +152,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_peer_addr_t *addr)
         uc->sockaddr = addr->sockaddr;
         uc->socklen = addr->socklen;
         uc->server = addr->name;
-        uc->log = cf->log;
+        uc->log = cf->cycle->new_log;
     }
 
     return r;
