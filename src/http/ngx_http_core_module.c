@@ -2910,7 +2910,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->resolver = prev->resolver;
 
         if (conf->resolver == NULL) {
-            conf->resolver = ngx_resolver_create(cf->pool, NULL);
+            conf->resolver = ngx_resolver_create(cf, NULL);
             if (conf->resolver == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -3728,7 +3728,7 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    clcf->resolver = ngx_resolver_create(cf->pool, &u.addrs[0]);
+    clcf->resolver = ngx_resolver_create(cf, &u.addrs[0]);
     if (clcf->resolver == NULL) {
         return NGX_OK;
     }

@@ -92,27 +92,27 @@ static void *ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size);
 /* STUB: ngx_peer_addr_t * */
 
 ngx_resolver_t *
-ngx_resolver_create(ngx_pool_t *pool, ngx_peer_addr_t *addr)
+ngx_resolver_create(ngx_conf_t *cf, ngx_peer_addr_t *addr)
 {
     ngx_resolver_t        *r;
     ngx_pool_cleanup_t    *cln;
     ngx_udp_connection_t  *uc;
 
-    cln = ngx_pool_cleanup_add(pool, 0);
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
         return NULL;
     }
 
     cln->handler = ngx_resolver_cleanup;
 
-    r = ngx_calloc(sizeof(ngx_resolver_t), pool->log);
+    r = ngx_calloc(sizeof(ngx_resolver_t), cf->log);
     if (r == NULL) {
         return NULL;
     }
 
     cln->data = r;
 
-    r->event = ngx_calloc(sizeof(ngx_event_t), pool->log);
+    r->event = ngx_calloc(sizeof(ngx_event_t), cf->log);
     if (r->event == NULL) {
         return NULL;
     }
@@ -131,18 +131,18 @@ ngx_resolver_create(ngx_pool_t *pool, ngx_peer_addr_t *addr)
 
     r->event->handler = ngx_resolver_resend_handler;
     r->event->data = r;
-    r->event->log = pool->log;
+    r->event->log = cf->cycle->new_log;
     r->ident = -1;
 
     r->resend_timeout = 5;
     r->expire = 30;
     r->valid = 300;
 
-    r->log = pool->log;
+    r->log = cf->cycle->new_log;
     r->log_level = NGX_LOG_ALERT;
 
     if (addr) {
-        uc = ngx_calloc(sizeof(ngx_udp_connection_t), pool->log);
+        uc = ngx_calloc(sizeof(ngx_udp_connection_t), cf->log);
         if (uc == NULL) {
             return NULL;
         }
@@ -152,7 +152,7 @@ ngx_resolver_create(ngx_pool_t *pool, ngx_peer_addr_t *addr)
         uc->sockaddr = addr->sockaddr;
         uc->socklen = addr->socklen;
         uc->server = addr->name;
-        uc->log = pool->log;
+        uc->log = cf->log;
     }
 
     return r;

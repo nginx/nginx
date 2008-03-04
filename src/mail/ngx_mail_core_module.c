@@ -437,7 +437,7 @@ ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    cscf->resolver = ngx_resolver_create(cf->pool, &u.addrs[0]);
+    cscf->resolver = ngx_resolver_create(cf, &u.addrs[0]);
     if (cscf->resolver == NULL) {
         return NGX_CONF_OK;
     }
