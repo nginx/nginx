@@ -1916,7 +1916,7 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
                        "named location: %V \"%V?%V\"", name, &r->uri, &r->args);
 
         r->internal = 1;
-
+        r->content_handler = NULL;
         r->loc_conf = clcfp[i]->loc_conf;
 
         ngx_http_update_location_config(r);
@@ -1924,6 +1924,7 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
         cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
         r->phase_handler = cmcf->phase_engine.location_rewrite_index;
+
         ngx_http_core_run_phases(r);
 
         return NGX_DONE;
