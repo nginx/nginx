@@ -661,6 +661,8 @@ ngx_free_connection(ngx_connection_t *c)
 void
 ngx_close_connection(ngx_connection_t *c)
 {
+    ngx_err_t     err;
+    ngx_uint_t    log_error, level;
     ngx_socket_t  fd;
 
     if (c->fd == -1) {
@@ -733,6 +735,8 @@ ngx_close_connection(ngx_connection_t *c)
 
 #endif
 
+    log_error = c->log_error;
+
     ngx_free_connection(c);
 
     fd = c->fd;
@@ -740,9 +744,31 @@ ngx_close_connection(ngx_connection_t *c)
 
     if (ngx_close_socket(fd) == -1) {
 
+        err = ngx_socket_errno;
+
+        if (err == NGX_ECONNRESET || err == NGX_ENOTCONN) {
+
+            switch (log_error) {
+
+            case NGX_ERROR_INFO:
+                level = NGX_LOG_INFO;
+                break;
+
+            case NGX_ERROR_ERR:
+                level = NGX_LOG_ERR;
+                break;
+
+            default:
+                level = NGX_LOG_CRIT;
+            }
+
+        } else {
+            level = NGX_LOG_CRIT;
+        }
+
         /* we use ngx_cycle->log because c->log was in c->pool */
 
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(level, ngx_cycle->log, err,
                       ngx_close_socket_n " %d failed", fd);
     }
 }
@@ -784,11 +810,11 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
             break;
 
         default:
-            level = NGX_LOG_CRIT;
+            level = NGX_LOG_ALERT;
         }
 
     } else {
-        level = NGX_LOG_CRIT;
+        level = NGX_LOG_ALERT;
     }
 
     ngx_log_error(level, c->log, err, text);
