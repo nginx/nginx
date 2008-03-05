@@ -422,12 +422,12 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         ctx->data = r;
         ctx->timeout = clcf->resolver_timeout;
 
-        u->resolved->ctx = ctx;
-
         if (ngx_resolve_name(ctx) != NGX_OK) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
+
+        u->resolved->ctx = ctx;
 
         return;
     }
