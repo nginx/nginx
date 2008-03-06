@@ -2908,14 +2908,21 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->resolver_timeout, 30000);
 
     if (conf->resolver == NULL) {
-        conf->resolver = prev->resolver;
 
-        if (conf->resolver == NULL) {
-            conf->resolver = ngx_resolver_create(cf, NULL);
-            if (conf->resolver == NULL) {
+        if (prev->resolver == NULL) {
+
+            /*
+             * create dummy resolver in http {} context
+             * to inherit it in all servers
+             */
+
+            prev->resolver = ngx_resolver_create(cf, NULL);
+            if (prev->resolver == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
+ 
+        conf->resolver = prev->resolver;
     }
 
     ngx_conf_merge_path_value(conf->client_body_temp_path,
@@ -3716,6 +3723,10 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_url_t   u;
     ngx_str_t  *value;
+
+    if (clcf->resolver) {
+        return "is duplicate";
+    }
 
     value = cf->args->elts;
 
