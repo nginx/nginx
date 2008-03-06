@@ -422,6 +422,10 @@ ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    if (cscf->resolver != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
     if (ngx_strcmp(value[1].data, "off") == 0) {
         cscf->resolver = NULL;
         return NGX_CONF_OK;
