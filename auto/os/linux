@@ -27,7 +27,6 @@ version=${version:-0}
 if [ $version -ge 131609 -o $EVENT_RTSIG = YES ]; then
     echo " + rt signals found"
     have=NGX_HAVE_RTSIG . auto/have
-    have=NGX_HAVE_POLL . auto/have
     EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
     CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
     EVENT_FOUND=YES
