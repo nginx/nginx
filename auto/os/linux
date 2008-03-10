@@ -22,9 +22,10 @@ version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
 version=${version:-0}
 
 
-# enable the rt signals on Linux 2.2.19 and onward
+# enable the rt signals on Linux between 2.2.19 and 2.6.17
 
-if [ $version -ge 131609 -o $EVENT_RTSIG = YES ]; then
+if [ \( $version -ge 131609 -a $version -lt 132632 \) -o $EVENT_RTSIG = YES ]
+then
     echo " + rt signals found"
     have=NGX_HAVE_RTSIG . auto/have
     EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"

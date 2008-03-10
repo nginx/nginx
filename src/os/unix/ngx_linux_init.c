@@ -11,7 +11,7 @@
 u_char  ngx_linux_kern_ostype[50];
 u_char  ngx_linux_kern_osrelease[50];
 
-int   ngx_linux_rtsig_max;
+int     ngx_linux_rtsig_max;
 
 
 static ngx_os_io_t ngx_linux_io = {
@@ -32,9 +32,6 @@ static ngx_os_io_t ngx_linux_io = {
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {
-    int             name[2];
-    size_t          len;
-    ngx_err_t       err;
     struct utsname  u;
 
     if (uname(&u) == -1) {
@@ -47,6 +44,12 @@ ngx_os_specific_init(ngx_log_t *log)
 
     (void) ngx_cpystrn(ngx_linux_kern_osrelease, (u_char *) u.release,
                        sizeof(ngx_linux_kern_osrelease));
+
+#if (NGX_HAVE_RTSIG)
+    {
+    int        name[2];
+    size_t     len;
+    ngx_err_t  err;
 
     name[0] = CTL_KERN;
     name[1] = KERN_RTSIGMAX;
@@ -65,6 +68,8 @@ ngx_os_specific_init(ngx_log_t *log)
         ngx_linux_rtsig_max = 0;
     }
 
+    }
+#endif
 
     ngx_os_io = ngx_linux_io;
 
@@ -78,6 +83,8 @@ ngx_os_specific_status(ngx_log_t *log)
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
                   ngx_linux_kern_ostype, ngx_linux_kern_osrelease);
 
+#if (NGX_HAVE_RTSIG)
     ngx_log_error(NGX_LOG_NOTICE, log, 0, "sysctl(KERN_RTSIGMAX): %d",
                   ngx_linux_rtsig_max);
+#endif
 }
