@@ -3559,7 +3559,22 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        err->overwrite = (overwrite >= 0) ? overwrite : err->status;
+        if (overwrite >= 0) {
+            err->overwrite = overwrite;
+
+        } else {
+            switch (err->status) {
+                case NGX_HTTP_TO_HTTPS:
+                case NGX_HTTPS_CERT_ERROR:
+                case NGX_HTTPS_NO_CERT:
+                    err->overwrite = NGX_HTTP_BAD_REQUEST;
+                    break;
+
+                default:
+                    err->overwrite = err->status;
+                    break;
+            }
+        }
 
         err->uri = uri;
         err->uri_lengths = uri_lengths;
