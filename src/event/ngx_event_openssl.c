@@ -1552,6 +1552,15 @@ done:
 }
 
 
+void
+ngx_ssl_remove_cached_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
+{
+     SSL_CTX_remove_session(ssl, sess);
+
+     ngx_ssl_remove_session(ssl, sess);
+}
+
+
 static void
 ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 {
@@ -1566,6 +1575,10 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
     ngx_ssl_session_cache_t  *cache;
 
     shm_zone = SSL_CTX_get_ex_data(ssl, ngx_ssl_session_cache_index);
+
+    if (shm_zone == NULL) {
+        return;
+    }
 
     cache = shm_zone->data;
 
