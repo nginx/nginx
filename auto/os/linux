@@ -16,8 +16,8 @@ CC_AUX_FLAGS="$CC_AUX_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 # Linux kernel version
 
-version=`grep "#define LINUX_VERSION_CODE" /usr/include/linux/version.h \
-         | sed -e 's/^.* \(.*\)$/\1/'`
+version=$((`uname -r \
+         | sed 's/^\([^.]*\)\.\([^.]*\)\.\([^.-]*\).*/\1*256*256+\2*256+\3/'`))
 
 version=${version:-0}
 
