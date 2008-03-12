@@ -307,10 +307,10 @@ HTTP_SRCS="src/http/ngx_http.c \
 # STUB
 HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
 
-HTPP_POSTPONE_FILTER_SRCS=src/http/ngx_http_postpone_filter_module.c
+HTTP_POSTPONE_FILTER_SRCS=src/http/ngx_http_postpone_filter_module.c
 
-HTPP_CACHE_SRCS=src/http/ngx_http_cache.c
-HTPP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
+HTTP_CACHE_SRCS=src/http/ngx_http_cache.c
+HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 
 HTTP_CHARSET_FILTER_MODULE=ngx_http_charset_filter_module
