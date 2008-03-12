@@ -9,6 +9,176 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.27" date="12.03.2008">
+
+<change type="change">
+<para lang="ru">
+теперь на Linux 2.6.18+ по умолчанию не собирается метод rtsig.
+</para>
+<para lang="en">
+now by default the rtsig method is not built on <nobr>Linux 2.6.18+.</nobr>
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при перенаправлении запроса в именованный location с помощью
+директивы error_page метод запроса не изменяется.
+</para>
+<para lang="en">
+now a request method is not changed while redirection to a named location
+via an "error_page" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы resolver и resolver_timeout в SMTP прокси-сервере.
+</para>
+<para lang="en">
+the "resolver" and "resolver_timeout" directives in SMTP proxy.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива post_action поддерживает именованные location'ы.
+</para>
+<para lang="en">
+the "post_action" directive supports named locations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса из location'а c обработчиком proxy, FastCGI
+или memcached в именованный location со статическим обработчиком
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if a request was redirected from proxy, FastCGI, or memcached location
+to static named locations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+браузеры не повторяли SSL handshake, если при первом handshake
+не оказалось правильного клиентского сертификата.
+<br/>
+Спасибо Александру Инюхину.
+</para>
+<para lang="en">
+browsers did not repeat SSL handshake if there is no valid client certificate
+in first handshake.
+<br/>
+Thanks to Alexander V. Inyukhin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении ошибок 495-497 с помощью директивы error_page
+без изменения кода ошибки nginx пытался выделить очень много памяти.
+</para>
+<para lang="en">
+if response code 495-497 was redirected via an "error_page" directive
+without code change, then nginx tried to allocate too many memory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в долгоживущих небуфферизированных соединениях.
+</para>
+<para lang="en">
+memory leak in long-lived non buffered connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в resolver'е.
+</para>
+<para lang="en">
+memory leak in resolver.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса из location'а c обработчиком proxy
+в другой location с обработчиком proxy
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if a request was redirected from proxy, FastCGI, or memcached location
+to static named locations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки в кэшировании переменных $proxy_host и $proxy_port.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+in the $proxy_host and $proxy_port variables caching.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_pass с переменными использовала порт, описанной в другой
+директиве proxy_pass без переменных, но с таким же именем хоста.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a "proxy_pass" directive with variables used incorrectly the same port
+as in another "proxy_pass" directive with the same host name
+and without variables.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во время переконфигурации на некоторых 64-битном платформах в лог
+записывался alert "sendmsg() failed (9: Bad file descriptor)".
+</para>
+<para lang="en">
+an alert "sendmsg() failed (9: Bad file descriptor)" on some 64-bit platforms
+while reconfiguration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при повторном использовании в SSI пустого block'а в качестве заглушки
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if empty stub block was used second time in SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при копировании части URI, содержащего экранированные символы,
+в аргументы.
+</para>
+<para lang="en">
+in copying URI part contained escaped symbols into arguments.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.26" date="11.02.2008">
 
 <change type="bugfix">
