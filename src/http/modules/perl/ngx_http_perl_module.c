@@ -668,7 +668,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     XPUSHs(sv);
 
     if (args) {
-        EXTEND(sp, (int) args[0]);
+        EXTEND(sp, (intptr_t) args[0]);
 
         for (i = 1; i <= (ngx_uint_t) args[0]; i++) {
             PUSHs(sv_2mortal(args[i]));
