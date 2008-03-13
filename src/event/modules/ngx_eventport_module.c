@@ -40,6 +40,15 @@ typedef struct  port_notify {
     void       *portnfy_user;   /* user defined */
 } port_notify_t;
 
+#if (__FreeBSD_version < 700005)
+
+typedef struct itimerspec {     /* definition per POSIX.4 */
+    struct timespec it_interval;/* timer period */
+    struct timespec it_value;   /* timer expiration */
+} itimerspec_t;
+
+#endif
+
 int port_create(void)
 {
     return -1;
