@@ -308,8 +308,6 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
     /* not found */
 
-    file = NULL;
-
     rc = ngx_open_and_stat_file(name->data, of, pool->log);
 
     if (rc != NGX_OK && (of->err == 0 || !of->errors)) {
