@@ -411,7 +411,7 @@ failed:
 
         cache->current--;
 
-        if (of->fd != NGX_INVALID_FILE) {
+        if (file->fd != NGX_INVALID_FILE) {
             if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
                               ngx_close_file_n " \"%s\" failed", file->name);
