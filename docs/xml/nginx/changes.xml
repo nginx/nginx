@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.28" date="13.03.2008">
+
+<change type="bugfix">
+<para lang="ru">
+метод rtsig не собирался;
+ошибка появилась в 0.6.27.
+</para>
+<para lang="en">
+the rtsig method could be not built;
+bug appeared in 0.6.27.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.27" date="12.03.2008">
 
 <change type="change">
