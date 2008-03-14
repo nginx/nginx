@@ -1055,6 +1055,7 @@ ngx_http_perl_init_worker(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
+
 static void
 ngx_http_perl_exit(ngx_cycle_t *cycle)
 {
