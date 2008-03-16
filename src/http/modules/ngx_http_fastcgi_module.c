@@ -639,6 +639,11 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 code((ngx_http_script_engine_t *) &e);
             }
             e.ip += sizeof(uintptr_t);
+
+            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "fastcgi param: \"%*s: %*s\"",
+                           key_len, e.pos - (key_len + val_len),
+                           val_len, e.pos - val_len);
         }
 
         b->last = e.pos;
