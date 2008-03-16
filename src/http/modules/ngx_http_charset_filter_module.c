@@ -561,25 +561,33 @@ ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 static ngx_uint_t
 ngx_http_charset_recode(ngx_buf_t *b, u_char *table)
 {
-    u_char  *p;
+    u_char  *p, *last;
 
-    for (p = b->pos; p < b->last; p++) {
+    last = b->last;
 
-        if (*p == table[*p]) {
-            continue;
+    for (p = b->pos; p < last; p++) {
+
+        if (*p != table[*p]) {
+            goto recode;
         }
-
-        while (p < b->last) {
-            *p = table[*p];
-            p++;
-        }
-
-        b->in_file = 0;
-
-        return 1;
     }
 
     return 0;
+
+recode:
+
+    do {
+        if (*p != table[*p]) {
+            *p = table[*p];
+        }
+
+        p++;
+
+    } while (p < last);
+
+    b->in_file = 0;
+
+    return 1;
 }
 
 
