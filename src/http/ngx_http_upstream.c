@@ -2125,13 +2125,11 @@ ngx_http_upstream_process_body(ngx_event_t *ev)
 static void
 ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
-    char             *failed;
-    u_char           *name;
-    size_t            root;
-    time_t            lm;
-    ngx_err_t         err;
-    ngx_str_t        *temp, path, *last_modified;
-    ngx_temp_file_t  *tf;
+    size_t                  root;
+    time_t                  lm;
+    ngx_str_t               path;
+    ngx_temp_file_t        *tf;
+    ngx_ext_rename_file_t   ext;
 
     tf = u->pipe->temp_file;
 
@@ -2160,36 +2158,20 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
         u->pipe->temp_file = tf;
     }
 
-    temp = &tf->file.name;
-
-#if !(NGX_WIN32)
-
-    if (ngx_change_file_access(temp->data, u->conf->store_access)
-        == NGX_FILE_ERROR)
-    {
-        err = ngx_errno;
-        failed = ngx_change_file_access_n;
-        name = temp->data;
-
-        goto failed;
-    }
-
-#endif
+    ext.access = u->conf->store_access;
+    ext.time = -1;
+    ext.create_path = 1;
+    ext.delete_file = 1;
+    ext.log = r->connection->log;
 
     if (u->headers_in.last_modified) {
 
-        last_modified = &u->headers_in.last_modified->value;
-
-        lm = ngx_http_parse_time(last_modified->data, last_modified->len);
+        lm = ngx_http_parse_time(u->headers_in.last_modified->value.data,
+                                 u->headers_in.last_modified->value.len);
 
         if (lm != NGX_ERROR) {
-            if (ngx_set_file_time(temp->data, tf->file.fd, lm) != NGX_OK) {
-                err = ngx_errno;
-                failed = ngx_set_file_time_n;
-                name = temp->data;
-
-                goto failed;
-            }
+            ext.time = lm;
+            ext.fd = tf->file.fd;
         }
     }
 
@@ -2207,55 +2189,10 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "upstream stores \"%s\" to \"%s\"", temp->data, path.data);
+                   "upstream stores \"%s\" to \"%s\"",
+                   tf->file.name.data, path.data);
 
-    failed = ngx_rename_file_n;
-    name = path.data;
-
-    if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-        return;
-    }
-
-    err = ngx_errno;
-
-    if (err == NGX_ENOENT) {
-
-        err = ngx_create_full_path(path.data,
-                                   ngx_dir_access(u->conf->store_access));
-        if (err == 0) {
-            if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-                return;
-            }
-
-            err = ngx_errno;
-        }
-    }
-
-#if (NGX_WIN32)
-
-    if (err == NGX_EEXIST) {
-        if (ngx_win32_rename_file(temp, &path, r->connection->log) == NGX_OK) {
-
-            if (ngx_rename_file(temp->data, path.data) != NGX_FILE_ERROR) {
-                return;
-            }
-        }
-
-        err = ngx_errno;
-    }
-
-#endif
-
-failed:
-
-    if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      ngx_delete_file_n " \"%s\" failed",
-                      temp->data);
-    }
-
-    ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
-                  "%s \"%s\" failed", failed, name);
+    (void) ngx_ext_rename_file(&tf->file.name, &path, &ext);
 }
 
 
