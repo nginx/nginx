@@ -1059,5 +1059,16 @@ ngx_http_perl_init_worker(ngx_cycle_t *cycle)
 static void
 ngx_http_perl_exit(ngx_cycle_t *cycle)
 {
+    ngx_http_perl_main_conf_t  *pmcf;
+
+    pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
+
+    {
+
+    dTHXa(pmcf->perl);
+    PERL_SET_CONTEXT(pmcf->perl);
+
     PERL_SYS_TERM();
+
+    }
 }
