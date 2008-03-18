@@ -9,6 +9,31 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.29" date="18.03.2008">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_google_perftools_module.
+</para>
+<para lang="en">
+the ngx_google_perftools_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_perl_module не собирался на 64-битных платформах;
+ошибка появилась в 0.6.27.
+</para>
+<para lang="en">
+the ngx_http_perl_module could be not built on 64-bit platforms;
+bug appeared in 0.6.27.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.28" date="13.03.2008">
 
 <change type="bugfix">
