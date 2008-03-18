@@ -1155,11 +1155,21 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         n = ERR_GET_REASON(ERR_peek_error());
 
             /* handshake failures */
-        if (n == SSL_R_NO_SHARED_CIPHER
+        if (n == SSL_R_DIGEST_CHECK_FAILED
+            || n == SSL_R_NO_SHARED_CIPHER
             || n == SSL_R_UNEXPECTED_MESSAGE
             || n == SSL_R_WRONG_VERSION_NUMBER
+            || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
+            || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
+            || n == SSL_R_SSLV3_ALERT_BAD_RECORD_MAC
+            || n == SSL_R_SSLV3_ALERT_DECOMPRESSION_FAILURE
+            || n == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE
+            || n == SSL_R_SSLV3_ALERT_BAD_CERTIFICATE
+            || n == SSL_R_SSLV3_ALERT_UNSUPPORTED_CERTIFICATE
+            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_REVOKED
             || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED
+            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_UNKNOWN
             || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER
             || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA)
         {
