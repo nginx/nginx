@@ -115,6 +115,8 @@ ZLIB_ASM=NO
 USE_PERL=NO
 NGX_PERL=perl
 
+NGX_GOOGLE_PERFTOOLS=NO
+
 NGX_CPU_CACHE_LINE=
 
 
@@ -200,6 +202,8 @@ do
         --without-mail_pop3_module)      MAIL_POP3=NO               ;;
         --without-mail_imap_module)      MAIL_IMAP=NO               ;;
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
+
+        --with-google_perftools_module)  NGX_GOOGLE_PERFTOOLS=YES   ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
@@ -316,6 +320,8 @@ cat << END
   --without-mail_pop3_module         disable ngx_mail_pop3_module
   --without-mail_imap_module         disable ngx_mail_imap_module
   --without-mail_smtp_module         disable ngx_mail_smtp_module
+
+  --with-google_perftools_module     enable ngx_google_perftools_module
 
   --add-module=PATH                  enable an external module
 

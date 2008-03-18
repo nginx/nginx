@@ -1,0 +1,33 @@
+
+# Copyright (C) Igor Sysoev
+
+
+    ngx_feature="Google perftools"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs="-lprofiler"
+    ngx_feature_test="ProfilerStop()"
+    . auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    # FreeBSD port
+
+    ngx_feature="Google perftools in /usr/local/"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lprofiler"
+    else
+        ngx_feature_libs="-L/usr/local/lib -lprofiler"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = yes ]; then
+    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+fi

@@ -460,3 +460,7 @@ MAIL_AUTH_HTTP_SRCS="src/mail/ngx_mail_auth_http_module.c"
 
 MAIL_PROXY_MODULE="ngx_mail_proxy_module"
 MAIL_PROXY_SRCS="src/mail/ngx_mail_proxy_module.c"
+
+NGX_GOOGLE_PERFTOOLS_MODULE=ngx_google_perftools_module
+NGX_GOOGLE_PERFTOOLS_SRCS=src/misc/ngx_google_perftools_module.c
+

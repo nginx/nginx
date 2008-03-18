@@ -375,6 +375,12 @@ if [ $MAIL = YES ]; then
 fi
 
 
+if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
+    modules="$modules $NGX_GOOGLE_PERFTOOLS_MODULE"
+    NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_GOOGLE_PERFTOOLS_SRCS"
+fi
+
+
 cat << END                                    > $NGX_MODULES_C
 
 #include <ngx_config.h>
