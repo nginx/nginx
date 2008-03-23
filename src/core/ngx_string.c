@@ -1432,24 +1432,30 @@ void
 ngx_sort(void *base, size_t n, size_t size,
     int (*cmp)(const void *, const void *))
 {
-    u_char  *p1, *p2;
-    u_char   buf[256];
+    u_char  *p1, *p2, *p;
+
+    p = ngx_alloc(size, ngx_cycle->log);
+    if (p == NULL) {
+        return;
+    }
 
     for (p1 = (u_char *) base + size;
          p1 < (u_char *) base + n * size;
          p1 += size)
     {
-        ngx_memcpy(buf, p1, size);
+        ngx_memcpy(p, p1, size);
 
         for (p2 = p1;
-             p2 > (u_char *) base && cmp(p2 - size, buf) > 0;
+             p2 > (u_char *) base && cmp(p2 - size, p) > 0;
              p2 -= size)
         {
             ngx_memcpy(p2, p2 - size, size);
         }
 
-        ngx_memcpy(p2, buf, size);
+        ngx_memcpy(p2, p, size);
     }
+
+    ngx_free(p);
 }
 
 
