@@ -70,7 +70,7 @@
 #include <limits.h>             /* IOV_MAX */
 #endif
 
-#if (NGX_HAVE_MALLOC_H)
+#ifdef __CYGWIN__
 #include <malloc.h>             /* memalign() */
 #endif
 
