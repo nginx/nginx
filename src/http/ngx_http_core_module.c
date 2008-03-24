@@ -2362,7 +2362,7 @@ ngx_http_core_cmp_locations(const void *one, const void *two)
         return 1;
     }
 
-    return (int) rc;
+    return rc;
 }
 
 
