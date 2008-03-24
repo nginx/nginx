@@ -19,7 +19,7 @@ static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
 static char *ngx_http_merge_locations(ngx_conf_t *cf,
     ngx_array_t *locations, void **loc_conf, ngx_http_module_t *module,
     ngx_uint_t ctx_index);
-static int ngx_http_cmp_conf_in_addrs(const void *one, const void *two);
+static ngx_int_t ngx_http_cmp_conf_in_addrs(const void *one, const void *two);
 static int ngx_libc_cdecl ngx_http_cmp_dns_wildcards(const void *one,
     const void *two);
 
@@ -1089,7 +1089,7 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
 }
 
 
-static int
+static ngx_int_t
 ngx_http_cmp_conf_in_addrs(const void *one, const void *two)
 {
     ngx_http_conf_in_addr_t  *first, *second;

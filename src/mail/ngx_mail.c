@@ -11,7 +11,7 @@
 
 
 static char *ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static int ngx_mail_cmp_conf_in_addrs(const void *one, const void *two);
+static ngx_int_t ngx_mail_cmp_conf_in_addrs(const void *one, const void *two);
 
 
 ngx_uint_t  ngx_mail_max_module;
@@ -388,7 +388,7 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-static int
+static ngx_int_t
 ngx_mail_cmp_conf_in_addrs(const void *one, const void *two)
 {
     ngx_mail_conf_in_addr_t  *first, *second;

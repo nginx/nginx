@@ -9,7 +9,8 @@
 #include <ngx_http.h>
 
 
-static int ngx_http_upstream_cmp_servers(const void *one, const void *two);
+static ngx_int_t ngx_http_upstream_cmp_servers(const void *one,
+    const void *two);
 static ngx_uint_t
 ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers);
 
@@ -185,7 +186,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 }
 
 
-static int
+static ngx_int_t
 ngx_http_upstream_cmp_servers(const void *one, const void *two)
 {
     ngx_http_upstream_rr_peer_t  *first, *second;

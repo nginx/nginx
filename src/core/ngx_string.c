@@ -1430,7 +1430,7 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 
 void
 ngx_sort(void *base, size_t n, size_t size,
-    int (*cmp)(const void *, const void *))
+    ngx_int_t (*cmp)(const void *, const void *))
 {
     u_char  *p1, *p2, *p;
 
