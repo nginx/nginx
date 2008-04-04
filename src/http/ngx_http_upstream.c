@@ -333,7 +333,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    u->output.sendfile = c->sendfile;
     u->output.pool = r->pool;
     u->output.bufs.num = 1;
     u->output.bufs.size = clcf->client_body_buffer_size;
@@ -702,6 +701,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->read->handler = ngx_http_upstream_process_header;
 
     c->sendfile &= r->connection->sendfile;
+    u->output.sendfile = c->sendfile;
 
     c->pool = r->pool;
     c->read->log = c->write->log = c->log = r->connection->log;
