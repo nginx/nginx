@@ -369,6 +369,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 {
     uint32_t              hash;
     in_addr_t             addr, *addrs;
+    ngx_int_t             rc;
     ngx_uint_t            naddrs;
     ngx_resolver_ctx_t   *next;
     ngx_resolver_node_t  *rn;
@@ -485,8 +486,23 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
         ngx_rbtree_insert(&r->name_rbtree, &rn->node);
     }
 
-    if (ngx_resolver_create_name_query(rn, ctx) != NGX_OK) {
+    rc = ngx_resolver_create_name_query(rn, ctx);
+
+    if (rc == NGX_ERROR) {
         goto failed;
+    }
+
+    if (rc == NGX_DECLINED) {
+        ngx_rbtree_delete(&r->name_rbtree, &rn->node);
+
+        ngx_resolver_free(r, rn->query);
+        ngx_resolver_free(r, rn->name);
+        ngx_resolver_free(r, rn);
+
+        ctx->state = NGX_RESOLVE_NXDOMAIN;
+        ctx->handler(ctx);
+
+        return NGX_OK;
     }
 
     if (ngx_resolver_send_query(r, rn) != NGX_OK) {
@@ -1696,6 +1712,10 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
             len++;
 
         } else {
+            if (len == 0) {
+                return NGX_DECLINED;
+            }
+
             *p = (u_char) len;
             len = 0;
         }
