@@ -433,8 +433,11 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 {
     ngx_chain_writer_ctx_t *ctx = data;
 
-    off_t         size;
-    ngx_chain_t  *cl;
+    off_t              size;
+    ngx_chain_t       *cl;
+    ngx_connection_t  *c;
+
+    c = ctx->connection;
 
     for (size = 0; in; in = in->next) {
 
@@ -446,7 +449,7 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
         size += ngx_buf_size(in->buf);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "chain writer buf fl:%d s:%uO",
                        in->buf->flush, ngx_buf_size(in->buf));
 
@@ -461,7 +464,7 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         ctx->last = &cl->next;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                    "chain writer in: %p", ctx->out);
 
     for (cl = ctx->out; cl; cl = cl->next) {
@@ -476,14 +479,13 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         size += ngx_buf_size(cl->buf);
     }
 
-    if (size == 0 && !ctx->connection->buffered) {
+    if (size == 0 && !c->buffered) {
         return NGX_OK;
     }
 
-    ctx->out = ctx->connection->send_chain(ctx->connection, ctx->out,
-                                           ctx->limit);
+    ctx->out = c->send_chain(c, ctx->out, ctx->limit);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                    "chain writer out: %p", ctx->out);
 
     if (ctx->out == NGX_CHAIN_ERROR) {
@@ -493,7 +495,7 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
     if (ctx->out == NULL) {
         ctx->last = &ctx->out;
 
-        if (!ctx->connection->buffered) {
+        if (!c->buffered) {
             return NGX_OK;
         }
     }
