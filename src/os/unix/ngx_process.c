@@ -452,7 +452,7 @@ ngx_process_get_status(void)
              *
              * When several processes exit at the same time FreeBSD may
              * erroneously call the signal handler for exited process
-             * despite waitpid() may be already called for this process
+             * despite waitpid() may be already called for this process.
              */
 
             if (err == NGX_ECHILD) {
@@ -507,8 +507,9 @@ ngx_process_get_status(void)
 
         if (WEXITSTATUS(status) == 2 && ngx_processes[i].respawn) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                        "%s %P exited with fatal code %d and could not respawn",
-                        process, pid, WEXITSTATUS(status));
+                          "%s %P exited with fatal code %d "
+                          "and can not be respawn",
+                          process, pid, WEXITSTATUS(status));
             ngx_processes[i].respawn = 0;
         }
     }
