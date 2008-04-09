@@ -453,6 +453,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
         /* lock alloc mutex */
 
         ngx_resolver_free_locked(r, rn->query);
+        rn->query = NULL;
 
         if (rn->cnlen) {
             ngx_resolver_free_locked(r, rn->u.cname);
@@ -479,6 +480,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
         rn->node.key = hash;
         rn->nlen = (u_short) ctx->name.len;
+        rn->query = NULL;
 
         ngx_rbtree_insert(&r->name_rbtree, &rn->node);
     }
@@ -525,6 +527,10 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 failed:
 
     ngx_rbtree_delete(&r->name_rbtree, &rn->node);
+
+    if (rn->query) {
+        ngx_resolver_free(r, rn->query);
+    }
 
     ngx_resolver_free(r, rn->name);
 
@@ -588,6 +594,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         ngx_queue_remove(&rn->queue);
 
         ngx_resolver_free(r, rn->query);
+        rn->query = NULL;
 
     } else {
         rn = ngx_resolver_alloc(r, sizeof(ngx_resolver_node_t));
@@ -596,6 +603,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         }
 
         rn->node.key = ctx->addr;
+        rn->query = NULL;
 
         ngx_rbtree_insert(&r->addr_rbtree, &rn->node);
     }
@@ -645,6 +653,10 @@ failed:
 
     if (rn) {
         ngx_rbtree_delete(&r->addr_rbtree, &rn->node);
+
+        if (rn->query) {
+            ngx_resolver_free(r, rn->query);
+        }
 
         ngx_resolver_free(r, rn);
     }
