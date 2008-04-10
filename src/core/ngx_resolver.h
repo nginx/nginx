@@ -17,6 +17,7 @@
 #define NGX_RESOLVE_PTR       12
 #define NGX_RESOLVE_MX        15
 #define NGX_RESOLVE_TXT       16
+#define NGX_RESOLVE_DNAME     39
 
 #define NGX_RESOLVE_FORMERR   1
 #define NGX_RESOLVE_SERVFAIL  2

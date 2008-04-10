@@ -1186,6 +1186,9 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         } else if (qtype == NGX_RESOLVE_CNAME) {
             cname = &buf[i] + sizeof(ngx_resolver_an_t);
             i += sizeof(ngx_resolver_an_t) + len;
+
+        } else if (qtype == NGX_RESOLVE_DNAME) {
+            i += sizeof(ngx_resolver_an_t) + len;
         }
     }
 
