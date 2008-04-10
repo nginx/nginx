@@ -240,7 +240,7 @@ ngx_http_parse_time(u_char *value, size_t len)
 
     /*
      * shift new year to March 1 and start months from 1 (not 0),
-     * it is needed for Gauss's formula
+     * it is needed for Gauss' formula
      */
 
     if (--month <= 0) {
@@ -248,11 +248,20 @@ ngx_http_parse_time(u_char *value, size_t len)
         year -= 1;
     }
 
-    /* Gauss's formula for Grigorian days from March 1, 1 BC */
+    /* Gauss' formula for Grigorian days since March 1, 1 BC */
 
-    return (365 * year + year / 4 - year / 100 + year / 400
-            + 367 * month / 12 - 31
-            + day
+    return (
+            /* days in years including leap years since March 1, 1 BC */
+
+            365 * year + year / 4 - year / 100 + year / 400
+
+            /* days before the month */
+
+            + 367 * month / 12 - 30
+
+            /* days before the day */
+
+            + day - 1
 
             /*
              * 719527 days were between March 1, 1 BC and March 1, 1970,
