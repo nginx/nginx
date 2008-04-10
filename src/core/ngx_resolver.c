@@ -1189,6 +1189,10 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
         } else if (qtype == NGX_RESOLVE_DNAME) {
             i += sizeof(ngx_resolver_an_t) + len;
+
+        } else {
+            ngx_log_error(r->log_level, r->log, 0,
+                          "unexpected qtype %ui", qtype);
         }
     }
 
