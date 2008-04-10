@@ -953,14 +953,14 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
     nan = (query->nan_hi << 8) + query->nan_lo;
 
     ngx_log_debug6(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver DNS response %d fl:%04Xud %d/%d/%d/%d",
+                   "resolver DNS response %ui fl:%04Xui %ui/%ui/%ui/%ui",
                    ident, flags, nqs, nan,
                    (query->nns_hi << 8) + query->nns_lo,
                    (query->nar_hi << 8) + query->nar_lo);
 
     if (!(flags & 0x8000)) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "invalid DNS response %d fl:%04Xud", ident, flags);
+                      "invalid DNS response %ui fl:%04Xui", ident, flags);
         return;
     }
 
@@ -968,7 +968,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
 
     if (code == NGX_RESOLVE_FORMERR || code > NGX_RESOLVE_REFUSED) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "DNS error (%d: %s), query id:%d",
+                      "DNS error (%ui: %s), query id:%ui",
                       code, ngx_resolver_strerror(code), ident);
         return;
     }
@@ -1010,11 +1010,11 @@ found:
     qclass = (qs->class_hi << 8) + qs->class_lo;
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver DNS response qt:%d cl:%d", qtype, qclass);
+                   "resolver DNS response qt:%ui cl:%ui", qtype, qclass);
 
     if (qclass != 1) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "unknown query class %d in DNS response", qclass);
+                      "unknown query class %ui in DNS response", qclass);
         return;
     }
 
@@ -1035,7 +1035,7 @@ found:
 
     default:
         ngx_log_error(r->log_level, r->log, 0,
-                      "unknown query type %d in DNS response", qtype);
+                      "unknown query type %ui in DNS response", qtype);
         return;
     }
 
@@ -1090,7 +1090,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "wrong ident %d response for %V, expect %d",
+                      "wrong ident %ui response for %V, expect %ui",
                       ident, &name, qident);
         goto failed;
     }
@@ -1326,8 +1326,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     }
 
     ngx_log_error(r->log_level, r->log, 0,
-                "no A or CNAME types in DNS responses, unknown query type: %d",
-                qtype);
+               "no A or CNAME types in DNS responses, unknown query type: %ui",
+               qtype);
     return;
 
 short_response:
@@ -1403,9 +1403,9 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "wrong ident %d response for %ud.%ud.%ud.%ud, expect %d",
-                      ident, (addr >> 24) & 0xff, (addr >> 16) & 0xff,
-                      (addr >> 8) & 0xff, addr & 0xff, qident);
+                    "wrong ident %ui response for %ud.%ud.%ud.%ud, expect %ui",
+                    ident, (addr >> 24) & 0xff, (addr >> 16) & 0xff,
+                    (addr >> 8) & 0xff, addr & 0xff, qident);
         goto failed;
     }
 
@@ -1456,7 +1456,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     len = (an->len_hi << 8) + an->len_lo;
 
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
-                  "resolver qt:%d cl:%d len:%uz", qtype, qclass, len);
+                  "resolver qt:%ui cl:%ui len:%uz", qtype, qclass, len);
 
     i += 2 + sizeof(ngx_resolver_an_t);
 
