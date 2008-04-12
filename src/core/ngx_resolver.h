@@ -29,6 +29,8 @@
 
 #define NGX_NO_RESOLVER       (void *) -1
 
+#define NGX_RESOLVER_MAX_RECURSION    50
+
 
 typedef struct {
     ngx_connection_t         *connection;
@@ -128,6 +130,7 @@ struct ngx_resolver_ctx_s {
     ngx_msec_t                timeout;
 
     ngx_uint_t                quick;  /* unsigned  quick:1; */
+    ngx_uint_t                recursion;
     ngx_event_t              *event;
 };
 

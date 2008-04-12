@@ -435,10 +435,29 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
             /* NGX_RESOLVE_CNAME */
 
-            ctx->name.len = rn->cnlen;
-            ctx->name.data = rn->u.cname;
+            if (ctx->recursion++ < NGX_RESOLVER_MAX_RECURSION) {
 
-            return ngx_resolve_name_locked(r, ctx);
+                ctx->name.len = rn->cnlen;
+                ctx->name.data = rn->u.cname;
+
+                return ngx_resolve_name_locked(r, ctx);
+            }
+
+            ctx->next = rn->waiting;
+            rn->waiting = NULL;
+
+            /* unlock name mutex */
+
+            do {
+                ctx->state = NGX_RESOLVE_NXDOMAIN;
+                next = ctx->next;
+
+                ctx->handler(ctx);
+
+                ctx = next;
+            } while (ctx);
+
+            return NGX_OK;
         }
 
         if (rn->waiting) {
