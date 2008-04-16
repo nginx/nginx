@@ -11,15 +11,15 @@
 ssize_t
 ngx_parse_size(ngx_str_t *line)
 {
-    u_char     last;
+    u_char     unit;
     size_t     len;
     ssize_t    size;
     ngx_int_t  scale;
 
     len = line->len;
-    last = line->data[len - 1];
+    unit = line->data[len - 1];
 
-    switch (last) {
+    switch (unit) {
     case 'K':
     case 'k':
         len--;
@@ -50,15 +50,15 @@ ngx_parse_size(ngx_str_t *line)
 off_t
 ngx_parse_offset(ngx_str_t *line)
 {
-    u_char     last;
+    u_char     unit;
     off_t      offset;
     size_t     len;
     ngx_int_t  scale;
 
     len = line->len;
-    last = line->data[len - 1];
+    unit = line->data[len - 1];
 
-    switch (last) {
+    switch (unit) {
     case 'K':
     case 'k':
         len--;
