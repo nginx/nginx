@@ -1419,6 +1419,7 @@ ngx_http_process_request(ngx_http_request_t *r)
 
     if (c->ssl) {
         long                      rc;
+        X509                     *cert;
         ngx_http_ssl_srv_conf_t  *sscf;
 
         sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
@@ -1438,9 +1439,9 @@ ngx_http_process_request(ngx_http_request_t *r)
                 return;
             }
 
-            if (SSL_get_peer_certificate(c->ssl->connection)
-                == NULL)
-            {
+            cert = SSL_get_peer_certificate(c->ssl->connection);
+
+            if (cert == NULL) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent no required SSL certificate");
 
@@ -1450,6 +1451,8 @@ ngx_http_process_request(ngx_http_request_t *r)
                 ngx_http_finalize_request(r, NGX_HTTPS_NO_CERT);
                 return;
             }
+
+            X509_free(cert);
         }
     }
 

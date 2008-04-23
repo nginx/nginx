@@ -1778,6 +1778,7 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     name = X509_get_subject_name(cert);
     if (name == NULL) {
+        X509_free(cert);
         return NGX_ERROR;
     }
 
@@ -1789,12 +1790,14 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->data = ngx_palloc(pool, len);
     if (s->data == NULL) {
         OPENSSL_free(p);
+        X509_free(cert);
         return NGX_ERROR;
     }
 
     ngx_memcpy(s->data, p, len);
 
     OPENSSL_free(p);
+    X509_free(cert);
 
     return NGX_OK;
 }
@@ -1817,6 +1820,7 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     name = X509_get_issuer_name(cert);
     if (name == NULL) {
+        X509_free(cert);
         return NGX_ERROR;
     }
 
@@ -1828,12 +1832,14 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->data = ngx_palloc(pool, len);
     if (s->data == NULL) {
         OPENSSL_free(p);
+        X509_free(cert);
         return NGX_ERROR;
     }
 
     ngx_memcpy(s->data, p, len);
 
     OPENSSL_free(p);
+    X509_free(cert);
 
     return NGX_OK;
 }
@@ -1855,6 +1861,7 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        X509_free(cert);
         return NGX_ERROR;
     }
 
@@ -1865,11 +1872,13 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->data = ngx_palloc(pool, len);
     if (s->data == NULL) {
         BIO_free(bio);
+        X509_free(cert);
         return NGX_ERROR;
     }
 
     BIO_read(bio, s->data, len);
     BIO_free(bio);
+    X509_free(cert);
 
     return NGX_OK;
 }
