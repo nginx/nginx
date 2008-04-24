@@ -17,8 +17,18 @@
 
 
 
+#ifdef __CYGWIN__
+
+#define ngx_open_file(name, mode, create, access)                            \
+    open((const char *) name, mode|create|O_BINARY, access)
+
+#else
+
 #define ngx_open_file(name, mode, create, access)                            \
     open((const char *) name, mode|create, access)
+
+#endif
+
 #define ngx_open_file_n          "open()"
 
 #define NGX_FILE_RDONLY          O_RDONLY
