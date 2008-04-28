@@ -285,6 +285,7 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 static int
 ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
 {
+#if (NGX_DEBUG)
     char              *subject, *issuer;
     int                err, depth;
     X509              *cert;
@@ -319,6 +320,7 @@ ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
     if (iname) {
         OPENSSL_free(issuer);
     }
+#endif
 
     return 1;
 }
