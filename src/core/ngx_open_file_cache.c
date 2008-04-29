@@ -173,8 +173,6 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
         file->uses++;
 
-        ngx_queue_remove(&file->queue);
-
         if (file->fd == NGX_INVALID_FILE && file->err == 0 && !file->is_dir) {
 
             /* file was not used often enough to keep open */
@@ -184,6 +182,8 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
             if (rc != NGX_OK && (of->err == 0 || !of->errors)) {
                 goto failed;
             }
+
+            ngx_queue_remove(&file->queue);
 
             goto add_event;
         }
@@ -212,6 +212,8 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
                 of->err = file->err;
             }
 
+            ngx_queue_remove(&file->queue);
+
             goto found;
         }
 
@@ -235,6 +237,8 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
         if (rc != NGX_OK && (of->err == 0 || !of->errors)) {
             goto failed;
         }
+
+        ngx_queue_remove(&file->queue);
 
         if (of->is_dir) {
 
