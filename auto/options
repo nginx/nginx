@@ -150,8 +150,8 @@ do
         --without-poll_module)           EVENT_POLL=NONE            ;;
         --with-aio_module)               EVENT_AIO=YES              ;;
 
-        --with-threads=*)                USE_THREADS="$value"       ;;
-        --with-threads)                  USE_THREADS="pthreads"     ;;
+        #--with-threads=*)                USE_THREADS="$value"       ;;
+        #--with-threads)                  USE_THREADS="pthreads"     ;;
 
         --without-http)                  HTTP=NO                    ;;
         --http-log-path=*)               NGX_HTTP_LOG_PATH="$value" ;;
