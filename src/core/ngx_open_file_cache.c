@@ -406,20 +406,27 @@ found:
 
 failed:
 
-    if (file && file->count == 0) {
+    if (file) {
         ngx_rbtree_delete(&cache->rbtree, &file->node);
 
         cache->current--;
 
-        if (file->fd != NGX_INVALID_FILE) {
-            if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed", file->name);
-            }
-        }
+        if (file->count == 0) {
 
-        ngx_free(file->name);
-        ngx_free(file);
+	    if (file->fd != NGX_INVALID_FILE) {
+		if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+		    ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
+				  ngx_close_file_n " \"%s\" failed",
+                                  file->name);
+		}
+	    }
+
+            ngx_free(file->name);
+            ngx_free(file);
+
+        } else {
+            file->close = 1;
+        }
     }
 
     if (of->fd != NGX_INVALID_FILE) {
