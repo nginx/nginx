@@ -171,6 +171,8 @@ ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_peer_addr_t *peer)
         return;
     }
 
+    s->out.len = 0;
+
     switch (s->protocol) {
 
     case NGX_MAIL_POP3_PROTOCOL:
