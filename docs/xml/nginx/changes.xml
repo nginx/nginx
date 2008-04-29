@@ -9,6 +9,84 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.30" date="29.04.2008">
+
+<change type="change">
+<para lang="ru">
+теперь, если маске, заданной в директиве include, не соответствует
+ни один файл, то nginx не выдаёт ошибку.
+</para>
+<para lang="en">
+now if an "include" directive pattern does not match any file,
+then nginx does not issue an error.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь время в директивах можно задавать без пробела, например, "1h50m".
+</para>
+<para lang="en">
+now the time in directives may be specified without spaces,
+for example, "1h50m".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечек памяти, если директива ssl_verify_client имела значение on.
+<br/>
+Спасибо Chavelle Vincent.
+</para>
+<para lang="en">
+memory leaks if the "ssl_verify_client" directive was on.
+<br/>
+Thanks to Chavelle Vincent.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива sub_filter могла вставлять заменяемый текст в вывод.
+</para>
+<para lang="en">
+the "sub_filter" directive might set text to change into output.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не воспринимала параметры в перенаправляемом URI.
+</para>
+<para lang="en">
+the "error_page" directive did not take into account arguments in
+redirected URI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь при сборке с Cygwin nginx всегда открывает файлы в бинарном режиме.
+</para>
+<para lang="en">
+now nginx always opens files in binary mode under Cygwin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под OpenBSD;
+ошибка появилась в 0.6.15.
+</para>
+<para lang="en">
+nginx could not be built on OpenBSD;
+bug appeared in 0.6.15.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.29" date="18.03.2008">
 
 <change type="feature">
@@ -26,7 +104,7 @@ the ngx_google_perftools_module.
 ошибка появилась в 0.6.27.
 </para>
 <para lang="en">
-the ngx_http_perl_module could be not built on 64-bit platforms;
+the ngx_http_perl_module could not be built on 64-bit platforms;
 bug appeared in 0.6.27.
 </para>
 </change>
@@ -42,7 +120,7 @@ bug appeared in 0.6.27.
 ошибка появилась в 0.6.27.
 </para>
 <para lang="en">
-the rtsig method could be not built;
+the rtsig method could not be built;
 bug appeared in 0.6.27.
 </para>
 </change>
@@ -2174,7 +2252,7 @@ Thanks to Andrei Nigmatulin.
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-the ngx_http_perl_module could not built by Solaris make.<br/>
+the ngx_http_perl_module could not be built by Solaris make.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
