@@ -441,8 +441,6 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     r->zero_in_uri = 0;
 
-    args = NULL;
-
     if (err_page->uri_lengths) {
         if (ngx_http_script_run(r, &u, err_page->uri_lengths->elts, 0,
                                 err_page->uri_values->elts)
@@ -453,6 +451,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
         p = u.data;
         uri = &u;
+        args = NULL;
 
         if (*p == '/') {
 
@@ -488,6 +487,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     } else {
         uri = &err_page->uri;
+        args = &err_page->args;
     }
 
     if (uri->data[0] == '/') {

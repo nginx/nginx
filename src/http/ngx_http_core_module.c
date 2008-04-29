@@ -3471,6 +3471,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
+    u_char                     *args;
     ngx_int_t                   overwrite;
     ngx_str_t                  *value, uri;
     ngx_uint_t                  i, n, nvar;
@@ -3539,6 +3540,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    args = (u_char *) ngx_strchr(uri.data, '?');
+
     for (i = 1; i < cf->args->nelts - n; i++) {
         err = ngx_array_push(lcf->error_pages);
         if (err == NULL) {
@@ -3577,7 +3580,19 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
-        err->uri = uri;
+        if (args) {
+            err->uri.len = args - uri.data;
+            err->uri.data = uri.data;
+            args++;
+            err->args.len = (uri.data + uri.len) - args;
+            err->args.data = args;
+
+        } else {
+            err->uri = uri;
+            err->args.len = 0;
+            err->args.data = NULL;
+        }
+
         err->uri_lengths = uri_lengths;
         err->uri_values = uri_values;
     }
