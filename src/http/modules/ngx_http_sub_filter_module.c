@@ -590,7 +590,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
                 ctx->state = sub_start_state;
                 ctx->pos = p + 1;
-                ctx->looked = looked;
+                ctx->looked = 0;
                 ctx->copy_end = copy_end;
 
                 if (ctx->copy_start == NULL && copy_end) {
