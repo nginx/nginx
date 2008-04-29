@@ -257,7 +257,15 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 ngx_int_t
 ngx_open_glob(ngx_glob_t *gl)
 {
-    if (glob((char *) gl->pattern, GLOB_NOSORT, NULL, &gl->pglob) == 0) {
+    int  n;
+
+    n = glob((char *) gl->pattern, GLOB_NOSORT, NULL, &gl->pglob);
+
+    if (n == 0) {
+        return NGX_OK;
+    }
+
+    if (n == GLOB_NOMATCH && gl->test) {
         return NGX_OK;
     }
 

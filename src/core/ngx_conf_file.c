@@ -645,10 +645,18 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (strpbrk((char *) file.data, "*?[") == NULL) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
+
+        return ngx_conf_parse(cf, &file);
+    }
+
     ngx_memzero(&gl, sizeof(ngx_glob_t));
 
     gl.pattern = file.data;
     gl.log = cf->log;
+    gl.test = 1;
 
     if (ngx_open_glob(&gl) != NGX_OK) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,

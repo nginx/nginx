@@ -361,6 +361,12 @@ ngx_open_glob(ngx_glob_t *gl)
     gl->dir = FindFirstFile((const char *) gl->pattern, &gl->finddata);
 
     if (gl->dir == INVALID_HANDLE_VALUE) {
+
+        if (ngx_errno == ERROR_FILE_NOT_FOUND && gl->test) {
+            gl->no_match = 1;
+            return NGX_OK;
+        }
+
         return NGX_ERROR;
     }
 
@@ -393,6 +399,10 @@ ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
     size_t     len;
     ngx_err_t  err;
+
+    if (gl->no_match) {
+        return NGX_DONE;
+    }
 
     if (gl->ready) {
         *name = gl->name;
@@ -441,6 +451,10 @@ ngx_close_glob(ngx_glob_t *gl)
 {
     if (gl->name.data) {
         ngx_free(gl->name.data);
+    }
+
+    if (gl->dir == INVALID_HANDLE_VALUE) {
+        return;
     }
 
     if (FindClose(gl->dir) == 0) {

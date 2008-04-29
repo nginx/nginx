@@ -184,7 +184,11 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 typedef struct {
     HANDLE            dir;
     WIN32_FIND_DATA   finddata;
-    ngx_int_t         ready;
+
+    unsigned          ready:1;
+    unsigned          test:1;
+    unsigned          no_match:1;
+
     u_char           *pattern;
     ngx_str_t         name;
     size_t            last;
