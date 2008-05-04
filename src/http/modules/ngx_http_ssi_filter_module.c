@@ -1983,6 +1983,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         if (bl[i].count++) {
 
+            out = NULL;
             ll = &out;
 
             for (tl = bl[i].bufs; tl; tl = tl->next) {
