@@ -194,6 +194,8 @@ typedef struct {
     ngx_table_elt_t                *content_encoding;
 #endif
 
+    off_t                           content_length_n;
+
     ngx_array_t                     cache_control;
 } ngx_http_upstream_headers_in_t;
 
