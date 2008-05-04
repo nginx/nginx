@@ -40,10 +40,14 @@ typedef struct  port_notify {
     void       *portnfy_user;   /* user defined */
 } port_notify_t;
 
+#if (__FreeBSD_version < 700005)
+
 typedef struct itimerspec {     /* definition per POSIX.4 */
     struct timespec it_interval;/* timer period */
     struct timespec it_value;   /* timer expiration */
 } itimerspec_t;
+
+#endif
 
 int port_create(void)
 {
@@ -106,7 +110,7 @@ static char *ngx_eventport_init_conf(ngx_cycle_t *cycle, void *conf);
 static int            ep = -1;
 static port_event_t  *event_list;
 static ngx_uint_t     nevents;
-static timer_t        event_timer = -1;
+static timer_t        event_timer = (timer_t) -1;
 
 static ngx_str_t      eventport_name = ngx_string("eventport");
 
@@ -237,13 +241,13 @@ ngx_eventport_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 static void
 ngx_eventport_done(ngx_cycle_t *cycle)
 {
-    if (event_timer != -1) {
+    if (event_timer != (timer_t) -1) {
         if (timer_delete(event_timer) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "timer_delete() failed");
         }
 
-        event_timer = -1;
+        event_timer = (timer_t) -1;
     }
 
     if (close(ep) == -1) {
