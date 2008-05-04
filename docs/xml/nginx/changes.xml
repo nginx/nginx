@@ -9,6 +9,91 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.36" date="04.05.2008">
+
+<change type="bugfix">
+<para lang="ru">
+директива sub_filter могла вставлять заменяемый текст в вывод.
+</para>
+<para lang="en">
+the "sub_filter" directive might set text to change into output.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при повторном использовании в SSI пустого block'а в качестве заглушки
+в рабочем процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if empty stub block was used second time in SSI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_store и fastcgi_store не проверяли длину ответа.
+</para>
+<para lang="en">
+the "proxy_store" and "fastcgi_store" directives did not check
+a response length.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx выдавал ошибочное сообщение "SSL_shutdown() failed (SSL: )";
+ошибка появилась в 0.5.35.
+</para>
+<para lang="en">
+nginx issued the bogus error message "SSL_shutdown() failed (SSL: )";
+bug appeared in 0.5.35.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry";
+ошибка появилась в 0.5.35.
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error;
+bug appeared in 0.5.35.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива fastcgi_catch_stderr не возвращала ошибку;
+теперь она возвращает ошибку 502, которую можно направить на следующий сервер
+с помощью "fastcgi_next_upstream invalid_header".
+</para>
+<para lang="en">
+the "fastcgi_catch_stderr" directive did return error code;
+now it returns 502 code, that can be rerouted to a next server using
+the "fastcgi_next_upstream invalid_header" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы fastcgi_catch_stderr
+в основном процессе происходил segmentation fault;
+ошибка появилась в 0.5.32.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+a segmentation fault occurred in master process
+if the "fastcgi_catch_stderr" directive was used;
+bug appeared in 0.5.32.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.35" date="08.01.2008">
 
 <change type="change">
@@ -1147,7 +1232,7 @@ Thanks to Andrei Nigmatulin.
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-the ngx_http_perl_module could not built by Solaris make.<br/>
+the ngx_http_perl_module could not be built by Solaris make.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
