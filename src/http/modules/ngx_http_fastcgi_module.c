@@ -1232,7 +1232,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         }
 
         if (rc == NGX_OK) {
-            return NGX_AGAIN;
+            continue;
         }
 
         /* rc == NGX_AGAIN */
