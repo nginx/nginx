@@ -9,6 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.31" date="12.05.2008">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не обрабатывал ответ FastCGI-сервера, если строка заголовка ответ была
+в конце записи FastCGI;
+ошибка появилась в 0.6.2.<br/>
+Спасибо Сергею Серову.
+</para>
+<para lang="en">
+nginx did not process FastCGI response
+if header was at the end of FastCGI record;
+bug appeared in 0.6.2.<br/>
+Thanks to Sergey Serov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при удалении файла и использовании директивы open_file_cache_errors off
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process if a file was deleted
+and the "open_file_cache_errors" directive was off.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.30" date="29.04.2008">
 
 <change type="change">
@@ -34,13 +65,11 @@ for example, "1h50m".
 
 <change type="bugfix">
 <para lang="ru">
-утечек памяти, если директива ssl_verify_client имела значение on.
-<br/>
+утечек памяти, если директива ssl_verify_client имела значение on.<br/>
 Спасибо Chavelle Vincent.
 </para>
 <para lang="en">
-memory leaks if the "ssl_verify_client" directive was on.
-<br/>
+memory leaks if the "ssl_verify_client" directive was on.<br/>
 Thanks to Chavelle Vincent.
 </para>
 </change>
