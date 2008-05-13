@@ -74,8 +74,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host),
                  ngx_http_process_unique_header_line },
 
-    { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
-                 ngx_http_process_connection },
+    { ngx_string("Connection"), 0, ngx_http_process_connection },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
@@ -1268,7 +1267,7 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
 
-    if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
+    if (ua && ua + 8 < user_agent + h->value.len) {
 
         r->headers_in.msie = 1;
 
