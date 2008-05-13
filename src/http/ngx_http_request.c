@@ -23,6 +23,8 @@ static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -79,8 +81,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  offsetof(ngx_http_headers_in_t, if_modified_since),
                  ngx_http_process_unique_header_line },
 
-    { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent),
-                 ngx_http_process_header_line },
+    { ngx_string("User-Agent"), 0, ngx_http_process_user_agent },
 
     { ngx_string("Referer"), offsetof(ngx_http_headers_in_t, referer),
                  ngx_http_process_header_line },
@@ -1250,10 +1251,64 @@ ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
+ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    u_char  *ua, *user_agent;
+
+    if (r->headers_in.user_agent) {
+        return NGX_OK;
+    }
+
+    r->headers_in.user_agent = h;
+
+    /* check some widespread browsers while the header is in CPU cache */
+
+    user_agent = h->value.data;
+
+    ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
+
+    if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
+
+        r->headers_in.msie = 1;
+
+        if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
+            r->headers_in.msie4 = 1;
+        }
+
+#if 0
+        /* MSIE ignores the SSL "close notify" alert */
+        if (c->ssl) {
+            c->ssl->no_send_shutdown = 1;
+        }
+#endif
+    }
+
+    if (ngx_strstrn(user_agent, "Opera", 5 - 1)) {
+        r->headers_in.opera = 1;
+        r->headers_in.msie = 0;
+        r->headers_in.msie4 = 0;
+    }
+
+    if (!r->headers_in.msie && !r->headers_in.opera) {
+
+        if (ngx_strstrn(user_agent, "Gecko/", 6 - 1)) {
+            r->headers_in.gecko = 1;
+
+        } else if (ngx_strstrn(user_agent, "Konqueror", 9 - 1)) {
+            r->headers_in.konqueror = 1;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
     size_t       len;
-    u_char      *host, *ua, *user_agent, ch;
+    u_char      *host, ch;
     ngx_uint_t   hash;
 
     if (r->headers_in.host) {
@@ -1350,50 +1405,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
             r->headers_in.keep_alive_n =
                             ngx_atotm(r->headers_in.keep_alive->value.data,
                                       r->headers_in.keep_alive->value.len);
-        }
-    }
-
-    if (r->headers_in.user_agent) {
-
-        /*
-         * check some widespread browsers while the headers are still
-         * in CPU cache
-         */
-
-        user_agent = r->headers_in.user_agent->value.data;
-
-        ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
-
-        if (ua && ua + 8 < user_agent + r->headers_in.user_agent->value.len) {
-
-            r->headers_in.msie = 1;
-
-            if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
-                r->headers_in.msie4 = 1;
-            }
-
-#if 0
-            /* MSIE ignores the SSL "close notify" alert */
-            if (c->ssl) {
-                c->ssl->no_send_shutdown = 1;
-            }
-#endif
-        }
-
-        if (ngx_strstrn(user_agent, "Opera", 5 - 1)) {
-            r->headers_in.opera = 1;
-            r->headers_in.msie = 0;
-            r->headers_in.msie4 = 0;
-        }
-
-        if (!r->headers_in.msie && !r->headers_in.opera) {
-
-            if (ngx_strstrn(user_agent, "Gecko/", 6 - 1)) {
-                r->headers_in.gecko = 1;
-
-            } else if (ngx_strstrn(user_agent, "Konqueror", 9 - 1)) {
-                r->headers_in.konqueror = 1;
-            }
         }
     }
 
