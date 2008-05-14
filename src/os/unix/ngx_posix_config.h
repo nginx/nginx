@@ -110,7 +110,7 @@
 
 #include <sys/param.h>          /* ALIGN() */
 
-/* 
+/*
  * FreeBSD 3.x has no CMSG_SPACE() and CMSG_LEN() and has the broken CMSG_DATA()
  */
 

@@ -202,7 +202,7 @@ ngx_resolver_cleanup_tree(ngx_resolver_t *r, ngx_rbtree_t *tree)
         ngx_queue_remove(&rn->queue);
 
         for (ctx = rn->waiting; ctx; ctx = next) {
-            next = ctx->next; 
+            next = ctx->next;
 
             if (ctx->event) {
                 ngx_resolver_free(r, ctx->event);
