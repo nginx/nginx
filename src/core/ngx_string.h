@@ -25,11 +25,12 @@ typedef struct {
 
 
 typedef struct {
-    unsigned    len:29;
+    unsigned    len:28;
 
     unsigned    valid:1;
     unsigned    no_cacheable:1;
     unsigned    not_found:1;
+    unsigned    escape:1;
 
     u_char     *data;
 } ngx_variable_value_t;
