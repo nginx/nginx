@@ -206,7 +206,7 @@ typedef struct {
 
     ngx_array_t                       cookies;
 
-    size_t                            host_name_len;
+    ngx_str_t                         server;
     off_t                             content_length_n;
     time_t                            keep_alive_n;
 

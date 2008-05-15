@@ -712,26 +712,15 @@ ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 {
     ngx_http_core_srv_conf_t  *cscf;
 
-    if (r->host_start == NULL) {
-
-        if (r->headers_in.host) {
-            v->len = r->headers_in.host_name_len;
-            v->data = r->headers_in.host->value.data;
-
-        } else {
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-            v->len = cscf->server_name.len;
-            v->data = cscf->server_name.data;
-        }
-
-    } else if (r->host_end) {
-        v->len = r->host_end - r->host_start;
-        v->data = r->host_start;
+    if (r->headers_in.server.len) {
+        v->len = r->headers_in.server.len;
+        v->data = r->headers_in.server.data;
 
     } else {
-        v->not_found = 1;
-        return NGX_OK;
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        v->len = cscf->server_name.len;
+        v->data = cscf->server_name.data;
     }
 
     v->valid = 1;
