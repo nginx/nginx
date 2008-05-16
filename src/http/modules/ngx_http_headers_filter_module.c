@@ -31,16 +31,18 @@ struct ngx_http_header_val_s {
 };
 
 
+#define NGX_HTTP_EXPIRES_OFF       0
+#define NGX_HTTP_EXPIRES_EPOCH     1
+#define NGX_HTTP_EXPIRES_MAX       2
+#define NGX_HTTP_EXPIRES_ACCESS    3
+#define NGX_HTTP_EXPIRES_MODIFIED  4
+
+
 typedef struct {
-    time_t                   expires;
+    ngx_uint_t               expires;
+    time_t                   expires_time;
     ngx_array_t             *headers;
 } ngx_http_headers_conf_t;
-
-
-#define NGX_HTTP_EXPIRES_UNSET   -2147483647
-#define NGX_HTTP_EXPIRES_OFF     -2147483646
-#define NGX_HTTP_EXPIRES_EPOCH   -2147483645
-#define NGX_HTTP_EXPIRES_MAX     -2147483644
 
 
 static ngx_int_t ngx_http_set_expires(ngx_http_request_t *r,
@@ -76,7 +78,7 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
 
     { ngx_string("expires"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                        |NGX_CONF_TAKE1,
+                        |NGX_CONF_TAKE12,
       ngx_http_headers_expires,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -185,6 +187,7 @@ static ngx_int_t
 ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 {
     size_t            len;
+    time_t            since;
     ngx_uint_t        i;
     ngx_table_elt_t  *expires, *cc, **ccp;
 
@@ -266,7 +269,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_ERROR;
     }
 
-    if (conf->expires == 0) {
+    if (conf->expires_time == 0) {
         ngx_memcpy(expires->value.data, ngx_cached_http_time.data,
                    ngx_cached_http_time.len + 1);
 
@@ -276,9 +279,18 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_OK;
     }
 
-    ngx_http_time(expires->value.data, ngx_time() + conf->expires);
+    if (conf->expires == NGX_HTTP_EXPIRES_ACCESS
+        || r->headers_out.last_modified_time == -1)
+    {
+        since = ngx_time();
 
-    if (conf->expires < 0) {
+    } else {
+        since = r->headers_out.last_modified_time;
+    }
+
+    ngx_http_time(expires->value.data, since + conf->expires_time);
+
+    if (conf->expires_time < 0) {
         cc->value.len = sizeof("no-cache") - 1;
         cc->value.data = (u_char *) "no-cache";
 
@@ -291,7 +303,8 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_ERROR;
     }
 
-    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T", conf->expires)
+    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T",
+                                since + conf->expires_time - ngx_time())
                     - cc->value.data;
 
     return NGX_OK;
@@ -413,9 +426,10 @@ ngx_http_headers_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->headers = NULL;
+     *     conf->expires_time = 0;
      */
 
-    conf->expires = NGX_HTTP_EXPIRES_UNSET;
+    conf->expires = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -427,9 +441,13 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_headers_conf_t *prev = parent;
     ngx_http_headers_conf_t *conf = child;
 
-    if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
-        conf->expires = (prev->expires == NGX_HTTP_EXPIRES_UNSET) ?
-                            NGX_HTTP_EXPIRES_OFF : prev->expires;
+    if (conf->expires == NGX_CONF_UNSET_UINT) {
+        conf->expires = prev->expires;
+        conf->expires_time = prev->expires_time;
+
+        if (conf->expires == NGX_CONF_UNSET_UINT) {
+            conf->expires = NGX_HTTP_EXPIRES_OFF;
+        }
     }
 
     if (conf->headers == NULL) {
@@ -455,56 +473,73 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_headers_conf_t *hcf = conf;
 
-    ngx_uint_t   minus;
+    ngx_uint_t   minus, n;
     ngx_str_t   *value;
 
-    if (hcf->expires != NGX_HTTP_EXPIRES_UNSET) {
+    if (hcf->expires != NGX_CONF_UNSET_UINT) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "epoch") == 0) {
-        hcf->expires = NGX_HTTP_EXPIRES_EPOCH;
-        return NGX_CONF_OK;
+    if (cf->args->nelts == 2) {
+
+        if (ngx_strcmp(value[1].data, "epoch") == 0) {
+            hcf->expires = NGX_HTTP_EXPIRES_EPOCH;
+            return NGX_CONF_OK;
+        }
+
+        if (ngx_strcmp(value[1].data, "max") == 0) {
+            hcf->expires = NGX_HTTP_EXPIRES_MAX;
+            return NGX_CONF_OK;
+        }
+
+        if (ngx_strcmp(value[1].data, "off") == 0) {
+            hcf->expires = NGX_HTTP_EXPIRES_OFF;
+            return NGX_CONF_OK;
+        }
+
+        hcf->expires = NGX_HTTP_EXPIRES_ACCESS;
+
+        n = 1;
+
+    } else { /* cf->args->nelts == 3 */
+
+        if (ngx_strcmp(value[1].data, "modified") != 0) {
+            return "invalid value";
+        }
+
+        hcf->expires = NGX_HTTP_EXPIRES_MODIFIED;
+
+        n = 2;
     }
 
-    if (ngx_strcmp(value[1].data, "max") == 0) {
-        hcf->expires = NGX_HTTP_EXPIRES_MAX;
-        return NGX_CONF_OK;
-    }
-
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        hcf->expires = NGX_HTTP_EXPIRES_OFF;
-        return NGX_CONF_OK;
-    }
-
-    if (value[1].data[0] == '+') {
-        value[1].data++;
-        value[1].len--;
+    if (value[n].data[0] == '+') {
+        value[n].data++;
+        value[n].len--;
         minus = 0;
 
-    } else if (value[1].data[0] == '-') {
-        value[1].data++;
-        value[1].len--;
+    } else if (value[n].data[0] == '-') {
+        value[n].data++;
+        value[n].len--;
         minus = 1;
 
     } else {
         minus = 0;
     }
 
-    hcf->expires = ngx_parse_time(&value[1], 1);
+    hcf->expires_time = ngx_parse_time(&value[n], 1);
 
-    if (hcf->expires == NGX_ERROR) {
+    if (hcf->expires_time == NGX_ERROR) {
         return "invalid value";
     }
 
-    if (hcf->expires == NGX_PARSE_LARGE_TIME) {
+    if (hcf->expires_time == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
     }
 
     if (minus) {
-        hcf->expires = - hcf->expires;
+        hcf->expires_time = - hcf->expires_time;
     }
 
     return NGX_CONF_OK;
