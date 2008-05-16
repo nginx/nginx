@@ -185,20 +185,7 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->server_name, prev->server_name, "");
 
     if (conf->server_name.len == 0) {
-        conf->server_name.data = ngx_palloc(cf->pool, NGX_MAXHOSTNAMELEN);
-        if (conf->server_name.data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        if (gethostname((char *) conf->server_name.data, NGX_MAXHOSTNAMELEN)
-            == -1)
-        {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
-                          "gethostname() failed");
-            return NGX_CONF_ERROR;
-        }
-
-        conf->server_name.len = ngx_strlen(conf->server_name.data);
+        conf->server_name = cf->cycle->hostname;
     }
 
     if (conf->protocol == NULL) {
