@@ -51,26 +51,14 @@ case $OPENSSL in
 esac
 
 case $MD5 in
-    YES)
-        case $OPENSSL in
-            NONE|NO)  echo "  + md5: using system $MD5_LIB library" ;;
-            *)        echo "  + md5: using OpenSSL library" ;;
-        esac
-        ;;
-
+    YES)   echo "  + md5: using $MD5_LIB library" ;;
     NONE)  echo "  + md5 library is not used" ;;
     NO)    echo "  + md5 library is not found" ;;
     *)     echo "  + using md5 library: $MD5" ;;
 esac
 
 case $SHA1 in
-    YES)
-        case $OPENSSL in
-            NONE|NO)  echo "  + sha1: using system $SHA1_LIB library" ;;
-            *)        echo "  + sha1: using OpenSSL library" ;;
-        esac
-        ;;
-
+    YES)   echo "  + sha1: using $SHA1_LIB library" ;;
     NONE)  echo "  + sha1 library is not used" ;;
     NO)    echo "  + sha1 library is not found" ;;
     *)     echo "  + using sha1 library: $SHA1" ;;

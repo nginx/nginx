@@ -45,6 +45,7 @@ if [ $MD5 != NONE ]; then
 else
 
     if [ "$NGX_PLATFORM" != win32 ]; then
+
         MD5=NO
 
         # Solaris 8/9
@@ -58,55 +59,43 @@ else
         ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
         . auto/feature
 
-        if [ $ngx_found = yes ]; then
-            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
-            MD5=YES
-            MD5_LIB=md5
-            ngx_found=no
+        ngx_md5_lib="system md5"
 
-        else
+        if [ $ngx_found = no ]; then
+
             # FreeBSD
 
             ngx_feature="rsaref md library"
-            ngx_feature_name=
-            ngx_feature_run=no
-            ngx_feature_incs="#include <md5.h>"
-            ngx_feature_path=
             ngx_feature_libs="-lmd"
-            ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
             . auto/feature
+
+            ngx_md5_lib="system md"
         fi
 
+        if [ $ngx_found = no ]; then
 
-        if [ $ngx_found = yes ]; then
-            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
-            MD5=YES
-            MD5_LIB=md
-            ngx_found=no
+            # OpenSSL crypto library
 
-        else
-            if [ $MD5 = NO ]; then
+            ngx_feature="OpenSSL md5 crypto library"
+            ngx_feature_name="NGX_OPENSSL_MD5"
+            ngx_feature_incs="#include <openssl/md5.h>"
+            ngx_feature_libs="-lcrypto"
+            ngx_feature_test="MD5_CTX md5; MD5_Init(&md5)"
+            . auto/feature
 
-                # OpenSSL crypto library
+            ngx_md5_lib="system crypto"
 
-                ngx_feature="OpenSSL md5 crypto library"
-                ngx_feature_name="NGX_OPENSSL_MD5"
-                ngx_feature_run=no
-                ngx_feature_incs="#include <openssl/md5.h>"
-                ngx_feature_path=
-                ngx_feature_libs="-lcrypto"
-                ngx_feature_test="MD5_CTX md5; MD5_Init(&md5)"
-                . auto/feature
+            if [ $ngx_found = yes ]; then
+                have=NGX_HAVE_OPENSSL_MD5_H . auto/have
             fi
         fi
 
-
         if [ $ngx_found = yes ]; then
-            have=NGX_HAVE_OPENSSL_MD5_H . auto/have
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             MD5=YES
-            MD5_LIB=crypto
+            MD5_LIB=$ngx_md5_lib
         fi
+
     fi
 
 fi

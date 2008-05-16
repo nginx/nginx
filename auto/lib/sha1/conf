@@ -35,6 +35,7 @@ if [ $SHA1 != NONE ]; then
 else
 
     if [ "$NGX_PLATFORM" != win32 ]; then
+
         SHA1=NO
 
         # FreeBSD
@@ -48,35 +49,28 @@ else
         ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
         . auto/feature
 
+        ngx_sha1_lib="system md"
 
-        if [ $ngx_found = yes ]; then
-            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
-            SHA1=YES
-            SHA1_LIB=md
-            ngx_found=no
+        if [ $ngx_found = no ]; then
 
-        else
-            if [ $SHA1 = NO ]; then
+            # OpenSSL crypto library
 
-                # OpenSSL crypto library
+            ngx_feature="OpenSSL sha1 crypto library"
+            ngx_feature_incs="#include <openssl/sha.h>"
+            ngx_feature_libs="-lcrypto"
+            . auto/feature
 
-                ngx_feature="OpenSSL sha1 crypto library"
-                ngx_feature_name=
-                ngx_feature_run=no
-                ngx_feature_incs="#include <openssl/sha.h>"
-                ngx_feature_path=
-                ngx_feature_libs="-lcrypto"
-                ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
-                . auto/feature
+            ngx_sha1_lib="system crypto"
+
+            if [ $ngx_found = yes ]; then
+                have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
             fi
         fi
 
-
         if [ $ngx_found = yes ]; then
-            have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             SHA1=YES
-            SHA1_LIB=crypto
+            SHA1_LIB=$ngx_sha1_lib
         fi
     fi
 
