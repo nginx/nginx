@@ -9,6 +9,84 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.0" date="19.05.2008">
+
+<change type="change">
+<para lang="ru">
+теперь символы 0x00-0x1F, '"' и '\' в access_log записываются в виде \xXX.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now the 0x00-0x1F, '"' and '\' characters are escaped as \xXX in an
+access_log.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx разрешает несколько строк "Host" в заголовке запроса.
+</para>
+<para lang="en">
+now nginx allows several "Host" request header line.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает флаг modified.
+</para>
+<para lang="en">
+the "modified" flag in the "expires" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $uid_got и $uid_set можно использовать на любой стадии обработки
+запроса.
+</para>
+<para lang="en">
+the $uid_got and $uid_set variables may be used at any request processing stage.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $hostname.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+the $hostname variable.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка DESTDIR.<br/>
+Спасибо Todd A. Fisher и Andras Voroskoi.
+</para>
+<para lang="en">
+DESTDIR support.<br/>
+Thanks to Todd A. Fisher and Andras Voroskoi.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании keepalive на Linux
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process on Linux,
+if keepalive was enabled.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.31" date="12.05.2008">
 
 <change type="bugfix">
