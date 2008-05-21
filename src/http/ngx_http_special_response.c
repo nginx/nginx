@@ -343,7 +343,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
     r->err_status = error;
 
-    if (r->keepalive != 0) {
+    if (r->keepalive) {
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
             case NGX_HTTP_REQUEST_ENTITY_TOO_LARGE:

@@ -1836,7 +1836,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     if (!ngx_terminate
          && !ngx_exiting
-         && r->keepalive != 0
+         && r->keepalive
          && clcf->keepalive_timeout > 0)
     {
         ngx_http_set_keepalive(r);
