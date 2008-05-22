@@ -1224,7 +1224,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
-    for ( ;;  ) {
+    for ( ;; ) {
 
         rc = ngx_http_parse_header_line(r, &r->upstream->buffer);
 

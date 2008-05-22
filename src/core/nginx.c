@@ -1078,7 +1078,7 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                           "invalid character \"%c\" in \"worker_cpu_affinity\"",
                           ch);
-            return NGX_CONF_ERROR ;
+            return NGX_CONF_ERROR;
         }
     }
 

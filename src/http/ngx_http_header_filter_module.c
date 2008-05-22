@@ -536,7 +536,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         }
 
         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
-        *b->last++ = ':' ; *b->last++ = ' ' ;
+        *b->last++ = ':'; *b->last++ = ' ';
 
         b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
         *b->last++ = CR; *b->last++ = LF;

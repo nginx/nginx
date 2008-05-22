@@ -942,7 +942,7 @@ ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t  *value;
 
     if (ecf->connections != NGX_CONF_UNSET_UINT) {
-        return "is duplicate" ;
+        return "is duplicate";
     }
 
     if (ngx_strcmp(cmd->name.data, "connections") == 0) {
@@ -977,7 +977,7 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_event_module_t   *module;
 
     if (ecf->use != NGX_CONF_UNSET_UINT) {
-        return "is duplicate" ;
+        return "is duplicate";
     }
 
     value = cf->args->elts;

@@ -446,7 +446,7 @@ ngx_kqueue_set_event(ngx_event_t *ev, ngx_int_t filter, ngx_uint_t flags)
     || __FreeBSD_version >= 500018
                                  |NOTE_REVOKE
 #endif
-                                       ;
+                      ;
         kev->data = 0;
 
     } else {

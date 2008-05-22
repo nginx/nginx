@@ -255,10 +255,10 @@ struct ngx_http_core_loc_conf_s {
     ngx_array_t  *locations;
 
     /* pointer to the modules' loc_conf */
-    void        **loc_conf ;
+    void        **loc_conf;
 
     uint32_t      limit_except;
-    void        **limit_except_loc_conf ;
+    void        **limit_except_loc_conf;
 
     ngx_http_handler_pt  handler;
 
@@ -401,7 +401,7 @@ extern ngx_uint_t ngx_http_max_module;
                                                                               \
     r->allow_ranges = 0;                                                      \
     if (r->headers_out.accept_ranges) {                                       \
-        r->headers_out.accept_ranges->hash = 0 ;                              \
+        r->headers_out.accept_ranges->hash = 0;                               \
         r->headers_out.accept_ranges = NULL;                                  \
     }
 

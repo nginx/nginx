@@ -1637,7 +1637,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         quoted = 0;
 
-        for (i = 0 ; i < text->len; i++) {
+        for (i = 0; i < text->len; i++) {
             ch = text->data[i];
 
             if (!quoted) {

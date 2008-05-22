@@ -619,7 +619,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
     b->last = tail + len;
 
     out[1].buf = b;
-    out[1].next = NULL;;
+    out[1].next = NULL;
 
     if (msie_padding) {
         b = ngx_calloc_buf(r->pool);
@@ -633,7 +633,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
 
         out[1].next = &out[2];
         out[2].buf = b;
-        out[2].next = NULL;;
+        out[2].next = NULL;
     }
 
     if (r == r->main) {

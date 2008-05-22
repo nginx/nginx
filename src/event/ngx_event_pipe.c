@@ -880,7 +880,7 @@ ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free, ngx_buf_t *buf)
 
     ll = free;
 
-    for (cl = *free ; cl; cl = cl->next) {
+    for (cl = *free; cl; cl = cl->next) {
         if (cl->buf == s) {
             *ll = cl->next;
             break;
