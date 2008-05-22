@@ -928,33 +928,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-#if 0
-    {
-    u_char      address[20];
-    ngx_uint_t  p, a;
-
-    in_port = in_ports.elts;
-    for (p = 0; p < in_ports.nelts; p++) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                      "port: %d %p", in_port[p].port, &in_port[p]);
-        in_addr = in_port[p].addrs.elts;
-        for (a = 0; a < in_port[p].addrs.nelts; a++) {
-            ngx_inet_ntop(AF_INET, &in_addr[a].addr, address, 20);
-            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                           "%s:%d %p",
-                           address, in_port[p].port, in_addr[a].core_srv_conf);
-            name = in_addr[a].names.elts;
-            for (n = 0; n < in_addr[a].names.nelts; n++) {
-                 ngx_log_debug4(NGX_LOG_DEBUG_HTTP, cf->log, 0,
-                                "%s:%d %V %p",
-                                address, in_port[p].port, &name[n].name,
-                                name[n].core_srv_conf);
-            }
-        }
-    }
-    }
-#endif
-
     return NGX_CONF_OK;
 }
 
