@@ -11,6 +11,12 @@
 
 
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static ngx_int_t ngx_http_init_phases(ngx_conf_t *cf,
+    ngx_http_core_main_conf_t *cmcf);
+static ngx_int_t ngx_http_init_headers_in_hash(ngx_conf_t *cf,
+    ngx_http_core_main_conf_t *cmcf);
+static ngx_int_t ngx_http_init_phase_handlers(ngx_conf_t *cf,
+    ngx_http_core_main_conf_t *cmcf);
 static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
     ngx_http_conf_in_port_t *in_port, ngx_http_listen_t *lscf,
     ngx_http_core_srv_conf_t *cscf);
@@ -73,30 +79,24 @@ static char *
 ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                        *rv;
-    ngx_int_t                    rc, j;
-    ngx_uint_t                   mi, m, s, l, p, a, i, n;
-    ngx_uint_t                   find_config_index, use_rewrite, use_access;
+    ngx_int_t                    rc;
+    ngx_uint_t                   mi, m, s, l, p, a, i;
     ngx_uint_t                   last, bind_all, done;
     ngx_conf_t                   pcf;
-    ngx_array_t                  headers_in, in_ports;
-    ngx_hash_key_t              *hk;
+    ngx_array_t                  in_ports;
     ngx_hash_init_t              hash;
     ngx_listening_t             *ls;
     ngx_http_listen_t           *lscf;
     ngx_http_module_t           *module;
-    ngx_http_header_t           *header;
     ngx_http_in_port_t          *hip;
-    ngx_http_handler_pt         *h;
     ngx_http_conf_ctx_t         *ctx;
     ngx_http_conf_in_port_t     *in_port;
     ngx_http_conf_in_addr_t     *in_addr;
     ngx_hash_keys_arrays_t       ha;
     ngx_http_server_name_t      *name;
-    ngx_http_phase_handler_t    *ph;
     ngx_http_virtual_names_t    *vn;
     ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_loc_conf_t    *clcf;
-    ngx_http_phase_handler_pt    checker;
     ngx_http_core_main_conf_t   *cmcf;
 #if (NGX_PCRE)
     ngx_uint_t                   regex;
@@ -285,90 +285,11 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    /* init lists of the handlers */
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
+    if (ngx_http_init_phases(cf, cmcf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
-                       cf->pool, 2, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
-                       cf->pool, 4, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers,
-                       cf->pool, 1, sizeof(ngx_http_handler_pt))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-
-    if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-    for (header = ngx_http_headers_in; header->name.len; header++) {
-        hk = ngx_array_push(&headers_in);
-        if (hk == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        hk->key = header->name;
-        hk->key_hash = ngx_hash_key_lc(header->name.data, header->name.len);
-        hk->value = header;
-    }
-
-    hash.hash = &cmcf->headers_in_hash;
-    hash.key = ngx_hash_key_lc;
-    hash.max_size = 512;
-    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
-    hash.name = "headers_in_hash";
-    hash.pool = cf->pool;
-    hash.temp_pool = NULL;
-
-    if (ngx_hash_init(&hash, headers_in.elts, headers_in.nelts) != NGX_OK) {
+    if (ngx_http_init_headers_in_hash(cf, cmcf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -400,97 +321,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *cf = pcf;
 
 
-    cmcf->phase_engine.server_rewrite_index = (ngx_uint_t) -1;
-    cmcf->phase_engine.location_rewrite_index = (ngx_uint_t) -1;
-    find_config_index = 0;
-    use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
-    use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
-
-    n = use_rewrite + use_access + 1; /* find config phase */
-
-    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
-        n += cmcf->phases[i].handlers.nelts;
-    }
-
-    ph = ngx_pcalloc(cf->pool,
-                     n * sizeof(ngx_http_phase_handler_t) + sizeof(void *));
-    if (ph == NULL) {
+    if (ngx_http_init_phase_handlers(cf, cmcf) != NGX_OK) {
         return NGX_CONF_ERROR;
-    }
-
-    cmcf->phase_engine.handlers = ph;
-    n = 0;
-
-    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
-        h = cmcf->phases[i].handlers.elts;
-
-        switch (i) {
-
-        case NGX_HTTP_SERVER_REWRITE_PHASE:
-            if (cmcf->phase_engine.server_rewrite_index == (ngx_uint_t) -1) {
-                cmcf->phase_engine.server_rewrite_index = n;
-            }
-            checker = ngx_http_core_generic_phase;
-
-            break;
-
-        case NGX_HTTP_FIND_CONFIG_PHASE:
-            find_config_index = n;
-
-            ph->checker = ngx_http_core_find_config_phase;
-            n++;
-            ph++;
-
-            continue;
-
-        case NGX_HTTP_REWRITE_PHASE:
-            if (cmcf->phase_engine.location_rewrite_index == (ngx_uint_t) -1) {
-                cmcf->phase_engine.location_rewrite_index = n;
-            }
-            checker = ngx_http_core_generic_phase;
-
-            break;
-
-        case NGX_HTTP_POST_REWRITE_PHASE:
-            if (use_rewrite) {
-                ph->checker = ngx_http_core_post_rewrite_phase;
-                ph->next = find_config_index;
-                n++;
-                ph++;
-            }
-
-            continue;
-
-        case NGX_HTTP_ACCESS_PHASE:
-            checker = ngx_http_core_access_phase;
-            n++;
-            break;
-
-        case NGX_HTTP_POST_ACCESS_PHASE:
-            if (use_access) {
-                ph->checker = ngx_http_core_post_access_phase;
-                ph->next = n;
-                ph++;
-            }
-
-            continue;
-
-        case NGX_HTTP_CONTENT_PHASE:
-            checker = ngx_http_core_content_phase;
-            break;
-
-        default:
-            checker = ngx_http_core_generic_phase;
-        }
-
-        n += cmcf->phases[i].handlers.nelts;
-
-        for (j = cmcf->phases[i].handlers.nelts - 1; j >=0; j--) {
-            ph->checker = checker;
-            ph->handler = h[j];
-            ph->next = n;
-            ph++;
-        }
     }
 
 
@@ -929,6 +761,210 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_init_phases(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
+{
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_SERVER_REWRITE_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers,
+                       cf->pool, 2, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
+                       cf->pool, 4, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_LOG_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_init_headers_in_hash(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
+{
+    ngx_array_t         headers_in;
+    ngx_hash_key_t     *hk;
+    ngx_hash_init_t     hash;
+    ngx_http_header_t  *header;
+
+    if (ngx_array_init(&headers_in, cf->temp_pool, 32, sizeof(ngx_hash_key_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    for (header = ngx_http_headers_in; header->name.len; header++) {
+        hk = ngx_array_push(&headers_in);
+        if (hk == NULL) {
+            return NGX_ERROR;
+        }
+
+        hk->key = header->name;
+        hk->key_hash = ngx_hash_key_lc(header->name.data, header->name.len);
+        hk->value = header;
+    }
+
+    hash.hash = &cmcf->headers_in_hash;
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
+    hash.name = "headers_in_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, headers_in.elts, headers_in.nelts) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
+{
+    ngx_int_t                   j;
+    ngx_uint_t                  i, n;
+    ngx_uint_t                  find_config_index, use_rewrite, use_access;
+    ngx_http_handler_pt        *h;
+    ngx_http_phase_handler_t   *ph;
+    ngx_http_phase_handler_pt   checker;
+
+    cmcf->phase_engine.server_rewrite_index = (ngx_uint_t) -1;
+    cmcf->phase_engine.location_rewrite_index = (ngx_uint_t) -1;
+    find_config_index = 0;
+    use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
+    use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
+
+    n = use_rewrite + use_access + 1; /* find config phase */
+
+    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
+        n += cmcf->phases[i].handlers.nelts;
+    }
+
+    ph = ngx_pcalloc(cf->pool,
+                     n * sizeof(ngx_http_phase_handler_t) + sizeof(void *));
+    if (ph == NULL) {
+        return NGX_ERROR;
+    }
+
+    cmcf->phase_engine.handlers = ph;
+    n = 0;
+
+    for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
+        h = cmcf->phases[i].handlers.elts;
+
+        switch (i) {
+
+        case NGX_HTTP_SERVER_REWRITE_PHASE:
+            if (cmcf->phase_engine.server_rewrite_index == (ngx_uint_t) -1) {
+                cmcf->phase_engine.server_rewrite_index = n;
+            }
+            checker = ngx_http_core_generic_phase;
+
+            break;
+
+        case NGX_HTTP_FIND_CONFIG_PHASE:
+            find_config_index = n;
+
+            ph->checker = ngx_http_core_find_config_phase;
+            n++;
+            ph++;
+
+            continue;
+
+        case NGX_HTTP_REWRITE_PHASE:
+            if (cmcf->phase_engine.location_rewrite_index == (ngx_uint_t) -1) {
+                cmcf->phase_engine.location_rewrite_index = n;
+            }
+            checker = ngx_http_core_generic_phase;
+
+            break;
+
+        case NGX_HTTP_POST_REWRITE_PHASE:
+            if (use_rewrite) {
+                ph->checker = ngx_http_core_post_rewrite_phase;
+                ph->next = find_config_index;
+                n++;
+                ph++;
+            }
+
+            continue;
+
+        case NGX_HTTP_ACCESS_PHASE:
+            checker = ngx_http_core_access_phase;
+            n++;
+            break;
+
+        case NGX_HTTP_POST_ACCESS_PHASE:
+            if (use_access) {
+                ph->checker = ngx_http_core_post_access_phase;
+                ph->next = n;
+                ph++;
+            }
+
+            continue;
+
+        case NGX_HTTP_CONTENT_PHASE:
+            checker = ngx_http_core_content_phase;
+            break;
+
+        default:
+            checker = ngx_http_core_generic_phase;
+        }
+
+        n += cmcf->phases[i].handlers.nelts;
+
+        for (j = cmcf->phases[i].handlers.nelts - 1; j >=0; j--) {
+            ph->checker = checker;
+            ph->handler = h[j];
+            ph->next = n;
+            ph++;
+        }
+    }
+
+    return NGX_OK;
 }
 
 
