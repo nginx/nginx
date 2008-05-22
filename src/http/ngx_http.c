@@ -41,9 +41,6 @@ static ngx_int_t ngx_http_init_listening(ngx_conf_t *cf,
 
 ngx_uint_t   ngx_http_max_module;
 
-ngx_uint_t   ngx_http_total_requests;
-uint64_t     ngx_http_total_sent;
-
 
 ngx_int_t  (*ngx_http_top_header_filter) (ngx_http_request_t *r);
 ngx_int_t  (*ngx_http_top_body_filter) (ngx_http_request_t *r, ngx_chain_t *ch);

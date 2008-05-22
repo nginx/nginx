@@ -106,10 +106,6 @@ void ngx_http_block_reading(ngx_http_request_t *r);
 extern ngx_module_t  ngx_http_module;
 
 
-extern ngx_uint_t  ngx_http_total_requests;
-extern uint64_t    ngx_http_total_sent;
-
-
 extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 
