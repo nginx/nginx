@@ -191,7 +191,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         module = ngx_modules[m]->ctx;
-        mi = ngx_modules[m]->ctx_index;
 
         if (module->preconfiguration) {
             if (module->preconfiguration(cf) != NGX_OK) {
@@ -292,7 +291,6 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         module = ngx_modules[m]->ctx;
-        mi = ngx_modules[m]->ctx_index;
 
         if (module->postconfiguration) {
             if (module->postconfiguration(cf) != NGX_OK) {
