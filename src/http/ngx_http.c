@@ -1314,9 +1314,8 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
                  sizeof(ngx_http_conf_in_addr_t), ngx_http_cmp_conf_in_addrs);
 
         /*
-         * check whether all name-based servers have the same configuraiton
-         *     as the default server,
-         * or some servers disable optimizing the server names
+         * check whether all name-based servers have
+         * the same configuraiton as the default server
          */
 
         in_addr = in_port[p].addrs.elts;
@@ -1325,18 +1324,15 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
             name = in_addr[a].names.elts;
             for (s = 0; s < in_addr[a].names.nelts; s++) {
 
-                if (in_addr[a].core_srv_conf != name[s].core_srv_conf
-                    || name[s].core_srv_conf->optimize_server_names == 0)
-                {
+                if (in_addr[a].core_srv_conf != name[s].core_srv_conf) {
                     goto virtual_names;
                 }
             }
 
             /*
              * if all name-based servers have the same configuration
-             *         as the default server,
-             *     and no servers disable optimizing the server names
-             * then we do not need to check them at run-time at all
+             * as the default server, then we do not need to check
+             * them at run-time at all
              */
 
             in_addr[a].names.nelts = 0;

@@ -150,7 +150,6 @@ typedef struct {
 
     ngx_msec_t                  client_header_timeout;
 
-    ngx_flag_t                  optimize_server_names;
     ngx_flag_t                  ignore_invalid_headers;
     ngx_flag_t                  merge_slashes;
 
