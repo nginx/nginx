@@ -36,12 +36,34 @@ struct ngx_queue_s {
     (h)->next = x
 
 
+#define ngx_queue_insert_after   ngx_queue_insert_head
+
+
+#define ngx_queue_insert_tail(h, x)                                           \
+    (x)->prev = (h)->prev;                                                    \
+    (x)->prev->next = x;                                                      \
+    (x)->next = h;                                                            \
+    (h)->prev = x
+
+
 #define ngx_queue_head(h)                                                     \
     (h)->next
 
 
 #define ngx_queue_last(h)                                                     \
     (h)->prev
+
+
+#define ngx_queue_sentinel(h)                                                 \
+    (h)
+
+
+#define ngx_queue_next(q)                                                     \
+    (q)->next
+
+
+#define ngx_queue_prev(q)                                                     \
+    (q)->prev
 
 
 #if (NGX_DEBUG)
@@ -61,8 +83,29 @@ struct ngx_queue_s {
 #endif
 
 
+#define ngx_queue_split(h, q, n)                                              \
+    (n)->prev = (h)->prev;                                                    \
+    (n)->prev->next = n;                                                      \
+    (n)->next = q;                                                            \
+    (h)->prev = (q)->prev;                                                    \
+    (h)->prev->next = h;                                                      \
+    (q)->prev = n;
+
+
+#define ngx_queue_add(h, n)                                                   \
+    (h)->prev->next = (n)->next;                                              \
+    (n)->next->prev = (h)->prev;                                              \
+    (h)->prev = (n)->prev;                                                    \
+    (h)->prev->next = h;
+
+
 #define ngx_queue_data(q, type, link)                                         \
     (type *) ((u_char *) q - offsetof(type, link))
+
+
+ngx_queue_t *ngx_queue_middle(ngx_queue_t *queue);
+void ngx_queue_sort(ngx_queue_t *queue,
+    ngx_int_t (*cmp)(const ngx_queue_t *, const ngx_queue_t *));
 
 
 #endif /* _NGX_QUEUE_H_INCLUDED_ */

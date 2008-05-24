@@ -44,6 +44,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_list.c \
            src/core/ngx_hash.c \
            src/core/ngx_buf.c \
+           src/core/ngx_queue.c \
            src/core/ngx_output_chain.c \
            src/core/ngx_string.c \
            src/core/ngx_parse.c \
