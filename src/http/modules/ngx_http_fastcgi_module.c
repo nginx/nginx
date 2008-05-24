@@ -138,14 +138,6 @@ static char *ngx_http_fastcgi_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
 static ngx_conf_post_t  ngx_http_fastcgi_lowat_post =
     { ngx_http_fastcgi_lowat_check };
 
-static ngx_conf_deprecated_t  ngx_conf_deprecated_fastcgi_header_buffer_size = {
-    ngx_conf_deprecated, "fastcgi_header_buffer_size", "fastcgi_buffer_size"
-};
-
-static ngx_conf_deprecated_t  ngx_conf_deprecated_fastcgi_redirect_errors = {
-    ngx_conf_deprecated, "fastcgi_redirect_errors", "fastcgi_intercept_errors"
-};
-
 
 static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -224,13 +216,6 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.buffer_size),
       NULL },
 
-    { ngx_string("fastcgi_header_buffer_size"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.buffer_size),
-      &ngx_conf_deprecated_fastcgi_header_buffer_size },
-
     { ngx_string("fastcgi_pass_request_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -251,13 +236,6 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.intercept_errors),
       NULL },
-
-    { ngx_string("fastcgi_redirect_errors"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.intercept_errors),
-      &ngx_conf_deprecated_fastcgi_redirect_errors },
 
     { ngx_string("fastcgi_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,

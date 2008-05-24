@@ -142,14 +142,6 @@ static ngx_int_t ngx_http_proxy_set_vars(ngx_pool_t *pool, ngx_url_t *u,
 static ngx_conf_post_t  ngx_http_proxy_lowat_post =
     { ngx_http_proxy_lowat_check };
 
-static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_header_buffer_size = {
-    ngx_conf_deprecated, "proxy_header_buffer_size", "proxy_buffer_size"
-};
-
-static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_redirect_errors = {
-    ngx_conf_deprecated, "proxy_redirect_errors", "proxy_intercept_errors"
-};
-
 
 static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -235,13 +227,6 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, upstream.intercept_errors),
       NULL },
 
-    { ngx_string("proxy_redirect_errors"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.intercept_errors),
-      &ngx_conf_deprecated_proxy_redirect_errors },
-
     { ngx_string("proxy_set_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
       ngx_conf_set_keyval_slot,
@@ -297,13 +282,6 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.buffer_size),
       NULL },
-
-    { ngx_string("proxy_header_buffer_size"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.buffer_size),
-      &ngx_conf_deprecated_proxy_header_buffer_size },
 
     { ngx_string("proxy_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
