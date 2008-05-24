@@ -244,8 +244,6 @@ struct ngx_http_core_loc_conf_s {
     unsigned      auto_redirect:1;
     unsigned      alias:1;
 
-    ngx_queue_t  *locations;
-
     ngx_http_location_tree_node_t   *static_locations;
     ngx_http_core_loc_conf_t       **regex_locations;
 
@@ -327,6 +325,8 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_uint_t    types_hash_max_size;
     ngx_uint_t    types_hash_bucket_size;
+
+    ngx_queue_t  *locations;
 
 #if 0
     ngx_http_core_loc_conf_t  *prev_location;
