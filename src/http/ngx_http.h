@@ -57,6 +57,10 @@ struct ngx_http_log_ctx_s {
 #define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
 
 
+ngx_int_t ngx_http_add_location(ngx_conf_t *cf, ngx_queue_t **locations,
+    ngx_http_core_loc_conf_t *clcf);
+
+
 void ngx_http_init_connection(ngx_connection_t *c);
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME

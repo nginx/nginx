@@ -524,7 +524,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_conf_t                    save;
     ngx_http_module_t            *module;
     ngx_http_conf_ctx_t          *ctx, *pctx;
-    ngx_http_core_loc_conf_t     *clcf, *pclcf, **clcfp;
+    ngx_http_core_loc_conf_t     *clcf, *pclcf;
     ngx_http_script_if_code_t    *if_code;
     ngx_http_rewrite_loc_conf_t  *nlcf;
 
@@ -567,20 +567,9 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->name = pclcf->name;
     clcf->noname = 1;
 
-    if (pclcf->locations == NULL) {
-        pclcf->locations = ngx_array_create(cf->pool, 2, sizeof(void *));
-        if (pclcf->locations == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    clcfp = ngx_array_push(pclcf->locations);
-    if (clcfp == NULL) {
+    if (ngx_http_add_location(cf, &pclcf->locations, clcf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
-
-    *clcfp = clcf;
-
 
     if (ngx_http_rewrite_if_condition(cf, lcf) != NGX_CONF_OK) {
         return NGX_CONF_ERROR;

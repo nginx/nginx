@@ -28,6 +28,10 @@
 #define NGX_HTTP_SATISFY_ANY            1
 
 
+typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
+typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
+
+
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
@@ -127,37 +131,30 @@ typedef struct {
 
 
 typedef struct {
-    /*
-     * array of the ngx_http_core_loc_conf_t *,
-     * used in the ngx_http_core_find_location() and in the merge phase
-     */
-    ngx_array_t                locations;
-
-    unsigned                   regex_start:15;
-    unsigned                   named_start:15;
-
     /* array of the ngx_http_listen_t, "listen" directive */
-    ngx_array_t                listen;
+    ngx_array_t                 listen;
 
     /* array of the ngx_http_server_name_t, "server_name" directive */
-    ngx_array_t                server_names;
+    ngx_array_t                 server_names;
 
     /* server ctx */
-    ngx_http_conf_ctx_t       *ctx;
+    ngx_http_conf_ctx_t        *ctx;
 
-    ngx_str_t                  server_name;
+    ngx_str_t                   server_name;
 
-    size_t                     connection_pool_size;
-    size_t                     request_pool_size;
-    size_t                     client_header_buffer_size;
+    size_t                      connection_pool_size;
+    size_t                      request_pool_size;
+    size_t                      client_header_buffer_size;
 
-    ngx_bufs_t                 large_client_header_buffers;
+    ngx_bufs_t                  large_client_header_buffers;
 
-    ngx_msec_t                 client_header_timeout;
+    ngx_msec_t                  client_header_timeout;
 
-    ngx_flag_t                 optimize_server_names;
-    ngx_flag_t                 ignore_invalid_headers;
-    ngx_flag_t                 merge_slashes;
+    ngx_flag_t                  optimize_server_names;
+    ngx_flag_t                  ignore_invalid_headers;
+    ngx_flag_t                  merge_slashes;
+
+    ngx_http_core_loc_conf_t  **named_locations;
 } ngx_http_core_srv_conf_t;
 
 
@@ -231,16 +228,12 @@ typedef struct {
 } ngx_http_err_page_t;
 
 
-typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
-
 struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
 
 #if (NGX_PCRE)
     ngx_regex_t  *regex;
 #endif
-
-    unsigned      regex_start:15;
 
     unsigned      noname:1;   /* "if () {}" block or limit_except */
     unsigned      named:1;
@@ -251,8 +244,10 @@ struct ngx_http_core_loc_conf_s {
     unsigned      auto_redirect:1;
     unsigned      alias:1;
 
-    /* array of inclusive ngx_http_core_loc_conf_t */
-    ngx_array_t  *locations;
+    ngx_queue_t  *locations;
+
+    ngx_http_location_tree_node_t   *static_locations;
+    ngx_http_core_loc_conf_t       **regex_locations;
 
     /* pointer to the modules' loc_conf */
     void        **loc_conf;
@@ -336,6 +331,31 @@ struct ngx_http_core_loc_conf_s {
 #if 0
     ngx_http_core_loc_conf_t  *prev_location;
 #endif
+};
+
+
+typedef struct {
+    ngx_queue_t                      queue;
+    ngx_http_core_loc_conf_t        *exact;
+    ngx_http_core_loc_conf_t        *inclusive;
+    ngx_str_t                       *name;
+    u_char                          *file_name;
+    ngx_uint_t                       line;
+    ngx_queue_t                      list;
+} ngx_http_location_queue_t;
+
+
+struct ngx_http_location_tree_node_s {
+    ngx_http_location_tree_node_t   *left;
+    ngx_http_location_tree_node_t   *right;
+    ngx_http_location_tree_node_t   *tree;
+
+    ngx_http_core_loc_conf_t        *exact;
+    ngx_http_core_loc_conf_t        *inclusive;
+
+    u_char                           auto_redirect;
+    u_char                           len;
+    u_char                           name[1];
 };
 
 

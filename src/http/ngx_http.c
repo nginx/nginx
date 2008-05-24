@@ -27,8 +27,21 @@ static ngx_int_t ngx_http_add_names(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_conf_in_addr_t *in_addr);
 
 static char *ngx_http_merge_locations(ngx_conf_t *cf,
-    ngx_array_t *locations, void **loc_conf, ngx_http_module_t *module,
+    ngx_queue_t *locations, void **loc_conf, ngx_http_module_t *module,
     ngx_uint_t ctx_index);
+static ngx_int_t ngx_http_init_locations(ngx_conf_t *cf,
+    ngx_http_core_srv_conf_t *cscf, ngx_http_core_loc_conf_t *pclcf);
+static ngx_int_t ngx_http_init_static_location_trees(ngx_conf_t *cf,
+    ngx_http_core_loc_conf_t *pclcf);
+static ngx_int_t ngx_http_cmp_locations(const ngx_queue_t *one,
+    const ngx_queue_t *two);
+static ngx_int_t ngx_http_join_exact_locations(ngx_conf_t *cf,
+    ngx_queue_t *locations);
+static void ngx_http_create_locations_list(ngx_queue_t *locations,
+    ngx_queue_t *q);
+static ngx_http_location_tree_node_t *
+    ngx_http_create_locations_tree(ngx_conf_t *cf, ngx_queue_t *locations,
+    size_t prefix);
 
 static ngx_int_t ngx_http_optimize_servers(ngx_conf_t *cf,
     ngx_http_core_main_conf_t *cmcf, ngx_array_t *in_ports);
@@ -91,6 +104,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_array_t                  in_ports;
     ngx_http_module_t           *module;
     ngx_http_conf_ctx_t         *ctx;
+    ngx_http_core_loc_conf_t    *clcf;
     ngx_http_core_srv_conf_t   **cscfp;
     ngx_http_core_main_conf_t   *cmcf;
 
@@ -206,8 +220,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     rv = ngx_conf_parse(cf, NULL);
 
     if (rv != NGX_CONF_OK) {
-        *cf = pcf;
-        return rv;
+        goto failed;
     }
 
     /*
@@ -231,8 +244,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (module->init_main_conf) {
             rv = module->init_main_conf(cf, ctx->main_conf[mi]);
             if (rv != NGX_CONF_OK) {
-                *cf = pcf;
-                return rv;
+                goto failed;
             }
         }
 
@@ -241,12 +253,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             /* merge the server{}s' srv_conf's */
 
             if (module->merge_srv_conf) {
-                rv = module->merge_srv_conf(cf,
-                                            ctx->srv_conf[mi],
+                rv = module->merge_srv_conf(cf, ctx->srv_conf[mi],
                                             cscfp[s]->ctx->srv_conf[mi]);
                 if (rv != NGX_CONF_OK) {
-                    *cf = pcf;
-                    return rv;
+                    goto failed;
                 }
             }
 
@@ -254,24 +264,39 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 /* merge the server{}'s loc_conf */
 
-                rv = module->merge_loc_conf(cf,
-                                            ctx->loc_conf[mi],
+                rv = module->merge_loc_conf(cf, ctx->loc_conf[mi],
                                             cscfp[s]->ctx->loc_conf[mi]);
                 if (rv != NGX_CONF_OK) {
-                    *cf = pcf;
-                    return rv;
+                    goto failed;
                 }
 
                 /* merge the locations{}' loc_conf's */
 
-                rv = ngx_http_merge_locations(cf, &cscfp[s]->locations,
+                clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
+
+                rv = ngx_http_merge_locations(cf, clcf->locations,
                                               cscfp[s]->ctx->loc_conf,
                                               module, mi);
                 if (rv != NGX_CONF_OK) {
-                    *cf = pcf;
-                    return rv;
+                    goto failed;
                 }
             }
+        }
+    }
+
+
+    /* create location trees */
+
+    for (s = 0; s < cmcf->servers.nelts; s++) {
+
+        clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
+
+        if (ngx_http_init_locations(cf, cscfp[s], clcf) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_http_init_static_location_trees(cf, clcf) != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
     }
 
@@ -337,6 +362,12 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+
+failed:
+
+    *cf = pcf;
+
+    return rv;
 }
 
 
@@ -541,6 +572,511 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
     }
 
     return NGX_OK;
+}
+
+
+static char *
+ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
+    void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
+{
+    char                       *rv;
+    ngx_queue_t                *q;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_location_queue_t  *lq;
+
+    if (locations == NULL) {
+        return NGX_CONF_OK;
+    }
+
+    for (q = ngx_queue_head(locations);
+         q != ngx_queue_sentinel(locations);
+         q = ngx_queue_next(q))
+    {
+        lq = (ngx_http_location_queue_t *) q;
+
+        clcf = lq->exact ? lq->exact : lq->inclusive;
+
+        rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
+                                    clcf->loc_conf[ctx_index]);
+        if (rv != NGX_CONF_OK) {
+            return rv;
+        }
+
+        rv = ngx_http_merge_locations(cf, clcf->locations, clcf->loc_conf,
+                                      module, ctx_index);
+        if (rv != NGX_CONF_OK) {
+            return rv;
+        }
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
+    ngx_http_core_loc_conf_t *pclcf)
+{
+    ngx_uint_t                   n;
+    ngx_queue_t                 *q, *locations, *named, tail;
+    ngx_http_core_loc_conf_t    *clcf;
+    ngx_http_location_queue_t   *lq;
+    ngx_http_core_loc_conf_t   **clcfp;
+#if (NGX_PCRE)
+    ngx_uint_t                   r;
+    ngx_queue_t                 *regex;
+#endif
+
+    locations = pclcf->locations;
+
+    if (locations == NULL) {
+        return NGX_OK;
+    }
+
+    ngx_queue_sort(locations, ngx_http_cmp_locations);
+
+    named = NULL;
+    n = 0;
+#if (NGX_PCRE)
+    regex = NULL;
+    r = 0;
+#endif
+
+    for (q = ngx_queue_head(locations);
+         q != ngx_queue_sentinel(locations);
+         q = ngx_queue_next(q))
+    {
+        lq = (ngx_http_location_queue_t *) q;
+
+        clcf = lq->exact ? lq->exact : lq->inclusive;
+
+        if (ngx_http_init_locations(cf, NULL, clcf) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+#if (NGX_PCRE)
+
+        if (clcf->regex) {
+            r++;
+
+            if (regex == NULL) {
+                regex = q;
+            }
+
+            continue;
+        }
+
+#endif
+
+        if (clcf->named) {
+            n++;
+
+            if (named == NULL) {
+                named = q;
+            }
+
+            continue;
+        }
+
+        if (clcf->noname) {
+            break;
+        }
+    }
+
+    if (q != ngx_queue_sentinel(locations)) {
+        ngx_queue_split(locations, q, &tail);
+    }
+
+    if (named) {
+        clcfp = ngx_palloc(cf->pool,
+                           (n + 1) * sizeof(ngx_http_core_loc_conf_t **));
+        if (clcfp == NULL) {
+            return NGX_ERROR;
+        }
+
+        cscf->named_locations = clcfp;
+
+        for (q = named;
+             q != ngx_queue_sentinel(locations);
+             q = ngx_queue_next(q))
+        {
+            lq = (ngx_http_location_queue_t *) q;
+
+            *(clcfp++) = lq->exact;
+        }
+
+        *clcfp = NULL;
+
+        ngx_queue_split(locations, named, &tail);
+    }
+
+#if (NGX_PCRE)
+
+    if (regex) {
+
+        clcfp = ngx_palloc(cf->pool,
+                           (r + 1) * sizeof(ngx_http_core_loc_conf_t **));
+        if (clcfp == NULL) {
+            return NGX_ERROR;
+        }
+
+        pclcf->regex_locations = clcfp;
+
+        for (q = regex;
+             q != ngx_queue_sentinel(locations);
+             q = ngx_queue_next(q))
+        {
+            lq = (ngx_http_location_queue_t *) q;
+
+            *(clcfp++) = lq->exact;
+        }
+
+        *clcfp = NULL;
+
+        ngx_queue_split(locations, regex, &tail);
+    }
+
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_init_static_location_trees(ngx_conf_t *cf,
+    ngx_http_core_loc_conf_t *pclcf)
+{
+    ngx_queue_t                *q, *locations;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_location_queue_t  *lq;
+
+    locations = pclcf->locations;
+
+    if (locations == NULL) {
+        return NGX_OK;
+    }
+
+    if (ngx_queue_empty(locations)) {
+        return NGX_OK;
+    }
+
+    for (q = ngx_queue_head(locations);
+         q != ngx_queue_sentinel(locations);
+         q = ngx_queue_next(q))
+    {
+        lq = (ngx_http_location_queue_t *) q;
+
+        clcf = lq->exact ? lq->exact : lq->inclusive;
+
+        if (ngx_http_init_static_location_trees(cf, clcf) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_http_join_exact_locations(cf, locations) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_create_locations_list(locations, ngx_queue_head(locations));
+
+    pclcf->static_locations = ngx_http_create_locations_tree(cf, locations, 0);
+    if (pclcf->static_locations == NULL) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_add_location(ngx_conf_t *cf, ngx_queue_t **locations,
+    ngx_http_core_loc_conf_t *clcf)
+{
+    ngx_http_location_queue_t  *lq;
+
+    if (*locations == NULL) {
+        *locations = ngx_palloc(cf->temp_pool,
+                                sizeof(ngx_http_location_queue_t));
+        if (*locations == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_queue_init(*locations);
+    }
+
+    lq = ngx_palloc(cf->temp_pool, sizeof(ngx_http_location_queue_t));
+    if (lq == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (clcf->exact_match
+#if (NGX_PCRE)
+        || clcf->regex
+#endif
+        || clcf->named || clcf->noname)
+    {
+        lq->exact = clcf;
+        lq->inclusive = NULL;
+
+    } else {
+        lq->exact = NULL;
+        lq->inclusive = clcf;
+    }
+
+    lq->name = &clcf->name;
+    lq->file_name = cf->conf_file->file.name.data;
+    lq->line = cf->conf_file->line;
+
+    ngx_queue_init(&lq->list);
+
+    ngx_queue_insert_tail(*locations, &lq->queue);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_cmp_locations(const ngx_queue_t *one, const ngx_queue_t *two)
+{
+    ngx_int_t                   rc;
+    ngx_http_core_loc_conf_t   *first, *second;
+    ngx_http_location_queue_t  *lq1, *lq2;
+
+    lq1 = (ngx_http_location_queue_t *) one;
+    lq2 = (ngx_http_location_queue_t *) two;
+
+    first = lq1->exact ? lq1->exact : lq1->inclusive;
+    second = lq2->exact ? lq2->exact : lq2->inclusive;
+
+    if (first->noname && !second->noname) {
+        /* shift no named locations to the end */
+        return 1;
+    }
+
+    if (!first->noname && second->noname) {
+        /* shift no named locations to the end */
+        return -1;
+    }
+
+    if (first->noname || second->noname) {
+        /* do not sort no named locations */
+        return 0;
+    }
+
+    if (first->named && !second->named) {
+        /* shift named locations to the end */
+        return 1;
+    }
+
+    if (!first->named && second->named) {
+        /* shift named locations to the end */
+        return -1;
+    }
+
+    if (first->named && second->named) {
+        return ngx_strcmp(first->name.data, second->name.data);
+    }
+
+#if (NGX_PCRE)
+
+    if (first->regex && !second->regex) {
+        /* shift the regex matches to the end */
+        return 1;
+    }
+
+    if (!first->regex && second->regex) {
+        /* shift the regex matches to the end */
+        return -1;
+    }
+
+    if (first->regex || second->regex) {
+        /* do not sort the regex matches */
+        return 0;
+    }
+
+#endif
+
+    rc = ngx_strcmp(first->name.data, second->name.data);
+
+    if (rc == 0 && !first->exact_match && second->exact_match) {
+        /* an exact match must be before the same inclusive one */
+        return 1;
+    }
+
+    return rc;
+}
+
+
+static ngx_int_t
+ngx_http_join_exact_locations(ngx_conf_t *cf, ngx_queue_t *locations)
+{
+    ngx_queue_t                *q, *x;
+    ngx_http_location_queue_t  *lq, *lx;
+
+    q = ngx_queue_head(locations);
+
+    while (q != ngx_queue_last(locations)) {
+
+        x = ngx_queue_next(q);
+
+        lq = (ngx_http_location_queue_t *) q;
+        lx = (ngx_http_location_queue_t *) x;
+
+        if (ngx_strcmp(lq->name->data, lx->name->data) == 0) {
+
+            if ((lq->exact && lx->exact) || (lq->inclusive && lx->inclusive)) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "duplicate location \"%V\" in %s:%ui",
+                              lx->name, lx->file_name, lx->line);
+
+                return NGX_ERROR;
+            }
+
+            lq->inclusive = lx->inclusive;
+
+            ngx_queue_remove(x);
+
+            continue;
+        }
+
+        q = ngx_queue_next(q);
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_create_locations_list(ngx_queue_t *locations, ngx_queue_t *q)
+{
+    u_char                     *name;
+    size_t                      len;
+    ngx_queue_t                *x, tail;
+    ngx_http_location_queue_t  *lq, *lx;
+
+    if (q == ngx_queue_last(locations)) {
+        return;
+    }
+
+    lq = (ngx_http_location_queue_t *) q;
+
+    if (lq->inclusive == NULL) {
+        ngx_http_create_locations_list(locations, ngx_queue_next(q));
+        return;
+    }
+
+    len = lq->name->len;
+    name = lq->name->data;
+
+    for (x = ngx_queue_next(q);
+         x != ngx_queue_sentinel(locations);
+         x = ngx_queue_next(x))
+    {
+        lx = (ngx_http_location_queue_t *) x;
+
+        if (len > lx->name->len
+            || (ngx_strncmp(name, lx->name->data, len) != 0))
+        {
+            break;
+        }
+    }
+
+    q = ngx_queue_next(q);
+
+    if (q == x) {
+        ngx_http_create_locations_list(locations, x);
+        return;
+    }
+
+    ngx_queue_split(locations, q, &tail);
+    ngx_queue_add(&lq->list, &tail);
+
+    if (x == ngx_queue_sentinel(locations)) {
+        ngx_http_create_locations_list(&lq->list, ngx_queue_head(&lq->list));
+        return;
+    }
+
+    ngx_queue_split(&lq->list, x, &tail);
+    ngx_queue_add(locations, &tail);
+
+    ngx_http_create_locations_list(&lq->list, ngx_queue_head(&lq->list));
+
+    ngx_http_create_locations_list(locations, x);
+}
+
+
+/*
+ * to keep cache locality for left leaf nodes, allocate nodes in following
+ * order: node, left subtree, right subtree, inclusive subtree
+ */
+
+static ngx_http_location_tree_node_t *
+ngx_http_create_locations_tree(ngx_conf_t *cf, ngx_queue_t *locations,
+    size_t prefix)
+{
+    size_t                          len;
+    ngx_queue_t                    *q, tail;
+    ngx_http_location_queue_t      *lq;
+    ngx_http_location_tree_node_t  *node;
+
+    q = ngx_queue_middle(locations);
+
+    lq = (ngx_http_location_queue_t *) q;
+    len = lq->name->len - prefix;
+
+    node = ngx_pcalloc(cf->pool,
+                       offsetof(ngx_http_location_tree_node_t, name) + len);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->exact = lq->exact;
+    node->inclusive = lq->inclusive;
+
+    node->auto_redirect = (u_char) ((lq->exact && lq->exact->auto_redirect)
+                           || (lq->inclusive && lq->inclusive->auto_redirect));
+
+    node->len = (u_char) len;
+    ngx_memcpy(node->name, &lq->name->data[prefix], len);
+
+    ngx_queue_split(locations, q, &tail);
+
+    if (ngx_queue_empty(locations)) {
+        /*
+         * ngx_queue_split() insures that if left part is empty,
+         * then right one is empty too
+         */
+        goto inclusive;
+    }
+
+    node->left = ngx_http_create_locations_tree(cf, locations, prefix);
+    if (node->left == NULL) {
+        return NULL;
+    }
+
+    ngx_queue_remove(q);
+
+    if (ngx_queue_empty(&tail)) {
+        goto inclusive;
+    }
+
+    node->right = ngx_http_create_locations_tree(cf, &tail, prefix);
+    if (node->right == NULL) {
+        return NULL;
+    }
+
+inclusive:
+
+    if (ngx_queue_empty(&lq->list)) {
+        return node;
+    }
+
+    node->tree = ngx_http_create_locations_tree(cf, &lq->list, prefix + len);
+    if (node->tree == NULL) {
+        return NULL;
+    }
+
+    return node;
 }
 
 
@@ -753,38 +1289,6 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     }
 
     return NGX_OK;
-}
-
-
-static char *
-ngx_http_merge_locations(ngx_conf_t *cf, ngx_array_t *locations,
-    void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
-{
-    char                       *rv;
-    ngx_uint_t                  i;
-    ngx_http_core_loc_conf_t  **clcfp;
-
-    clcfp = locations->elts;
-
-    for (i = 0; i < locations->nelts; i++) {
-        rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
-                                    clcfp[i]->loc_conf[ctx_index]);
-        if (rv != NGX_CONF_OK) {
-            return rv;
-        }
-
-        if (clcfp[i]->locations == NULL) {
-            continue;
-        }
-
-        rv = ngx_http_merge_locations(cf, clcfp[i]->locations,
-                                      clcfp[i]->loc_conf, module, ctx_index);
-        if (rv != NGX_CONF_OK) {
-            return rv;
-        }
-    }
-
-    return NGX_CONF_OK;
 }
 
 
