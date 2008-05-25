@@ -1054,70 +1054,74 @@ ngx_channel_handler(ngx_event_t *ev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel handler");
 
-    n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
+    for ( ;; ) {
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
+        n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
 
-    if (n == NGX_ERROR) {
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
 
-        if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
-            ngx_del_conn(c, 0);
-        }
+        if (n == NGX_ERROR) {
 
-        ngx_close_connection(c);
-        return;
-    }
+            if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+                ngx_del_conn(c, 0);
+            }
 
-    if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
-        if (ngx_add_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            ngx_close_connection(c);
             return;
         }
-    }
 
-    if (n == NGX_AGAIN) {
-        return;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
-                   "channel command: %d", ch.command);
-
-    switch (ch.command) {
-
-    case NGX_CMD_QUIT:
-        ngx_quit = 1;
-        break;
-
-    case NGX_CMD_TERMINATE:
-        ngx_terminate = 1;
-        break;
-
-    case NGX_CMD_REOPEN:
-        ngx_reopen = 1;
-        break;
-
-    case NGX_CMD_OPEN_CHANNEL:
-
-        ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
-                       "get channel s:%i pid:%P fd:%d", ch.slot, ch.pid, ch.fd);
-
-        ngx_processes[ch.slot].pid = ch.pid;
-        ngx_processes[ch.slot].channel[0] = ch.fd;
-        break;
-
-    case NGX_CMD_CLOSE_CHANNEL:
-
-        ngx_log_debug4(NGX_LOG_DEBUG_CORE, ev->log, 0,
-                       "close channel s:%i pid:%P our:%P fd:%d",
-                       ch.slot, ch.pid, ngx_processes[ch.slot].pid,
-                       ngx_processes[ch.slot].channel[0]);
-
-        if (close(ngx_processes[ch.slot].channel[0]) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
-                          "close() channel failed");
+        if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
+            if (ngx_add_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return;
+            }
         }
 
-        ngx_processes[ch.slot].channel[0] = -1;
-        break;
+        if (n == NGX_AGAIN) {
+            return;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                       "channel command: %d", ch.command);
+
+        switch (ch.command) {
+
+        case NGX_CMD_QUIT:
+            ngx_quit = 1;
+            break;
+
+        case NGX_CMD_TERMINATE:
+            ngx_terminate = 1;
+            break;
+
+        case NGX_CMD_REOPEN:
+            ngx_reopen = 1;
+            break;
+
+        case NGX_CMD_OPEN_CHANNEL:
+
+            ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                           "get channel s:%i pid:%P fd:%d",
+                           ch.slot, ch.pid, ch.fd);
+
+            ngx_processes[ch.slot].pid = ch.pid;
+            ngx_processes[ch.slot].channel[0] = ch.fd;
+            break;
+
+        case NGX_CMD_CLOSE_CHANNEL:
+
+            ngx_log_debug4(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                           "close channel s:%i pid:%P our:%P fd:%d",
+                           ch.slot, ch.pid, ngx_processes[ch.slot].pid,
+                           ngx_processes[ch.slot].channel[0]);
+
+            if (close(ngx_processes[ch.slot].channel[0]) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+                              "close() channel failed");
+            }
+
+            ngx_processes[ch.slot].channel[0] = -1;
+            break;
+        }
     }
 }
 
