@@ -797,7 +797,10 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (fmt[i].name.len == value[1].len
             && ngx_strcmp(fmt[i].name.data, value[1].data) == 0)
         {
-            return "duplicate \"log_format\" name";
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "duplicate \"log_format\" name \"%V\"",
+                               &value[1]);
+            return NGX_CONF_ERROR;
         }
     }
 
