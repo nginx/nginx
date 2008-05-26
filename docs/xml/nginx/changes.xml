@@ -9,6 +9,74 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.1" date="26.05.2008">
+
+<change type="change">
+<para lang="ru">
+теперь поиск location'а делается с помощью дерева.
+</para>
+<para lang="en">
+now locations are searched in a tree.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива optimize_server_names упразднена в связи с появлением
+директивы server_name_in_redirect.
+</para>
+<para lang="en">
+the "optimize_server_names" directive was canceled
+due to the "server_name_in_redirect" directive introduction.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+некоторые давно устаревшие директивы больше не поддерживаются.
+</para>
+<para lang="en">
+some long deprecated directives are not supported anymore.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр "none" в директиве ssl_session_cache;
+теперь этот параметр используется по умолчанию.<br/>
+Спасибо Rob Mueller.
+</para>
+<para lang="en">
+the "none" parameter in the "ssl_session_cache" directive;
+now this is default parameter.<br/>
+Thanks to Rob Mueller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочие процессы могли не реагировать на сигналы переконфигурации
+и ротации логов.
+</para>
+<para lang="en">
+worker processes might not catch reconfiguration and log rotation signals.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на последних Fedora 9 Linux.<br/>
+Спасибо Roxis.
+</para>
+<para lang="en">
+nginx could not be built on latest Fedora 9 Linux.<br/>
+Thanks to Roxis.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.0" date="19.05.2008">
 
 <change type="change">
