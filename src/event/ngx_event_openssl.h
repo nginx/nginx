@@ -51,9 +51,10 @@ typedef struct {
 } ngx_ssl_connection_t;
 
 
-#define NGX_SSL_DFLT_BUILTIN_SCACHE  -2
-#define NGX_SSL_NO_BUILTIN_SCACHE    -3
-#define NGX_SSL_NO_SCACHE            -4
+#define NGX_SSL_NO_SCACHE            -2
+#define NGX_SSL_NONE_SCACHE          -3
+#define NGX_SSL_NO_BUILTIN_SCACHE    -4
+#define NGX_SSL_DFLT_BUILTIN_SCACHE  -5
 
 
 #define NGX_SSL_MAX_SESSION_SIZE  4096
