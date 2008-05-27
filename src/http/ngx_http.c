@@ -1024,12 +1024,15 @@ ngx_http_create_locations_tree(ngx_conf_t *cf, ngx_queue_t *locations,
     lq = (ngx_http_location_queue_t *) q;
     len = lq->name->len - prefix;
 
-    node = ngx_pcalloc(cf->pool,
-                       offsetof(ngx_http_location_tree_node_t, name) + len);
+    node = ngx_palloc_aligned(cf->pool,
+                          offsetof(ngx_http_location_tree_node_t, name) + len);
     if (node == NULL) {
         return NULL;
     }
 
+    node->left = NULL;
+    node->right = NULL;
+    node->tree = NULL;
     node->exact = lq->exact;
     node->inclusive = lq->inclusive;
 

@@ -99,8 +99,6 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
 
         for ( ;; ) {
 
-#if (NGX_HAVE_NONALIGNED)
-
             /*
              * allow non-aligned memory blocks for small allocations (1, 2,
              * or 3 bytes) and for odd length strings (struct's have aligned
@@ -110,10 +108,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             if (size < sizeof(int) || (size & 1)) {
                 m = p->last;
 
-            } else
-#endif
-
-            {
+            } else {
                 m = ngx_align_ptr(p->last, NGX_ALIGNMENT);
             }
 
@@ -174,6 +169,17 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
     pool->large = large;
 
     return p;
+}
+
+
+void *
+ngx_palloc_aligned(ngx_pool_t *pool, size_t size)
+{
+    if (size & 1) {
+        size++;
+    }
+
+    return ngx_palloc(pool, size);
 }
 
 
