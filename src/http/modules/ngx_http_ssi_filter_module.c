@@ -100,7 +100,7 @@ static ngx_int_t ngx_http_ssi_endblock(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx, ngx_str_t **params);
 
 static ngx_int_t ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v,  uintptr_t gmt);
+    ngx_http_variable_value_t *v, uintptr_t gmt);
 
 static char *ngx_http_ssi_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
@@ -2647,7 +2647,7 @@ ngx_http_ssi_endblock(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
 static ngx_int_t
 ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v,  uintptr_t gmt)
+    ngx_http_variable_value_t *v, uintptr_t gmt)
 {
     ngx_http_ssi_ctx_t  *ctx;
     ngx_time_t          *tp;
