@@ -1300,14 +1300,14 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_array_t *in_ports)
 {
     ngx_int_t                  rc;
-    ngx_uint_t                 s, p, a, i;
+    ngx_uint_t                 s, p, a;
     ngx_hash_init_t            hash;
     ngx_http_server_name_t    *name;
     ngx_hash_keys_arrays_t     ha;
     ngx_http_conf_in_port_t   *in_port;
     ngx_http_conf_in_addr_t   *in_addr;
 #if (NGX_PCRE)
-    ngx_uint_t                 regex;
+    ngx_uint_t                 regex, i;
 #endif
 
     in_port = in_ports->elts;
