@@ -860,6 +860,8 @@ ngx_int_t
 ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
 {
+    ngx_http_core_srv_conf_t  *cscf;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "post rewrite phase: %ui", r->phase_handler);
 
@@ -890,6 +892,9 @@ ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
     }
 
     r->phase_handler = ph->next;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+    r->loc_conf = cscf->ctx->loc_conf;
 
     return NGX_AGAIN;
 }
