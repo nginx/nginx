@@ -1879,6 +1879,56 @@ ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    size_t   len;
+    BIO     *bio;
+    X509    *cert;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    if (PEM_write_bio_X509(bio, cert) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "PEM_write_bio_X509() failed");
+        goto failed;
+    }
+
+    len = BIO_pending(bio);
+    s->len = len;
+
+    s->data = ngx_palloc(pool, len);
+    if (s->data == NULL) {
+        goto failed;
+    }
+
+    BIO_read(bio, s->data, len);
+
+    BIO_free(bio);
+    X509_free(cert);
+
+    return NGX_OK;
+
+failed:
+
+    BIO_free(bio);
+    X509_free(cert);
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     char       *p;
