@@ -76,6 +76,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       offsetof(ngx_mail_ssl_conf_t, certificate_key),
       NULL },
 
+    { ngx_string("ssl_dhparam"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, dhparam),
+      NULL },
+
     { ngx_string("ssl_protocols"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
@@ -163,10 +170,9 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     scf->protocols = 0;
-     *     scf->certificate.len = 0;
-     *     scf->certificate.data = NULL;
-     *     scf->certificate_key.len = 0;
-     *     scf->certificate_key.data = NULL;
+     *     scf->certificate = { 0, NULL };
+     *     scf->certificate_key = { 0, NULL };
+     *     scf->dhparam = { 0, NULL };
      *     scf->ciphers.len = 0;
      *     scf->ciphers.data = NULL;
      *     scf->shm_zone = NULL;
@@ -213,6 +219,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
                          NGX_DEFLAUT_CERTIFICATE_KEY);
 
+    ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
+
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFLAUT_CIPHERS);
 
 
@@ -257,6 +265,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
 
     if (ngx_ssl_generate_rsa512_key(&conf->ssl) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
