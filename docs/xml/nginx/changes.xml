@@ -9,6 +9,76 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.2" date="16.06.2008">
+
+<change type="feature">
+<para lang="ru">
+теперь nginx поддерживает шифры с обменом EDH-ключами.
+</para>
+<para lang="en">
+now nginx supports EDH key exchange ciphers.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_dhparam.
+</para>
+<para lang="en">
+the "ssl_dhparam" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_cert.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+the $ssl_client_cert variable.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после изменения URI с помощью директивы rewrite nginx не искал новый location;
+ошибка появилась в 0.7.1.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+after changing URI via a "rewrite" directive nginx did not search
+a new location;
+bug appeared in 0.7.1.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без библиотеки PCRE;
+ошибка появилась в 0.7.1.
+</para>
+<para lang="en">
+nginx could not be built without PCRE library;
+bug appeared in 0.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при редиректе запроса к каталогу с добавлением слэша nginx
+не добавлял аргументы из оригинального запроса.
+</para>
+<para lang="en">
+when a request to a directory was redirected with the slash added,
+nginx dropped a query string from the original request.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.1" date="26.05.2008">
 
 <change type="change">
