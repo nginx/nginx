@@ -839,7 +839,7 @@ wildcard:
         }
 
         name->len = last - 1;
-        name->data = ngx_palloc(ha->temp_pool, name->len);
+        name->data = ngx_pnalloc(ha->temp_pool, name->len);
         if (name->data == NULL) {
             return NGX_ERROR;
         }
@@ -855,7 +855,7 @@ wildcard:
          *      and ".example.com" to "com.example\0"
          */
 
-        p = ngx_palloc(ha->temp_pool, last);
+        p = ngx_pnalloc(ha->temp_pool, last);
         if (p == NULL) {
             return NGX_ERROR;
         }
@@ -891,7 +891,7 @@ wildcard:
 
         last++;
 
-        p = ngx_palloc(ha->temp_pool, last);
+        p = ngx_pnalloc(ha->temp_pool, last);
         if (p == NULL) {
             return NGX_ERROR;
         }
@@ -944,7 +944,7 @@ wildcard:
     }
 
     name->len = last - skip;
-    name->data = ngx_palloc(ha->temp_pool, name->len);
+    name->data = ngx_pnalloc(ha->temp_pool, name->len);
     if (name->data == NULL) {
         return NGX_ERROR;
     }

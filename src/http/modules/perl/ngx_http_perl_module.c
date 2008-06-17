@@ -703,7 +703,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
             line = SvPVx(POPs, n_a);
             rv->len = n_a;
 
-            rv->data = ngx_palloc(r->pool, n_a);
+            rv->data = ngx_pnalloc(r->pool, n_a);
             if (rv->data == NULL) {
                 return NGX_ERROR;
             }

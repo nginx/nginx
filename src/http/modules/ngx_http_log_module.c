@@ -261,7 +261,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
-        line = ngx_palloc(r->pool, len);
+        line = ngx_pnalloc(r->pool, len);
         if (line == NULL) {
             return NGX_ERROR;
         }
@@ -970,7 +970,7 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *ops,
                 } else {
                     op->run = ngx_http_log_copy_long;
 
-                    p = ngx_palloc(cf->pool, len);
+                    p = ngx_pnalloc(cf->pool, len);
                     if (p == NULL) {
                         return NGX_CONF_ERROR;
                     }

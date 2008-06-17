@@ -1907,7 +1907,7 @@ ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     len = BIO_pending(bio);
     s->len = len;
 
-    s->data = ngx_palloc(pool, len);
+    s->data = ngx_pnalloc(pool, len);
     if (s->data == NULL) {
         goto failed;
     }
@@ -1954,7 +1954,7 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     for (len = 0; p[len]; len++) { /* void */ }
 
     s->len = len;
-    s->data = ngx_palloc(pool, len);
+    s->data = ngx_pnalloc(pool, len);
     if (s->data == NULL) {
         OPENSSL_free(p);
         X509_free(cert);
@@ -1996,7 +1996,7 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     for (len = 0; p[len]; len++) { /* void */ }
 
     s->len = len;
-    s->data = ngx_palloc(pool, len);
+    s->data = ngx_pnalloc(pool, len);
     if (s->data == NULL) {
         OPENSSL_free(p);
         X509_free(cert);
@@ -2036,7 +2036,7 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     len = BIO_pending(bio);
 
     s->len = len;
-    s->data = ngx_palloc(pool, len);
+    s->data = ngx_pnalloc(pool, len);
     if (s->data == NULL) {
         BIO_free(bio);
         X509_free(cert);

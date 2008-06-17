@@ -201,7 +201,7 @@ ngx_event_accept(ngx_event_t *ev)
 #endif
 
         if (ls->addr_ntop) {
-            c->addr_text.data = ngx_palloc(c->pool, ls->addr_text_max_len);
+            c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
             if (c->addr_text.data == NULL) {
                 ngx_close_accepted_connection(c);
                 return;

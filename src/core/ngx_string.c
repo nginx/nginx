@@ -34,7 +34,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
 {
     u_char  *dst;
 
-    dst = ngx_palloc(pool, src->len);
+    dst = ngx_pnalloc(pool, src->len);
     if (dst == NULL) {
         return NULL;
     }

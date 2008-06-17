@@ -578,7 +578,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
             len = INET_ADDRSTRLEN - 1 + 1 + sizeof(":65536") - 1;
 
-            p = ngx_palloc(pool, len);
+            p = ngx_pnalloc(pool, len);
             if (p == NULL) {
                 return NGX_ERROR;
             }
@@ -614,7 +614,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
         u->addrs[0].sockaddr = (struct sockaddr *) sin;
         u->addrs[0].socklen = sizeof(struct sockaddr_in);
 
-        p = ngx_palloc(pool, u->host.len + sizeof(":65536") - 1);
+        p = ngx_pnalloc(pool, u->host.len + sizeof(":65536") - 1);
         if (p == NULL) {
             return NGX_ERROR;
         }

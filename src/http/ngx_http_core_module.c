@@ -832,7 +832,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
         } else {
             len = clcf->name.len + 1 + r->args.len;
-            p = ngx_palloc(r->pool, len);
+            p = ngx_pnalloc(r->pool, len);
 
             if (p == NULL) {
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1267,7 +1267,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
             if (c >= 'A' && c <= 'Z') {
 
-                p = ngx_palloc(r->pool, r->exten.len);
+                p = ngx_pnalloc(r->pool, r->exten.len);
                 if (p == NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
@@ -1390,7 +1390,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
         path->len = clcf->root.len + reserved;
 
-        path->data = ngx_palloc(r->pool, path->len);
+        path->data = ngx_pnalloc(r->pool, path->len);
         if (path->data == NULL) {
             return NULL;
         }
@@ -1460,7 +1460,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
     }
 
     auth.len = ngx_base64_decoded_length(encoded.len);
-    auth.data = ngx_palloc(r->pool, auth.len + 1);
+    auth.data = ngx_pnalloc(r->pool, auth.len + 1);
     if (auth.data == NULL) {
         return NGX_ERROR;
     }

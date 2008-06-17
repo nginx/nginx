@@ -1151,8 +1151,8 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
             default:
                 ctx->command.len = 1;
-                ctx->command.data = ngx_palloc(r->pool,
-                                               NGX_HTTP_SSI_COMMAND_LEN);
+                ctx->command.data = ngx_pnalloc(r->pool,
+                                                NGX_HTTP_SSI_COMMAND_LEN);
                 if (ctx->command.data == NULL) {
                     return NGX_ERROR;
                 }
@@ -1218,8 +1218,8 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 }
 
                 ctx->param->key.len = 1;
-                ctx->param->key.data = ngx_palloc(r->pool,
-                                                  NGX_HTTP_SSI_PARAM_LEN);
+                ctx->param->key.data = ngx_pnalloc(r->pool,
+                                                   NGX_HTTP_SSI_PARAM_LEN);
                 if (ctx->param->key.data == NULL) {
                     return NGX_ERROR;
                 }
@@ -1229,8 +1229,8 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 ctx->param->value.len = 0;
 
                 if (ctx->value_buf == NULL) {
-                    ctx->param->value.data = ngx_palloc(r->pool,
-                                                        ctx->value_len);
+                    ctx->param->value.data = ngx_pnalloc(r->pool,
+                                                         ctx->value_len);
                     if (ctx->param->value.data == NULL) {
                         return NGX_ERROR;
                     }
@@ -1408,7 +1408,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         case ssi_postparam_state:
 
             if (ctx->param->value.len + 1 < ctx->value_len / 2) {
-                value = ngx_palloc(r->pool, ctx->param->value.len + 1);
+                value = ngx_pnalloc(r->pool, ctx->param->value.len + 1);
                 if (value == NULL) {
                     return NGX_ERROR;
                 }
@@ -1626,7 +1626,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             if (prefix) {
                 len = prefix + text->len;
 
-                data = ngx_palloc(r->pool, len);
+                data = ngx_pnalloc(r->pool, len);
                 if (data == NULL) {
                     return NGX_ERROR;
                 }
@@ -1829,7 +1829,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
     }
 
-    p = ngx_palloc(r->pool, len + ((flags & NGX_HTTP_SSI_ADD_ZERO) ? 1 : 0));
+    p = ngx_pnalloc(r->pool, len + ((flags & NGX_HTTP_SSI_ADD_ZERO) ? 1 : 0));
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -2222,7 +2222,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                                  NGX_ESCAPE_HTML);
 
         if (len) {
-            p = ngx_palloc(r->pool, value->len + len);
+            p = ngx_pnalloc(r->pool, value->len + len);
             if (p == NULL) {
                 return NGX_HTTP_SSI_ERROR;
             }
@@ -2239,7 +2239,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         len = ngx_escape_html(NULL, value->data, value->len);
 
         if (len) {
-            p = ngx_palloc(r->pool, value->len + len);
+            p = ngx_pnalloc(r->pool, value->len + len);
             if (p == NULL) {
                 return NGX_HTTP_SSI_ERROR;
             }
@@ -2286,7 +2286,7 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (value) {
         ctx->timefmt.len = value->len;
-        ctx->timefmt.data = ngx_palloc(r->pool, value->len + 1);
+        ctx->timefmt.data = ngx_pnalloc(r->pool, value->len + 1);
         if (ctx->timefmt.data == NULL) {
             return NGX_HTTP_SSI_ERROR;
         }
@@ -2666,7 +2666,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
         || (ctx->timefmt.len == sizeof("%s") - 1
             && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's'))
     {
-        v->data = ngx_palloc(r->pool, NGX_TIME_T_LEN);
+        v->data = ngx_pnalloc(r->pool, NGX_TIME_T_LEN);
         if (v->data == NULL) {
             return NGX_ERROR;
         }
@@ -2689,7 +2689,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    v->data = ngx_palloc(r->pool, v->len);
+    v->data = ngx_pnalloc(r->pool, v->len);
     if (v->data == NULL) {
         return NGX_ERROR;
     }
@@ -2738,7 +2738,7 @@ ngx_http_ssi_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         type->len = value[i].len;
 
-        type->data = ngx_palloc(cf->pool, type->len + 1);
+        type->data = ngx_pnalloc(cf->pool, type->len + 1);
         if (type->data == NULL) {
             return NGX_CONF_ERROR;
         }

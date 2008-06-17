@@ -593,7 +593,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
             {
                 s->login.len = ctx->header_end - ctx->header_start;
 
-                s->login.data = ngx_palloc(s->connection->pool, s->login.len);
+                s->login.data = ngx_pnalloc(s->connection->pool, s->login.len);
                 if (s->login.data == NULL) {
                     ngx_close_connection(ctx->peer.connection);
                     ngx_destroy_pool(ctx->pool);
@@ -614,7 +614,8 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
             {
                 s->passwd.len = ctx->header_end - ctx->header_start;
 
-                s->passwd.data = ngx_palloc(s->connection->pool, s->passwd.len);
+                s->passwd.data = ngx_pnalloc(s->connection->pool,
+                                             s->passwd.len);
                 if (s->passwd.data == NULL) {
                     ngx_close_connection(ctx->peer.connection);
                     ngx_destroy_pool(ctx->pool);
@@ -651,8 +652,8 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
             {
                 ctx->errcode.len = ctx->header_end - ctx->header_start;
 
-                ctx->errcode.data = ngx_palloc(s->connection->pool,
-                                               ctx->errcode.len);
+                ctx->errcode.data = ngx_pnalloc(s->connection->pool,
+                                                ctx->errcode.len);
                 if (ctx->errcode.data == NULL) {
                     ngx_close_connection(ctx->peer.connection);
                     ngx_destroy_pool(ctx->pool);
@@ -691,7 +692,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     ctx->err.len = ctx->errcode.len + ctx->errmsg.len
                                    + sizeof(" " CRLF) - 1;
 
-                    p = ngx_palloc(s->connection->pool, ctx->err.len);
+                    p = ngx_pnalloc(s->connection->pool, ctx->err.len);
                     if (p == NULL) {
                         ngx_close_connection(ctx->peer.connection);
                         ngx_destroy_pool(ctx->pool);
@@ -810,7 +811,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
 
             peer->name.len = len;
 
-            peer->name.data = ngx_palloc(s->connection->pool, len);
+            peer->name.data = ngx_pnalloc(s->connection->pool, len);
             if (peer->name.data == NULL) {
                 ngx_destroy_pool(ctx->pool);
                 ngx_mail_session_internal_server_error(s);
@@ -1255,7 +1256,7 @@ ngx_mail_auth_http_escape(ngx_pool_t *pool, ngx_str_t *text, ngx_str_t *escaped)
 
     escaped->len = text->len + n * 2;
 
-    p = ngx_palloc(pool, escaped->len);
+    p = ngx_pnalloc(pool, escaped->len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1326,7 +1327,7 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
             len += header[i].key.len + 2 + header[i].value.len + 2;
         }
 
-        p = ngx_palloc(cf->pool, len);
+        p = ngx_pnalloc(cf->pool, len);
         if (p == NULL) {
             return NGX_CONF_ERROR;
         }

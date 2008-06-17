@@ -253,7 +253,7 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         s->connection->log->action = "sending user name to upstream";
 
         line.len = sizeof("USER ")  - 1 + s->login.len + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -272,7 +272,7 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         s->connection->log->action = "sending password to upstream";
 
         line.len = sizeof("PASS ")  - 1 + s->passwd.len + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -369,7 +369,7 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
 
         line.len = s->tag.len + sizeof("LOGIN ") - 1
                    + 1 + NGX_SIZE_T_LEN + 1 + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -388,7 +388,7 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
         s->connection->log->action = "sending user name to upstream";
 
         line.len = s->login.len + 1 + 1 + NGX_SIZE_T_LEN + 1 + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -408,7 +408,7 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
         s->connection->log->action = "sending password to upstream";
 
         line.len = s->passwd.len + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -505,7 +505,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
         line.len = sizeof("HELO ")  - 1 + cscf->server_name.len + 2;
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
@@ -535,7 +535,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
                    + s->esmtp + s->smtp_helo.len
                    + s->connection->addr_text.len + s->login.len + s->host.len;
 
-        line.data = ngx_palloc(c->pool, line.len);
+        line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;

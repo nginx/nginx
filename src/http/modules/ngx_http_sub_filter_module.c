@@ -710,7 +710,7 @@ ngx_http_sub_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         type->len = value[i].len;
 
-        type->data = ngx_palloc(cf->pool, type->len + 1);
+        type->data = ngx_pnalloc(cf->pool, type->len + 1);
         if (type->data == NULL) {
             return NGX_CONF_ERROR;
         }

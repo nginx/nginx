@@ -163,7 +163,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
                 return NGX_DECLINED;
             }
 
-            p = ngx_palloc(r->connection->pool, len);
+            p = ngx_pnalloc(r->connection->pool, len);
             if (p == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }

@@ -165,7 +165,7 @@ ngx_regex_malloc(size_t size)
 #endif
 
     if (pool) {
-        return ngx_palloc_aligned(pool, size);
+        return ngx_palloc(pool, size);
     }
 
     return NULL;

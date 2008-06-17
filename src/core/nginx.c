@@ -826,7 +826,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ccf->oldpid.len = ccf->pid.len + sizeof(NGX_OLDPID_EXT);
 
-    ccf->oldpid.data = ngx_palloc(cycle->pool, ccf->oldpid.len);
+    ccf->oldpid.data = ngx_pnalloc(cycle->pool, ccf->oldpid.len);
     if (ccf->oldpid.data == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -870,7 +870,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     } else {
         cycle->lock_file.len = ccf->lock_file.len + 1;
-        cycle->lock_file.data = ngx_palloc(cycle->pool,
+        cycle->lock_file.data = ngx_pnalloc(cycle->pool,
                                       ccf->lock_file.len + sizeof(".accept"));
         if (cycle->lock_file.data == NULL) {
             return NGX_CONF_ERROR;

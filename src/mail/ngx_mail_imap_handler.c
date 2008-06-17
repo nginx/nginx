@@ -259,7 +259,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
         if (s->tagged_line.len < s->tag.len + s->text.len + s->out.len) {
             s->tagged_line.len = s->tag.len + s->text.len + s->out.len;
-            s->tagged_line.data = ngx_palloc(c->pool, s->tagged_line.len);
+            s->tagged_line.data = ngx_pnalloc(c->pool, s->tagged_line.len);
             if (s->tagged_line.data == NULL) {
                 ngx_mail_close_connection(c);
                 return;
@@ -317,7 +317,7 @@ ngx_mail_imap_login(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 
     s->login.len = arg[0].len;
-    s->login.data = ngx_palloc(c->pool, s->login.len);
+    s->login.data = ngx_pnalloc(c->pool, s->login.len);
     if (s->login.data == NULL) {
         return NGX_ERROR;
     }
@@ -325,7 +325,7 @@ ngx_mail_imap_login(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_memcpy(s->login.data, arg[0].data, s->login.len);
 
     s->passwd.len = arg[1].len;
-    s->passwd.data = ngx_palloc(c->pool, s->passwd.len);
+    s->passwd.data = ngx_pnalloc(c->pool, s->passwd.len);
     if (s->passwd.data == NULL) {
         return NGX_ERROR;
     }

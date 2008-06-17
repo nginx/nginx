@@ -1102,7 +1102,7 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
         location = path + clcf->root.len;
 
     } else {
-        location = ngx_palloc(r->pool, r->uri.len);
+        location = ngx_pnalloc(r->pool, r->uri.len);
         if (location == NULL) {
             return NGX_ERROR;
         }

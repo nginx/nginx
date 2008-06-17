@@ -341,7 +341,7 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
 
 
     value->len = len;
-    value->data = ngx_palloc(r->pool, len);
+    value->data = ngx_pnalloc(r->pool, len);
     if (value->data == NULL) {
         return NULL;
     }
@@ -733,7 +733,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         e->buf.len += r->args.len + 1;
     }
 
-    e->buf.data = ngx_palloc(r->pool, e->buf.len);
+    e->buf.data = ngx_pnalloc(r->pool, e->buf.len);
     if (e->buf.data == NULL) {
         e->ip = ngx_http_script_exit;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -1120,7 +1120,7 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
     }
 
     e->buf.len = len;
-    e->buf.data = ngx_palloc(e->request->pool, len);
+    e->buf.data = ngx_pnalloc(e->request->pool, len);
     if (e->buf.data == NULL) {
         e->ip = ngx_http_script_exit;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;

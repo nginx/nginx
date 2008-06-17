@@ -48,7 +48,7 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
         return NGX_OK;
     }
 
-    s->data = ngx_palloc(r->pool, len);
+    s->data = ngx_pnalloc(r->pool, len);
     if (s->data == NULL) {
         return NGX_ERROR;
     }
@@ -242,7 +242,7 @@ header_in(r, key)
 
     /* look up hashed headers */
 
-    lowcase_key = ngx_palloc(r->pool, len);
+    lowcase_key = ngx_pnalloc(r->pool, len);
     if (lowcase_key == NULL) {
         XSRETURN_UNDEF;
     }
@@ -293,7 +293,7 @@ header_in(r, key)
             size += ph[i]->value.len + sizeof("; ") - 1;
         }
 
-        cookie = ngx_palloc(r->pool, size);
+        cookie = ngx_pnalloc(r->pool, size);
         if (cookie == NULL) {
             XSRETURN_UNDEF;
         }
@@ -769,7 +769,7 @@ unescape(r, text, type = 0)
 
     src = (u_char *) SvPV(text, len);
 
-    p = ngx_palloc(r->pool, len + 1);
+    p = ngx_pnalloc(r->pool, len + 1);
     if (p == NULL) {
         XSRETURN_UNDEF;
     }
@@ -826,7 +826,7 @@ variable(r, name, value = NULL)
 
     p = (u_char *) SvPV(name, len);
 
-    lowcase = ngx_palloc(r->pool, len);
+    lowcase = ngx_pnalloc(r->pool, len);
     if (lowcase == NULL) {
         XSRETURN_UNDEF;
     }

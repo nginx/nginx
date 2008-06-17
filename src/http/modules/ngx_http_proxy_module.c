@@ -964,8 +964,8 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     u->state->status = ctx->status;
 
     u->headers_in.status_line.len = ctx->status_end - ctx->status_start;
-    u->headers_in.status_line.data = ngx_palloc(r->pool,
-                                                u->headers_in.status_line.len);
+    u->headers_in.status_line.data = ngx_pnalloc(r->pool,
+                                                 u->headers_in.status_line.len);
     if (u->headers_in.status_line.data == NULL) {
         return NGX_ERROR;
     }
@@ -1220,7 +1220,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             h->key.len = r->header_name_end - r->header_name_start;
             h->value.len = r->header_end - r->header_start;
 
-            h->key.data = ngx_palloc(r->pool,
+            h->key.data = ngx_pnalloc(r->pool,
                                h->key.len + 1 + h->value.len + 1 + h->key.len);
             if (h->key.data == NULL) {
                 return NGX_ERROR;
@@ -1400,7 +1400,7 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     v->len = r->headers_in.x_forwarded_for->value.len
              + sizeof(", ") - 1 + r->connection->addr_text.len;
 
-    p = ngx_palloc(r->pool, v->len);
+    p = ngx_pnalloc(r->pool, v->len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1435,7 +1435,7 @@ ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    v->data = ngx_palloc(r->connection->pool, NGX_SIZE_T_LEN);
+    v->data = ngx_pnalloc(r->connection->pool, NGX_SIZE_T_LEN);
 
     if (v->data == NULL) {
         return NGX_ERROR;
@@ -1492,7 +1492,7 @@ ngx_http_proxy_rewrite_redirect_text(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     len = prefix + pr->replacement.text.len + h->value.len - pr->redirect.len;
 
-    data = ngx_palloc(r->pool, len);
+    data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
         return NGX_ERROR;
     }
@@ -1544,7 +1544,7 @@ ngx_http_proxy_rewrite_redirect_vars(ngx_http_request_t *r, ngx_table_elt_t *h,
         len += lcode(&e);
     }
 
-    data = ngx_palloc(r->pool, len);
+    data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
         return NGX_ERROR;
     }

@@ -282,7 +282,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                 allocated = path.len + 1 + len + 1
                                      + NGX_HTTP_AUTOINDEX_PREALLOCATE;
 
-                filename = ngx_palloc(pool, allocated);
+                filename = ngx_pnalloc(pool, allocated);
                 if (filename == NULL) {
                     return ngx_http_autoindex_error(r, &dir, &path);
                 }
@@ -318,7 +318,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         entry->name.len = len;
 
-        entry->name.data = ngx_palloc(pool, len + 1);
+        entry->name.data = ngx_pnalloc(pool, len + 1);
         if (entry->name.data == NULL) {
             return ngx_http_autoindex_error(r, &dir, &path);
         }

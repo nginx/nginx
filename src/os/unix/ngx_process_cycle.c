@@ -108,7 +108,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         size += ngx_strlen(ngx_argv[i]) + 1;
     }
 
-    title = ngx_palloc(cycle->pool, size);
+    title = ngx_pnalloc(cycle->pool, size);
 
     p = ngx_cpymem(title, master_process, sizeof(master_process) - 1);
     for (i = 0; i < ngx_argc; i++) {

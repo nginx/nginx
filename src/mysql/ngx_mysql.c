@@ -215,7 +215,7 @@ ngx_mysql_read_server_greeting(ngx_event_t *rev)
         len += 20;
     }
 
-    auth = ngx_palloc(m->pool, len);
+    auth = ngx_pnalloc(m->pool, len);
     if (auth == NULL) {
         ngx_mysql_close(m, NGX_ERROR);
         return;

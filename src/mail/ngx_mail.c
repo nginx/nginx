@@ -357,8 +357,8 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 imip->addrs[i].addr = in_addr[i].addr;
                 imip->addrs[i].ctx = in_addr[i].ctx;
 
-                text = ngx_palloc(cf->pool,
-                                  INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
+                text = ngx_pnalloc(cf->pool,
+                                   INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
                 if (text == NULL) {
                     return NGX_CONF_ERROR;
                 }

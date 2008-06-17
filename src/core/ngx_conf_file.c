@@ -574,7 +574,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                     return NGX_ERROR;
                 }
 
-                word->data = ngx_palloc(cf->pool, b->pos - start + 1);
+                word->data = ngx_pnalloc(cf->pool, b->pos - start + 1);
                 if (word->data == NULL) {
                     return NGX_ERROR;
                 }
@@ -726,7 +726,7 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
     }
 
     name->len = len + old.len;
-    name->data = ngx_palloc(cycle->pool, name->len + 1);
+    name->data = ngx_pnalloc(cycle->pool, name->len + 1);
     if (name->data == NULL) {
         return  NGX_ERROR;
     }

@@ -129,7 +129,7 @@ ngx_http_mysql_auth(ngx_mysql_t *m)
 
     m->query.len = NGX_MYSQL_CMDPKT_LEN + ngx_mysql_command_query.len;
 
-    m->query.data = ngx_palloc(r->pool, m->query.len);
+    m->query.data = ngx_pnalloc(r->pool, m->query.len);
     if (m->query.data == NULL) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;

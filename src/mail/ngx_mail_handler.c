@@ -236,10 +236,10 @@ ngx_int_t
 ngx_mail_salt(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_mail_core_srv_conf_t *cscf)
 {
-    s->salt.data = ngx_palloc(c->pool,
-                              sizeof(" <18446744073709551616.@>" CRLF) - 1
-                              + NGX_TIME_T_LEN
-                              + cscf->server_name.len);
+    s->salt.data = ngx_pnalloc(c->pool,
+                               sizeof(" <18446744073709551616.@>" CRLF) - 1
+                               + NGX_TIME_T_LEN
+                               + cscf->server_name.len);
     if (s->salt.data == NULL) {
         return NGX_ERROR;
     }
@@ -288,7 +288,7 @@ ngx_mail_auth_plain(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
                    "mail auth plain: \"%V\"", &arg[n]);
 #endif
 
-    plain.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[n].len));
+    plain.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[n].len));
     if (plain.data == NULL){
         return NGX_ERROR;
     }
@@ -344,7 +344,7 @@ ngx_mail_auth_login_username(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
                    "mail auth login username: \"%V\"", &arg[0]);
 
-    s->login.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[0].len));
+    s->login.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[0].len));
     if (s->login.data == NULL){
         return NGX_ERROR;
     }
@@ -374,7 +374,8 @@ ngx_mail_auth_login_password(ngx_mail_session_t *s, ngx_connection_t *c)
                    "mail auth login password: \"%V\"", &arg[0]);
 #endif
 
-    s->passwd.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[0].len));
+    s->passwd.data = ngx_pnalloc(c->pool,
+                                 ngx_base64_decoded_length(arg[0].len));
     if (s->passwd.data == NULL){
         return NGX_ERROR;
     }
@@ -402,7 +403,7 @@ ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_str_t    salt;
     ngx_uint_t   n;
 
-    p = ngx_palloc(c->pool, len + ngx_base64_encoded_length(s->salt.len) + 2);
+    p = ngx_pnalloc(c->pool, len + ngx_base64_encoded_length(s->salt.len) + 2);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -434,7 +435,7 @@ ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
                    "mail auth cram-md5: \"%V\"", &arg[0]);
 
-    s->login.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[0].len));
+    s->login.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[0].len));
     if (s->login.data == NULL){
         return NGX_ERROR;
     }

@@ -183,7 +183,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         size += sizeof("SASL LOGIN PLAIN" CRLF) - 1;
     }
 
-    p = ngx_palloc(cf->pool, size);
+    p = ngx_pnalloc(cf->pool, size);
     if (p == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -213,7 +213,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     size += sizeof("STLS" CRLF) - 1;
 
-    p = ngx_palloc(cf->pool, size);
+    p = ngx_pnalloc(cf->pool, size);
     if (p == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -236,7 +236,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 
-    p = ngx_palloc(cf->pool, stls_only_size);
+    p = ngx_pnalloc(cf->pool, stls_only_size);
     if (p == NULL) {
         return NGX_CONF_ERROR;
     }

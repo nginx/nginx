@@ -420,7 +420,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
         len += conf->domain.len;
     }
 
-    cookie = ngx_palloc(r->pool, len);
+    cookie = ngx_pnalloc(r->pool, len);
     if (cookie == NULL) {
         return NGX_ERROR;
     }
@@ -496,7 +496,7 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_str_t *name, uint32_t *uid)
 {
     v->len = name->len + sizeof("=00001111222233334444555566667777") - 1;
-    v->data = ngx_palloc(r->pool, v->len);
+    v->data = ngx_pnalloc(r->pool, v->len);
     if (v->data == NULL) {
         return NGX_ERROR;
     }
@@ -620,7 +620,7 @@ ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data)
         return NGX_CONF_OK;
     }
 
-    new = ngx_palloc(cf->pool, sizeof("; domain=") - 1 + domain->len);
+    new = ngx_pnalloc(cf->pool, sizeof("; domain=") - 1 + domain->len);
     if (new == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -642,7 +642,7 @@ ngx_http_userid_path(ngx_conf_t *cf, void *post, void *data)
 
     u_char  *p, *new;
 
-    new = ngx_palloc(cf->pool, sizeof("; path=") - 1 + path->len);
+    new = ngx_pnalloc(cf->pool, sizeof("; path=") - 1 + path->len);
     if (new == NULL) {
         return NGX_CONF_ERROR;
     }

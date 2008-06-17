@@ -802,7 +802,7 @@ ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    v->data = ngx_palloc(r->pool, NGX_INT32_LEN + 3);
+    v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN + 3);
     if (v->data == NULL) {
         return NGX_ERROR;
     }
@@ -951,7 +951,7 @@ ngx_http_gzip_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         type->len = value[i].len;
 
-        type->data = ngx_palloc(cf->pool, type->len + 1);
+        type->data = ngx_pnalloc(cf->pool, type->len + 1);
         if (type->data == NULL) {
             return NGX_CONF_ERROR;
         }

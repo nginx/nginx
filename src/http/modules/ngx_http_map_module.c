@@ -130,7 +130,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         return NGX_OK;
     }
 
-    name = ngx_palloc(r->pool, len);
+    name = ngx_pnalloc(r->pool, len);
     if (name == NULL) {
         return NGX_ERROR;
     }

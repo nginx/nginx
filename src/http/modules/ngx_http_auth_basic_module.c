@@ -232,7 +232,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
 
     if (state == sw_passwd) {
         pwd.len = i - passwd;
-        pwd.data = ngx_palloc(r->pool, pwd.len + 1);
+        pwd.data = ngx_pnalloc(r->pool, pwd.len + 1);
         if (pwd.data == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -400,7 +400,7 @@ ngx_http_auth_basic(ngx_conf_t *cf, void *post, void *data)
 
     len = sizeof("Basic realm=\"") - 1 + realm->len + 1;
 
-    basic = ngx_palloc(cf->pool, len);
+    basic = ngx_pnalloc(cf->pool, len);
     if (basic == NULL) {
         return NGX_CONF_ERROR;
     }

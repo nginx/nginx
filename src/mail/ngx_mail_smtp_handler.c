@@ -506,7 +506,7 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
 
     s->smtp_helo.len = arg[0].len;
 
-    s->smtp_helo.data = ngx_palloc(c->pool, arg[0].len);
+    s->smtp_helo.data = ngx_pnalloc(c->pool, arg[0].len);
     if (s->smtp_helo.data == NULL) {
         return NGX_ERROR;
     }

@@ -2817,7 +2817,7 @@ ngx_http_upstream_addr_variable(ngx_http_request_t *r,
         }
     }
 
-    p = ngx_palloc(r->pool, len);
+    p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -2878,7 +2878,7 @@ ngx_http_upstream_status_variable(ngx_http_request_t *r,
 
     len = r->upstream_states->nelts * (3 + 2);
 
-    p = ngx_palloc(r->pool, len);
+    p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -2944,7 +2944,7 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
 
     len = r->upstream_states->nelts * (NGX_TIME_T_LEN + 4 + 2);
 
-    p = ngx_palloc(r->pool, len);
+    p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
         return NGX_ERROR;
     }

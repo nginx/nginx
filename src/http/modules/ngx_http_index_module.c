@@ -254,7 +254,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             uri.data = path.data + root;
 
         } else {
-            uri.data = ngx_palloc(r->pool, uri.len);
+            uri.data = ngx_pnalloc(r->pool, uri.len);
             if (uri.data == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }

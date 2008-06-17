@@ -1059,7 +1059,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                         size += part[i].end - part[i].start;
                     }
 
-                    p = ngx_palloc(r->pool, size);
+                    p = ngx_pnalloc(r->pool, size);
                     if (p == NULL) {
                         return NGX_ERROR;
                     }
@@ -1087,7 +1087,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     h->value.data = r->header_start;
                     h->value.data[h->value.len] = '\0';
 
-                    h->lowcase_key = ngx_palloc(r->pool, h->key.len);
+                    h->lowcase_key = ngx_pnalloc(r->pool, h->key.len);
                     if (h->lowcase_key == NULL) {
                         return NGX_ERROR;
                     }
@@ -1097,9 +1097,9 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     h->key.len = r->header_name_end - r->header_name_start;
                     h->value.len = r->header_end - r->header_start;
 
-                    h->key.data = ngx_palloc(r->pool,
-                                             h->key.len + 1 + h->value.len + 1
-                                             + h->key.len);
+                    h->key.data = ngx_pnalloc(r->pool,
+                                              h->key.len + 1 + h->value.len + 1
+                                              + h->key.len);
                     if (h->key.data == NULL) {
                         return NGX_ERROR;
                     }
@@ -2015,7 +2015,7 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
 
         v->len = r->uri.len + flcf->index.len;
 
-        v->data = ngx_palloc(r->pool, v->len);
+        v->data = ngx_pnalloc(r->pool, v->len);
         if (v->data == NULL) {
             return NGX_ERROR;
         }

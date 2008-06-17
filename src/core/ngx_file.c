@@ -46,7 +46,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
     file->name.len = path->name.len + 1 + path->len + 10;
 
-    file->name.data = ngx_palloc(pool, file->name.len + 1);
+    file->name.data = ngx_pnalloc(pool, file->name.len + 1);
     if (file->name.data == NULL) {
         return NGX_ERROR;
     }

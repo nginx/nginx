@@ -1024,8 +1024,8 @@ ngx_http_create_locations_tree(ngx_conf_t *cf, ngx_queue_t *locations,
     lq = (ngx_http_location_queue_t *) q;
     len = lq->name->len - prefix;
 
-    node = ngx_palloc_aligned(cf->pool,
-                          offsetof(ngx_http_location_tree_node_t, name) + len);
+    node = ngx_palloc(cf->pool,
+                      offsetof(ngx_http_location_tree_node_t, name) + len);
     if (node == NULL) {
         return NULL;
     }
@@ -1615,7 +1615,7 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_in_port_t *in_port)
 
         hip->port = in_port->port;
 
-        hip->port_text.data = ngx_palloc(cf->pool, 7);
+        hip->port_text.data = ngx_pnalloc(cf->pool, 7);
         if (hip->port_text.data == NULL) {
             return NGX_ERROR;
         }

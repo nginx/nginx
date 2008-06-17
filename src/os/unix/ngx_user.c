@@ -43,7 +43,7 @@ ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     if (err == 0) {
         len = ngx_strlen(value);
 
-        *encrypted = ngx_palloc(pool, len);
+        *encrypted = ngx_pnalloc(pool, len);
         if (*encrypted) {
             ngx_memcpy(*encrypted, value, len + 1);
             return NGX_OK;
@@ -81,7 +81,7 @@ ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     if (value) {
         len = ngx_strlen(value);
 
-        *encrypted = ngx_palloc(pool, len);
+        *encrypted = ngx_pnalloc(pool, len);
         if (*encrypted) {
             ngx_memcpy(*encrypted, value, len + 1);
         }

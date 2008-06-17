@@ -81,7 +81,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     cycle->conf_file.len = old_cycle->conf_file.len;
-    cycle->conf_file.data = ngx_palloc(pool, old_cycle->conf_file.len + 1);
+    cycle->conf_file.data = ngx_pnalloc(pool, old_cycle->conf_file.len + 1);
     if (cycle->conf_file.data == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -182,7 +182,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     hostname[NGX_MAXHOSTNAMELEN - 1] = '\0';
     cycle->hostname.len = ngx_strlen(hostname);
 
-    cycle->hostname.data = ngx_palloc(pool, cycle->hostname.len);
+    cycle->hostname.data = ngx_pnalloc(pool, cycle->hostname.len);
     if (cycle->hostname.data == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
@@ -460,8 +460,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 #else
 
-        lock_file = ngx_palloc(cycle->pool,
-                               cycle->lock_file.len + shm_zone[i].name.len);
+        lock_file = ngx_pnalloc(cycle->pool,
+                                cycle->lock_file.len + shm_zone[i].name.len);
 
         if (lock_file == NULL) {
             goto failed;

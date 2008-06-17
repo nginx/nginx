@@ -39,12 +39,12 @@ ngx_array_destroy(ngx_array_t *a)
 
     p = a->pool;
 
-    if ((u_char *) a->elts + a->size * a->nalloc == p->last) {
-        p->last -= a->size * a->nalloc;
+    if ((u_char *) a->elts + a->size * a->nalloc == p->d.last) {
+        p->d.last -= a->size * a->nalloc;
     }
 
-    if ((u_char *) a + sizeof(ngx_array_t) == p->last) {
-        p->last = (u_char *) a;
+    if ((u_char *) a + sizeof(ngx_array_t) == p->d.last) {
+        p->d.last = (u_char *) a;
     }
 }
 
@@ -64,14 +64,15 @@ ngx_array_push(ngx_array_t *a)
 
         p = a->pool;
 
-        if ((u_char *) a->elts + size == p->last && p->last + a->size <= p->end)
+        if ((u_char *) a->elts + size == p->d.last
+            && p->d.last + a->size <= p->d.end)
         {
             /*
              * the array allocation is the last in the pool
              * and there is space for new allocation
              */
 
-            p->last += a->size;
+            p->d.last += a->size;
             a->nalloc++;
 
         } else {
@@ -111,15 +112,15 @@ ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
 
         p = a->pool;
 
-        if ((u_char *) a->elts + a->size * a->nalloc == p->last
-            && p->last + size <= p->end)
+        if ((u_char *) a->elts + a->size * a->nalloc == p->d.last
+            && p->d.last + size <= p->d.end)
         {
             /*
              * the array allocation is the last in the pool
              * and there is space for new allocation
              */
 
-            p->last += size;
+            p->d.last += size;
             a->nalloc += n;
 
         } else {

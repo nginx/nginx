@@ -272,7 +272,7 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     }
 
     v->name.len = name->len;
-    v->name.data = ngx_palloc(cf->pool, name->len);
+    v->name.data = ngx_pnalloc(cf->pool, name->len);
     if (v->name.data == NULL) {
         return NULL;
     }
@@ -339,7 +339,7 @@ ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name)
     }
 
     v->name.len = name->len;
-    v->name.data = ngx_palloc(cf->pool, name->len);
+    v->name.data = ngx_pnalloc(cf->pool, name->len);
     if (v->name.data == NULL) {
         return NGX_ERROR;
     }
@@ -615,7 +615,7 @@ ngx_http_variable_headers(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         len += h[i]->value.len + sizeof("; ") - 1;
     }
 
-    p = ngx_palloc(r->pool, len);
+    p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -782,7 +782,7 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    v->data = ngx_palloc(r->pool, sizeof("65535") - 1);
+    v->data = ngx_pnalloc(r->pool, sizeof("65535") - 1);
     if (v->data == NULL) {
         return NGX_ERROR;
     }
@@ -809,7 +809,7 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
 {
     ngx_str_t  s;
 
-    s.data = ngx_palloc(r->pool, INET_ADDRSTRLEN);
+    s.data = ngx_pnalloc(r->pool, INET_ADDRSTRLEN);
     if (s.data == NULL) {
         return NGX_ERROR;
     }
@@ -1032,7 +1032,7 @@ ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
         sent = 0;
     }
 
-    p = ngx_palloc(r->pool, NGX_OFF_T_LEN);
+    p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1083,7 +1083,7 @@ ngx_http_variable_sent_content_length(ngx_http_request_t *r,
     }
 
     if (r->headers_out.content_length_n >= 0) {
-        p = ngx_palloc(r->pool, NGX_OFF_T_LEN);
+        p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
         if (p == NULL) {
             return NGX_ERROR;
         }
@@ -1120,7 +1120,7 @@ ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
     }
 
     if (r->headers_out.last_modified_time >= 0) {
-        p = ngx_palloc(r->pool,
+        p = ngx_pnalloc(r->pool,
                    sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT") - 1);
         if (p == NULL) {
             return NGX_ERROR;
@@ -1179,7 +1179,7 @@ ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
 
         if (clcf->keepalive_header) {
 
-            p = ngx_palloc(r->pool, sizeof("timeout=") - 1 + NGX_TIME_T_LEN);
+            p = ngx_pnalloc(r->pool, sizeof("timeout=") - 1 + NGX_TIME_T_LEN);
             if (p == NULL) {
                 return NGX_ERROR;
             }

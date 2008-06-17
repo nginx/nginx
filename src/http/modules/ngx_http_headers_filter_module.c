@@ -264,7 +264,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_OK;
     }
 
-    expires->value.data = ngx_palloc(r->pool, len);
+    expires->value.data = ngx_pnalloc(r->pool, len);
     if (expires->value.data == NULL) {
         return NGX_ERROR;
     }
@@ -297,8 +297,8 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_OK;
     }
 
-    cc->value.data = ngx_palloc(r->pool,
-                                sizeof("max-age=") + NGX_TIME_T_LEN + 1);
+    cc->value.data = ngx_pnalloc(r->pool,
+                                 sizeof("max-age=") + NGX_TIME_T_LEN + 1);
     if (cc->value.data == NULL) {
         return NGX_ERROR;
     }

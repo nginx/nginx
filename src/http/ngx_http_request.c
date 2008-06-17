@@ -654,7 +654,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             if (r->complex_uri || r->quoted_uri) {
 
-                r->uri.data = ngx_palloc(r->pool, r->uri.len + 1);
+                r->uri.data = ngx_pnalloc(r->pool, r->uri.len + 1);
                 if (r->uri.data == NULL) {
                     ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return;
@@ -914,7 +914,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             h->value.data = r->header_start;
             h->value.data[h->value.len] = '\0';
 
-            h->lowcase_key = ngx_palloc(r->pool, h->key.len);
+            h->lowcase_key = ngx_pnalloc(r->pool, h->key.len);
             if (h->lowcase_key == NULL) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -1562,7 +1562,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         server = buf;
 
     } else {
-        server = ngx_palloc(r->pool, len);
+        server = ngx_pnalloc(r->pool, len);
         if (server == NULL) {
             return NGX_ERROR;
         }

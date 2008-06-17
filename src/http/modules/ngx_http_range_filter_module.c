@@ -307,7 +307,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         content_range->key.len = sizeof("Content-Range") - 1;
         content_range->key.data = (u_char *) "Content-Range";
 
-        content_range->value.data = ngx_palloc(r->pool,
+        content_range->value.data = ngx_pnalloc(r->pool,
                                        sizeof("bytes */") - 1 + NGX_OFF_T_LEN);
         if (content_range->value.data == NULL) {
             return NGX_ERROR;
@@ -341,7 +341,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         content_range->key.data = (u_char *) "Content-Range";
 
         content_range->value.data =
-               ngx_palloc(r->pool, sizeof("bytes -/") - 1 + 3 * NGX_OFF_T_LEN);
+              ngx_pnalloc(r->pool, sizeof("bytes -/") - 1 + 3 * NGX_OFF_T_LEN);
         if (content_range->value.data == NULL) {
             return NGX_ERROR;
         }
@@ -376,7 +376,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
     }
 
-    ctx->boundary_header.data = ngx_palloc(r->pool, len);
+    ctx->boundary_header.data = ngx_pnalloc(r->pool, len);
     if (ctx->boundary_header.data == NULL) {
         return NGX_ERROR;
     }
@@ -414,9 +414,9 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     }
 
     r->headers_out.content_type.data =
-        ngx_palloc(r->pool,
-                   sizeof("Content-Type: multipart/byteranges; boundary=") - 1
-                   + NGX_ATOMIC_T_LEN);
+        ngx_pnalloc(r->pool,
+                    sizeof("Content-Type: multipart/byteranges; boundary=") - 1
+                    + NGX_ATOMIC_T_LEN);
 
     if (r->headers_out.content_type.data == NULL) {
         return NGX_ERROR;
@@ -441,7 +441,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         /* the size of the range: "SSSS-EEEE/TTTT" CRLF CRLF */
 
         range[i].content_range.data =
-                                ngx_palloc(r->pool, 3 * NGX_OFF_T_LEN + 2 + 4);
+                               ngx_pnalloc(r->pool, 3 * NGX_OFF_T_LEN + 2 + 4);
 
         if (range[i].content_range.data == NULL) {
             return NGX_ERROR;
@@ -649,8 +649,8 @@ ngx_http_range_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     b->temporary = 1;
     b->last_buf = 1;
 
-    b->pos = ngx_palloc(r->pool, sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
-                                 + sizeof("--" CRLF) - 1);
+    b->pos = ngx_pnalloc(r->pool, sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
+                                  + sizeof("--" CRLF) - 1);
     if (b->pos == NULL) {
         return NGX_ERROR;
     }

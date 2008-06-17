@@ -283,7 +283,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
 
         len = INET_ADDRSTRLEN - 1 + 1 + sizeof(":65536") - 1;
 
-        p = ngx_palloc(r->pool, len);
+        p = ngx_pnalloc(r->pool, len);
         if (p == NULL) {
             return NGX_ERROR;
         }
