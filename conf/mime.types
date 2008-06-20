@@ -2,11 +2,12 @@
 types {
     text/html                             html htm shtml;
     text/css                              css;
-    text/xml                              xml rss;
+    text/xml                              xml;
     image/gif                             gif;
     image/jpeg                            jpeg jpg;
     application/x-javascript              js;
     application/atom+xml                  atom;
+    application/rss+xml                   rss;
 
     text/mathml                           mml;
     text/plain                            txt;
