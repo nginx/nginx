@@ -674,6 +674,11 @@ ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl)
         }
 
         if (bytes) {
+
+            if (n == 0 || n == NGX_ERROR) {
+                c->read->ready = 1;
+            }
+
             return bytes;
         }
 
