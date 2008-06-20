@@ -159,13 +159,18 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
 
     psize = (size_t) (pool->d.end - (u_char *) pool);
 
-    new = ngx_alloc(size, pool->log);
-    if (new == NULL) {
+    m = ngx_alloc(psize, pool->log);
+    if (m == NULL) {
         return NULL;
     }
 
-    new->d.end = (u_char *) new + psize;
+    new = (ngx_pool_t *) m;
+
+    new->d.end = m + psize;
     new->d.next = NULL;
+
+    m += sizeof(ngx_pool_data_t);
+    new->d.last = m + size;
 
     current = pool->current;
 
@@ -178,9 +183,6 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     p->d.next = new;
 
     pool->current = current ? current : new;
-
-    m = (u_char *) new + sizeof(ngx_pool_data_t);
-    new->d.last = m + size;
 
     return m;
 }
