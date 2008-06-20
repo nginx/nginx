@@ -347,6 +347,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Connection: closed" CRLF) - 1;
     }
 
+    if (r->gzip && clcf->gzip_vary) {
+        len += sizeof("Vary: Accept-Encoding" CRLF) - 1;
+    }
+
     part = &r->headers_out.headers.part;
     header = part->elts;
 
@@ -514,6 +518,11 @@ ngx_http_header_filter(ngx_http_request_t *r)
     } else {
         b->last = ngx_cpymem(b->last, "Connection: close" CRLF,
                              sizeof("Connection: close" CRLF) - 1);
+    }
+
+    if (r->gzip && clcf->gzip_vary) {
+        b->last = ngx_cpymem(b->last, "Vary: Accept-Encoding" CRLF,
+                             sizeof("Vary: Accept-Encoding" CRLF) - 1);
     }
 
     part = &r->headers_out.headers.part;
