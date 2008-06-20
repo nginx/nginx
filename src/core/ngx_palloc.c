@@ -154,12 +154,18 @@ static void *
 ngx_palloc_block(ngx_pool_t *pool, size_t size)
 {
     u_char      *m;
+    size_t       psize;
     ngx_pool_t  *p, *new, *current;
 
-    new = ngx_create_pool((size_t) (pool->d.end - (u_char *) pool), pool->log);
+    psize = (size_t) (pool->d.end - (u_char *) pool);
+
+    new = ngx_alloc(size, pool->log);
     if (new == NULL) {
         return NULL;
     }
+
+    new->d.end = (u_char *) new + psize;
+    new->d.next = NULL;
 
     current = pool->current;
 
