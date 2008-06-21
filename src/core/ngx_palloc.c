@@ -26,8 +26,9 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     p->d.end = (u_char *) p + size;
     p->d.next = NULL;
 
-    p->max = (size < NGX_MAX_ALLOC_FROM_POOL) ? size - sizeof(ngx_pool_t):
-                                                NGX_MAX_ALLOC_FROM_POOL;
+    size = size - sizeof(ngx_pool_t);
+    p->max = (size < NGX_MAX_ALLOC_FROM_POOL) ? size : NGX_MAX_ALLOC_FROM_POOL;
+
     p->current = p;
     p->chain = NULL;
     p->large = NULL;
