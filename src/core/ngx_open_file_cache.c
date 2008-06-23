@@ -189,7 +189,9 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
         }
 
         if ((file->event && file->use_event)
-            || (file->event == NULL && now - file->created < of->valid))
+            || (file->event == NULL
+                && (of->uniq == 0 || of->uniq == file->uniq)
+                && now - file->created < of->valid))
         {
             if (file->err == 0) {
 

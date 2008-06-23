@@ -994,6 +994,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    of.uniq = 0;
     of.test_dir = 0;
     of.valid = clcf->open_file_cache_valid;
     of.min_uses = clcf->open_file_cache_min_uses;
