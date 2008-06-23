@@ -649,7 +649,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     path.len = ngx_strlen(filename);
 
-    path.data = ngx_pcalloc(r->pool, path.len + 1);
+    path.data = ngx_pnalloc(r->pool, path.len + 1);
     if (path.data == NULL) {
         XSRETURN_EMPTY;
     }
