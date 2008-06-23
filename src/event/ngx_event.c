@@ -596,22 +596,23 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    cycle->connection_n = ecf->connections;
-
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        if (ngx_modules[m]->ctx_index == ecf->use) {
-            module = ngx_modules[m]->ctx;
-            if (module->actions.init(cycle, ngx_timer_resolution) == NGX_ERROR)
-            {
-                /* fatal */
-                exit(2);
-            }
-            break;
+        if (ngx_modules[m]->ctx_index != ecf->use) {
+            continue;
         }
+
+        module = ngx_modules[m]->ctx;
+
+        if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
+            /* fatal */
+            exit(2);
+        }
+
+        break;
     }
 
 #if !(NGX_WIN32)
@@ -661,15 +662,15 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #endif
 
-    cycle->connections = ngx_alloc(sizeof(ngx_connection_t) * ecf->connections,
-                                   cycle->log);
+    cycle->connections =
+        ngx_alloc(sizeof(ngx_connection_t) * cycle->connection_n, cycle->log);
     if (cycle->connections == NULL) {
         return NGX_ERROR;
     }
 
     c = cycle->connections;
 
-    cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->read_events = ngx_alloc(sizeof(ngx_event_t) * cycle->connection_n,
                                    cycle->log);
     if (cycle->read_events == NULL) {
         return NGX_ERROR;
@@ -685,7 +686,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 #endif
     }
 
-    cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * ecf->connections,
+    cycle->write_events = ngx_alloc(sizeof(ngx_event_t) * cycle->connection_n,
                                     cycle->log);
     if (cycle->write_events == NULL) {
         return NGX_ERROR;
@@ -719,7 +720,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     } while (i);
 
     cycle->free_connections = next;
-    cycle->free_connection_n = ecf->connections;
+    cycle->free_connection_n = cycle->connection_n;
 
     /* for each listening socket */
 
@@ -1137,11 +1138,10 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_uint_t           rtsig;
     ngx_core_conf_t     *ccf;
 #endif
-    ngx_int_t            i, connections;
+    ngx_int_t            i;
     ngx_module_t        *module;
     ngx_event_module_t  *event_module;
 
-    connections = NGX_CONF_UNSET_UINT;
     module = NULL;
 
 #if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
@@ -1150,11 +1150,9 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (fd != -1) {
         close(fd);
-        connections = DEFAULT_CONNECTIONS;
         module = &ngx_epoll_module;
 
     } else if (ngx_errno != NGX_ENOSYS) {
-        connections = DEFAULT_CONNECTIONS;
         module = &ngx_epoll_module;
     }
 
@@ -1163,7 +1161,6 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 #if (NGX_HAVE_RTSIG)
 
     if (module == NULL) {
-        connections = DEFAULT_CONNECTIONS;
         module = &ngx_rtsig_module;
         rtsig = 1;
 
@@ -1175,14 +1172,12 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if (NGX_HAVE_DEVPOLL)
 
-    connections = DEFAULT_CONNECTIONS;
     module = &ngx_devpoll_module;
 
 #endif
 
 #if (NGX_HAVE_KQUEUE)
 
-    connections = DEFAULT_CONNECTIONS;
     module = &ngx_kqueue_module;
 
 #endif
@@ -1190,12 +1185,6 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 #if (NGX_HAVE_SELECT)
 
     if (module == NULL) {
-
-#if (NGX_WIN32 || FD_SETSIZE >= DEFAULT_CONNECTIONS)
-        connections = DEFAULT_CONNECTIONS;
-#else
-        connections = FD_SETSIZE;
-#endif
         module = &ngx_select_module;
     }
 
@@ -1203,18 +1192,20 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
     if (module == NULL) {
         for (i = 0; ngx_modules[i]; i++) {
-            if (ngx_modules[i]->type == NGX_EVENT_MODULE) {
-                event_module = ngx_modules[i]->ctx;
 
-                if (ngx_strcmp(event_module->name->data, event_core_name.data)
-                    == 0)
-                {
-                    continue;
-                }
-
-                module = ngx_modules[i];
-                break;
+            if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
+                continue;
             }
+
+            event_module = ngx_modules[i]->ctx;
+
+            if (ngx_strcmp(event_module->name->data, event_core_name.data) == 0)
+            {
+                continue;
+            }
+
+            module = ngx_modules[i];
+            break;
         }
     }
 
@@ -1223,7 +1214,7 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_init_uint_value(ecf->connections, connections);
+    ngx_conf_init_uint_value(ecf->connections, DEFAULT_CONNECTIONS);
     cycle->connection_n = ecf->connections;
 
     ngx_conf_init_uint_value(ecf->use, module->ctx_index);

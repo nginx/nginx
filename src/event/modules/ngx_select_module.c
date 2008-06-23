@@ -436,10 +436,10 @@ ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if !(NGX_WIN32)
 
-    if ((unsigned) ecf->connections > FD_SETSIZE) {
+    if (cycle->connection_n > FD_SETSIZE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "the maximum number of files "
-                      "supported by select() is " ngx_value(FD_SETSIZE));
+                      "supported by select() is %ud", FD_SETSIZE);
         return NGX_CONF_ERROR;
     }
 

@@ -143,15 +143,12 @@ ngx_module_t  ngx_epoll_module = {
 static ngx_int_t
 ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
-    ngx_event_conf_t  *ecf;
     ngx_epoll_conf_t  *epcf;
-
-    ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
     epcf = ngx_event_get_conf(cycle->conf_ctx, ngx_epoll_module);
 
     if (ep == -1) {
-        ep = epoll_create(ecf->connections / 2);
+        ep = epoll_create(cycle->connection_n / 2);
 
         if (ep == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
