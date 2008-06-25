@@ -145,23 +145,27 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         }
 
         if (rc == NGX_CONF_BLOCK_DONE) {
+
             if (!block) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unexpected \"}\"");
                 goto failed;
             }
 
-            block = 0;
-        }
-
-        if (rc == NGX_CONF_FILE_DONE && block) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "unexpected end of file, expecting \"}\"");
-            goto failed;
-        }
-
-        if (rc != NGX_OK && rc != NGX_CONF_BLOCK_START) {
             goto done;
         }
+
+        if (rc == NGX_CONF_FILE_DONE) {
+
+            if (block) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "unexpected end of file, expecting \"}\"");
+                goto failed;
+            }
+
+            goto done;
+        }
+
+        /* rc == NGX_OK || rc == NGX_CONF_BLOCK_START */
 
         if (cf->handler) {
 
