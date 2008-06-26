@@ -135,6 +135,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
     ngx_pool_cleanup_file_t        *clnf;
     ngx_open_file_cache_cleanup_t  *ofcln;
 
+    of->fd = NGX_INVALID_FILE;
     of->err = 0;
 
     if (cache == NULL) {
@@ -232,6 +233,9 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
             of->test_dir = 1;
         }
 
+        of->fd = file->fd;
+        of->uniq = file->uniq;
+
         rc = ngx_open_and_stat_file(name->data, of, pool->log);
 
         if (rc != NGX_OK && (of->err == 0 || !of->errors)) {
@@ -256,13 +260,16 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
                 && of->mtime == file->mtime
                 && of->size == file->size)
             {
-                if (ngx_close_file(of->fd) == NGX_FILE_ERROR) {
-                    ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
-                                  ngx_close_file_n " \"%s\" failed",
-                                  name->data);
+                if (of->fd != file->fd) {
+                    if (ngx_close_file(of->fd) == NGX_FILE_ERROR) {
+                        ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
+                                      ngx_close_file_n " \"%s\" failed",
+                                      name->data);
+                    }
+
+                    of->fd = file->fd;
                 }
 
-                of->fd = file->fd;
                 file->count++;
 
                 if (file->event) {
@@ -448,34 +455,25 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
     ngx_fd_t         fd;
     ngx_file_info_t  fi;
 
-    of->fd = NGX_INVALID_FILE;
-
-    if (of->test_dir) {
+    if (of->fd != NGX_INVALID_FILE || of->test_dir) {
 
         if (ngx_file_info(name, &fi) == -1) {
-            of->err = ngx_errno;
-
-            return NGX_ERROR;
+            goto failed;
         }
 
-        of->uniq = ngx_file_uniq(&fi);
-        of->mtime = ngx_file_mtime(&fi);
-        of->size = ngx_file_size(&fi);
-        of->is_dir = ngx_is_dir(&fi);
-        of->is_file = ngx_is_file(&fi);
-        of->is_link = ngx_is_link(&fi);
-        of->is_exec = ngx_is_exec(&fi);
+        if (of->fd != NGX_INVALID_FILE && of->uniq == ngx_file_uniq(&fi)) {
+            goto done;
+        }
 
-        if (of->is_dir) {
-            return NGX_OK;
+        if (of->test_dir && of->is_dir) {
+            goto done;
         }
     }
 
     fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
 
     if (fd == NGX_INVALID_FILE) {
-        of->err = ngx_errno;
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
@@ -487,6 +485,8 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
                           ngx_close_file_n " \"%s\" failed", name);
         }
 
+        of->fd = NGX_INVALID_FILE;
+
         return NGX_ERROR;
     }
 
@@ -496,10 +496,14 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
                           ngx_close_file_n " \"%s\" failed", name);
         }
 
-        fd = NGX_INVALID_FILE;
+        of->fd = NGX_INVALID_FILE;
+
+    } else {
+        of->fd = fd;
     }
 
-    of->fd = fd;
+done:
+
     of->uniq = ngx_file_uniq(&fi);
     of->mtime = ngx_file_mtime(&fi);
     of->size = ngx_file_size(&fi);
@@ -509,6 +513,13 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
     of->is_exec = ngx_is_exec(&fi);
 
     return NGX_OK;
+
+failed:
+
+    of->fd = NGX_INVALID_FILE;
+    of->err = ngx_errno;
+
+    return NGX_ERROR;
 }
 
 
