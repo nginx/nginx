@@ -25,6 +25,7 @@ typedef struct {
 static ngx_int_t ngx_http_core_find_location(ngx_http_request_t *r);
 static ngx_int_t ngx_http_core_find_static_location(ngx_http_request_t *r,
     ngx_http_location_tree_node_t *node);
+static ngx_int_t ngx_http_core_send_continue(ngx_http_request_t *r);
 
 static ngx_int_t ngx_http_core_preconfiguration(ngx_conf_t *cf);
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
@@ -771,7 +772,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 {
     u_char                    *p;
     size_t                     len;
-    ngx_int_t                  rc;
+    ngx_int_t                  rc, expect;
     ngx_http_core_loc_conf_t  *clcf;
 
     r->content_handler = NULL;
@@ -813,6 +814,15 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
         return NGX_OK;
+    }
+
+    if (r->headers_in.expect) {
+        expect = ngx_http_core_send_continue(r);
+
+        if (expect != NGX_OK) {
+            ngx_http_finalize_request(r, expect);
+            return NGX_OK;
+        }
     }
 
     if (rc == NGX_DONE) {
@@ -1241,6 +1251,45 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 
         node = node->left;
     }
+}
+
+
+static ngx_int_t
+ngx_http_core_send_continue(ngx_http_request_t *r)
+{
+    ngx_int_t   n;
+    ngx_str_t  *expect;
+
+    if (r->expect_tested) {
+        return NGX_OK;
+    }
+
+    r->expect_tested = 1;
+
+    expect = &r->headers_in.expect->value;
+
+    if (expect->len != sizeof("100-continue") - 1
+        || ngx_strncasecmp(expect->data, (u_char *) "100-continue",
+                           sizeof("100-continue") - 1)
+           != 0)
+    {
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "send 100 Continue");
+
+    n = r->connection->send(r->connection,
+                            (u_char *) "HTTP/1.1 100 Continue" CRLF CRLF,
+                            sizeof("HTTP/1.1 100 Continue" CRLF CRLF) - 1);
+
+    if (n == sizeof("HTTP/1.1 100 Continue" CRLF CRLF) - 1) {
+        return NGX_OK;
+    }
+
+    /* we assume that such small packet should be send successfully */
+
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
 
