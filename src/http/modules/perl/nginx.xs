@@ -650,8 +650,8 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    of.uniq = 0;
-    of.test_dir = 0;
+    ngx_memzero(&of, sizeof(ngx_open_file_info_t));
+
     of.valid = clcf->open_file_cache_valid;
     of.min_uses = clcf->open_file_cache_min_uses;
     of.errors = clcf->open_file_cache_errors;
