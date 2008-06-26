@@ -40,7 +40,7 @@ $(TEMP)/$(NGINX)/CHANGES.ru:	docs/xml/nginx/changes.xml		\
 $(TEMP)/$(NGINX)/CHANGES:	docs/xml/nginx/changes.xml		\
 				docs/xslt/changes.xslt
 
-	test -d $(TEMP)/$(NGINX) || mkdir - p$(TEMP)/$(NGINX)
+	test -d $(TEMP)/$(NGINX) || mkdir -p $(TEMP)/$(NGINX)
 
 	xsltproc --param lang "'en'"					\
 		-o $(TEMP)/$(NGINX)/CHANGES				\
