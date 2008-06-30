@@ -58,14 +58,52 @@ static int argument_number[] = {
 
 
 char *
+ngx_conf_param(ngx_conf_t *cf)
+{
+    ngx_str_t        *param;
+    ngx_buf_t         b;
+    ngx_conf_file_t   conf_file;
+
+    param = &cf->cycle->conf_param;
+
+    if (param->len == 0) {
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&conf_file, sizeof(ngx_conf_file_t));
+
+    ngx_memzero(&b, sizeof(ngx_buf_t));
+
+    b.start = param->data;
+    b.pos = param->data;
+    b.last = param->data + param->len;
+    b.end = b.last;
+    b.temporary = 1;
+
+    conf_file.file.fd = NGX_INVALID_FILE;
+    conf_file.file.name.data = (u_char *) "command line";
+    conf_file.line = 1;
+
+    cf->conf_file = &conf_file;
+    cf->conf_file->buffer = &b;
+
+    return ngx_conf_parse(cf, NULL);
+}
+
+
+char *
 ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
     char             *rv;
     ngx_fd_t          fd;
     ngx_int_t         rc;
     ngx_buf_t        *b;
-    ngx_uint_t        block;
     ngx_conf_file_t  *prev;
+    enum {
+        parse_file = 0,
+        parse_block,
+        parse_param
+    } type;
 
 #if (NGX_SUPPRESS_WARN)
     fd = NGX_INVALID_FILE;
@@ -120,10 +158,14 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         cf->conf_file->file.log = cf->log;
         cf->conf_file->line = 1;
 
-        block = 0;
+        type = parse_file;
+
+    } else if (cf->conf_file->file.fd != NGX_INVALID_FILE) {
+
+        type = parse_block;
 
     } else {
-        block = 1;
+        type = parse_param;
     }
 
 
@@ -146,7 +188,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         if (rc == NGX_CONF_BLOCK_DONE) {
 
-            if (!block) {
+            if (type != parse_block) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unexpected \"}\"");
                 goto failed;
             }
@@ -156,13 +198,23 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         if (rc == NGX_CONF_FILE_DONE) {
 
-            if (block) {
+            if (type == parse_block) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "unexpected end of file, expecting \"}\"");
                 goto failed;
             }
 
             goto done;
+        }
+
+        if (rc == NGX_CONF_BLOCK_START) {
+
+            if (type == parse_param) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "block directives are not supported "
+                                   "in -g option");
+                goto failed;
+            }
         }
 
         /* rc == NGX_OK || rc == NGX_CONF_BLOCK_START */
@@ -402,10 +454,19 @@ ngx_conf_read_token(ngx_conf_t *cf)
     for ( ;; ) {
 
         if (b->pos >= b->last) {
+
             if (cf->conf_file->file.offset
                                  >= ngx_file_size(&cf->conf_file->file.info))
             {
                 if (cf->args->nelts > 0) {
+
+                    if (cf->conf_file->file.fd == NGX_INVALID_FILE) {
+                        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                           "unexpected end of parameter, "
+                                           "expecting \";\"");
+                        return NGX_ERROR;
+                    }
+
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                   "unexpected end of file, "
                                   "expecting \";\" or \"}\"");

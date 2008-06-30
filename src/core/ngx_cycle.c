@@ -90,6 +90,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 old_cycle->conf_file.len + 1);
 
 
+    cycle->conf_param.len = old_cycle->conf_param.len;
+    cycle->conf_param.data = ngx_pnalloc(pool, old_cycle->conf_param.len);
+    if (cycle->conf_param.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+    ngx_memcpy(cycle->conf_param.data, old_cycle->conf_param.data,
+               old_cycle->conf_param.len);
+
+
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
 
     cycle->pathes.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *));
@@ -237,6 +247,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #if 0
     log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
+
+    if (ngx_conf_param(&conf) != NGX_CONF_OK) {
+        ngx_destroy_cycle_pools(&conf);
+        return NULL;
+    }
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         ngx_destroy_cycle_pools(&conf);

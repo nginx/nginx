@@ -637,13 +637,23 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
         case 'c':
             if (argv[i + 1] == NULL) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                              "the option: \"%s\" requires file name",
-                              argv[i]);
+                              "the option \"-c\" requires file name");
                 return NGX_ERROR;
             }
 
             cycle->conf_file.data = (u_char *) argv[++i];
             cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
+            break;
+
+        case 'g':
+            if (argv[i + 1] == NULL) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                              "the option \"-g\" requires parameter");
+                return NGX_ERROR;
+            }
+
+            cycle->conf_param.data = (u_char *) argv[++i];
+            cycle->conf_param.len = ngx_strlen(cycle->conf_param.data);
             break;
 
         default:
