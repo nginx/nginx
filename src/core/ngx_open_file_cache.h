@@ -24,6 +24,7 @@ typedef struct {
     ngx_uint_t               min_uses;
 
     unsigned                 test_dir:1;
+    unsigned                 log:1;
     unsigned                 errors:1;
     unsigned                 events:1;
 

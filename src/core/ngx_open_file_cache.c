@@ -460,7 +460,14 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
         }
     }
 
-    fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+    if (!of->log) {
+        fd = ngx_open_file(name, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+    } else {
+        fd = ngx_open_file(name, NGX_FILE_RDWR,
+                           NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND,
+                           NGX_FILE_DEFAULT_ACCESS);
+    }
 
     if (fd == NGX_INVALID_FILE) {
         goto failed;
