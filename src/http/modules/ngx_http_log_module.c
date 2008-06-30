@@ -761,7 +761,8 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_OK;
     }
 
-    *conf = *prev;
+    conf->logs = prev->logs;
+    conf->off = prev->off;
 
     if (conf->logs || conf->off) {
         return NGX_CONF_OK;
