@@ -189,7 +189,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
             goto add_event;
         }
 
-        if ((file->event && file->use_event)
+        if (file->use_event
             || (file->event == NULL
                 && (of->uniq == 0 || of->uniq == file->uniq)
                 && now - file->created < of->valid))
@@ -256,28 +256,13 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
                 goto add_event;
             }
 
-            if (of->uniq == file->uniq
-                && of->mtime == file->mtime
-                && of->size == file->size)
-            {
-                if (of->fd != file->fd) {
-                    if (ngx_close_file(of->fd) == NGX_FILE_ERROR) {
-                        ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
-                                      ngx_close_file_n " \"%s\" failed",
-                                      name->data);
-                    }
-
-                    of->fd = file->fd;
-                }
+            if (of->uniq == file->uniq) {
 
                 file->count++;
 
                 if (file->event) {
                     file->use_event = 1;
-                    goto renew;
                 }
-
-                ngx_open_file_add_event(cache, file, of, pool->log);
 
                 goto renew;
             }
@@ -353,7 +338,6 @@ create:
 
     file->uses = 1;
     file->count = 0;
-    file->use_event = 0;
     file->event = NULL;
 
 add_event:
@@ -455,17 +439,23 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
     ngx_fd_t         fd;
     ngx_file_info_t  fi;
 
-    if (of->fd != NGX_INVALID_FILE || of->test_dir) {
+    if (of->fd != NGX_INVALID_FILE) {
 
         if (ngx_file_info(name, &fi) == -1) {
             goto failed;
         }
 
-        if (of->fd != NGX_INVALID_FILE && of->uniq == ngx_file_uniq(&fi)) {
+        if (of->uniq == ngx_file_uniq(&fi)) {
             goto done;
         }
 
-        if (of->test_dir && of->is_dir) {
+    } else if (of->test_dir) {
+
+        if (ngx_file_info(name, &fi) == -1) {
+            goto failed;
+        }
+
+        if (of->is_dir) {
             goto done;
         }
     }
@@ -542,6 +532,8 @@ ngx_open_file_add_event(ngx_open_file_cache_t *cache,
     {
         return;
     }
+
+    file->use_event = 0;
 
     file->event = ngx_calloc(sizeof(ngx_event_t), log);
     if (file->event== NULL) {
@@ -820,6 +812,7 @@ ngx_open_file_cache_remove(ngx_event_t *ev)
 
     /* NGX_ONESHOT_EVENT was already deleted */
     file->event = NULL;
+    file->use_event = 0;
 
     file->close = 1;
 
