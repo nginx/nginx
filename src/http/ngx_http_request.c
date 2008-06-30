@@ -2623,6 +2623,8 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
         r->headers_out.status = error;
     }
 
+    log->action = "logging request";
+
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
     log_handler = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.elts;
@@ -2630,6 +2632,8 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
     for (i = 0; i < n; i++) {
         log_handler[i](r);
     }
+
+    log->action = "closing request";
 
     if (r->connection->timedout) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);

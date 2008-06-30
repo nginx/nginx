@@ -422,7 +422,8 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       ngx_open_file_n " \"%s\" failed", log.data);
-        return -1;
+        /* simulate successfull logging */
+        return len;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
