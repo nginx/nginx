@@ -9,6 +9,56 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.4" date="30.06.2008">
+
+<change type="feature">
+<para lang="ru">
+директива access_log поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "access_log" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива open_log_file_cache.
+</para>
+<para lang="en">
+the "open_log_file_cache" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -g.
+</para>
+<para lang="en">
+the -g switch.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка строки "Expect" в заголовке запроса.
+</para>
+<para lang="en">
+the "Expect" request header line support.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большие включения в SSI могли передавались не полностью.
+</para>
+<para lang="en">
+large SSI inclusions might be truncated.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.3" date="23.06.2008">
 
 <change type="change">
@@ -2962,7 +3012,8 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc and ppc;
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -2978,7 +3029,8 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -5254,7 +5306,7 @@ the &amp;deg; symbol codes were changed in koi-win conversion table.
 в таблицу перекодировки koi-win добавлены символы евро и номера.
 </para>
 <para lang="en">
-the euro и N symbols were added to koi-win conversion table.
+the euro and N symbols were added to koi-win conversion table.
 </para>
 </change>
 
@@ -7170,7 +7222,8 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.3.2.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
 the bug had appeared in 0.3.2.
 </para>
 </change>
@@ -9439,7 +9492,8 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.1.22.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
 the bug had appeared in 0.1.22.
 </para>
 </change>
