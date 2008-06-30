@@ -572,9 +572,10 @@ ngx_open_file_add_event(ngx_open_file_cache_t *cache,
     }
 
     /*
-     * we do not file->use_event here because there may be a race
-     * condition between opening file and adding event, so we rely
-     * upon event notification only after first file revalidation
+     * we do not set file->use_event here because there may be a race
+     * condition: a file may be deleted between opening the file and
+     * adding event, so we rely upon event notification only after
+     * one file revalidation on next file access
      */
 
     return;
