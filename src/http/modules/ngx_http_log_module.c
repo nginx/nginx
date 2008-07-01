@@ -783,6 +783,7 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    log->script = NULL;
     log->disk_full_time = 0;
     log->error_log_time = 0;
 
