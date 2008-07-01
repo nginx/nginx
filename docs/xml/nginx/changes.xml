@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.5" date="01.07.2008">
+
+<change>
+<para lang="ru">
+Исправления в поддержке переменных в директиве access_log;
+ошибка появилась в 0.7.4.
+</para>
+<para lang="en">
+Bugfixes in variables support in the "access_log" directive;
+the bug had appeared in 0.7.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http_gzip_module;
+ошибка появилась в 0.7.3.<br/>
+Спасибо Кириллу Коринскому.
+</para>
+<para lang="en">
+nginx could not be built --without-http_gzip_module;
+the bug had appeared in 0.7.3.<br/>
+Thanks to Kirill A. Korinskiy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при совместном использовании sub_filter и SSI
+ответы могли передаваться неверно.
+</para>
+<para lang="en">
+if sub_filter and SSI were used together, then responses might
+were transferred incorrectly.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.4" date="30.06.2008">
 
 <change type="feature">
