@@ -3499,7 +3499,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             max = ngx_atoi(value[i].data + 4, value[i].len - 4);
             if (max == NGX_ERROR) {
-                return NGX_CONF_ERROR;
+                goto failed;
             }
 
             continue;
@@ -3512,7 +3512,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             inactive = ngx_parse_time(&s, 1);
             if (inactive < 0) {
-                return NGX_CONF_ERROR;
+                goto failed;
             }
 
             continue;
@@ -3524,6 +3524,8 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             continue;
         }
+
+    failed:
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid \"open_file_cache\" parameter \"%V\"",
