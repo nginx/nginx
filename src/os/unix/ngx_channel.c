@@ -33,7 +33,7 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         msg.msg_control = (caddr_t) &cmsg;
         msg.msg_controllen = sizeof(cmsg);
 
-        cmsg.cm.cmsg_len = sizeof(cmsg);
+        cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int));
         cmsg.cm.cmsg_level = SOL_SOCKET;
         cmsg.cm.cmsg_type = SCM_RIGHTS;
         *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
@@ -138,7 +138,7 @@ ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
 
     if (ch->command == NGX_CMD_OPEN_CHANNEL) {
 
-        if (cmsg.cm.cmsg_len < (socklen_t) sizeof(cmsg)) {
+        if (cmsg.cm.cmsg_len < (socklen_t) CMSG_LEN(sizeof(int))) {
             ngx_log_error(NGX_LOG_ALERT, log, 0,
                           "recvmsg() returned too small ancillary data");
             return NGX_ERROR;
