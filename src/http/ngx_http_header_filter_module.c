@@ -286,9 +286,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             host = cscf->server_name;
 
-        } else if (r->headers_in.host) {
-            host.len = r->headers_in.host_name_len;
-            host.data = r->headers_in.host->value.data;
+        } else if (r->headers_in.server.len) {
+            host = r->headers_in.server;
 
         } else {
             host.data = addr;

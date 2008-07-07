@@ -3216,8 +3216,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         value[i].len--;
         value[i].data++;
 
-        sn->regex = ngx_regex_compile(&value[i], NGX_REGEX_CASELESS, cf->pool,
-                                      &err);
+        sn->regex = ngx_regex_compile(&value[i], 0, cf->pool, &err);
 
         if (sn->regex == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
