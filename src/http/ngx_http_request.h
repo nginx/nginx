@@ -469,6 +469,7 @@ struct ngx_http_request_s {
     unsigned                          request_output:1;
     unsigned                          header_sent:1;
     unsigned                          expect_tested:1;
+    unsigned                          root_tested:1;
     unsigned                          done:1;
     unsigned                          utf8:1;
 

@@ -159,6 +159,8 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    r->root_tested = 1;
+
     start = 0;
     len = of.size;
     i = 1;

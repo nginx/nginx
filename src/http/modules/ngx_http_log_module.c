@@ -366,7 +366,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     ngx_http_log_loc_conf_t   *llcf;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r->err_status == NGX_HTTP_NOT_FOUND) {
+    if (!r->root_tested) {
 
         /* test root directory existance */
 
@@ -387,10 +387,25 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
         of.events = clcf->open_file_cache_events;
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
-                != NGX_OK
-            || !of.is_dir)
+            != NGX_OK)
         {
-            /* no root directory: simulate successfull logging */
+            if (of.err == 0) {
+                /* simulate successfull logging */
+                return len;
+            }
+
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, of.err,
+                          "testing \"%s\" existence failed", path.data);
+
+            /* simulate successfull logging */
+            return len;
+        }
+
+        if (!of.is_dir) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ENOTDIR,
+                          "testing \"%s\" existence failed", path.data);
+
+            /* simulate successfull logging */
             return len;
         }
     }

@@ -175,6 +175,8 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
 #endif
 
+    r->root_tested = 1;
+
     rc = ngx_http_discard_request_body(r);
 
     if (rc != NGX_OK) {
