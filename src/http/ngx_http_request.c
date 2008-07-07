@@ -2046,7 +2046,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         hc->pipeline = 1;
         c->log->action = "reading client pipelined request line";
 
-        ngx_http_init_request(rev);
+        rev->handler = ngx_http_init_request;
+        ngx_post_event(rev, &ngx_posted_events);
         return;
     }
 
@@ -2156,7 +2157,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     c->idle = 1;
 
     if (rev->ready) {
-        ngx_http_keepalive_handler(rev);
+        ngx_post_event(rev, &ngx_posted_events);
     }
 }
 
