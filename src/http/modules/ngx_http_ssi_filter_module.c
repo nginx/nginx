@@ -558,8 +558,9 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     if (b->in_file) {
                         if (slcf->min_file_chunk < (size_t) (b->last - b->pos))
                         {
-                            b->file_last = b->file_pos + (b->last - b->start);
-                            b->file_pos += b->pos - b->start;
+                            b->file_last = b->file_pos
+                                                   + (b->last - ctx->buf->pos);
+                            b->file_pos += b->pos - ctx->buf->pos;
 
                         } else {
                             b->in_file = 0;
