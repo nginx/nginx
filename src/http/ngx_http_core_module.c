@@ -2922,7 +2922,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                 return NGX_CONF_ERROR;
             }
         }
- 
+
         conf->resolver = prev->resolver;
     }
 

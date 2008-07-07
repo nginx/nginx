@@ -413,13 +413,13 @@ failed:
 
         if (file->count == 0) {
 
-	    if (file->fd != NGX_INVALID_FILE) {
-		if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
-		    ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
-				  ngx_close_file_n " \"%s\" failed",
+            if (file->fd != NGX_INVALID_FILE) {
+                if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_ALERT, pool->log, ngx_errno,
+                                  ngx_close_file_n " \"%s\" failed",
                                   file->name);
-		}
-	    }
+                }
+            }
 
             ngx_free(file->name);
             ngx_free(file);
