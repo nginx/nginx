@@ -47,6 +47,7 @@
 
 #include <time.h>               /* tzset() */
 #include <malloc.h>             /* memalign() */
+#include <limits.h>             /* IOV_MAX */
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 #include <crypt.h>
