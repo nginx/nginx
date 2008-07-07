@@ -88,6 +88,7 @@ static size_t ngx_http_log_variable_getlen(ngx_http_request_t *r,
     uintptr_t data);
 static u_char *ngx_http_log_variable(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
+static uintptr_t ngx_http_log_escape(u_char *dst, u_char *src, size_t size);
 
 
 static void *ngx_http_log_create_main_conf(ngx_conf_t *cf);
@@ -478,6 +479,7 @@ ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
 static size_t
 ngx_http_log_variable_getlen(ngx_http_request_t *r, uintptr_t data)
 {
+    uintptr_t                   len;
     ngx_http_variable_value_t  *value;
 
     value = ngx_http_get_indexed_variable(r, data);
@@ -486,7 +488,11 @@ ngx_http_log_variable_getlen(ngx_http_request_t *r, uintptr_t data)
         return 1;
     }
 
-    return value->len;
+    len = ngx_http_log_escape(NULL, value->data, value->len);
+
+    value->escape = len ? 1 : 0;
+
+    return value->len + len * 3;
 }
 
 
@@ -502,7 +508,70 @@ ngx_http_log_variable(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
         return buf + 1;
     }
 
-    return ngx_cpymem(buf, value->data, value->len);
+    if (value->escape == 0) {
+        return ngx_cpymem(buf, value->data, value->len);
+
+    } else {
+        return (u_char *) ngx_http_log_escape(buf, value->data, value->len);
+    }
+}
+
+
+static uintptr_t
+ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
+{
+    ngx_uint_t      i, n;
+    static u_char   hex[] = "0123456789ABCDEF";
+
+    static uint32_t   escape[] = {
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+        0x00000004, /* 0000 0000 0000 0000  0000 0000 0000 0100 */
+
+                    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+        0x10000000, /* 0001 0000 0000 0000  0000 0000 0000 0000 */
+
+                    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+    };
+
+
+    if (dst == NULL) {
+
+        /* find the number of the characters to be escaped */
+
+        n  = 0;
+
+        for (i = 0; i < size; i++) {
+            if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+                n++;
+            }
+            src++;
+        }
+
+        return (uintptr_t) n;
+    }
+
+    for (i = 0; i < size; i++) {
+        if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+            *dst++ = '\\';
+            *dst++ = 'x';
+            *dst++ = hex[*src >> 4];
+            *dst++ = hex[*src & 0xf];
+            src++;
+
+        } else {
+            *dst++ = *src++;
+        }
+    }
+
+    return (uintptr_t) dst;
 }
 
 

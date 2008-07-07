@@ -16,7 +16,7 @@
 
 typedef ngx_variable_value_t  ngx_http_variable_value_t;
 
-#define ngx_http_variable(v)     { sizeof(v) - 1, 1, 0, 0, (u_char *) v }
+#define ngx_http_variable(v)     { sizeof(v) - 1, 1, 0, 0, 0, (u_char *) v }
 
 typedef struct ngx_http_variable_s  ngx_http_variable_t;
 
