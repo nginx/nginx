@@ -9,16 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.6" date="07.07.2008">
+
+<change type="bugfix">
+<para lang="ru">
+теперь при использовании переменных в директиве access_log
+всегда проверяется существовании root'а для запроса.
+</para>
+<para lang="en">
+now if variables are used in the "access_log" directive
+a request root existence is always tested.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_flv_module не поддерживал несколько значений в
+аргументах запроса.
+</para>
+<para lang="en">
+the ngx_http_flv_module did not support several values in a query string.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.5" date="01.07.2008">
 
 <change>
 <para lang="ru">
 Исправления в поддержке переменных в директиве access_log;
-ошибка появилась в 0.7.4.
+ошибки появилась в 0.7.4.
 </para>
 <para lang="en">
 Bugfixes in variables support in the "access_log" directive;
-the bug had appeared in 0.7.4.
+the bugs had appeared in 0.7.4.
 </para>
 </change>
 
