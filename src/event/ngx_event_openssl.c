@@ -1267,6 +1267,29 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
         return NGX_OK;
     }
 
+    if (builtin_session_cache == NGX_SSL_NONE_SCACHE) {
+
+        /*
+         * If the server explicitly says that it does not support
+         * session reuse (see SSL_SESS_CACHE_OFF above), then
+         * Outlook Express fails to upload a sent email to
+         * the Sent Items folder on the IMAP server via a separate IMAP
+         * connection in the background. Therefore we have a special
+         * mode (SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE)
+         * where the server pretends that it supports session reuse,
+         * but it does not actually store any session.
+         */
+
+        SSL_CTX_set_session_cache_mode(ssl->ctx,
+                                       SSL_SESS_CACHE_SERVER
+                                       |SSL_SESS_CACHE_NO_AUTO_CLEAR
+                                       |SSL_SESS_CACHE_NO_INTERNAL_STORE);
+
+        SSL_CTX_sess_set_cache_size(ssl->ctx, 1);
+
+        return NGX_OK;
+    }
+
     cache_mode = SSL_SESS_CACHE_SERVER;
 
     if (shm_zone && builtin_session_cache == NGX_SSL_NO_BUILTIN_SCACHE) {
