@@ -9,6 +9,150 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.32" date="07.07.2008">
+
+<change type="change">
+<para lang="ru">
+параметр "none" в директиве ssl_session_cache;
+теперь этот параметр используется по умолчанию.<br/>
+Спасибо Rob Mueller.
+</para>
+<para lang="en">
+the "none" parameter in the "ssl_session_cache" directive;
+now this is default parameter.<br/>
+Thanks to Rob Mueller.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь символы 0x00-0x1F, '"' и '\' в access_log записываются в виде \xXX.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now the 0x00-0x1F, '"' and '\' characters are escaped as \xXX in an
+access_log.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx разрешает несколько строк "Host" в заголовке запроса.
+</para>
+<para lang="en">
+now nginx allows several "Host" request header line.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает флаг modified.
+</para>
+<para lang="en">
+the "modified" flag in the "expires" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $uid_got и $uid_set можно использовать на любой стадии обработки
+запроса.
+</para>
+<para lang="en">
+the $uid_got and $uid_set variables may be used at any request processing stage.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $hostname.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+the $hostname variable.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка DESTDIR.<br/>
+Спасибо Todd A. Fisher и Andras Voroskoi.
+</para>
+<para lang="en">
+DESTDIR support.<br/>
+Thanks to Todd A. Fisher and Andras Voroskoi.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при совместном использовании sub_filter и SSI
+ответы могли передаваться неверно.
+</para>
+<para lang="en">
+if sub_filter and SSI were used together, then responses might
+were transferred incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+большие включения в SSI могли передавались не полностью.
+</para>
+<para lang="en">
+large SSI inclusions might be truncated.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_pass не работала с протоколом HTTPS;
+ошибка появилась в 0.6.9.
+</para>
+<para lang="en">
+the "proxy_pass" directive did not work with the HTTPS protocol;
+the bug had appeared in 0.6.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочие процессы могли не реагировать на сигналы переконфигурации
+и ротации логов.
+</para>
+<para lang="en">
+worker processes might not catch reconfiguration and log rotation signals.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на последних Fedora 9 Linux.<br/>
+Спасибо Roxis.
+</para>
+<para lang="en">
+nginx could not be built on latest Fedora 9 Linux.<br/>
+Thanks to Roxis.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании keepalive на Linux
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process on Linux,
+if keepalive was enabled.
+</para>
+</change>
+
+</changes>
+
+
+<!-- 0.7.x branch -->
 <changes ver="0.6.31" date="12.05.2008">
 
 <change type="bugfix">
@@ -21,7 +165,7 @@ nginx не обрабатывал ответ FastCGI-сервера, если строка заголовка ответ была
 <para lang="en">
 nginx did not process FastCGI response
 if header was at the end of FastCGI record;
-bug appeared in 0.6.2.<br/>
+the bug had appeared in 0.6.2.<br/>
 Thanks to Sergey Serov.
 </para>
 </change>
@@ -109,7 +253,7 @@ nginx не собирался под OpenBSD;
 </para>
 <para lang="en">
 nginx could not be built on OpenBSD;
-bug appeared in 0.6.15.
+the bug had appeared in 0.6.15.
 </para>
 </change>
 
@@ -134,7 +278,7 @@ the ngx_google_perftools_module.
 </para>
 <para lang="en">
 the ngx_http_perl_module could not be built on 64-bit platforms;
-bug appeared in 0.6.27.
+the bug had appeared in 0.6.27.
 </para>
 </change>
 
@@ -150,7 +294,7 @@ bug appeared in 0.6.27.
 </para>
 <para lang="en">
 the rtsig method could not be built;
-bug appeared in 0.6.27.
+the bug had appeared in 0.6.27.
 </para>
 </change>
 
@@ -392,7 +536,7 @@ nginx выдавал ошибочное сообщение "SSL_shutdown() failed (SSL: )";
 </para>
 <para lang="en">
 nginx issued the bogus error message "SSL_shutdown() failed (SSL: )";
-bug appeared in 0.6.23.
+the bug had appeared in 0.6.23.
 </para>
 </change>
 
@@ -403,7 +547,7 @@ bug appeared in 0.6.23.
 </para>
 <para lang="en">
 in HTTPS mode requests might fail with the "bad write retry" error;
-bug appeared in 0.6.23.
+the bug had appeared in 0.6.23.
 </para>
 </change>
 
@@ -480,7 +624,7 @@ ngx_http_dav_module;
 </para>
 <para lang="en">
 the ngx_http_gzip_static_module did not allow the ngx_http_dav_module to work;
-bug appeared in 0.6.23.
+the bug had appeared in 0.6.23.
 </para>
 </change>
 
@@ -502,7 +646,7 @@ nginx не собирался без библиотеки PCRE;
 </para>
 <para lang="en">
 nginx could not be built without PCRE library;
-bug appeared in 0.6.23.
+the bug had appeared in 0.6.23.
 </para>
 </change>
 
@@ -517,7 +661,7 @@ bug appeared in 0.6.23.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process if HTTPS was used;
-bug appeared in 0.6.23.
+the bug had appeared in 0.6.23.
 </para>
 </change>
 
@@ -656,7 +800,7 @@ Thanks to Oleg Motienko.
 </para>
 <para lang="en">
 in HTTPS mode requests might fail with the "bad write retry" error;
-bug appeared in 0.5.13.
+the bug had appeared in 0.5.13.
 </para>
 </change>
 
@@ -688,7 +832,7 @@ allocated memory.
 if nginx was built with ngx_http_perl_module,
 the perl before 5.8.6 was used, and perl supported threads,
 then during reconfiguration the master process aborted;
-bug appeared in 0.5.9.<br/>
+the bug had appeared in 0.5.9.<br/>
 Thanks to Boris Zhmurov.
 </para>
 </change>
@@ -735,7 +879,7 @@ Thanks to Olexander Shtepa.
 </para>
 <para lang="en">
 the last address was missed in the $upstream_addr variable;
-bug appeared in 0.6.18.
+the bug had appeared in 0.6.18.
 </para>
 </change>
 
@@ -762,7 +906,7 @@ the "fastcgi_next_upstream invalid_header" directive.
 <para lang="en">
 a segmentation fault occurred in master process
 if the "fastcgi_catch_stderr" directive was used;
-bug appeared in 0.6.10.<br/>
+the bug had appeared in 0.6.10.<br/>
 Thanks to Manlio Perillo.
 </para>
 </change>
@@ -793,7 +937,7 @@ resolver
 <para lang="en">
 a segmentation fault might occur in worker process
 if a "proxy_pass" directive with URI-part was used;
-bug appeared in 0.6.19.
+the bug had appeared in 0.6.19.
 </para>
 </change>
 
@@ -850,7 +994,7 @@ then nginx returned usual response.
 <para lang="en">
 a segmentation fault might occur in worker process
 if a "proxy_pass" directive with URI-part was used;
-bug appeared in 0.6.19.
+the bug had appeared in 0.6.19.
 </para>
 </change>
 
@@ -956,7 +1100,7 @@ Thanks to Alexander V. Inyukhin.
 </para>
 <para lang="en">
 URL double escaping in a redirect of the "msie_refresh" directive;
-bug appeared in 0.6.4.
+the bug had appeared in 0.6.4.
 </para>
 </change>
 
@@ -1024,7 +1168,7 @@ Thanks to Ilya Novikov.
 <para lang="en">
 if the "?" character was in a "error_page" directive, then it was escaped
 in a proxied request;
-bug appeared in 0.6.11.
+the bug had appeared in 0.6.11.
 </para>
 </change>
 
@@ -1122,7 +1266,7 @@ error_page nginx пытался снова прочитать тело запроса;
 <para lang="en">
 if request with request body was redirected using the "error_page" directive,
 then nginx tried to read the request body again;
-bug appeared in 0.6.7.
+the bug had appeared in 0.6.7.
 </para>
 </change>
 
@@ -1135,7 +1279,7 @@ bug appeared in 0.6.7.
 <para lang="en">
 a segmentation fault occurred in worker process
 if no server_name was explicitly defined for server processing request;
-bug appeared in 0.6.7.
+the bug had appeared in 0.6.7.
 </para>
 </change>
 
@@ -1181,7 +1325,7 @@ the "access_log" directive may be used inside the "limit_except" block.
 <para lang="en">
 if all upstream servers were failed, then all servers had got weight
 the was equal one until servers became alive;
-bug appeared in 0.6.6.
+the bug had appeared in 0.6.6.
 </para>
 </change>
 
@@ -1238,7 +1382,7 @@ nginx распознавал параметры "close" и "keep-alive" в строке "Connection"
 <para lang="en">
 nginx supported low case only "close" and "keep-alive" values
 in the "Connection" request header line;
-bug appeared in 0.6.11.
+the bug had appeared in 0.6.11.
 </para>
 </change>
 
@@ -1319,7 +1463,7 @@ wildcard в конце имени сервера не работали;
 </para>
 <para lang="en">
 the trailing wildcards did not work;
-bug appeared in 0.6.9.
+the bug had appeared in 0.6.9.
 </para>
 </change>
 
@@ -1391,7 +1535,7 @@ nginx did not support several "Connection" request header lines.
 <para lang="en">
 if the "max_fails" was set for upstream server, then after first
 failure server weight was always one;
-bug appeared in 0.6.6.
+the bug had appeared in 0.6.6.
 </para>
 </change>
 
@@ -1417,7 +1561,7 @@ directives.
 </para>
 <para lang="en">
 socket leak;
-bug appeared in 0.6.7.
+the bug had appeared in 0.6.7.
 </para>
 </change>
 
@@ -1456,7 +1600,7 @@ if /dev/poll method was used.
 <para lang="en">
 a worker process may got caught in an endless loop,
 if the HTTPS protocol was used;
-bug appeared in 0.6.7.
+the bug had appeared in 0.6.7.
 </para>
 </change>
 
@@ -1487,7 +1631,7 @@ nginx не собирался на amd64;
 </para>
 <para lang="en">
 nginx could not be built on amd64;
-bug appeared in 0.6.8.
+the bug had appeared in 0.6.8.
 </para>
 </change>
 
@@ -1538,7 +1682,7 @@ now nginx escapes "%" in $memcached_key variable.
 <para lang="en">
 nginx used path relative to configuration prefix for non-absolute
 configuration file path specified in the "-c" key;
-bug appeared in 0.6.6.
+the bug had appeared in 0.6.6.
 </para>
 </change>
 
@@ -1676,7 +1820,7 @@ Thanks to Jiang Hong.
 <para lang="en">
 a worker process may got caught in an endless loop, if a "server" inside
 "upstream" block was marked as "down";
-bug appeared in 0.6.6.
+the bug had appeared in 0.6.6.
 </para>
 </change>
 
@@ -1770,7 +1914,7 @@ nginx не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
 </para>
 <para lang="en">
 fix building on Solaris/amd64 by Sun Studio 11 and early versions;
-bug appeared in 0.6.4.
+the bug had appeared in 0.6.4.
 </para>
 </change>
 
@@ -1967,7 +2111,7 @@ if the eventport method was used.
 <para lang="en">
 the "proxy_ignore_client_abort" and "fastcgi_ignore_client_abort" directives
 did not work;
-bug appeared in 0.5.13.
+the bug had appeared in 0.5.13.
 </para>
 </change>
 
@@ -2061,7 +2205,7 @@ nginx не собирался с параметром --without-http_rewrite_module;
 </para>
 <para lang="en">
 nginx could not be built with the --without-http_rewrite_module parameter;
-bug appeared in 0.5.24.
+the bug had appeared in 0.5.24.
 </para>
 </change>
 
@@ -2088,7 +2232,7 @@ using HTTP/0.9.
 </para>
 <para lang="en">
 a part of response body might be passed uncompressed if gzip was used;
-bug appeared in 0.5.23.
+the bug had appeared in 0.5.23.
 </para>
 </change>
 
@@ -2162,7 +2306,7 @@ in the HTTPS protocol in the "proxy_pass" directive.
 </para>
 <para lang="en">
 a big request body might not be passed to backend;
-bug appeared in 0.5.21.
+the bug had appeared in 0.5.21.
 </para>
 </change>
 
@@ -2399,7 +2543,7 @@ a segmentation fault occurred in master process
 after first reconfiguration and receiving any signal
 if nginx was built with ngx_http_perl_module and perl
 did not support multiplicity;
-bug appeared in 0.5.9.
+the bug had appeared in 0.5.9.
 </para>
 </change>
 
@@ -2412,7 +2556,7 @@ bug appeared in 0.5.9.
 <para lang="en">
 if perl did not support multiplicity, then after reconfiguration
 perl code did not work;
-bug appeared in 0.3.38.
+the bug had appeared in 0.3.38.
 </para>
 </change>
 
@@ -2498,7 +2642,7 @@ Thanks to Pavel Yarkovoy.
 a segmentation fault might occur in worker process
 if a charset was set in the "Content-Type" header line and the line
 has trailing ";";
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -2520,7 +2664,7 @@ nginx не собирался на Solaris без параметра --with-debug;
 </para>
 <para lang="en">
 nginx could not be built on Solaris without the --with-debug option;
-bug appeared in 0.5.15.
+the bug had appeared in 0.5.15.
 </para>
 </change>
 
@@ -2697,8 +2841,9 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc and ppc;
-bug appeared in 0.5.8.
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.5.8.
 </para>
 </change>
 
@@ -2713,8 +2858,9 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
-bug appeared in 0.5.8.
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.5.8.
 </para>
 </change>
 
@@ -2727,7 +2873,7 @@ bug appeared in 0.5.8.
 <para lang="en">
 a segmentation fault might occur in worker process
 if the temporarily files were used while working with FastCGI server;
-bug appeared in 0.5.8.
+the bug had appeared in 0.5.8.
 </para>
 </change>
 
@@ -2774,7 +2920,7 @@ Thanks to Chris McGrath.
 </para>
 <para lang="en">
 the response was incorrect if several ranges were requested;
-bug appeared in 0.5.6.
+the bug had appeared in 0.5.6.
 </para>
 </change>
 
@@ -2826,7 +2972,7 @@ if nginx was built with -O2 optimization.
 <para lang="en">
 while online executable file upgrade the new master process did not
 inherit the listening sockets;
-bug appeared in 0.5.9.
+the bug had appeared in 0.5.9.
 </para>
 </change>
 
@@ -2839,7 +2985,7 @@ segmentation fault;
 <para lang="en">
 a segmentation fault might occur in worker process
 if nginx was built with -O2 optimization;
-bug appeared in 0.5.1.
+the bug had appeared in 0.5.1.
 </para>
 </change>
 
@@ -2958,7 +3104,7 @@ send_timeout;
 <para lang="en">
 if the "proxy_buffering off" directive was used and a client connection
 was non-active, then the connection was closed after send timeout;
-bug appeared in 0.4.7.
+the bug had appeared in 0.4.7.
 </para>
 </change>
 
@@ -3225,7 +3371,7 @@ nginx might report about configuration error.
 </para>
 <para lang="en">
 a segmentation fault might occur if the $host variable was used;
-bug appeared in 0.4.14.
+the bug had appeared in 0.4.14.
 </para>
 </change>
 
@@ -3278,7 +3424,7 @@ the $r->has_request_body method did not work.
 <para lang="en">
 if the "proxy_pass" directive used the name of the "upstream" block,
 then nginx tried to resolve the name;
-bug appeared in 0.5.1.
+the bug had appeared in 0.5.1.
 </para>
 </change>
 
@@ -3305,7 +3451,7 @@ of a request.
 </para>
 <para lang="en">
 for Eudora for Mac;
-bug appeared in 0.4.11.<br/>
+the bug had appeared in 0.4.11.<br/>
 Thanks to Bron Gondwana.
 </para>
 </change>
@@ -3319,7 +3465,7 @@ Thanks to Bron Gondwana.
 <para lang="en">
 if the "upstream" name was used in the "fastcgi_pass", then the message
 "no port in upstream" was issued;
-bug appeared in 0.5.0.
+the bug had appeared in 0.5.0.
 </para>
 </change>
 
@@ -3333,7 +3479,7 @@ bug appeared in 0.5.0.
 <para lang="en">
 if the "proxy_pass" and "fastcgi_pass" directives used the same servers but
 different ports, then these directives uses the first described port;
-bug appeared in 0.5.0.
+the bug had appeared in 0.5.0.
 </para>
 </change>
 
@@ -3346,7 +3492,7 @@ bug appeared in 0.5.0.
 <para lang="en">
 if the "proxy_pass" and "fastcgi_pass" directives used the unix domain sockets,
 then these directives used first described socket;
-bug appeared in 0.5.0.
+the bug had appeared in 0.5.0.
 </para>
 </change>
 
@@ -3442,7 +3588,7 @@ nginx не собирался на 64-битных платформах;
 </para>
 <para lang="en">
 nginx could not be built on 64-bit platforms;
-bug appeared in 0.4.14.
+the bug had appeared in 0.4.14.
 </para>
 </change>
 
@@ -3476,7 +3622,7 @@ ngx_http_perl_module не работал с перлом, собранным с поддержкой потоков;
 </para>
 <para lang="en">
 ngx_http_perl_module did not work with perl built with the threads support;
-bug appeared in 0.3.38.
+the bug had appeared in 0.3.38.
 </para>
 </change>
 
@@ -3594,7 +3740,7 @@ and the deferred accept() were used.
 </para>
 <para lang="en">
 a charset could not be set for ngx_http_autoindex_module responses;
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -3625,7 +3771,7 @@ Thanks to Thomas Moschny.
 </para>
 <para lang="en">
 the 50th subrequest in SSI response did not work;
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -3695,7 +3841,7 @@ the ngx_http_perl_module supports the $r->allow_ranges method.
 <para lang="en">
 if the APOP was enabled in the POP3 proxy, then the USER/PASS commands
 might not work;
-bug appeared in 0.4.10.
+the bug had appeared in 0.4.10.
 </para>
 </change>
 
@@ -3742,7 +3888,7 @@ in the "map" directive.
 </para>
 <para lang="en">
 the ngx_http_flv_module did not support the byte ranges for full responses;
-bug appeared in 0.4.7.
+the bug had appeared in 0.4.7.
 </para>
 </change>
 
@@ -3753,7 +3899,7 @@ nginx не собирался на Debian amd64;
 </para>
 <para lang="en">
 nginx could not be built on Debian amd64;
-bug appeared in 0.4.9.
+the bug had appeared in 0.4.9.
 </para>
 </change>
 
@@ -3906,7 +4052,7 @@ the $r->headers_out("Content-Length", ...) method.
 <para lang="en">
 after redirecting error by an "error_page" directive
 any ngx_http_rewrite_module directive returned this error code;
-bug appeared in 0.4.4.
+the bug had appeared in 0.4.4.
 </para>
 </change>
 
@@ -3922,7 +4068,7 @@ nginx не собирался на Linux и Solaris;
 </para>
 <para lang="en">
 nginx could not be built on Linux and Solaris;
-bug appeared in 0.4.4.
+the bug had appeared in 0.4.4.
 </para>
 </change>
 
@@ -4044,7 +4190,7 @@ unix domain сокет;
 <para lang="en">
 a segmentation fault occurred if an unix domain socket was used in
 a "proxy_pass" directive;
-bug appeared in 0.3.47.
+the bug had appeared in 0.3.47.
 </para>
 </change>
 
@@ -4079,7 +4225,7 @@ of the Sun Studio PAUSE hardware capability bug.
 </para>
 <para lang="en">
 the O_NOATIME flag support on Linux was canceled;
-bug appeared in 0.4.1.
+the bug had appeared in 0.4.1.
 </para>
 </change>
 
@@ -4184,7 +4330,7 @@ the "ssi" directive is available inside the "if" block.
 <para lang="en">
 a segmentation fault occurred if there was an "index" directive with
 variables and the first index name was without variables;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -4244,7 +4390,7 @@ had the captured escaped symbols from original URI.
 <para lang="en">
 a worker process may got caught in an endless loop
 while an error redirection;
-bug appeared in 0.3.59.
+the bug had appeared in 0.3.59.
 </para>
 </change>
 
@@ -4280,7 +4426,7 @@ the "dav_access" directive did not support three parameters.
 <para lang="en">
 the "error_page" directive did not changes the "Content-Type" header line
 after the "X-Accel-Redirect" was used;
-bug appeared in 0.3.58.
+the bug had appeared in 0.3.58.
 </para>
 </change>
 
@@ -4514,7 +4660,7 @@ was used and nginx switched to a next upstream.
 <para lang="en">
 on some condition while reconfiguration character codes
 inside the "charset_map" may be treated invalid;
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -4581,7 +4727,7 @@ nginx не собирался на платформе amd64;
 </para>
 <para lang="en">
 nginx could not be built on amd64 platform;
-bug appeared in 0.3.53.
+the bug had appeared in 0.3.53.
 </para>
 </change>
 
@@ -4681,7 +4827,7 @@ to the 0.3.40 version state: the module now does not return the 405 error.
 </para>
 <para lang="en">
 the worker process may got caught in an endless loop if the limit rate was used;
-bug appeared in 0.3.37.
+the bug had appeared in 0.3.37.
 </para>
 </change>
 
@@ -4694,7 +4840,7 @@ bug appeared in 0.3.37.
 <para lang="en">
 ngx_http_charset_module logged "unknown charset" alert, even if the recoding
 was not needed;
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -4721,7 +4867,7 @@ was not removed.
 </para>
 <para lang="en">
 the "&lt;" symbols might disappeared some conditions in the SSI;
-bug appeared in 0.3.50.
+the bug had appeared in 0.3.50.
 </para>
 </change>
 
@@ -4865,7 +5011,7 @@ X-Accel-Redirect, и у которых метод не равен HEAD;
 the internal redirect always transform client's HTTP method to GET,
 now the transformation is made for the "X-Accel-Redirect" redirects only
 and if the method is not HEAD;
-bug appeared in 0.3.42.
+the bug had appeared in 0.3.42.
 </para>
 </change>
 
@@ -4877,7 +5023,7 @@ bug appeared in 0.3.42.
 <para lang="en">
 the ngx_http_perl_module could not be built, if the perl was built
 with the threads support;
-bug appeared in 0.3.46.
+the bug had appeared in 0.3.46.
 </para>
 </change>
 
@@ -4989,7 +5135,7 @@ the &amp;deg; symbol codes were changed in koi-win conversion table.
 в таблицу перекодировки koi-win добавлены символы евро и номера.
 </para>
 <para lang="en">
-the euro и N symbols were added to koi-win conversion table.
+the euro and N symbols were added to koi-win conversion table.
 </para>
 </change>
 
@@ -5224,7 +5370,7 @@ SSI-commands, then the "unknown variable" message is not logged.
 <para lang="en">
 the active connection counter increased on the exceeding of the connection
 limit specified by the "worker_connections" directive;
-bug appeared in 0.2.0.
+the bug had appeared in 0.2.0.
 </para>
 </change>
 
@@ -5235,7 +5381,7 @@ bug appeared in 0.2.0.
 </para>
 <para lang="en">
 the limit rate might not work on some condition;
-bug appeared in 0.3.38.
+the bug had appeared in 0.3.38.
 </para>
 </change>
 
@@ -5471,7 +5617,7 @@ accept-фильтр и TCP_DEFER_ACCEPT устанавливались только для первой
 <para lang="en">
 the accept-filter and the TCP_DEFER_ACCEPT option were set for first "listen"
 directive only;
-bug appeared in 0.3.31.
+the bug had appeared in 0.3.31.
 </para>
 </change>
 
@@ -5545,7 +5691,7 @@ in the "post_action" directive.
 </para>
 <para lang="en">
 the debug logging on startup and reconfiguration time was removed;
-bug appeared in 0.3.31.
+the bug had appeared in 0.3.31.
 </para>
 </change>
 
@@ -5604,7 +5750,7 @@ Thanks to Andrei Nigmatulin.
 if there were several "listen" directives listening one various addresses
 inside one server, then server names like "*.domain.tld" worked for first
 address only;
-bug appeared in 0.3.18.
+the bug had appeared in 0.3.18.
 </para>
 </change>
 
@@ -5659,7 +5805,7 @@ nginx не собирался на i386 платформе, если использовался PIC;
 </para>
 <para lang="en">
 nginx could not be built on i386 platform, if the PIC was used;
-bug appeared in 0.3.27.
+the bug had appeared in 0.3.27.
 </para>
 </change>
 
@@ -5892,7 +6038,7 @@ segmentation fault;
 <para lang="en">
 the segmentation fault was occurred on start or while reconfiguration
 if there was invalid configuration;
-bug appeared in 0.3.24.
+the bug had appeared in 0.3.24.
 </para>
 </change>
 
@@ -5947,7 +6093,7 @@ the first "proxy_redirect" directive was working inside one location.
 <para lang="en">
 on 64-bit platforms segmentation fault may occurred on start
 if the many names were used in the "server_name" directives;
-bug appeared in 0.3.18.
+the bug had appeared in 0.3.18.
 </para>
 </change>
 
@@ -6015,7 +6161,7 @@ the method $r->query_string of ngx_http_perl_module was canceled.
 <para lang="en">
 segmentation fault was occurred if the "none" or "blocked" values was
 specified in the "valid_referers" directive;
-bug appeared in 0.3.18.
+the bug had appeared in 0.3.18.
 </para>
 </change>
 
@@ -6176,7 +6322,7 @@ some ".domain.tld" names incorrectly processed by the ngx_http_map_module.
 </para>
 <para lang="en">
 segmentation fault was occurred if configuration file did not exist;
-bug appeared in 0.3.12.
+the bug had appeared in 0.3.12.
 </para>
 </change>
 
@@ -6187,7 +6333,7 @@ bug appeared in 0.3.12.
 </para>
 <para lang="en">
 on 64-bit platforms segmentation fault may occurred on start;
-bug appeared in 0.3.16.
+the bug had appeared in 0.3.16.
 </para>
 </change>
 
@@ -6221,7 +6367,7 @@ the "map" directive supports domain names in the ".domain.tld" form.
 </para>
 <para lang="en">
 the timeouts were not used in SSL handshake;
-bug appeared in 0.2.4.
+the bug had appeared in 0.2.4.
 </para>
 </change>
 
@@ -6316,7 +6462,7 @@ nginx не закрывал соединения с IMAP/POP3 бэкендом при использовании SSL
 <para lang="en">
 nginx did not close connection to IMAP/POP3 backend for the SSL
 connections;
-bug appeared in 0.3.13.<br/>
+the bug had appeared in 0.3.13.<br/>
 Thanks to Rob Mueller.
 </para>
 </change>
@@ -6328,7 +6474,7 @@ segmentation fault мог произойти во время SSL shutdown;
 </para>
 <para lang="en">
 segmentation fault may occurred in at SSL shutdown;
-bug appeared in 0.3.13.
+the bug had appeared in 0.3.13.
 </para>
 </change>
 
@@ -6378,7 +6524,7 @@ quit and active "debug_points" directive.
 </para>
 <para lang="en">
 in the 304 response the body was transferred;
-bug appeared in 0.3.13.
+the bug had appeared in 0.3.13.
 </para>
 </change>
 
@@ -6432,7 +6578,7 @@ to FastCGI-server via the unix domain socket.
 </para>
 <para lang="en">
 the "auth_basic" directive did not disable the authorization;
-bug appeared in 0.3.11.
+the bug had appeared in 0.3.11.
 </para>
 </change>
 
@@ -6499,7 +6645,7 @@ the "proxy_buffering" directive.
 </para>
 <para lang="en">
 the changes in accept mutex  handling when the "rtsig" method was used;
-bug appeared in 0.3.0.
+the bug had appeared in 0.3.0.
 </para>
 </change>
 
@@ -6535,7 +6681,7 @@ the "Basic realm" text.
 <para lang="en">
 if the "combined" format was explicitly specified in the "access_log" directive,
 then the empty lines was written to the log;
-bug appeared in 0.3.8.
+the bug had appeared in 0.3.8.
 </para>
 </change>
 
@@ -6571,7 +6717,7 @@ nginx не передавал при проксировании тело запроса и строки заголовка клиента;
 </para>
 <para lang="en">
 nginx did not pass the client request headers and body while proxying;
-bug appeared in 0.3.10.
+the bug had appeared in 0.3.10.
 </para>
 </change>
 
@@ -6707,7 +6853,7 @@ nginx считал небезопасными URI, в которых между двумя слэшами
 </para>
 <para lang="en">
 nginx considered URI as unsafe if two any symbols was between two slashes;
-bug appeared in 0.3.8.
+the bug had appeared in 0.3.8.
 </para>
 </change>
 
@@ -6841,7 +6987,7 @@ the worker processes did not flush the buffered logs on graceful exit.
 if the request URI was changes by the "rewrite" directive and the request
 was proxied in location given by regular expression, then the incorrect
 request was transferred to backend;
-bug appeared in 0.2.6.
+the bug had appeared in 0.2.6.
 </para>
 </change>
 
@@ -6905,8 +7051,9 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.3.2.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
-bug appeared in 0.3.2.
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.3.2.
 </para>
 </change>
 
@@ -6942,7 +7089,7 @@ nginx не слушал на 80 порту;
 <para lang="en">
 if at least in one server was no the "listen" directive, then nginx did not
 listen on the 80 port;
-bug appeared in 0.3.3.
+the bug had appeared in 0.3.3.
 </para>
 </change>
 
@@ -6970,7 +7117,7 @@ segmentation fault;
 <para lang="en">
 the segmentation fault may occurred if the IMAP/POP3 login was changed
 by authorization server;
-bug appeared in 0.2.2.
+the bug had appeared in 0.2.2.
 </para>
 </change>
 
@@ -6981,7 +7128,7 @@ accept mutex не работал, все соединения обрабатывались одним рабочим процессом;
 </para>
 <para lang="en">
 the accept mutex did not work and all connections were handled by one process;
-bug appeared in 0.3.3.
+the bug had appeared in 0.3.3.
 </para>
 </change>
 
@@ -7008,7 +7155,7 @@ nginx не собирался на Linux 2.4+ и MacOS X;
 </para>
 <para lang="en">
 nginx could not be built on Linux 2.4+ and MacOS X;
-bug appeared in 0.3.3.
+the bug had appeared in 0.3.3.
 </para>
 </change>
 
@@ -7077,7 +7224,7 @@ after the -HUP signal nginx left an open socket in the CLOSED state.
 <para lang="en">
 the mime type may be incorrectly set to default value for index file with
 variable in the name;
-bug appeared in 0.3.0.
+the bug had appeared in 0.3.0.
 </para>
 </change>
 
@@ -7187,7 +7334,7 @@ directives.
 <para lang="en">
 the segmentation fault occurred when the signal queue overflowed
 if the "rtsig" method was used;
-bug appeared in 0.2.0.
+the bug had appeared in 0.2.0.
 </para>
 </change>
 
@@ -7287,7 +7434,7 @@ new configuration, then the ngx_http_rewrite_module rules ran again.
 if the "set" directive set the ngx_http_geo_module variable in some
 configuration part, the this variable was not available in other
 configuration parts and the "using uninitialized variable" error was occurred;
-bug appeared in 0.2.2.
+the bug had appeared in 0.2.2.
 </para>
 </change>
 
@@ -7361,7 +7508,7 @@ in the "if" command.
 </para>
 <para lang="en">
 in proxying location without trailing slash;
-bug appeared in 0.1.44.
+the bug had appeared in 0.1.44.
 </para>
 </change>
 
@@ -7372,7 +7519,7 @@ bug appeared in 0.1.44.
 </para>
 <para lang="en">
 the segmentation fault may occurred if the "rtsig" method was used;
-bug appeared in 0.2.0.
+the bug had appeared in 0.2.0.
 </para>
 </change>
 
@@ -7388,7 +7535,7 @@ nginx не собирался без параметра --with-debug;
 </para>
 <para lang="en">
 nginx could not be built without the --with-debug option;
-bug appeared in 0.2.2.
+the bug had appeared in 0.2.2.
 </para>
 </change>
 
@@ -7480,7 +7627,7 @@ the export versions of MSIE 5.x could not connect via HTTPS.
 <para lang="en">
 if all backend using in load-balancing failed after one error, then
 nginx may got caught in an endless loop;
-bug appeared in 0.2.0.
+the bug had appeared in 0.2.0.
 </para>
 </change>
 
@@ -7740,7 +7887,7 @@ the FastCGI parameters with the empty values now are passed to a server.
 <para lang="en">
 the segmentation fault may occurred if there were errors while
 working with proxied or FastCGI server;
-in the proxied mode the bug appeared in 0.1.29.
+in the proxied mode the the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -7757,7 +7904,7 @@ segmentation fault или рабочий процесс мог зациклится;
 the segmentation fault occurred or the worker process may got caught
 in an endless loop if the proxied or FastCGI server sent the "Cache-Control"
 header line and the "expires" directive was used;
-in the proxied mode the bug appeared in 0.1.29.
+in the proxied mode the the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -7786,7 +7933,7 @@ in the ngx_http_proxy_module.
 </para>
 <para lang="en">
 the "limit_rate" directive did not work inside the "if" block;
-bug appeared in 0.1.38.
+the bug had appeared in 0.1.38.
 </para>
 </change>
 
@@ -7830,7 +7977,7 @@ did not logged in the error log.
 <para lang="en">
 the "Set-Cookie" header line was not transferred when the "X-Accel-Redirect"
 was used;
-bug appeared in 0.1.39.
+the bug had appeared in 0.1.39.
 </para>
 </change>
 
@@ -7905,7 +8052,7 @@ the 401 response code redirecting.
 <para lang="en">
 the ngx_http_proxy_module and ngx_http_fastcgi_module may close
 a connection before anything was transferred to a client;
-bug appeared in 0.1.38.
+the bug had appeared in 0.1.38.
 </para>
 </change>
 
@@ -7938,7 +8085,7 @@ the "include virtual" command.
 <para lang="en">
 if the backend response had the "Location" header line and nginx
 should not rewrite this line, then the 500 code response body was transferred;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -7951,7 +8098,7 @@ bug appeared in 0.1.29.
 <para lang="en">
 some directives of the ngx_http_proxy_module and ngx_http_fastcgi_module
 were not inherited from the server to the location level;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -7971,7 +8118,7 @@ the ngx_http_ssl_module did not support the certificate chain.
 </para>
 <para lang="en">
 the ngx_http_autoindex_module did not show correctly the long file names;
-bug appeared in 0.1.38.
+the bug had appeared in 0.1.38.
 </para>
 </change>
 
@@ -8067,7 +8214,7 @@ nginx считал ответ неверным;
 <para lang="en">
 nginx treated the backend response as invalid if the status line in the
 header was transferred in two packets;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -8250,7 +8397,7 @@ the "port_in_redirect" directive.
 <para lang="en">
 the segmentation fault was occurred if the backend response header was in
 several packets;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -8286,7 +8433,7 @@ nginx возвращал ошибку 400 на запросы вида
 <para lang="en">
 nginx returned the 400 response on requests like
 <nobr>"GET http://www.domain.com/uri HTTP/1.0"</nobr>;
-bug appeared in 0.1.28.
+the bug had appeared in 0.1.28.
 </para>
 </change>
 
@@ -8345,7 +8492,7 @@ nginx не собирался с параметром --without-pcre;
 </para>
 <para lang="en">
 nginx could not be built with the --without-pcre parameter;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -8392,7 +8539,7 @@ the 500 error code was returned.
 </para>
 <para lang="en">
 the arguments were omitted in the redirects, issued by the "rewrite" directive;
-bug appeared in 0.1.29.
+the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -8465,7 +8612,7 @@ errors while using SSI and gzipping.
 </para>
 <para lang="en">
 the redirect with the 301 code was transferred without response body;
-bug appeared in 0.1.30.
+the bug had appeared in 0.1.30.
 </para>
 </change>
 
@@ -8501,7 +8648,7 @@ FastCGI сервера была равна 500 байт, то nginx возвращал код ответа 500;
 <para lang="en">
 if the length of the response part received at once from proxied
 or FastCGI server was equal to 500, then nginx returns the 500 response code;
-in proxy mode the bug appeared in 0.1.29 only.
+in proxy mode the the bug had appeared in 0.1.29 only.
 </para>
 </change>
 
@@ -8784,7 +8931,7 @@ segmentation fault;
 <para lang="en">
 the segmentation fault was occurred if the backend sent an invalid line
 in response header;
-bug appeared in 0.1.26.
+the bug had appeared in 0.1.26.
 </para>
 </change>
 
@@ -9174,8 +9321,9 @@ nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.1.22.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc и ppc;
-bug appeared in 0.1.22.
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.1.22.
 </para>
 </change>
 
@@ -9225,7 +9373,7 @@ statistics if the proxying or FastCGI server were used.
 </para>
 <para lang="en">
 the installation paths were incorrectly quoted on Linux and Solaris;
-bug appeared in 0.1.21.
+the bug had appeared in 0.1.21.
 </para>
 </change>
 
@@ -9504,7 +9652,7 @@ then the segmentation fault occurred.
 <para lang="en">
 if in a proxied "Location" header was a relative URL,
 then a host name and a slash were added to them;
-bug appeared in 0.1.14.
+the bug had appeared in 0.1.14.
 </para>
 </change>
 
@@ -9590,7 +9738,7 @@ the rewrite directive supports the arguments rewriting.
 <para lang="en">
 the response code 400 was returned for the POST request with the
 "Content-Length: 0" header;
-bug appeared in 0.1.14.
+the bug had appeared in 0.1.14.
 </para>
 </change>
 
@@ -9663,7 +9811,7 @@ the regular expressions in locations.
 <para lang="en">
 the directive <nobr>"proxy_preserve_host  on"</nobr> adds port 80
 to the "Host" headers, if upstream listen on port 80;
-bug appeared in 0.1.14.
+the bug had appeared in 0.1.14.
 </para>
 </change>
 
@@ -9764,7 +9912,7 @@ and fastcgi_x_powered_by.
 </para>
 <para lang="en">
 the "[alert] zero size buf" error;
-bug appeared in 0.1.3.
+the bug had appeared in 0.1.3.
 </para>
 </change>
 
@@ -10033,7 +10181,7 @@ the double slashes in "://" in the URI were converted to ":/".
 <para lang="en">
 if the request without arguments contains "//", "/./", "/../" or "%XX"
 then the lost character in the request line was lost;
-bug appeared in 0.1.9.
+the bug had appeared in 0.1.9.
 </para>
 </change>
 
@@ -10090,7 +10238,7 @@ sendfile64().
 <para lang="en">
 while the build configuration on Linux the --with-poll_module parameter
 was required;
-bug appeared in 0.1.8.
+the bug had appeared in 0.1.8.
 </para>
 </change>
 
@@ -10140,7 +10288,7 @@ the proxy_max_temp_file_size directive.
 <para lang="en">
 on FreeBSD the segmentation fault may occur if the size of the transferred
 file was changed;
-bug appeared in 0.1.5.
+the bug had appeared in 0.1.5.
 </para>
 </change>
 
@@ -10334,7 +10482,7 @@ the portability improvements.
 <para lang="en">
 if configuration file was set in command line, the reconfiguration
 was impossible;
-bug appeared in 0.1.1.
+the bug had appeared in 0.1.1.
 </para>
 </change>
 
@@ -10357,7 +10505,7 @@ proxy module may get caught in an endless loop when sendfile is not used.
 <para lang="en">
 with sendfile the response was not recoded according to the charset
 module directives;
-bug appeared in 0.1.1.
+the bug had appeared in 0.1.1.
 </para>
 </change>
 
