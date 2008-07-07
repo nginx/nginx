@@ -17,47 +17,53 @@ fi
 
 cat << END                                                    >> $NGX_MAKEFILE
 
-install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}	\
+install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 		$NGX_INSTALL_PERL_MODULES
-	test -d '$NGX_PREFIX' || mkdir -p '$NGX_PREFIX'
+	test -d '\$(DESTDIR)$NGX_PREFIX' || mkdir -p '\$(DESTDIR)$NGX_PREFIX'
 
-	test -d '`dirname "$NGX_SBIN_PATH"`' \
-		|| mkdir -p '`dirname "$NGX_SBIN_PATH"`'
-	test ! -f '$NGX_SBIN_PATH' || mv '$NGX_SBIN_PATH' '$NGX_SBIN_PATH.old'
-	cp $NGX_OBJS/nginx '$NGX_SBIN_PATH'
+	test -d '\$(DESTDIR)`dirname "$NGX_SBIN_PATH"`' \
+		|| mkdir -p '\$(DESTDIR)`dirname "$NGX_SBIN_PATH"`'
+	test ! -f '\$(DESTDIR)$NGX_SBIN_PATH' \
+		|| mv '\$(DESTDIR)$NGX_SBIN_PATH' \
+			'\$(DESTDIR)$NGX_SBIN_PATH.old'
+	cp $NGX_OBJS/nginx '\$(DESTDIR)$NGX_SBIN_PATH'
 
-	test -d '$NGX_CONF_PREFIX' || mkdir -p '$NGX_CONF_PREFIX'
+	test -d '\$(DESTDIR)$NGX_CONF_PREFIX' \
+		|| mkdir -p '\$(DESTDIR)$NGX_CONF_PREFIX'
 
-	cp conf/koi-win '$NGX_CONF_PREFIX'
-	cp conf/koi-utf '$NGX_CONF_PREFIX'
-	cp conf/win-utf '$NGX_CONF_PREFIX'
+	cp conf/koi-win '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/koi-utf '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/win-utf '\$(DESTDIR)$NGX_CONF_PREFIX'
 
-	test -f '$NGX_CONF_PREFIX/mime.types' \
-		|| cp conf/mime.types '$NGX_CONF_PREFIX'
-	cp conf/mime.types '$NGX_CONF_PREFIX/mime.types.default'
+	test -f '\$(DESTDIR)$NGX_CONF_PREFIX/mime.types' \
+		|| cp conf/mime.types '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/mime.types '\$(DESTDIR)$NGX_CONF_PREFIX/mime.types.default'
 
-	test -f '$NGX_CONF_PREFIX/fastcgi_params' \
-		|| cp conf/fastcgi_params '$NGX_CONF_PREFIX'
-	cp conf/fastcgi_params '$NGX_CONF_PREFIX/fastcgi_params.default'
+	test -f '\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi_params' \
+		|| cp conf/fastcgi_params '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/fastcgi_params \
+		'\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi_params.default'
 
-	test -f '$NGX_CONF_PATH' || cp conf/nginx.conf '$NGX_CONF_PREFIX'
-	cp conf/nginx.conf '$NGX_CONF_PREFIX/nginx.conf.default'
+	test -f '\$(DESTDIR)$NGX_CONF_PATH' \
+		|| cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX/nginx.conf.default'
 
-	test -d '`dirname "$NGX_PID_PATH"`' \
-		|| mkdir -p '`dirname "$NGX_PID_PATH"`'
+	test -d '\$(DESTDIR)`dirname "$NGX_PID_PATH"`' \
+		|| mkdir -p '\$(DESTDIR)`dirname "$NGX_PID_PATH"`'
 
-	test -d '`dirname "$NGX_HTTP_LOG_PATH"`' || \
-		mkdir -p '`dirname "$NGX_HTTP_LOG_PATH"`'
+	test -d '\$(DESTDIR)`dirname "$NGX_HTTP_LOG_PATH"`' || \
+		mkdir -p '\$(DESTDIR)`dirname "$NGX_HTTP_LOG_PATH"`'
 
-	test -d '$NGX_PREFIX/html' || cp -r html '$NGX_PREFIX'
+	test -d '\$(DESTDIR)$NGX_PREFIX/html' \
+		|| cp -r html '\$(DESTDIR)$NGX_PREFIX'
 END
 
 
-if test -n "$NGX_ERROR_LOG_PATH"; then
+if test -n "\$(DESTDIR)$NGX_ERROR_LOG_PATH"; then
     cat << END                                                >> $NGX_MAKEFILE
 
-	test -d '`dirname "$NGX_ERROR_LOG_PATH"`' || \
-		mkdir -p '`dirname "$NGX_ERROR_LOG_PATH"`'
+	test -d '\$(DESTDIR)`dirname "$NGX_ERROR_LOG_PATH"`' || \
+		mkdir -p '\$(DESTDIR)`dirname "$NGX_ERROR_LOG_PATH"`'
 END
 
 fi
