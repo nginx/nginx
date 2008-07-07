@@ -75,6 +75,8 @@ static ngx_int_t ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 /*
  * TODO:
@@ -219,6 +221,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
+      0, 0, 0 },
+
+    { ngx_string("hostname"), NULL, ngx_http_variable_hostname,
       0, 0, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
@@ -1267,6 +1272,20 @@ ngx_http_variable_nginx_version(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) NGINX_VERSION;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_hostname(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    v->len = ngx_cycle->hostname.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = ngx_cycle->hostname.data;
 
     return NGX_OK;
 }

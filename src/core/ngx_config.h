@@ -116,10 +116,11 @@ typedef intptr_t        ngx_flag_t;
 #define INET_ADDRSTRLEN  16
 #endif
 
-#define NGX_MAXHOSTNAMELEN 64
-/*
-#define NGX_MAXHOSTNAMELEN MAXHOSTNAMELEN
-*/
+#ifdef MAXHOSTNAMELEN
+#define NGX_MAXHOSTNAMELEN  MAXHOSTNAMELEN
+#else
+#define NGX_MAXHOSTNAMELEN  256
+#endif
 
 
 #if ((__GNU__ == 2) && (__GNUC_MINOR__ < 8))

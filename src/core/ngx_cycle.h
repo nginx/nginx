@@ -62,6 +62,7 @@ struct ngx_cycle_s {
     ngx_str_t                 conf_file;
     ngx_str_t                 root;
     ngx_str_t                 lock_file;
+    ngx_str_t                 hostname;
 };
 
 

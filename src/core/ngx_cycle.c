@@ -57,6 +57,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_listening_t     *ls, *nls;
     ngx_core_conf_t     *ccf, *old_ccf;
     ngx_core_module_t   *module;
+    char                 hostname[NGX_MAXHOSTNAMELEN];
 
     log = old_cycle->log;
 
@@ -168,6 +169,26 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_pool(pool);
         return NULL;
     }
+
+
+    if (gethostname(hostname, NGX_MAXHOSTNAMELEN) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "gethostname() failed");
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    /* on Linux gethostname() silently truncates name that does not fit */
+
+    hostname[NGX_MAXHOSTNAMELEN - 1] = '\0';
+    cycle->hostname.len = ngx_strlen(hostname);
+
+    cycle->hostname.data = ngx_palloc(pool, cycle->hostname.len);
+    if (cycle->hostname.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    ngx_memcpy(cycle->hostname.data, hostname, cycle->hostname.len);
 
 
     for (i = 0; ngx_modules[i]; i++) {
