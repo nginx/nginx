@@ -139,11 +139,22 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     if (rc == -1) {
         err = ngx_socket_errno;
 
-        /* Winsock returns WSAEWOULDBLOCK (NGX_EAGAIN) */
 
-        if (err != NGX_EINPROGRESS && err != NGX_EAGAIN) {
-
+        if (err != NGX_EINPROGRESS
+#if (NGX_WIN32)
+            /* Winsock returns WSAEWOULDBLOCK (NGX_EAGAIN) */
+            && err != NGX_EAGAIN
+#endif
+            )
+        {
             if (err == NGX_ECONNREFUSED
+#if (NGX_LINUX)
+                /*
+                 * Linux returns EAGAIN instead of ECONNREFUSED
+                 * for unix sockets if listen queue is full
+                 */
+                || err == NGX_EAGAIN
+#endif
                 || err == NGX_ENETDOWN
                 || err == NGX_ENETUNREACH
                 || err == NGX_EHOSTDOWN
