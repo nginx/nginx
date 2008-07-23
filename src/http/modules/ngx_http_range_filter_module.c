@@ -393,8 +393,6 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
     ngx_http_range_t   *range;
     ngx_atomic_uint_t   boundary;
 
-    /* TODO: what if no content_type ?? */
-
     len = sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
           + sizeof(CRLF "Content-Type: ") - 1
           + r->headers_out.content_type.len
@@ -431,13 +429,20 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
 
         r->headers_out.charset.len = 0;
 
-    } else {
+    } else if (r->headers_out.content_type.len) {
         ctx->boundary_header.len = ngx_sprintf(ctx->boundary_header.data,
                                            CRLF "--%0muA" CRLF
                                            "Content-Type: %V" CRLF
                                            "Content-Range: bytes ",
                                            boundary,
                                            &r->headers_out.content_type)
+                                   - ctx->boundary_header.data;
+
+    } else {
+        ctx->boundary_header.len = ngx_sprintf(ctx->boundary_header.data,
+                                           CRLF "--%0muA" CRLF
+                                           "Content-Range: bytes ",
+                                           boundary)
                                    - ctx->boundary_header.data;
     }
 
