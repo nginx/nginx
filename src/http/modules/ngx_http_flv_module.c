@@ -212,9 +212,6 @@ ngx_http_flv_handler(ngx_http_request_t *r)
 
         out[0].buf = b;
         out[0].next = &out[1];
-
-    } else {
-        r->allow_ranges = 1;
     }
 
 
@@ -227,6 +224,8 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     if (b->file == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    r->allow_ranges = 1;
 
     rc = ngx_http_send_header(r);
 
