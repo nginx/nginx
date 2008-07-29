@@ -329,7 +329,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                                            NGX_ESCAPE_HTML);
 
         if (r->utf8) {
-            entry->utf_len = ngx_utf_length(entry->name.data, entry->name.len);
+            entry->utf_len = ngx_utf8_length(entry->name.data, entry->name.len);
         } else {
             entry->utf_len = len;
         }
@@ -420,8 +420,8 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                 utf_len = NGX_HTTP_AUTOINDEX_NAME_LEN + 1;
             }
 
-            b->last = ngx_utf_cpystrn(b->last, entry[i].name.data,
-                                      utf_len, entry[i].name.len + 1);
+            b->last = ngx_utf8_cpystrn(b->last, entry[i].name.data,
+                                       utf_len, entry[i].name.len + 1);
             last = b->last;
 
         } else {

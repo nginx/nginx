@@ -642,7 +642,7 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
                 size = buf->last - src;
 
                 saved = src;
-                n = ngx_utf_decode(&saved, size);
+                n = ngx_utf8_decode(&saved, size);
 
                 if (n == 0xfffffffe) {
                     /* incomplete UTF-8 symbol */
@@ -710,7 +710,7 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
     }
 
     saved = ctx->saved;
-    n = ngx_utf_decode(&saved, i);
+    n = ngx_utf8_decode(&saved, i);
 
     c = '\0';
 
@@ -818,7 +818,7 @@ recode:
 
         len = buf->last - src;
 
-        n = ngx_utf_decode(&src, len);
+        n = ngx_utf8_decode(&src, len);
 
         if (n < 0x10000) {
 
@@ -1270,7 +1270,7 @@ ngx_http_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
         p = &table->src2dst[src * NGX_UTF_LEN] + 1;
 
-        n = ngx_utf_decode(&p, i);
+        n = ngx_utf8_decode(&p, i);
 
         if (n > 0xffff) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

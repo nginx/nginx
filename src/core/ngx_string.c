@@ -952,7 +952,7 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 
 
 /*
- * ngx_utf_decode() decodes two and more bytes UTF sequences only
+ * ngx_utf8_decode() decodes two and more bytes UTF sequences only
  * the return values:
  *    0x80 - 0x10ffff         valid character
  *    0x110000 - 0xfffffffd   invalid sequence
@@ -961,7 +961,7 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
  */
 
 uint32_t
-ngx_utf_decode(u_char **p, size_t n)
+ngx_utf8_decode(u_char **p, size_t n)
 {
     size_t    len;
     uint32_t  u, i, valid;
@@ -1018,7 +1018,7 @@ ngx_utf_decode(u_char **p, size_t n)
 
 
 size_t
-ngx_utf_length(u_char *p, size_t n)
+ngx_utf8_length(u_char *p, size_t n)
 {
     u_char  c, *last;
     size_t  len;
@@ -1034,8 +1034,8 @@ ngx_utf_length(u_char *p, size_t n)
             continue;
         }
 
-        if (ngx_utf_decode(&p, n) > 0x10ffff) {
-            /* invalid utf */
+        if (ngx_utf8_decode(&p, n) > 0x10ffff) {
+            /* invalid UTF-8 */
             return n;
         }
     }
@@ -1045,7 +1045,7 @@ ngx_utf_length(u_char *p, size_t n)
 
 
 u_char *
-ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
+ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
 {
     u_char  c, *next;
 
@@ -1073,8 +1073,8 @@ ngx_utf_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
 
         next = src;
 
-        if (ngx_utf_decode(&next, len) > 0x10ffff) {
-            /* invalid utf */
+        if (ngx_utf8_decode(&next, len) > 0x10ffff) {
+            /* invalid UTF-8 */
             break;
         }
 
