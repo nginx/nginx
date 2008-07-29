@@ -1884,7 +1884,7 @@ ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
-ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     size_t   len;
     BIO     *bio;
@@ -1930,6 +1930,50 @@ failed:
     X509_free(cert);
 
     return NGX_ERROR;
+}
+
+
+ngx_int_t
+ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    u_char      *p;
+    size_t       len;
+    ngx_uint_t   i;
+    ngx_str_t    cert;
+
+    if (ngx_ssl_get_raw_certificate(c, pool, &cert) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (cert.len == 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = cert.len - 1;
+
+    for (i = 0; i < cert.len - 1; i++) {
+        if (cert.data[i] == LF) {
+            len++;
+        }
+    }
+
+    s->len = len;
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < len; i++) {
+        *p++ = cert.data[i];
+        if (cert.data[i] == LF) {
+            *p++ = '\t';
+        }
+    }
+
+    return NGX_OK;
 }
 
 
