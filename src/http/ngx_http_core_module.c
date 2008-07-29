@@ -1204,7 +1204,7 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 
         n = (len <= (size_t) node->len) ? len : node->len;
 
-        rc = ngx_memcmp(uri, node->name, n);
+        rc = ngx_filename_cmp(uri, node->name, n);
 
         if (rc != 0) {
             node = (rc < 0) ? node->left : node->right;
