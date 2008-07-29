@@ -13,9 +13,9 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
 
 
-#define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
-#define NGX_DEFLAUT_CERTIFICATE_KEY  "cert.pem"
-#define NGX_DEFLAUT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+#define NGX_DEFAULT_CERTIFICATE      "cert.pem"
+#define NGX_DEFAULT_CERTIFICATE_KEY  "cert.pem"
+#define NGX_DEFAULT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
 static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
@@ -357,17 +357,17 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate,
-                         NGX_DEFLAUT_CERTIFICATE);
+                         NGX_DEFAULT_CERTIFICATE);
 
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
-                         NGX_DEFLAUT_CERTIFICATE_KEY);
+                         NGX_DEFAULT_CERTIFICATE_KEY);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
     ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
                          "");
 
-    ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFLAUT_CIPHERS);
+    ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
 
     conf->ssl.log = cf->log;

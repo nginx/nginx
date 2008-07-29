@@ -9,9 +9,9 @@
 #include <ngx_mail.h>
 
 
-#define NGX_DEFLAUT_CERTIFICATE      "cert.pem"
-#define NGX_DEFLAUT_CERTIFICATE_KEY  "cert.pem"
-#define NGX_DEFLAUT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+#define NGX_DEFAULT_CERTIFICATE      "cert.pem"
+#define NGX_DEFAULT_CERTIFICATE_KEY  "cert.pem"
+#define NGX_DEFAULT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
 static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
@@ -214,14 +214,14 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                           |NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1));
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate,
-                         NGX_DEFLAUT_CERTIFICATE);
+                         NGX_DEFAULT_CERTIFICATE);
 
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
-                         NGX_DEFLAUT_CERTIFICATE_KEY);
+                         NGX_DEFAULT_CERTIFICATE_KEY);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
-    ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFLAUT_CIPHERS);
+    ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
 
     conf->ssl.log = cf->log;
