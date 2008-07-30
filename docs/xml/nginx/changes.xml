@@ -9,6 +9,103 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.7" date="30.07.2008">
+
+<change type="change">
+<para lang="ru">
+теперь ошибка EAGAIN при вызове connect() не считается временной.
+</para>
+<para lang="en">
+now the EAGAIN error returned by connect() is not considered as temporary error.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+значением переменной $ssl_client_cert теперь является сертификат,
+перед каждой строкой которого, кроме первой, вставляется символ табуляции;
+неизменённый сертификат доступен через переменную $ssl_client_raw_cert.
+</para>
+<para lang="en">
+now the $ssl_client_cert variable value is a certificate with TAB character
+intended before each line except first one;
+an unchanged certificate is available in the $ssl_client_raw_cert variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр ask директивы ssl_verify_client.
+</para>
+<para lang="en">
+the "ask" parameter in the "ssl_verify_client" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения в обработке byte-range.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+byte-range processing improvements.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива directio.
+</para>
+<para lang="en">
+the "directio" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка sendfile() в MacOSX 1.5.
+</para>
+<para lang="en">
+MacOSX 1.5 sendfile() support.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в MacOSX и Cygwin при проверке location'ов теперь делается сравнение
+без учёта регистра символов;
+однако, сравнение ограничено только однобайтными locale'ями.
+</para>
+<para lang="en">
+now in MacOSX and Cygwin locations are tested in case insensitive mode;
+however, the compare is provided by single-byte locales only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения почтового прокси-сервера зависали в режиме SSL,
+если использовались методы select, poll или /dev/poll.
+</para>
+<para lang="en">
+mail proxy SSL connections hanged,
+if select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании кодировки UTF-8 в ngx_http_autoindex_module.
+</para>
+<para lang="en">
+UTF-8 encoding usage in the ngx_http_autoindex_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.6" date="07.07.2008">
 
 <change type="bugfix">
