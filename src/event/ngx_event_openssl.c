@@ -505,6 +505,9 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     if (n == 1) {
 
+        c->read->ready = 0;
+        c->write->ready = 1;
+
         if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
