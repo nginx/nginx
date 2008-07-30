@@ -195,17 +195,35 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
     void              *p;
     ngx_pool_large_t  *large;
 
-#if 0
-    p = ngx_memalign(ngx_pagesize, size, pool->log);
-    if (p == NULL) {
-        return NULL;
-    }
-#else
     p = ngx_alloc(size, pool->log);
     if (p == NULL) {
         return NULL;
     }
-#endif
+
+    large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
+    if (large == NULL) {
+        ngx_free(p);
+        return NULL;
+    }
+
+    large->alloc = p;
+    large->next = pool->large;
+    pool->large = large;
+
+    return p;
+}
+
+
+void *
+ngx_pmemalign(ngx_pool_t *pool, size_t size, size_t alignment)
+{
+    void              *p;
+    ngx_pool_large_t  *large;
+
+    p = ngx_memalign(alignment, size, pool->log);
+    if (p == NULL) {
+        return NULL;
+    }
 
     large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
     if (large == NULL) {

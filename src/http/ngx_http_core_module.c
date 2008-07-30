@@ -54,6 +54,8 @@ static char *ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -351,6 +353,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, sendfile_max_chunk),
+      NULL },
+
+    { ngx_string("directio"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_core_directio,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("tcp_nopush"),
@@ -2586,6 +2595,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
+    lcf->directio = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET_MSEC;
@@ -2774,6 +2784,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
+    ngx_conf_merge_off_value(conf->directio, prev->directio,
+                              NGX_MAX_OFF_T_VALUE);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 
@@ -3336,6 +3348,33 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *cf = save;
 
     return rv;
+}
+
+
+static char *
+ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    ngx_str_t  *value;
+
+    if (clcf->directio != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        clcf->directio = NGX_MAX_OFF_T_VALUE;
+        return NGX_CONF_OK;
+    }
+
+    clcf->directio = ngx_parse_offset(&value[1]);
+    if (clcf->directio == (off_t) NGX_ERROR) {
+        return "invalid value";
+    }
+
+    return NGX_CONF_OK;
 }
 
 

@@ -351,3 +351,22 @@ ngx_unlock_fd(ngx_fd_t fd)
 
     return 0;
 }
+
+
+#if (NGX_HAVE_O_DIRECT)
+
+ngx_int_t
+ngx_directio(ngx_fd_t fd)
+{
+    int  flags;
+
+    flags = fcntl(fd, F_GETFL);
+
+    if (flags == -1) {
+        return -1;
+    }
+
+    return fcntl(fd, F_SETFL, flags | O_DIRECT);
+}
+
+#endif

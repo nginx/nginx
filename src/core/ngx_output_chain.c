@@ -32,6 +32,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     size_t        size;
     ngx_int_t     rc, last;
     ngx_uint_t    recycled;
+    ngx_buf_t    *b;
     ngx_chain_t  *cl, *out, **last_out;
 
     if (ctx->in == NULL && ctx->busy == NULL) {
@@ -161,13 +162,29 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
                         }
                     }
 
-                    ctx->buf = ngx_create_temp_buf(ctx->pool, size);
-                    if (ctx->buf == NULL) {
+                    b = ngx_calloc_buf(ctx->pool);
+                    if (b == NULL) {
                         return NGX_ERROR;
                     }
 
-                    ctx->buf->tag = ctx->tag;
-                    ctx->buf->recycled = recycled;
+                    /*
+                     * allocate block aligned to a disk sector size
+                     * to enable O_DIRECT
+                     */
+
+                    b->start = ngx_pmemalign(ctx->pool, size, 512);
+                    if (b->start == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                    b->pos = b->start;
+                    b->last = b->start;
+                    b->end = b->last + size;
+                    b->temporary = 1;
+                    b->tag = ctx->tag;
+                    b->recycled = recycled;
+
+                    ctx->buf = b;
                     ctx->allocated++;
                 }
             }

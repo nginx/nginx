@@ -200,7 +200,7 @@ typedef struct {
 
 
 ngx_int_t ngx_open_glob(ngx_glob_t *gl);
-#define ngx_open_glob_n          "FindFirstFile()"
+#define ngx_open_glob_n             "FindFirstFile()"
 
 ngx_int_t ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name);
 void ngx_close_glob(ngx_glob_t *gl);
@@ -214,6 +214,10 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
 
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
     off_t offset, ngx_pool_t *pool);
+
+
+#define ngx_directio(fd)            0
+#define ngx_directio_n              "ngx_directio_n"
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

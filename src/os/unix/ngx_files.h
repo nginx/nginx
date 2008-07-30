@@ -189,4 +189,22 @@ ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
 #define ngx_unlock_fd_n          "fcntl(F_SETLK, F_UNLCK)"
 
 
+#if (NGX_HAVE_O_DIRECT)
+
+ngx_int_t ngx_directio(ngx_fd_t fd);
+#define ngx_directio_n           "fcntl(O_DIRECT)"
+
+#elif (NGX_HAVE_F_NOCACHE)
+
+#define ngx_directio(fd)         fcntl(fd, F_NOCACHE, 1)
+#define ngx_directio_n           "fcntl(F_NOCACHE)"
+
+#else
+
+#define ngx_directio(fd)         0
+#define ngx_directio_n           "ngx_directio_n"
+
+#endif
+
+
 #endif /* _NGX_FILES_H_INCLUDED_ */
