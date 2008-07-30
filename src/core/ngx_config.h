@@ -29,6 +29,10 @@
 #include <ngx_solaris_config.h>
 
 
+#elif (NGX_DARWIN)
+#include <ngx_darwin_config.h>
+
+
 #elif (NGX_WIN32)
 #include <ngx_win32_config.h>
 

@@ -66,6 +66,10 @@ extern ngx_uint_t   ngx_tcp_nodelay_and_tcp_nopush;
 
 #elif (NGX_SOLARIS)
 #include <ngx_solaris.h>
+
+
+#elif (NGX_DARWIN)
+#include <ngx_darwin.h>
 #endif
 
 
