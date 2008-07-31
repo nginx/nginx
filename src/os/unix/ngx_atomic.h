@@ -21,13 +21,8 @@
 
 #include <libkern/OSAtomic.h>
 
-/* "bool" conflicts with perl's CORE/handy.h
- * "true" and "false" conflict with nginx, and of course we can rename them,
- * but we need to undef "bool" anyway
- */
+/* "bool" conflicts with perl's CORE/handy.h */
 #undef bool
-#undef true
-#undef false
 
 
 #define NGX_HAVE_ATOMIC_OPS  1

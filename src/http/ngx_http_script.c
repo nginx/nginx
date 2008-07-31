@@ -1016,69 +1016,69 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
         case ngx_http_script_file_dir:
         case ngx_http_script_file_exists:
         case ngx_http_script_file_exec:
-             goto false;
+             goto false_value;
 
         case ngx_http_script_file_not_plain:
         case ngx_http_script_file_not_dir:
         case ngx_http_script_file_not_exists:
         case ngx_http_script_file_not_exec:
-             goto true;
+             goto true_value;
         }
 
-        goto false;
+        goto false_value;
     }
 
     switch (code->op) {
     case ngx_http_script_file_plain:
         if (of.is_file) {
-             goto true;
+             goto true_value;
         }
-        goto false;
+        goto false_value;
 
     case ngx_http_script_file_not_plain:
         if (of.is_file) {
-            goto false;
+            goto false_value;
         }
-        goto true;
+        goto true_value;
 
     case ngx_http_script_file_dir:
         if (of.is_dir) {
-             goto true;
+             goto true_value;
         }
-        goto false;
+        goto false_value;
 
     case ngx_http_script_file_not_dir:
         if (of.is_dir) {
-            goto false;
+            goto false_value;
         }
-        goto true;
+        goto true_value;
 
     case ngx_http_script_file_exists:
         if (of.is_file || of.is_dir || of.is_link) {
-             goto true;
+             goto true_value;
         }
-        goto false;
+        goto false_value;
 
     case ngx_http_script_file_not_exists:
         if (of.is_file || of.is_dir || of.is_link) {
-            goto false;
+            goto false_value;
         }
-        goto true;
+        goto true_value;
 
     case ngx_http_script_file_exec:
         if (of.is_exec) {
-             goto true;
+             goto true_value;
         }
-        goto false;
+        goto false_value;
 
     case ngx_http_script_file_not_exec:
         if (of.is_exec) {
-            goto false;
+            goto false_value;
         }
-        goto true;
+        goto true_value;
     }
 
-false:
+false_value:
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http script file op false");
@@ -1086,7 +1086,7 @@ false:
     *value = ngx_http_variable_null_value;
     return;
 
-true:
+true_value:
 
     *value = ngx_http_variable_true_value;
     return;
