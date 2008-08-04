@@ -114,7 +114,7 @@ else
 
         if [ $ngx_found = no ]; then
 
-            # Linux package
+            # RedHat RPM, Solaris package
 
             ngx_feature="PCRE library in /usr/include/pcre/"
             ngx_feature_path="/usr/include/pcre"
