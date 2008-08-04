@@ -1549,8 +1549,8 @@ ngx_http_validate_host(u_char *host, size_t len)
 static ngx_int_t
 ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 {
-    u_char                    *server, ch;
-    ngx_uint_t                 i, hash;
+    u_char                    *server;
+    ngx_uint_t                 hash;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     buf[32];
@@ -1569,16 +1569,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         }
     }
 
-    hash = 0;
-
-    for (i = 0; i < len; i++) {
-        ch = host[i];
-
-        ch = ngx_tolower(ch);
-        server[i] = ch;
-
-        hash = ngx_hash(hash, ch);
-    }
+    hash = ngx_hash_strlow(server, host, len);
 
     cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, server, len);
 

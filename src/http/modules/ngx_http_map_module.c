@@ -106,7 +106,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     size_t                      len;
     u_char                     *name;
-    ngx_uint_t                  key, i;
+    ngx_uint_t                  key;
     ngx_http_variable_value_t  *vv, *value;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -135,11 +135,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         return NGX_ERROR;
     }
 
-    key = 0;
-    for (i = 0; i < len; i++) {
-        name[i] = ngx_tolower(vv->data[i]);
-        key = ngx_hash(key, name[i]);
-    }
+    key = ngx_hash_strlow(name, vv->data, len);
 
     value = ngx_hash_find_combined(&map->hash, key, name, len);
 

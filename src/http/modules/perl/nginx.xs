@@ -247,11 +247,7 @@ header_in(r, key)
         XSRETURN_UNDEF;
     }
 
-    hash = 0;
-    for (i = 0; i < len; i++) {
-        lowcase_key[i] = ngx_tolower(p[i]);
-        hash = ngx_hash(hash, lowcase_key[i]);
-    }
+    hash = ngx_hash_strlow(lowcase_key, p, len);
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
@@ -833,11 +829,7 @@ variable(r, name, value = NULL)
         XSRETURN_UNDEF;
     }
 
-    hash = 0;
-    for (i = 0; i < len; i++) {
-        lowcase[i] = ngx_tolower(p[i]);
-        hash = ngx_hash(hash, lowcase[i]);
-    }
+    hash = ngx_hash_strlow(lowcase, p, len);
 
     var.len = len;
     var.data = lowcase;

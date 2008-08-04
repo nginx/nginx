@@ -1305,7 +1305,7 @@ ngx_http_core_send_continue(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_set_content_type(ngx_http_request_t *r)
 {
-    u_char                     c, *p, *exten;
+    u_char                     c, *exten;
     ngx_str_t                 *type;
     ngx_uint_t                 i, hash;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1325,19 +1325,12 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
             if (c >= 'A' && c <= 'Z') {
 
-                p = ngx_pnalloc(r->pool, r->exten.len);
-                if (p == NULL) {
+                exten = ngx_pnalloc(r->pool, r->exten.len);
+                if (exten == NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
-                hash = 0;
-                exten = p;
-
-                for (i = 0; i < r->exten.len; i++) {
-                    c = ngx_tolower(r->exten.data[i]);
-                    hash = ngx_hash(hash, c);
-                    *p++ = c;
-                }
+                hash = ngx_hash_strlow(exten, r->exten.data, r->exten.len);
 
                 r->exten.data = exten;
 
@@ -2316,7 +2309,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     ngx_http_core_loc_conf_t *lcf = conf;
 
     ngx_str_t       *value, *content_type, *old, file;
-    ngx_uint_t       i, n;
+    ngx_uint_t       i, n, hash;
     ngx_hash_key_t  *type;
 
     value = cf->args->elts;
@@ -2342,9 +2335,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        for (n = 0; n < value[i].len; n++) {
-            value[i].data[n] = ngx_tolower(value[i].data[n]);
-        }
+        hash = ngx_hash_strlow(value[i].data, value[i].data, value[i].len);
 
         type = lcf->types->elts;
         for (n = 0; n < lcf->types->nelts; n++) {
@@ -2368,7 +2359,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         }
 
         type->key = value[i];
-        type->key_hash = ngx_hash_key(value[i].data, value[i].len);
+        type->key_hash = hash;
         type->value = content_type;
     }
 
