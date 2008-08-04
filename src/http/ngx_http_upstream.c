@@ -137,7 +137,8 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("Location"),
-                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, location),
                  ngx_http_upstream_rewrite_location, 0, 0 },
 
     { ngx_string("Refresh"),
