@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.8" date="04.08.2008">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_xslt_module.
+</para>
+<para lang="en">
+the ngx_http_xslt_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$arg_...".
+</para>
+<para lang="en">
+the "$arg_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка directio в Solaris.<br/>
+Спасибо Ivan Debnar.
+</para>
+<para lang="en">
+Solaris directio support.<br/>
+Thanks to Ivan Debnar.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь, если FastCGI-сервер присылает строку "Location" в заголовке ответа
+без строки статуса, то nginx использует код статуса 302.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now if FastCGI server sends a "Location" header line without status line,
+then nginx uses 302 status code.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.7" date="30.07.2008">
 
 <change type="change">
@@ -55,19 +102,21 @@ Thanks to Maxim Dounin.
 
 <change type="feature">
 <para lang="ru">
-директива directio.
+директива directio.<br/>
+Спасибо Jiang Hong.
 </para>
 <para lang="en">
-the "directio" directive.
+the "directio" directive.<br/>
+Thanks to Jiang Hong.
 </para>
 </change>
 
 <change type="feature">
 <para lang="ru">
-поддержка sendfile() в MacOSX 1.5.
+поддержка sendfile() в MacOSX 10.5.
 </para>
 <para lang="en">
-MacOSX 1.5 sendfile() support.
+MacOSX 10.5 sendfile() support.
 </para>
 </change>
 
@@ -1258,7 +1307,6 @@ Thanks to Manlio Perillo.
 <para lang="en">
 if variable values used in a "proxy_pass" directive contain IP-addresses only,
 then a "resolver" directive is not mandatory.
-resolver
 </para>
 </change>
 
