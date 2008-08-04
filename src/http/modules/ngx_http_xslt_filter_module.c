@@ -36,8 +36,8 @@ typedef struct {
 typedef struct {
     xmlDtdPtr            dtd;
     ngx_array_t          sheets;        /* ngx_http_xslt_sheet_t */
-    ngx_hash_t           types_hash;
-    ngx_array_t         *keys;
+    ngx_hash_t           types;
+    ngx_array_t         *types_keys;
 } ngx_http_xslt_filter_conf_t;
 
 
@@ -148,7 +148,7 @@ static ngx_command_t  ngx_http_xslt_filter_commands[] = {
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
       ngx_http_types_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_xslt_filter_conf_t, keys),
+      offsetof(ngx_http_xslt_filter_conf_t, types_keys),
       &ngx_http_xslt_default_types[0] },
 
       ngx_null_command
@@ -206,7 +206,7 @@ ngx_http_xslt_header_filter(ngx_http_request_t *r)
     conf = ngx_http_get_module_loc_conf(r, ngx_http_xslt_filter_module);
 
     if (conf->sheets.nelts == 0
-        || ngx_http_test_content_type(r, &conf->types_hash) == NULL)
+        || ngx_http_test_content_type(r, &conf->types) == NULL)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -1053,8 +1053,10 @@ ngx_http_xslt_filter_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->dtd
-     *     conf->sheets
+     *     conf->dtd = NULL;
+     *     conf->sheets = { NULL };
+     *     conf->types = { NULL };
+     *     conf->types_keys = NULL;
      */
 
     return conf;
@@ -1075,8 +1077,9 @@ ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->sheets = prev->sheets;
     }
 
-    if (ngx_http_merge_types(cf, conf->keys, &conf->types_hash, prev->keys,
-                             &prev->types_hash, ngx_http_xslt_default_types)
+    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
+                             prev->types_keys, &prev->types,
+                             ngx_http_xslt_default_types)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
