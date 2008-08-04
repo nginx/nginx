@@ -88,6 +88,10 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 
     value = ngx_hash_find(&hwc->hash, key, &name[n], len - n);
 
+#if 0
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "value:\"%p\"", value);
+#endif
+
     if (value) {
 
         /*
@@ -569,10 +573,6 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
             if (names[n].key.len == len) {
                 wdc->value = names[n].value;
-#if 0
-                ngx_log_error(NGX_LOG_ALERT, hinit->pool->log, 0,
-                              "wdc: \"%V\"", wdc->value);
-#endif
             }
 
             name->value = (void *) ((uintptr_t) wdc | (dot ? 1 : 3));
