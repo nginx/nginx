@@ -501,3 +501,10 @@ ngx_file_append_mode(ngx_fd_t fd)
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_directio(ngx_fd_t fd)
+{
+    return 0;
+}
