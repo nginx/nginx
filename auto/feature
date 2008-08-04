@@ -19,7 +19,9 @@ if test -n "$ngx_feature_name"; then
 fi
 
 if test -n "$ngx_feature_path"; then
-    ngx_feature_inc_path="-I $ngx_feature_path"
+    for ngx_temp in $ngx_feature_path; do
+        ngx_feature_inc_path="$ngx_feature_inc_path -I $ngx_temp"
+    done
 fi
 
 cat << END > $NGX_AUTOTEST.c
