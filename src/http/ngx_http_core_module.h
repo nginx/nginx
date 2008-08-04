@@ -373,6 +373,8 @@ ngx_int_t ngx_http_core_post_access_phase(ngx_http_request_t *r,
 ngx_int_t ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);
 
+
+void *ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash);
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_exten(ngx_http_request_t *r);
 u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,

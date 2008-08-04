@@ -107,6 +107,14 @@ ngx_int_t ngx_http_discard_request_body(ngx_http_request_t *r);
 void ngx_http_block_reading(ngx_http_request_t *r);
 
 
+char *ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys,
+    ngx_hash_t *types_hash, ngx_array_t *prev_keys, ngx_hash_t *prev_types_hash,
+    ngx_str_t *default_types);
+char *ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
+    ngx_str_t *default_type);
+
+
 extern ngx_module_t  ngx_http_module;
 
 

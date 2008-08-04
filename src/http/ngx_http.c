@@ -1687,3 +1687,135 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_in_port_t *in_port)
 
     return NGX_OK;
 }
+
+
+char *
+ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_array_t     **types;
+    ngx_str_t        *value, *default_type;
+    ngx_uint_t        i, n, hash;
+    ngx_hash_key_t   *type;
+
+    types = (ngx_array_t **) (p + cmd->offset);
+
+    default_type = cmd->post;
+
+    if (*types == NULL) {
+        *types = ngx_array_create(cf->temp_pool, 1, sizeof(ngx_hash_key_t));
+        if (*types == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (default_type) {
+            type = ngx_array_push(*types);
+            if (type == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            type->key = *default_type;
+            type->key_hash = ngx_hash_key(default_type->data,
+                                          default_type->len);
+            type->value = (void *) 4;
+        }
+    }
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        hash = ngx_hash_strlow(value[i].data, value[i].data, value[i].len);
+        value[i].data[value[i].len] = '\0';
+
+        type = (*types)->elts;
+        for (n = 0; n < (*types)->nelts; n++) {
+
+            if (ngx_strcmp(value[i].data, type[n].key.data) == 0) {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "duplicate MIME type \"%V\"", &value[i]);
+                continue;
+            }
+        }
+
+        type = ngx_array_push(*types);
+        if (type == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        type->key = value[i];
+        type->key_hash = hash;
+        type->value = (void *) 4;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
+    ngx_array_t *prev_keys, ngx_hash_t *prev_types_hash, 
+    ngx_str_t *default_types)
+{
+    ngx_hash_init_t  hash;
+
+    if (keys == NULL) {
+
+        if (prev_keys) {
+            *types_hash = *prev_types_hash;
+            return NGX_CONF_OK;
+        }
+
+        if (ngx_http_set_default_types(cf, &keys, default_types)
+            != NGX_CONF_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    hash.hash = types_hash;
+    hash.key = NULL;
+    hash.max_size = 2048;
+    hash.bucket_size = 64;
+    hash.name = "test_types_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, keys->elts, keys->nelts) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+
+}
+
+
+char *
+ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
+    ngx_str_t *default_type)
+{
+    ngx_hash_key_t  *type;
+
+    *types = ngx_array_create(cf->temp_pool, 1, sizeof(ngx_hash_key_t));
+    if (*types == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    while (default_type->len) {
+
+        type = ngx_array_push(*types);
+        if (type == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        type->key = *default_type;
+        type->key_hash = ngx_hash_key(default_type->data,
+                                      default_type->len);
+        type->value = (void *) 4;
+
+        default_type++;
+    }
+
+    return NGX_CONF_OK;
+}

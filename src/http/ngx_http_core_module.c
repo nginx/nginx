@@ -1302,6 +1302,44 @@ ngx_http_core_send_continue(ngx_http_request_t *r)
 }
 
 
+void *
+ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash)
+{
+    u_char       c, *p;
+    ngx_uint_t   i, hash;
+
+    if (r->headers_out.content_type.len == 0) {
+        return NULL;
+    }
+
+    if (r->headers_out.content_type_lowcase == NULL) {
+
+        p = ngx_pnalloc(r->pool, r->headers_out.content_type_len);
+
+        if (p == NULL) {
+            return NULL;
+        }
+
+        r->headers_out.content_type_lowcase = p;
+
+        hash = 0;
+
+        for (i = 0; i < r->headers_out.content_type_len; i++) {
+            c = ngx_tolower(r->headers_out.content_type.data[i]);
+            hash = ngx_hash(hash, c);
+            *p++ = c;
+        }
+
+        r->headers_out.content_type_hash = hash;
+    }
+
+    return ngx_hash_find(types_hash,
+                         r->headers_out.content_type_hash,
+                         r->headers_out.content_type_lowcase,
+                         r->headers_out.content_type_len);
+}
+
+
 ngx_int_t
 ngx_http_set_content_type(ngx_http_request_t *r)
 {
