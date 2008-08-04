@@ -390,9 +390,7 @@ found:
         elt->value = names[n].value;
         elt->len = (u_char) names[n].key.len;
 
-        for (i = 0; i < names[n].key.len; i++) {
-            elt->name[i] = ngx_tolower(names[n].key.data[i]);
-        }
+        ngx_strlow(elt->name, names[n].key.data, names[n].key.len);
 
         test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }

@@ -818,7 +818,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
     ssize_t                     n;
     ngx_int_t                   rc, rv;
     ngx_str_t                   header;
-    ngx_uint_t                  i;
     ngx_table_elt_t            *h;
     ngx_connection_t           *c;
     ngx_http_header_t          *hh;
@@ -928,9 +927,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
 
             } else {
-                for (i = 0; i < h->key.len; i++) {
-                    h->lowcase_key[i] = ngx_tolower(h->key.data[i]);
-                }
+                ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
             }
 
             hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,

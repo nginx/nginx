@@ -1120,9 +1120,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
 
                 } else {
-                    for (i = 0; i < h->key.len; i++) {
-                        h->lowcase_key[i] = ngx_tolower(h->key.data[i]);
-                    }
+                    ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
                 }
 
                 hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,

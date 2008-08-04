@@ -632,7 +632,6 @@ ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t                  *value;
     ngx_int_t                   n;
-    ngx_uint_t                  i;
     ngx_http_script_compile_t   sc;
 
     if (slcf->match.len) {
@@ -641,11 +640,9 @@ ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    slcf->match = value[1];
+    ngx_strlow(value[1].data, value[1].data, value[1].len);
 
-    for (i = 0; i < value[1].len; i++) {
-        value[1].data[i] = ngx_tolower(value[1].data[i]);
-    }
+    slcf->match = value[1];
 
     n = ngx_http_script_variables_count(&value[2]);
 

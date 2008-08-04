@@ -277,9 +277,7 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
         return NULL;
     }
 
-    for (i = 0; i < name->len; i++) {
-        v->name.data[i] = ngx_tolower(name->data[i]);
-    }
+    ngx_strlow(v->name.data, name->data, name->len);
 
     v->set_handler = NULL;
     v->get_handler = NULL;
@@ -344,9 +342,7 @@ ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name)
         return NGX_ERROR;
     }
 
-    for (i = 0; i < name->len; i++) {
-        v->name.data[i] = ngx_tolower(name->data[i]);
-    }
+    ngx_strlow(v->name.data, name->data, name->len);
 
     v->set_handler = NULL;
     v->get_handler = NULL;

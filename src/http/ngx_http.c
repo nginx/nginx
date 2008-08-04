@@ -1259,7 +1259,7 @@ static ngx_int_t
 ngx_http_add_names(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_conf_in_addr_t *in_addr)
 {
-    ngx_uint_t               i, n;
+    ngx_uint_t               i;
     ngx_http_server_name_t  *server_names, *name;
 
     if (in_addr->names.elts == NULL) {
@@ -1275,10 +1275,8 @@ ngx_http_add_names(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
     for (i = 0; i < cscf->server_names.nelts; i++) {
 
-        for (n = 0; n < server_names[i].name.len; n++) {
-            server_names[i].name.data[n] =
-                                     ngx_tolower(server_names[i].name.data[n]);
-        }
+        ngx_strlow(server_names[i].name.data, server_names[i].name.data,
+                   server_names[i].name.len);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0,
                        "name: %V", &server_names[i].name);
