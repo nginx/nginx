@@ -123,7 +123,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
                                           - 116444736000000000) / 10000000)
 
 
-#define ngx_filename_cmp(s1, s2, n)  strnicmp((char *) s1, (char *) s2, n)
+#define ngx_filename_cmp(s1, s2, n) _strnicmp((char *) s1, (char *) s2, n)
 
 
 #define ngx_getcwd(buf, size)       GetCurrentDirectory(size, buf)
