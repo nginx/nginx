@@ -190,3 +190,14 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="fcntl(0, F_NOCACHE, 1);"
 . auto/feature
+
+
+ngx_feature="directio()"
+ngx_feature_name="NGX_HAVE_DIRECTIO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/types.h>
+                  #include <sys/fcntl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="directio(0, DIRECTIO_ON);"
+. auto/feature

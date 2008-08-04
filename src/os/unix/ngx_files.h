@@ -199,6 +199,11 @@ ngx_int_t ngx_directio(ngx_fd_t fd);
 #define ngx_directio(fd)         fcntl(fd, F_NOCACHE, 1)
 #define ngx_directio_n           "fcntl(F_NOCACHE)"
 
+#elif (NGX_HAVE_DIRECTIO)
+
+#define ngx_directio(fd)         directio(fd, DIRECTIO_ON)
+#define ngx_directio_n           "directio(DIRECTIO_ON)"
+
 #else
 
 #define ngx_directio(fd)         0
