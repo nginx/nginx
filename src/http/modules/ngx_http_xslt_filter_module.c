@@ -23,12 +23,13 @@
 
 typedef struct {
     u_char              *name;
-    xsltStylesheetPtr    stylesheet;
-} ngx_http_xslt_sheet_file_t;
+    void                *data;
+} ngx_http_xslt_file_t;
 
 
 typedef struct {
-    ngx_array_t          sheet_files;  /* ngx_http_xslt_sheet_file_t */
+    ngx_array_t          dtd_files;    /* ngx_http_xslt_file_t */
+    ngx_array_t          sheet_files;  /* ngx_http_xslt_file_t */
 } ngx_http_xslt_filter_main_conf_t;
 
 
@@ -128,6 +129,7 @@ static char *ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static void ngx_http_xslt_cleanup_dtd(void *data);
 static void ngx_http_xslt_cleanup_stylesheet(void *data);
 static void *ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_xslt_filter_create_conf(ngx_conf_t *cf);
@@ -994,7 +996,11 @@ ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_xslt_filter_loc_conf_t *xlcf = conf;
 
-    ngx_str_t  *value;
+    ngx_str_t                         *value;
+    ngx_uint_t                         i;
+    ngx_pool_cleanup_t                *cln;
+    ngx_http_xslt_file_t              *file;
+    ngx_http_xslt_filter_main_conf_t  *xmcf;
 
     if (xlcf->dtd) {
         return "is duplicate";
@@ -1002,12 +1008,38 @@ ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    xmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_xslt_filter_module);
+
+    file = xmcf->dtd_files.elts;
+    for (i = 0; i < xmcf->dtd_files.nelts; i++) {
+        if (ngx_strcmp(file[i].name, &value[1].data) == 0) {
+            xlcf->dtd = file[i].data;
+            return NGX_CONF_OK;
+        }
+    }
+
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     xlcf->dtd = xmlParseDTD(NULL, (xmlChar *) value[1].data);
 
     if (xlcf->dtd == NULL) {
         ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "xmlParseDTD() failed");
         return NGX_CONF_ERROR;
     }
+
+    cln->handler = ngx_http_xslt_cleanup_dtd;
+    cln->data = xlcf->dtd;
+
+    file = ngx_array_push(&xmcf->dtd_files);
+    if (file == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    file->name = value[1].data;
+    file->data = xlcf->dtd;
 
     return NGX_CONF_OK;
 }
@@ -1022,10 +1054,10 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                         *value;
     ngx_uint_t                         i, n;
     ngx_pool_cleanup_t                *cln;
+    ngx_http_xslt_file_t              *file;
     ngx_http_xslt_sheet_t             *sheet;
     ngx_http_xslt_param_t             *param;
     ngx_http_script_compile_t          sc;
-    ngx_http_xslt_sheet_file_t        *file;
     ngx_http_xslt_filter_main_conf_t  *xmcf;
 
     value = cf->args->elts;
@@ -1055,7 +1087,7 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     file = xmcf->sheet_files.elts;
     for (i = 0; i < xmcf->sheet_files.nelts; i++) {
         if (ngx_strcmp(file[i].name, &value[1].data) == 0) {
-            sheet->stylesheet = file[i].stylesheet;
+            sheet->stylesheet = file[i].data;
             goto found;
         }
     }
@@ -1082,7 +1114,7 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     file->name = value[1].data;
-    file->stylesheet = sheet->stylesheet;
+    file->data = sheet->stylesheet;
 
 found:
 
@@ -1129,11 +1161,16 @@ found:
 
 
 static void
+ngx_http_xslt_cleanup_dtd(void *data)
+{
+    xmlFreeDtd(data);
+}
+
+
+static void
 ngx_http_xslt_cleanup_stylesheet(void *data)
 {
-    xsltStylesheetPtr  stylesheet = data;
-
-    xsltFreeStylesheet(stylesheet);
+    xsltFreeStylesheet(data);
 }
 
 
@@ -1147,8 +1184,15 @@ ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_array_init(&conf->dtd_files, cf->pool, 1,
+                       sizeof(ngx_http_xslt_file_t))
+        != NGX_OK)
+    {
+        return NULL;
+    }
+
     if (ngx_array_init(&conf->sheet_files, cf->pool, 1,
-                       sizeof(ngx_http_xslt_sheet_file_t))
+                       sizeof(ngx_http_xslt_file_t))
         != NGX_OK)
     {
         return NULL;
