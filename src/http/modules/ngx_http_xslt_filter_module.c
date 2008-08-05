@@ -511,8 +511,6 @@ ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
         return;
     }
 
-    dtd->name = xmlStrdup(name);
-
     if (doc->children == NULL) {
         xmlAddChild((xmlNodePtr) doc, (xmlNodePtr) dtd);
 
