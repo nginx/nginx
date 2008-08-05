@@ -15,11 +15,7 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
     ngx_hash_elt_t  *elt;
 
 #if 0
-    ngx_str_t  line;
-
-    line.len = len;
-    line.data = name;
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "hf:\"%V\"", &line);
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "hf:\"%*s\"", len, name);
 #endif
 
     elt = hash->buckets[key % hash->size];
@@ -59,11 +55,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     ngx_uint_t   i, n, key;
 
 #if 0
-    ngx_str_t  line;
-
-    line.len = len;
-    line.data = name;
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "wch:\"%V\"", &line);
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "wch:\"%*s\"", len, name);
 #endif
 
     n = len;
@@ -139,11 +131,7 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     ngx_uint_t   i, key;
 
 #if 0
-    ngx_str_t  line;
-
-    line.len = len;
-    line.data = name;
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "wct:\"%V\"", &line);
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "wct:\"%*s\"", len, name);
 #endif
 
     key = 0;
@@ -165,6 +153,10 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 #endif
 
     value = ngx_hash_find(&hwc->hash, key, name, i);
+
+#if 0
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "value:\"%p\"", value);
+#endif
 
     if (value) {
 
