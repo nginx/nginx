@@ -138,7 +138,7 @@ static ngx_command_t  ngx_http_xslt_filter_commands[] = {
       NULL },
 
     { ngx_string("xslt_stylesheet"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_xslt_stylesheet,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
