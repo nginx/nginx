@@ -35,7 +35,7 @@ typedef struct {
 
 typedef struct {
     xmlDtdPtr            dtd;
-    ngx_array_t          sheets;        /* ngx_http_xslt_sheet_t */
+    ngx_array_t          sheets;       /* ngx_http_xslt_sheet_t */
     ngx_hash_t           types;
     ngx_array_t         *types_keys;
 } ngx_http_xslt_filter_conf_t;
@@ -47,8 +47,8 @@ typedef struct {
     xmlSAXHandler       *sax;
     ngx_http_request_t  *request;
     ngx_array_t          params;
-    unsigned             done:1;
-    unsigned             html:1;
+
+    ngx_uint_t           done;         /* unsigned  done:1; */
 } ngx_http_xslt_filter_ctx_t;
 
 
@@ -109,6 +109,8 @@ static ngx_buf_t *ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx);
 static ngx_int_t ngx_http_xslt_params(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx, ngx_array_t *params);
+static u_char *ngx_http_xslt_content_type(xsltStylesheetPtr s);
+static u_char *ngx_http_xslt_encoding(xsltStylesheetPtr s);
 static void ngx_http_xslt_cleanup(void *data);
 
 static char *ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -314,12 +316,6 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
         ngx_free(b->pos);
         return ngx_http_special_response_handler(r,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-    }
-
-    if (ctx->html) {
-        r->headers_out.content_type_len = sizeof("text/html") - 1;
-        r->headers_out.content_type.len = sizeof("text/html") - 1;
-        r->headers_out.content_type.data = (u_char *) "text/html";
     }
 
     r->headers_out.content_length_n = b->last - b->pos;
@@ -730,7 +726,8 @@ static ngx_buf_t *
 ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx)
 {
-    int                           len, rc;
+    int                           len, rc, doc_type;
+    u_char                       *type, *encoding;
     ngx_buf_t                    *b;
     ngx_uint_t                    i;
     xmlChar                      *buf;
@@ -774,10 +771,16 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
         ctx->params.nelts = 0;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "xslt filter doc type: %d", doc->type);
+    /* there must be at least one stylesheet */
 
-    ctx->html = (doc->type == XML_HTML_DOCUMENT_NODE) ? 1 : 0;
+    type = ngx_http_xslt_content_type(sheet[i - 1].stylesheet);
+    encoding = ngx_http_xslt_encoding(sheet[i - 1].stylesheet);
+    doc_type = doc->type;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "xslt filter type: %d t:%s e:%s",
+                   doc_type, type ? type : (u_char *) "(null)",
+                   encoding ? encoding : (u_char *) "(null)");
 
     rc = xsltSaveResultToString(&buf, &len, doc, sheet[i - 1].stylesheet);
 
@@ -805,6 +808,25 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     b->last = buf + len;
     b->memory = 1;
     b->last_buf = 1;
+
+    if (type) {
+        len = ngx_strlen(type);
+
+        r->headers_out.content_type_len = len;
+        r->headers_out.content_type.len = len;
+        r->headers_out.content_type.data = type;
+
+    } else if (doc_type == XML_HTML_DOCUMENT_NODE) {
+
+        r->headers_out.content_type_len = sizeof("text/html") - 1;
+        r->headers_out.content_type.len = sizeof("text/html") - 1;
+        r->headers_out.content_type.data = (u_char *) "text/html";
+    }
+
+    if (encoding) {
+        r->headers_out.charset.len = ngx_strlen(encoding);
+        r->headers_out.charset.data = encoding;
+    }
 
     return b;
 }
@@ -901,6 +923,50 @@ ngx_http_xslt_params(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     *s = NULL;
 
     return NGX_OK;
+}
+
+
+static u_char *
+ngx_http_xslt_content_type(xsltStylesheetPtr s)
+{
+    u_char  *type;
+
+    if (s->mediaType) {
+        return s->mediaType;
+    }
+
+    for (s = s->imports; s; s = s->next) {
+
+        type = ngx_http_xslt_content_type(s);
+
+        if (type) {
+            return type;
+        }
+    }
+
+    return NULL;
+}
+
+
+static u_char *
+ngx_http_xslt_encoding(xsltStylesheetPtr s)
+{
+    u_char  *encoding;
+
+    if (s->encoding) {
+        return s->encoding;
+    }
+
+    for (s = s->imports; s; s = s->next) {
+
+        encoding = ngx_http_xslt_encoding(s);
+
+        if (encoding) {
+            return encoding;
+        }
+    }
+
+    return NULL;
 }
 
 
