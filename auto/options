@@ -119,6 +119,7 @@ NGX_PERL=perl
 USE_LIBXSLT=NO
 
 NGX_GOOGLE_PERFTOOLS=NO
+NGX_CPP_TEST=NO
 
 NGX_CPU_CACHE_LINE=
 
@@ -208,6 +209,7 @@ do
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
         --with-google_perftools_module)  NGX_GOOGLE_PERFTOOLS=YES   ;;
+        --with-cpp_test_module)          NGX_CPP_TEST_MODULE=YES    ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
@@ -327,6 +329,7 @@ cat << END
   --without-mail_smtp_module         disable ngx_mail_smtp_module
 
   --with-google_perftools_module     enable ngx_google_perftools_module
+  --with-cpp_test_module             enable ngx_cpp_test_module
 
   --add-module=PATH                  enable an external module
 

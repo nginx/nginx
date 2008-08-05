@@ -474,3 +474,4 @@ MAIL_PROXY_SRCS="src/mail/ngx_mail_proxy_module.c"
 NGX_GOOGLE_PERFTOOLS_MODULE=ngx_google_perftools_module
 NGX_GOOGLE_PERFTOOLS_SRCS=src/misc/ngx_google_perftools_module.c
 
+NGX_CPP_TEST_SRCS=src/misc/ngx_cpp_test_module.cpp
