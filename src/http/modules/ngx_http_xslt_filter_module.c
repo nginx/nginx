@@ -22,6 +22,17 @@
 
 
 typedef struct {
+    u_char              *name;
+    xsltStylesheetPtr    stylesheet;
+} ngx_http_xslt_sheet_file_t;
+
+
+typedef struct {
+    ngx_array_t          sheet_files;  /* ngx_http_xslt_sheet_file_t */
+} ngx_http_xslt_filter_main_conf_t;
+
+
+typedef struct {
     ngx_array_t         *lengths;
     ngx_array_t         *values;
 } ngx_http_xslt_param_t;
@@ -38,7 +49,7 @@ typedef struct {
     ngx_array_t          sheets;       /* ngx_http_xslt_sheet_t */
     ngx_hash_t           types;
     ngx_array_t         *types_keys;
-} ngx_http_xslt_filter_conf_t;
+} ngx_http_xslt_filter_loc_conf_t;
 
 
 typedef struct {
@@ -118,6 +129,7 @@ static char *ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void ngx_http_xslt_cleanup_stylesheet(void *data);
+static void *ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_xslt_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -150,7 +162,7 @@ static ngx_command_t  ngx_http_xslt_filter_commands[] = {
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_types_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_xslt_filter_conf_t, types_keys),
+      offsetof(ngx_http_xslt_filter_loc_conf_t, types_keys),
       &ngx_http_xslt_default_types[0] },
 
       ngx_null_command
@@ -161,7 +173,7 @@ static ngx_http_module_t  ngx_http_xslt_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
     ngx_http_xslt_filter_init,             /* postconfiguration */
 
-    NULL,                                  /* create main configuration */
+    ngx_http_xslt_filter_create_main_conf, /* create main configuration */
     NULL,                                  /* init main configuration */
 
     NULL,                                  /* create server configuration */
@@ -195,8 +207,8 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_xslt_header_filter(ngx_http_request_t *r)
 {
-    ngx_http_xslt_filter_ctx_t   *ctx;
-    ngx_http_xslt_filter_conf_t  *conf;
+    ngx_http_xslt_filter_ctx_t       *ctx;
+    ngx_http_xslt_filter_loc_conf_t  *conf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "xslt filter header");
@@ -477,10 +489,10 @@ ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
 {
     ngx_http_xslt_filter_ctx_t *ctx = data;
 
-    xmlDocPtr                     doc;
-    xmlDtdPtr                     dtd;
-    ngx_http_request_t           *r;
-    ngx_http_xslt_filter_conf_t  *conf;
+    xmlDocPtr                         doc;
+    xmlDtdPtr                         dtd;
+    ngx_http_request_t               *r;
+    ngx_http_xslt_filter_loc_conf_t  *conf;
 
     r = ctx->request;
 
@@ -726,14 +738,14 @@ static ngx_buf_t *
 ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx)
 {
-    int                           len, rc, doc_type;
-    u_char                       *type, *encoding;
-    ngx_buf_t                    *b;
-    ngx_uint_t                    i;
-    xmlChar                      *buf;
-    xmlDocPtr                     doc, res;
-    ngx_http_xslt_sheet_t        *sheet;
-    ngx_http_xslt_filter_conf_t  *conf;
+    int                               len, rc, doc_type;
+    u_char                           *type, *encoding;
+    ngx_buf_t                        *b;
+    ngx_uint_t                        i;
+    xmlChar                          *buf;
+    xmlDocPtr                         doc, res;
+    ngx_http_xslt_sheet_t            *sheet;
+    ngx_http_xslt_filter_loc_conf_t  *conf;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_xslt_filter_module);
     sheet = conf->sheets.elts;
@@ -980,7 +992,7 @@ ngx_http_xslt_cleanup(void *data)
 static char *
 ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_xslt_filter_conf_t *xlcf = conf;
+    ngx_http_xslt_filter_loc_conf_t *xlcf = conf;
 
     ngx_str_t  *value;
 
@@ -1005,14 +1017,16 @@ ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_xslt_filter_conf_t *xlcf = conf;
+    ngx_http_xslt_filter_loc_conf_t *xlcf = conf;
 
-    ngx_str_t                  *value;
-    ngx_uint_t                  i, n;
-    ngx_pool_cleanup_t         *cln;
-    ngx_http_xslt_sheet_t      *sheet;
-    ngx_http_xslt_param_t      *param;
-    ngx_http_script_compile_t   sc;
+    ngx_str_t                         *value;
+    ngx_uint_t                         i, n;
+    ngx_pool_cleanup_t                *cln;
+    ngx_http_xslt_sheet_t             *sheet;
+    ngx_http_xslt_param_t             *param;
+    ngx_http_script_compile_t          sc;
+    ngx_http_xslt_sheet_file_t        *file;
+    ngx_http_xslt_filter_main_conf_t  *xmcf;
 
     value = cf->args->elts;
 
@@ -1036,6 +1050,16 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    xmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_xslt_filter_module);
+
+    file = xmcf->sheet_files.elts;
+    for (i = 0; i < xmcf->sheet_files.nelts; i++) {
+        if (ngx_strcmp(file[i].name, &value[1].data) == 0) {
+            sheet->stylesheet = file[i].stylesheet;
+            goto found;
+        }
+    }
+
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
         return NGX_CONF_ERROR;
@@ -1051,6 +1075,16 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cln->handler = ngx_http_xslt_cleanup_stylesheet;
     cln->data = sheet->stylesheet;
+
+    file = ngx_array_push(&xmcf->sheet_files);
+    if (file == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    file->name = value[1].data;
+    file->stylesheet = sheet->stylesheet;
+
+found:
 
     n = cf->args->nelts;
 
@@ -1103,13 +1137,33 @@ ngx_http_xslt_cleanup_stylesheet(void *data)
 }
 
 
+static void *
+ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_xslt_filter_main_conf_t  *conf;
+
+    conf = ngx_palloc(cf->pool, sizeof(ngx_http_xslt_filter_main_conf_t));
+    if (conf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_array_init(&conf->sheet_files, cf->pool, 1,
+                       sizeof(ngx_http_xslt_sheet_file_t))
+        != NGX_OK)
+    {
+        return NULL;
+    }
+
+    return conf;
+}
+
 
 static void *
 ngx_http_xslt_filter_create_conf(ngx_conf_t *cf)
 {
-    ngx_http_xslt_filter_conf_t  *conf;
+    ngx_http_xslt_filter_loc_conf_t  *conf;
 
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_xslt_filter_conf_t));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_xslt_filter_loc_conf_t));
     if (conf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1130,8 +1184,8 @@ ngx_http_xslt_filter_create_conf(ngx_conf_t *cf)
 static char *
 ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_xslt_filter_conf_t *prev = parent;
-    ngx_http_xslt_filter_conf_t *conf = child;
+    ngx_http_xslt_filter_loc_conf_t *prev = parent;
+    ngx_http_xslt_filter_loc_conf_t *conf = child;
 
     if (conf->dtd == NULL) {
         conf->dtd = prev->dtd;
