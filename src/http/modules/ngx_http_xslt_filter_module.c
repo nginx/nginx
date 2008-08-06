@@ -332,11 +332,15 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    r->headers_out.content_length_n = b->last - b->pos;
+    if (r == r->main) {
+        r->headers_out.content_length_n = b->last - b->pos;
 
-    if (r->headers_out.content_length) {
-        r->headers_out.content_length->hash = 0;
-        r->headers_out.content_length = NULL;
+        if (r->headers_out.content_length) {
+            r->headers_out.content_length->hash = 0;
+            r->headers_out.content_length = NULL;
+        }
+
+        ngx_http_clear_last_modified(r);
     }
 
     rc = ngx_http_next_header_filter(r);
@@ -785,7 +789,13 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
 
     /* there must be at least one stylesheet */
 
-    type = ngx_http_xslt_content_type(sheet[i - 1].stylesheet);
+    if (r == r->main) {
+        type = ngx_http_xslt_content_type(sheet[i - 1].stylesheet);
+
+    } else {
+        type = NULL;
+    }
+
     encoding = ngx_http_xslt_encoding(sheet[i - 1].stylesheet);
     doc_type = doc->type;
 
@@ -821,6 +831,15 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     b->memory = 1;
     b->last_buf = 1;
 
+    if (encoding) {
+        r->headers_out.charset.len = ngx_strlen(encoding);
+        r->headers_out.charset.data = encoding;
+    }
+
+    if (r != r->main) {
+        return b;
+    }
+
     if (type) {
         len = ngx_strlen(type);
 
@@ -833,11 +852,6 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
         r->headers_out.content_type_len = sizeof("text/html") - 1;
         r->headers_out.content_type.len = sizeof("text/html") - 1;
         r->headers_out.content_type.data = (u_char *) "text/html";
-    }
-
-    if (encoding) {
-        r->headers_out.charset.len = ngx_strlen(encoding);
-        r->headers_out.charset.data = encoding;
     }
 
     return b;
