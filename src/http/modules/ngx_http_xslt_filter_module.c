@@ -339,8 +339,6 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
         r->headers_out.content_length = NULL;
     }
 
-    r->allow_ranges = 1;
-
     rc = ngx_http_next_header_filter(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
