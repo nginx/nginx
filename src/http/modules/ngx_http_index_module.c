@@ -27,8 +27,8 @@ typedef struct {
 
 static ngx_int_t ngx_http_index_test_dir(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t *clcf, u_char *path, u_char *last);
-static ngx_int_t ngx_http_index_error(ngx_http_request_t *r, u_char *file,
-    ngx_err_t err);
+static ngx_int_t ngx_http_index_error(ngx_http_request_t *r,
+    ngx_http_core_loc_conf_t *clcf, u_char *file, ngx_err_t err);
 
 static ngx_int_t ngx_http_index_init(ngx_conf_t *cf);
 static void *ngx_http_index_create_loc_conf(ngx_conf_t *cf);
@@ -227,7 +227,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             if (of.err == NGX_ENOTDIR || of.err == NGX_EACCES) {
-                return ngx_http_index_error(r, path.data, of.err);
+                return ngx_http_index_error(r, clcf, path.data, of.err);
             }
 
             if (!dir_tested) {
@@ -306,7 +306,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
 
             if (of.err == NGX_ENOENT) {
                 *last = c;
-                return ngx_http_index_error(r, dir.data, NGX_ENOENT);
+                return ngx_http_index_error(r, clcf, dir.data, NGX_ENOENT);
             }
 
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
@@ -330,7 +330,8 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
 
 
 static ngx_int_t
-ngx_http_index_error(ngx_http_request_t *r, u_char *file, ngx_err_t err)
+ngx_http_index_error(ngx_http_request_t *r, ngx_http_core_loc_conf_t  *clcf,
+    u_char *file, ngx_err_t err)
 {
     if (err == NGX_EACCES) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
@@ -339,8 +340,10 @@ ngx_http_index_error(ngx_http_request_t *r, u_char *file, ngx_err_t err)
         return NGX_HTTP_FORBIDDEN;
     }
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
-                  "\"%s\" is not found", file);
+    if (clcf->log_not_found) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, err,
+                      "\"%s\" is not found", file);
+    }
 
     return NGX_HTTP_NOT_FOUND;
 }
