@@ -553,6 +553,12 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "invalid value";
     }
 
+    if (hcf->expires == NGX_HTTP_EXPIRES_DAILY
+        && hcf->expires_time > 24 * 60 * 60)
+    {
+        return "daily time value must be less than 24 hours";
+    }
+
     if (hcf->expires_time == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
     }
