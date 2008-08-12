@@ -52,6 +52,9 @@ typedef struct {
     ngx_int_t                   charset;
     ngx_int_t                   source_charset;
     ngx_flag_t                  override_charset;
+
+    ngx_hash_t                  types;
+    ngx_array_t                *types_keys;
 } ngx_http_charset_loc_conf_t;
 
 
@@ -110,6 +113,18 @@ static char *ngx_http_charset_merge_loc_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_charset_postconfiguration(ngx_conf_t *cf);
 
 
+ngx_str_t  ngx_http_charset_default_types[] = {
+    ngx_string("text/html"),
+    ngx_string("text/css"),
+    ngx_string("text/xml"),
+    ngx_string("text/plain"),
+    ngx_string("text/vnd.wap.wml"),
+    ngx_string("application/x-javascript"),
+    ngx_string("application/rss+xml"),
+    ngx_null_string
+};
+
+
 static ngx_command_t  ngx_http_charset_filter_commands[] = {
 
     { ngx_string("charset"),
@@ -135,6 +150,13 @@ static ngx_command_t  ngx_http_charset_filter_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_charset_loc_conf_t, override_charset),
       NULL },
+
+    { ngx_string("charset_types"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_types_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_charset_loc_conf_t, types_keys),
+      &ngx_http_charset_default_types[0] },
 
     { ngx_string("charset_map"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE2,
@@ -185,7 +207,6 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_charset_header_filter(ngx_http_request_t *r)
 {
-    u_char                        *ct;
     ngx_int_t                      charset, source_charset;
     ngx_str_t                     *mc, *from, *to, s;
     ngx_uint_t                     n;
@@ -243,13 +264,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                 }
 
             } else {
-                ct = r->headers_out.content_type.data;
-
-                if (ngx_strncasecmp(ct, (u_char *) "text/", 5) != 0
-                    && ngx_strncasecmp(ct,
-                                      (u_char *) "application/x-javascript", 24)
-                       != 0)
-                {
+                if (ngx_http_test_content_type(r, &mlcf->types) == NULL) {
                     return ngx_http_next_header_filter(r);
                 }
             }
@@ -1444,6 +1459,13 @@ ngx_http_charset_create_loc_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     lcf->types = { NULL };
+     *     lcf->types_keys = NULL;
+     */
+
     lcf->charset = NGX_CONF_UNSET;
     lcf->source_charset = NGX_CONF_UNSET;
     lcf->override_charset = NGX_CONF_UNSET;
@@ -1500,6 +1522,14 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     recode->src = conf->source_charset;
     recode->dst = conf->charset;
+
+    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
+                             prev->types_keys, &prev->types,
+                             ngx_http_charset_default_types)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

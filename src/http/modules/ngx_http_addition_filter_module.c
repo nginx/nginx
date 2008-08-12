@@ -10,13 +10,16 @@
 
 
 typedef struct {
-    ngx_str_t   before_body;
-    ngx_str_t   after_body;
+    ngx_str_t     before_body;
+    ngx_str_t     after_body;
+
+    ngx_hash_t    types;
+    ngx_array_t  *types_keys;
 } ngx_http_addition_conf_t;
 
 
 typedef struct {
-    ngx_uint_t  before_body_sent;
+    ngx_uint_t    before_body_sent;
 } ngx_http_addition_ctx_t;
 
 
@@ -41,6 +44,13 @@ static ngx_command_t  ngx_http_addition_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_addition_conf_t, after_body),
       NULL },
+
+    { ngx_string("addtion_types"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_types_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_addition_conf_t, types_keys),
+      &ngx_http_html_default_types[0] },
 
       ngx_null_command
 };
@@ -87,10 +97,7 @@ ngx_http_addition_header_filter(ngx_http_request_t *r)
     ngx_http_addition_ctx_t   *ctx;
     ngx_http_addition_conf_t  *conf;
 
-    if (r->headers_out.status != NGX_HTTP_OK
-        || r != r->main
-        || r->headers_out.content_type.data == NULL)
-    {
+    if (r->headers_out.status != NGX_HTTP_OK || r != r->main) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -100,10 +107,7 @@ ngx_http_addition_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (ngx_strncasecmp(r->headers_out.content_type.data,
-                        (u_char *) "text/html", sizeof("text/html") - 1)
-        != 0)
-    {
+    if (ngx_http_test_content_type(r, &conf->types) == NULL) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -214,10 +218,10 @@ ngx_http_addition_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->before_body.len = 0;
-     *     conf->before_body.date = NULL;
-     *     conf->after_body.len = 0;
-     *     conf->after_body.date = NULL;
+     *     conf->before_body = { 0, NULL };
+     *     conf->after_body = { 0, NULL };
+     *     conf->types = { NULL };
+     *     conf->types_keys = NULL;
      */
 
     return conf;
@@ -232,6 +236,14 @@ ngx_http_addition_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->before_body, prev->before_body, "");
     ngx_conf_merge_str_value(conf->after_body, prev->after_body, "");
+
+    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
+                             prev->types_keys, &prev->types,
+                             ngx_http_html_default_types)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }
