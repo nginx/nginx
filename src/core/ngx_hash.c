@@ -88,25 +88,31 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 
         /*
          * the 2 low bits of value have the special meaning:
-         *     00 - value is data pointer,
-         *     01 - value is pointer to wildcard hash allowing
-         *          "*.example.com" only,
+         *     00 - value is data pointer for both "example.com"
+         *          and "*.example.com";
+         *     01 - value is data pointer for "*.example.com" only;
+         *     10 - value is pointer to wildcard hash allowing
+         *          both "example.com" and "*.example.com";
          *     11 - value is pointer to wildcard hash allowing
-         *          both "example.com" and "*.example.com".
+         *          "*.example.com" only.
          */
 
-        if ((uintptr_t) value & 1) {
-
-            hwc = (ngx_hash_wildcard_t *) ((uintptr_t) value & (uintptr_t) ~3);
+        if ((uintptr_t) value & 2) {
 
             if (n == 0) {
-                if ((uintptr_t) value & 2) {
-                    return hwc->value;
 
-                } else {
+                /* "example.com" */
+
+                if ((uintptr_t) value & 1) {
                     return NULL;
                 }
+
+                hwc = (ngx_hash_wildcard_t *)
+                                          ((uintptr_t) value & (uintptr_t) ~3);
+                return hwc->value;
             }
+
+            hwc = (ngx_hash_wildcard_t *) ((uintptr_t) value & (uintptr_t) ~3);
 
             value = ngx_hash_find_wc_head(hwc, name, n - 1);
 
@@ -115,6 +121,18 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
             }
 
             return hwc->value;
+        }
+
+        if ((uintptr_t) value & 1) {
+
+            if (n == 0) {
+
+                /* "example.com" */
+
+                return NULL;
+            }
+
+            return (void *) ((uintptr_t) value & (uintptr_t) ~3);
         }
 
         return value;
@@ -162,11 +180,11 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 
         /*
          * the 2 low bits of value have the special meaning:
-         *     00 - value is data pointer,
-         *     01 - value is pointer to wildcard hash allowing "example.*".
+         *     00 - value is data pointer;
+         *     11 - value is pointer to wildcard hash allowing "example.*".
          */
 
-        if ((uintptr_t) value & 1) {
+        if ((uintptr_t) value & 2) {
 
             i++;
 
@@ -567,7 +585,10 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
                 wdc->value = names[n].value;
             }
 
-            name->value = (void *) ((uintptr_t) wdc | (dot ? 1 : 3));
+            name->value = (void *) ((uintptr_t) wdc | (dot ? 3 : 1));
+
+        } else if (dot) {
+            name->value = (void *) ((uintptr_t) name->value | 1);
         }
     }
 
