@@ -9,6 +9,108 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.9" date="12.08.2008">
+
+<change type="change">
+<para lang="ru">
+теперь ngx_http_charset_module по умолчанию работает со следующими MIME-типами:
+text/html, text/css, text/xml, text/plain, text/vnd.wap.wml,
+application/x-javascript и application/rss+xml.
+</para>
+<para lang="en">
+now ngx_http_charset_module works by default with following MIME types:
+text/html, text/css, text/xml, text/plain, text/vnd.wap.wml,
+application/x-javascript, and application/rss+xml.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы charset_types и addition_types.
+</para>
+<para lang="en">
+the "charset_types" and "addition_types" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директивы gzip_types, ssi_types и sub_filter_types используют хэш.
+</para>
+<para lang="en">
+now the "gzip_types", "ssi_types", and "sub_filter_types" directives use hash.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_cpp_test_module.
+</para>
+<para lang="en">
+the ngx_cpp_test_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает суточное время.
+</para>
+<para lang="en">
+the "expires" directive supports daily time.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения и исправления в модуле ngx_http_xslt_module.<br/>
+Спасибо Денису Латыпову и Максиму Дунину.
+</para>
+<para lang="en">
+the ngx_http_xslt_module improvements and bug fixing.<br/>
+Thanks to Denis F. Latypoff and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива log_not_found не работала при поиске индексных файлов.
+</para>
+<para lang="en">
+the "log_not_found" directive did not work for index files tests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+HTTPS-соединения могли зависнуть,
+если использовались методы kqueue, epoll, rtsig или eventport;
+ошибка появилась в 0.7.7.
+</para>
+<para lang="en">
+HTTPS connections might hang,
+if kqueue, epoll, rtsig, or eventport methods were used;
+the bug had appeared in 0.7.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директивах server_name, valid_referers и map
+использовалась маска вида "*.domain.tld" и при этом полное имя
+вида "domain.tld" не было описано, то это имя попадало под маску;
+ошибка появилась в 0.3.18.
+</para>
+<para lang="en">
+if the "server_name", "valid_referers", and "map" directives used
+an "*.domain.tld" wildcard and exact name "domain.tld" was not set,
+then the exact name was matched by the wildcard;
+the bugs had appeared in 0.3.18.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.8" date="04.08.2008">
 
 <change type="feature">
@@ -186,7 +288,7 @@ the ngx_http_flv_module did not support several values in a query string.
 <change>
 <para lang="ru">
 Исправления в поддержке переменных в директиве access_log;
-ошибки появилась в 0.7.4.
+ошибки появились в 0.7.4.
 </para>
 <para lang="en">
 Bugfixes in variables support in the "access_log" directive;
