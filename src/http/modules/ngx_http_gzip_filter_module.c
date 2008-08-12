@@ -15,7 +15,7 @@ typedef struct {
     ngx_flag_t           enable;
     ngx_flag_t           no_buffer;
 
-    ngx_array_t         *types;     /* array of ngx_str_t */
+    ngx_hash_t           types;
 
     ngx_bufs_t           bufs;
 
@@ -23,6 +23,8 @@ typedef struct {
     size_t               wbits;
     size_t               memlevel;
     ssize_t              min_length;
+
+    ngx_array_t         *types_keys;
 } ngx_http_gzip_conf_t;
 
 
@@ -68,8 +70,6 @@ static ngx_int_t ngx_http_gzip_filter_init(ngx_conf_t *cf);
 static void *ngx_http_gzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gzip_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static char *ngx_http_gzip_types(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_gzip_window(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_gzip_hash(ngx_conf_t *cf, void *post, void *data);
 
@@ -101,10 +101,10 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
 
     { ngx_string("gzip_types"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
-      ngx_http_gzip_types,
+      ngx_http_types_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
+      offsetof(ngx_http_gzip_conf_t, types_keys),
+      &ngx_http_html_default_types[0] },
 
     { ngx_string("gzip_comp_level"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -204,8 +204,6 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_gzip_header_filter(ngx_http_request_t *r)
 {
-    ngx_str_t             *type;
-    ngx_uint_t             i;
     ngx_table_elt_t       *h;
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
@@ -217,29 +215,15 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
             && r->headers_out.status != NGX_HTTP_FORBIDDEN
             && r->headers_out.status != NGX_HTTP_NOT_FOUND)
         || r->header_only
-        || r->headers_out.content_type.len == 0
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)
         || (r->headers_out.content_length_n != -1
             && r->headers_out.content_length_n < conf->min_length)
+        || ngx_http_test_content_type(r, &conf->types) == NULL
         || ngx_http_gzip_ok(r) != NGX_OK)
     {
         return ngx_http_next_header_filter(r);
     }
-
-    type = conf->types->elts;
-    for (i = 0; i < conf->types->nelts; i++) {
-        if (r->headers_out.content_type.len >= type[i].len
-            && ngx_strncasecmp(r->headers_out.content_type.data,
-                               type[i].data, type[i].len) == 0)
-        {
-            goto found;
-        }
-    }
-
-    return ngx_http_next_header_filter(r);
-
-found:
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_gzip_ctx_t));
     if (ctx == NULL) {
@@ -826,7 +810,8 @@ ngx_http_gzip_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->bufs.num = 0;
-     *     conf->types = NULL;
+     *     conf->types = { NULL };
+     *     conf->types_keys = NULL;
      */
 
     conf->enable = NGX_CONF_UNSET;
@@ -847,8 +832,6 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_gzip_conf_t *prev = parent;
     ngx_http_gzip_conf_t *conf = child;
 
-    ngx_str_t  *type;
-
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4, ngx_pagesize);
@@ -860,24 +843,12 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
     ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
-    if (conf->types == NULL) {
-        if (prev->types == NULL) {
-            conf->types = ngx_array_create(cf->pool, 1, sizeof(ngx_str_t));
-            if (conf->types == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            type = ngx_array_push(conf->types);
-            if (type == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            type->len = sizeof("text/html") - 1;
-            type->data = (u_char *) "text/html";
-
-        } else {
-            conf->types = prev->types;
-        }
+    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
+                             prev->types_keys, &prev->types,
+                             ngx_http_html_default_types)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
@@ -894,56 +865,6 @@ ngx_http_gzip_filter_init(ngx_conf_t *cf)
     ngx_http_top_body_filter = ngx_http_gzip_body_filter;
 
     return NGX_OK;
-}
-
-
-static char *
-ngx_http_gzip_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_gzip_conf_t *gcf = conf;
-
-    ngx_str_t   *value, *type;
-    ngx_uint_t   i;
-
-    if (gcf->types == NULL) {
-        gcf->types = ngx_array_create(cf->pool, 4, sizeof(ngx_str_t));
-        if (gcf->types == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        type = ngx_array_push(gcf->types);
-        if (type == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        type->len = sizeof("text/html") - 1;
-        type->data = (u_char *) "text/html";
-    }
-
-    value = cf->args->elts;
-
-    for (i = 1; i < cf->args->nelts; i++) {
-
-        if (ngx_strcmp(value[i].data, "text/html") == 0) {
-            continue;
-        }
-
-        type = ngx_array_push(gcf->types);
-        if (type == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        type->len = value[i].len;
-
-        type->data = ngx_pnalloc(cf->pool, type->len + 1);
-        if (type->data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_cpystrn(type->data, value[i].data, type->len + 1);
-    }
-
-    return NGX_CONF_OK;
 }
 
 
