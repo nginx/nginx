@@ -392,7 +392,7 @@ if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
 fi
 
 
-if [ $NGX_CPP_TEST_MODULE = YES ]; then
+if [ $NGX_CPP_TEST = YES ]; then
     NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_CPP_TEST_SRCS"
 fi
 

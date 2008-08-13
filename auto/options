@@ -209,7 +209,7 @@ do
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
         --with-google_perftools_module)  NGX_GOOGLE_PERFTOOLS=YES   ;;
-        --with-cpp_test_module)          NGX_CPP_TEST_MODULE=YES    ;;
+        --with-cpp_test_module)          NGX_CPP_TEST=YES           ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
 
