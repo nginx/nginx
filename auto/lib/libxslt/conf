@@ -73,6 +73,18 @@ fi
 
 
 if [ $ngx_found = yes ]; then
+
     CORE_INCS="$CORE_INCS $ngx_feature_path"
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+else
+
+cat << END
+
+$0: error: the HTTP XSLT module requires the libxml2/libxslt
+libraries. You can either do not enable the module or install the libraries.
+
+END
+
+    exit 1
 fi
