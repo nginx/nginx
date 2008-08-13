@@ -436,16 +436,6 @@ struct ngx_http_request_s {
     unsigned                          bypass_cache:1;
     unsigned                          no_cache:1;
 
-#if (NGX_HTTP_REALIP)
-
-    /*
-     * instead of using the request context data in ngx_http_realip_module
-     * we use the single bit in the request structure
-     */
-    unsigned                          realip_set:1;
-
-#endif
-
     /*
      * instead of using the request context data in ngx_http_limit_zone_module
      * we use the single bit in the request structure

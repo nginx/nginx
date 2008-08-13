@@ -12,19 +12,26 @@
 /* AF_INET only */
 
 typedef struct {
-    in_addr_t     mask;
-    in_addr_t     addr;
+    in_addr_t          mask;
+    in_addr_t          addr;
 } ngx_http_realip_from_t;
 
 
 typedef struct {
-    ngx_array_t  *from;     /* array of ngx_http_realip_from_t */
-
-    ngx_uint_t    xfwd;
+    ngx_array_t       *from;     /* array of ngx_http_realip_from_t */
+    ngx_uint_t         xfwd;
 } ngx_http_realip_loc_conf_t;
 
 
+typedef struct {
+    ngx_connection_t  *connection;
+    in_addr_t          addr;
+    ngx_str_t          addr_text;
+} ngx_http_realip_ctx_t;
+
+
 static ngx_int_t ngx_http_realip_handler(ngx_http_request_t *r);
+static void ngx_http_realip_cleanup(void *data);
 static char *ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_realip_create_loc_conf(ngx_conf_t *cf);
@@ -100,11 +107,21 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     in_addr_t                    addr;
     ngx_uint_t                   i;
     struct sockaddr_in          *sin;
+    ngx_connection_t            *c;
+    ngx_pool_cleanup_t          *cln;
+    ngx_http_realip_ctx_t       *ctx;
     ngx_http_realip_from_t      *from;
     ngx_http_realip_loc_conf_t  *rlcf;
 
-    if (r->realip_set) {
+    ctx = ngx_http_get_module_ctx(r, ngx_http_realip_module);
+
+    if (ctx) {
         return NGX_DECLINED;
+    }
+
+    cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_http_realip_ctx_t));
+    if (cln == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_realip_module);
@@ -139,23 +156,26 @@ ngx_http_realip_handler(ngx_http_request_t *r)
         }
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "realip: \"%s\"", ip);
+    c = r->connection;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "realip: \"%s\"", ip);
 
     /* AF_INET only */
 
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
+    sin = (struct sockaddr_in *) c->sockaddr;
 
     from = rlcf->from->elts;
     for (i = 0; i < rlcf->from->nelts; i++) {
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "realip: %08XD %08XD %08XD",
                        sin->sin_addr.s_addr, from[i].mask, from[i].addr);
 
         if ((sin->sin_addr.s_addr & from[i].mask) == from[i].addr) {
 
-            r->realip_set = 1;
+            ctx = cln->data;
+
+            ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
             addr = inet_addr((char *) ip);
 
@@ -163,23 +183,46 @@ ngx_http_realip_handler(ngx_http_request_t *r)
                 return NGX_DECLINED;
             }
 
-            p = ngx_pnalloc(r->connection->pool, len);
+            p = ngx_pnalloc(c->pool, len);
             if (p == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ngx_memcpy(p, ip, len);
 
+            cln->handler = ngx_http_realip_cleanup;
+
+            ctx->connection = c;
+            ctx->addr = sin->sin_addr.s_addr;
+            ctx->addr_text = c->addr_text;
+
             sin->sin_addr.s_addr = addr;
 
-            r->connection->addr_text.len = len;
-            r->connection->addr_text.data = p;
+            c->addr_text.len = len;
+            c->addr_text.data = p;
 
             return NGX_DECLINED;
         }
     }
 
     return NGX_DECLINED;
+}
+
+
+static void
+ngx_http_realip_cleanup(void *data)
+{
+    ngx_http_realip_ctx_t *ctx = data;
+
+    ngx_connection_t    *c;
+    struct sockaddr_in  *sin;
+
+    c = ctx->connection;
+
+    sin = (struct sockaddr_in *) c->sockaddr;
+    sin->sin_addr.s_addr = ctx->addr;
+
+    c->addr_text = ctx->addr_text;
 }
 
 
