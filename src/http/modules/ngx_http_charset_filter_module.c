@@ -1484,6 +1484,14 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_charset_recode_t     *recode;
     ngx_http_charset_main_conf_t  *mcf;
 
+    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
+                             prev->types_keys, &prev->types,
+                             ngx_http_charset_default_types)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_value(conf->override_charset, prev->override_charset, 0);
     ngx_conf_merge_value(conf->charset, prev->charset, NGX_HTTP_NO_CHARSET);
 
@@ -1522,14 +1530,6 @@ ngx_http_charset_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     recode->src = conf->source_charset;
     recode->dst = conf->charset;
-
-    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
-                             prev->types_keys, &prev->types,
-                             ngx_http_charset_default_types)
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
 
     return NGX_CONF_OK;
 }

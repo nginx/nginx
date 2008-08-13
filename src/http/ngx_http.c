@@ -1761,43 +1761,60 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 char *
 ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
-    ngx_array_t *prev_keys, ngx_hash_t *prev_types_hash, 
+    ngx_array_t *prev_keys, ngx_hash_t *prev_types_hash,
     ngx_str_t *default_types)
 {
     ngx_hash_init_t  hash;
 
-    if (keys == NULL) {
+    if (keys) {
 
-        if (prev_keys) {
-            *types_hash = *prev_types_hash;
-            return NGX_CONF_OK;
+        hash.hash = types_hash;
+        hash.key = NULL;
+        hash.max_size = 2048;
+        hash.bucket_size = 64;
+        hash.name = "test_types_hash";
+        hash.pool = cf->pool;
+        hash.temp_pool = NULL;
+
+        if (ngx_hash_init(&hash, keys->elts, keys->nelts) != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
 
-        if (ngx_http_set_default_types(cf, &keys, default_types)
-            != NGX_CONF_OK)
-        {
+        return NGX_CONF_OK;
+    }
+
+    if (prev_types_hash->buckets == NULL) {
+
+        if (prev_keys == NULL) {
+
+	    if (ngx_http_set_default_types(cf, &prev_keys, default_types)
+                != NGX_OK)
+            {
+		return NGX_CONF_ERROR;
+	    }
+        }
+
+        hash.hash = prev_types_hash;
+        hash.key = NULL;
+        hash.max_size = 2048;
+        hash.bucket_size = 64;
+        hash.name = "test_types_hash";
+        hash.pool = cf->pool;
+        hash.temp_pool = NULL;
+
+        if (ngx_hash_init(&hash, prev_keys->elts, prev_keys->nelts) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }
 
-    hash.hash = types_hash;
-    hash.key = NULL;
-    hash.max_size = 2048;
-    hash.bucket_size = 64;
-    hash.name = "test_types_hash";
-    hash.pool = cf->pool;
-    hash.temp_pool = NULL;
-
-    if (ngx_hash_init(&hash, keys->elts, keys->nelts) != NGX_OK) {
-        return NGX_CONF_ERROR;
-    }
+    *types_hash = *prev_types_hash;
 
     return NGX_CONF_OK;
 
 }
 
 
-char *
+ngx_int_t
 ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
     ngx_str_t *default_type)
 {
@@ -1805,14 +1822,14 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 
     *types = ngx_array_create(cf->temp_pool, 1, sizeof(ngx_hash_key_t));
     if (*types == NULL) {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     while (default_type->len) {
 
         type = ngx_array_push(*types);
         if (type == NULL) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         type->key = *default_type;
@@ -1823,5 +1840,5 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
         default_type++;
     }
 
-    return NGX_CONF_OK;
+    return NGX_OK;
 }
