@@ -9,6 +9,44 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.10" date="13.08.2008">
+
+<change type="bugfix">
+<para lang="ru">
+ошибок в директивах addition_types, charset_types,
+gzip_types, ssi_types, sub_filter_types и xslt_types;
+ошибки появились в 0.7.9.
+</para>
+<para lang="en">
+in the "addition_types", "charset_types",
+"gzip_types", "ssi_types", "sub_filter_types", and "xslt_types" directives;
+the bugs had appeared in 0.7.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рекурсивной error_page для 500 ошибки.
+</para>
+<para lang="en">
+of recursive error_page for 500 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь модуль ngx_http_realip_module устанавливает адрес не для
+всего keepalive соединения, а для каждого запроса по этому соединению.
+</para>
+<para lang="en">
+now the ngx_http_realip_module set address not for whole keepalive connection,
+but for each request passed via the connection.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.9" date="12.08.2008">
 
 <change type="change">
