@@ -414,7 +414,7 @@ ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src, ngx_uint_t sendfile)
 
         if (n != size) {
             ngx_log_error(NGX_LOG_ALERT, src->file->log, 0,
-                          ngx_read_file_n " reads only %z of %O from file",
+                          ngx_read_file_n " read only %z of %O from file",
                           n, size);
             if (n == 0) {
                 return NGX_ERROR;
