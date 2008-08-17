@@ -360,6 +360,17 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, upstream.hide_headers),
       NULL },
 
+#if (NGX_HTTP_SSL)
+
+    { ngx_string("proxy_ssl_session_reuse"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ssl_session_reuse),
+      NULL },
+
+#endif
+
       ngx_null_command
 };
 
@@ -1645,6 +1656,9 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_headers = NGX_CONF_UNSET_PTR;
 
     conf->upstream.intercept_errors = NGX_CONF_UNSET;
+#if (NGX_HTTP_SSL)
+    conf->upstream.ssl_session_reuse = NGX_CONF_UNSET;
+#endif
 
     /* "proxy_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
@@ -1833,6 +1847,11 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.intercept_errors,
                               prev->upstream.intercept_errors, 0);
+
+#if (NGX_HTTP_SSL)
+    ngx_conf_merge_value(conf->upstream.ssl_session_reuse,
+                              prev->upstream.ssl_session_reuse, 1);
+#endif
 
     ngx_conf_merge_value(conf->redirect, prev->redirect, 1);
 

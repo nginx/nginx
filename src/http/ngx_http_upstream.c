@@ -789,10 +789,12 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     c->sendfile = 0;
     u->output.sendfile = 0;
 
-    if (u->peer.set_session(&u->peer, u->peer.data) != NGX_OK) {
-        ngx_http_upstream_finalize_request(r, u,
-                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
+    if (u->conf->ssl_session_reuse) {
+        if (u->peer.set_session(&u->peer, u->peer.data) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
     }
 
     r->connection->log->action = "SSL handshaking to upstream";
@@ -819,7 +821,9 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
 
     if (c->ssl->handshaked) {
 
-        u->peer.save_session(&u->peer, u->peer.data);
+        if (u->conf->ssl_session_reuse) {
+            u->peer.save_session(&u->peer, u->peer.data);
+        }
 
         c->write->handler = ngx_http_upstream_send_request_handler;
         c->read->handler = ngx_http_upstream_process_header;
