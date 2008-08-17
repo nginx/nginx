@@ -789,7 +789,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
     rc = ngx_http_core_find_location(r);
 
-    if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+    if (rc == NGX_ERROR) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_OK;
     }
@@ -1117,6 +1117,14 @@ ngx_http_update_location_config(ngx_http_request_t *r)
 }
 
 
+/*
+ * NGX_OK       - exact or regex match
+ * NGX_DONE     - auto redirect
+ * NGX_AGAIN    - inclusive match
+ * NGX_ERROR    - regex error
+ * NGX_DECLINED - no match
+ */
+
 static ngx_int_t
 ngx_http_core_find_location(ngx_http_request_t *r)
 {
@@ -1173,7 +1181,7 @@ ngx_http_core_find_location(ngx_http_request_t *r)
                               ngx_regex_exec_n
                               " failed: %d on \"%V\" using \"%V\"",
                               n, &r->uri, &(*clcfp)->name);
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return NGX_ERROR;
             }
 
             /* match */
@@ -1182,7 +1190,9 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 
             /* look up nested locations */
 
-            return ngx_http_core_find_location(r);
+            rc = ngx_http_core_find_location(r);
+
+            return (rc == NGX_ERROR) ? rc : NGX_OK;
         }
     }
 #endif
