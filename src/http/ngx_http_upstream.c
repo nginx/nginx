@@ -1300,6 +1300,8 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
             r->method = NGX_HTTP_GET;
         }
 
+        r->valid_unparsed_uri = 0;
+
         ngx_http_internal_redirect(r, uri, &args);
         return;
     }
