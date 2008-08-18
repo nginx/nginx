@@ -9,6 +9,73 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.11" date="18.08.2008">
+
+<change type="change">
+<para lang="ru">
+теперь ngx_http_charset_module по умолчанию не работает MIME-типом text/css.
+</para>
+<para lang="en">
+now ngx_http_charset_module does not work by default with text/css MIME type.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx возвращает код 405 для метода POST при запросе статического
+файла, только если файл существует.
+</para>
+<para lang="en">
+now nginx returns the 405 status code for POST method requesting a static file
+only if the file exists.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_ssl_session_reuse.
+</para>
+<para lang="en">
+the "proxy_ssl_session_reuse" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления запроса с помощью "X-Accel-Redirect"
+директива proxy_pass без URI могла использовать оригинальный запрос.
+</para>
+<para lang="en">
+a "proxy_pass" directive without URI part might use original request
+after the "X-Accel-Redirect" redirection was used;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если у каталога были права доступа только на поиск файлов
+и первый индексный файл отсутствовал, то nginx возвращал ошибку 500.
+</para>
+<para lang="en">
+if a directory has search only rights and the first index file was absent,
+then nginx returned the 500 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибок во вложенных location'ах;
+ошибки появились в 0.7.1.
+</para>
+<para lang="en">
+in inclusive locations;
+the bugs had appeared in 0.7.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.10" date="13.08.2008">
 
 <change type="bugfix">
@@ -39,7 +106,7 @@ of recursive error_page for 500 status code.
 всего keepalive соединения, а для каждого запроса по этому соединению.
 </para>
 <para lang="en">
-now the ngx_http_realip_module set address not for whole keepalive connection,
+now the ngx_http_realip_module sets address not for whole keepalive connection,
 but for each request passed via the connection.
 </para>
 </change>
