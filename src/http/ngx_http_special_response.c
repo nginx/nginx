@@ -327,7 +327,6 @@ static ngx_str_t  ngx_http_get_name = { 3, (u_char *) "GET " };
 ngx_int_t
 ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 {
-    ngx_int_t                  rc;
     ngx_uint_t                 i, err;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
@@ -335,12 +334,6 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http special response: %d, \"%V?%V\"",
                    error, &r->uri, &r->args);
-
-    rc = ngx_http_discard_request_body(r);
-
-    if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
-        error = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
 
     r->err_status = error;
 
@@ -384,6 +377,10 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                 return ngx_http_send_error_page(r, &err_page[i]);
             }
         }
+    }
+
+    if (ngx_http_discard_request_body(r) != NGX_OK) {
+        error = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     if (clcf->msie_refresh
