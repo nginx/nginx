@@ -490,8 +490,10 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     if (uri->data[0] == '/') {
 
-        r->method = NGX_HTTP_GET;
-        r->method_name = ngx_http_get_name;
+        if (r->method != NGX_HTTP_HEAD) {
+            r->method = NGX_HTTP_GET;
+            r->method_name = ngx_http_get_name;
+        }
 
         return ngx_http_internal_redirect(r, uri, args);
     }
