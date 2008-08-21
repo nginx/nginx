@@ -1625,8 +1625,8 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
         return NGX_OK;
     }
 
-    s->len = ngx_inet_ntop(c->listening->family, &r->in_addr,
-                           s->data, NGX_INET_ADDRSTRLEN);
+    s->len = ngx_sock_ntop((struct sockaddr *) &sin, s->data,
+                           NGX_INET_ADDRSTRLEN);
 
     return NGX_OK;
 }

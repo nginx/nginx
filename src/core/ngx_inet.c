@@ -56,12 +56,12 @@ ngx_inet_addr(u_char *text, size_t len)
 /* AF_INET only */
 
 size_t
-ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len)
+ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len)
 {
     u_char              *p;
     struct sockaddr_in  *sin;
 
-    if (family == AF_INET) {
+    if (sa->sa_family == AF_INET) {
 
         sin = (struct sockaddr_in *) sa;
         p = (u_char *) &sin->sin_addr;
@@ -457,7 +457,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
                 return NGX_ERROR;
             }
 
-            len = ngx_sock_ntop(AF_INET, (struct sockaddr *) sin, p, len);
+            len = ngx_sock_ntop((struct sockaddr *) sin, p, len);
 
             u->addrs[i].name.len = ngx_sprintf(&p[len], ":%d", u->port) - p;
             u->addrs[i].name.data = p;

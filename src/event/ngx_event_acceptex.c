@@ -65,8 +65,7 @@ ngx_event_acceptex(ngx_event_t *rev)
             return;
         }
 
-        c->addr_text.len = ngx_sock_ntop(c->listening->family, c->sockaddr,
-                                         c->addr_text.data,
+        c->addr_text.len = ngx_sock_ntop(c->sockaddr, c->addr_text.data,
                                          c->listening->addr_text_max_len);
         if (c->addr_text.len == 0) {
             /* TODO: close socket */
@@ -100,7 +99,7 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
 
         /* TODO: look up reused sockets */
 
-        s = ngx_socket(ls->family, ls->type, 0);
+        s = ngx_socket(ls->sockaddr->sa_family, ls->type, 0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &ls->log, 0,
                        ngx_socket_n " s:%d", s);
