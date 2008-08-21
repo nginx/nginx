@@ -571,6 +571,7 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 int
 ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
+    size_t                    len;
     const char               *servername;
     ngx_connection_t         *c;
     ngx_http_request_t       *r;
@@ -587,12 +588,15 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "SSL server name: \"%s\"", servername);
 
+    len = ngx_strlen(servername);
+
+    if (len == 0) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
     r = c->data;
 
-    if (ngx_http_find_virtual_server(r, (u_char *) servername,
-                                     ngx_strlen(servername))
-        != NGX_OK)
-    {
+    if (ngx_http_find_virtual_server(r, (u_char *) servername, len) != NGX_OK) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
@@ -1559,7 +1563,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     buf[32];
 
-    if (len == 0 || r->virtual_names == NULL) {
+    if (r->virtual_names == NULL) {
         return NGX_DECLINED;
     }
 
