@@ -136,6 +136,7 @@ static void *ngx_http_xslt_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static ngx_int_t ngx_http_xslt_filter_init(ngx_conf_t *cf);
+static void ngx_http_xslt_filter_exit(ngx_cycle_t *cycle);
 
 
 ngx_str_t  ngx_http_xslt_default_types[] = {
@@ -196,8 +197,8 @@ ngx_module_t  ngx_http_xslt_filter_module = {
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
-    NULL,                                  /* exit process */
-    NULL,                                  /* exit master */
+    ngx_http_xslt_filter_exit,            /* exit process */
+    ngx_http_xslt_filter_exit,             /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
