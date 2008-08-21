@@ -116,10 +116,6 @@ typedef intptr_t        ngx_flag_t;
 #define INADDR_NONE  ((unsigned int) -1)
 #endif
 
-#ifndef INET_ADDRSTRLEN  /* Win32 */
-#define INET_ADDRSTRLEN  16
-#endif
-
 #ifdef MAXHOSTNAMELEN
 #define NGX_MAXHOSTNAMELEN  MAXHOSTNAMELEN
 #else

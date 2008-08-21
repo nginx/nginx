@@ -1626,7 +1626,7 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
     }
 
     s->len = ngx_inet_ntop(c->listening->family, &r->in_addr,
-                           s->data, INET_ADDRSTRLEN);
+                           s->data, NGX_INET_ADDRSTRLEN);
 
     return NGX_OK;
 }
@@ -2971,7 +2971,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->conf.rcvbuf = -1;
     ls->conf.sndbuf = -1;
 
-    n = ngx_inet_ntop(AF_INET, &ls->addr, ls->conf.addr, INET_ADDRSTRLEN + 6);
+    n = ngx_inet_ntop(AF_INET, &ls->addr, ls->conf.addr, NGX_INET_ADDRSTRLEN);
     ngx_sprintf(&ls->conf.addr[n], ":%ui", ls->port);
 
     if (cf->args->nelts == 2) {

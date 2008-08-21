@@ -155,7 +155,7 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
             len = NGX_INT64_LEN                       /* pid */
                   + 1 + NGX_INT32_LEN                 /* connection */
                   + 1 + 1                             /* state */
-                  + 1 + INET_ADDRSTRLEN
+                  + 1 + NGX_INET_ADDRSTRLEN
                   + 1 + (r->server_name ? cmcf->max_server_name_len : 1)
                   + 2;                                /* "\r\n" */
 
@@ -204,7 +204,7 @@ static ngx_int_t ngx_http_status(ngx_http_status_ctx_t *ctx)
             *(b->last++) = ' ';
             b->last = ngx_cpymem(b->last, c[i].addr_text.data,
                                  c[i].addr_text.len);
-            for (n = c[i].addr_text.len; n < INET_ADDRSTRLEN; n++) {
+            for (n = c[i].addr_text.len; n < NGX_INET_ADDRSTRLEN; n++) {
                  *(b->last++) = ' ';
             }
 

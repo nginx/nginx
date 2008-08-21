@@ -162,7 +162,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     /* AF_INET only */
-    u_char                     addr[INET_ADDRSTRLEN];
+    u_char                     addr[NGX_INET_ADDRSTRLEN];
 
     r->header_sent = 1;
 

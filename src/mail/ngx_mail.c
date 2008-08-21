@@ -358,13 +358,13 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 imip->addrs[i].ctx = in_addr[i].ctx;
 
                 text = ngx_pnalloc(cf->pool,
-                                   INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
+                                   NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1);
                 if (text == NULL) {
                     return NGX_CONF_ERROR;
                 }
 
                 len = ngx_inet_ntop(AF_INET, &in_addr[i].addr, text,
-                                    INET_ADDRSTRLEN);
+                                    NGX_INET_ADDRSTRLEN);
 
                 len = ngx_sprintf(text + len, ":%d", in_port[p].port) - text;
 

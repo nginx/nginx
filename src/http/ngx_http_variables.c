@@ -872,7 +872,7 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
 {
     ngx_str_t  s;
 
-    s.data = ngx_pnalloc(r->pool, INET_ADDRSTRLEN);
+    s.data = ngx_pnalloc(r->pool, NGX_INET_ADDRSTRLEN);
     if (s.data == NULL) {
         return NGX_ERROR;
     }

@@ -8,9 +8,6 @@
 #include <ngx_core.h>
 
 
-static size_t ngx_sprint_uchar(u_char *text, u_char c, size_t len);
-
-
 /* AF_INET only */
 
 in_addr_t
@@ -56,166 +53,43 @@ ngx_inet_addr(u_char *text, size_t len)
 }
 
 
-/*
- * ngx_sock_ntop() and ngx_inet_ntop() may be implemented as
- * "ngx_sprintf(text, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3])", however,
- * they had been implemented long before the ngx_sprintf() had appeared
- * and they are faster by 1.5-2.5 times, so it is worth to keep them.
- *
- * By the way, the implementation using ngx_sprintf() is faster by 2.5-3 times
- * than using FreeBSD libc's snprintf().
- */
-
 /* AF_INET only */
 
 size_t
 ngx_sock_ntop(int family, struct sockaddr *sa, u_char *text, size_t len)
 {
     u_char              *p;
-    size_t               n;
-    ngx_uint_t           i;
     struct sockaddr_in  *sin;
 
-    if (len == 0) {
-        return 0;
+    if (family == AF_INET) {
+
+        sin = (struct sockaddr_in *) sa;
+        p = (u_char *) &sin->sin_addr;
+
+        return ngx_snprintf(text, len, "%ud.%ud.%ud.%ud",
+                            p[0], p[1], p[2], p[3])
+               - text;
     }
 
-    if (family != AF_INET) {
-        return 0;
-    }
-
-    sin = (struct sockaddr_in *) sa;
-    p = (u_char *) &sin->sin_addr;
-
-    if (len > INET_ADDRSTRLEN) {
-        len = INET_ADDRSTRLEN;
-    }
-
-    n = ngx_sprint_uchar(text, p[0], len);
-
-    i = 1;
-
-    do {
-        if (len == n) {
-            text[n - 1] = '\0';
-            return n;
-        }
-
-        text[n++] = '.';
-
-        if (len == n) {
-            text[n - 1] = '\0';
-            return n;
-        }
-
-        n += ngx_sprint_uchar(&text[n], p[i++], len - n);
-
-    } while (i < 4);
-
-    if (len == n) {
-        text[n] = '\0';
-        return n;
-    }
-
-    text[n] = '\0';
-
-    return n;
+    return 0;
 }
 
 
 size_t
 ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 {
-    u_char      *p;
-    size_t       n;
-    ngx_uint_t   i;
+    u_char  *p;
 
-    if (len == 0) {
-        return 0;
+    if (family == AF_INET) {
+
+        p = (u_char *) addr;
+
+        return ngx_snprintf(text, len, "%ud.%ud.%ud.%ud",
+                            p[0], p[1], p[2], p[3])
+               - text;
     }
 
-    if (family != AF_INET) {
-        return 0;
-    }
-
-    p = (u_char *) addr;
-
-    if (len > INET_ADDRSTRLEN) {
-        len = INET_ADDRSTRLEN;
-    }
-
-    n = ngx_sprint_uchar(text, p[0], len);
-
-    i = 1;
-
-    do {
-        if (len == n) {
-            text[n - 1] = '\0';
-            return n;
-        }
-
-        text[n++] = '.';
-
-        if (len == n) {
-            text[n - 1] = '\0';
-            return n;
-        }
-
-        n += ngx_sprint_uchar(&text[n], p[i++], len - n);
-
-    } while (i < 4);
-
-    if (len == n) {
-        text[n] = '\0';
-        return n;
-    }
-
-    text[n] = '\0';
-
-    return n;
-}
-
-
-static size_t
-ngx_sprint_uchar(u_char *text, u_char c, size_t len)
-{
-    size_t      n;
-    ngx_uint_t  c1, c2;
-
-    n = 0;
-
-    if (len == n) {
-        return n;
-    }
-
-    c1 = c / 100;
-
-    if (c1) {
-        *text++ = (u_char) (c1 + '0');
-        n++;
-
-        if (len == n) {
-            return n;
-        }
-    }
-
-    c2 = (c % 100) / 10;
-
-    if (c1 || c2) {
-        *text++ = (u_char) (c2 + '0');
-        n++;
-
-        if (len == n) {
-            return n;
-        }
-    }
-
-    c2 = c % 10;
-
-    *text = (u_char) (c2 + '0');
-    n++;
-
-    return n;
+    return 0;
 }
 
 
@@ -576,7 +450,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
             u->addrs[i].sockaddr = (struct sockaddr *) sin;
             u->addrs[i].socklen = sizeof(struct sockaddr_in);
 
-            len = INET_ADDRSTRLEN - 1 + 1 + sizeof(":65536") - 1;
+            len = NGX_INET_ADDRSTRLEN + sizeof(":65536") - 1;
 
             p = ngx_pnalloc(pool, len);
             if (p == NULL) {

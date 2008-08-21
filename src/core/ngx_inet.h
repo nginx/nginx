@@ -12,6 +12,9 @@
 #include <ngx_core.h>
 
 
+#define NGX_INET_ADDRSTRLEN  (sizeof("255.255.255.255") - 1)
+
+
 typedef struct {
     in_addr_t         addr;
     in_addr_t         mask;

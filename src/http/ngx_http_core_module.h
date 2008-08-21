@@ -47,7 +47,7 @@ typedef struct {
     ngx_uint_t                 deferred_accept;
 #endif
 
-    u_char                     addr[INET_ADDRSTRLEN + 6];
+    u_char                     addr[NGX_INET_ADDRSTRLEN + sizeof(":65535")];
 
 } ngx_http_listen_conf_t;
 

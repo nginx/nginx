@@ -37,12 +37,13 @@ ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
 
 
     ls->addr_text.data = ngx_pnalloc(cf->pool,
-                                    INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
+                                    NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1);
     if (ls->addr_text.data == NULL) {
         return NULL;
     }
 
-    len = ngx_inet_ntop(AF_INET, &addr, ls->addr_text.data, INET_ADDRSTRLEN);
+    len = ngx_inet_ntop(AF_INET, &addr, ls->addr_text.data,
+                        NGX_INET_ADDRSTRLEN);
 
     ls->addr_text.len = ngx_sprintf(ls->addr_text.data + len, ":%d", port)
                         - ls->addr_text.data;
@@ -53,7 +54,7 @@ ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
     ls->sockaddr = (struct sockaddr *) sin;
     ls->socklen = sizeof(struct sockaddr_in);
     ls->addr = offsetof(struct sockaddr_in, sin_addr);
-    ls->addr_text_max_len = INET_ADDRSTRLEN;
+    ls->addr_text_max_len = NGX_INET_ADDRSTRLEN;
 
     return ls;
 }
@@ -104,17 +105,17 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
-        ls[i].addr_text_max_len = INET_ADDRSTRLEN;
+        ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
 
         ls[i].addr_text.data = ngx_pnalloc(cycle->pool,
-                                   INET_ADDRSTRLEN - 1 + sizeof(":65535") - 1);
+                                   NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1);
         if (ls[i].addr_text.data == NULL) {
             return NGX_ERROR;
         }
 
         ls[i].family = sin->sin_family;
         len = ngx_sock_ntop(ls[i].family, ls[i].sockaddr,
-                            ls[i].addr_text.data, INET_ADDRSTRLEN);
+                            ls[i].addr_text.data, NGX_INET_ADDRSTRLEN);
         if (len == 0) {
             return NGX_ERROR;
         }
