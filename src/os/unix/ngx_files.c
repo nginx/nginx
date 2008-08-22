@@ -265,9 +265,13 @@ ngx_open_glob(ngx_glob_t *gl)
         return NGX_OK;
     }
 
+#ifdef GLOB_NOMATCH
+
     if (n == GLOB_NOMATCH && gl->test) {
         return NGX_OK;
     }
+
+#endif
 
     return NGX_ERROR;
 }
@@ -276,7 +280,7 @@ ngx_open_glob(ngx_glob_t *gl)
 ngx_int_t
 ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
-    if (gl->n < (size_t) gl->pglob.gl_pathc) {
+    if (gl->n < (size_t) gl->pglob.gl_matchc) {
 
         name->len = (size_t) ngx_strlen(gl->pglob.gl_pathv[gl->n]);
         name->data = (u_char *) gl->pglob.gl_pathv[gl->n];
