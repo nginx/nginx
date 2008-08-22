@@ -8,6 +8,10 @@
 #include <ngx_core.h>
 
 
+static ngx_int_t ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u);
+static ngx_int_t ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u);
+
+
 /* AF_INET only */
 
 in_addr_t
@@ -149,91 +153,113 @@ ngx_ptocidr(ngx_str_t *text, void *cidr)
 ngx_int_t
 ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
 {
-    u_char              *p, *host, *port_start;
-    size_t               len, port_len;
-    ngx_int_t            port;
-    ngx_uint_t           i;
-    struct hostent      *h;
-#if (NGX_HAVE_UNIX_DOMAIN)
-    struct sockaddr_un  *saun;
-#endif
+    u_char  *p;
 
-    len = u->url.len;
     p = u->url.data;
 
     if (ngx_strncasecmp(p, (u_char *) "unix:", 5) == 0) {
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-        p += 5;
-        len -= 5;
-
-        u->uri.len = len;
-        u->uri.data = p;
-
-        if (u->uri_part) {
-            for (i = 0; i < len; i++) {
-
-                if (p[i] == ':') {
-                    len = i;
-
-                    u->uri.len -= len + 1;
-                    u->uri.data += len + 1;
-
-                    break;
-                }
-            }
-        }
-
-        if (len == 0) {
-            u->err = "no path in the unix domain socket";
-            return NGX_ERROR;
-        }
-
-        if (len + 1 > sizeof(saun->sun_path)) {
-            u->err = "too long path in the unix domain socket";
-            return NGX_ERROR;
-        }
-
-        u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
-        if (u->addrs == NULL) {
-            return NGX_ERROR;
-        }
-
-        saun = ngx_pcalloc(pool, sizeof(struct sockaddr_un));
-        if (saun == NULL) {
-            return NGX_ERROR;
-        }
-
-        u->naddrs = 1;
-
-        saun->sun_family = AF_UNIX;
-        (void) ngx_cpystrn((u_char *) saun->sun_path, p, len + 1);
-
-        u->addrs[0].sockaddr = (struct sockaddr *) saun;
-        u->addrs[0].socklen = sizeof(struct sockaddr_un);
-        u->addrs[0].name.len = len + 5;
-        u->addrs[0].name.data = u->url.data;
-
-        u->host.len = len;
-        u->host.data = p;
-
-        u->unix_socket = 1;
-
-        return NGX_OK;
-
-#else
-        u->err = "the unix domain sockets are not supported on this platform";
-
-        return NGX_ERROR;
-
-#endif
+        return ngx_parse_unix_domain_url(pool, u);
     }
 
     if ((p[0] == ':' || p[0] == '/') && !u->listen) {
         u->err = "invalid host";
         return NGX_ERROR;
     }
+
+    return ngx_parse_inet_url(pool, u);
+}
+
+
+static ngx_int_t
+ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
+{
+#if (NGX_HAVE_UNIX_DOMAIN)
+    u_char              *p;
+    size_t               len;
+    ngx_uint_t           i;
+    struct sockaddr_un  *saun;
+
+    len = u->url.len;
+    p = u->url.data;
+
+    p += 5;
+    len -= 5;
+
+    u->uri.len = len;
+    u->uri.data = p;
+
+    if (u->uri_part) {
+        for (i = 0; i < len; i++) {
+
+            if (p[i] == ':') {
+                len = i;
+
+                u->uri.len -= len + 1;
+                u->uri.data += len + 1;
+
+                break;
+            }
+        }
+    }
+
+    if (len == 0) {
+        u->err = "no path in the unix domain socket";
+        return NGX_ERROR;
+    }
+
+    if (len + 1 > sizeof(saun->sun_path)) {
+        u->err = "too long path in the unix domain socket";
+        return NGX_ERROR;
+    }
+
+    u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
+    if (u->addrs == NULL) {
+        return NGX_ERROR;
+    }
+
+    saun = ngx_pcalloc(pool, sizeof(struct sockaddr_un));
+    if (saun == NULL) {
+        return NGX_ERROR;
+    }
+
+    u->naddrs = 1;
+
+    saun->sun_family = AF_UNIX;
+    (void) ngx_cpystrn((u_char *) saun->sun_path, p, len + 1);
+
+    u->addrs[0].sockaddr = (struct sockaddr *) saun;
+    u->addrs[0].socklen = sizeof(struct sockaddr_un);
+    u->addrs[0].name.len = len + 5;
+    u->addrs[0].name.data = u->url.data;
+
+    u->host.len = len;
+    u->host.data = p;
+
+    u->unix_socket = 1;
+
+    return NGX_OK;
+
+#else
+
+    u->err = "the unix domain sockets are not supported on this platform";
+
+    return NGX_ERROR;
+
+#endif
+}
+
+
+static ngx_int_t
+ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
+{
+    u_char          *p, *host, *port_start;
+    size_t           len, port_len;
+    ngx_int_t        port;
+    ngx_uint_t       i;
+    struct hostent  *h;
+
+    len = u->url.len;
+    p = u->url.data;
 
     u->host.data = p;
 
