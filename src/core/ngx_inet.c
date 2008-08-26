@@ -256,6 +256,8 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
     ngx_int_t        n;
     struct hostent  *h;
 
+    u->family = AF_INET;
+
     host = u->url.data;
 
     last = host + u->url.len;
@@ -279,12 +281,23 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
     if (port) {
         port++;
 
-        if (last - port == 0) {
+        len = last - port;
+
+        if (len == 0) {
             u->err = "invalid port";
             return NGX_ERROR;
         }
 
-        u->port_text.len = last - port;
+        n = ngx_atoi(port, len);
+
+        if (n < 1 || n > 65536) {
+            u->err = "invalid port";
+            return NGX_ERROR;
+        }
+
+        u->port = (in_port_t) n;
+
+        u->port_text.len = len;
         u->port_text.data = port;
 
         last = port - 1;
@@ -332,6 +345,10 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
     u->host.len = len;
     u->host.data = host;
 
+    if (u->no_resolve) {
+        return NGX_OK;
+    }
+
     if (len++) {
 
         p = ngx_alloc(len, pool->log);
@@ -359,24 +376,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
     } else {
         u->addr.in_addr = INADDR_ANY;
-    }
-
-    if (u->port_text.len) {
-
-        n = ngx_atoi(u->port_text.data, u->port_text.len);
-
-        if (n < 1 || n > 65536) {
-            u->err = "invalid port";
-            return NGX_ERROR;
-        }
-
-        u->port = (in_port_t) n;
-    }
-
-    u->family = AF_INET;
-
-    if (u->no_resolve) {
-        return NGX_OK;
     }
 
     if (u->no_port) {
