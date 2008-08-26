@@ -329,7 +329,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     imls->addr = u.addr.in_addr;
     imls->port = u.port;
-    imls->family = AF_INET;
+    imls->family = u.family;
     imls->ctx = cf->ctx;
 
     for (m = 0; ngx_modules[m]; m++) {

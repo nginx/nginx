@@ -2962,7 +2962,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_http_listen_t));
 
-    ls->family = AF_INET;
+    ls->family = u.family;
     ls->addr = u.addr.in_addr;
     ls->port = u.port;
     ls->file_name = cf->conf_file->file.name.data;

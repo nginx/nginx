@@ -2546,7 +2546,7 @@ static ngx_int_t
 ngx_http_proxy_set_vars(ngx_pool_t *pool, ngx_url_t *u,
     ngx_http_proxy_vars_t *v)
 {
-    if (!u->unix_socket) {
+    if (u->family != AF_UNIX) {
         if (u->no_port || u->port == u->default_port) {
             v->host_header = u->host;
 

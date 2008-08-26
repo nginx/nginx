@@ -179,31 +179,26 @@ static ngx_int_t
 ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 {
 #if (NGX_HAVE_UNIX_DOMAIN)
-    u_char              *p;
+    u_char              *path, *uri, *last;
     size_t               len;
-    ngx_uint_t           i;
     struct sockaddr_un  *saun;
 
     len = u->url.len;
-    p = u->url.data;
+    path = u->url.data;
 
-    p += 5;
+    path += 5;
     len -= 5;
 
-    u->uri.len = len;
-    u->uri.data = p;
-
     if (u->uri_part) {
-        for (i = 0; i < len; i++) {
 
-            if (p[i] == ':') {
-                len = i;
+        last = path + len;
+        uri = ngx_strlchr(path, last, ':');
 
-                u->uri.len -= len + 1;
-                u->uri.data += len + 1;
-
-                break;
-            }
+        if (uri) {
+            len = uri - path;
+            uri++;
+            u->uri.len = last - uri;
+            u->uri.data = uri;
         }
     }
 
@@ -212,7 +207,11 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    if (len + 1 > sizeof(saun->sun_path)) {
+    u->host.len = len++;
+    u->host.data = path;
+    u->family = AF_UNIX;
+
+    if (len > sizeof(saun->sun_path)) {
         u->err = "too long path in the unix domain socket";
         return NGX_ERROR;
     }
@@ -230,17 +229,12 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
     u->naddrs = 1;
 
     saun->sun_family = AF_UNIX;
-    (void) ngx_cpystrn((u_char *) saun->sun_path, p, len + 1);
+    (void) ngx_cpystrn((u_char *) saun->sun_path, path, len);
 
     u->addrs[0].sockaddr = (struct sockaddr *) saun;
     u->addrs[0].socklen = sizeof(struct sockaddr_un);
-    u->addrs[0].name.len = len + 5;
+    u->addrs[0].name.len = len + 4;
     u->addrs[0].name.data = u->url.data;
-
-    u->host.len = len;
-    u->host.data = p;
-
-    u->unix_socket = 1;
 
     return NGX_OK;
 
@@ -257,147 +251,129 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 static ngx_int_t
 ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 {
-    u_char          *p, *host, *port_start;
-    size_t           len, port_len;
-    ngx_int_t        port;
-    ngx_uint_t       i;
+    u_char          *p, *host, *port, *last, *uri;
+    size_t           len;
+    ngx_int_t        n;
     struct hostent  *h;
 
-    len = u->url.len;
-    p = u->url.data;
+    host = u->url.data;
 
-    u->host.data = p;
+    last = host + u->url.len;
 
-    port_start = NULL;
-    port_len = 0;
+    port = ngx_strlchr(host, last, ':');
 
-    for (i = 0; i < len; i++) {
+    uri = ngx_strlchr(port ? port : host, last, '/');
 
-        if (p[i] == ':') {
-            port_start = &p[i + 1];
-            u->host.len = i;
-
-            if (!u->uri_part) {
-                port_len = len - (i + 1);
-                break;
-            }
+    if (uri) {
+        if (u->listen || !u->uri_part) {
+            u->err = "invalid host";
+            return NGX_ERROR;
         }
 
-        if (p[i] == '/') {
-            u->uri.len = len - i;
-            u->uri.data = &p[i];
+        u->uri.len = last - uri;
+        u->uri.data = uri;
 
-            if (u->host.len == 0) {
-                u->host.len = i;
-            }
-
-            if (port_start == NULL) {
-                u->no_port = 1;
-                goto no_port;
-            }
-
-            port_len = &p[i] - port_start;
-
-            if (port_len == 0) {
-                u->err = "invalid port";
-                return NGX_ERROR;
-            }
-
-            break;
-        }
+        last = uri;
     }
 
-    if (port_start) {
+    if (port) {
+        port++;
 
-        if (port_len == 0) {
-            port_len = &p[i] - port_start;
-
-            if (port_len == 0) {
-                u->err = "invalid port";
-                return NGX_ERROR;
-            }
-        }
-
-        port = ngx_atoi(port_start, port_len);
-
-        if (port == NGX_ERROR || port < 1 || port > 65536) {
+        if (last - port == 0) {
             u->err = "invalid port";
             return NGX_ERROR;
         }
 
-        u->port_text.len = port_len;
-        u->port_text.data = port_start;
+        u->port_text.len = last - port;
+        u->port_text.data = port;
+
+        last = port - 1;
 
     } else {
-        port = ngx_atoi(p, len);
+        if (uri == NULL) {
 
-        if (port == NGX_ERROR) {
-            u->host.len = len;
-            u->no_port = 1;
+            if (u->listen) {
 
-            goto no_port;
-        }
+                /* test value as port only */
 
-        u->wildcard = 1;
-    }
+                n = ngx_atoi(host, last - host);
 
-    u->port = (in_port_t) port;
+                if (n != NGX_ERROR) {
 
-no_port:
+                    if (n < 1 || n > 65536) {
+                        u->err = "invalid port";
+                        return NGX_ERROR;
+                    }
 
-    if (u->listen) {
+                    u->port = (in_port_t) n;
 
-        if (u->port == 0) {
-            if (u->default_port == 0) {
-                u->err = "no port";
-                return NGX_ERROR;
-            }
+                    u->port_text.len = last - host;
+                    u->port_text.data = host;
 
-            u->port = u->default_port;
-        }
-
-        if (u->host.len == 1 && u->host.data[0] == '*') {
-            u->host.len = 0;
-        }
-
-        /* AF_INET only */
-
-        if (u->host.len) {
-
-            host = ngx_alloc(u->host.len + 1, pool->log);
-            if (host == NULL) {
-                return NGX_ERROR;
-            }
-
-            (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
-
-            u->addr.in_addr = inet_addr((const char *) host);
-
-            if (u->addr.in_addr == INADDR_NONE) {
-                h = gethostbyname((const char *) host);
-
-                if (h == NULL || h->h_addr_list[0] == NULL) {
-                    ngx_free(host);
-                    u->err = "host not found";
-                    return NGX_ERROR;
+                    return NGX_OK;
                 }
-
-                u->addr.in_addr = *(in_addr_t *) (h->h_addr_list[0]);
             }
-
-            ngx_free(host);
-
-        } else {
-            u->addr.in_addr = INADDR_ANY;
         }
 
-        return NGX_OK;
+        u->no_port = 1;
     }
 
-    if (u->host.len == 0) {
+    len = last - host;
+
+    if (len == 0) {
         u->err = "no host";
         return NGX_ERROR;
     }
+
+    if (len == 1 && *host == '*') {
+        len = 0;
+    }
+
+    u->host.len = len;
+    u->host.data = host;
+
+    if (len++) {
+
+        p = ngx_alloc(len, pool->log);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        (void) ngx_cpystrn(p, host, len);
+
+        u->addr.in_addr = inet_addr((const char *) p);
+
+        if (u->addr.in_addr == INADDR_NONE) {
+            h = gethostbyname((const char *) p);
+
+            if (h == NULL || h->h_addr_list[0] == NULL) {
+                ngx_free(p);
+                u->err = "host not found";
+                return NGX_ERROR;
+            }
+
+            u->addr.in_addr = *(in_addr_t *) (h->h_addr_list[0]);
+        }
+
+        ngx_free(p);
+
+    } else {
+        u->addr.in_addr = INADDR_ANY;
+    }
+
+    if (u->port_text.len) {
+
+        n = ngx_atoi(u->port_text.data, u->port_text.len);
+
+        if (n < 1 || n > 65536) {
+            u->err = "invalid port";
+            return NGX_ERROR;
+        }
+
+        u->port = (in_port_t) n;
+    }
+
+    u->family = AF_INET;
 
     if (u->no_resolve) {
         return NGX_OK;
@@ -407,9 +383,8 @@ no_port:
         u->port = u->default_port;
     }
 
-    if (u->port == 0) {
-        u->err = "no port";
-        return NGX_ERROR;
+    if (u->listen) {
+        return NGX_OK;
     }
 
     if (ngx_inet_resolve_host(pool, u) != NGX_OK) {
