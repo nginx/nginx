@@ -9,6 +9,76 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.12" date="26.08.2008">
+
+<change type="feature">
+<para lang="ru">
+директива server_name поддерживает пустое имя "".
+</para>
+<para lang="en">
+the "server_name" directive supports empty name "".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива gzip_disable поддерживает специальную маску msie6.
+</para>
+<para lang="en">
+the "gzip_disable" directive supports special "msie6" mask.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании параметра max_fails=0 в upstream'е с несколькими
+серверами рабочий процесс выходил по сигналу SIGFPE.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+if the "max_fails=0" parameter was used in upstream with several servers,
+then a worker process exited on a SIGFPE signal.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса с помощью директивы error_page
+терялось тело запроса.
+</para>
+<para lang="en">
+a request body was dropped while redirection via an "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса с методом HEAD с помощью директивы error_page
+возвращался полный ответ.
+</para>
+<para lang="en">
+a full response was returned for request method HEAD
+while redirection via an "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод $r->header_in() не возвращал значения строк "Host", "User-Agent",
+и "Connection" из заголовка запроса;
+ошибка появилась в 0.7.0.
+</para>
+<para lang="en">
+the $r->header_in() method did not return value of the "Host",
+"User-Agent", and "Connection" request header lines;
+the bug had appeared in 0.7.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.11" date="18.08.2008">
 
 <change type="change">
