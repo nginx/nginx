@@ -436,7 +436,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
     size_t       len;
     ssize_t      n;
     ngx_uint_t   found, need_space, last_space, sharp_comment, variable;
-    ngx_uint_t   quoted, s_quoted, d_quoted;
+    ngx_uint_t   quoted, s_quoted, d_quoted, start_line;
     ngx_str_t   *word;
     ngx_buf_t   *b;
 
@@ -450,6 +450,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
     cf->args->nelts = 0;
     b = cf->conf_file->buffer;
     start = b->pos;
+    start_line = cf->conf_file->line;
 
     for ( ;; ) {
 
@@ -476,22 +477,32 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 return NGX_CONF_FILE_DONE;
             }
 
-            if (b->pos - start) {
-                ngx_memcpy(b->start, start, b->pos - start);
+            len = b->pos - start;
+
+            if (len == ngx_pagesize) {
+                cf->conf_file->line = start_line;
+
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "too long parameter \"%*s...\" started",
+                                   10, start);
+                return NGX_ERROR;
             }
 
-            n = ngx_read_file(&cf->conf_file->file,
-                              b->start + (b->pos - start),
-                              b->end - (b->start + (b->pos - start)),
+            if (len) {
+                ngx_memcpy(b->start, start, len);
+            }
+
+            n = ngx_read_file(&cf->conf_file->file, b->start + len,
+                              b->end - (b->start + len),
                               cf->conf_file->file.offset);
 
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
-            b->pos = b->start + (b->pos - start);
-            start = b->start;
+            b->pos = b->start + len;
             b->last = b->pos + n;
+            start = b->start;
         }
 
         ch = *b->pos++;
@@ -545,6 +556,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
             }
 
             start = b->pos - 1;
+            start_line = cf->conf_file->line;
 
             switch (ch) {
 
