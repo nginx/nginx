@@ -45,7 +45,7 @@ ngx_module_t  ngx_conf_module = {
 
 /* The ten fixed arguments */
 
-static int argument_number[] = {
+static ngx_uint_t argument_number[] = {
     NGX_CONF_NOARGS,
     NGX_CONF_TAKE1,
     NGX_CONF_TAKE2,
@@ -433,10 +433,10 @@ static ngx_int_t
 ngx_conf_read_token(ngx_conf_t *cf)
 {
     u_char      *start, ch, *src, *dst;
-    int          len;
-    int          found, need_space, last_space, sharp_comment, variable;
-    int          quoted, s_quoted, d_quoted;
+    size_t       len;
     ssize_t      n;
+    ngx_uint_t   found, need_space, last_space, sharp_comment, variable;
+    ngx_uint_t   quoted, s_quoted, d_quoted;
     ngx_str_t   *word;
     ngx_buf_t   *b;
 
