@@ -280,7 +280,15 @@ ngx_open_glob(ngx_glob_t *gl)
 ngx_int_t
 ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
-    if (gl->n < (size_t) gl->pglob.gl_matchc) {
+    size_t  count;
+
+#ifdef GLOB_NOMATCH
+    count = (size_t) gl->pglob.gl_pathc;
+#else
+    count = (size_t) gl->pglob.gl_matchc;
+#endif
+
+    if (gl->n < count) {
 
         name->len = (size_t) ngx_strlen(gl->pglob.gl_pathv[gl->n]);
         name->data = (u_char *) gl->pglob.gl_pathv[gl->n];
