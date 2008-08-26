@@ -1290,7 +1290,7 @@ static ngx_int_t
 ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    u_char  *ua, *user_agent;
+    u_char  *user_agent, *msie;
 
     if (r->headers_in.user_agent) {
         return NGX_OK;
@@ -1302,14 +1302,22 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     user_agent = h->value.data;
 
-    ua = ngx_strstrn(user_agent, "MSIE", 4 - 1);
+    msie = ngx_strstrn(user_agent, "MSIE ", 5 - 1);
 
-    if (ua && ua + 8 < user_agent + h->value.len) {
+    if (msie && msie + 7 < user_agent + h->value.len) {
 
         r->headers_in.msie = 1;
 
-        if (ua[4] == ' ' && ua[5] == '4' && ua[6] == '.') {
-            r->headers_in.msie4 = 1;
+        if (msie[6] == '.') {
+
+            switch (msie[5]) {
+            case '4':
+                r->headers_in.msie4 = 1;
+                /* fall through */
+            case '5':
+            case '6':
+                r->headers_in.msie6 = 1;
+            }
         }
 
 #if 0
@@ -1324,6 +1332,7 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
         r->headers_in.opera = 1;
         r->headers_in.msie = 0;
         r->headers_in.msie4 = 0;
+        r->headers_in.msie6 = 0;
     }
 
     if (!r->headers_in.msie && !r->headers_in.opera) {

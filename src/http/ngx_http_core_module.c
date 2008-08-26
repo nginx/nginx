@@ -1672,6 +1672,10 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    if (r->headers_in.msie6 && clcf->gzip_disable_msie6) {
+        return NGX_DECLINED;
+    }
+
     if (r->http_version < clcf->gzip_http_version) {
         return NGX_DECLINED;
     }
@@ -2677,6 +2681,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->gzip_http_version = NGX_CONF_UNSET_UINT;
 #if (NGX_PCRE)
     lcf->gzip_disable = NGX_CONF_UNSET_PTR;
+    lcf->gzip_disable_msie6 = 3;
 #endif
 #endif
 
@@ -2913,6 +2918,11 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_PCRE)
     ngx_conf_merge_ptr_value(conf->gzip_disable, prev->gzip_disable, NULL);
 #endif
+
+    if (conf->gzip_disable_msie6 == 3) {
+        conf->gzip_disable_msie6 =
+            (prev->gzip_disable_msie6 == 3) ? 0 : prev->gzip_disable_msie6;
+    }
 
 #endif
 
@@ -3753,8 +3763,9 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-#if (NGX_PCRE)
     ngx_http_core_loc_conf_t  *clcf = conf;
+
+#if (NGX_PCRE)
 
     ngx_str_t         err, *value;
     ngx_uint_t        i;
@@ -3776,6 +3787,11 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
+        if (ngx_strcmp(value[1].data, "msie6") == 0) {
+            clcf->gzip_disable_msie6 = 1;
+            continue;
+        }
+
         re = ngx_array_push(clcf->gzip_disable);
         if (re == NULL) {
             return NGX_CONF_ERROR;
@@ -3795,8 +3811,18 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 
 #else
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "msie6") == 0) {
+        clcf->gzip_disable_msie6 = 1;
+        return NGX_CONF_OK;
+    }
+
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "\"gzip_disable\" requires PCRE library");
+                       "without PCRE library \"gzip_disable\" supports "
+                       "builtin \"msie6\" mask only");
 
     return NGX_CONF_ERROR;
 #endif
