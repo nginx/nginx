@@ -166,14 +166,6 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    rule->addr = inet_addr((char *) value[1].data);
-
-    if (rule->addr != INADDR_NONE) {
-        rule->mask = 0xffffffff;
-
-        return NGX_CONF_OK;
-    }
-
     rc = ngx_ptocidr(&value[1], &in_cidr);
 
     if (rc == NGX_ERROR) {

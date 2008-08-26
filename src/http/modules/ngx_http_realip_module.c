@@ -251,14 +251,6 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    from->addr = inet_addr((char *) value[1].data);
-
-    if (from->addr != INADDR_NONE) {
-        from->mask = 0xffffffff;
-
-        return NGX_CONF_OK;
-    }
-
     rc = ngx_ptocidr(&value[1], &in_cidr);
 
     if (rc == NGX_ERROR) {
