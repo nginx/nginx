@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.13" date="26.08.2008">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Linux и Solaris;
+ошибка появилась в 0.7.12.
+</para>
+<para lang="en">
+nginx could not be built on Linux and Solaris;
+the bug had appeared in 0.7.12.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.12" date="26.08.2008">
 
 <change type="feature">
