@@ -1243,15 +1243,6 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     in_addr->bind = listen->conf.bind;
     in_addr->listen_conf = &listen->conf;
 
-#if (NGX_DEBUG)
-    {
-    u_char text[20];
-    ngx_inet_ntop(AF_INET, &in_addr->addr, text, 20);
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, cf->log, 0, "address: %s:%d",
-                   text, in_port->port);
-    }
-#endif
-
     return ngx_http_add_names(cf, cscf, in_addr);
 }
 
