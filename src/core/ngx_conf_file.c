@@ -482,9 +482,22 @@ ngx_conf_read_token(ngx_conf_t *cf)
             if (len == ngx_pagesize) {
                 cf->conf_file->line = start_line;
 
+                if (d_quoted) {
+                    ch = '"';
+
+                } else if (s_quoted) {
+                    ch = '\'';
+
+                } else {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "too long parameter \"%*s...\" started",
+                                       10, start);
+                    return NGX_ERROR;
+                }
+
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "too long parameter \"%*s...\" started",
-                                   10, start);
+                                   "too long parameter, probably "
+                                   "missing terminating \"%c\" character", ch);
                 return NGX_ERROR;
             }
 
