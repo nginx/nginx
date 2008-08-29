@@ -1158,6 +1158,7 @@ ngx_http_init_server_lists(ngx_conf_t *cf, ngx_array_t *servers,
 
                         in_addr[a].core_srv_conf = cscfp[s];
                         in_addr[a].default_server = 1;
+                        in_addr[a].listen_conf = &listen[l].conf;
                     }
 
                     goto found;
