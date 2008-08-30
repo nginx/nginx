@@ -47,6 +47,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     u_char              *lock_file;
     ngx_uint_t           i, n;
     ngx_log_t           *log;
+    ngx_time_t          *tp;
     ngx_conf_t           conf;
     ngx_pool_t          *pool;
     ngx_cycle_t         *cycle, **old;
@@ -58,6 +59,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_core_conf_t     *ccf, *old_ccf;
     ngx_core_module_t   *module;
     char                 hostname[NGX_MAXHOSTNAMELEN];
+
+    ngx_timezone_update();
+
+    /* force localtime update with a new timezone */
+
+    tp = ngx_timeofday();
+    tp->sec = 0;
+
+    ngx_time_update(0, 0);
+
 
     log = old_cycle->log;
 

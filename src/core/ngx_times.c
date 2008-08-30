@@ -50,10 +50,6 @@ ngx_time_init(void)
 
     ngx_cached_time = &cached_time[0];
 
-#if !(NGX_WIN32)
-    tzset();
-#endif
-
     ngx_time_update(0, 0);
 }
 

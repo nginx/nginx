@@ -52,6 +52,7 @@ typedef struct tm             ngx_tm_t;
 #endif
 
 
+void ngx_timezone_update(void);
 void ngx_localtime(time_t s, ngx_tm_t *tm);
 void ngx_libc_localtime(time_t s, struct tm *tm);
 void ngx_libc_gmtime(time_t s, struct tm *tm);
