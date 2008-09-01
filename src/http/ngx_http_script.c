@@ -574,6 +574,7 @@ ngx_http_script_start_args_code(ngx_http_script_engine_t *e)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script args");
 
+    e->is_args = 1;
     e->args = e->pos;
     e->ip += sizeof(uintptr_t);
 }
