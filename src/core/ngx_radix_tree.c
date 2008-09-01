@@ -274,7 +274,7 @@ ngx_radix_alloc(ngx_radix_tree_t *tree)
     }
 
     if (tree->size < sizeof(ngx_radix_node_t)) {
-        tree->start = ngx_palloc(tree->pool, ngx_pagesize);
+        tree->start = ngx_pmemalign(tree->pool, ngx_pagesize, ngx_pagesize);
         if (tree->start == NULL) {
             return NULL;
         }
