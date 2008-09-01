@@ -9,6 +9,74 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.14" date="01.09.2008">
+
+<change type="change">
+<para lang="ru">
+теперь директивы ssl_certificate и ssl_certificate_key не имеют
+значений по умолчанию.
+</para>
+<para lang="en">
+now the ssl_certificate and ssl_certificate_key directives have not
+default values.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива listen поддерживает параметр ssl.
+</para>
+<para lang="en">
+the "listen" directive supports the "ssl" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при переконфигурации nginx учитывает изменение временной зоны
+на FreeBSD и Linux.
+</para>
+<para lang="en">
+now nginx takes into account a time zone change while reconfiguration
+on FreeBSD and Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметры директивы listen, такие как backlog, rcvbuf и прочие,
+не устанавливались, если сервером по умолчанию был не первый сервер.
+</para>
+<para lang="en">
+the "listen" directive parameters such as "backlog", "rcvbuf", etc.
+were not set, if a default server was not the first one.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании в качестве аргументов части URI, выделенного с помощью
+директивы rewrite, эти аргументы не экранировались.
+</para>
+<para lang="en">
+if URI part captured by a "rewrite" directive was used as a query string,
+then the query string was not escaped.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+улучшения тестирования правильности конфигурационного файла.
+</para>
+<para lang="en">
+configuration file validity test improvements.
+</para>
+</change>
+
+
+</changes>
+
+
 <changes ver="0.7.13" date="26.08.2008">
 
 <change type="bugfix">
