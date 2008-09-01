@@ -1779,11 +1779,11 @@ ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
 
         if (prev_keys == NULL) {
 
-	    if (ngx_http_set_default_types(cf, &prev_keys, default_types)
+            if (ngx_http_set_default_types(cf, &prev_keys, default_types)
                 != NGX_OK)
             {
-		return NGX_CONF_ERROR;
-	    }
+                return NGX_CONF_ERROR;
+            }
         }
 
         hash.hash = prev_types_hash;
