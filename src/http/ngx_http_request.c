@@ -357,9 +357,20 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_ssl_srv_conf_t  *sscf;
 
     sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
-    if (sscf->enable) {
+    if (sscf->enable || hia[i].ssl) {
 
         if (c->ssl == NULL) {
+
+            c->log->action = "SSL handshaking";
+
+            if (hia[i].ssl && sscf->ssl.ctx == NULL) {
+                ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                              "no \"ssl_certificate\" is defined "
+                              "in server listening on SSL port");
+                ngx_http_close_connection(c);
+                return;
+            }
+
             if (ngx_ssl_create_connection(&sscf->ssl, c, NGX_SSL_BUFFER)
                 == NGX_ERROR)
             {
@@ -528,6 +539,8 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
             r->plain_http = 1;
         }
     }
+
+    c->log->action = "reading client request line";
 
     rev->handler = ngx_http_process_request_line;
     ngx_http_process_request_line(rev);

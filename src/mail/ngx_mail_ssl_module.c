@@ -9,13 +9,16 @@
 #include <ngx_mail.h>
 
 
-#define NGX_DEFAULT_CERTIFICATE      "cert.pem"
-#define NGX_DEFAULT_CERTIFICATE_KEY  "cert.pem"
 #define NGX_DEFAULT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
 static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+
+static char *ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -50,14 +53,14 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
 
     { ngx_string("ssl"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_mail_ssl_enable,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, enable),
       NULL },
 
     { ngx_string("starttls"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
+      ngx_mail_ssl_starttls,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, starttls),
       ngx_http_starttls_state },
@@ -194,14 +197,12 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_mail_ssl_conf_t *prev = parent;
     ngx_mail_ssl_conf_t *conf = child;
 
+    char                *mode;
     ngx_pool_cleanup_t  *cln;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_value(conf->starttls, prev->starttls, NGX_MAIL_STARTTLS_OFF);
-
-    if (conf->enable == 0 && conf->starttls == NGX_MAIL_STARTTLS_OFF) {
-        return NGX_CONF_OK;
-    }
+    ngx_conf_merge_uint_value(conf->starttls, prev->starttls,
+                         NGX_MAIL_STARTTLS_OFF);
 
     ngx_conf_merge_value(conf->session_timeout,
                          prev->session_timeout, 300);
@@ -213,11 +214,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                          (NGX_CONF_BITMASK_SET
                           |NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1));
 
-    ngx_conf_merge_str_value(conf->certificate, prev->certificate,
-                         NGX_DEFAULT_CERTIFICATE);
-
-    ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
-                         NGX_DEFAULT_CERTIFICATE_KEY);
+    ngx_conf_merge_str_value(conf->certificate, prev->certificate, "");
+    ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key, "");
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
@@ -225,6 +223,49 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
     conf->ssl.log = cf->log;
+
+    if (conf->enable) {
+       mode = "ssl";
+
+    } else if (conf->starttls != NGX_MAIL_STARTTLS_OFF) {
+       mode = "starttls";
+
+    } else {
+       mode = "";
+    }
+
+    if (*mode) {
+
+        if (conf->certificate.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate\" is defined for "
+                          "the \"%s\" directive in %s:%ui",
+                          mode, conf->file, conf->line);
+            return NGX_CONF_ERROR;
+        }
+
+        if (conf->certificate_key.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate_key\" is defined for "
+                          "the \"%s\" directive in %s:%ui",
+                          mode, conf->file, conf->line);
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+
+        if (conf->certificate.len == 0) {
+            return NGX_CONF_OK;
+        }
+
+        if (conf->certificate_key.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate_key\" is defined "
+                          "for certificate \"%V\"",
+                          &conf->certificate);
+            return NGX_CONF_ERROR;
+        }
+    }
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, NULL) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -286,6 +327,58 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_ssl_conf_t  *scf = conf;
+
+    char  *rv;
+
+    rv = ngx_conf_set_flag_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    if (scf->enable && (ngx_int_t) scf->starttls > NGX_MAIL_STARTTLS_OFF) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"starttls\" directive conflicts with \"ssl on\"");
+        return NGX_CONF_ERROR;
+    }
+
+    scf->file = cf->conf_file->file.name.data;
+    scf->line = cf->conf_file->line;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_ssl_conf_t  *scf = conf;
+
+    char  *rv;
+
+    rv = ngx_conf_set_enum_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    if (scf->enable == 1 && (ngx_int_t) scf->starttls > NGX_MAIL_STARTTLS_OFF) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"ssl\" directive conflicts with \"starttls\"");
+        return NGX_CONF_ERROR;
+    }
+
+    scf->file = cf->conf_file->file.name.data;
+    scf->line = cf->conf_file->line;
 
     return NGX_CONF_OK;
 }

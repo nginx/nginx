@@ -35,6 +35,9 @@ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
+#if (NGX_HTTP_SSL)
+    unsigned                   ssl:1;
+#endif
 
     int                        backlog;
     int                        rcvbuf;
@@ -167,6 +170,10 @@ typedef struct {
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
     ngx_http_virtual_names_t  *virtual_names;
+
+#if (NGX_HTTP_SSL)
+    ngx_uint_t                 ssl;   /* unsigned  ssl:1; */
+#endif
 } ngx_http_in_addr_t;
 
 
@@ -203,6 +210,9 @@ typedef struct {
 
     unsigned                   default_server:1;
     unsigned                   bind:1;
+#if (NGX_HTTP_SSL)
+    unsigned                   ssl:1;
+#endif
 
     ngx_http_listen_conf_t    *listen_conf;
 } ngx_http_conf_in_addr_t;

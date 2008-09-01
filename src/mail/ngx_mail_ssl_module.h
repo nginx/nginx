@@ -20,12 +20,11 @@
 
 typedef struct {
     ngx_flag_t       enable;
+    ngx_flag_t       prefer_server_ciphers;
 
     ngx_ssl_t        ssl;
 
-    ngx_flag_t       prefer_server_ciphers;
-    ngx_flag_t       starttls;
-
+    ngx_uint_t       starttls;
     ngx_uint_t       protocols;
 
     ssize_t          builtin_session_cache;
@@ -39,6 +38,9 @@ typedef struct {
     ngx_str_t        ciphers;
 
     ngx_shm_zone_t  *shm_zone;
+
+    u_char          *file;
+    ngx_uint_t       line;
 } ngx_mail_ssl_conf_t;
 
 

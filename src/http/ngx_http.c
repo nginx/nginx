@@ -1158,6 +1158,9 @@ ngx_http_init_server_lists(ngx_conf_t *cf, ngx_array_t *servers,
 
                         in_addr[a].core_srv_conf = cscfp[s];
                         in_addr[a].default_server = 1;
+#if (NGX_HTTP_SSL)
+                        in_addr[a].ssl = listen[l].conf.ssl;
+#endif
                         in_addr[a].listen_conf = &listen[l].conf;
                     }
 
@@ -1242,6 +1245,9 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     in_addr->core_srv_conf = cscf;
     in_addr->default_server = listen->conf.default_server;
     in_addr->bind = listen->conf.bind;
+#if (NGX_HTTP_SSL)
+    in_addr->ssl = listen->conf.ssl;
+#endif
     in_addr->listen_conf = &listen->conf;
 
     return ngx_http_add_names(cf, cscf, in_addr);
@@ -1647,6 +1653,10 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_in_port_t *in_port)
         for (i = 0; i < hip->naddrs; i++) {
             hip->addrs[i].addr = in_addr[i].addr;
             hip->addrs[i].core_srv_conf = in_addr[i].core_srv_conf;
+
+#if (NGX_HTTP_SSL)
+            hip->addrs[i].ssl = in_addr[i].ssl;
+#endif
 
             if (in_addr[i].hash.buckets == NULL
                 && (in_addr[i].wc_head == NULL

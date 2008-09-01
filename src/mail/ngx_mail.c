@@ -261,6 +261,9 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         in_addr->addr = imls[l].addr;
         in_addr->ctx = imls[l].ctx;
         in_addr->bind = imls[l].bind;
+#if (NGX_MAIL_SSL)
+        in_addr->ssl = imls[l].ssl;
+#endif
     }
 
     /* optimize the lists of ports and addresses */
@@ -370,6 +373,10 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 imip->addrs[i].addr_text.len = len;
                 imip->addrs[i].addr_text.data = text;
+
+#if (NGX_MAIL_SSL)
+                imip->addrs[i].ssl = in_addr[i].ssl;
+#endif
             }
 
             if (done) {

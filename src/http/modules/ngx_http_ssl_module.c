@@ -13,8 +13,6 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
 
 
-#define NGX_DEFAULT_CERTIFICATE      "cert.pem"
-#define NGX_DEFAULT_CERTIFICATE_KEY  "cert.pem"
 #define NGX_DEFAULT_CIPHERS  "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
 
 
@@ -28,6 +26,8 @@ static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
 
+static char *ngx_http_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -61,7 +61,7 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
 
     { ngx_string("ssl"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_http_ssl_enable,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, enable),
       NULL },
@@ -339,10 +339,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
-    if (conf->enable == 0) {
-        return NGX_CONF_OK;
-    }
-
     ngx_conf_merge_value(conf->session_timeout,
                          prev->session_timeout, 300);
 
@@ -356,11 +352,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
     ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
 
-    ngx_conf_merge_str_value(conf->certificate, prev->certificate,
-                         NGX_DEFAULT_CERTIFICATE);
-
-    ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key,
-                         NGX_DEFAULT_CERTIFICATE_KEY);
+    ngx_conf_merge_str_value(conf->certificate, prev->certificate, "");
+    ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key, "");
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
@@ -371,6 +364,38 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
     conf->ssl.log = cf->log;
+
+    if (conf->enable) {
+
+        if (conf->certificate.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate\" is defined for "
+                          "the \"ssl\" directive in %s:%ui",
+                          conf->file, conf->line);
+            return NGX_CONF_ERROR;
+        }
+
+        if (conf->certificate_key.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate_key\" is defined for "
+                          "the \"ssl\" directive in %s:%ui",
+                          conf->file, conf->line);
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+
+        if (conf->certificate.len == 0) {
+            return NGX_CONF_OK;
+        }
+
+        if (conf->certificate_key.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"ssl_certificate_key\" is defined "
+                          "for certificate \"%V\"", &conf->certificate);
+            return NGX_CONF_ERROR;
+        }
+    }
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -461,6 +486,26 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_ssl_srv_conf_t *sscf = conf;
+
+    char  *rv;
+
+    rv = ngx_conf_set_flag_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    sscf->file = cf->conf_file->file.name.data;
+    sscf->line = cf->conf_file->line;
 
     return NGX_CONF_OK;
 }

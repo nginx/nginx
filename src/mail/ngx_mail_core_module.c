@@ -351,18 +351,31 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    if (cf->args->nelts == 2) {
-        return NGX_CONF_OK;
+    for (i = 2; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "bind") == 0) {
+            imls->bind = 1;
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "ssl") == 0) {
+#if (NGX_MAIL_SSL)
+            imls->ssl = 1;
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"ssl\" parameter requires "
+                               "ngx_mail_ssl_module");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the invalid \"%V\" parameter", &value[i]);
+        return NGX_CONF_ERROR;
     }
 
-    if (ngx_strcmp(value[2].data, "bind") == 0) {
-        imls->bind = 1;
-        return NGX_CONF_OK;
-    }
-
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "the invalid \"%V\" parameter", &value[2]);
-    return NGX_CONF_ERROR;
+    return NGX_CONF_OK;
 }
 
 

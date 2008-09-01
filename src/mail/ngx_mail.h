@@ -34,6 +34,9 @@ typedef struct {
     ngx_mail_conf_ctx_t    *ctx;
 
     unsigned                bind:1;
+#if (NGX_MAIL_SSL)
+    unsigned                ssl:1;
+#endif
 } ngx_mail_listen_t;
 
 
@@ -41,6 +44,9 @@ typedef struct {
     in_addr_t               addr;
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
+#if (NGX_MAIL_SSL)
+    ngx_uint_t              ssl;    /* unsigned   ssl:1; */
+#endif
 } ngx_mail_in_addr_t;
 
 
@@ -60,6 +66,9 @@ typedef struct {
     in_addr_t               addr;
     ngx_mail_conf_ctx_t    *ctx;
     unsigned                bind:1;
+#if (NGX_MAIL_SSL)
+    unsigned                ssl:1;
+#endif
 } ngx_mail_conf_in_addr_t;
 
 
