@@ -21,6 +21,8 @@ static ngx_inline ngx_int_t
     ngx_output_chain_need_to_copy(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf);
 static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
     ngx_chain_t **chain, ngx_chain_t *in);
+static ngx_int_t ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx,
+    off_t bsize);
 static ngx_int_t ngx_output_chain_copy_buf(ngx_buf_t *dst, ngx_buf_t *src,
     ngx_uint_t sendfile);
 
@@ -29,10 +31,7 @@ ngx_int_t
 ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
     off_t         bsize;
-    size_t        size;
     ngx_int_t     rc, last;
-    ngx_uint_t    recycled;
-    ngx_buf_t    *b;
     ngx_chain_t  *cl, *out, **last_out;
 
     if (ctx->in == NULL && ctx->busy == NULL) {
@@ -130,62 +129,8 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
                     break;
 
-                } else {
-
-                    size = ctx->bufs.size;
-                    recycled = 1;
-
-                    if (ctx->in->buf->last_in_chain) {
-
-                        if (bsize < (off_t) ctx->bufs.size) {
-
-                           /*
-                            * allocate small temp buf for the small last buf
-                            * or its small last part
-                            */
-
-                            size = (size_t) bsize;
-                            recycled = 0;
-
-                        } else if (ctx->bufs.num == 1
-                                   && (bsize < (off_t) (ctx->bufs.size
-                                                     + (ctx->bufs.size >> 2))))
-                        {
-                            /*
-                             * allocate a temp buf that equals
-                             * to the last buf if the last buf size is lesser
-                             * than 1.25 of bufs.size and a temp buf is single
-                             */
-
-                            size = (size_t) bsize;
-                            recycled = 0;
-                        }
-                    }
-
-                    b = ngx_calloc_buf(ctx->pool);
-                    if (b == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    /*
-                     * allocate block aligned to a disk sector size
-                     * to enable O_DIRECT
-                     */
-
-                    b->start = ngx_pmemalign(ctx->pool, size, 512);
-                    if (b->start == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    b->pos = b->start;
-                    b->last = b->start;
-                    b->end = b->last + size;
-                    b->temporary = 1;
-                    b->tag = ctx->tag;
-                    b->recycled = recycled;
-
-                    ctx->buf = b;
-                    ctx->allocated++;
+                } else if (ngx_output_chain_get_buf(ctx, bsize) != NGX_OK) {
+                    return NGX_ERROR;
                 }
             }
 
@@ -346,6 +291,66 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
     }
 
     *ll = NULL;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
+{
+    size_t       size;
+    ngx_buf_t   *b;
+    ngx_uint_t   recycled;
+
+    size = ctx->bufs.size;
+    recycled = 1;
+
+    if (ctx->in->buf->last_in_chain) {
+
+        if (bsize < (off_t) size) {
+
+           /*
+            * allocate a small temp buf for a small last buf
+            * or its small last part
+            */
+
+            size = (size_t) bsize;
+            recycled = 0;
+
+        } else if (ctx->bufs.num == 1 && (bsize < (off_t) (size + size / 4))) {
+
+            /*
+             * allocate a temp buf that equals to a last buf, if the last buf
+             * size is lesser than 1.25 of bufs.size and the temp buf is single
+             */
+
+            size = (size_t) bsize;
+            recycled = 0;
+        }
+    }
+
+    b = ngx_calloc_buf(ctx->pool);
+    if (b == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* allocate block aligned to a disk sector size to enable O_DIRECT */
+
+    b->start = ngx_pmemalign(ctx->pool, size, 512);
+    if (b->start == NULL) {
+        return NGX_ERROR;
+    }
+
+    b->pos = b->start;
+    b->last = b->start;
+    b->end = b->last + size;
+    b->temporary = 1;
+    b->tag = ctx->tag;
+    b->recycled = recycled;
+
+    ctx->buf = b;
+    ctx->allocated++;
 
     return NGX_OK;
 }
