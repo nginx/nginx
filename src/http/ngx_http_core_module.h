@@ -8,8 +8,8 @@
 #define _NGX_HTTP_CORE_H_INCLUDED_
 
 
-#include <ngx_string.h>
-#include <ngx_array.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 #include <ngx_http.h>
 
 
