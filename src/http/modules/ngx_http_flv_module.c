@@ -244,6 +244,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     b->file->fd = of.fd;
     b->file->name = path;
     b->file->log = log;
+    b->file->directio = of.is_directio;
 
     out[1].buf = b;
     out[1].next = NULL;

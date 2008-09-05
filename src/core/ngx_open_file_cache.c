@@ -502,6 +502,9 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
             if (ngx_directio(fd) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                               ngx_directio_n " \"%s\" failed", name);
+
+            } else {
+                of->is_directio = 1;
             }
         }
     }

@@ -251,6 +251,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     b->file->fd = of.fd;
     b->file->name = path;
     b->file->log = log;
+    b->file->directio = of.is_directio;
 
     out.buf = b;
     out.next = NULL;

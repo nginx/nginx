@@ -681,6 +681,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     b->file->fd = of.fd;
     b->file->log = r->connection->log;
+    b->file->directio = of.is_directio;
 
     (void) ngx_http_perl_output(r, b);
 

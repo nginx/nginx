@@ -78,6 +78,7 @@ typedef struct {
     ngx_chain_t                 *busy;
 
     unsigned                     sendfile;
+    unsigned                     directio;
     unsigned                     need_in_memory;
     unsigned                     need_in_temp;
 
