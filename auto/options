@@ -64,6 +64,7 @@ HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_USERID=YES
 HTTP_AUTOINDEX=YES
+HTTP_RANDOM_INDEX=NO
 HTTP_STATUS=NO
 HTTP_GEO=YES
 HTTP_MAP=YES
@@ -171,6 +172,7 @@ do
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
         --with-http_gzip_static_module)  HTTP_GZIP_STATIC=YES       ;;
+        --with-http_random_index_module) HTTP_RANDOM_INDEX=YES      ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
@@ -287,6 +289,7 @@ cat << END
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
   --with-http_gzip_static_module     enable ngx_http_gzip_static_module
+  --with-http_random_index_module    enable ngx_http_random_index_module
   --with-http_stub_status_module     enable ngx_http_stub_status_module
 
   --without-http_charset_module      disable ngx_http_charset_module

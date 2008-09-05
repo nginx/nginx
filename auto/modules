@@ -81,6 +81,7 @@ fi
 #     ngx_http_dav_module
 #     ngx_http_autoindex_module
 #     ngx_http_index_module
+#     ngx_http_random_index_module
 #
 #     ngx_http_access_module
 #     ngx_http_realip_module
@@ -176,6 +177,12 @@ if [ $HTTP_AUTOINDEX = YES ]; then
 fi
 
 HTTP_MODULES="$HTTP_MODULES $HTTP_INDEX_MODULE"
+
+if [ $HTTP_RANDOM_INDEX = YES ]; then
+    have=NGX_HTTP_RANDOM_INDEX . auto/have
+    HTTP_MODULES="$HTTP_MODULES $HTTP_RANDOM_INDEX_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_RANDOM_INDEX_SRCS"
+fi
 
 if [ $HTTP_AUTH_BASIC = YES ]; then
     have=NGX_HTTP_AUTH_BASIC . auto/have
