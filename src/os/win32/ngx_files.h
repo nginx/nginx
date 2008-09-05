@@ -12,6 +12,36 @@
 #include <ngx_core.h>
 
 
+typedef HANDLE                      ngx_fd_t;
+typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
+typedef uint64_t                    ngx_file_uniq_t;
+
+typedef struct {
+    HANDLE                          dir;
+    WIN32_FIND_DATA                 finddata;
+
+    unsigned                        valid_info:1;
+    unsigned                        valid_type:1;
+    unsigned                        ready:1;
+} ngx_dir_t;
+
+
+typedef struct {
+    HANDLE                          dir;
+    WIN32_FIND_DATA                 finddata;
+
+    unsigned                        ready:1;
+    unsigned                        test:1;
+    unsigned                        no_match:1;
+
+    u_char                         *pattern;
+    ngx_str_t                       name;
+    size_t                          last;
+    ngx_log_t                      *log;
+} ngx_glob_t;
+
+
+
 /* INVALID_FILE_ATTRIBUTES is specified but not defined at least in MSVC6SP2 */
 #ifndef INVALID_FILE_ATTRIBUTES
 #define INVALID_FILE_ATTRIBUTES     0xffffffff
@@ -183,20 +213,6 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
                      (dir)->finddata.ftLastWriteTime.dwHighDateTime << 32)   \
                       | (dir)->finddata.ftLastWriteTime.dwLowDateTime)       \
                                           - 116444736000000000) / 10000000)
-
-typedef struct {
-    HANDLE                          dir;
-    WIN32_FIND_DATA                 finddata;
-
-    unsigned                        ready:1;
-    unsigned                        test:1;
-    unsigned                        no_match:1;
-
-    u_char                         *pattern;
-    ngx_str_t                       name;
-    size_t                          last;
-    ngx_log_t                      *log;
-} ngx_glob_t;
 
 
 ngx_int_t ngx_open_glob(ngx_glob_t *gl);

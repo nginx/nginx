@@ -131,7 +131,6 @@ UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_time.h \
-            src/os/unix/ngx_types.h \
             src/os/unix/ngx_errno.h \
             src/os/unix/ngx_alloc.h \
             src/os/unix/ngx_files.h \
@@ -208,7 +207,6 @@ WIN32_INCS="$CORE_INCS $EVENT_INCS src/os/win32"
 WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_win32_config.h \
             src/os/win32/ngx_time.h \
-            src/os/win32/ngx_types.h \
             src/os/win32/ngx_errno.h \
             src/os/win32/ngx_alloc.h \
             src/os/win32/ngx_files.h \

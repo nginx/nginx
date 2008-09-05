@@ -229,3 +229,23 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="struct tm  tm; tm.tm_gmtoff = 0"
 . auto/feature
+
+
+ngx_feature="struct dirent.d_namlen"
+ngx_feature_name="NGX_HAVE_D_NAMLEN"
+ngx_feature_run=no
+ngx_feature_incs="#include <dirent.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct dirent  dir; dir.d_namlen = 0"
+. auto/feature
+
+
+ngx_feature="struct dirent.d_type"
+ngx_feature_name="NGX_HAVE_D_TYPE"
+ngx_feature_run=no
+ngx_feature_incs="#include <dirent.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct dirent  dir; dir.d_type = DT_REG"
+. auto/feature

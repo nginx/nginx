@@ -12,6 +12,31 @@
 #include <ngx_core.h>
 
 
+typedef int                      ngx_fd_t;
+typedef struct stat              ngx_file_info_t;
+typedef ino_t                    ngx_file_uniq_t;
+
+
+typedef struct {
+    DIR                        *dir;
+    struct dirent              *de;
+    struct stat                 info;
+
+    unsigned                    type:8;
+    unsigned                    valid_info:1;
+    unsigned                    valid_type:1;
+} ngx_dir_t;
+
+
+typedef struct {
+    size_t                       n;
+    glob_t                       pglob;
+    u_char                      *pattern;
+    ngx_log_t                   *log;
+    ngx_uint_t                   test;
+} ngx_glob_t;
+
+
 #define NGX_INVALID_FILE         -1
 #define NGX_FILE_ERROR           -1
 
@@ -135,8 +160,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_close_dir_n          "closedir()"
 
 
-#define ngx_read_dir(d)                                                      \
-    (((d)->de = readdir((d)->dir)) ? NGX_OK : NGX_ERROR)
+ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_read_dir_n           "readdir()"
 
 
@@ -152,7 +176,7 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 
 
 #define ngx_de_name(dir)         ((u_char *) (dir)->de->d_name)
-#if (NGX_FREEBSD)
+#if (NGX_HAVE_D_NAMLEN)
 #define ngx_de_namelen(dir)      (dir)->de->d_namlen
 #else
 #define ngx_de_namelen(dir)      ngx_strlen((dir)->de->d_name)
@@ -161,21 +185,24 @@ ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_de_info_n            "stat()"
 #define ngx_de_link_info(name, dir)  lstat((const char *) name, &(dir)->info)
 #define ngx_de_link_info_n       "lstat()"
+
+#if (NGX_HAVE_D_TYPE)
+
+#define ngx_de_is_dir(dir)       ((dir)->type == DT_DIR)
+#define ngx_de_is_file(dir)      ((dir)->type == DT_REG)
+#define ngx_de_is_link(dir)      ((dir)->type == DT_LINK)
+
+#else
+
 #define ngx_de_is_dir(dir)       (S_ISDIR((dir)->info.st_mode))
 #define ngx_de_is_file(dir)      (S_ISREG((dir)->info.st_mode))
 #define ngx_de_is_link(dir)      (S_ISLNK((dir)->info.st_mode))
+
+#endif
+
 #define ngx_de_access(dir)       (((dir)->info.st_mode) & 0777)
 #define ngx_de_size(dir)         (dir)->info.st_size
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
-
-
-typedef struct {
-    size_t                       n;
-    glob_t                       pglob;
-    u_char                      *pattern;
-    ngx_log_t                   *log;
-    ngx_uint_t                   test;
-} ngx_glob_t;
 
 
 ngx_int_t ngx_open_glob(ngx_glob_t *gl);
