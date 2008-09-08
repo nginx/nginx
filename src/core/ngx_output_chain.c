@@ -331,7 +331,7 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
 
     if (size == 0) {
 
-        if (bsize >= ctx->bufs.size) {
+        if (bsize >= (off_t) ctx->bufs.size) {
             return NGX_DECLINED;
         }
 
@@ -340,7 +340,7 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
     } else {
         size = 512 - size;
 
-        if (size > bsize) {
+        if ((off_t) size > bsize) {
             size = (size_t) bsize;
         }
     }
