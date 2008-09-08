@@ -9,6 +9,49 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.15" date="08.09.2008">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_random_index_module.
+</para>
+<para lang="en">
+the ngx_http_random_index_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива directio оптимизирована для запросов файлов, начинающихся
+с произвольной позиции.
+</para>
+<para lang="en">
+the "directio" directive has been optimized for file requests starting
+from arbitrary position.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива directio при необходимости запрещает использование sendfile.
+</para>
+<para lang="en">
+the "directio" directive turns off sendfile if it is necessary.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx разрешает подчёркивания в именах строк в заголовке запроса клиента.
+</para>
+<para lang="en">
+now nginx allows underscores in a client request header line names.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.14" date="01.09.2008">
 
 <change type="change">
