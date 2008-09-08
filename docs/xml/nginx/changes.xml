@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.16" date="08.09.2008">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на 64-битных платформах;
+ошибка появилась в 0.7.15.
+</para>
+<para lang="en">
+nginx could not be built on 64-bit platforms;
+the bug had appeared in 0.7.15.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.15" date="08.09.2008">
 
 <change type="feature">
