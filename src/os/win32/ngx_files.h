@@ -232,8 +232,11 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
     off_t offset, ngx_pool_t *pool);
 
 
-ngx_int_t ngx_directio(ngx_fd_t fd);
-#define ngx_directio_n              "ngx_directio_n"
+ngx_int_t ngx_directio_on(ngx_fd_t fd);
+#define ngx_directio_on_n           "ngx_directio_on_n"
+
+ngx_int_t ngx_directio_off(ngx_fd_t fd);
+#define ngx_directio_off_n          "ngx_directio_off_n"
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

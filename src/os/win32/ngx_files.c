@@ -505,7 +505,13 @@ ngx_file_append_mode(ngx_fd_t fd)
 
 
 ngx_int_t
-ngx_directio(ngx_fd_t fd)
+ngx_directio_on(ngx_fd_t fd)
+{
+    return 0;
+}
+
+ngx_int_t
+ngx_directio_off(ngx_fd_t fd)
 {
     return 0;
 }

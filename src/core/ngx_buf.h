@@ -79,6 +79,9 @@ typedef struct {
 
     unsigned                     sendfile;
     unsigned                     directio;
+#if (NGX_HAVE_ALIGNED_DIRECTIO)
+    unsigned                     unaligned;
+#endif
     unsigned                     need_in_memory;
     unsigned                     need_in_temp;
 

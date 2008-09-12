@@ -222,23 +222,26 @@ ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
 
 #if (NGX_HAVE_O_DIRECT)
 
-ngx_int_t ngx_directio(ngx_fd_t fd);
-#define ngx_directio_n           "fcntl(O_DIRECT)"
+ngx_int_t ngx_directio_on(ngx_fd_t fd);
+#define ngx_directio_on_n        "fcntl(O_DIRECT)"
+
+ngx_int_t ngx_directio_off(ngx_fd_t fd);
+#define ngx_directio_off_n       "fcntl(!O_DIRECT)"
 
 #elif (NGX_HAVE_F_NOCACHE)
 
-#define ngx_directio(fd)         fcntl(fd, F_NOCACHE, 1)
-#define ngx_directio_n           "fcntl(F_NOCACHE)"
+#define ngx_directio_on(fd)      fcntl(fd, F_NOCACHE, 1)
+#define ngx_directio_on_n        "fcntl(F_NOCACHE, 1)"
 
 #elif (NGX_HAVE_DIRECTIO)
 
-#define ngx_directio(fd)         directio(fd, DIRECTIO_ON)
-#define ngx_directio_n           "directio(DIRECTIO_ON)"
+#define ngx_directio_on(fd)      directio(fd, DIRECTIO_ON)
+#define ngx_directio_on_n        "directio(DIRECTIO_ON)"
 
 #else
 
-#define ngx_directio(fd)         0
-#define ngx_directio_n           "ngx_directio_n"
+#define ngx_directio_on(fd)      0
+#define ngx_directio_on_n        "ngx_directio_on_n"
 
 #endif
 

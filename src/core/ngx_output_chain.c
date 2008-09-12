@@ -355,6 +355,10 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
      * to reuse the buf via ctx->free list
      */
 
+#if (NGX_HAVE_ALIGNED_DIRECTIO)
+    ctx->unaligned = 1;
+#endif
+
     return NGX_OK;
 }
 
@@ -491,7 +495,40 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
         }
 
     } else {
+
+#if (NGX_HAVE_ALIGNED_DIRECTIO)
+
+        if (ctx->unaligned) {
+            if (ngx_directio_off(src->file->fd) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, ngx_errno,
+                              ngx_directio_off_n " \"%s\" failed",
+                              src->file->name.data);
+            }
+        }
+
+#endif
+
         n = ngx_read_file(src->file, dst->pos, (size_t) size, src->file_pos);
+
+#if (NGX_HAVE_ALIGNED_DIRECTIO)
+
+        if (ctx->unaligned) {
+            ngx_err_t  err;
+
+            err = ngx_errno;
+
+            if (ngx_directio_on(src->file->fd) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, ngx_errno,
+                              ngx_directio_on_n " \"%s\" failed",
+                              src->file->name.data);
+            }
+
+            ngx_set_errno(err);
+
+            ctx->unaligned = 0;
+        }
+
+#endif
 
         if (n == NGX_ERROR) {
             return (ngx_int_t) n;

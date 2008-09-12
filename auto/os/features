@@ -182,6 +182,10 @@ ngx_feature_test="fcntl(0, F_SETFL, O_DIRECT);"
 . auto/feature
 
 
+if [ $ngx_found = yes -a "$NGX_SYSTEM" = "Linux" ]; then
+    have=NGX_HAVE_ALIGNED_DIRECTIO . auto/have
+fi
+
 ngx_feature="F_NOCACHE"
 ngx_feature_name="NGX_HAVE_F_NOCACHE"
 ngx_feature_run=no
