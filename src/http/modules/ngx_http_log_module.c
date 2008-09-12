@@ -430,6 +430,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     of.log = 1;
     of.valid = llcf->open_file_cache_valid;
     of.min_uses = llcf->open_file_cache_min_uses;
+    of.directio = NGX_MAX_OFF_T_VALUE;
 
     if (ngx_open_cached_file(llcf->open_file_cache, &log, &of, r->pool)
         != NGX_OK)
