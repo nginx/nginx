@@ -63,6 +63,7 @@ struct ngx_cached_open_file_s {
     unsigned                 is_file:1;
     unsigned                 is_link:1;
     unsigned                 is_exec:1;
+    unsigned                 is_directio:1;
 
     ngx_event_t             *event;
 };
