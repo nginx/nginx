@@ -9,6 +9,62 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.17" date="15.09.2008">
+
+<change type="feature">
+<para lang="ru">
+директива directio теперь работает на Linux.
+</para>
+<para lang="en">
+now the "directio" directive works on Linux.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $pid.
+</para>
+<para lang="en">
+the $pid variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+оптимизация directio, появившаяся в 0.7.15, не работала при использовании
+open_file_cache.
+</para>
+<para lang="en">
+the "directio" optimization that had appeared in 0.7.15 did not work with
+open_file_cache.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+access_log с переменными не работал на Linux;
+ошибка появилась в 0.7.7.
+</para>
+<para lang="en">
+the "access_log" with variables did not work on Linux;
+the bug had appeared in 0.7.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_charset_module не понимал название кодировки в кавычках,
+полученное от бэкенда.
+</para>
+<para lang="en">
+the ngx_http_charset_module did not understand quoted charset name
+received from backend.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.16" date="08.09.2008">
 
 <change type="bugfix">
