@@ -593,7 +593,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     if (c == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "%ui worker_connections is not enough",
+                      "%ui worker_connections are not enough",
                       ngx_cycle->connection_n);
 
         /* ngx_mutex_unlock */
