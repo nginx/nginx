@@ -82,7 +82,7 @@ ngx_event_accept(ngx_event_t *ev)
         ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
-        ngx_accept_disabled = NGX_ACCEPT_THRESHOLD
+        ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
 
         c = ngx_get_connection(s, ev->log);
