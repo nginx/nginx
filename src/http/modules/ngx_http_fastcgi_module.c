@@ -1031,7 +1031,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
             part_start = u->buffer.pos;
 
-            rc = ngx_http_parse_header_line(r, &u->buffer);
+            rc = ngx_http_parse_header_line(r, &u->buffer, 1);
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http fastcgi parser: %d", rc);
@@ -1076,7 +1076,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                     f->split_parts->nelts = 0;
 
-                    rc = ngx_http_parse_header_line(r, &buf);
+                    rc = ngx_http_parse_header_line(r, &buf, 1);
 
                     h->key.len = r->header_name_end - r->header_name_start;
                     h->key.data = r->header_name_start;

@@ -1214,7 +1214,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
     for ( ;; ) {
 
-        rc = ngx_http_parse_header_line(r, &r->upstream->buffer);
+        rc = ngx_http_parse_header_line(r, &r->upstream->buffer, 1);
 
         if (rc == NGX_OK) {
 

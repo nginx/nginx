@@ -700,7 +700,8 @@ done:
 
 
 ngx_int_t
-ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
+ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
+    ngx_uint_t allow_underscores)
 {
     u_char      c, ch, *p;
     ngx_uint_t  hash, i;
@@ -720,7 +721,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
     static u_char  lowcase[] =
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0" "0123456789\0\0\0\0\0\0"
-        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0_"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
         "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -776,6 +777,19 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b)
                 hash = ngx_hash(hash, c);
                 r->lowcase_header[i++] = c;
                 i &= (NGX_HTTP_LC_HEADER_LEN - 1);
+                break;
+            }
+
+            if (ch == '_') {
+                if (allow_underscores) {
+                    hash = ngx_hash(hash, ch);
+                    r->lowcase_header[i++] = ch;
+                    i &= (NGX_HTTP_LC_HEADER_LEN - 1);
+
+                } else {
+                    r->invalid_header = 1;
+                }
+
                 break;
             }
 

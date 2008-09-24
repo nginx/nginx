@@ -155,6 +155,7 @@ typedef struct {
 
     ngx_flag_t                  ignore_invalid_headers;
     ngx_flag_t                  merge_slashes;
+    ngx_flag_t                  underscores_in_headers;
 
     ngx_http_core_loc_conf_t  **named_locations;
 } ngx_http_core_srv_conf_t;

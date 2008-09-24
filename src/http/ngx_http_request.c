@@ -902,7 +902,8 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             }
         }
 
-        rc = ngx_http_parse_header_line(r, r->header_in);
+        rc = ngx_http_parse_header_line(r, r->header_in,
+                                        cscf->underscores_in_headers);
 
         if (rc == NGX_OK) {
 
