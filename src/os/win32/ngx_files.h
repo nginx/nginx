@@ -156,6 +156,8 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_filename_cmp(s1, s2, n) _strnicmp((char *) s1, (char *) s2, n)
 
 
+char *ngx_realpath(u_char *path, u_char *resolved);
+#define ngx_realpath_n              ""
 #define ngx_getcwd(buf, size)       GetCurrentDirectory(size, buf)
 #define ngx_getcwd_n                "GetCurrentDirectory()"
 #define NGX_MAX_PATH                MAX_PATH

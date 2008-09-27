@@ -46,6 +46,8 @@ static ngx_int_t ngx_http_variable_is_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_document_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_realpath_root(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_filename(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_name(ngx_http_request_t *r,
@@ -161,6 +163,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("document_root"), NULL,
       ngx_http_variable_document_root, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("realpath_root"), NULL,
+      ngx_http_variable_realpath_root, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("query_string"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
@@ -994,6 +999,61 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
         v->not_found = 0;
         v->data = path.data;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_realpath_root(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    size_t                     len;
+    ngx_str_t                  path;
+    ngx_http_core_loc_conf_t  *clcf;
+    u_char                     real[NGX_MAX_PATH];
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->root_lengths == NULL) {
+        path = clcf->root;
+
+    } else {
+        if (ngx_http_script_run(r, &path, clcf->root_lengths->elts, 1,
+                                clcf->root_values->elts)
+            == NULL)
+        {
+            return NGX_ERROR;
+        }
+
+        path.data[path.len - 1] = '\0';
+
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path, 0)
+            == NGX_ERROR)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_realpath(path.data, real) == NULL) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      ngx_realpath_n " \"%s\" failed", path.data);
+        return NGX_ERROR;
+    }
+
+    len = ngx_strlen(real);
+
+    v->data = ngx_pnalloc(r->pool, len);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    ngx_memcpy(v->data, real, len);
 
     return NGX_OK;
 }

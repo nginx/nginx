@@ -318,6 +318,14 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
 }
 
 
+char *
+ngx_realpath(u_char *path, u_char *resolved)
+{
+    /* STUB */
+    return (char *) path;
+}
+
+
 ngx_int_t
 ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
