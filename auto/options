@@ -77,6 +77,7 @@ HTTP_MEMCACHED=YES
 HTTP_LIMIT_ZONE=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
+HTTP_SECURE_LINK=NO
 HTTP_FLV=NO
 HTTP_GZIP_STATIC=NO
 HTTP_UPSTREAM_IP_HASH=YES
@@ -173,6 +174,7 @@ do
         --with-http_flv_module)          HTTP_FLV=YES               ;;
         --with-http_gzip_static_module)  HTTP_GZIP_STATIC=YES       ;;
         --with-http_random_index_module) HTTP_RANDOM_INDEX=YES      ;;
+        --with-http_secure_link_module)  HTTP_SECURE_LINK=YES       ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
@@ -290,6 +292,7 @@ cat << END
   --with-http_flv_module             enable ngx_http_flv_module
   --with-http_gzip_static_module     enable ngx_http_gzip_static_module
   --with-http_random_index_module    enable ngx_http_random_index_module
+  --with-http_secure_link_module     enable ngx_http_secure_link_module
   --with-http_stub_status_module     enable ngx_http_stub_status_module
 
   --without-http_charset_module      disable ngx_http_charset_module
