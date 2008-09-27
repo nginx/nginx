@@ -47,6 +47,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_post_action(ngx_http_request_t *r);
 static void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
 static void ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error);
+static void ngx_http_log_request(ngx_http_request_t *r);
 static void ngx_http_close_connection(ngx_connection_t *c);
 
 static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -1774,6 +1775,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     if (r != r->main) {
 
         pr = r->parent;
@@ -1807,6 +1810,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                                "http fast subrequest: \"%V?%V\" done",
                                &r->uri, &r->args);
+
+                if (clcf->log_subrequest) {
+                    ngx_http_log_request(r);
+                }
+
                 return;
             }
 
@@ -1817,6 +1825,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
                 pr->write_event_handler(pr);
             }
+        }
+
+        if (clcf->log_subrequest) {
+            ngx_http_log_request(r);
         }
 
         return;
@@ -1856,8 +1868,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_http_close_request(r, 0);
         return;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!ngx_terminate
          && !ngx_exiting
@@ -2604,14 +2614,11 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error)
 static void
 ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 {
-    ngx_log_t                  *log;
-    ngx_uint_t                  i, n;
-    struct linger               linger;
-    ngx_http_cleanup_t         *cln;
-    ngx_http_log_ctx_t         *ctx;
-    ngx_http_handler_pt        *log_handler;
-    ngx_http_core_loc_conf_t   *clcf;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_log_t                 *log;
+    struct linger              linger;
+    ngx_http_cleanup_t        *cln;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_core_loc_conf_t  *clcf;
 
     log = r->connection->log;
 
@@ -2646,13 +2653,7 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 
     log->action = "logging request";
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    log_handler = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.elts;
-    n = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.nelts;
-    for (i = 0; i < n; i++) {
-        log_handler[i](r);
-    }
+    ngx_http_log_request(r);
 
     log->action = "closing request";
 
@@ -2681,6 +2682,24 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
     r->connection->destroyed = 1;
 
     ngx_destroy_pool(r->pool);
+}
+
+
+static void
+ngx_http_log_request(ngx_http_request_t *r)
+{
+    ngx_uint_t                  i, n;
+    ngx_http_handler_pt        *log_handler;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    log_handler = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.elts;
+    n = cmcf->phases[NGX_HTTP_LOG_PHASE].handlers.nelts;
+
+    for (i = 0; i < n; i++) {
+        log_handler[i](r);
+    }
 }
 
 
