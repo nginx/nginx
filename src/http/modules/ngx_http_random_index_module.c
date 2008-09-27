@@ -19,10 +19,11 @@ typedef struct {
 
 static ngx_int_t ngx_http_random_index_error(ngx_http_request_t *r,
     ngx_dir_t *dir, ngx_str_t *name);
-static ngx_int_t ngx_http_random_index_init(ngx_conf_t *cf);
 static void *ngx_http_random_index_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_random_index_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
+static ngx_int_t ngx_http_random_index_add_variable(ngx_conf_t *cf);
+static ngx_int_t ngx_http_random_index_init(ngx_conf_t *cf);
 
 
 static ngx_command_t  ngx_http_random_index_commands[] = {
@@ -39,7 +40,7 @@ static ngx_command_t  ngx_http_random_index_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_random_index_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_random_index_add_variable,    /* preconfiguration */
     ngx_http_random_index_init,            /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -69,6 +70,10 @@ ngx_module_t  ngx_http_random_index_module = {
 };
 
 
+static ngx_str_t  ngx_http_random_index = ngx_string("random_index");
+static ngx_int_t  ngx_random_index_variable_index;
+
+
 static ngx_int_t
 ngx_http_random_index_handler(ngx_http_request_t *r)
 {
@@ -80,6 +85,7 @@ ngx_http_random_index_handler(ngx_http_request_t *r)
     ngx_dir_t                          dir;
     ngx_uint_t                         n, level;
     ngx_array_t                        names;
+    ngx_http_variable_value_t         *v;
     ngx_http_random_index_loc_conf_t  *rlcf;
 
     if (r->uri.data[r->uri.len - 1] != '/') {
@@ -257,6 +263,14 @@ ngx_http_random_index_handler(ngx_http_request_t *r)
     last = ngx_copy(uri.data, r->uri.data, r->uri.len);
     ngx_memcpy(last, name[n].data, name[n].len);
 
+    v = &r->variables[ngx_random_index_variable_index];
+
+    v->len = name[n].len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = name[n].data;
+
     return ngx_http_internal_redirect(r, &uri, &r->args);
 }
 
@@ -271,6 +285,22 @@ ngx_http_random_index_error(ngx_http_request_t *r, ngx_dir_t *dir,
     }
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_random_index_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    /*
+     * the "random_index" directive stores index file name directly inside
+     * r->variables[] because request context is not preserved while
+     * an internal redirection
+     */
+
+    v->not_found = 1;
+
+    return NGX_OK;
 }
 
 
@@ -299,6 +329,31 @@ ngx_http_random_index_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_random_index_add_variable(ngx_conf_t *cf)
+{
+    ngx_int_t             index;
+    ngx_http_variable_t  *var;
+
+    var = ngx_http_add_variable(cf, &ngx_http_random_index,
+                                NGX_HTTP_VAR_NOHASH);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+
+    index = ngx_http_get_variable_index(cf, &ngx_http_random_index);
+    if (index == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    ngx_random_index_variable_index = index;
+
+    var->get_handler = ngx_http_random_index_variable;
+
+    return NGX_OK;
 }
 
 
