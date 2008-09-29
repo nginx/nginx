@@ -3291,6 +3291,17 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_strstr(value[1].data, "$realpath_root")
+        || ngx_strstr(value[1].data, "${realpath_root}"))
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the $realpath_root variable may not be used "
+                           "in the \"%V\" directive",
+                           &cmd->name);
+
+        return NGX_CONF_ERROR;
+    }
+
     lcf->alias = alias;
     lcf->root = value[1];
 
