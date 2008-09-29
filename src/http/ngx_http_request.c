@@ -1825,6 +1825,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
                 pr->write_event_handler(pr);
             }
+
+            return;
         }
 
         if (clcf->log_subrequest) {
