@@ -1823,6 +1823,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                                "http wake parent request: \"%V?%V\"",
                                &pr->uri, &pr->args);
 
+                if (clcf->log_subrequest) {
+                    ngx_http_log_request(r);
+                }
+
                 pr->write_event_handler(pr);
             }
 
