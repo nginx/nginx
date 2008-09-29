@@ -1760,6 +1760,17 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r != r->main && !r->logged) {
+
+        if (clcf->log_subrequest) {
+            ngx_http_log_request(r);
+        }
+
+        r->logged = 1;
+    }
+
     if (r != r->main || rc == NGX_AGAIN) {
         if (ngx_http_set_write_handler(r) != NGX_OK) {
             return;
@@ -1774,8 +1785,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                        &r->uri, &r->args);
         return;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r != r->main) {
 
@@ -1810,11 +1819,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                                "http fast subrequest: \"%V?%V\" done",
                                &r->uri, &r->args);
-
-                if (clcf->log_subrequest) {
-                    ngx_http_log_request(r);
-                }
-
                 return;
             }
 
@@ -1823,18 +1827,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                                "http wake parent request: \"%V?%V\"",
                                &pr->uri, &pr->args);
 
-                if (clcf->log_subrequest) {
-                    ngx_http_log_request(r);
-                }
-
                 pr->write_event_handler(pr);
             }
-
-            return;
-        }
-
-        if (clcf->log_subrequest) {
-            ngx_http_log_request(r);
         }
 
         return;
