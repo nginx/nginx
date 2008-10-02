@@ -654,7 +654,13 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http range body skip");
 
+            if (buf->in_file) {
+                buf->file_pos = buf->file_last;
+            }
+
             buf->pos = buf->last;
+            buf->sync = 1;
+
             continue;
         }
 
