@@ -9,6 +9,97 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.18" date="13.10.2008">
+
+<change type="change">
+<para lang="ru">
+директива underscores_in_headers;
+теперь nginx по умолчанию не разрешает подчёркивания в именах строк
+в заголовке запроса клиента.
+</para>
+<para lang="en">
+the "underscores_in_headers" directive;
+now nginx does not allows underscores in a client request header line names.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_secure_link_module.
+</para>
+<para lang="en">
+the ngx_http_secure_link_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива real_ip_header поддерживает любой заголовок.
+</para>
+<para lang="en">
+the "real_ip_header" directive supports any header.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива log_subrequest.
+</para>
+<para lang="en">
+the "log_subrequest" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $realpath_root.
+</para>
+<para lang="en">
+the $realpath_root variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры http_502 и http_504 в директиве proxy_next_upstream.
+</para>
+<para lang="en">
+the "http_502" and "http_504" parameters of the "proxy_next_upstream" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр http_503 в директивах proxy_next_upstream или fastcgi_next_upstream
+не работал.
+</para>
+<para lang="en">
+the "http_503" parameter of the "proxy_next_upstream" or
+"fastcgi_next_upstream" directives did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
+</para>
+<para lang="en">
+nginx might send a "Transfer-Encoding: chunked" heaer line for HEAD requests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь accept-лимит зависит от числа worker_connections.
+</para>
+<para lang="en">
+now accept threshold depends on worker_connections.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.17" date="15.09.2008">
 
 <change type="feature">
