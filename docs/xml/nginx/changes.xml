@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.19" date="13.10.2008">
+
+<change type="bugfix">
+<para lang="ru">
+обновление номера версии.
+</para>
+<para lang="en">
+version number update.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.18" date="13.10.2008">
 
 <change type="change">
