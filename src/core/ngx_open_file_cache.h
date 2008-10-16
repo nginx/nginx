@@ -12,6 +12,9 @@
 #define _NGX_OPEN_FILE_CACHE_H_INCLUDED_
 
 
+#define NGX_OPEN_FILE_DIRECTIO_OFF  NGX_MAX_OFF_T_VALUE
+
+
 typedef struct {
     ngx_fd_t                 fd;
     ngx_file_uniq_t          uniq;

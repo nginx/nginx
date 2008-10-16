@@ -3470,7 +3470,7 @@ ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "off") == 0) {
-        clcf->directio = NGX_MAX_OFF_T_VALUE;
+        clcf->directio = NGX_OPEN_FILE_DIRECTIO_OFF;
         return NGX_CONF_OK;
     }
 
