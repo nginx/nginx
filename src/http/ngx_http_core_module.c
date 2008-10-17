@@ -1631,6 +1631,10 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
         }
 
         r->in_addr = sin.sin_addr.s_addr;
+
+    } else {
+        sin.sin_family = c->sockaddr->sa_family;
+        sin.sin_addr.s_addr = r->in_addr;
     }
 
     if (s == NULL) {
