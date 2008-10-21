@@ -113,7 +113,7 @@ url_start:
 
     len = last - p;
 
-    if (end - start != 32 || len < 3) {
+    if (end - start != 32 || len == 0) {
         goto not_found;
     }
 
