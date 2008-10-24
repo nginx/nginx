@@ -264,7 +264,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
     port = ngx_strlchr(host, last, ':');
 
-    uri = ngx_strlchr(port ? port : host, last, '/');
+    uri = ngx_strlchr(host, last, '/');
 
     if (uri) {
         if (u->listen || !u->uri_part) {
@@ -276,6 +276,10 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         u->uri.data = uri;
 
         last = uri;
+
+        if (uri < port) {
+            port = NULL;
+        } 
     }
 
     if (port) {
