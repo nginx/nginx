@@ -251,7 +251,7 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 static ngx_int_t
 ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 {
-    u_char          *p, *host, *port, *last, *uri;
+    u_char          *p, *host, *port, *last, *uri, *args;
     size_t           len;
     ngx_int_t        n;
     struct hostent  *h;
@@ -265,6 +265,17 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
     port = ngx_strlchr(host, last, ':');
 
     uri = ngx_strlchr(host, last, '/');
+
+    args = ngx_strlchr(host, last, '?');
+
+    if (args) {
+        if (uri == NULL) {
+            uri = args;
+
+        } else if (args < uri) {
+            uri = args;
+        }
+    }
 
     if (uri) {
         if (u->listen || !u->uri_part) {

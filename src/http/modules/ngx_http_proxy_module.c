@@ -536,10 +536,11 @@ static ngx_int_t
 ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     ngx_http_proxy_loc_conf_t *plcf)
 {
-    size_t     add;
-    u_short    port;
-    ngx_str_t  proxy;
-    ngx_url_t  u;
+    u_char     *p;
+    size_t      add;
+    u_short     port;
+    ngx_str_t   proxy;
+    ngx_url_t   u;
 
     if (ngx_http_script_run(r, &proxy, plcf->proxy_lengths->elts, 0,
                             plcf->proxy_values->elts)
@@ -587,6 +588,19 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
         }
 
         return NGX_ERROR;
+    }
+
+    if (u.uri.len && u.uri.data[0] == '?') {
+        p = ngx_pnalloc(r->pool, u.uri.len + 1);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        *p++ = '/';
+        ngx_memcpy(p, u.uri.data, u.uri.len);
+
+        u.uri.len++;
+        u.uri.data = p - 1;
     }
 
     if (ngx_http_proxy_set_vars(r->pool, &u, &ctx->vars) != NGX_OK) {
