@@ -956,8 +956,11 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
 {
     char                  *err;
     size_t                 len;
-    ngx_uint_t             i, ident, flags, code, nqs, nan, qtype, qclass;
+    ngx_uint_t             i, times, ident, qident, flags, code, nqs, nan,
+                           qtype, qclass;
+    ngx_queue_t           *q;
     ngx_resolver_qs_t     *qs;
+    ngx_resolver_node_t   *rn;
     ngx_resolver_query_t  *query;
 
     if ((size_t) n < sizeof(ngx_resolver_query_t)) {
@@ -985,11 +988,31 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
 
     code = flags & 0x7f;
 
-    if (code == NGX_RESOLVE_FORMERR || code > NGX_RESOLVE_REFUSED) {
-        ngx_log_error(r->log_level, r->log, 0,
-                      "DNS error (%ui: %s), query id:%ui",
-                      code, ngx_resolver_strerror(code), ident);
-        return;
+    if (code == NGX_RESOLVE_FORMERR) {
+
+        times = 0;
+
+        for (q = ngx_queue_head(&r->name_resend_queue);
+             q != ngx_queue_sentinel(&r->name_resend_queue) || times++ < 100;
+             q = ngx_queue_next(q))
+        {
+            rn = ngx_queue_data(q, ngx_resolver_node_t, queue);
+            qident = (rn->query[0] << 8) + rn->query[1];
+
+            if (qident == ident) {
+                ngx_log_error(r->log_level, r->log, 0,
+                              "DNS error (%ui: %s), query id:%ui, name:\"%*s\"",
+                              code, ngx_resolver_strerror(code), ident,
+                              rn->nlen, rn->name);
+                return;
+            }
+        }
+
+        goto dns_error;
+    }
+
+    if (code > NGX_RESOLVE_REFUSED) {
+        goto dns_error;
     }
 
     if (nqs != 1) {
@@ -1068,6 +1091,13 @@ done:
 
     ngx_log_error(r->log_level, r->log, 0, err);
 
+    return;
+
+dns_error:
+
+    ngx_log_error(r->log_level, r->log, 0,
+                  "DNS error (%ui: %s), query id:%ui",
+                  code, ngx_resolver_strerror(code), ident);
     return;
 }
 
