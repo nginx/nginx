@@ -960,7 +960,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
     ngx_resolver_qs_t     *qs;
     ngx_resolver_query_t  *query;
 
-    if ((size_t) n < sizeof(ngx_resolver_query_t) + 1) {
+    if ((size_t) n < sizeof(ngx_resolver_query_t)) {
         goto short_response;
     }
 
