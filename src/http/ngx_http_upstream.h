@@ -209,7 +209,7 @@ typedef struct {
 typedef struct {
     ngx_str_t                       host;
     in_port_t                       port;
-    ngx_uint_t                      default_port; /* unsigned  default_port:1 */
+    ngx_uint_t                      no_port; /* unsigned  no_port:1 */
     ngx_uint_t                      naddrs;
     in_addr_t                      *addrs;
     ngx_resolver_ctx_t             *ctx;
