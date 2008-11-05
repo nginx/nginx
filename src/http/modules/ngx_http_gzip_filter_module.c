@@ -47,6 +47,7 @@ typedef struct {
     unsigned             flush:4;
     unsigned             redo:1;
     unsigned             done:1;
+    unsigned             nomem:1;
 
     size_t               zin;
     size_t               zout;
@@ -262,7 +263,6 @@ static ngx_int_t
 ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                    rc, wbits, memlevel;
-    ngx_int_t              last;
     struct gztrailer      *trailer;
     ngx_buf_t             *b;
     ngx_chain_t           *cl, out;
@@ -366,7 +366,21 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-    last = NGX_NONE;
+    if (ctx->nomem) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "gzip nomem");
+
+        if (ngx_http_next_body_filter(r, NULL) == NGX_ERROR) {
+            ngx_http_gzip_error(ctx);
+            return NGX_ERROR;
+        }
+
+        cl = NULL;
+
+        ngx_chain_update_chains(&ctx->free, &ctx->busy, &cl,
+                                (ngx_buf_tag_t) &ngx_http_gzip_filter_module);
+        ctx->nomem = 0;
+    }
 
     for ( ;; ) {
 
@@ -446,6 +460,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     ctx->bufs++;
 
                 } else {
+                    ctx->nomem = 1;
                     break;
                 }
 
@@ -631,24 +646,12 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         if (ctx->out == NULL) {
-
-            if (last == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (ctx->busy == NULL) {
-                return NGX_OK;
-            }
+            return NGX_AGAIN;
         }
 
-        last = ngx_http_next_body_filter(r, ctx->out);
+        rc = ngx_http_next_body_filter(r, ctx->out);
 
-        /*
-         * we do not check NGX_AGAIN here because the downstream filters
-         * may free some buffers and zlib may compress some data into them
-         */
-
-        if (last == NGX_ERROR) {
+        if (rc == NGX_ERROR) {
             ngx_http_gzip_error(ctx);
             return NGX_ERROR;
         }
@@ -657,8 +660,10 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                 (ngx_buf_tag_t) &ngx_http_gzip_filter_module);
         ctx->last_out = &ctx->out;
 
+        ctx->nomem = 0;
+
         if (ctx->done) {
-            return last;
+            return rc;
         }
     }
 }
