@@ -265,7 +265,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     int                    rc, wbits, memlevel;
     struct gztrailer      *trailer;
     ngx_buf_t             *b;
-    ngx_chain_t           *cl, out;
+    ngx_chain_t           *cl;
     ngx_http_gzip_ctx_t   *ctx;
     ngx_http_gzip_conf_t  *conf;
 
@@ -336,24 +336,18 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         b->pos = gzheader;
         b->last = b->pos + 10;
 
-        out.buf = b;
-        out.next = NULL;
-
-        /*
-         * We pass the gzheader to the next filter now to avoid its linking
-         * to the ctx->busy chain.  zlib does not usually output the compressed
-         * data in the initial iterations, so the gzheader that was linked
-         * to the ctx->busy chain would be flushed by ngx_http_write_filter().
-         */
-
-        if (ngx_http_next_body_filter(r, &out) == NGX_ERROR) {
+        cl = ngx_alloc_chain_link(r->pool);
+        if (cl == NULL) {
             ngx_http_gzip_error(ctx);
             return NGX_ERROR;
         }
 
-        r->connection->buffered |= NGX_HTTP_GZIP_BUFFERED;
+        cl->buf = b;
+        cl->next = NULL;
+        ctx->out = cl;
+        ctx->last_out = &cl->next;
 
-        ctx->last_out = &ctx->out;
+        r->connection->buffered |= NGX_HTTP_GZIP_BUFFERED;
 
         ctx->crc32 = crc32(0L, Z_NULL, 0);
         ctx->flush = Z_NO_FLUSH;
