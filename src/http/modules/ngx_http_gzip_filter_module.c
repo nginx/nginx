@@ -356,7 +356,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         if (ctx->out == NULL) {
-            return NGX_AGAIN;
+            return ctx->busy ? NGX_AGAIN : NGX_OK;
         }
 
         if (!ctx->gzheader) {
