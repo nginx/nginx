@@ -171,6 +171,7 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     new->d.next = NULL;
 
     m += sizeof(ngx_pool_data_t);
+    m = ngx_align_ptr(m, NGX_ALIGNMENT);
     new->d.last = m + size;
 
     current = pool->current;
