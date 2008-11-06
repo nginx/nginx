@@ -870,9 +870,9 @@ ngx_http_gzip_filter_init(ngx_conf_t *cf)
 static char *
 ngx_http_gzip_window(ngx_conf_t *cf, void *post, void *data)
 {
-    int *np = data;
+    size_t *np = data;
 
-    int  wbits, wsize;
+    size_t  wbits, wsize;
 
     wbits = 15;
 
@@ -894,9 +894,9 @@ ngx_http_gzip_window(ngx_conf_t *cf, void *post, void *data)
 static char *
 ngx_http_gzip_hash(ngx_conf_t *cf, void *post, void *data)
 {
-    int *np = data;
+    size_t *np = data;
 
-    int  memlevel, hsize;
+    size_t  memlevel, hsize;
 
     memlevel = 9;
 
