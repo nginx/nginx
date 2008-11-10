@@ -417,6 +417,10 @@ HTTP_LIMIT_ZONE_MODULE=ngx_http_limit_zone_module
 HTTP_LIMIT_ZONE_SRCS=src/http/modules/ngx_http_limit_zone_module.c
 
 
+HTTP_LIMIT_REQ_MODULE=ngx_http_limit_req_module
+HTTP_LIMIT_REQ_SRCS=src/http/modules/ngx_http_limit_req_module.c
+
+
 HTTP_EMPTY_GIF_MODULE=ngx_http_empty_gif_module
 HTTP_EMPTY_GIF_SRCS=src/http/modules/ngx_http_empty_gif_module.c
 

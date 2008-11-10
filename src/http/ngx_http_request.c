@@ -39,7 +39,6 @@ static void ngx_http_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_set_write_handler(ngx_http_request_t *r);
 static void ngx_http_writer(ngx_http_request_t *r);
 
-static void ngx_http_test_reading(ngx_http_request_t *r);
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_set_lingering_close(ngx_http_request_t *r);
@@ -2024,7 +2023,7 @@ ngx_http_block_reading(ngx_http_request_t *r)
 }
 
 
-static void
+void
 ngx_http_test_reading(ngx_http_request_t *r)
 {
     int                n;

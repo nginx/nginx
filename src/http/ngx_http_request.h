@@ -438,10 +438,12 @@ struct ngx_http_request_s {
     unsigned                          no_cache:1;
 
     /*
-     * instead of using the request context data in ngx_http_limit_zone_module
-     * we use the single bit in the request structure
+     * instead of using the request context data in
+     * ngx_http_limit_zone_module and ngx_http_limit_req_module 
+     * we use the single bits in the request structure
      */
     unsigned                          limit_zone_set:1;
+    unsigned                          limit_req_set:1;
 
 #if 0
     unsigned                          cacheable:1;

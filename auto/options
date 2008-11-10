@@ -75,6 +75,7 @@ HTTP_FASTCGI=YES
 HTTP_PERL=NO
 HTTP_MEMCACHED=YES
 HTTP_LIMIT_ZONE=YES
+HTTP_LIMIT_REQ=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
 HTTP_SECURE_LINK=NO
@@ -192,6 +193,7 @@ do
         --without-http_fastcgi_module)   HTTP_FASTCGI=NO            ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_limit_zone_module) HTTP_LIMIT_ZONE=NO        ;;
+        --without-http_limit_req_module) HTTP_LIMIT_REQ=NO         ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
         --without-http_browser_module)   HTTP_BROWSER=NO            ;;
         --without-http_upstream_ip_hash_module) HTTP_UPSTREAM_IP_HASH=NO ;;
@@ -310,6 +312,7 @@ cat << END
   --without-http_fastcgi_module      disable ngx_http_fastcgi_module
   --without-http_memcached_module    disable ngx_http_memcached_module
   --without-http_limit_zone_module   disable ngx_http_limit_zone_module
+  --without-http_limit_req_module    disable ngx_http_limit_req_module
   --without-http_empty_gif_module    disable ngx_http_empty_gif_module
   --without-http_browser_module      disable ngx_http_browser_module
   --without-http_upstream_ip_hash_module
