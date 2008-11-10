@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.20" date="10.11.2008">
+
+<change>
+<para lang="ru">
+Изменения в модуле ngx_http_gzip_filter_module.
+</para>
+<para lang="en">
+Changes in the ngx_http_gzip_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_limit_req_module
+</para>
+<para lang="en">
+the ngx_http_limit_req_module. 
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на платформах sparc и ppc рабочие процессы могли выходить по сигналу SIGBUS;
+ошибка появилась в 0.7.3.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+worker processes might exit on a SIGBUS signal on sparc and ppc platforms;
+the bug had appeared in 0.7.3.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы вида "proxy_pass http://host/some:uri" не работали;
+ошибка появилась в 0.7.12.
+</para>
+<para lang="en">
+the "proxy_pass http://host/some:uri" directives did not work;
+the bug had appeared in 0.7.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry".
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_secure_link_module не работал внутри location'ов
+с именами меньше 3 символов.
+</para>
+<para lang="en">
+the ngx_http_secure_link_module did not work inside locations,
+whose names are less than 3 characters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $server_addr могла не иметь значения.
+</para>
+<para lang="en">
+$server_addr variable might have no value.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.19" date="13.10.2008">
 
 <change type="bugfix">
