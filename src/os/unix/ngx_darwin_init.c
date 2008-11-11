@@ -64,31 +64,43 @@ ngx_os_specific_init(ngx_log_t *log)
     ngx_uint_t  i;
 
     size = sizeof(ngx_darwin_kern_ostype);
-    if (sysctlbyname("kern.ostype",
-                     ngx_darwin_kern_ostype, &size, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "sysctlbyname(kern.ostype) failed");
+    if (sysctlbyname("kern.ostype", ngx_darwin_kern_ostype, &size, NULL, 0)
+        == -1)
+    {
+        err = ngx_errno;
 
-        if (ngx_errno != NGX_ENOMEM) {
-            return NGX_ERROR;
+        if (err != NGX_ENOENT) {
+
+            ngx_log_error(NGX_LOG_ALERT, log, err,
+                          "sysctlbyname(kern.ostype) failed");
+
+            if (err != NGX_ENOMEM) {
+                return NGX_ERROR;
+            }
+
+            ngx_darwin_kern_ostype[size - 1] = '\0';
         }
-
-        ngx_darwin_kern_ostype[size - 1] = '\0';
     }
 
     size = sizeof(ngx_darwin_kern_osrelease);
-    if (sysctlbyname("kern.osrelease",
-                     ngx_darwin_kern_osrelease, &size, NULL, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      "sysctlbyname(kern.osrelease) failed");
+    if (sysctlbyname("kern.osrelease", ngx_darwin_kern_osrelease, &size,
+                     NULL, 0)
+        == -1)
+    {
+        err = ngx_errno;
 
-        if (ngx_errno != NGX_ENOMEM) {
-            return NGX_ERROR;
+        if (err != NGX_ENOENT) {
+
+            ngx_log_error(NGX_LOG_ALERT, log, err,
+                          "sysctlbyname(kern.osrelease) failed");
+
+            if (err != NGX_ENOMEM) {
+                return NGX_ERROR;
+            }
+
+            ngx_darwin_kern_osrelease[size - 1] = '\0';
         }
-
-        ngx_darwin_kern_osrelease[size - 1] = '\0';
     }
-
 
     for (i = 0; sysctls[i].name; i++) {
         size = sysctls[i].size;
@@ -136,8 +148,10 @@ ngx_os_specific_status(ngx_log_t *log)
     u_long      value;
     ngx_uint_t  i;
 
-    ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
-                  ngx_darwin_kern_ostype, ngx_darwin_kern_osrelease);
+    if (ngx_darwin_kern_ostype[0]) {
+        ngx_log_error(NGX_LOG_NOTICE, log, 0, "OS: %s %s",
+                      ngx_darwin_kern_ostype, ngx_darwin_kern_osrelease);
+    }
 
     for (i = 0; sysctls[i].name; i++) {
         if (sysctls[i].exists) {
