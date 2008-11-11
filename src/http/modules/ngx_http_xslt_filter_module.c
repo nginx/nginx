@@ -15,6 +15,10 @@
 #include <libxslt/transform.h>
 #include <libxslt/xsltutils.h>
 
+#if (NGX_HAVE_EXSLT)
+#include <libexslt/exslt.h>
+#endif
+
 
 #ifndef NGX_HTTP_XSLT_REUSE_DTD
 #define NGX_HTTP_XSLT_REUSE_DTD  1
@@ -1268,6 +1272,10 @@ static ngx_int_t
 ngx_http_xslt_filter_init(ngx_conf_t *cf)
 {
     xmlInitParser();
+
+#if (NGX_HAVE_EXSLT)
+    exsltRegisterAll();
+#endif
 
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_xslt_header_filter;
