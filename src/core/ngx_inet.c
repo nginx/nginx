@@ -290,7 +290,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
         if (uri < port) {
             port = NULL;
-        } 
+        }
     }
 
     if (port) {

@@ -439,7 +439,7 @@ struct ngx_http_request_s {
 
     /*
      * instead of using the request context data in
-     * ngx_http_limit_zone_module and ngx_http_limit_req_module 
+     * ngx_http_limit_zone_module and ngx_http_limit_req_module
      * we use the single bits in the request structure
      */
     unsigned                          limit_zone_set:1;
