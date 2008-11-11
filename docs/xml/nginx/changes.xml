@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.21" date="11.11.2008">
+
+<change>
+<para lang="ru">
+Изменения в модуле ngx_http_limit_req_module.
+</para>
+<para lang="en">
+Changes in the ngx_http_limit_req_module. 
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка EXSLT в модуле ngx_http_xslt_module.<br/>
+Спасибо Денису Латыпову.
+</para>
+<para lang="en">
+the EXSLT support in the ngx_http_xslt_module.<br/>
+Thanks to Denis F. Latypoff.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+совместимость с glibc 2.3.<br/>
+Спасибо Eric Benson и Максиму Дунину.
+</para>
+<para lang="en">
+compatibility with glibc 2.3.<br/>
+Thanks to Eric Benson and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запускался на MacOSX 10.4 и более ранних;
+ошибка появилась в 0.7.6.
+</para>
+<para lang="en">
+nginx could not run on MacOSX 10.4 and earlier;
+the bug had appeared in 0.7.6.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.20" date="10.11.2008">
 
 <change>
@@ -22,7 +69,7 @@ Changes in the ngx_http_gzip_filter_module.
 
 <change type="feature">
 <para lang="ru">
-модуль ngx_http_limit_req_module
+модуль ngx_http_limit_req_module.
 </para>
 <para lang="en">
 the ngx_http_limit_req_module. 
