@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
     ngx_shm_zone_t     *shm_zone;
     float               burst;
-    ngx_msec_t          delay;
+    ngx_uint_t          nodelay;     /* unsigned  nodelay:1 */
 } ngx_http_limit_req_conf_t;
 
 
@@ -178,7 +178,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "limiting requests, %.3f r/s", rate);
+                      "limiting requests, excess: %.3f", rate);
 
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
@@ -186,22 +186,22 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     if (rc == NGX_AGAIN) {
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
-        if (lzcf->delay) {
-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                          "delaying requests, %.3f r/s", rate);
-
-            if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            r->read_event_handler = ngx_http_test_reading;
-            r->write_event_handler = ngx_http_limit_req_delay;
-            ngx_add_timer(r->connection->write, lzcf->delay);
-
-            return NGX_AGAIN;
+        if (lzcf->nodelay) {
+            return NGX_DECLINED;
         }
 
-        return NGX_DECLINED;
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "delaying request, excess: %.3f", rate);
+
+        if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        r->read_event_handler = ngx_http_test_reading;
+        r->write_event_handler = ngx_http_limit_req_delay;
+        ngx_add_timer(r->connection->write, (ngx_msec_t) (rate * 1000));
+
+        return NGX_AGAIN;
     }
 
     if (rc == NGX_OK) {
@@ -365,7 +365,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lzcf, ngx_uint_t hash,
                     return NGX_BUSY;
                 }
 
-                if (lz->rate > ctx->rate) {
+                if (lz->rate > 0.0) {
                     return NGX_AGAIN;
                 }
 
@@ -511,7 +511,7 @@ ngx_http_limit_req_create_conf(ngx_conf_t *cf)
      *
      *     conf->shm_zone = NULL;
      *     conf->burst = 0.0;
-     *     conf->delay = 0;
+     *     conf->nodelay = 0;
      */
 
     return conf;
@@ -670,12 +670,9 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_limit_req_conf_t  *lzcf = conf;
 
-    u_char                    *p;
-    size_t                     len;
-    ngx_int_t                  burst, scale, delay;
-    ngx_str_t                 *value, s;
-    ngx_uint_t                 i;
-    ngx_http_limit_req_ctx_t  *ctx;
+    ngx_int_t    burst;
+    ngx_str_t   *value, s;
+    ngx_uint_t   i;
 
     if (lzcf->shm_zone) {
         return "is duplicate";
@@ -684,8 +681,6 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     burst = 0;
-    scale = 1;
-    delay = 0;
 
     for (i = 1; i < cf->args->nelts; i++) {
 
@@ -705,19 +700,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strncmp(value[i].data, "burst=", 6) == 0) {
 
-            len = value[i].len;
-            p = value[i].data + len - 3;
-
-            if (ngx_strncmp(p, "r/s", 3) == 0) {
-                scale = 1;
-                len -= 3;
-
-            } else if (ngx_strncmp(p, "r/m", 3) == 0) {
-                scale = 60;
-                len -= 3;
-            }
-
-            burst = ngx_atoi(value[i].data + 6, len - 6);
+            burst = ngx_atoi(value[i].data + 6, value[i].len - 6);
             if (burst <= 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid burst rate \"%V\"", &value[i]);
@@ -727,18 +710,8 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[i].data, "delay=", 6) == 0) {
-
-            s.len = value[i].len - 6;
-            s.data = value[i].data + 6;
-
-            delay = ngx_parse_time(&s, 0);
-            if (delay < 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                 "invalid clean_time value \"%V\"", &value[i]);
-                return NGX_CONF_ERROR;
-            }
-
+        if (ngx_strncmp(value[i].data, "nodelay", 7) == 0) {
+            lzcf->nodelay = 1;
             continue;
         }
 
@@ -761,15 +734,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (burst) {
-        lzcf->burst = (float) burst / scale;
-
-    } else {
-        ctx = lzcf->shm_zone->data;
-        lzcf->burst = ctx->rate;
-    }
-
-    lzcf->delay = (ngx_msec_t) delay;
+    lzcf->burst = (float) burst;
 
     return NGX_CONF_OK;
 }
