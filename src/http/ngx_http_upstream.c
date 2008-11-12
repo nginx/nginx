@@ -1337,14 +1337,20 @@ ngx_http_upstream_process_header(ngx_event_t *rev)
         return;
     }
 
-    if (u->buffer.last - u->buffer.pos >= (ssize_t) u->length) {
-        if (u->input_filter(u->input_filter_ctx, 0) == NGX_ERROR) {
+    n = u->buffer.last - u->buffer.pos;
+
+    if (n) {
+        u->buffer.last -= n;
+
+        if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
             ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
 
-        ngx_http_upstream_finalize_request(r, u, 0);
-        return;
+        if (u->length == 0) {
+            ngx_http_upstream_finalize_request(r, u, 0);
+            return;
+        }
     }
 
     rev->handler = ngx_http_upstream_process_body_in_memory;
