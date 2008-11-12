@@ -488,6 +488,15 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
         return NULL;
     }
 
+    if (ngx_strncmp(name->data, "cookie_", 7) == 0) {
+
+        if (ngx_http_variable_argument(r, vv, (uintptr_t) name) == NGX_OK) {
+            return vv;
+        }
+
+        return NULL;
+    }
+
     if (ngx_strncmp(name->data, "arg_", 4) == 0) {
 
         if (ngx_http_variable_argument(r, vv, (uintptr_t) name) == NGX_OK) {
@@ -722,6 +731,34 @@ ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
     }
 
     v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_cookie(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
+{
+    ngx_str_t *name = (ngx_str_t *) data;
+
+    ngx_str_t  cookie, s;
+
+    s.len = name->len - (sizeof("cookie_") - 1);
+    s.data = name->data + sizeof("cookie_") - 1;
+
+    if (ngx_http_parse_multi_header_lines(&r->headers_in.cookies, &s, &cookie)
+        == NGX_DECLINED)
+    {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = cookie.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = cookie.data;
 
     return NGX_OK;
 }
@@ -1540,6 +1577,13 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
             v[i].get_handler = ngx_http_upstream_header_variable;
             v[i].data = (uintptr_t) &v[i].name;
             v[i].flags = NGX_HTTP_VAR_NOCACHEABLE;
+
+            continue;
+        }
+
+        if (ngx_strncmp(v[i].name.data, "cookie_", 7) == 0) {
+            v[i].get_handler = ngx_http_variable_cookie;
+            v[i].data = (uintptr_t) &v[i].name;
 
             continue;
         }
