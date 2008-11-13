@@ -104,7 +104,6 @@ ngx_module_t  ngx_mail_proxy_module = {
 };
 
 
-static u_char  smtp_auth_ok[] = "235 2.0.0 OK" CRLF;
 static u_char  smtp_ok[] = "250 2.0.0 OK" CRLF;
 
 
@@ -612,15 +611,12 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         b = s->proxy->buffer;
 
         if (s->auth_method == NGX_MAIL_AUTH_NONE) {
-            ngx_memcpy(b->start, smtp_ok, sizeof(smtp_ok) - 1);
-            b->last = b->start + sizeof(smtp_ok) - 1;
+            b->pos = b->start;
 
         } else {
-            ngx_memcpy(b->start, smtp_auth_ok, sizeof(smtp_auth_ok) - 1);
-            b->last = b->start + sizeof(smtp_auth_ok) - 1;
+            ngx_memcpy(b->start, smtp_ok, sizeof(smtp_ok) - 1);
+            b->last = b->start + sizeof(smtp_ok) - 1;
         }
-
-        b->pos = b->start;
 
         s->connection->read->handler = ngx_mail_proxy_handler;
         s->connection->write->handler = ngx_mail_proxy_handler;
@@ -759,18 +755,17 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
     default: /* NGX_MAIL_SMTP_PROTOCOL */
         switch (state) {
 
-        case ngx_smtp_helo:
-        case ngx_smtp_helo_from:
-        case ngx_smtp_helo_xclient:
-        case ngx_smtp_from:
-        case ngx_smtp_to:
-            if (p[0] == '2' && p[1] == '5' && p[2] == '0') {
+        case ngx_smtp_start:
+            if (p[0] == '2' && p[1] == '2' && p[2] == '0') {
                 return NGX_OK;
             }
             break;
 
-        case ngx_smtp_start:
-            if (p[0] == '2' && p[1] == '2' && p[2] == '0') {
+        case ngx_smtp_helo:
+        case ngx_smtp_helo_xclient:
+        case ngx_smtp_helo_from:
+        case ngx_smtp_from:
+            if (p[0] == '2' && p[1] == '5' && p[2] == '0') {
                 return NGX_OK;
             }
             break;
@@ -781,6 +776,9 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
                 return NGX_OK;
             }
             break;
+
+        case ngx_smtp_to:
+            return NGX_OK;
         }
 
         break;
