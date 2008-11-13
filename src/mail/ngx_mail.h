@@ -136,8 +136,12 @@ typedef enum {
     ngx_smtp_auth_plain,
     ngx_smtp_auth_cram_md5,
     ngx_smtp_helo,
-    ngx_smtp_noxclient,
-    ngx_smtp_xclient
+    ngx_smtp_helo_xclient,
+    ngx_smtp_helo_from,
+    ngx_smtp_xclient,
+    ngx_smtp_xclient_from,
+    ngx_smtp_from,
+    ngx_smtp_to
 } ngx_smtp_state_e;
 
 
@@ -173,7 +177,7 @@ typedef struct {
     unsigned                no_sync_literal:1;
     unsigned                starttls:1;
     unsigned                esmtp:1;
-    unsigned                auth_method:2;
+    unsigned                auth_method:3;
     unsigned                auth_wait:1;
 
     ngx_str_t               login;
@@ -187,6 +191,8 @@ typedef struct {
     ngx_str_t              *addr_text;
     ngx_str_t               host;
     ngx_str_t               smtp_helo;
+    ngx_str_t               smtp_from;
+    ngx_str_t               smtp_to;
 
     ngx_uint_t              command;
     ngx_array_t             args;
@@ -256,12 +262,14 @@ typedef struct {
 #define NGX_MAIL_AUTH_LOGIN     1
 #define NGX_MAIL_AUTH_APOP      2
 #define NGX_MAIL_AUTH_CRAM_MD5  3
+#define NGX_MAIL_AUTH_NONE      4
 
 
 #define NGX_MAIL_AUTH_PLAIN_ENABLED     0x0002
 #define NGX_MAIL_AUTH_LOGIN_ENABLED     0x0004
 #define NGX_MAIL_AUTH_APOP_ENABLED      0x0008
 #define NGX_MAIL_AUTH_CRAM_MD5_ENABLED  0x0010
+#define NGX_MAIL_AUTH_NONE_ENABLED      0x0020
 
 
 #define NGX_MAIL_PARSE_INVALID_COMMAND  20

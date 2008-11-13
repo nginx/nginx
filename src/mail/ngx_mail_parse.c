@@ -746,7 +746,7 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
                 s->arg_end = p;
                 goto done;
             default:
-                if (s->args.nelts <= 2) {
+                if (s->args.nelts <= 10) {
                     state = sw_argument;
                     s->arg_start = p;
                     break;

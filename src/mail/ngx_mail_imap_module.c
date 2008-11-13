@@ -36,7 +36,8 @@ static ngx_str_t  ngx_mail_imap_auth_methods_names[] = {
     ngx_string("AUTH=PLAIN"),
     ngx_string("AUTH=LOGIN"),
     ngx_null_string,  /* APOP */
-    ngx_string("AUTH=CRAM-MD5")
+    ngx_string("AUTH=CRAM-MD5"),
+    ngx_null_string   /* NONE */
 };
 
 
