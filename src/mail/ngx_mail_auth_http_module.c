@@ -40,7 +40,6 @@ struct ngx_mail_auth_http_ctx_s {
     ngx_mail_auth_http_handler_pt   handler;
 
     ngx_uint_t                      state;
-    ngx_uint_t                      hash;   /* no needed ? */
 
     u_char                         *header_name_start;
     u_char                         *header_name_end;
@@ -915,7 +914,6 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx)
 {
     u_char      c, ch, *p;
-    ngx_uint_t  hash;
     enum {
         sw_start = 0,
         sw_name,
@@ -927,7 +925,6 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
     } state;
 
     state = ctx->state;
-    hash = ctx->hash;
 
     for (p = ctx->response->pos; p < ctx->response->last; p++) {
         ch = *p;
@@ -951,12 +948,10 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
 
                 c = (u_char) (ch | 0x20);
                 if (c >= 'a' && c <= 'z') {
-                    hash = c;
                     break;
                 }
 
                 if (ch >= '0' && ch <= '9') {
-                    hash = ch;
                     break;
                 }
 
@@ -968,7 +963,6 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
         case sw_name:
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'z') {
-                hash += c;
                 break;
             }
 
@@ -979,12 +973,10 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
             }
 
             if (ch == '-') {
-                hash += ch;
                 break;
             }
 
             if (ch >= '0' && ch <= '9') {
-                hash += ch;
                 break;
             }
 
@@ -1081,7 +1073,6 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
 
     ctx->response->pos = p;
     ctx->state = state;
-    ctx->hash = hash;
 
     return NGX_AGAIN;
 
@@ -1089,7 +1080,6 @@ done:
 
     ctx->response->pos = p + 1;
     ctx->state = sw_start;
-    ctx->hash = hash;
 
     return NGX_OK;
 
