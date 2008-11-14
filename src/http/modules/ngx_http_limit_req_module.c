@@ -15,7 +15,7 @@ typedef struct {
     u_short             len;
     ngx_queue_t         queue;
     ngx_msec_t          last;
-    float               rate;
+    float               excess;
     u_char              data[1];
 } ngx_http_limit_req_node_t;
 
@@ -107,7 +107,7 @@ ngx_module_t  ngx_http_limit_req_module = {
 static ngx_int_t
 ngx_http_limit_req_handler(ngx_http_request_t *r)
 {
-    float                       rate;
+    float                       excess;
     size_t                      len, n;
     uint32_t                    hash;
     ngx_int_t                   rc;
@@ -165,20 +165,20 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         ngx_queue_insert_head(ctx->queue, &lz->queue);
 
-        rate = lz->rate;
+        excess = lz->excess;
 
     } else {
-        rate = 0.0;
+        excess = 0.0;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                  "limit_req: %i %.3f", rc, rate);
+                  "limit_req: %i %.3f", rc, excess);
 
     if (rc == NGX_BUSY) {
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "limiting requests, excess: %.3f", rate);
+                      "limiting requests, excess: %.3f", excess);
 
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
@@ -191,7 +191,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         }
 
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "delaying request, excess: %.3f", rate);
+                      "delaying request, excess: %.3f", excess);
 
         if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -199,7 +199,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         r->read_event_handler = ngx_http_test_reading;
         r->write_event_handler = ngx_http_limit_req_delay;
-        ngx_add_timer(r->connection->write, (ngx_msec_t) (rate * 1000));
+        ngx_add_timer(r->connection->write, (ngx_msec_t) (excess * 1000));
 
         return NGX_AGAIN;
     }
@@ -234,7 +234,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     tp = ngx_timeofday();
     lz->last = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
 
-    lz->rate = 0.0;
+    lz->excess = 0.0;
     ngx_memcpy(lz->data, vv->data, len);
 
     ngx_rbtree_insert(ctx->rbtree, node);
@@ -351,21 +351,21 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lzcf, ngx_uint_t hash,
                 now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
                 ms = (ngx_msec_int_t) (now - lz->last);
 
-                lz->rate = lz->rate - ctx->rate * ngx_abs(ms) / 1000 + 1;
+                lz->excess = lz->excess - ctx->rate * ngx_abs(ms) / 1000 + 1;
 
-                if (lz->rate < 0.0) {
-                    lz->rate = 0.0;
+                if (lz->excess < 0.0) {
+                    lz->excess = 0.0;
                 }
 
                 lz->last = now;
 
                 *lzp = lz;
 
-                if (lz->rate > lzcf->burst) {
+                if (lz->excess > lzcf->burst) {
                     return NGX_BUSY;
                 }
 
-                if (lz->rate > 0.0) {
+                if (lz->excess > 0.0) {
                     return NGX_AGAIN;
                 }
 
@@ -388,7 +388,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lzcf, ngx_uint_t hash,
 static void
 ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx, ngx_uint_t n)
 {
-    float                       rate;
+    float                       excess;
     ngx_time_t                 *tp;
     ngx_msec_t                  now;
     ngx_queue_t                *q;
@@ -425,9 +425,9 @@ ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx, ngx_uint_t n)
                 return;
             }
 
-            rate = lz->rate - ctx->rate * ms / 1000;
+            excess = lz->excess - ctx->rate * ms / 1000;
 
-            if (rate > 0.0) {
+            if (excess > 0.0) {
                 return;
             }
         }
