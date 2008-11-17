@@ -1866,7 +1866,7 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         }
 
         if (n & 0xc0) {
-            n = (n & 0x3f << 8) + *p;
+            n = ((n & 0x3f) << 8) + *p;
             p = &buf[n];
 
         } else {
@@ -1916,7 +1916,7 @@ done:
             }
 
         } else {
-            n = (n & 0x3f << 8) + *src;
+            n = ((n & 0x3f) << 8) + *src;
             src = &buf[n];
 
             n = *src++;
