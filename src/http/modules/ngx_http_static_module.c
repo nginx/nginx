@@ -58,7 +58,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD|NGX_HTTP_POST))) {
         return NGX_HTTP_NOT_ALLOWED;
     }
 
@@ -69,12 +69,6 @@ ngx_http_static_handler(ngx_http_request_t *r)
     /* TODO: Win32 */
     if (r->zero_in_uri) {
         return NGX_DECLINED;
-    }
-
-    rc = ngx_http_discard_request_body(r);
-
-    if (rc != NGX_OK) {
-        return rc;
     }
 
     log = r->connection->log;
@@ -185,6 +179,16 @@ ngx_http_static_handler(ngx_http_request_t *r)
     }
 
 #endif
+
+    if (r->method & NGX_HTTP_POST) {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+
+    rc = ngx_http_discard_request_body(r);
+
+    if (rc != NGX_OK) {
+        return rc;
+    }
 
     log->action = "sending response to client";
 
