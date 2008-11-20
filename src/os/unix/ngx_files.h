@@ -68,7 +68,17 @@ ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
 #define ngx_read_fd              read
 #define ngx_read_fd_n            "read()"
 
-#define ngx_write_fd             write
+/*
+ * we use inlined function instead of simple #define
+ * because glibc 2.3 sets warn_unused_result attribute for write()
+ * and in this case gcc 4.3 ignores (void) cast
+ */
+static ngx_inline ssize_t
+ngx_write_fd(ngx_fd_t fd, void *buf, size_t n)
+{
+    return write(fd, buf, n);
+}
+
 #define ngx_write_fd_n           "write()"
 
 #define ngx_linefeed(p)          *p++ = LF;

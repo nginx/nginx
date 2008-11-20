@@ -192,6 +192,8 @@ static char **ngx_os_environ;
 int ngx_cdecl
 main(int argc, char *const *argv)
 {
+    char             *p;
+    ssize_t           n;
     ngx_int_t         i;
     ngx_log_t        *log;
     ngx_cycle_t      *cycle, init_cycle;
@@ -241,23 +243,30 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_show_version) {
-        ngx_write_fd(ngx_stderr_fileno, "nginx version: " NGINX_VER CRLF,
-                     sizeof("nginx version: " NGINX_VER CRLF) - 1);
+
+        p = "nginx version: " NGINX_VER CRLF;
+        n = sizeof("nginx version: " NGINX_VER CRLF) - 1;
+
+        if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
+            return 1;
+        }
 
         if (ngx_show_configure) {
 #ifdef NGX_COMPILER
-            ngx_write_fd(ngx_stderr_fileno, "built by " NGX_COMPILER CRLF,
-                         sizeof("built by " NGX_COMPILER CRLF) - 1);
+            p = "built by " NGX_COMPILER CRLF;
+            n = sizeof("built by " NGX_COMPILER CRLF) - 1;
+
+            if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
+                return 1;
+            }
 #endif
 
-#ifndef __WATCOMC__
+            p = "configure arguments: " NGX_CONFIGURE CRLF;
+            n = sizeof("configure arguments :" NGX_CONFIGURE CRLF) - 1;
 
-            /* OpenWatcomC could not build the long NGX_CONFIGURE string */
-
-            ngx_write_fd(ngx_stderr_fileno,
-                        "configure arguments: " NGX_CONFIGURE CRLF,
-                        sizeof("configure arguments :" NGX_CONFIGURE CRLF) - 1);
-#endif
+            if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
+                return 1;
+            }
         }
 
         if (!ngx_test_config) {

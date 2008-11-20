@@ -970,6 +970,7 @@ ngx_test_lockfile(u_char *file, ngx_log_t *log)
 void
 ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
+    ssize_t           n, len;
     ngx_fd_t          fd;
     ngx_uint_t        i;
     ngx_list_part_t  *part;
@@ -993,9 +994,23 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             continue;
         }
 
-        if (file[i].buffer && file[i].pos - file[i].buffer != 0) {
-            ngx_write_fd(file[i].fd, file[i].buffer,
-                         file[i].pos - file[i].buffer);
+        len = file[i].pos - file[i].buffer;
+
+        if (file[i].buffer && len != 0) {
+
+            n = ngx_write_fd(file[i].fd, file[i].buffer, len);
+
+            if (n == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              ngx_write_fd_n " to \"%s\" failed",
+                              file[i].name.data);
+
+            } else if (n != len) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          ngx_write_fd_n " to \"%s\" was incomplete: %z of %uz",
+                          file[i].name.data, n, len);
+            }
+
             file[i].pos = file[i].buffer;
         }
 

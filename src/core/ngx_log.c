@@ -158,7 +158,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     ngx_linefeed(p);
 
-    ngx_write_fd(log->file->fd, errstr, p - errstr);
+    (void) ngx_write_fd(log->file->fd, errstr, p - errstr);
 }
 
 

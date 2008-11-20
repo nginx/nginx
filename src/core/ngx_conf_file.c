@@ -806,6 +806,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 static void
 ngx_conf_flush_files(ngx_cycle_t *cycle)
 {
+    ssize_t           n, len;
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_open_file_t  *file;
@@ -826,11 +827,24 @@ ngx_conf_flush_files(ngx_cycle_t *cycle)
             i = 0;
         }
 
-        if (file[i].buffer == NULL || file[i].pos - file[i].buffer == 0) {
+        len = file[i].pos - file[i].buffer;
+
+        if (file[i].buffer == NULL || len == 0) {
             continue;
         }
 
-        ngx_write_fd(file[i].fd, file[i].buffer, file[i].pos - file[i].buffer);
+        n = ngx_write_fd(file[i].fd, file[i].buffer, len);
+
+        if (n == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_write_fd_n " to \"%s\" failed",
+                          file[i].name.data);
+
+        } else if (n != len) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          ngx_write_fd_n " to \"%s\" was incomplete: %z of %uz",
+                          file[i].name.data, n, len);
+        }
     }
 }
 
