@@ -306,6 +306,19 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
                 return ngx_http_index_error(r, dir.data, NGX_ENOENT);
             }
 
+            if (of.err == NGX_EACCES) {
+
+                *last = c;
+
+                /*
+                 * ngx_http_index_test_dir() is called after the first index
+                 * file testing has returned an error distinct from NGX_EACCES.
+                 * This means that directory searching is allowed.
+                 */
+
+                return NGX_OK;
+            }
+
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
                           ngx_open_file_n " \"%s\" failed", dir.data);
         }
