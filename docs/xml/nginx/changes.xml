@@ -9,6 +9,121 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.33" date="20.11.2008">
+
+<change type="feature">
+<para lang="ru">
+теперь nginx возвращает код 405 для метода POST при запросе статического
+файла, только если файл существует.
+</para>
+<para lang="en">
+now nginx returns the 405 status code for POST method requesting a static file
+only if the file exists.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+совместимость с glibc 2.3.<br/>
+Спасибо Eric Benson и Максиму Дунину.
+</para>
+<para lang="en">
+compatibility with glibc 2.3.<br/>
+Thanks to Eric Benson and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+resolver не понимал большие DNS-ответы.<br/>
+Спасибо Zyb.
+</para>
+<para lang="en">
+the resolver did not understand big DNS responses.<br/>
+Thanks to Zyb.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTPS запросы могли завершаться с ошибкой "bad write retry".
+</para>
+<para lang="en">
+in HTTPS mode requests might fail with the "bad write retry" error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_charset_module не понимал название кодировки в кавычках,
+полученное от бэкенда.
+</para>
+<para lang="en">
+the ngx_http_charset_module did not understand quoted charset name
+received from backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании параметра max_fails=0 в upstream'е с несколькими
+серверами рабочий процесс выходил по сигналу SIGFPE.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+if the "max_fails=0" parameter was used in upstream with several servers,
+then a worker process exited on a SIGFPE signal.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод $r->header_in() не возвращал значения строк "Host", "User-Agent",
+и "Connection" из заголовка запроса;
+ошибка появилась в 0.6.32.
+</para>
+<para lang="en">
+the $r->header_in() method did not return value of the "Host",
+"User-Agent", and "Connection" request header lines;
+the bug had appeared in 0.6.32.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении запроса с методом HEAD с помощью директивы error_page
+возвращался полный ответ.
+</para>
+<para lang="en">
+a full response was returned for request method HEAD
+while redirection via an "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если у каталога были права доступа только на поиск файлов
+и первый индексный файл отсутствовал, то nginx возвращал ошибку 500.
+</para>
+<para lang="en">
+if a directory has search only rights and the first index file was absent,
+then nginx returned the 500 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рекурсивной error_page для 500 ошибки.
+</para>
+<para lang="en">
+of recursive error_page for 500 status code.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.32" date="07.07.2008">
 
 <change type="change">
@@ -924,7 +1039,6 @@ Thanks to Manlio Perillo.
 <para lang="en">
 if variable values used in a "proxy_pass" directive contain IP-addresses only,
 then a "resolver" directive is not mandatory.
-resolver
 </para>
 </change>
 
@@ -4630,11 +4744,11 @@ then the proxied request was sent unescaped.
 
 <change type="bugfix">
 <para lang="ru">
-метод $r->headers_in("Cookie") модуля ngx_http_perl_module теперь возвращает
+метод $r->header_in("Cookie") модуля ngx_http_perl_module теперь возвращает
 все строки "Cookie" в заголовке запроса.
 </para>
 <para lang="en">
-the $r->headers_in("Cookie") of the ngx_http_perl_module now returns
+the $r->header_in("Cookie") of the ngx_http_perl_module now returns
 all "Cookie" header lines.
 </para>
 </change>
