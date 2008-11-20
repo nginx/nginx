@@ -9,6 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.22" date="20.11.2008">
+
+<change type="feature">
+<para lang="ru">
+параметр none в директиве smtp_auth.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "none" parameter in the "smtp_auth" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$cookie_...".
+</para>
+<para lang="en">
+the "$cookie_..." variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива directio не работала с файловой системой XFS.
+</para>
+<para lang="en">
+the "directio" directive did not work in XFS filesystem.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+resolver не понимал большие DNS-ответы.<br/>
+Спасибо Zyb.
+</para>
+<para lang="en">
+the resolver did not understand big DNS responses.<br/>
+Thanks to Zyb.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.21" date="11.11.2008">
 
 <change>
