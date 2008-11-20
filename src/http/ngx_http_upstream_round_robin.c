@@ -645,7 +645,9 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         peer->fails++;
         peer->accessed = now;
 
-        peer->current_weight -= peer->weight / peer->max_fails;
+        if (peer->max_fails) {
+            peer->current_weight -= peer->weight / peer->max_fails;
+        }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "free rr peer failed: %ui %i",
