@@ -74,15 +74,18 @@ static char *ngx_http_client_errors[] = {
 
 
 ngx_http_header_t  ngx_http_headers_in[] = {
-    { ngx_string("Host"), 0, ngx_http_process_host },
+    { ngx_string("Host"), offsetof(ngx_http_headers_in_t, host),
+                 ngx_http_process_host },
 
-    { ngx_string("Connection"), 0, ngx_http_process_connection },
+    { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
+                 ngx_http_process_connection },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
                  ngx_http_process_unique_header_line },
 
-    { ngx_string("User-Agent"), 0, ngx_http_process_user_agent },
+    { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent),
+                 ngx_http_process_user_agent },
 
     { ngx_string("Referer"), offsetof(ngx_http_headers_in_t, referer),
                  ngx_http_process_header_line },
