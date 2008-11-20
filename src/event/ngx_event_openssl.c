@@ -187,13 +187,6 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
         SSL_CTX_set_options(ssl->ctx, ngx_ssl_protocols[protocols >> 1]);
     }
 
-    /*
-     * we need this option because in ngx_ssl_send_chain()
-     * we may switch to a buffered write and may copy leftover part of
-     * previously unbuffered data to our internal buffer
-     */
-    SSL_CTX_set_mode(ssl->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
 
     return NGX_OK;
@@ -776,14 +769,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t      send, size;
     ngx_buf_t   *buf;
 
-    if (!c->ssl->buffer
-        || (in && in->next == NULL && !(c->buffered & NGX_SSL_BUFFERED)))
-    {
-        /*
-         * we avoid a buffer copy if
-         *     we do not need to buffer the output
-         *     or the incoming buf is a single and our buffer is empty
-         */
+    if (!c->ssl->buffer) {
 
         while (in) {
             if (ngx_buf_special(in->buf)) {
