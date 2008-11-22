@@ -10,9 +10,10 @@
 
 
 typedef struct {
-    ngx_radix_tree_t  *tree;
-    ngx_pool_t        *pool;
-    ngx_array_t        values;
+    ngx_radix_tree_t   *tree;
+    ngx_rbtree_t        rbtree;
+    ngx_rbtree_node_t   sentinel;
+    ngx_pool_t         *pool;
 } ngx_http_geo_conf_ctx_t;
 
 
@@ -135,13 +136,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&ctx.values, pool, 512,
-                       sizeof(ngx_http_variable_value_t *))
-        != NGX_OK)
-    {
-        ngx_destroy_pool(pool);
-        return NGX_CONF_ERROR;
-    }
+    ngx_rbtree_init(&ctx.rbtree, &ctx.sentinel,
+                    ngx_http_variable_value_rbtree_insert);
 
     ctx.tree = tree;
     ctx.pool = cf->pool;
@@ -178,12 +174,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_int_t                   rc;
-    ngx_str_t                  *value, file;
-    ngx_uint_t                  i;
-    ngx_inet_cidr_t             cidrin;
-    ngx_http_geo_conf_ctx_t    *ctx;
-    ngx_http_variable_value_t  *var, *old, **v;
+    uint32_t                         hash;
+    ngx_int_t                        rc;
+    ngx_str_t                       *value, file;
+    ngx_uint_t                       i;
+    ngx_inet_cidr_t                  cidrin;
+    ngx_http_geo_conf_ctx_t         *ctx;
+    ngx_http_variable_value_t       *val, *old;
+    ngx_http_variable_value_node_t  *vvn;
 
     ctx = cf->ctx;
 
@@ -230,47 +228,41 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         cidrin.mask = ntohl(cidrin.mask);
     }
 
-    var = NULL;
-    v = ctx->values.elts;
+    hash = ngx_crc32_long(value[1].data, value[1].len);
 
-    for (i = 0; i < ctx->values.nelts; i++) {
-        if ((size_t) v[i]->len != value[1].len) {
-            continue;
-        }
+    val = ngx_http_variable_value_lookup(&ctx->rbtree, &value[1], hash);
 
-        if (ngx_strncmp(value[1].data, v[i]->data, value[1].len) == 0) {
-            var = v[i];
-            break;
-        }
-    }
-
-    if (var == NULL) {
-        var = ngx_palloc(ctx->pool, sizeof(ngx_http_variable_value_t));
-        if (var == NULL) {
+    if (val == NULL) {
+        val = ngx_palloc(ctx->pool, sizeof(ngx_http_variable_value_t));
+        if (val == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        var->len = value[1].len;
-        var->data = ngx_pstrdup(ctx->pool, &value[1]);
-        if (var->data == NULL) {
+        val->len = value[1].len;
+        val->data = ngx_pstrdup(ctx->pool, &value[1]);
+        if (val->data == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        var->valid = 1;
-        var->no_cacheable = 0;
-        var->not_found = 0;
+        val->valid = 1;
+        val->no_cacheable = 0;
+        val->not_found = 0;
 
-        v = ngx_array_push(&ctx->values);
-        if (v == NULL) {
+        vvn = ngx_palloc(cf->pool, sizeof(ngx_http_variable_value_node_t));
+        if (vvn == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        *v = var;
+        vvn->node.key = hash;
+        vvn->len = val->len;
+        vvn->value = val;
+
+        ngx_rbtree_insert(&ctx->rbtree, &vvn->node);
     }
 
     for (i = 2; i; i--) {
         rc = ngx_radix32tree_insert(ctx->tree, cidrin.addr, cidrin.mask,
-                                    (uintptr_t) var);
+                                    (uintptr_t) val);
         if (rc == NGX_OK) {
             return NGX_CONF_OK;
         }
@@ -286,7 +278,7 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                 "duplicate parameter \"%V\", value: \"%v\", old value: \"%v\"",
-                &value[0], var, old);
+                &value[0], val, old);
 
         rc = ngx_radix32tree_delete(ctx->tree, cidrin.addr, cidrin.mask);
 
