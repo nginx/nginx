@@ -91,7 +91,8 @@ static ngx_str_t  wsa_errors[] = {
 };
 
 
-u_char *ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
+u_char *
+ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
 {
     int        n;
     u_int      len;
