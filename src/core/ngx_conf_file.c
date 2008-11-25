@@ -98,8 +98,8 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     char             *rv;
     ngx_fd_t          fd;
     ngx_int_t         rc;
-    ngx_buf_t        *b;
-    ngx_conf_file_t  *prev;
+    ngx_buf_t         buf;
+    ngx_conf_file_t  *prev, conf_file;
     enum {
         parse_file = 0,
         parse_block,
@@ -125,32 +125,24 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 
         prev = cf->conf_file;
 
-        cf->conf_file = ngx_palloc(cf->pool, sizeof(ngx_conf_file_t));
-        if (cf->conf_file == NULL) {
-            return NGX_CONF_ERROR;
-        }
+        cf->conf_file = &conf_file;
 
         if (ngx_fd_info(fd, &cf->conf_file->file.info) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, ngx_errno,
                           ngx_fd_info_n " \"%s\" failed", filename->data);
         }
 
-        b = ngx_calloc_buf(cf->pool);
-        if (b == NULL) {
-            return NGX_CONF_ERROR;
+        cf->conf_file->buffer = &buf;
+
+        buf.start = ngx_alloc(NGX_CONF_BUFFER, cf->log);
+        if (buf.start == NULL) {
+            goto failed;
         }
 
-        cf->conf_file->buffer = b;
-
-        b->start = ngx_alloc(NGX_CONF_BUFFER, cf->log);
-        if (b->start == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        b->pos = b->start;
-        b->last = b->start;
-        b->end = b->last + NGX_CONF_BUFFER;
-        b->temporary = 1;
+        buf.pos = buf.start;
+        buf.last = buf.start;
+        buf.end = buf.last + NGX_CONF_BUFFER;
+        buf.temporary = 1;
 
         cf->conf_file->file.fd = fd;
         cf->conf_file->file.name.len = filename->len;
@@ -256,7 +248,9 @@ failed:
 done:
 
     if (filename) {
-        ngx_free(cf->conf_file->buffer->start);
+        if (cf->conf_file->buffer->start) {
+            ngx_free(cf->conf_file->buffer->start);
+        }
 
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
@@ -834,7 +828,7 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
     name->len = len + old.len;
     name->data = ngx_pnalloc(cycle->pool, name->len + 1);
     if (name->data == NULL) {
-        return  NGX_ERROR;
+        return NGX_ERROR;
     }
 
     p = ngx_cpymem(name->data, prefix, len);
