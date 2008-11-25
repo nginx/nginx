@@ -258,14 +258,14 @@ done:
     if (filename) {
         ngx_free(cf->conf_file->buffer->start);
 
-        cf->conf_file = prev;
-
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
                           ngx_close_file_n " %s failed",
                           cf->conf_file->file.name.data);
             return NGX_CONF_ERROR;
         }
+
+        cf->conf_file = prev;
     }
 
     if (rc == NGX_ERROR) {
