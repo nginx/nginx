@@ -91,6 +91,26 @@ ngx_destroy_pool(ngx_pool_t *pool)
 }
 
 
+void
+ngx_reset_pool(ngx_pool_t *pool)
+{
+    ngx_pool_t        *p;
+    ngx_pool_large_t  *l;
+
+    for (l = pool->large; l; l = l->next) {
+        if (l->alloc) {
+            ngx_free(l->alloc);
+        }
+    }
+
+    pool->large = NULL;
+
+    for (p = pool; p; p = p->d.next) {
+        p->d.last = (u_char *) p + sizeof(ngx_pool_t);
+    }
+}
+
+
 void *
 ngx_palloc(ngx_pool_t *pool, size_t size)
 {
