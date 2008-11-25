@@ -71,7 +71,7 @@
 #define NGX_CONF_MODULE      0x464E4F43  /* "CONF" */
 
 
-#define NGX_MAX_CONF_ERRSTR  256
+#define NGX_MAX_CONF_ERRSTR  1024
 
 
 struct ngx_command_s {
