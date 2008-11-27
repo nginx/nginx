@@ -25,6 +25,9 @@ u_char *ngx_http_time(u_char *buf, time_t t);
 u_char *ngx_http_cookie_time(u_char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);
 
+time_t ngx_next_time(time_t when);
+#define ngx_next_time_n      "mktime()"
+
 
 extern volatile ngx_time_t  *ngx_cached_time;
 

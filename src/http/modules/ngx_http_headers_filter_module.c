@@ -36,6 +36,7 @@ struct ngx_http_header_val_s {
 #define NGX_HTTP_EXPIRES_MAX       2
 #define NGX_HTTP_EXPIRES_ACCESS    3
 #define NGX_HTTP_EXPIRES_MODIFIED  4
+#define NGX_HTTP_EXPIRES_DAILY     5
 
 
 typedef struct {
@@ -187,7 +188,7 @@ static ngx_int_t
 ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 {
     size_t            len;
-    time_t            since;
+    time_t            now, expires_time, max_age;
     ngx_uint_t        i;
     ngx_table_elt_t  *expires, *cc, **ccp;
 
@@ -279,16 +280,24 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_OK;
     }
 
+    now = ngx_time();
+
     if (conf->expires == NGX_HTTP_EXPIRES_ACCESS
         || r->headers_out.last_modified_time == -1)
     {
-        since = ngx_time();
+        expires_time = now + conf->expires_time;
+        max_age = conf->expires_time;
+
+    } else if (conf->expires == NGX_HTTP_EXPIRES_DAILY) {
+        expires_time = ngx_next_time(conf->expires_time);
+        max_age = expires_time - now;
 
     } else {
-        since = r->headers_out.last_modified_time;
+        expires_time = r->headers_out.last_modified_time + conf->expires_time;
+        max_age = expires_time - now;
     }
 
-    ngx_http_time(expires->value.data, since + conf->expires_time);
+    ngx_http_time(expires->value.data, expires_time);
 
     if (conf->expires_time < 0) {
         cc->value.len = sizeof("no-cache") - 1;
@@ -303,8 +312,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_ERROR;
     }
 
-    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T",
-                                since + conf->expires_time - ngx_time())
+    cc->value.len = ngx_sprintf(cc->value.data, "max-age=%T", max_age)
                     - cc->value.data;
 
     return NGX_OK;
@@ -514,7 +522,18 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         n = 2;
     }
 
-    if (value[n].data[0] == '+') {
+    if (value[n].data[0] == '@') {
+        value[n].data++;
+        value[n].len--;
+        minus = 0;
+
+        if (hcf->expires == NGX_HTTP_EXPIRES_MODIFIED) {
+            return "daily time can not be used with \"modified\" parameter";
+        }
+
+        hcf->expires = NGX_HTTP_EXPIRES_DAILY;
+
+    } else if (value[n].data[0] == '+') {
         value[n].data++;
         value[n].len--;
         minus = 0;
@@ -532,6 +551,12 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (hcf->expires_time == NGX_ERROR) {
         return "invalid value";
+    }
+
+    if (hcf->expires == NGX_HTTP_EXPIRES_DAILY
+        && hcf->expires_time > 24 * 60 * 60)
+    {
+        return "daily time value must be less than 24 hours";
     }
 
     if (hcf->expires_time == NGX_PARSE_LARGE_TIME) {
