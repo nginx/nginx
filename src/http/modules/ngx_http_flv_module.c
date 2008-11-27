@@ -60,7 +60,7 @@ ngx_module_t  ngx_http_flv_module = {
 static ngx_int_t
 ngx_http_flv_handler(ngx_http_request_t *r)
 {
-    u_char                    *p, *last;
+    u_char                    *p, *n, *last;
     off_t                      start, len;
     size_t                     root;
     ngx_int_t                  rc;
@@ -168,7 +168,13 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         if (p) {
             p += 6;
 
-            start = ngx_atoof(p, r->args.len - (p - r->args.data));
+            for (n = p; n < r->args.data + r->args.len; n++) {
+                if (*n == '&') {
+                    break;
+                }
+            }
+
+            start = ngx_atoof(p, n - p);
 
             if (start == NGX_ERROR || start >= len) {
                 start = 0;
