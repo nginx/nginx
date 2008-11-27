@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.23" date="27.11.2008">
+
+<change type="feature">
+<para lang="ru">
+параметры delete и ranges в директиве geo.
+</para>
+<para lang="en">
+the "delete" and "ranges" parameters in the "geo" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ускорение загрузки geo-базы с большим числом значений.
+</para>
+<para lang="en">
+speeding up loading of geo base with large number of values.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+уменьшение памяти, необходимой для загрузки geo-базы.
+</para>
+<para lang="en">
+decrease of memory required for geo base load.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.22" date="20.11.2008">
 
 <change type="feature">
@@ -5761,11 +5793,11 @@ then the proxied request was sent unescaped.
 
 <change type="bugfix">
 <para lang="ru">
-метод $r->headers_in("Cookie") модуля ngx_http_perl_module теперь возвращает
+метод $r->header_in("Cookie") модуля ngx_http_perl_module теперь возвращает
 все строки "Cookie" в заголовке запроса.
 </para>
 <para lang="en">
-the $r->headers_in("Cookie") of the ngx_http_perl_module now returns
+the $r->header_in("Cookie") of the ngx_http_perl_module now returns
 all "Cookie" header lines.
 </para>
 </change>
