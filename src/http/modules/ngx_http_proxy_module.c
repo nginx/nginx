@@ -424,6 +424,7 @@ static ngx_keyval_t  ngx_http_proxy_headers[] = {
     { ngx_string("Host"), ngx_string("$proxy_host") },
     { ngx_string("Connection"), ngx_string("close") },
     { ngx_string("Keep-Alive"), ngx_string("") },
+    { ngx_string("Expect"), ngx_string("") },
     { ngx_null_string, ngx_null_string }
 };
 
