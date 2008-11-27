@@ -1189,6 +1189,13 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                     u->headers_in.status_n = status;
                     u->headers_in.status_line = *status_line;
 
+                } else if (u->headers_in.location) {
+                    u->headers_in.status_n = 302;
+                    u->headers_in.status_line.len =
+                                           sizeof("302 Moved Temporarily") - 1;
+                    u->headers_in.status_line.data =
+                                           (u_char *) "302 Moved Temporarily";
+
                 } else {
                     u->headers_in.status_n = 200;
                     u->headers_in.status_line.len = sizeof("200 OK") - 1;
