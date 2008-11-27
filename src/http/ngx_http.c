@@ -558,6 +558,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                         in_addr[a].core_srv_conf = cscfp[s];
                         in_addr[a].default_server = 1;
+                        in_addr[a].listen_conf = &lscf[l].conf;
                     }
 
                     goto found;
