@@ -357,6 +357,12 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         last = 1;
     }
 
+    if (ngx_strncmp(value[2].data, "https://", sizeof("https://") - 1) == 0) {
+        regex->status = NGX_HTTP_MOVED_TEMPORARILY;
+        regex->redirect = 1;
+        last = 1;
+    }
+
     if (cf->args->nelts == 4) {
         if (ngx_strcmp(value[3].data, "last") == 0) {
             last = 1;
