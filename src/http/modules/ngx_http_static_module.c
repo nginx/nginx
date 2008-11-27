@@ -48,7 +48,7 @@ static ngx_int_t
 ngx_http_static_handler(ngx_http_request_t *r)
 {
     u_char                    *last, *location;
-    size_t                     root;
+    size_t                     root, len;
     ngx_str_t                  path;
     ngx_int_t                  rc;
     ngx_uint_t                 level;
@@ -144,26 +144,39 @@ ngx_http_static_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        if (!clcf->alias && clcf->root_lengths == NULL) {
+        len = r->uri.len + 1;
+
+        if (!clcf->alias && clcf->root_lengths == NULL && r->args.len == 0) {
             location = path.data + clcf->root.len;
 
+            *last = '/';
+
         } else {
-            location = ngx_palloc(r->pool, r->uri.len + 1);
+            if (r->args.len) {
+                len += r->args.len + 1;
+            }
+
+            location = ngx_palloc(r->pool, len);
             if (location == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             last = ngx_copy(location, r->uri.data, r->uri.len);
-        }
 
-        *last = '/';
+            *last = '/';
+
+            if (r->args.len) {
+                *++last = '?';
+                ngx_memcpy(++last, r->args.data, r->args.len);
+            }
+        }
 
         /*
          * we do not need to set the r->headers_out.location->hash and
          * r->headers_out.location->key fields
          */
 
-        r->headers_out.location->value.len = r->uri.len + 1;
+        r->headers_out.location->value.len = len;
         r->headers_out.location->value.data = location;
 
         return NGX_HTTP_MOVED_PERMANENTLY;
