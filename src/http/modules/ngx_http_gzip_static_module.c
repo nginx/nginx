@@ -203,19 +203,6 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
     r->headers_out.content_encoding = h;
 
-    if (clcf->gzip_vary) {
-        h = ngx_list_push(&r->headers_out.headers);
-        if (h == NULL) {
-            return NGX_ERROR;
-        }
-
-        h->hash = 1;
-        h->key.len = sizeof("Vary") - 1;
-        h->key.data = (u_char *) "Vary";
-        h->value.len = sizeof("Accept-Encoding") - 1;
-        h->value.data = (u_char *) "Accept-Encoding";
-    }
-
     /* we need to allocate all before the header would be sent */
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));

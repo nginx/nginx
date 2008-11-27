@@ -204,12 +204,11 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_gzip_header_filter(ngx_http_request_t *r)
 {
-    ngx_str_t                 *type;
-    ngx_uint_t                 i;
-    ngx_table_elt_t           *h;
-    ngx_http_gzip_ctx_t       *ctx;
-    ngx_http_gzip_conf_t      *conf;
-    ngx_http_core_loc_conf_t  *clcf;
+    ngx_str_t             *type;
+    ngx_uint_t             i;
+    ngx_table_elt_t       *h;
+    ngx_http_gzip_ctx_t   *ctx;
+    ngx_http_gzip_conf_t  *conf;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_filter_module);
 
@@ -263,21 +262,6 @@ found:
     h->value.data = (u_char *) "gzip";
 
     r->headers_out.content_encoding = h;
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-    if (clcf->gzip_vary) {
-        h = ngx_list_push(&r->headers_out.headers);
-        if (h == NULL) {
-            return NGX_ERROR;
-        }
-
-        h->hash = 1;
-        h->key.len = sizeof("Vary") - 1;
-        h->key.data = (u_char *) "Vary";
-        h->value.len = sizeof("Accept-Encoding") - 1;
-        h->value.data = (u_char *) "Accept-Encoding";
-    }
 
     ctx->length = r->headers_out.content_length_n;
 
