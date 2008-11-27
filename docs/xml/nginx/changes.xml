@@ -9,6 +9,116 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.34" date="27.11.2008">
+
+<change type="change">
+<para lang="ru">
+теперь ошибка EAGAIN при вызове connect() не считается временной.
+</para>
+<para lang="en">
+now the EAGAIN error returned by connect() is not considered as temporary error.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь директива "gzip_vary on" выдаёт строку
+<nobr>"Vary: Accept-Encoding"</nobr>
+в заголовке ответа и для несжатых ответов.
+</para>
+<para lang="en">
+now the "gzip_vary" directive turned on issues
+a <nobr>"Vary: Accept-Encoding"</nobr>
+header line for uncompressed responses too.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает суточное время.
+</para>
+<para lang="en">
+the "expires" directive supports daily time.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка строки "Expect" в заголовке запроса.
+</para>
+<para lang="en">
+the "Expect" request header line support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании протокола "https://" в директиве rewrite
+автоматически делается редирект.
+</para>
+<para lang="en">
+now the "rewrite" directive does a redirect automatically
+if the "https://" protocol is used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметры директивы listen, такие как backlog, rcvbuf и прочие,
+не устанавливались, если сервером по умолчанию был не первый сервер.
+</para>
+<para lang="en">
+the "listen" directive parameters such as "backlog", "rcvbuf", etc.
+were not set, if a default server was not the first one.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива log_not_found не работала при поиске индексных файлов.
+</para>
+<para lang="en">
+the "log_not_found" directive did not work for index files tests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь, если FastCGI-сервер присылает строку "Location" в заголовке ответа
+без строки статуса, то nginx использует код статуса 302.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now if FastCGI server sends a "Location" header line without status line,
+then nginx uses 302 status code.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_flv_module не поддерживал несколько значений в
+аргументах запроса.
+</para>
+<para lang="en">
+the ngx_http_flv_module did not support several values in a query string.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при редиректе запроса к каталогу с добавлением слэша nginx
+не добавлял аргументы из оригинального запроса.
+</para>
+<para lang="en">
+when a request to a directory was redirected with the slash added,
+nginx dropped a query string from the original request.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.33" date="20.11.2008">
 
 <change type="feature">
