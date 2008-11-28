@@ -255,6 +255,13 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
     } else {
+        if (ctx.tree == NULL) {
+            ctx.tree = ngx_radix_tree_create(cf->pool, -1);
+            if (ctx.tree == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
+
         var->get_handler = ngx_http_geo_cidr_variable;
         var->data = (uintptr_t) ctx.tree;
 
