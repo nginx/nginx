@@ -9,6 +9,40 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.24" date="01.12.2008">
+
+<change type="feature">
+<para lang="ru">
+директива if_modified_since.
+</para>
+<para lang="en">
+the "if_modified_since" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не обрабатывал ответ FastCGI-сервера,
+если перед ответом сервер передавал много сообщений в stderr.
+</para>
+<para lang="en">
+nginx did not process a FastCGI server response,
+if the server send too many messages to stderr before response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные "$cookie_..." не работали в SSI and в перловом модуле.
+</para>
+<para lang="en">
+the "$cookie_..." variables did not work in the SSI and the perl module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.23" date="27.11.2008">
 
 <change type="feature">
