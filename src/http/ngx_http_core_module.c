@@ -108,6 +108,13 @@ static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
+    { ngx_string("exact"), 0 },
+    { ngx_string("before"), 1 },
+    { ngx_null_string, 0 }
+};
+
+
 #if (NGX_HTTP_GZIP)
 
 static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
@@ -514,6 +521,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, server_tokens),
       NULL },
+
+    { ngx_string("if_modified_since"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, if_modified_since),
+      &ngx_http_core_if_modified_since },
 
     { ngx_string("error_page"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
@@ -2663,6 +2677,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     lcf->satisfy = NGX_CONF_UNSET_UINT;
+    lcf->if_modified_since = NGX_CONF_UNSET_UINT;
     lcf->internal = NGX_CONF_UNSET;
     lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
@@ -2852,6 +2867,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
                               NGX_HTTP_SATISFY_ALL);
+    ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
+                              0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->client_body_in_file_only,
                               prev->client_body_in_file_only, 0);
