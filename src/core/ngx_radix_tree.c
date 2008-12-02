@@ -42,13 +42,13 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
     }
 
     /*
-     * The preallocation the first nodes: 0, 1, 00, 01, 10, 11, 000, 001, etc.
-     * increases the TLB hits even if for the first lookup iterations.
-     * On the 32-bit platforms the 7 preallocated bits takes continuous 4K,
-     * 8 - 8K, 9 - 16K, etc.  On the 64-bit platforms the 6 preallocated bits
+     * Preallocation of first nodes : 0, 1, 00, 01, 10, 11, 000, 001, etc.
+     * increases TLB hits even if for first lookup iterations.
+     * On 32-bit platforms the 7 preallocated bits takes continuous 4K,
+     * 8 - 8K, 9 - 16K, etc.  On 64-bit platforms the 6 preallocated bits
      * takes continuous 4K, 7 - 8K, 8 - 16K, etc.  There is no sense to
      * to preallocate more than one page, because further preallocation
-     * distributes the only bit per page.  Instead, the random insertion
+     * distributes the only bit per page.  Instead, a random insertion
      * may distribute several bits per page.
      *
      * Thus, by default we preallocate maximum
