@@ -666,8 +666,9 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             {
                 ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                                    "no network \"%V\" to delete", net);
-                return NGX_CONF_OK;
             }
+
+            return NGX_CONF_OK;
         }
     }
 
