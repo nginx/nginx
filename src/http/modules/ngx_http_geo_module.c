@@ -171,7 +171,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     char                     *rv;
     size_t                    len;
     ngx_str_t                *value, name;
-    ngx_uint_t                i;
+    ngx_uint_t                i, count;
     ngx_conf_t                save;
     ngx_pool_t               *pool;
     ngx_array_t              *a;
@@ -268,16 +268,23 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
 
-        if (ngx_radix32tree_find(ctx.tree, 0) != NGX_RADIX_NO_VALUE) {
-            return rv;
+        if (ngx_radix32tree_find(ctx.tree, 0) == NGX_RADIX_NO_VALUE) {
+
+            if (ngx_radix32tree_insert(ctx.tree, 0, 0,
+                                     (uintptr_t) &ngx_http_variable_null_value)
+                == NGX_ERROR)
+            {
+                return NGX_CONF_ERROR;
+            }
         }
 
-        if (ngx_radix32tree_insert(ctx.tree, 0, 0,
-                                   (uintptr_t) &ngx_http_variable_null_value)
-            == NGX_ERROR)
-        {
-            return NGX_CONF_ERROR;
-        }
+        count = ctx.tree->count;
+
+        ngx_radix32tree_compress(ctx.tree);
+
+        ngx_log_error(NGX_LOG_NOTICE, cf->log, 0,
+                      "\"%V\" geo tree has been compressed as %ui/%ui",
+                      &name, ctx.tree->count, count);
     }
 
     return rv;

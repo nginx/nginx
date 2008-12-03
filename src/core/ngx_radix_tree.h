@@ -19,7 +19,7 @@ typedef struct ngx_radix_node_s  ngx_radix_node_t;
 struct ngx_radix_node_s {
     ngx_radix_node_t  *right;
     ngx_radix_node_t  *left;
-    ngx_uint_t         skip;
+    uintptr_t          skip;
     uintptr_t          value;
 };
 
@@ -30,6 +30,7 @@ typedef struct {
     ngx_radix_node_t  *free;
     char              *start;
     size_t             size;
+    ngx_uint_t         count;
 } ngx_radix_tree_t;
 
 
@@ -39,6 +40,7 @@ ngx_int_t ngx_radix32tree_insert(ngx_radix_tree_t *tree,
     uint32_t key, uint32_t mask, uintptr_t value);
 ngx_int_t ngx_radix32tree_delete(ngx_radix_tree_t *tree,
     uint32_t key, uint32_t mask);
+void ngx_radix32tree_compress(ngx_radix_tree_t *tree);
 uintptr_t ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key);
 
 
