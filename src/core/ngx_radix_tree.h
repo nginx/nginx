@@ -19,7 +19,7 @@ typedef struct ngx_radix_node_s  ngx_radix_node_t;
 struct ngx_radix_node_s {
     ngx_radix_node_t  *right;
     ngx_radix_node_t  *left;
-    ngx_radix_node_t  *parent;
+    ngx_uint_t         skip;
     uintptr_t          value;
 };
 
