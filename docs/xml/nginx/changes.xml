@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.26" date="08.12.2008">
+
+<change type="bugfix">
+<para lang="ru">
+в обработке подзапросов;
+ошибка появилась в 0.7.25.
+</para>
+<para lang="en">
+in subrequest processing;
+the bug had appeared in 0.7.25.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.25" date="08.12.2008">
 
 <change type="change">
