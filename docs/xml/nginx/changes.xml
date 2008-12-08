@@ -9,6 +9,47 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.25" date="08.12.2008">
+
+<change type="change">
+<para lang="ru">
+в обработке подзапросов.
+</para>
+<para lang="en">
+in subrequest processing.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь разрешаются POST'ы без строки "Content-Length" в заголовке запроса.
+</para>
+<para lang="en">
+now POSTs without "Content-Length" header line are allowed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь директивы limit_req и limit_conn указывают причину запрета запроса.
+</para>
+<para lang="en">
+now the "limit_req" and "limit_conn" directives log a prohibition reason.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в параметре delete директивы geo.
+</para>
+<para lang="en">
+in the "delete" parameter of the "geo" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.24" date="01.12.2008">
 
 <change type="feature">
