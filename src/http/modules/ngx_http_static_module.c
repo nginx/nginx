@@ -217,7 +217,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (r != r->main && of.size == 0) {
+    if (of.size == 0) {
         return ngx_http_send_header(r);
     }
 

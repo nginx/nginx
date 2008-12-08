@@ -80,10 +80,13 @@ ngx_int_t ngx_http_parse_multi_header_lines(ngx_array_t *headers,
 ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_update_location_config(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
+void ngx_http_run_posted_requests(ngx_connection_t *c);
+ngx_int_t ngx_http_post_request(ngx_http_request_t *r);
 void ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
 
 void ngx_http_empty_handler(ngx_event_t *wev);
 void ngx_http_request_empty_handler(ngx_http_request_t *r);
+
 
 #define NGX_HTTP_LAST   1
 #define NGX_HTTP_FLUSH  2

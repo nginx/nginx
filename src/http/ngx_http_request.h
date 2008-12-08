@@ -58,6 +58,7 @@
 
 #define NGX_HTTP_ZERO_IN_URI               1
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
+#define NGX_HTTP_SUBREQUEST_WAITED         4
 
 
 #define NGX_HTTP_OK                        200
@@ -321,6 +322,14 @@ struct ngx_http_postponed_request_s {
 };
 
 
+typedef struct ngx_http_posted_request_s  ngx_http_posted_request_t;
+
+struct ngx_http_posted_request_s {
+    ngx_http_request_t               *request;
+    ngx_http_posted_request_t        *next;
+};
+
+
 typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
 typedef void (*ngx_http_event_handler_pt)(ngx_http_request_t *r);
 
@@ -373,6 +382,7 @@ struct ngx_http_request_s {
     ngx_http_request_t               *parent;
     ngx_http_postponed_request_t     *postponed;
     ngx_http_post_subrequest_t       *post_subrequest;
+    ngx_http_posted_request_t        *posted_requests;
 
     uint32_t                          in_addr;
     ngx_uint_t                        port;
@@ -428,8 +438,8 @@ struct ngx_http_request_s {
     unsigned                          request_body_file_group_access:1;
     unsigned                          request_body_file_log_level:3;
 
-    unsigned                          fast_subrequest:1;
     unsigned                          subrequest_in_memory:1;
+    unsigned                          waited:1;
 
     unsigned                          gzip:2;
 

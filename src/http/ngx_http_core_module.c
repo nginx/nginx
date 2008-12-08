@@ -1831,7 +1831,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
 {
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
-    ngx_http_log_ctx_t            *ctx;
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
 
@@ -1896,6 +1895,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->zero_in_uri = (flags & NGX_HTTP_ZERO_IN_URI) != 0;
     sr->subrequest_in_memory = (flags & NGX_HTTP_SUBREQUEST_IN_MEMORY) != 0;
+    sr->waited = (flags & NGX_HTTP_SUBREQUEST_WAITED) != 0;
 
     sr->unparsed_uri = r->unparsed_uri;
     sr->method_name = ngx_http_core_get_method;
@@ -1909,7 +1909,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->parent = r;
     sr->post_subrequest = ps;
     sr->read_event_handler = ngx_http_request_empty_handler;
-    sr->write_event_handler = ngx_http_request_empty_handler;
+    sr->write_event_handler = ngx_http_handler;
 
     if (c->data == r) {
         c->data = sr;
@@ -1940,39 +1940,18 @@ ngx_http_subrequest(ngx_http_request_t *r,
         r->postponed = pr;
     }
 
-    ctx = c->log->data;
-    ctx->current_request = sr;
-
     sr->internal = 1;
-    sr->fast_subrequest = 1;
 
     sr->discard_body = r->discard_body;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
     sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
 
-    ngx_http_handler(sr);
+    r->main->subrequests++;
 
-    if (!c->destroyed) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http subrequest done \"%V?%V\"", uri, &sr->args);
+    *psr = sr;
 
-        r->main->subrequests++;
-
-        *psr = sr;
-
-        if (sr->fast_subrequest) {
-            sr->fast_subrequest = 0;
-
-            if (sr->done) {
-                return NGX_OK;
-            }
-        }
-
-        return NGX_AGAIN;
-    }
-
-    return NGX_DONE;
+    return ngx_http_post_request(sr);
 }
 
 

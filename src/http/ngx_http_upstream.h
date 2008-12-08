@@ -217,6 +217,9 @@ typedef struct {
 
 
 struct ngx_http_upstream_s {
+    ngx_event_handler_pt            read_event_handler;
+    ngx_event_handler_pt            write_event_handler;
+
     ngx_peer_connection_t           peer;
 
     ngx_event_pipe_t               *pipe;
