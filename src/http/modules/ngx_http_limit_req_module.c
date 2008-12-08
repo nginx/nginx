@@ -178,8 +178,8 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "limiting requests, excess: %ui.%03ui",
-                      excess / 1000, excess % 1000);
+                      "limiting requests, excess: %ui.%03ui by zone \"%V\"",
+                      excess / 1000, excess % 1000, &lrcf->shm_zone->name);
 
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
@@ -192,8 +192,8 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         }
 
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "delaying request, excess: %ui.%03ui",
-                      excess / 1000, excess % 1000);
+                      "delaying request, excess: %ui.%03ui, by zone \"%V\"",
+                      excess / 1000, excess % 1000, &lrcf->shm_zone->name);
 
         if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -224,6 +224,11 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         node = ngx_slab_alloc_locked(ctx->shpool, n);
         if (node == NULL) {
             ngx_shmtx_unlock(&ctx->shpool->mutex);
+
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "could not allocate memory in zone \"%V\"",
+                          &lrcf->shm_zone->name);
+
             return NGX_HTTP_SERVICE_UNAVAILABLE;
         }
     }
