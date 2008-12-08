@@ -513,7 +513,7 @@ ngx_http_limit_req_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->shm_zone = NULL;
-     *     conf->burst = 0.0;
+     *     conf->burst = 0;
      *     conf->nodelay = 0;
      */
 
