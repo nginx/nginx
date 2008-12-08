@@ -462,6 +462,10 @@ ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t   n;
     ngx_str_t  *value;
 
+    if (lzcf->shm_zone) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
     lzcf->shm_zone = ngx_shared_memory_add(cf, &value[1], 0,
