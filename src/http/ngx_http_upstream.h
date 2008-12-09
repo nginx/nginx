@@ -216,9 +216,13 @@ typedef struct {
 } ngx_http_upstream_resolved_t;
 
 
+typedef void (*ngx_http_upstream_handler_pt)(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+
+
 struct ngx_http_upstream_s {
-    ngx_event_handler_pt            read_event_handler;
-    ngx_event_handler_pt            write_event_handler;
+    ngx_http_upstream_handler_pt    read_event_handler;
+    ngx_http_upstream_handler_pt    write_event_handler;
 
     ngx_peer_connection_t           peer;
 
