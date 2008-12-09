@@ -1883,8 +1883,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                        "http wake parent request: \"%V?%V\"",
                        &pr->uri, &pr->args);
 
-        ngx_http_run_posted_requests(c);
-
         return;
     }
 
