@@ -201,7 +201,7 @@ ngx_mail_proxy_block_read(ngx_event_t *rev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0, "mail proxy block read");
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         c = rev->data;
         s = c->data;
 
@@ -664,7 +664,7 @@ ngx_mail_proxy_dummy_handler(ngx_event_t *wev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, wev->log, 0, "mail proxy dummy handler");
 
-    if (ngx_handle_write_event(wev, 0) == NGX_ERROR) {
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
         c = wev->data;
         s = c->data;
 
@@ -947,22 +947,22 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
         return;
     }
 
-    if (ngx_handle_write_event(dst->write, 0) == NGX_ERROR) {
+    if (ngx_handle_write_event(dst->write, 0) != NGX_OK) {
         ngx_mail_proxy_close_session(s);
         return;
     }
 
-    if (ngx_handle_read_event(dst->read, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(dst->read, 0) != NGX_OK) {
         ngx_mail_proxy_close_session(s);
         return;
     }
 
-    if (ngx_handle_write_event(src->write, 0) == NGX_ERROR) {
+    if (ngx_handle_write_event(src->write, 0) != NGX_OK) {
         ngx_mail_proxy_close_session(s);
         return;
     }
 
-    if (ngx_handle_read_event(src->read, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(src->read, 0) != NGX_OK) {
         ngx_mail_proxy_close_session(s);
         return;
     }

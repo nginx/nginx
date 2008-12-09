@@ -498,11 +498,11 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     if (n == 1) {
 
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
-        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -569,7 +569,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
 
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -581,7 +581,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
 
-        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -767,7 +767,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
             c->ssl->saved_write_handler = NULL;
             c->write->ready = 1;
 
-            if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+            if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
                 return NGX_ERROR;
             }
 
@@ -795,7 +795,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
         c->write->ready = 0;
 
-        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -1019,7 +1019,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
             c->ssl->saved_read_handler = NULL;
             c->read->ready = 1;
 
-            if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
                 return NGX_ERROR;
             }
 
@@ -1047,7 +1047,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
         c->read->ready = 0;
 
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -1147,11 +1147,11 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         c->read->handler = ngx_ssl_shutdown_handler;
         c->write->handler = ngx_ssl_shutdown_handler;
 
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
-        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 

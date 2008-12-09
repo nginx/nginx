@@ -513,7 +513,7 @@ ngx_mail_send(ngx_event_t *wev)
     }
 
     if (s->out.len == 0) {
-        if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             ngx_mail_close_connection(c);
         }
 
@@ -552,7 +552,7 @@ ngx_mail_send(ngx_event_t *wev)
 
     ngx_add_timer(c->write, cscf->timeout);
 
-    if (ngx_handle_write_event(c->write, 0) == NGX_ERROR) {
+    if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
         return;
     }
@@ -579,7 +579,7 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 
     if (n == NGX_AGAIN) {
-        if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             ngx_mail_session_internal_server_error(s);
             return NGX_ERROR;
         }

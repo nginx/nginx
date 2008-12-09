@@ -215,7 +215,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
         ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
@@ -504,7 +504,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
             ngx_add_timer(rev, c->listening->post_accept_timeout);
         }
 
-        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
 
@@ -1038,7 +1038,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
             ngx_add_timer(rev, cscf->client_header_timeout);
         }
 
-        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
         }
@@ -1971,7 +1971,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
         ngx_add_timer(wev, clcf->send_timeout);
     }
 
-    if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
+    if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
         ngx_http_close_request(r, 0);
         return NGX_ERROR;
     }
@@ -2012,7 +2012,7 @@ ngx_http_writer(ngx_http_request_t *r)
         if (!wev->ready) {
             ngx_add_timer(wev, clcf->send_timeout);
 
-            if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
+            if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
                 ngx_http_close_request(r, 0);
             }
 
@@ -2024,7 +2024,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                            "http writer delayed");
 
-            if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
+            if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
                 ngx_http_close_request(r, 0);
             }
 
@@ -2048,7 +2048,7 @@ ngx_http_writer(ngx_http_request_t *r)
             ngx_add_timer(wev, clcf->send_timeout);
         }
 
-        if (ngx_handle_write_event(wev, clcf->send_lowat) == NGX_ERROR) {
+        if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
             ngx_http_close_request(r, 0);
         }
 
@@ -2083,9 +2083,7 @@ ngx_http_block_reading(ngx_http_request_t *r)
     if ((ngx_event_flags & NGX_USE_LEVEL_EVENT)
         && r->connection->read->active)
     {
-        if (ngx_del_event(r->connection->read, NGX_READ_EVENT, 0)
-            == NGX_ERROR)
-        {
+        if (ngx_del_event(r->connection->read, NGX_READ_EVENT, 0) != NGX_OK) {
             ngx_http_close_request(r, 0);
         }
     }
@@ -2147,7 +2145,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
     if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && rev->active) {
 
-        if (ngx_del_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+        if (ngx_del_event(rev, NGX_READ_EVENT, 0) != NGX_OK) {
             ngx_http_close_request(r, 0);
         }
     }
@@ -2241,7 +2239,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ngx_add_timer(rev, clcf->keepalive_timeout);
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_connection(c);
         return;
     }
@@ -2328,7 +2326,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     rev->handler = ngx_http_keepalive_handler;
 
     if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) != NGX_OK) {
             ngx_http_close_connection(c);
             return;
         }
@@ -2453,7 +2451,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     c->log_error = NGX_ERROR_INFO;
 
     if (n == NGX_AGAIN) {
-        if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_connection(c);
         }
 
@@ -2506,7 +2504,7 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
     r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
     ngx_add_timer(rev, clcf->lingering_timeout);
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_request(r, 0);
         return;
     }
@@ -2515,7 +2513,7 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
     wev->handler = ngx_http_empty_handler;
 
     if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) == NGX_ERROR) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) != NGX_OK) {
             ngx_http_close_request(r, 0);
             return;
         }
@@ -2574,7 +2572,7 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
 
     } while (rev->ready);
 
-    if (ngx_handle_read_event(rev, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_request(r, 0);
         return;
     }

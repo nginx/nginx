@@ -67,7 +67,7 @@ ngx_mail_pop3_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     ngx_add_timer(c->read, cscf->timeout);
 
-    if (ngx_handle_read_event(c->read, 0) == NGX_ERROR) {
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
     }
 
