@@ -66,9 +66,6 @@ typedef long  time_t;
 /* FD_SET() and FD_CLR(): conditional expression is constant */
 #pragma warning(disable:4127)
 
-/* function 'ngx_handle_write_event' not inlined */
-#pragma warning(disable:4710)
-
 #endif
 
 
