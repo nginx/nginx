@@ -597,13 +597,13 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static char *
 ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_memcached_loc_conf_t *lcf = conf;
+    ngx_http_memcached_loc_conf_t *mlcf = conf;
 
     ngx_str_t                 *value;
     ngx_url_t                  u;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (lcf->upstream.upstream) {
+    if (mlcf->upstream.upstream) {
         return "is duplicate";
     }
 
@@ -614,8 +614,8 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.url = value[1];
     u.no_resolve = 1;
 
-    lcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
-    if (lcf->upstream.upstream == NULL) {
+    mlcf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
+    if (mlcf->upstream.upstream == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -627,9 +627,9 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         clcf->auto_redirect = 1;
     }
 
-    lcf->index = ngx_http_get_variable_index(cf, &ngx_http_memcached_key);
+    mlcf->index = ngx_http_get_variable_index(cf, &ngx_http_memcached_key);
 
-    if (lcf->index == NGX_ERROR) {
+    if (mlcf->index == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 
