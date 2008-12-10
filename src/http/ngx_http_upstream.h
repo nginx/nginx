@@ -144,8 +144,6 @@ typedef struct {
     ngx_array_t                    *hide_headers;
     ngx_array_t                    *pass_headers;
 
-    ngx_str_t                       schema;
-
     ngx_array_t                    *store_lengths;
     ngx_array_t                    *store_values;
 

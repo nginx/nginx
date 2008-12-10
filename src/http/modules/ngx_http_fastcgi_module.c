@@ -1681,7 +1681,6 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
-     *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
      *     conf->upstream.store_lengths = NULL;
@@ -1911,7 +1910,6 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.upstream == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
-        conf->upstream.schema = prev->upstream.schema;
     }
 
     if (conf->fastcgi_lengths == NULL) {
@@ -2107,15 +2105,12 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_script_compile_t   sc;
 
-    if (flcf->upstream.schema.len) {
+    if (flcf->upstream.upstream || flcf->fastcgi_lengths) {
         return "is duplicate";
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_fastcgi_handler;
-
-    flcf->upstream.schema.len = sizeof("fastcgi://") - 1;
-    flcf->upstream.schema.data = (u_char *) "fastcgi://";
 
     value = cf->args->elts;
 

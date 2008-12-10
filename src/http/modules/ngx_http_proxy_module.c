@@ -32,6 +32,7 @@ struct ngx_http_proxy_redirect_s {
 
 
 typedef struct {
+    ngx_str_t                      schema;
     ngx_str_t                      host_header;
     ngx_str_t                      port;
     ngx_str_t                      uri;
@@ -480,7 +481,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     if (plcf->proxy_lengths == 0) {
         ctx->vars = plcf->vars;
-        u->schema = plcf->upstream.schema;
+        u->schema = plcf->vars.schema;
 #if (NGX_HTTP_SSL)
         u->ssl = (plcf->upstream.ssl != NULL);
 #endif
@@ -1631,7 +1632,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
-     *     conf->upstream.schema = { 0, NULL };
      *     conf->upstream.uri = { 0, NULL };
      *     conf->upstream.location = NULL;
      *     conf->upstream.store_lengths = NULL;
@@ -1931,9 +1931,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.upstream == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
-
         conf->vars = prev->vars;
-        conf->upstream.schema = prev->upstream.schema;
     }
 
 
@@ -2216,7 +2214,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_script_compile_t   sc;
 
-    if (plcf->upstream.schema.len) {
+    if (plcf->upstream.upstream || plcf->proxy_lengths) {
         return "is duplicate";
     }
 
@@ -2296,8 +2294,8 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    plcf->upstream.schema.len = add;
-    plcf->upstream.schema.data = url->data;
+    plcf->vars.schema.len = add;
+    plcf->vars.schema.data = url->data;
     plcf->location = clcf->name;
 
     clcf->handler = ngx_http_proxy_handler;
