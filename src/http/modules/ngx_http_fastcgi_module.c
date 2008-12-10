@@ -500,6 +500,12 @@ ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
         return NGX_ERROR;
     }
 
+    if (u.no_port) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "no port in upstream \"%V\"", &u.url);
+        return NGX_ERROR;
+    }
+
     r->upstream->resolved = ngx_pcalloc(r->pool,
                                         sizeof(ngx_http_upstream_resolved_t));
     if (r->upstream->resolved == NULL) {
