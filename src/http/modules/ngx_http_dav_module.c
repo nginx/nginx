@@ -246,9 +246,11 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
 
     ext.access = dlcf->access;
+    ext.path_access = dlcf->access;
     ext.time = -1;
     ext.create_path = dlcf->create_full_put_path;
     ext.delete_file = 1;
+    ext.log_rename_error = 1;
     ext.log = r->connection->log;
 
     if (r->headers_in.date) {
@@ -521,6 +523,7 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
     ngx_tree_ctx_t            tree;
     ngx_file_info_t           fi;
     ngx_table_elt_t          *dest, *over;
+    ngx_ext_rename_file_t     ext;
     ngx_http_dav_copy_ctx_t   copy;
     ngx_http_dav_loc_conf_t  *dlcf;
 
@@ -781,8 +784,31 @@ overwrite_done:
     } else {
 
         if (r->method == NGX_HTTP_MOVE) {
-            if (ngx_rename_file(path.data, copy.path.data) != NGX_FILE_ERROR) {
+
+            dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
+
+            ext.access = 0;
+            ext.path_access = dlcf->access;
+            ext.time = -1;
+            ext.create_path = 1;
+            ext.delete_file = 0;
+            ext.log_rename_error = 0;
+            ext.log = r->connection->log;
+
+            if (ngx_ext_rename_file(&path, &copy.path, &ext) == NGX_OK) {
                 return NGX_HTTP_NO_CONTENT;
+            }
+
+            if (ext.rename_error != NGX_EXDEV) {
+
+                if (ext.rename_error) {
+                    ngx_log_error(NGX_LOG_CRIT, r->connection->log,
+                                  ext.rename_error,
+                                  ngx_rename_file_n " \"%s\" to \"%s\" failed",
+                                  path.data, copy.path.data);
+                }
+
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
         }
 

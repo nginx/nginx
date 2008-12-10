@@ -60,11 +60,14 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t          access;
+    ngx_uint_t          path_access;
     time_t              time;
     ngx_fd_t            fd;
+    ngx_err_t           rename_error;
 
     unsigned            create_path:1;
     unsigned            delete_file:1;
+    unsigned            log_rename_error:1;
 
     ngx_log_t          *log;
 } ngx_ext_rename_file_t;

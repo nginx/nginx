@@ -23,10 +23,13 @@ typedef DWORD                      ngx_err_t;
 #define NGX_ENOENT                 ERROR_FILE_NOT_FOUND
 #define NGX_ENOMEM                 ERROR_NOT_ENOUGH_MEMORY
 #define NGX_EACCES                 ERROR_ACCESS_DENIED
-#if 0
-#define NGX_EEXIST                 ERROR_FILE_EXISTS
-#endif
+/* it's seems that ERROR_FILE_EXISTS is not appropriate error code */
 #define NGX_EEXIST                 ERROR_ALREADY_EXISTS
+/*
+ * could not found cross volume directory move error code,
+ * so use ERROR_WRONG_DISK as stub one
+ */
+#define NGX_EXDEV                  ERROR_WRONG_DISK
 #define NGX_ENOTDIR                ERROR_PATH_NOT_FOUND
 #define NGX_EISDIR                 ERROR_CANNOT_MAKE
 #define NGX_ENOSPC                 ERROR_DISK_FULL

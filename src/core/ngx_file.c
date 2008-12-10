@@ -487,11 +487,13 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
 #if !(NGX_WIN32)
 
-    if (ngx_change_file_access(src->data, ext->access) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
-                      ngx_change_file_access_n " \"%s\" failed", src->data);
-        err = 0;
-        goto failed;
+    if (ext->access) {
+        if (ngx_change_file_access(src->data, ext->access) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
+                          ngx_change_file_access_n " \"%s\" failed", src->data);
+            err = 0;
+            goto failed;
+        }
     }
 
 #endif
@@ -517,7 +519,7 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
             goto failed;
         }
 
-        err = ngx_create_full_path(to->data, ngx_dir_access(ext->access));
+        err = ngx_create_full_path(to->data, ngx_dir_access(ext->path_access));
 
         if (err) {
             ngx_log_error(NGX_LOG_CRIT, ext->log, err,
@@ -561,11 +563,13 @@ failed:
         }
     }
 
-    if (err) {
+    if (err && ext->log_rename_error) {
         ngx_log_error(NGX_LOG_CRIT, ext->log, err,
                       ngx_rename_file_n " \"%s\" to \"%s\" failed",
                       src->data, to->data);
     }
+
+    ext->rename_error = err;
 
     return NGX_ERROR;
 }

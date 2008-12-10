@@ -23,6 +23,7 @@ typedef int               ngx_err_t;
 #define NGX_EACCES        EACCES
 #define NGX_EBUSY         EBUSY
 #define NGX_EEXIST        EEXIST
+#define NGX_EXDEV         EXDEV
 #define NGX_ENOTDIR       ENOTDIR
 #define NGX_EISDIR        EISDIR
 #define NGX_EINVAL        EINVAL

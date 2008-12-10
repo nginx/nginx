@@ -2288,9 +2288,11 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     ext.access = u->conf->store_access;
+    ext.path_access = u->conf->store_access;
     ext.time = -1;
     ext.create_path = 1;
     ext.delete_file = 1;
+    ext.log_rename_error = 1;
     ext.log = r->connection->log;
 
     if (u->headers_in.last_modified) {
