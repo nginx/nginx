@@ -39,6 +39,8 @@ static char *ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
 static char *ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
+static ngx_int_t ngx_http_core_regex_location(ngx_conf_t *cf,
+    ngx_http_core_loc_conf_t *clcf, ngx_str_t *regex, ngx_uint_t caseless);
 
 static char *ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -2182,8 +2184,10 @@ static char *
 ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
     char                      *rv;
+    u_char                    *mod;
+    size_t                     len;
+    ngx_str_t                 *value, *name;
     ngx_uint_t                 i;
-    ngx_str_t                 *value;
     ngx_conf_t                 save;
     ngx_http_module_t         *module;
     ngx_http_conf_ctx_t       *ctx, *pctx;
@@ -2225,45 +2229,32 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     value = cf->args->elts;
 
     if (cf->args->nelts == 3) {
-        if (value[1].len == 1 && value[1].data[0] == '=') {
-            clcf->name = value[2];
+
+        len = value[1].len;
+        mod = value[1].data;
+        name = &value[2];
+
+        if (len == 1 && mod[0] == '=') {
+
+            clcf->name = *name;
             clcf->exact_match = 1;
 
-        } else if (value[1].len == 2
-                   && value[1].data[0] == '^'
-                   && value[1].data[1] == '~')
-        {
-            clcf->name = value[2];
+        } else if (len == 2 && mod[0] == '^' && mod[1] == '~') {
+
+            clcf->name = *name;
             clcf->noregex = 1;
 
-        } else if ((value[1].len == 1 && value[1].data[0] == '~')
-                   || (value[1].len == 2
-                       && value[1].data[0] == '~'
-                       && value[1].data[1] == '*'))
-        {
-#if (NGX_PCRE)
-            ngx_str_t  err;
-            u_char     errstr[NGX_MAX_CONF_ERRSTR];
+        } else if (len == 1 && mod[0] == '~') {
 
-            err.len = NGX_MAX_CONF_ERRSTR;
-            err.data = errstr;
-
-            clcf->regex = ngx_regex_compile(&value[2],
-                                     value[1].len == 2 ? NGX_REGEX_CASELESS: 0,
-                                     cf->pool, &err);
-
-            if (clcf->regex == NULL) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+            if (ngx_http_core_regex_location(cf, clcf, name, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
 
-            clcf->name = value[2];
-#else
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the using of the regex \"%V\" "
-                               "requires PCRE library", &value[2]);
-            return NGX_CONF_ERROR;
-#endif
+        } else if (len == 2 && mod[0] == '~' && mod[1] == '*') {
+
+            if (ngx_http_core_regex_location(cf, clcf, name, 1) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -2273,10 +2264,47 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     } else {
 
-        clcf->name = value[1];
+        name = &value[1];
 
-        if (value[1].data[0] == '@') {
-            clcf->named = 1;
+        if (name->data[0] == '=') {
+
+            clcf->name.len = name->len - 1;
+            clcf->name.data = name->data + 1;
+            clcf->exact_match = 1;
+
+        } else if (name->data[0] == '^' && name->data[1] == '~') {
+
+            clcf->name.len = name->len - 2;
+            clcf->name.data = name->data + 2;
+            clcf->noregex = 1;
+
+        } else if (name->data[0] == '~') {
+
+            name->len--;
+            name->data++;
+
+            if (name->data[0] == '*') {
+
+                name->len--;
+                name->data++;
+
+                if (ngx_http_core_regex_location(cf, clcf, name, 1) != NGX_OK) {
+                    return NGX_CONF_ERROR;
+                }
+
+            } else {
+                if (ngx_http_core_regex_location(cf, clcf, name, 0) != NGX_OK) {
+                    return NGX_CONF_ERROR;
+                }
+            }
+
+        } else {
+
+            clcf->name = *name;
+
+            if (name->data[0] == '@') {
+                clcf->named = 1;
+            }
         }
     }
 
@@ -2314,13 +2342,13 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
             return NGX_CONF_ERROR;
         }
 
+        len = pclcf->name.len;
+
 #if (NGX_PCRE)
         if (clcf->regex == NULL
-            && ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
-               != 0)
+            && ngx_strncmp(clcf->name.data, pclcf->name.data, len) != 0)
 #else
-        if (ngx_strncmp(clcf->name.data, pclcf->name.data, pclcf->name.len)
-            != 0)
+        if (ngx_strncmp(clcf->name.data, pclcf->name.data, len) != 0)
 #endif
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -2343,6 +2371,40 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     *cf = save;
 
     return rv;
+}
+
+
+static ngx_int_t
+ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
+    ngx_str_t *regex, ngx_uint_t caseless)
+{
+#if (NGX_PCRE)
+    ngx_str_t  err;
+    u_char     errstr[NGX_MAX_CONF_ERRSTR];
+
+    err.len = NGX_MAX_CONF_ERRSTR;
+    err.data = errstr;
+
+    clcf->regex = ngx_regex_compile(regex, caseless ? NGX_REGEX_CASELESS: 0,
+                                    cf->pool, &err);
+
+    if (clcf->regex == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+        return NGX_ERROR;
+    }
+
+    clcf->name = *regex;
+
+    return NGX_OK;
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "the using of the regex \"%V\" requires PCRE library",
+                       regex);
+    return NGX_ERROR;
+
+#endif
 }
 
 
