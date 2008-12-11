@@ -697,22 +697,22 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             cidrin.mask = 0xffffffff;
 
         } else {
-	    rc = ngx_ptocidr(net, &cidrin);
+            rc = ngx_ptocidr(net, &cidrin);
 
-	    if (rc == NGX_ERROR) {
-		ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-				   "invalid network \"%V\"", net);
-		return NGX_CONF_ERROR;
-	    }
+            if (rc == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid network \"%V\"", net);
+                return NGX_CONF_ERROR;
+            }
 
-	    if (rc == NGX_DONE) {
-		ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-				   "low address bits of %V are meaningless",
+            if (rc == NGX_DONE) {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "low address bits of %V are meaningless",
                                    net);
-	    }
+            }
 
-	    cidrin.addr = ntohl(cidrin.addr);
-	    cidrin.mask = ntohl(cidrin.mask);
+            cidrin.addr = ntohl(cidrin.addr);
+            cidrin.mask = ntohl(cidrin.mask);
         }
 
         if (del) {
