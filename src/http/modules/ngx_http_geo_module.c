@@ -10,36 +10,48 @@
 
 
 typedef struct {
-    u_short                      start;
-    u_short                      end;
-    ngx_http_variable_value_t   *value;
+    u_short                          start;
+    u_short                          end;
+    ngx_http_variable_value_t       *value;
 } ngx_http_geo_range_t;
 
 
 typedef struct {
-    ngx_http_geo_range_t        *ranges;
-    ngx_uint_t                   n;
+    ngx_http_geo_range_t            *ranges;
+    ngx_uint_t                       n;
 } ngx_http_geo_low_ranges_t;
 
 
 typedef struct {
-    ngx_http_geo_low_ranges_t    low[0x10000];
-    ngx_http_variable_value_t   *default_value;
+    ngx_http_geo_low_ranges_t        low[0x10000];
+    ngx_http_variable_value_t       *default_value;
 } ngx_http_geo_high_ranges_t;
 
 
 typedef struct {
-    ngx_http_variable_value_t   *value;
-    ngx_str_t                   *net;
-    ngx_http_geo_high_ranges_t  *high;
-    ngx_radix_tree_t            *tree;
-    ngx_rbtree_t                 rbtree;
-    ngx_rbtree_node_t            sentinel;
-    ngx_pool_t                  *pool;
-    ngx_pool_t                  *temp_pool;
+    ngx_http_variable_value_t       *value;
+    ngx_str_t                       *net;
+    ngx_http_geo_high_ranges_t      *high;
+    ngx_radix_tree_t                *tree;
+    ngx_rbtree_t                     rbtree;
+    ngx_rbtree_node_t                sentinel;
+    ngx_pool_t                      *pool;
+    ngx_pool_t                      *temp_pool;
 } ngx_http_geo_conf_ctx_t;
 
 
+typedef struct {
+    union {
+        ngx_radix_tree_t            *tree;
+        ngx_http_geo_high_ranges_t  *high;
+    } u;
+
+    ngx_int_t                        index;
+} ngx_http_geo_ctx_t;
+
+
+static in_addr_t ngx_http_geo_addr(ngx_http_request_t *r,
+    ngx_http_geo_ctx_t *ctx);
 static char *ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf);
 static char *ngx_http_geo_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
@@ -57,7 +69,7 @@ static ngx_http_variable_value_t *ngx_http_geo_value(ngx_conf_t *cf,
 static ngx_command_t  ngx_http_geo_commands[] = {
 
     { ngx_string("geo"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_http_geo_block,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -104,23 +116,17 @@ static ngx_int_t
 ngx_http_geo_cidr_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    ngx_radix_tree_t *tree = (ngx_radix_tree_t *) data;
+    ngx_http_geo_ctx_t *ctx = (ngx_http_geo_ctx_t *) data;
 
-    struct sockaddr_in         *sin;
     ngx_http_variable_value_t  *vv;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo started");
-
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
-
     vv = (ngx_http_variable_value_t *)
-                       ngx_radix32tree_find(tree, ntohl(sin->sin_addr.s_addr));
+              ngx_radix32tree_find(ctx->u.tree, ngx_http_geo_addr(r, ctx));
 
     *v = *vv;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo: %V %v", &r->connection->addr_text, v);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo: %v", v);
 
     return NGX_OK;
 }
@@ -130,27 +136,21 @@ static ngx_int_t
 ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    ngx_http_geo_high_ranges_t *high = (ngx_http_geo_high_ranges_t *) data;
+    ngx_http_geo_ctx_t *ctx = (ngx_http_geo_ctx_t *) data;
 
     in_addr_t              addr;
     ngx_uint_t             i, n;
-    struct sockaddr_in    *sin;
     ngx_http_geo_range_t  *range;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo started");
+    *v = *ctx->u.high->default_value;
 
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
+    addr = ngx_http_geo_addr(r, ctx);
 
-    *v = *high->default_value;
-
-    addr = ntohl(sin->sin_addr.s_addr);
-
-    range = high->low[addr >> 16].ranges;
+    range = ctx->u.high->low[addr >> 16].ranges;
 
     n = addr & 0xffff;
 
-    for (i = 0; i < high->low[addr >> 16].n; i++) {
+    for (i = 0; i < ctx->u.high->low[addr >> 16].n; i++) {
         if (n >= (ngx_uint_t) range[i].start
             && n <= (ngx_uint_t) range[i].end)
         {
@@ -158,10 +158,40 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         }
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http geo: %V %v", &r->connection->addr_text, v);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo: %v", v);
 
     return NGX_OK;
+}
+
+
+static in_addr_t
+ngx_http_geo_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx)
+{
+    struct sockaddr_in         *sin;
+    ngx_http_variable_value_t  *v;
+
+    if (ctx->index == -1) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http geo started: %V", &r->connection->addr_text);
+
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+        return ntohl(sin->sin_addr.s_addr);
+    }
+
+    v = ngx_http_get_flushed_variable(r, ctx->index);
+
+    if (v == NULL || v->not_found) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http geo not found");
+
+        return 0;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http geo started: %v", v);
+
+    return ntohl(ngx_inet_addr(v->data, v->len));
 }
 
 
@@ -170,17 +200,42 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                     *rv;
     size_t                    len;
-    ngx_str_t                *value;
+    ngx_str_t                *value, name;
     ngx_uint_t                i;
     ngx_conf_t                save;
     ngx_pool_t               *pool;
     ngx_array_t              *a;
     ngx_http_variable_t      *var;
+    ngx_http_geo_ctx_t       *geo;
     ngx_http_geo_conf_ctx_t   ctx;
 
     value = cf->args->elts;
 
-    var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE);
+    geo = ngx_palloc(cf->pool, sizeof(ngx_http_geo_ctx_t));
+    if (geo == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    name = value[1];
+    name.len--;
+    name.data++;
+
+    if (cf->args->nelts == 3) {
+
+        geo->index = ngx_http_get_variable_index(cf, &name);
+        if (geo->index == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        name = value[2];
+        name.len--;
+        name.data++;
+
+    } else {
+        geo->index = -1;
+    }
+
+    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -233,8 +288,10 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_memcpy(ctx.high->low[i].ranges, a->elts, len);
         }
 
+        geo->u.high = ctx.high;
+
         var->get_handler = ngx_http_geo_range_variable;
-        var->data = (uintptr_t) ctx.high;
+        var->data = (uintptr_t) geo;
 
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
@@ -251,8 +308,10 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
+        geo->u.tree = ctx.tree;
+
         var->get_handler = ngx_http_geo_cidr_variable;
-        var->data = (uintptr_t) ctx.tree;
+        var->data = (uintptr_t) geo;
 
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
@@ -633,21 +692,28 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             del = 0;
         }
 
-        rc = ngx_ptocidr(net, &cidrin);
+        if (ngx_strcmp(net->data, "255.255.255.255") == 0) {
+            cidrin.addr = 0xffffffff;
+            cidrin.mask = 0xffffffff;
 
-        if (rc == NGX_ERROR) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid network \"%V\"", net);
-            return NGX_CONF_ERROR;
+        } else {
+	    rc = ngx_ptocidr(net, &cidrin);
+
+	    if (rc == NGX_ERROR) {
+		ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+				   "invalid network \"%V\"", net);
+		return NGX_CONF_ERROR;
+	    }
+
+	    if (rc == NGX_DONE) {
+		ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+				   "low address bits of %V are meaningless",
+                                   net);
+	    }
+
+	    cidrin.addr = ntohl(cidrin.addr);
+	    cidrin.mask = ntohl(cidrin.mask);
         }
-
-        if (rc == NGX_DONE) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "low address bits of %V are meaningless", net);
-        }
-
-        cidrin.addr = ntohl(cidrin.addr);
-        cidrin.mask = ntohl(cidrin.mask);
 
         if (del) {
             if (ngx_radix32tree_delete(ctx->tree, cidrin.addr, cidrin.mask)
