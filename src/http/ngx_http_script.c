@@ -620,7 +620,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
     rc = ngx_regex_exec(code->regex, &e->line, e->captures, code->ncaptures);
 
     if (rc == NGX_REGEX_NO_MATCHED) {
-        if (e->log) {
+        if (e->log || (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP)) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                           "\"%V\" does not match \"%V\"",
                           &code->name, &e->line);
@@ -658,7 +658,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         return;
     }
 
-    if (e->log) {
+    if (e->log || (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP)) {
         ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                       "\"%V\" matches \"%V\"", &code->name, &e->line);
     }
@@ -794,15 +794,10 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
 
         e->buf.len = e->pos - e->buf.data;
 
-#if (NGX_DEBUG)
-        ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                      "rewritten redirect: \"%V\"", &e->buf);
-#else
-        if (e->log) {
+        if (e->log || (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP)) {
             ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                           "rewritten redirect: \"%V\"", &e->buf);
         }
-#endif
 
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {
@@ -841,16 +836,11 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
         }
     }
 
-#if (NGX_DEBUG)
-    ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
-                  "rewritten data: \"%V\", args: \"%V\"", &e->buf, &r->args);
-#else
-    if (e->log) {
+    if (e->log || (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP)) {
         ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                       "rewritten data: \"%V\", args: \"%V\"",
                       &e->buf, &r->args);
     }
-#endif
 
     if (code->uri) {
         r->uri = e->buf;
