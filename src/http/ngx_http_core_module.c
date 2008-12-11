@@ -2017,33 +2017,37 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-    for (clcfp = cscf->named_locations; *clcfp; clcfp++) {
+    if (cscf->named_locations) {
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "test location: \"%V\"", &(*clcfp)->name);
+        for (clcfp = cscf->named_locations; *clcfp; clcfp++) {
 
-        if (name->len != (*clcfp)->name.len
-            || ngx_strncmp(name->data, (*clcfp)->name.data, name->len) != 0)
-        {
-            continue;
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "test location: \"%V\"", &(*clcfp)->name);
+
+            if (name->len != (*clcfp)->name.len
+                || ngx_strncmp(name->data, (*clcfp)->name.data, name->len) != 0)
+            {
+                continue;
+            }
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "using location: %V \"%V?%V\"",
+                           name, &r->uri, &r->args);
+
+            r->internal = 1;
+            r->content_handler = NULL;
+            r->loc_conf = (*clcfp)->loc_conf;
+
+            ngx_http_update_location_config(r);
+
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+            r->phase_handler = cmcf->phase_engine.location_rewrite_index;
+
+            ngx_http_core_run_phases(r);
+
+            return NGX_DONE;
         }
-
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "using location: %V \"%V?%V\"", name, &r->uri, &r->args);
-
-        r->internal = 1;
-        r->content_handler = NULL;
-        r->loc_conf = (*clcfp)->loc_conf;
-
-        ngx_http_update_location_config(r);
-
-        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-        r->phase_handler = cmcf->phase_engine.location_rewrite_index;
-
-        ngx_http_core_run_phases(r);
-
-        return NGX_DONE;
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
