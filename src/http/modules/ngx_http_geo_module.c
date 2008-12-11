@@ -170,7 +170,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                     *rv;
     size_t                    len;
-    ngx_str_t                *value, name;
+    ngx_str_t                *value;
     ngx_uint_t                i;
     ngx_conf_t                save;
     ngx_pool_t               *pool;
@@ -180,18 +180,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    name = value[1];
-
-    if (name.data[0] != '$') {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "\"%V\" variable name should start with '$'",
-                           &value[1]);
-    } else {
-        name.len--;
-        name.data++;
-    }
-
-    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+    var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }
