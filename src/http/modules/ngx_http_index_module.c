@@ -99,7 +99,6 @@ ngx_http_index_handler(ngx_http_request_t *r)
     size_t                        len, nlen, root, allocated;
     ngx_int_t                     rc;
     ngx_str_t                     path, uri;
-    ngx_log_t                    *log;
     ngx_uint_t                    i, dir_tested;
     ngx_http_index_t             *index;
     ngx_open_file_info_t          of;
@@ -121,8 +120,6 @@ ngx_http_index_handler(ngx_http_request_t *r)
     if (r->zero_in_uri) {
         return NGX_DECLINED;
     }
-
-    log = r->connection->log;
 
     ilcf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -206,7 +203,8 @@ ngx_http_index_handler(ngx_http_request_t *r)
             *e.pos++ = '\0';
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "open index \"%V\"", &path);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "open index \"%V\"", &path);
 
         ngx_memzero(&of, sizeof(ngx_open_file_info_t));
 
@@ -219,7 +217,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
         {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, of.err,
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, of.err,
                            ngx_open_file_n " \"%s\" failed", path.data);
 
             if (of.err == 0) {
@@ -244,7 +242,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 continue;
             }
 
-            ngx_log_error(NGX_LOG_ERR, log, of.err,
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, of.err,
                           ngx_open_file_n " \"%s\" failed", path.data);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
