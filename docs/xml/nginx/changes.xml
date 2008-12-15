@@ -9,6 +9,102 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.27" date="15.12.2008">
+
+<change type="feature">
+<para lang="ru">
+директива try_files.
+</para>
+<para lang="en">
+the "try_files" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_pass поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "fastcgi_pass" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива geo может брать адрес из переменной.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+now the $geo variable may get an address from a variable.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь модификатор location'а можно указывать без пробела перед названием.
+</para>
+<para lang="en">
+now a location's modifier may be used without space before name.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_response_length.
+</para>
+<para lang="en">
+the $upstream_response_length variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь директива add_header не добавляет пустое значение.
+</para>
+<para lang="en">
+now a "add_header" directive does not add an empty value.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при запросе файла нулевой длины nginx закрывал соединение, ничего не передав;
+ошибка появилась в 0.7.25.
+</para>
+<para lang="en">
+if zero length static file was requested, then nginx just closed connection;
+the bug had appeared in 0.7.25.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод MOVE не мог перемещать файл в несуществующий каталог.
+</para>
+<para lang="en">
+a MOVE method could not move file in non-existent directory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в сервере не был описан ни один именованный location,
+но такой location использовался в директиве error_page,
+то в рабочем процессе происходил segmentation fault.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if no one named location was defined in server,
+but some one was used in an error_page directive.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.26" date="08.12.2008">
 
 <change type="bugfix">
