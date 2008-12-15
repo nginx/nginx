@@ -325,14 +325,16 @@ ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
 {
     ngx_table_elt_t  *h;
 
-    h = ngx_list_push(&r->headers_out.headers);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
+    if (value->len) {
+        h = ngx_list_push(&r->headers_out.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
 
-    h->hash = hv->value.hash;
-    h->key = hv->value.key;
-    h->value = *value;
+        h->hash = hv->value.hash;
+        h->key = hv->value.key;
+        h->value = *value;
+    }
 
     return NGX_OK;
 }
