@@ -1094,7 +1094,8 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
-    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 4, ngx_pagesize);
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs,
+                              (128 * 1024) / ngx_pagesize, ngx_pagesize);
 
     ngx_conf_merge_value(conf->level, prev->level, 1);
     ngx_conf_merge_size_value(conf->wbits, prev->wbits, MAX_WBITS);
