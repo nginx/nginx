@@ -51,8 +51,6 @@ struct ngx_buf_s {
     unsigned         last_shadow:1;
     unsigned         temp_file:1;
 
-    unsigned         zerocopy_busy:1;
-
     /* STUB */ int   num;
 };
 

@@ -13,7 +13,6 @@
 #include <ngx_gui.h>
 
 #define NGX_IO_SENDFILE    1
-#define NGX_IO_ZEROCOPY    2
 
 
 typedef ssize_t (*ngx_recv_pt)(ngx_connection_t *c, u_char *buf, size_t size);

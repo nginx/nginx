@@ -465,12 +465,6 @@ ngx_http_sub_output(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
             break;
         }
 
-#if (NGX_HAVE_WRITE_ZEROCOPY)
-        if (b->zerocopy_busy) {
-            break;
-        }
-#endif
-
         if (b->shadow) {
             b->shadow->pos = b->shadow->last;
         }

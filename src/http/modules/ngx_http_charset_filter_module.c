@@ -541,12 +541,6 @@ ngx_http_charset_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 break;
             }
 
-#if (NGX_HAVE_WRITE_ZEROCOPY)
-            if (b->zerocopy_busy) {
-                break;
-            }
-#endif
-
             ctx->busy = cl->next;
 
             if (b->tag != (ngx_buf_tag_t) &ngx_http_charset_filter_module) {

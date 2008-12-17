@@ -19,9 +19,6 @@ u_long  ngx_freebsd_net_inet_tcp_sendspace;
 /* FreeBSD 4.9 */
 int     ngx_freebsd_machdep_hlt_logical_cpus;
 
-/* FreeBSD 5.0 */
-int     ngx_freebsd_kern_ipc_zero_copy_send;
-
 
 ngx_uint_t  ngx_freebsd_sendfile_nbytes_bug;
 ngx_uint_t  ngx_freebsd_use_tcp_nopush;
@@ -67,10 +64,6 @@ sysctl_t sysctls[] = {
     { "kern.ipc.somaxconn",
       &ngx_freebsd_kern_ipc_somaxconn,
       sizeof(ngx_freebsd_kern_ipc_somaxconn), 0 },
-
-    { "kern.ipc.zero_copy.send",
-      &ngx_freebsd_kern_ipc_zero_copy_send,
-      sizeof(ngx_freebsd_kern_ipc_zero_copy_send), 0 },
 
     { NULL, NULL, 0, 0 }
 };

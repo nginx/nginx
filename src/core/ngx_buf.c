@@ -201,12 +201,6 @@ ngx_chain_update_chains(ngx_chain_t **free, ngx_chain_t **busy,
             break;
         }
 
-#if (NGX_HAVE_WRITE_ZEROCOPY)
-        if ((*busy)->buf->zerocopy_busy) {
-            break;
-        }
-#endif
-
         if ((*busy)->buf->tag != tag) {
             *busy = (*busy)->next;
             continue;
