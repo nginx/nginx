@@ -772,51 +772,23 @@ ngx_http_variable_argument(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 {
     ngx_str_t *name = (ngx_str_t *) data;
 
-    u_char  *p, *arg;
-    size_t   len;
+    u_char     *arg;
+    size_t      len;
+    ngx_str_t   value;
 
-    if (r->args.len == 0) {
+    len = name->len - (sizeof("arg_") - 1);
+    arg = name->data + sizeof("arg_") - 1;
+
+    if (ngx_http_arg(r, arg, len, &value) != NGX_OK) {
         v->not_found = 1;
         return NGX_OK;
     }
 
-    len = name->len - 1 - (sizeof("arg_") - 1);
-    arg = name->data + sizeof("arg_") - 1;
-
-    for (p = r->args.data; *p && *p != ' '; p++) {
-
-        /*
-         * although r->args.data is not null-terminated by itself,
-         * however, there is null in the end of request line
-         */
-
-        p = ngx_strcasestrn(p, (char *) arg, len);
-
-        if (p == NULL) {
-            v->not_found = 1;
-            return NGX_OK;
-        }
-
-        if ((p == r->args.data || *(p - 1) == '&') && *(p + len + 1) == '=') {
-
-            v->data = p + len + 2;
-
-            p = (u_char *) ngx_strchr(p, '&');
-
-            if (p == NULL) {
-                p = r->args.data + r->args.len;
-            }
-
-            v->len = p - v->data;
-            v->valid = 1;
-            v->no_cacheable = 0;
-            v->not_found = 0;
-
-            return NGX_OK;
-        }
-    }
-
-    v->not_found = 1;
+    v->data = value.data;
+    v->len = value.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     return NGX_OK;
 }

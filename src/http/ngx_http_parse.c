@@ -1481,3 +1481,45 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
 
     return NGX_DECLINED;
 }
+
+
+ngx_int_t
+ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len, ngx_str_t *value)
+{
+    u_char  *p;
+
+    if (r->args.len == 0) {
+        return NGX_DECLINED;
+    }
+
+    for (p = r->args.data; *p && *p != ' '; p++) {
+
+        /*
+         * although r->args.data is not null-terminated by itself,
+         * however, there is null in the end of request line
+         */
+
+        p = ngx_strcasestrn(p, (char *) name, len - 1);
+
+        if (p == NULL) {
+            return NGX_DECLINED;
+        }
+
+        if ((p == r->args.data || *(p - 1) == '&') && *(p + len) == '=') {
+
+            value->data = p + len + 1;
+
+            p = (u_char *) ngx_strchr(p, '&');
+
+            if (p == NULL) {
+                p = r->args.data + r->args.len;
+            }
+
+            value->len = p - value->data;
+
+            return NGX_OK;
+        }
+    }
+
+    return NGX_DECLINED;
+}
