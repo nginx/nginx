@@ -9,6 +9,31 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.28" date="22.12.2008">
+
+<change type="change">
+<para lang="ru">
+в выделении памяти в модуле ngx_http_gzip_filter_module.
+</para>
+<para lang="en">
+in memory allocation in the ngx_http_gzip_filter_module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+значения по умолчанию для директивы gzip_values изменены с 4 4k/8k
+на 32 4k или 16 8k.
+</para>
+<para lang="en">
+the default "gzip_buffers" directive values have been changed
+to 32 4k or 16 8k from 4 4k/8k.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.27" date="15.12.2008">
 
 <change type="feature">
