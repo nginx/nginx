@@ -614,10 +614,18 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
         return NGX_ERROR;
     }
 
-    r->upstream->resolved->host = u.host;
-    r->upstream->resolved->port = (in_port_t) (u.no_port ? u.default_port:
-                                                           u.port);
-    r->upstream->resolved->no_port = u.no_port;
+    if (u.addrs[0].sockaddr) {
+        r->upstream->resolved->sockaddr = u.addrs[0].sockaddr;
+        r->upstream->resolved->socklen = u.addrs[0].socklen;
+        r->upstream->resolved->naddrs = 1;
+        r->upstream->resolved->host = u.addrs[0].name;
+
+    } else {
+        r->upstream->resolved->host = u.host;
+        r->upstream->resolved->port = (in_port_t) (u.no_port ? u.default_port:
+                                                               u.port);
+        r->upstream->resolved->no_port = u.no_port;
+    }
 
     return NGX_OK;
 }

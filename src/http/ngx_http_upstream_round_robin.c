@@ -279,35 +279,47 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
     peers->number = ur->naddrs;
     peers->name = &ur->host;
 
-    for (i = 0; i < ur->naddrs; i++) {
+    if (ur->sockaddr) {
+        peers->peer[0].sockaddr = ur->sockaddr;
+        peers->peer[0].socklen = ur->socklen;
+        peers->peer[0].name = ur->host;
+        peers->peer[0].weight = 1;
+        peers->peer[0].current_weight = 1;
+        peers->peer[0].max_fails = 1;
+        peers->peer[0].fail_timeout = 10;
 
-        len = NGX_INET_ADDRSTRLEN + sizeof(":65536") - 1;
+    } else {
 
-        p = ngx_pnalloc(r->pool, len);
-        if (p == NULL) {
-            return NGX_ERROR;
+        for (i = 0; i < ur->naddrs; i++) {
+
+            len = NGX_INET_ADDRSTRLEN + sizeof(":65536") - 1;
+
+            p = ngx_pnalloc(r->pool, len);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            len = ngx_inet_ntop(AF_INET, &ur->addrs[i], p, NGX_INET_ADDRSTRLEN);
+            len = ngx_sprintf(&p[len], ":%d", ur->port) - p;
+
+            sin = ngx_pcalloc(r->pool, sizeof(struct sockaddr_in));
+            if (sin == NULL) {
+                return NGX_ERROR;
+            }
+
+            sin->sin_family = AF_INET;
+            sin->sin_port = htons(ur->port);
+            sin->sin_addr.s_addr = ur->addrs[i];
+
+            peers->peer[i].sockaddr = (struct sockaddr *) sin;
+            peers->peer[i].socklen = sizeof(struct sockaddr_in);
+            peers->peer[i].name.len = len;
+            peers->peer[i].name.data = p;
+            peers->peer[i].weight = 1;
+            peers->peer[i].current_weight = 1;
+            peers->peer[i].max_fails = 1;
+            peers->peer[i].fail_timeout = 10;
         }
-
-        len = ngx_inet_ntop(AF_INET, &ur->addrs[i], p, NGX_INET_ADDRSTRLEN);
-        len = ngx_sprintf(&p[len], ":%d", ur->port) - p;
-
-        sin = ngx_pcalloc(r->pool, sizeof(struct sockaddr_in));
-        if (sin == NULL) {
-            return NGX_ERROR;
-        }
-
-        sin->sin_family = AF_INET;
-        sin->sin_port = htons(ur->port);
-        sin->sin_addr.s_addr = ur->addrs[i];
-
-        peers->peer[i].sockaddr = (struct sockaddr *) sin;
-        peers->peer[i].socklen = sizeof(struct sockaddr_in);
-        peers->peer[i].name.len = len;
-        peers->peer[i].name.data = p;
-        peers->peer[i].weight = 1;
-        peers->peer[i].current_weight = 1;
-        peers->peer[i].max_fails = 1;
-        peers->peer[i].fail_timeout = 10;
     }
 
     rrp->peers = peers;

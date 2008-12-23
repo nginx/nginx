@@ -209,8 +209,13 @@ typedef struct {
     ngx_str_t                       host;
     in_port_t                       port;
     ngx_uint_t                      no_port; /* unsigned  no_port:1 */
+
     ngx_uint_t                      naddrs;
     in_addr_t                      *addrs;
+
+    struct sockaddr                *sockaddr;
+    socklen_t                       socklen;
+
     ngx_resolver_ctx_t             *ctx;
 } ngx_http_upstream_resolved_t;
 

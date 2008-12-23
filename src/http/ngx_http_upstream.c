@@ -414,6 +414,20 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     } else {
 
+        if (u->resolved->sockaddr) {
+
+            if (ngx_http_upstream_create_round_robin_peer(r, u->resolved)
+                != NGX_OK)
+            {
+                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            ngx_http_upstream_connect(r, u);
+
+            return;
+        }
+
         host = &u->resolved->host;
 
         umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);

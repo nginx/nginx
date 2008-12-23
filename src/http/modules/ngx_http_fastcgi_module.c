@@ -512,8 +512,16 @@ ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
         return NGX_ERROR;
     }
 
-    r->upstream->resolved->host = u.host;
-    r->upstream->resolved->port = u.port;
+    if (u.addrs[0].sockaddr) {
+        r->upstream->resolved->sockaddr = u.addrs[0].sockaddr;
+        r->upstream->resolved->socklen = u.addrs[0].socklen;
+        r->upstream->resolved->naddrs = 1;
+        r->upstream->resolved->host = u.addrs[0].name;
+
+    } else {
+        r->upstream->resolved->host = u.host;
+        r->upstream->resolved->port = u.port;
+    }
 
     return NGX_OK;
 }
