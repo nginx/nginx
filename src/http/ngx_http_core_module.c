@@ -2094,8 +2094,17 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->write_event_handler = ngx_http_handler;
 
     if (c->data == r) {
+
+        for (pr = r->postponed; pr; pr = pr->next) {
+            if (pr->request) {
+                goto no_activate;
+            }
+        }
+
         c->data = sr;
     }
+
+no_activate:
 
     sr->in_addr = r->in_addr;
     sr->port = r->port;
