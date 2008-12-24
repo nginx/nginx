@@ -938,14 +938,14 @@ ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
 
     alloc = items * size;
 
-    if (alloc % 512 != 0) {
+    if (alloc % 512 != 0 && alloc < 8192) {
 
         /*
          * The zlib deflate_state allocation, it takes about 6K,
          * we allocate 8K.  Other allocations are divisible by 512.
          */
 
-        alloc = (alloc + ngx_pagesize - 1) & ~(ngx_pagesize - 1);
+        alloc = 8192;
     }
 
     if (alloc <= ctx->allocated) {
