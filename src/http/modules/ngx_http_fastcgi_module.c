@@ -512,7 +512,7 @@ ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
         return NGX_ERROR;
     }
 
-    if (u.addrs[0].sockaddr) {
+    if (u.addrs && u.addrs[0].sockaddr) {
         r->upstream->resolved->sockaddr = u.addrs[0].sockaddr;
         r->upstream->resolved->socklen = u.addrs[0].socklen;
         r->upstream->resolved->naddrs = 1;
