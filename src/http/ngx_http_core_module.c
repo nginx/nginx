@@ -1082,7 +1082,6 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
             e.ip = tf->lengths->elts;
             e.request = r;
-            e.flushed = 1;
 
             /* 1 is for terminating '\0' as in static names */
             len = 1;
@@ -1127,6 +1126,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         } else {
             e.ip = tf->values->elts;
             e.pos = name;
+            e.flushed = 1;
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
