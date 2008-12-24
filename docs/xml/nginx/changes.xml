@@ -9,6 +9,26 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.30" date="24.12.2008">
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе происходил segmentation fault,
+если в директивах fastcgi_pass и proxy_pass
+использовались переменные и имя хоста должно было резолвиться;
+ошибка появилась в 0.7.29.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if variables were used in the "fastcgi_pass" and "proxy_pass" directives
+and host name must be resolved;
+the bug had appeared in 0.7.29.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.29" date="24.12.2008">
 
 <change type="bugfix">
@@ -25,7 +45,7 @@ variables if unix domain sockets were used.
 <change>
 <para lang="ru">
 Исправления в обработке подзапросов;
-ошибки появилась в 0.7.25.
+ошибки появились в 0.7.25.
 </para>
 <para lang="en">
 Bugfixes in subrequest processing;
