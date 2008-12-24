@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.29" date="24.12.2008">
+
+<change type="bugfix">
+<para lang="ru">
+директивы fastcgi_pass и proxy_pass не поддерживали переменные
+при использовании unix domain сокетов.
+</para>
+<para lang="en">
+the "fastcgi_pass" and "proxy_pass" directives did not support
+variables if unix domain sockets were used.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в обработке подзапросов;
+ошибки появилась в 0.7.25.
+</para>
+<para lang="en">
+Bugfixes in subrequest processing;
+the bugs had appeared in 0.7.25.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ "100 Continue" выдавался для запросов версии HTTP/1.0;
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a "100 Continue" response was issued for HTTP/1.0 requests;
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в выделении памяти в модуле ngx_http_gzip_filter_module под Cygwin.
+</para>
+<para lang="en">
+in memory allocation in the ngx_http_gzip_filter_module on Cygwin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.28" date="22.12.2008">
 
 <change type="change">
@@ -22,7 +69,7 @@ in memory allocation in the ngx_http_gzip_filter_module.
 
 <change type="change">
 <para lang="ru">
-значения по умолчанию для директивы gzip_values изменены с 4 4k/8k
+значения по умолчанию для директивы gzip_buffers изменены с 4 4k/8k
 на 32 4k или 16 8k.
 </para>
 <para lang="en">
