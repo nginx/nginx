@@ -1881,6 +1881,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (uri == NULL) {
         uri = file;
+        wait = (ngx_str_t *) -1;
     }
 
     rc = ngx_http_ssi_evaluate_string(r, ctx, uri, NGX_HTTP_SSI_ADD_PREFIX);
