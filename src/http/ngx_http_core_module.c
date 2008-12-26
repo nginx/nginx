@@ -862,7 +862,10 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (r->headers_in.expect && r->http_version > NGX_HTTP_VERSION_10) {
+    if (r->headers_in.expect
+        && r == r->main
+        && r->http_version > NGX_HTTP_VERSION_10)
+    {
         expect = ngx_http_core_send_continue(r);
 
         if (expect != NGX_OK) {
