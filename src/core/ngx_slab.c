@@ -685,7 +685,7 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
     }
 
     ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, NGX_ENOMEM,
-                      "ngx_slab_alloc(): failed");
+                  "ngx_slab_alloc(): failed");
 
     return NULL;
 }
