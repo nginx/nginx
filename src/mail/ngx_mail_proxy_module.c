@@ -104,7 +104,7 @@ ngx_module_t  ngx_mail_proxy_module = {
 };
 
 
-static u_char  smtp_ok[] = "250 2.0.0 OK" CRLF;
+static u_char  smtp_ok[] = "235 2.0.0 OK" CRLF;
 
 
 void
