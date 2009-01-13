@@ -104,7 +104,7 @@ ngx_module_t  ngx_mail_proxy_module = {
 };
 
 
-static u_char  smtp_ok[] = "235 2.0.0 OK" CRLF;
+static u_char  smtp_auth_ok[] = "235 2.0.0 OK" CRLF;
 
 
 void
@@ -614,8 +614,8 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
             b->pos = b->start;
 
         } else {
-            ngx_memcpy(b->start, smtp_ok, sizeof(smtp_ok) - 1);
-            b->last = b->start + sizeof(smtp_ok) - 1;
+            ngx_memcpy(b->start, smtp_auth_ok, sizeof(smtp_auth_ok) - 1);
+            b->last = b->start + sizeof(smtp_auth_ok) - 1;
         }
 
         s->connection->read->handler = ngx_mail_proxy_handler;
