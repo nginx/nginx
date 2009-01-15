@@ -1441,11 +1441,6 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_OK;
         }
 
-        if (status == NGX_HTTP_NOT_FOUND && u->conf->intercept_404) {
-            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_NOT_FOUND);
-            return NGX_OK;
-        }
-
 #if (NGX_HTTP_CACHE)
 
         if (u->peer.tries == 0 && u->stale && (u->conf->use_stale & un->mask)) {
@@ -1471,6 +1466,13 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
+    status = u->headers_in.status_n;
+
+    if (status == NGX_HTTP_NOT_FOUND && u->conf->intercept_404) {
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_NOT_FOUND);
+        return NGX_OK;
+    }
+
     if (!u->conf->intercept_errors) {
         return NGX_DECLINED;
     }
@@ -1480,8 +1482,6 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
     if (clcf->error_pages == NULL) {
         return NGX_DECLINED;
     }
-
-    status = u->headers_in.status_n;
 
     err_page = clcf->error_pages->elts;
     for (i = 0; i < clcf->error_pages->nelts; i++) {
