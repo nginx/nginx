@@ -699,6 +699,9 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             {
                 ngx_memcpy(&range[i], &range[i + 1],
                            (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
+
+                a->nelts--;
+
                 break;
             }
 
