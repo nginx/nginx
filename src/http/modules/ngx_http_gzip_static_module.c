@@ -176,7 +176,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
 #endif
 
-    r->root_tested = 1;
+    r->root_tested = !r->error_page;
 
     rc = ngx_http_discard_request_body(r);
 

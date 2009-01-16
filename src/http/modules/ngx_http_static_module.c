@@ -135,7 +135,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    r->root_tested = 1;
+    r->root_tested = !r->error_page;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http static fd: %d", of.fd);
 
