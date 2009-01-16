@@ -2201,6 +2201,7 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 static void
 ngx_http_upstream_process_request(ngx_http_request_t *r)
 {
+    ngx_uint_t            del;
     ngx_temp_file_t      *tf;
     ngx_event_pipe_t     *p;
     ngx_http_upstream_t  *u;
@@ -2212,20 +2213,25 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
         if (u->store) {
 
+            del = p->upstream_error;
+
             tf = u->pipe->temp_file;
 
-            if (p->upstream_eof
-                && u->headers_in.status_n == NGX_HTTP_OK
-                && (u->headers_in.content_length_n == -1
-                    || (u->headers_in.content_length_n == tf->offset)))
-            {
-                ngx_http_upstream_store(r, u);
+            if (p->upstream_eof) {
 
-            } else if ((p->upstream_error
-                        || (p->upstream_eof
-                            && u->headers_in.status_n != NGX_HTTP_OK))
-                       && tf->file.fd != NGX_INVALID_FILE)
-            {
+                if (u->headers_in.status_n == NGX_HTTP_OK
+                    && (u->headers_in.content_length_n == -1
+                        || (u->headers_in.content_length_n == tf->offset)))
+                {
+                    ngx_http_upstream_store(r, u);
+
+                } else {
+                    del = 1;
+                }
+            }
+
+            if (del && tf->file.fd != NGX_INVALID_FILE) {
+
                 if (ngx_delete_file(tf->file.name.data) == NGX_FILE_ERROR) {
 
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
