@@ -615,11 +615,59 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range[i + 2].end = range[i].end;
                 range[i + 2].value = range[i].value;
 
+                range[i + 1].start = (u_short) s;
+                range[i + 1].end = (u_short) e;
+                range[i + 1].value = ctx->value;
+
                 range[i].end = (u_short) (s - 1);
+
+                goto next;
+            }
+
+            if (s == (ngx_uint_t) range[i].start
+                && e < (ngx_uint_t) range[i].end)
+            {
+                /* shift the range start and insert the new range */
+
+                range = ngx_array_push(a);
+                if (range == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+
+                range = a->elts;
+
+                ngx_memcpy(&range[i + 2], &range[i + 1],
+                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+
+                range[i + 1].start = (u_short) (e + 1);
+
+                range[i].start = (u_short) s;
+                range[i].end = (u_short) e;
+                range[i].value = ctx->value;
+
+                goto next;
+            }
+
+            if (s > (ngx_uint_t) range[i].start
+                && e == (ngx_uint_t) range[i].end)
+            {
+                /* shift the range end and insert the new range */
+
+                range = ngx_array_push(a);
+                if (range == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+
+                range = a->elts;
+
+                ngx_memcpy(&range[i + 2], &range[i + 1],
+                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) s;
                 range[i + 1].end = (u_short) e;
                 range[i + 1].value = ctx->value;
+
+                range[i].end = (u_short) (s - 1);
 
                 goto next;
             }
