@@ -521,7 +521,12 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     for (n = start; n < end; n += 0x10000) {
 
         h = n >> 16;
-        s = n & 0xffff;
+
+        if (n == start) {
+            s = n & 0xffff;
+        } else {
+            s = 0;
+        }
 
         if ((n | 0xffff) > end) {
             e = end & 0xffff;
