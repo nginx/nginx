@@ -22,6 +22,11 @@ typedef struct {
 
     ngx_array_t                   *fastcgi_lengths;
     ngx_array_t                   *fastcgi_values;
+
+#if (NGX_PCRE)
+    ngx_regex_t                   *split_regex;
+    ngx_str_t                      split_name;
+#endif
 } ngx_http_fastcgi_loc_conf_t;
 
 
@@ -56,6 +61,9 @@ typedef struct {
     ngx_uint_t                     fastcgi_stdout; /* unsigned :1 */
 
     ngx_array_t                   *split_parts;
+
+    ngx_str_t                      script_name;
+    ngx_str_t                      path_info;
 } ngx_http_fastcgi_ctx_t;
 
 
@@ -125,9 +133,15 @@ static char *ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_fastcgi_path_info_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_fastcgi_split(ngx_http_request_t *r,
+    ngx_http_fastcgi_ctx_t *f, ngx_http_fastcgi_loc_conf_t *flcf);
 
 static char *ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_fastcgi_split_path_info(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post,
@@ -169,6 +183,13 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, index),
+      NULL },
+
+    { ngx_string("fastcgi_split_path_info"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_fastcgi_split_path_info,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("fastcgi_store"),
@@ -390,8 +411,18 @@ static ngx_http_fastcgi_request_start_t  ngx_http_fastcgi_request_start = {
 };
 
 
-static ngx_str_t  ngx_http_fastcgi_script_name =
-    ngx_string("fastcgi_script_name");
+static ngx_http_variable_t  ngx_http_fastcgi_vars[] = {
+
+    { ngx_string("fastcgi_script_name"), NULL,
+      ngx_http_fastcgi_script_name_variable, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
+
+    { ngx_string("fastcgi_path_info"), NULL,
+      ngx_http_fastcgi_path_info_variable, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+};
 
 
 static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
@@ -410,6 +441,7 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 {
     ngx_int_t                     rc;
     ngx_http_upstream_t          *u;
+    ngx_http_fastcgi_ctx_t       *f;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
     if (r->subrequest_in_memory) {
@@ -419,7 +451,12 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ngx_http_set_ctx(r, NULL, ngx_http_fastcgi_module);
+    f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
+    if (f == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_set_ctx(r, f, ngx_http_fastcgi_module);
 
     u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
     if (u == NULL) {
@@ -932,15 +969,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-
-    if (f == NULL) {
-        f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
-        if (f == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_http_set_ctx(r, f, ngx_http_fastcgi_module);
-    }
 
     u = r->upstream;
 
@@ -1666,15 +1694,17 @@ ngx_http_fastcgi_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 static ngx_int_t
 ngx_http_fastcgi_add_variables(ngx_conf_t *cf)
 {
-    ngx_http_variable_t  *var;
+   ngx_http_variable_t  *var, *v;
 
-    var = ngx_http_add_variable(cf, &ngx_http_fastcgi_script_name,
-                                NGX_HTTP_VAR_NOHASH|NGX_HTTP_VAR_NOCACHEABLE);
-    if (var == NULL) {
-        return NGX_ERROR;
+    for (v = ngx_http_fastcgi_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
     }
-
-    var->get_handler = ngx_http_fastcgi_script_name_variable;
 
     return NGX_OK;
 }
@@ -1933,6 +1963,13 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->fastcgi_values = prev->fastcgi_values;
     }
 
+#if (NGX_PCRE)
+    if (conf->split_regex == NULL) {
+        conf->split_regex = prev->split_regex;
+        conf->split_name = prev->split_name;
+    }
+#endif
+
     if (conf->params_source == NULL) {
         conf->flushes = prev->flushes;
         conf->params_len = prev->params_len;
@@ -2071,42 +2108,114 @@ ngx_http_fastcgi_script_name_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     u_char                       *p;
+    ngx_http_fastcgi_ctx_t       *f;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
-    if (r->uri.len) {
+    f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
+    flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
+
+    if (ngx_http_fastcgi_split(r, f, flcf) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (f->script_name.len == 0
+        || f->script_name.data[f->script_name.len - 1] != '/')
+    {
+        v->len = f->script_name.len;
         v->valid = 1;
         v->no_cacheable = 0;
         v->not_found = 0;
-
-        flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
-
-        if (r->uri.data[r->uri.len - 1] != '/') {
-            v->len = r->uri.len;
-            v->data = r->uri.data;
-            return NGX_OK;
-        }
-
-        v->len = r->uri.len + flcf->index.len;
-
-        v->data = ngx_pnalloc(r->pool, v->len);
-        if (v->data == NULL) {
-            return NGX_ERROR;
-        }
-
-        p = ngx_copy(v->data, r->uri.data, r->uri.len);
-        ngx_memcpy(p, flcf->index.data, flcf->index.len);
-
-    } else {
-        v->len = 0;
-        v->valid = 1;
-        v->no_cacheable = 0;
-        v->not_found = 0;
-        v->data = NULL;
+        v->data = f->script_name.data;
 
         return NGX_OK;
     }
 
+    v->len = f->script_name.len + flcf->index.len;
+
+    v->data = ngx_pnalloc(r->pool, v->len);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_copy(v->data, f->script_name.data, f->script_name.len);
+    ngx_memcpy(p, flcf->index.data, flcf->index.len);
+
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_fastcgi_path_info_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_http_fastcgi_ctx_t       *f;
+    ngx_http_fastcgi_loc_conf_t  *flcf;
+
+    f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
+    flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
+
+    if (ngx_http_fastcgi_split(r, f, flcf) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    v->len = f->path_info.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = f->path_info.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_fastcgi_split(ngx_http_request_t *r, ngx_http_fastcgi_ctx_t *f,
+    ngx_http_fastcgi_loc_conf_t *flcf)
+{
+#if (NGX_PCRE)
+    ngx_int_t  n;
+    int        captures[(1 + 2) * 3];
+
+    if (f->script_name.len) {
+        return NGX_OK;
+    }
+
+    if (flcf->split_regex == NULL) {
+        f->script_name = r->uri;
+        return NGX_OK;
+    }
+
+    n = ngx_regex_exec(flcf->split_regex, &r->uri, captures, (1 + 2) * 3);
+
+    if (n == NGX_REGEX_NO_MATCHED) {
+        f->script_name = r->uri;
+        return NGX_OK;
+    }
+
+    if (n < 0) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      ngx_regex_exec_n " failed: %d on \"%V\" using \"%V\"",
+                      n, &r->uri, &flcf->split_name);
+        return NGX_ERROR;
+    }
+
+    /* match */
+
+    f->script_name.len = captures[3] - captures[2];
+    f->script_name.data = r->uri.data;
+
+    f->path_info.len = captures[5] - captures[4];
+    f->path_info.data = r->uri.data + f->script_name.len;
+
+    return NGX_OK;
+
+#else
+
+    f->script_name = r->uri;
+
+    return NGX_OK;
+
+#endif
 }
 
 
@@ -2168,6 +2277,57 @@ ngx_http_fastcgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_fastcgi_split_path_info(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (NGX_PCRE)
+    ngx_http_fastcgi_loc_conf_t *flcf = conf;
+
+    ngx_int_t   n;
+    ngx_str_t  *value, err;
+    u_char      errstr[NGX_MAX_CONF_ERRSTR];
+
+    value = cf->args->elts;
+
+    flcf->split_name = value[1];
+
+    err.len = NGX_MAX_CONF_ERRSTR;
+    err.data = errstr;
+
+    flcf->split_regex = ngx_regex_compile(&value[1], 0, cf->pool, &err);
+
+    if (flcf->split_regex == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+        return NGX_CONF_ERROR;
+    }
+
+    n = ngx_regex_capture_count(flcf->split_regex);
+
+    if (n < 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           ngx_regex_capture_count_n " failed for "
+                           "pattern \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (n != 2) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "pattern \"%V\" must have 2 captures", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"%V\" requires PCRE library", &cmd->name);
+    return NGX_CONF_ERROR;
+
+#endif
 }
 
 
