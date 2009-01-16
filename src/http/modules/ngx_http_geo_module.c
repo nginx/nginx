@@ -624,8 +624,14 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 goto next;
             }
 
+            s = (ngx_uint_t) range[i].start;
+            e = (ngx_uint_t) range[i].end;
+
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "overlapped range \"%V\"", ctx->net);
+                         "range \"%V\" overlaps \"%d.%d.%d.%d-%d.%d.%d.%d\"",
+                         ctx->net,
+                         h >> 8, h & 0xff, s >> 8, s & 0xff,
+                         h >> 8, h & 0xff, e >> 8, e & 0xff);
 
             return NGX_CONF_ERROR;
         }
