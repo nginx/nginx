@@ -9,18 +9,90 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.31" date="19.01.2009">
+
+<change type="change">
+<para lang="ru">
+теперь директива try_files проверяет только файлы, игнорируя каталоги.
+</para>
+<para lang="en">
+now the "try_files" directive tests files only and ignores directories.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_split_path_info.
+</para>
+<para lang="en">
+the "fastcgi_split_path_info" directive.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в поддержке строки "Expect" в заголовке запроса.
+</para>
+<para lang="en">
+Bugfixes in an "Expect" request header line support.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в гео-диапазонах.
+</para>
+<para lang="en">
+Bugfixes in geo ranges.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при отсутствии ответа ngx_http_memcached_module возвращал
+в теле ответа строку "END" вместо 404-ой страницы по умолчанию;
+ошибка появилась в 0.7.18.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in a miss case ngx_http_memcached_module returned the "END" line
+as response body instead of default 404 page body;
+the bug had appeared in 0.7.18.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании SMPT nginx выдавал сообщение
+<nobr>"250 2.0.0 OK"</nobr> вместо "235 2.0.0 OK";
+ошибка появилась в 0.7.22.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+while SMTP proxying nginx issued message
+"250 2.0.0 OK" instead of "235 2.0.0 OK";
+the bug had appeared in 0.7.22.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
+
 <changes ver="0.7.30" date="24.12.2008">
 
 <change type="bugfix">
 <para lang="ru">
 в рабочем процессе происходил segmentation fault,
-если в директивах fastcgi_pass и proxy_pass
+если в директивах fastcgi_pass или proxy_pass
 использовались переменные и имя хоста должно было резолвиться;
 ошибка появилась в 0.7.29.
 </para>
 <para lang="en">
 a segmentation fault occurred in worker process,
-if variables were used in the "fastcgi_pass" and "proxy_pass" directives
+if variables were used in the "fastcgi_pass" or "proxy_pass" directives
 and host name must be resolved;
 the bug had appeared in 0.7.29.
 </para>
