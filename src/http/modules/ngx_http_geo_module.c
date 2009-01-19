@@ -636,8 +636,8 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
                 range = a->elts;
 
-                ngx_memcpy(&range[i + 2], &range[i + 1],
-                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+                ngx_memcpy(&range[i + 1], &range[i],
+                           (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) (e + 1);
 
