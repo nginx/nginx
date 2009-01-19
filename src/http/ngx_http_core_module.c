@@ -1172,6 +1172,10 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             continue;
         }
 
+        if (!of.is_file) {
+            continue;
+        }
+
         path.len -= root;
         path.data += root;
 
