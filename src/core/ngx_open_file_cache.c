@@ -457,7 +457,7 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
             goto failed;
         }
 
-        if (of->is_dir) {
+        if (ngx_is_dir(&fi)) {
             goto done;
         }
     }
