@@ -132,8 +132,10 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_fd_info_n               "GetFileInformationByHandle()"
 
 
-#define ngx_is_dir(fi)      ((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-#define ngx_is_file(fi)     !((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+#define ngx_is_dir(fi)                                                       \
+    (((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+#define ngx_is_file(fi)                                                      \
+    (((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 #define ngx_is_link(fi)     0
 #define ngx_is_exec(fi)     0
 
@@ -200,9 +202,9 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_link_info_n          "dummy()"
 
 #define ngx_de_is_dir(dir)                                                   \
-    ((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    (((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 #define ngx_de_is_file(dir)                                                  \
-    !((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    (((dir)->finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 #define ngx_de_is_link(dir)         0
 #define ngx_de_access(dir)          0
 #define ngx_de_size(dir)                                                     \
