@@ -256,16 +256,14 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 }
 
 
-#if 0
-
 ngx_int_t
-ngx_file_info(char *file, ngx_file_info_t *sb)
+ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
     WIN32_FILE_ATTRIBUTE_DATA  fa;
 
     /* NT4 and Win98 */
 
-    if (GetFileAttributesEx(file, GetFileExInfoStandard, &fa) == 0) {
+    if (GetFileAttributesEx((char *) file, GetFileExInfoStandard, &fa) == 0) {
         return NGX_ERROR;
     }
 
@@ -278,8 +276,6 @@ ngx_file_info(char *file, ngx_file_info_t *sb)
 
     return NGX_OK;
 }
-
-#endif
 
 
 ngx_int_t
@@ -300,21 +296,6 @@ ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
     }
 
     return NGX_ERROR;
-}
-
-
-ngx_int_t
-ngx_file_info(u_char *file, ngx_file_info_t *sb)
-{
-    /* Win95 */
-
-    sb->dwFileAttributes = GetFileAttributes((const char *) file);
-
-    if (sb->dwFileAttributes == INVALID_FILE_ATTRIBUTES) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
 }
 
 
