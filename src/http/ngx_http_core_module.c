@@ -1038,6 +1038,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
     ssize_t                       reserve, allocated;
     u_char                       *p, *name;
     ngx_str_t                     path;
+    ngx_uint_t                    test_dir;
     ngx_http_try_file_t          *tf;
     ngx_open_file_info_t          of;
     ngx_http_script_code_pt       code;
@@ -1133,6 +1134,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             }
         }
 
+        test_dir = tf->test_dir;
+
         tf++;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1172,7 +1175,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             continue;
         }
 
-        if (!of.is_file) {
+        if (of.is_dir && !test_dir) {
             continue;
         }
 
@@ -3852,6 +3855,11 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 0; i < cf->args->nelts - 1; i++) {
 
         tf[i].name = value[i + 1];
+
+        if (tf[i].name.data[tf[i].name.len - 1] == '/') {
+            tf[i].test_dir = 1;
+            tf[i].name.len--;
+        }
 
         n = ngx_http_script_variables_count(&tf[i].name);
 

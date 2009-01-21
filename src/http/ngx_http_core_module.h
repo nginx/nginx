@@ -245,6 +245,7 @@ typedef struct {
     ngx_array_t               *lengths;
     ngx_array_t               *values;
     ngx_str_t                  name;
+    ngx_uint_t                 test_dir;   /* unsigned  test_dir:1; */
 } ngx_http_try_file_t;
 
 
