@@ -2217,7 +2217,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
             tf = u->pipe->temp_file;
 
-            if (p->upstream_eof) {
+            if (p->upstream_eof || p->upstream_done) {
 
                 if (u->headers_in.status_n == NGX_HTTP_OK
                     && (u->headers_in.content_length_n == -1
