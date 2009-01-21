@@ -364,14 +364,19 @@ ngx_read_dir(ngx_dir_t *dir)
 ngx_int_t
 ngx_open_glob(ngx_glob_t *gl)
 {
-    u_char  *p;
-    size_t   len;
+    u_char     *p;
+    size_t      len;
+    ngx_err_t   err;
 
     gl->dir = FindFirstFile((const char *) gl->pattern, &gl->finddata);
 
     if (gl->dir == INVALID_HANDLE_VALUE) {
 
-        if (ngx_errno == ERROR_FILE_NOT_FOUND && gl->test) {
+        err = ngx_errno;
+
+        if ((err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
+             && gl->test)
+        {
             gl->no_match = 1;
             return NGX_OK;
         }
