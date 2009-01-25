@@ -661,11 +661,8 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
             }
 
             page->slab = pages | NGX_SLAB_PAGE_START;
-
-#if (NGX_DEBUG)
             page->next = NULL;
             page->prev = NGX_SLAB_PAGE;
-#endif
 
             if (--pages == 0) {
                 return page;
@@ -673,10 +670,8 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
 
             for (p = page + 1; pages; pages--) {
                 p->slab = NGX_SLAB_PAGE_BUSY;
-#if (NGX_DEBUG)
                 p->next = NULL;
                 p->prev = NGX_SLAB_PAGE;
-#endif
                 p++;
             }
 
