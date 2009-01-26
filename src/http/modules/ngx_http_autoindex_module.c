@@ -135,7 +135,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 {
     u_char                         *last, *filename, scale;
     off_t                           length;
-    size_t                          len, copy, allocated, root;
+    size_t                          len, utf_len, allocated, root;
     ngx_tm_t                        tm;
     ngx_err_t                       err;
     ngx_buf_t                      *b;
@@ -329,7 +329,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                                            NGX_ESCAPE_HTML);
 
         if (r->utf8) {
-            entry->utf_len = ngx_utf_length(entry->name.data, entry->name.len);
+            entry->utf_len = ngx_utf8_length(entry->name.data, entry->name.len);
         } else {
             entry->utf_len = len;
         }
@@ -412,15 +412,16 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         len = entry[i].utf_len;
 
-        if (entry[i].name.len - len) {
+        if (entry[i].name.len != len) {
             if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
-                copy = NGX_HTTP_AUTOINDEX_NAME_LEN - 3 + 1;
+                utf_len = NGX_HTTP_AUTOINDEX_NAME_LEN - 3 + 1;
 
             } else {
-                copy = NGX_HTTP_AUTOINDEX_NAME_LEN + 1;
+                utf_len = NGX_HTTP_AUTOINDEX_NAME_LEN + 1;
             }
 
-            b->last = ngx_utf_cpystrn(b->last, entry[i].name.data, copy);
+            b->last = ngx_utf8_cpystrn(b->last, entry[i].name.data,
+                                       utf_len, entry[i].name.len + 1);
             last = b->last;
 
         } else {
