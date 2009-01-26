@@ -168,6 +168,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
+    cycle->new_log->log_level = NGX_LOG_ERR;
     cycle->new_log->file->name = error_log;
 
 
