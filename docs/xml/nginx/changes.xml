@@ -9,6 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.32" date="26.01.2009">
+
+<change type="feature">
+<para lang="ru">
+теперь в директиве try_files можно явно указать проверку каталога.
+</para>
+<para lang="en">
+now a directory existence testing can be set explicitly
+in the "try_files" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+fastcgi_store не всегда сохранял файлы.
+</para>
+<para lang="en">
+fastcgi_store stored files not always.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в гео-диапазонах.
+</para>
+<para lang="en">
+in geo ranges.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки выделения больших блоков в разделяемой памяти,
+если nginx был собран без отладки.<br/>
+Спасибо Андрею Квасову.
+</para>
+<para lang="en">
+in shared memory allocations if nginx was built without debugging.<br/>
+Thanks to Andrey Kvasov.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.31" date="19.01.2009">
 
 <change type="change">
