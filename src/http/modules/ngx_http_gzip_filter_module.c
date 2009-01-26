@@ -302,18 +302,18 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (ctx->buffering) {
 
         if (in) {
-	    switch (ngx_http_gzip_filter_copy_recycled(ctx, in)) {
+            switch (ngx_http_gzip_filter_copy_recycled(ctx, in)) {
 
-	    case NGX_OK:
-		return NGX_OK;
+            case NGX_OK:
+                return NGX_OK;
 
-	    case NGX_DONE:
-		in = NULL;
-		break;
+            case NGX_DONE:
+                in = NULL;
+                break;
 
-	    default:  /* NGX_ERROR */
-		goto failed;
-	    }
+            default:  /* NGX_ERROR */
+                goto failed;
+            }
 
         } else {
             ctx->buffering = 0;
