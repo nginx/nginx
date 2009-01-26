@@ -2345,7 +2345,9 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
 
-    *u->cleanup = NULL;
+    if (u->cleanup) {
+        *u->cleanup = NULL;
+    }
 
     if (u->state && u->state->response_sec) {
         tp = ngx_timeofday();
