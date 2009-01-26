@@ -378,6 +378,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         }
     }
 
+    r->expect_tested = 1;
+
     if (ngx_http_discard_request_body(r) != NGX_OK) {
         error = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -430,11 +432,18 @@ static ngx_int_t
 ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 {
     u_char                     ch, *p, *last;
+    ngx_int_t                  overwrite;
     ngx_str_t                 *uri, *args, u, a;
     ngx_table_elt_t           *location;
     ngx_http_core_loc_conf_t  *clcf;
 
-    r->err_status = err_page->overwrite;
+    overwrite = err_page->overwrite;
+
+    if (overwrite && overwrite != NGX_HTTP_OK) {
+        r->expect_tested = 1;
+    }
+
+    r->err_status = overwrite;
 
     r->zero_in_uri = 0;
 
