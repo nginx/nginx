@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.35" date="26.01.2009">
+
+<change type="bugfix">
+<para lang="ru">
+ошибки выделения больших блоков в разделяемой памяти,
+если nginx был собран без отладки.<br/>
+Спасибо Андрею Квасову.
+</para>
+<para lang="en">
+in shared memory allocations if nginx was built without debugging.<br/>
+Thanks to Andrey Kvasov.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в поддержке строки "Expect" в заголовке запроса.
+</para>
+<para lang="en">
+Bugfixes in an "Expect" request header line support.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании кодировки UTF-8 в ngx_http_autoindex_module.
+</para>
+<para lang="en">
+UTF-8 encoding usage in the ngx_http_autoindex_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.34" date="27.11.2008">
 
 <change type="change">
