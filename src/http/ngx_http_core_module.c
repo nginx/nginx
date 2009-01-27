@@ -1034,8 +1034,7 @@ ngx_int_t
 ngx_http_core_try_files_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
 {
-    size_t                        len, root, alias;
-    ssize_t                       reserve, allocated;
+    size_t                        len, root, alias, reserve, allocated;
     u_char                       *p, *name;
     ngx_str_t                     path;
     ngx_uint_t                    test_dir;
@@ -1059,7 +1058,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
     allocated = 0;
     root = 0;
     name = NULL;
-    path.len = 0;
+    /* suppress MSVC warning */
     path.data = NULL;
 
     tf = clcf->try_files;
