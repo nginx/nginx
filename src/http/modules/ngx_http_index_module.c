@@ -96,7 +96,7 @@ static ngx_int_t
 ngx_http_index_handler(ngx_http_request_t *r)
 {
     u_char                       *p, *name;
-    size_t                        len, nlen, root, allocated;
+    size_t                        len, root, reserve, allocated;
     ngx_int_t                     rc;
     ngx_str_t                     path, uri;
     ngx_uint_t                    i, dir_tested;
@@ -128,6 +128,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
     root = 0;
     dir_tested = 0;
     name = NULL;
+    /* suppress MSVC warning */
     path.data = NULL;
 
     index = ilcf->indices->elts;
@@ -139,8 +140,8 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 return ngx_http_internal_redirect(r, &index[i].name, &r->args);
             }
 
-            len = ilcf->max_index_len;
-            nlen = index[i].name.len;
+            reserve = ilcf->max_index_len;
+            len = index[i].name.len;
 
         } else {
             ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
@@ -149,8 +150,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             e.request = r;
             e.flushed = 1;
 
-            /* 1 byte for terminating '\0' */
-
+            /* 1 is for terminating '\0' as in static names */
             len = 1;
 
             while (*(uintptr_t *) e.ip) {
@@ -158,21 +158,19 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 len += lcode(&e);
             }
 
-            nlen = len;
-
             /* 16 bytes are preallocation */
 
-            len += 16;
+            reserve = len + 16;
         }
 
-        if (len > (size_t) (path.data + allocated - name)) {
+        if (reserve > allocated) {
 
-            name = ngx_http_map_uri_to_path(r, &path, &root, len);
+            name = ngx_http_map_uri_to_path(r, &path, &root, reserve);
             if (name == NULL) {
                 return NGX_ERROR;
             }
 
-            allocated = path.len;
+            allocated = path.data + path.len - name;
         }
 
         if (index[i].values == NULL) {
@@ -193,7 +191,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             if (*name == '/') {
-                uri.len = nlen - 1;
+                uri.len = len - 1;
                 uri.data = name;
                 return ngx_http_internal_redirect(r, &uri, &r->args);
             }
@@ -248,7 +246,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        uri.len = r->uri.len + nlen - 1;
+        uri.len = r->uri.len + len - 1;
 
         if (!clcf->alias) {
             uri.data = path.data + root;
@@ -260,7 +258,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
             }
 
             p = ngx_copy(uri.data, r->uri.data, r->uri.len);
-            ngx_memcpy(p, name, nlen - 1);
+            ngx_memcpy(p, name, len - 1);
         }
 
         return ngx_http_internal_redirect(r, &uri, &r->args);
@@ -491,7 +489,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 continue;
             }
 
-            /* include the terminating '\0' to the length to use ngx_copy() */
+            /* include the terminating '\0' to the length to use ngx_memcpy() */
             index->name.len++;
 
             continue;
