@@ -1523,7 +1523,11 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (len != (size_t) rn->nlen || ngx_strncmp(name.data, rn->name, len) != 0)
     {
-        ngx_resolver_free(r, rn->name);
+        if (rn->nlen) {
+            ngx_resolver_free(r, rn->name);
+        }
+
+        rn->nlen = len;
         rn->name = name.data;
 
         name.data = ngx_resolver_dup(r, rn->name, len);
