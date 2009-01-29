@@ -1336,7 +1336,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
              ctx->handler(ctx);
         }
 
-        if (naddrs) {
+        if (naddrs > 1) {
             ngx_resolver_free(r, addrs);
         }
 
