@@ -578,6 +578,7 @@ failed:
 ngx_int_t
 ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 {
+    u_char               *name;
     ngx_resolver_t       *r;
     ngx_resolver_node_t  *rn;
 
@@ -601,11 +602,13 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ngx_queue_insert_head(&r->addr_expire_queue, &rn->queue);
 
-            ctx->name.len = rn->nlen;
-            ctx->name.data = ngx_resolver_dup(r, rn->name, rn->nlen);
-            if (ctx->name.data == NULL) {
+            name = ngx_resolver_dup(r, rn->name, rn->nlen);
+            if (name == NULL) {
                 goto failed;
             }
+
+            ctx->name.len = rn->nlen;
+            ctx->name.data = name;
 
             /* unlock addr mutex */
 
@@ -613,7 +616,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ctx->handler(ctx);
 
-            ngx_resolver_free(r, ctx->name.data);
+            ngx_resolver_free(r, name);
 
             return NGX_OK;
         }
