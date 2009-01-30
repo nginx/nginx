@@ -69,6 +69,8 @@ static ngx_int_t ngx_http_variable_sent_content_type(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_sent_content_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_sent_location(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_sent_connection(ngx_http_request_t *r,
@@ -209,6 +211,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("sent_http_content_length"), NULL,
       ngx_http_variable_sent_content_length, 0, 0, 0 },
+
+    { ngx_string("sent_http_location"), NULL,
+      ngx_http_variable_sent_location, 0, 0, 0 },
 
     { ngx_string("sent_http_last_modified"), NULL,
       ngx_http_variable_sent_last_modified, 0, 0, 0 },
@@ -1238,6 +1243,26 @@ ngx_http_variable_sent_content_length(ngx_http_request_t *r,
     v->not_found = 1;
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_sent_location(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->headers_out.location) {
+        v->len = r->headers_out.location->value.len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = r->headers_out.location->value.data;
+
+        return NGX_OK;
+    }
+
+    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+                                            &r->headers_out.headers.part,
+                                            sizeof("sent_http_") - 1);
 }
 
 
