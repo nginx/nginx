@@ -1516,24 +1516,23 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         goto short_response;
     }
 
-    len -= 2;
-
     if (ngx_resolver_copy(r, &name, buf, &buf[i], &buf[n]) != NGX_OK) {
         return;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0, "resolver an:%V", &name);
 
-    if (len != (size_t) rn->nlen || ngx_strncmp(name.data, rn->name, len) != 0)
+    if (name.len != (size_t) rn->nlen
+        || ngx_strncmp(name.data, rn->name, name.len) != 0)
     {
         if (rn->nlen) {
             ngx_resolver_free(r, rn->name);
         }
 
-        rn->nlen = len;
+        rn->nlen = name.len;
         rn->name = name.data;
 
-        name.data = ngx_resolver_dup(r, rn->name, len);
+        name.data = ngx_resolver_dup(r, rn->name, name.len);
         if (name.data == NULL) {
             goto failed;
         }
