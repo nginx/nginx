@@ -626,7 +626,9 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             ctx->next = rn->waiting;
             rn->waiting = ctx;
 
-            return NGX_AGAIN;
+            /* unlock addr mutex */
+
+            return NGX_OK;
         }
 
         ngx_queue_remove(&rn->queue);
