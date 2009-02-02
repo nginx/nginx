@@ -1531,7 +1531,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
             ngx_resolver_free(r, rn->name);
         }
 
-        rn->nlen = name.len;
+        rn->nlen = (u_short) name.len;
         rn->name = name.data;
 
         name.data = ngx_resolver_dup(r, rn->name, name.len);
