@@ -9,6 +9,45 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.33" date="02.02.2009">
+
+<change type="bugfix">
+<para lang="ru">
+если на запрос с телом возвращался редирект, то ответ мог быть двойным
+при использовании методов epoll или rtsig.<br/>
+Спасибо Eden Li.
+</para>
+<para lang="en">
+a double response might be returned if the epoll or rtsig methods are used
+and a redirect was returned to a request with body.<br/>
+Thanks to Eden Li.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для некоторых типов редиректов в переменной $sent_http_location
+было пустое значение.
+</para>
+<para lang="en">
+the $sent_http_location variable was empty for some redirects types.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы resolver в SMTP прокси-сервере
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if "resolver" directive was used in SMTP proxy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.32" date="26.01.2009">
 
 <change type="feature">
