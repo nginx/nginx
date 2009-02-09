@@ -848,6 +848,10 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
                 return NGX_MAIL_AUTH_LOGIN;
             }
 
+            if (s->args.nelts == 2) {
+                return NGX_MAIL_AUTH_LOGIN_USERNAME;
+            }
+
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 

@@ -205,7 +205,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
             break;
 
         case ngx_imap_auth_login_username:
-            rc = ngx_mail_auth_login_username(s, c);
+            rc = ngx_mail_auth_login_username(s, c, 0);
 
             tag = 0;
             s->out.len = sizeof(imap_password) - 1;
@@ -369,6 +369,14 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
         s->mail_state = ngx_imap_auth_login_username;
 
         return NGX_OK;
+
+    case NGX_MAIL_AUTH_LOGIN_USERNAME:
+
+        s->out.len = sizeof(imap_password) - 1;
+        s->out.data = imap_password;
+        s->mail_state = ngx_imap_auth_login_password;
+
+        return ngx_mail_auth_login_username(s, c, 1);
 
     case NGX_MAIL_AUTH_PLAIN:
 
