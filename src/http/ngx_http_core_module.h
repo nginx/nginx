@@ -28,6 +28,11 @@
 #define NGX_HTTP_SATISFY_ANY            1
 
 
+#define NGX_HTTP_IMS_OFF                0
+#define NGX_HTTP_IMS_EXACT              1
+#define NGX_HTTP_IMS_BEFORE             2
+
+
 typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 

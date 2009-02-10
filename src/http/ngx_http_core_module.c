@@ -112,8 +112,9 @@ static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
 
 
 static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
-    { ngx_string("exact"), 0 },
-    { ngx_string("before"), 1 },
+    { ngx_string("off"), NGX_HTTP_IMS_OFF },
+    { ngx_string("exact"), NGX_HTTP_IMS_EXACT },
+    { ngx_string("before"), NGX_HTTP_IMS_BEFORE },
     { ngx_null_string, 0 }
 };
 
@@ -3052,7 +3053,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
                               NGX_HTTP_SATISFY_ALL);
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
-                              0);
+                              NGX_HTTP_IMS_EXACT);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->client_body_in_file_only,
                               prev->client_body_in_file_only, 0);

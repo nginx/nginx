@@ -61,6 +61,12 @@ ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->if_modified_since == NGX_HTTP_IMS_OFF) {
+        return ngx_http_next_header_filter(r);
+    }
+
     ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
                               r->headers_in.if_modified_since->value.len);
 
@@ -69,9 +75,7 @@ ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     if (ims != r->headers_out.last_modified_time) {
 
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        if (clcf->if_modified_since == 0
+        if (clcf->if_modified_since == NGX_HTTP_IMS_EXACT
             || ims < r->headers_out.last_modified_time)
         {
             return ngx_http_next_header_filter(r);
