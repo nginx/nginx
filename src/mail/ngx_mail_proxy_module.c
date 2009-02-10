@@ -539,9 +539,8 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
 
         s->connection->log->action = "sending XCLIENT to upstream";
 
-        line.len = sizeof("XCLIENT PROTO=SMTP HELO= ADDR= LOGIN= NAME="
+        line.len = sizeof("XCLIENT ADDR= LOGIN= NAME="
                           CRLF) - 1
-                   + s->esmtp + s->smtp_helo.len
                    + s->connection->addr_text.len + s->login.len + s->host.len;
 
         line.data = ngx_pnalloc(c->pool, line.len);
@@ -551,15 +550,44 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         }
 
         line.len = ngx_sprintf(line.data,
-                       "XCLIENT PROTO=%sSMTP%s%V ADDR=%V%s%V NAME=%V" CRLF,
-                       (s->esmtp ? "E" : ""),
-                       (s->smtp_helo.len ? " HELO=" : ""), &s->smtp_helo,
+                       "XCLIENT ADDR=%V%s%V NAME=%V" CRLF,
                        &s->connection->addr_text,
                        (s->login.len ? " LOGIN=" : ""), &s->login, &s->host)
                    - line.data;
 
+        if (s->smtp_helo.len) {
+            s->mail_state = ngx_smtp_xclient_helo;
+
+        } else if (s->auth_method == NGX_MAIL_AUTH_NONE) {
+            s->mail_state = ngx_smtp_xclient_from;
+
+        } else {
+            s->mail_state = ngx_smtp_xclient;
+        }
+
+        break;
+
+    case ngx_smtp_xclient_helo:
+        ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0,
+                       "mail proxy send client ehlo");
+
+        s->connection->log->action = "sending client HELO/EHLO to upstream";
+
+        line.len = sizeof("HELO " CRLF) - 1 + s->smtp_helo.len;
+
+        line.data = ngx_pnalloc(c->pool, line.len);
+        if (line.data == NULL) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
+        line.len = ngx_sprintf(line.data,
+                       ((s->esmtp) ? "EHLO %V" CRLF : "HELO %V" CRLF),
+                       &s->smtp_helo)
+                   - line.data;
+
         s->mail_state = (s->auth_method == NGX_MAIL_AUTH_NONE) ?
-                            ngx_smtp_xclient_from : ngx_smtp_xclient;
+                            ngx_smtp_helo_from : ngx_smtp_helo;
 
         break;
 
@@ -772,6 +800,7 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
 
         case ngx_smtp_xclient:
         case ngx_smtp_xclient_from:
+        case ngx_smtp_xclient_helo:
             if (p[0] == '2' && (p[1] == '2' || p[1] == '5') && p[2] == '0') {
                 return NGX_OK;
             }
