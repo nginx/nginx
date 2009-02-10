@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.34" date="10.02.2009">
+
+<change type="feature">
+<para lang="ru">
+параметр off в директиве if_modified_since.
+</para>
+<para lang="en">
+the "off" parameter of the "if_modified_since" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь после команды XCLIENT nginx посылает команду HELO/EHLO.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now nginx sends an HELO/EHLO command after a XCLIENT command.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка Microsoft-специфичного режима
+<nobr>"AUTH LOGIN with User Name"</nobr>
+в почтовом прокси-сервере.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+Microsoft specific "AUTH LOGIN with User Name" mode support
+in mail proxy server.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве rewrite, возвращающей редирект, старые аргументы присоединялись
+к новым через символ "?" вместо "&amp;";<br/>
+ошибка появилась в 0.1.18.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in a redirect rewrite directive original arguments were concatenated with
+new arguments by an "?" rather than an "&amp;";<br/>
+the bug had appeared in 0.1.18.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на AIX.
+</para>
+<para lang="en">
+nginx could not be built on AIX.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.33" date="02.02.2009">
 
 <change type="bugfix">
@@ -211,11 +274,11 @@ the bugs had appeared in 0.7.25.
 
 <change type="bugfix">
 <para lang="ru">
-ответ "100 Continue" выдавался для запросов версии HTTP/1.0;
+ответ "100 Continue" выдавался для запросов версии HTTP/1.0;<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-a "100 Continue" response was issued for HTTP/1.0 requests;
+a "100 Continue" response was issued for HTTP/1.0 requests;<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -11102,8 +11165,8 @@ the proxy_set_x_var and fastcgi_set_var directives were not inherited.
 к URI через символ "&amp;" вместо "?".
 </para>
 <para lang="en">
-in the redirect rewrite directive the arguments were concatenated with URI
-by the "&amp;" rather than the "?".
+in a redirect rewrite directive arguments were concatenated with URI
+by an "&amp;" rather than an "?".
 </para>
 </change>
 
