@@ -1197,6 +1197,11 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             ngx_memcpy(p, name, path.len);
         }
 
+        if (ngx_http_set_exten(r) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_OK;
+        }
+
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "try file uri: \"%V\"", &r->uri);
 
