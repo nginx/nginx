@@ -9,6 +9,50 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.35" date="16.02.2009">
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_engine не использовала SSL-акселератор
+для асимметричных шифров.<br/>
+Спасибо Marcin Gozdalik.
+</para>
+<para lang="en">
+a "ssl_engine" directive did not use a SSL-accelerator
+for asymmetric ciphers.<br/>
+Thanks to Marcin Gozdalik.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files выставляла MIME-type, исходя из расширения
+первоначального запроса.
+</para>
+<para lang="en">
+a "try_files" directive set MIME type depending on an
+original request extension.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах server_name, valid_referers и map
+неправильно обрабатывались имена вида "*domain.tld",
+если использовались маски вида ".domain.tld" и ".subdomain.domain.tld";
+ошибка появилась в 0.7.9.
+</para>
+<para lang="en">
+"*domain.tld" names were handled incorrectly in
+"server_name", "valid_referers", and "map" directives,
+if an ".domain.tld" and ".subdomain.domain.tld" wildcards were used;
+<nobr>the bug had</nobr> appeared in 0.7.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.34" date="10.02.2009">
 
 <change type="feature">
@@ -1281,7 +1325,7 @@ the bug had appeared in 0.7.7.
 if the "server_name", "valid_referers", and "map" directives used
 an "*.domain.tld" wildcard and exact name "domain.tld" was not set,
 then the exact name was matched by the wildcard;
-the bugs had appeared in 0.3.18.
+the bug had appeared in 0.3.18.
 </para>
 </change>
 
