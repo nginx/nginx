@@ -122,6 +122,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
         return rc;
     }
 
+    r->headers_out.content_type_len = sizeof("image/gif") - 1;
     r->headers_out.content_type.len = sizeof("image/gif") - 1;
     r->headers_out.content_type.data = (u_char *) "image/gif";
 
