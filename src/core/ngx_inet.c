@@ -704,8 +704,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
     /* AF_INET only */
 
-    sin = (struct sockaddr_in *) &u->sockaddr;
-    port = sin->sin_port;
+    port = htons(u->port);
 
     in_addr = inet_addr((char *) host);
 
