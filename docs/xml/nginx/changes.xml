@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.37" date="21.02.2009">
+
+<change type="bugfix">
+<para lang="ru">
+директивы, использующие upstream'ы, не работали;
+ошибка появилась в 0.7.36.
+</para>
+<para lang="en">
+directive using upstreams did not work;
+the bug had appeared in 0.7.36.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.36" date="21.02.2009">
 
 <change type="feature">
