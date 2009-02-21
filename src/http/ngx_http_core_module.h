@@ -40,6 +40,7 @@ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
+    unsigned                   wildcard:1;
 #if (NGX_HTTP_SSL)
     unsigned                   ssl:1;
 #endif
@@ -55,15 +56,13 @@ typedef struct {
     ngx_uint_t                 deferred_accept;
 #endif
 
-    u_char                     addr[NGX_INET_ADDRSTRLEN + sizeof(":65535")];
-
+    u_char                     addr[NGX_SOCKADDR_STRLEN + 1];
 } ngx_http_listen_conf_t;
 
 
 typedef struct {
-    in_addr_t                  addr;
-    in_port_t                  port;
-    int                        family;
+    u_char                     sockaddr[NGX_SOCKADDRLEN];
+    socklen_t                  socklen;
 
     u_char                    *file_name;
     ngx_uint_t                 line;
@@ -173,8 +172,6 @@ typedef struct {
 
 
 typedef struct {
-    in_addr_t                  addr;
-
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
@@ -183,25 +180,45 @@ typedef struct {
 #if (NGX_HTTP_SSL)
     ngx_uint_t                 ssl;   /* unsigned  ssl:1; */
 #endif
+} ngx_http_addr_conf_t;
+
+
+typedef struct {
+    in_addr_t                  addr;
+    ngx_http_addr_conf_t       conf;
 } ngx_http_in_addr_t;
+
+
+#if (NGX_HAVE_INET6)
+
+typedef struct {
+    struct in6_addr            addr6;
+    ngx_http_addr_conf_t       conf;
+} ngx_http_in6_addr_t;
+
+#endif
 
 
 typedef struct {
     in_port_t                  port;
     ngx_str_t                  port_text;
-    ngx_http_in_addr_t        *addrs;
+
+    /* ngx_http_in_addr_t or ngx_http_in6_addr_t */
+    void                      *addrs;
     ngx_uint_t                 naddrs;
-} ngx_http_in_port_t;
+} ngx_http_port_t;
 
 
 typedef struct {
+    ngx_int_t                  family;
     in_port_t                  port;
-    ngx_array_t                addrs;     /* array of ngx_http_conf_in_addr_t */
-} ngx_http_conf_in_port_t;
+    ngx_array_t                addrs;     /* array of ngx_http_conf_addr_t */
+} ngx_http_conf_port_t;
 
 
 typedef struct {
-    in_addr_t                  addr;
+    struct sockaddr           *sockaddr;
+    socklen_t                  socklen;
 
     ngx_hash_t                 hash;
     ngx_hash_wildcard_t       *wc_head;
@@ -219,12 +236,13 @@ typedef struct {
 
     unsigned                   default_server:1;
     unsigned                   bind:1;
+    unsigned                   wildcard:1;
 #if (NGX_HTTP_SSL)
     unsigned                   ssl:1;
 #endif
 
     ngx_http_listen_conf_t    *listen_conf;
-} ngx_http_conf_in_addr_t;
+} ngx_http_conf_addr_t;
 
 
 struct ngx_http_server_name_s {

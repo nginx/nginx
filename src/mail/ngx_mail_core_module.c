@@ -305,6 +305,11 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (u.family != AF_INET) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "listen supports IPv4 only");
+        return NGX_CONF_ERROR;
+    }
+
     cmcf = ngx_mail_conf_get_module_main_conf(cf, ngx_mail_core_module);
 
     imls = cmcf->listen.elts;

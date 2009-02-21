@@ -876,23 +876,47 @@ ngx_destroy_cycle_pools(ngx_conf_t *conf)
 static ngx_int_t
 ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 {
-    struct sockaddr_in  *sin1, *sin2;
+    struct sockaddr_in   *sin1, *sin2;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin61, *sin62;
+#endif
 
-    /* AF_INET only */
-
-    if (sa1->sa_family != AF_INET || sa2->sa_family != AF_INET) {
+    if (sa1->sa_family != sa2->sa_family) {
         return NGX_DECLINED;
     }
 
-    sin1 = (struct sockaddr_in *) sa1;
-    sin2 = (struct sockaddr_in *) sa2;
+    switch (sa1->sa_family) {
 
-    if (sin1->sin_addr.s_addr != sin2->sin_addr.s_addr) {
-        return NGX_DECLINED;
-    }
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin61 = (struct sockaddr_in6 *) sa1;
+        sin62 = (struct sockaddr_in6 *) sa2;
 
-    if (sin1->sin_port != sin2->sin_port) {
-        return NGX_DECLINED;
+        if (sin61->sin6_port != sin61->sin6_port) {
+            return NGX_DECLINED;
+        }
+
+        if (ngx_memcmp(&sin61->sin6_addr, &sin62->sin6_addr, 16) != 0) {
+            return NGX_DECLINED;
+        }
+
+        break;
+#endif
+
+    default: /* AF_INET */
+
+        sin1 = (struct sockaddr_in *) sa1;
+        sin2 = (struct sockaddr_in *) sa2;
+
+        if (sin1->sin_port != sin2->sin_port) {
+            return NGX_DECLINED;
+        }
+
+        if (sin1->sin_addr.s_addr != sin2->sin_addr.s_addr) {
+            return NGX_DECLINED;
+        }
+
+        break;
     }
 
     return NGX_OK;

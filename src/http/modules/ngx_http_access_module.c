@@ -9,8 +9,6 @@
 #include <ngx_http.h>
 
 
-/* AF_INET only */
-
 typedef struct {
     in_addr_t     mask;
     in_addr_t     addr;
@@ -102,6 +100,10 @@ ngx_http_access_handler(ngx_http_request_t *r)
     }
 
     /* AF_INET only */
+
+    if (r->connection->sockaddr->sa_family != AF_INET) {
+        return NGX_DECLINED;
+    }
 
     sin = (struct sockaddr_in *) r->connection->sockaddr;
 

@@ -52,7 +52,6 @@ ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
     ls->type = SOCK_STREAM;
     ls->sockaddr = (struct sockaddr *) sin;
     ls->socklen = sizeof(struct sockaddr_in);
-    ls->addr = offsetof(struct sockaddr_in, sin_addr);
     ls->addr_text_max_len = NGX_INET_ADDRSTRLEN;
 
     return ls;
@@ -65,7 +64,6 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     size_t                     len;
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
-    struct sockaddr_in        *sin;
     socklen_t                  olen;
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     ngx_err_t                  err;
@@ -94,33 +92,39 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
-        sin = (struct sockaddr_in *) ls[i].sockaddr;
+        switch (ls[i].sockaddr->sa_family) {
 
-        if (sin->sin_family != AF_INET) {
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+             ls[i].addr_text_max_len = NGX_INET6_ADDRSTRLEN;
+             break;
+#endif
+
+        case AF_INET:
+             ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
+             break;
+
+        default:
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
                           "the inherited socket #%d has "
-                          "unsupported family", ls[i].fd);
+                          "an unsupported protocol family", ls[i].fd);
             ls[i].ignore = 1;
             continue;
         }
 
-        ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
+        len = ls[i].addr_text_max_len + sizeof(":65535") - 1;
 
-        ls[i].addr_text.data = ngx_pnalloc(cycle->pool,
-                                   NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1);
+        ls[i].addr_text.data = ngx_pnalloc(cycle->pool, len);
         if (ls[i].addr_text.data == NULL) {
             return NGX_ERROR;
         }
 
-        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].addr_text.data,
-                            NGX_INET_ADDRSTRLEN);
+        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].addr_text.data, len, 1);
         if (len == 0) {
             return NGX_ERROR;
         }
 
-        ls[i].addr_text.len = ngx_sprintf(ls[i].addr_text.data + len, ":%d",
-                                          ntohs(sin->sin_port))
-                              - ls[i].addr_text.data;
+        ls[i].addr_text.len = len;
 
         ls[i].backlog = NGX_LISTEN_BACKLOG;
 

@@ -64,6 +64,21 @@ ngx_param=NGX_TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
 # syscalls, libc calls and some features
 
 
+if [ $NGX_IPV6 = YES ]; then
+    ngx_feature="AF_INET6"
+    ngx_feature_name="NGX_HAVE_INET6"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <sys/socket.h>
+                      #include <netinet/in.h>
+                      #include <arpa/inet.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="struct sockaddr_in6  sin6;
+                      sin6.sin6_family = AF_INET6;"
+    . auto/feature
+fi
+
+
 ngx_feature="setproctitle()"
 ngx_feature_name="NGX_HAVE_SETPROCTITLE"
 ngx_feature_run=no

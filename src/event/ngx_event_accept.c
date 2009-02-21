@@ -9,10 +9,6 @@
 #include <ngx_event.h>
 
 
-/* the buffer size is enough to hold "struct sockaddr_un" */
-#define NGX_SOCKLEN  512
-
-
 static ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 static void ngx_close_accepted_connection(ngx_connection_t *c);
@@ -29,7 +25,7 @@ ngx_event_accept(ngx_event_t *ev)
     ngx_listening_t   *ls;
     ngx_connection_t  *c, *lc;
     ngx_event_conf_t  *ecf;
-    char               sa[NGX_SOCKLEN];
+    u_char             sa[NGX_SOCKADDRLEN];
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
@@ -48,7 +44,7 @@ ngx_event_accept(ngx_event_t *ev)
                    "accept on %V, ready: %d", &ls->addr_text, ev->available);
 
     do {
-        socklen = NGX_SOCKLEN;
+        socklen = NGX_SOCKADDRLEN;
 
         s = accept(lc->fd, (struct sockaddr *) sa, &socklen);
 
@@ -153,8 +149,10 @@ ngx_event_accept(ngx_event_t *ev)
         c->log = log;
         c->pool->log = log;
 
-        c->listening = ls;
         c->socklen = socklen;
+        c->listening = ls;
+        c->local_sockaddr = ls->sockaddr;
+        c->local_socklen = ls->socklen;
 
         c->unexpected_eof = 1;
 
@@ -208,7 +206,7 @@ ngx_event_accept(ngx_event_t *ev)
             }
 
             c->addr_text.len = ngx_sock_ntop(c->sockaddr, c->addr_text.data,
-                                             ls->addr_text_max_len);
+                                             ls->addr_text_max_len, 0);
             if (c->addr_text.len == 0) {
                 ngx_close_accepted_connection(c);
                 return;

@@ -14,8 +14,6 @@
 #define NGX_HTTP_REALIP_HEADER   2
 
 
-/* AF_INET only */
-
 typedef struct {
     in_addr_t          mask;
     in_addr_t          addr;
@@ -208,6 +206,10 @@ found:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "realip: \"%s\"", ip);
 
     /* AF_INET only */
+
+    if (r->connection->sockaddr->sa_family != AF_INET) {
+        return NGX_DECLINED;
+    }
 
     sin = (struct sockaddr_in *) c->sockaddr;
 

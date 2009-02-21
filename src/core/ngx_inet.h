@@ -12,7 +12,25 @@
 #include <ngx_core.h>
 
 
-#define NGX_INET_ADDRSTRLEN  (sizeof("255.255.255.255") - 1)
+#define NGX_INET_ADDRSTRLEN   (sizeof("255.255.255.255") - 1)
+#define NGX_INET6_ADDRSTRLEN                                                 \
+    (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
+
+#define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1)
+
+
+/*
+ * TODO: autoconfigure NGX_SOCKADDRLEN as
+ *       sizeof(struct sockaddr_storage)
+ *       sizeof(struct sockaddr_in6)
+ *       sizeof(struct sockaddr_in)
+ */
+
+#if (NGX_HAVE_INET6)
+#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_in6)
+#else
+#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_in)
+#endif
 
 
 typedef struct {
@@ -49,8 +67,12 @@ typedef struct {
     unsigned          one_addr:1;
 
     unsigned          no_port:1;
+    unsigned          wildcard:1;
 
     ngx_url_addr_t    addr;
+
+    socklen_t         socklen;
+    u_char            sockaddr[NGX_SOCKADDRLEN];
 
     ngx_peer_addr_t  *addrs;
     ngx_uint_t        naddrs;
@@ -60,7 +82,8 @@ typedef struct {
 
 
 in_addr_t ngx_inet_addr(u_char *text, size_t len);
-size_t ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len);
+size_t ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len,
+    ngx_uint_t port);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, void *cidr);
 ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);

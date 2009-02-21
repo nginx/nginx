@@ -1776,32 +1776,37 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
 {
     socklen_t            len;
     ngx_connection_t    *c;
-    struct sockaddr_in   sin;
-
-    /* AF_INET only */
+    struct sockaddr_in  *sin;
+    u_char               sa[NGX_SOCKADDRLEN];
 
     c = r->connection;
 
-    if (r->in_addr == 0) {
-        len = sizeof(struct sockaddr_in);
-        if (getsockname(c->fd, (struct sockaddr *) &sin, &len) == -1) {
+    if (c->local_sockaddr == NULL) {
+
+        len = NGX_SOCKADDRLEN;
+
+        if (getsockname(c->fd, (struct sockaddr *) &sa, &len) == -1) {
             ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
             return NGX_ERROR;
         }
 
-        r->in_addr = sin.sin_addr.s_addr;
+        c->local_sockaddr = ngx_palloc(r->connection->pool, len);
+        if (c->local_sockaddr == NULL) {
+            return NGX_ERROR;
+        }
 
-    } else {
-        sin.sin_family = c->sockaddr->sa_family;
-        sin.sin_addr.s_addr = r->in_addr;
+        c->local_socklen = len;
+        ngx_memcpy(c->local_sockaddr, &sa, len);
     }
+
+    sin = (struct sockaddr_in *) c->local_sockaddr;
+    r->in_addr = sin->sin_addr.s_addr;
 
     if (s == NULL) {
         return NGX_OK;
     }
 
-    s->len = ngx_sock_ntop((struct sockaddr *) &sin, s->data,
-                           NGX_INET_ADDRSTRLEN);
+    s->len = ngx_sock_ntop(c->local_sockaddr, s->data, s->len, 0);
 
     return NGX_OK;
 }
@@ -2729,7 +2734,8 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
      *     conf->client_large_buffers.num = 0;
      */
 
-    if (ngx_array_init(&cscf->listen, cf->pool, 4, sizeof(ngx_http_listen_t))
+    if (ngx_array_init(&cscf->listen, cf->temp_pool, 4,
+                       sizeof(ngx_http_listen_t))
         == NGX_ERROR)
     {
         return NGX_CONF_ERROR;
@@ -2761,6 +2767,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_core_srv_conf_t *conf = child;
 
     ngx_http_listen_t       *ls;
+    struct sockaddr_in      *sin;
     ngx_http_server_name_t  *sn;
 
     /* TODO: it does not merge, it inits only */
@@ -2773,14 +2780,15 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         ngx_memzero(ls, sizeof(ngx_http_listen_t));
 
-        ls->addr = INADDR_ANY;
+        sin = (struct sockaddr_in *) &ls->sockaddr;
+
+        sin->sin_family = AF_INET;
 #if (NGX_WIN32)
-        ls->port = 80;
+        sin->sin_port = htons(80);
 #else
-        /* STUB: getuid() should be cached */
-        ls->port = (getuid() == 0) ? 80 : 8000;
+        sin->sin_port = htons((getuid() == 0) ? 80 : 8000);
 #endif
-        ls->family = AF_INET;
+        sin->sin_addr.s_addr = INADDR_ANY;
 
         ls->conf.backlog = NGX_LISTEN_BACKLOG;
         ls->conf.rcvbuf = -1;
@@ -3159,8 +3167,6 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
-/* AF_INET only */
-
 static char *
 ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -3201,17 +3207,18 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_http_listen_t));
 
-    ls->family = u.family;
-    ls->addr = u.addr.in_addr;
-    ls->port = u.port;
+    ngx_memcpy(ls->sockaddr, u.sockaddr, u.socklen);
+
+    ls->socklen = u.socklen;
     ls->file_name = cf->conf_file->file.name.data;
     ls->line = cf->conf_file->line;
     ls->conf.backlog = NGX_LISTEN_BACKLOG;
     ls->conf.rcvbuf = -1;
     ls->conf.sndbuf = -1;
+    ls->conf.wildcard = u.wildcard;
 
-    n = ngx_inet_ntop(AF_INET, &ls->addr, ls->conf.addr, NGX_INET_ADDRSTRLEN);
-    ngx_sprintf(&ls->conf.addr[n], ":%ui", ls->port);
+    (void) ngx_sock_ntop((struct sockaddr *) &ls->sockaddr, ls->conf.addr,
+                         NGX_SOCKADDR_STRLEN, 1);
 
     if (cf->args->nelts == 2) {
         return NGX_CONF_OK;

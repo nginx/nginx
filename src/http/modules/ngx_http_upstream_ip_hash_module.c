@@ -15,7 +15,6 @@ typedef struct {
 
     ngx_uint_t                         hash;
 
-    /* AF_INET only */
     u_char                             addr[3];
 
     u_char                             tries;
@@ -111,11 +110,20 @@ ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
     r->upstream->peer.get = ngx_http_upstream_get_ip_hash_peer;
 
     /* AF_INET only */
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
-    p = (u_char *) &sin->sin_addr.s_addr;
-    iphp->addr[0] = p[0];
-    iphp->addr[1] = p[1];
-    iphp->addr[2] = p[2];
+
+    if (r->connection->sockaddr->sa_family == AF_INET) {
+
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+        p = (u_char *) &sin->sin_addr.s_addr;
+        iphp->addr[0] = p[0];
+        iphp->addr[1] = p[1];
+        iphp->addr[2] = p[2];
+
+    } else {
+        iphp->addr[0] = 0;
+        iphp->addr[1] = 0;
+        iphp->addr[2] = 0;
+    }
 
     iphp->hash = 89;
     iphp->tries = 0;

@@ -19,7 +19,6 @@ struct ngx_listening_s {
 
     struct sockaddr    *sockaddr;
     socklen_t           socklen;    /* size of sockaddr */
-    size_t              addr;       /* offset to address in sockaddr */
     size_t              addr_text_max_len;
     ngx_str_t           addr_text;
 
@@ -123,10 +122,8 @@ struct ngx_connection_s {
     ngx_ssl_connection_t  *ssl;
 #endif
 
-#if (NGX_HAVE_IOCP)
     struct sockaddr    *local_sockaddr;
     socklen_t           local_socklen;
-#endif
 
     ngx_buf_t          *buffer;
 

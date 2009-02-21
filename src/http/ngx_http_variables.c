@@ -828,17 +828,37 @@ static ngx_int_t
 ngx_http_variable_binary_remote_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    struct sockaddr_in  *sin;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
-    /* AF_INET only */
+    switch (r->connection->sockaddr->sa_family) {
 
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
 
-    v->len = sizeof(in_addr_t);
-    v->valid = 1;
-    v->no_cacheable = 0;
-    v->not_found = 0;
-    v->data = (u_char *) &sin->sin_addr.s_addr;
+        v->len = sizeof(struct in6_addr);
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) &sin6->sin6_addr;
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+
+        v->len = sizeof(in_addr_t);
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) &sin->sin_addr;
+
+        break;
+    }
 
     return NGX_OK;
 }
@@ -862,8 +882,11 @@ static ngx_int_t
 ngx_http_variable_remote_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t           port;
-    struct sockaddr_in  *sin;
+    ngx_uint_t            port;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
     v->len = 0;
     v->valid = 1;
@@ -875,16 +898,23 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    /* AF_INET only */
+    switch (r->connection->sockaddr->sa_family) {
 
-    if (r->connection->sockaddr->sa_family == AF_INET) {
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
+        port = ntohs(sin6->sin6_port);
+        break;
+#endif
+
+    default: /* AF_INET */
         sin = (struct sockaddr_in *) r->connection->sockaddr;
-
         port = ntohs(sin->sin_port);
+        break;
+    }
 
-        if (port > 0 && port < 65536) {
-            v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
-        }
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
     }
 
     return NGX_OK;
@@ -896,15 +926,21 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     ngx_str_t  s;
+    u_char     addr[NGX_SOCKADDR_STRLEN];
 
-    s.data = ngx_pnalloc(r->pool, NGX_INET_ADDRSTRLEN);
-    if (s.data == NULL) {
-        return NGX_ERROR;
-    }
+    s.len = NGX_SOCKADDR_STRLEN;
+    s.data = addr;
 
     if (ngx_http_server_addr(r, &s) != NGX_OK) {
         return NGX_ERROR;
     }
+
+    s.data = ngx_pnalloc(r->pool, s.len);
+    if (s.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(s.data, addr, s.len);
 
     v->len = s.len;
     v->valid = 1;

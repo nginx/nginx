@@ -43,6 +43,8 @@ EVENT_AIO=NO
 
 USE_THREADS=NO
 
+NGX_IPV6=NO
+
 HTTP=YES
 
 NGX_HTTP_LOG_PATH=
@@ -159,6 +161,8 @@ do
 
         #--with-threads=*)                USE_THREADS="$value"       ;;
         #--with-threads)                  USE_THREADS="pthreads"     ;;
+
+        --with-ipv6)                     NGX_IPV6=YES               ;;
 
         --without-http)                  HTTP=NO                    ;;
         --http-log-path=*)               NGX_HTTP_LOG_PATH="$value" ;;
@@ -284,6 +288,8 @@ cat << END
   --without-select_module            disable select module
   --with-poll_module                 enable poll module
   --without-poll_module              disable poll module
+
+  --with-ipv6                        enable ipv6 support
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_realip_module          enable ngx_http_realip_module

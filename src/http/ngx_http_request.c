@@ -232,13 +232,19 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_uint_t                  i;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
-    ngx_http_in_port_t         *hip;
-    ngx_http_in_addr_t         *hia;
+    struct sockaddr_in         *sin;
+    ngx_http_port_t            *port;
+    ngx_http_in_addr_t         *addr;
     ngx_http_log_ctx_t         *ctx;
+    ngx_http_addr_conf_t       *addr_conf;
     ngx_http_connection_t      *hc;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6        *sin6;
+    ngx_http_in6_addr_t        *addr6;
+#endif
 
 #if (NGX_STAT_STUB)
     ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -292,58 +298,90 @@ ngx_http_init_request(ngx_event_t *rev)
 
     /* find the server configuration for the address:port */
 
-    /* AF_INET only */
+    port = c->listening->servers;
 
-    hip = c->listening->servers;
-    hia = hip->addrs;
-
-    r->port = hip->port;
-    r->port_text = &hip->port_text;
-
-    i = 0;
+    r->port = port->port;
+    r->port_text = &port->port_text;
 
     r->connection = c;
 
-    if (hip->naddrs > 1) {
+    if (port->naddrs > 1) {
 
         /*
-         * There are several addresses on this port and one of them
-         * is the "*:port" wildcard so getsockname() is needed to determine
-         * the server address.
-         *
-         * AcceptEx() already has given this address.
+         * there are several addresses on this port and one of them
+         * is an "*:port" wildcard so getsockname() in ngx_http_server_addr()
+         * is required to determine a server address
          */
 
-#if (NGX_WIN32)
-        if (c->local_sockaddr) {
-            r->in_addr =
-                   ((struct sockaddr_in *) c->local_sockaddr)->sin_addr.s_addr;
+        c->local_sockaddr = NULL;
 
-        } else
-#endif
-        {
-            if (ngx_http_server_addr(r, NULL) != NGX_OK) {
-                ngx_http_close_connection(c);
-                return;
-            }
+        if (ngx_http_server_addr(r, NULL) != NGX_OK) {
+            ngx_http_close_connection(c);
+            return;
         }
 
-        /* the last address is "*" */
+        switch (c->local_sockaddr->sa_family) {
 
-        for ( /* void */ ; i < hip->naddrs - 1; i++) {
-            if (hia[i].addr == r->in_addr) {
-                break;
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+            addr6 = (ngx_http_in6_addr_t *) port->addrs;
+
+            /* the last address is "*" */
+
+            for (i = 0; i < port->naddrs - 1; i++) {
+                if (ngx_memcmp(&addr6[i].addr6, &sin6->sin6_addr, 16) == 0) {
+                    break;
+                }
             }
+
+            addr_conf = &addr6[i].conf;
+
+            break;
+#endif
+
+        default: /* AF_INET */
+            sin = (struct sockaddr_in *) c->local_sockaddr;
+
+            addr = port->addrs;
+
+            /* the last address is "*" */
+
+            for (i = 0; i < port->naddrs - 1; i++) {
+                if (addr[i].addr == sin->sin_addr.s_addr) {
+                    break;
+                }
+            }
+
+            addr_conf = &addr[i].conf;
+
+            break;
         }
 
     } else {
-        r->in_addr = hia[0].addr;
+
+        switch (c->local_sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            addr6 = (ngx_http_in6_addr_t *) port->addrs;
+            addr_conf = &addr6[0].conf;
+            break;
+#endif
+
+        default: /* AF_INET */
+            addr = port->addrs;
+            addr_conf = &addr[0].conf;
+            r->in_addr = addr[0].addr;
+            break;
+        }
     }
 
-    r->virtual_names = hia[i].virtual_names;
+    r->virtual_names = addr_conf->virtual_names;
 
     /* the default server configuration for the address:port */
-    cscf = hia[i].core_srv_conf;
+    cscf = addr_conf->core_srv_conf;
 
     r->main_conf = cscf->ctx->main_conf;
     r->srv_conf = cscf->ctx->srv_conf;
@@ -357,13 +395,13 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_ssl_srv_conf_t  *sscf;
 
     sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
-    if (sscf->enable || hia[i].ssl) {
+    if (sscf->enable || addr_conf->ssl) {
 
         if (c->ssl == NULL) {
 
             c->log->action = "SSL handshaking";
 
-            if (hia[i].ssl && sscf->ssl.ctx == NULL) {
+            if (addr_conf->ssl && sscf->ssl.ctx == NULL) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
                               "no \"ssl_certificate\" is defined "
                               "in server listening on SSL port");

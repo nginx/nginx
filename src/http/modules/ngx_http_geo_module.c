@@ -175,6 +175,10 @@ ngx_http_geo_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http geo started: %V", &r->connection->addr_text);
 
+        if (r->connection->sockaddr->sa_family != AF_INET) {
+            return 0;
+        }
+
         sin = (struct sockaddr_in *) r->connection->sockaddr;
         return ntohl(sin->sin_addr.s_addr);
     }
