@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.36" date="21.02.2009">
+
+<change type="feature">
+<para lang="ru">
+предварительная поддержка IPv6;
+директива listen модуля HTTP поддерживает IPv6.
+</para>
+<para lang="en">
+a preliminary IPv6 support;
+the "listen" directive of the HTTP module supports IPv6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $ancient_browser не работала для браузеров, заданных
+директивами modern_browser.
+</para>
+<para lang="en">
+the $ancient_browser variable did not work for browsers
+preset by a "modern_browser" directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.35" date="16.02.2009">
 
 <change type="bugfix">
