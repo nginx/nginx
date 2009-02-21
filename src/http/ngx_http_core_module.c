@@ -2790,9 +2790,15 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
         sin->sin_addr.s_addr = INADDR_ANY;
 
+        ls->socklen = sizeof(struct sockaddr_in);
+
         ls->conf.backlog = NGX_LISTEN_BACKLOG;
         ls->conf.rcvbuf = -1;
         ls->conf.sndbuf = -1;
+        ls->conf.wildcard = 1;
+
+        (void) ngx_sock_ntop((struct sockaddr *) &ls->sockaddr, ls->conf.addr,
+                             NGX_SOCKADDR_STRLEN, 1);
     }
 
     if (conf->server_name.data == NULL) {
