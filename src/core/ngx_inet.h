@@ -22,14 +22,15 @@
 /*
  * TODO: autoconfigure NGX_SOCKADDRLEN as
  *       sizeof(struct sockaddr_storage)
+ *       sizeof(struct sockaddr_un)
  *       sizeof(struct sockaddr_in6)
  *       sizeof(struct sockaddr_in)
  */
 
-#if (NGX_HAVE_INET6)
-#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_in6)
+#if (NGX_HAVE_UNIX_DOMAIN)
+#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_un)
 #else
-#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_in)
+#define NGX_SOCKADDRLEN       512
 #endif
 
 
