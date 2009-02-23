@@ -126,6 +126,10 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     rc = ngx_http_auth_basic_user(r);
 
     if (rc == NGX_DECLINED) {
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "no user/password was provided for basic authentication");
+
         return ngx_http_auth_basic_set_realm(r, &alcf->realm);
     }
 
@@ -242,6 +246,10 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
         return ngx_http_auth_basic_crypt_handler(r, NULL, &pwd, &alcf->realm);
     }
 
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "user \"%V\" was not found in \"%V\"",
+                  &r->headers_in.user, &alcf->user_file);
+
     return ngx_http_auth_basic_set_realm(r, &alcf->realm);
 }
 
@@ -257,8 +265,8 @@ ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r,
                    &encrypted);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                  "rc: %d user: \"%V\" salt: \"%s\"",
-                  rc, &r->headers_in.user, passwd->data);
+                   "rc: %d user: \"%V\" salt: \"%s\"",
+                   rc, &r->headers_in.user, passwd->data);
 
     if (rc == NGX_OK) {
         if (ngx_strcmp(encrypted, passwd->data) == 0) {
@@ -267,6 +275,10 @@ ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r,
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "encrypted: \"%s\"", encrypted);
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "user \"%V\": password mismatch",
+                      &r->headers_in.user);
 
         return ngx_http_auth_basic_set_realm(r, realm);
     }
