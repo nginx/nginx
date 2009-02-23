@@ -300,7 +300,6 @@ ngx_http_init_request(ngx_event_t *rev)
 
     port = c->listening->servers;
 
-    r->port = port->port;
     r->port_text = &port->port_text;
 
     r->connection = c;

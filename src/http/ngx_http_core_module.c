@@ -2061,7 +2061,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
         c->data = sr;
     }
 
-    sr->port = r->port;
     sr->port_text = r->port_text;
 
     sr->variables = r->variables;
