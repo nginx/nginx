@@ -200,7 +200,6 @@ typedef struct {
 
 
 typedef struct {
-    in_port_t                  port;
     ngx_str_t                  port_text;
 
     /* ngx_http_in_addr_t or ngx_http_in6_addr_t */

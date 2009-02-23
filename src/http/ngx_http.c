@@ -1647,8 +1647,6 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
 
         ls->servers = hport;
 
-        hport->port = ntohs(port->port);
-
         for (i = ls->addr_text.len - 1; i; i--) {
 
             if (ls->addr_text.data[i] == ':') {
