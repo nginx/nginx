@@ -1776,7 +1776,6 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
 {
     socklen_t            len;
     ngx_connection_t    *c;
-    struct sockaddr_in  *sin;
     u_char               sa[NGX_SOCKADDRLEN];
 
     c = r->connection;
@@ -1798,9 +1797,6 @@ ngx_http_server_addr(ngx_http_request_t *r, ngx_str_t *s)
         c->local_socklen = len;
         ngx_memcpy(c->local_sockaddr, &sa, len);
     }
-
-    sin = (struct sockaddr_in *) c->local_sockaddr;
-    r->in_addr = sin->sin_addr.s_addr;
 
     if (s == NULL) {
         return NGX_OK;
@@ -2065,7 +2061,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
         c->data = sr;
     }
 
-    sr->in_addr = r->in_addr;
     sr->port = r->port;
     sr->port_text = r->port_text;
 

@@ -373,7 +373,6 @@ ngx_http_init_request(ngx_event_t *rev)
         default: /* AF_INET */
             addr = port->addrs;
             addr_conf = &addr[0].conf;
-            r->in_addr = addr[0].addr;
             break;
         }
     }

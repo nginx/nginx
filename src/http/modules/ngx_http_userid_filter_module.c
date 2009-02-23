@@ -360,10 +360,16 @@ static ngx_int_t
 ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    u_char           *cookie, *p;
-    size_t            len;
-    ngx_str_t         src, dst;
-    ngx_table_elt_t  *set_cookie, *p3p;
+    u_char               *cookie, *p;
+    size_t                len;
+    ngx_str_t             src, dst;
+    ngx_table_elt_t      *set_cookie, *p3p;
+    ngx_connection_t     *c;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
+
     /*
      * TODO: in the threaded mode the sequencers should be in TLS and their
      * ranges should be divided between threads
@@ -388,7 +394,28 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
                     return NGX_ERROR;
                 }
 
-                ctx->uid_set[0] = htonl(r->in_addr);
+                c = r->connection;
+
+                switch (c->local_sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+                case AF_INET6:
+                    sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+                    p = (u_char *) &ctx->uid_set[0];
+
+                    *p++ = sin6->sin6_addr.s6_addr[12];
+                    *p++ = sin6->sin6_addr.s6_addr[13];
+                    *p++ = sin6->sin6_addr.s6_addr[14];
+                    *p = sin6->sin6_addr.s6_addr[15];
+
+                    break;
+#endif
+                default: /* AF_INET */
+                    sin = (struct sockaddr_in *) c->local_sockaddr;
+                    ctx->uid_set[0] = sin->sin_addr.s_addr;
+                    break;
+                }
 
             } else {
                 ctx->uid_set[0] = htonl(conf->service);
