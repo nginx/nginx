@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.38" date="23.02.2009">
+
+<change type="feature">
+<para lang="ru">
+логгирование ошибок аутентификации.
+</para>
+<para lang="en">
+authentication failures logging.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+имя/пароль, заданные в auth_basic_user_file, игнорировались после нечётного
+числа пустых строк.<br/>
+Спасибо Александру Загребину.
+</para>
+<para lang="en">
+name/password in auth_basic_user_file were ignored after odd number
+of empty lines.<br/>
+Thanks to Alexander Zagrebin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании длинного пути в unix domain сокете
+в главном процессе происходил segmentation fault;
+ошибка появилась в 0.7.36.
+</para>
+<para lang="en">
+a segmentation fault occurred in a master process,
+if long path was used in unix domain socket;
+the bug had appeared in 0.7.36.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.37" date="21.02.2009">
 
 <change type="bugfix">
@@ -17,7 +57,7 @@
 ошибка появилась в 0.7.36.
 </para>
 <para lang="en">
-directive using upstreams did not work;
+directives using upstreams did not work;
 the bug had appeared in 0.7.36.
 </para>
 </change>
