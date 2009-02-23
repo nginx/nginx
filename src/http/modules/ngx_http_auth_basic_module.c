@@ -176,9 +176,16 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
             switch (state) {
 
             case sw_login:
-                if (login == 0 && buf[i] == '#') {
-                    state = sw_skip;
-                    break;
+                if (login == 0) {
+
+                    if (buf[i] == '#' || buf[i] == CR) {
+                        state = sw_skip;
+                        break;
+                    }
+
+                    if (buf[i] == LF) {
+                        break;
+                    }
                 }
 
                 if (buf[i] != r->headers_in.user.data[login]) {
