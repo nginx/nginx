@@ -159,7 +159,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_chain_t                out;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
-    ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     struct sockaddr_in        *sin;
@@ -302,18 +301,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
             }
         }
 
-        c = r->connection;
-
-        switch (c->local_sockaddr->sa_family) {
+        switch (r->connection->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+            sin6 = (struct sockaddr_in6 *) r->connection->local_sockaddr;
             port = ntohs(sin6->sin6_port);
             break;
 #endif
         default: /* AF_INET */
-            sin = (struct sockaddr_in *) c->local_sockaddr;
+            sin = (struct sockaddr_in *) r->connection->local_sockaddr;
             port = ntohs(sin->sin_port);
             break;
         }
