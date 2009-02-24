@@ -309,12 +309,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
 #if (NGX_HAVE_INET6)
         case AF_INET6:
             sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
-            port = sin6->sin6_port;
+            port = ntohs(sin6->sin6_port);
             break;
 #endif
         default: /* AF_INET */
             sin = (struct sockaddr_in *) c->local_sockaddr;
-            port = sin->sin_port;
+            port = ntohs(sin->sin_port);
             break;
         }
 
