@@ -860,7 +860,7 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
 
     if (ngx_ssl_create_connection(u->conf->ssl, c,
                                   NGX_SSL_BUFFER|NGX_SSL_CLIENT)
-        == NGX_ERROR)
+        != NGX_OK)
     {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);

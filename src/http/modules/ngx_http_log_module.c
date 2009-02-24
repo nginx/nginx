@@ -863,7 +863,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
     } else {
-        if (ngx_conf_full_name(cf->cycle, &value[1], 0) == NGX_ERROR) {
+        if (ngx_conf_full_name(cf->cycle, &value[1], 0) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 

@@ -187,7 +187,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
     }
 
     if (ngx_array_init(&ctx->ranges, r->pool, 1, sizeof(ngx_http_range_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_ERROR;
     }

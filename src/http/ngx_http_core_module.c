@@ -1555,7 +1555,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 
                 exten = ngx_pnalloc(r->pool, r->exten.len);
                 if (exten == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    return NGX_ERROR;
                 }
 
                 hash = ngx_hash_strlow(exten, r->exten.data, r->exten.len);
@@ -1684,8 +1684,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             return NULL;
         }
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path, 0)== NGX_ERROR)
-        {
+        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path, 0) != NGX_OK) {
             return NULL;
         }
 
@@ -2006,7 +2005,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     if (ngx_list_init(&sr->headers_out.headers, r->pool, 20,
                       sizeof(ngx_table_elt_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -2594,7 +2593,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     if (ngx_strcmp(value[0].data, "include") == 0) {
         file = value[1];
 
-        if (ngx_conf_full_name(cf->cycle, &file, 1) == NGX_ERROR){
+        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 
@@ -2728,14 +2727,14 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
 
     if (ngx_array_init(&cscf->listen, cf->temp_pool, 4,
                        sizeof(ngx_http_listen_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
                        sizeof(ngx_http_server_name_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -2954,7 +2953,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->root.len = sizeof("html") - 1;
             conf->root.data = (u_char *) "html";
 
-            if (ngx_conf_full_name(cf->cycle, &conf->root, 0) == NGX_ERROR) {
+            if (ngx_conf_full_name(cf->cycle, &conf->root, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -3526,7 +3525,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (lcf->root.data[0] != '$') {
-        if (ngx_conf_full_name(cf->cycle, &lcf->root, 0) == NGX_ERROR) {
+        if (ngx_conf_full_name(cf->cycle, &lcf->root, 0) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }

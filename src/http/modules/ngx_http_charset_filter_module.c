@@ -1421,19 +1421,21 @@ ngx_http_charset_create_main_conf(ngx_conf_t *cf)
     }
 
     if (ngx_array_init(&mcf->charsets, cf->pool, 2, sizeof(ngx_http_charset_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&mcf->tables, cf->pool, 1,
-                       sizeof(ngx_http_charset_tables_t)) == NGX_ERROR)
+                       sizeof(ngx_http_charset_tables_t))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
 
     if (ngx_array_init(&mcf->recodes, cf->pool, 2,
-                       sizeof(ngx_http_charset_recode_t)) == NGX_ERROR)
+                       sizeof(ngx_http_charset_recode_t))
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }

@@ -136,7 +136,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (ngx_list_init(&cycle->open_files, pool, n, sizeof(ngx_open_file_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         ngx_destroy_pool(pool);
         return NULL;
@@ -155,7 +155,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (ngx_list_init(&cycle->shared_memory, pool, n, sizeof(ngx_shm_zone_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         ngx_destroy_pool(pool);
         return NULL;

@@ -397,7 +397,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     /* add the incoming chain to the chain ctx->in */
 
     if (in) {
-        if (ngx_chain_add_copy(r->pool, &ctx->in, in) == NGX_ERROR) {
+        if (ngx_chain_add_copy(r->pool, &ctx->in, in) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -2060,7 +2060,7 @@ ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
     out = data;
 
     if (!r->header_sent) {
-        if (ngx_http_set_content_type(r) == NGX_ERROR) {
+        if (ngx_http_set_content_type(r) != NGX_OK) {
             return NGX_ERROR;
         }
 

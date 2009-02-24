@@ -741,7 +741,7 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
-    if (ngx_conf_full_name(cf->cycle, &file, 1) == NGX_ERROR) {
+    if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -854,7 +854,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     if (name) {
         full = *name;
 
-        if (ngx_conf_full_name(cycle, &full, 0) == NGX_ERROR) {
+        if (ngx_conf_full_name(cycle, &full, 0) != NGX_OK) {
             return NULL;
         }
 

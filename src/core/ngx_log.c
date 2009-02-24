@@ -329,7 +329,7 @@ ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         cf->cycle->new_log->file->name = value[1];
 
         if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name, 0)
-            == NGX_ERROR)
+            != NGX_OK)
         {
             return NGX_CONF_ERROR;
         }

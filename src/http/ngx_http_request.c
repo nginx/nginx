@@ -404,7 +404,7 @@ ngx_http_init_request(ngx_event_t *rev)
             }
 
             if (ngx_ssl_create_connection(&sscf->ssl, c, NGX_SSL_BUFFER)
-                == NGX_ERROR)
+                != NGX_OK)
             {
                 ngx_http_close_connection(c);
                 return;
@@ -447,7 +447,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
     if (ngx_list_init(&r->headers_out.headers, r->pool, 20,
                       sizeof(ngx_table_elt_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -807,7 +807,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
                               sizeof(ngx_table_elt_t))
-                == NGX_ERROR)
+                != NGX_OK)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
@@ -816,7 +816,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             if (ngx_array_init(&r->headers_in.cookies, r->pool, 2,
                                sizeof(ngx_table_elt_t *))
-                == NGX_ERROR)
+                != NGX_OK)
             {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;

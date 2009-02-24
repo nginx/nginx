@@ -388,7 +388,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
     if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
-        == NGX_ERROR)
+        != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -838,7 +838,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ccf->pid.data = (u_char *) NGX_PID_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &ccf->pid, 0) == NGX_ERROR) {
+    if (ngx_conf_full_name(cycle, &ccf->pid, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -858,7 +858,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ccf->lock_file.data = (u_char *) NGX_LOCK_PATH;
     }
 
-    if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) == NGX_ERROR) {
+    if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
