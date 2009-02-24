@@ -15,9 +15,11 @@ static void ngx_close_posted_connection(ngx_connection_t *c);
 void
 ngx_event_acceptex(ngx_event_t *rev)
 {
+    ngx_listening_t   *ls;
     ngx_connection_t  *c;
 
     c = rev->data;
+    ls = c->listening;
 
     c->log->handler = ngx_accept_log_error;
 
@@ -25,14 +27,14 @@ ngx_event_acceptex(ngx_event_t *rev)
 
     if (rev->ovlp.error) {
         ngx_log_error(NGX_LOG_CRIT, c->log, rev->ovlp.error,
-                      "AcceptEx() %V failed", &c->listening->addr_text);
+                      "AcceptEx() %V failed", &ls->addr_text);
         return;
     }
 
     /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
 
     if (setsockopt(c->fd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
-                   (char *) &c->listening->fd, sizeof(ngx_socket_t))
+                   (char *) &ls->fd, sizeof(ngx_socket_t))
         == -1)
     {
         ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
@@ -43,41 +45,40 @@ ngx_event_acceptex(ngx_event_t *rev)
     }
 
     ngx_getacceptexsockaddrs(c->buffer->pos,
-                             c->listening->post_accept_buffer_size,
-                             c->listening->socklen + 16,
-                             c->listening->socklen + 16,
+                             ls->post_accept_buffer_size,
+                             ls->socklen + 16,
+                             ls->socklen + 16,
                              &c->local_sockaddr, &c->local_socklen,
                              &c->sockaddr, &c->socklen);
 
-    if (c->listening->post_accept_buffer_size) {
+    if (ls->post_accept_buffer_size) {
         c->buffer->last += rev->available;
-        c->buffer->end = c->buffer->start
-                         + c->listening->post_accept_buffer_size;
+        c->buffer->end = c->buffer->start + ls->post_accept_buffer_size;
+
     } else {
         c->buffer = NULL;
     }
 
-    if (c->listening->addr_ntop) {
-        c->addr_text.data = ngx_pnalloc(c->pool,
-                                        c->listening->addr_text_max_len);
+    if (ls->addr_ntop) {
+        c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
         if (c->addr_text.data == NULL) {
             /* TODO: close socket */
             return;
         }
 
         c->addr_text.len = ngx_sock_ntop(c->sockaddr, c->addr_text.data,
-                                         c->listening->addr_text_max_len, 0);
+                                         ls->addr_text_max_len, 0);
         if (c->addr_text.len == 0) {
             /* TODO: close socket */
             return;
         }
     }
 
-    ngx_event_post_acceptex(c->listening, 1);
+    ngx_event_post_acceptex(ls, 1);
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
-    c->listening->handler(c);
+    ls->handler(c);
 
     return;
 
