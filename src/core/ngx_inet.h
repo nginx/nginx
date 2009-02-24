@@ -35,17 +35,17 @@
 
 
 typedef struct {
-    struct in6_addr           addr;
-    struct in6_addr           mask;
-} ngx_in6_cidr_t;
+    in_addr_t                 addr;
+    in_addr_t                 mask;
+} ngx_in_cidr_t;
 
 
 #if (NGX_HAVE_INET6)
 
 typedef struct {
-    in_addr_t                 addr;
-    in_addr_t                 mask;
-} ngx_in_cidr_t;
+    struct in6_addr           addr;
+    struct in6_addr           mask;
+} ngx_in6_cidr_t;
 
 #endif
 
