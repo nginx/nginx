@@ -1603,7 +1603,7 @@ ngx_http_cmp_dns_wildcards(const void *one, const void *two)
 static ngx_int_t
 ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
 {
-    ngx_uint_t                 i, a, last, bind_wildcard;
+    ngx_uint_t                 i, last, bind_wildcard;
     ngx_listening_t           *ls;
     ngx_http_port_t           *hport;
     ngx_http_conf_addr_t      *addr;
@@ -1626,16 +1626,16 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
         bind_wildcard = 0;
     }
 
-    a = 0;
+    i = 0;
 
-    while (a < last) {
+    while (i < last) {
 
-        if (bind_wildcard && !addr[a].bind) {
-            a++;
+        if (bind_wildcard && !addr[i].bind) {
+            i++;
             continue;
         }
 
-        ls = ngx_http_add_listening(cf, &addr[a]);
+        ls = ngx_http_add_listening(cf, &addr[i]);
         if (ls == NULL) {
             return NGX_ERROR;
         }
@@ -1647,21 +1647,12 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
 
         ls->servers = hport;
 
-        for (i = ls->addr_text.len - 1; i; i--) {
-
-            if (ls->addr_text.data[i] == ':') {
-                hport->port_text.len = ls->addr_text.len - i;
-                hport->port_text.data = &ls->addr_text.data[i];
-                break;
-            }
-        }
-
-        if (a == last - 1) {
+        if (i == last - 1) {
             hport->naddrs = last;
 
         } else {
             hport->naddrs = 1;
-            a = 0;
+            i = 0;
         }
 
         switch (ls->sockaddr->sa_family) {

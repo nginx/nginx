@@ -315,26 +315,22 @@ ngx_http_header_filter(ngx_http_request_t *r)
             break;
         }
 
+        len += sizeof("Location: https://") - 1
+               + host.len
+               + r->headers_out.location->value.len + 2;
+
+        if (clcf->port_in_redirect) {
+
 #if (NGX_HTTP_SSL)
-        if (r->connection->ssl) {
-            len += sizeof("Location: https://") - 1
-                   + host.len
-                   + r->headers_out.location->value.len + 2;
-
-            if (clcf->port_in_redirect && port != 443) {
-                len += r->port_text->len;
-            }
-
-        } else
+	    if (r->connection->ssl)
+		port = (port == 443) ? 0 : port;
+	    else
 #endif
-        {
-            len += sizeof("Location: http://") - 1
-                   + host.len
-                   + r->headers_out.location->value.len + 2;
+		port = (port == 80) ? 0 : port;
+	}
 
-            if (clcf->port_in_redirect && port != 80) {
-                len += r->port_text->len;
-            }
+        if (port) {
+            len += sizeof(":65535") - 1;
         }
 
     } else {
@@ -492,21 +488,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
         *b->last++ = ':'; *b->last++ = '/'; *b->last++ = '/';
         b->last = ngx_copy(b->last, host.data, host.len);
 
-        if (clcf->port_in_redirect) {
-#if (NGX_HTTP_SSL)
-            if (r->connection->ssl) {
-                if (port != 443) {
-                    b->last = ngx_copy(b->last, r->port_text->data,
-                                       r->port_text->len);
-                }
-            } else
-#endif
-            {
-                if (port != 80) {
-                    b->last = ngx_copy(b->last, r->port_text->data,
-                                       r->port_text->len);
-                }
-            }
+        if (port) {
+            b->last = ngx_sprintf(b->last, ":%ui", port);
         }
 
         b->last = ngx_copy(b->last, r->headers_out.location->value.data,
