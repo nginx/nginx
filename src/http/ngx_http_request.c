@@ -374,8 +374,6 @@ ngx_http_init_request(ngx_event_t *rev)
         }
     }
 
-    r->virtual_names = addr_conf->virtual_names;
-
     /* the default server configuration for the address:port */
     cscf = addr_conf->core_srv_conf;
 
@@ -1614,11 +1612,15 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 {
     u_char                    *server;
     ngx_uint_t                 hash;
+    ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     buf[32];
 
-    if (r->virtual_names == NULL) {
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+    vn = cscf->virtual_names;
+
+    if (vn == NULL) {
         return NGX_DECLINED;
     }
 
@@ -1634,7 +1636,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
     hash = ngx_hash_strlow(server, host, len);
 
-    cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, server, len);
+    cscf = ngx_hash_find_combined(&vn->names, hash, server, len);
 
     if (cscf) {
         goto found;
@@ -1642,7 +1644,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
 #if (NGX_PCRE)
 
-    if (r->virtual_names->nregex) {
+    if (vn->nregex) {
         ngx_int_t                n;
         ngx_uint_t               i;
         ngx_str_t                name;
@@ -1651,9 +1653,9 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         name.len = len;
         name.data = server;
 
-        sn = r->virtual_names->regex;
+        sn = vn->regex;
 
-        for (i = 0; i < r->virtual_names->nregex; i++) {
+        for (i = 0; i < vn->nregex; i++) {
 
             n = ngx_regex_exec(sn[i].regex, &name, NULL, 0);
 
