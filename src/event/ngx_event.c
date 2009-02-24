@@ -1040,18 +1040,16 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t          *value;
     ngx_event_debug_t  *dc;
     struct hostent     *h;
-    ngx_inet_cidr_t     in_cidr;
+    ngx_cidr_t          cidr;
 
     value = cf->args->elts;
-
-    /* AF_INET only */
 
     dc = ngx_array_push(&ecf->debug_connection);
     if (dc == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    rc = ngx_ptocidr(&value[1], &in_cidr);
+    rc = ngx_ptocidr(&value[1], &cidr);
 
     if (rc == NGX_DONE) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
@@ -1060,8 +1058,18 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (rc == NGX_OK) {
-        dc->mask = in_cidr.mask;
-        dc->addr = in_cidr.addr;
+
+        /* AF_INET only */
+
+        if (cidr.family != AF_INET) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"debug_connection\" supports IPv4 only");
+            return NGX_CONF_ERROR;
+        }
+
+        dc->mask = cidr.u.in.mask;
+        dc->addr = cidr.u.in.addr;
+
         return NGX_CONF_OK;
     }
 

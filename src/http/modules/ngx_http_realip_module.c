@@ -282,7 +282,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_int_t                rc;
     ngx_str_t               *value;
-    ngx_inet_cidr_t          in_cidr;
+    ngx_cidr_t               cidr;
     ngx_http_realip_from_t  *from;
 
     if (rlcf->from == NULL) {
@@ -300,11 +300,17 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    rc = ngx_ptocidr(&value[1], &in_cidr);
+    rc = ngx_ptocidr(&value[1], &cidr);
 
     if (rc == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\"",
                            &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (cidr.family != AF_INET) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"realip_from\" supports IPv4 only");
         return NGX_CONF_ERROR;
     }
 
@@ -313,8 +319,8 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            "low address bits of %V are meaningless", &value[1]);
     }
 
-    from->mask = in_cidr.mask;
-    from->addr = in_cidr.addr;
+    from->mask = cidr.u.in.mask;
+    from->addr = cidr.u.in.addr;
 
     return NGX_CONF_OK;
 }

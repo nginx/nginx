@@ -226,26 +226,25 @@ ngx_inet6_ntop(u_char *p, u_char *text, size_t len)
 /* AF_INET only */
 
 ngx_int_t
-ngx_ptocidr(ngx_str_t *text, void *cidr)
+ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 {
-    u_char           *addr, *mask, *last;
-    ngx_int_t         shift;
-    ngx_inet_cidr_t  *in_cidr;
+    u_char     *addr, *mask, *last;
+    ngx_int_t   shift;
 
-    in_cidr = cidr;
     addr = text->data;
     last = addr + text->len;
 
     mask = ngx_strlchr(addr, last, '/');
 
-    in_cidr->addr = ngx_inet_addr(addr, (mask ? mask : last) - addr);
+    cidr->u.in.addr = ngx_inet_addr(addr, (mask ? mask : last) - addr);
 
-    if (in_cidr->addr == INADDR_NONE) {
+    if (cidr->u.in.addr == INADDR_NONE) {
         return NGX_ERROR;
     }
 
     if (mask == NULL) {
-        in_cidr->mask = 0xffffffff;
+        cidr->family = AF_INET;
+        cidr->u.in.mask = 0xffffffff;
         return NGX_OK;
     }
 
@@ -256,26 +255,28 @@ ngx_ptocidr(ngx_str_t *text, void *cidr)
         return NGX_ERROR;
     }
 
+    cidr->family = AF_INET;
+
     if (shift == 0) {
 
         /* the x86 compilers use the shl instruction that shifts by modulo 32 */
 
-        in_cidr->mask = 0;
+        cidr->u.in.mask = 0;
 
-        if (in_cidr->addr == 0) {
+        if (cidr->u.in.addr == 0) {
             return NGX_OK;
         }
 
         return NGX_DONE;
     }
 
-    in_cidr->mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
+    cidr->u.in.mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
 
-    if (in_cidr->addr == (in_cidr->addr & in_cidr->mask)) {
+    if (cidr->u.in.addr == (cidr->u.in.addr & cidr->u.in.mask)) {
         return NGX_OK;
     }
 
-    in_cidr->addr &= in_cidr->mask;
+    cidr->u.in.addr &= cidr->u.in.mask;
 
     return NGX_DONE;
 }

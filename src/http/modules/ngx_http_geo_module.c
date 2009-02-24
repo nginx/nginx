@@ -778,7 +778,7 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_int_t                        rc, del;
     ngx_str_t                       *net;
     ngx_uint_t                       i;
-    ngx_inet_cidr_t                  cidrin;
+    ngx_cidr_t                       cidr;
     ngx_http_variable_value_t       *val, *old;
 
     if (ctx->tree == NULL) {
@@ -789,8 +789,8 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     }
 
     if (ngx_strcmp(value[0].data, "default") == 0) {
-        cidrin.addr = 0;
-        cidrin.mask = 0;
+        cidr.u.in.addr = 0;
+        cidr.u.in.mask = 0;
         net = &value[0];
 
     } else {
@@ -804,15 +804,21 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         }
 
         if (ngx_strcmp(net->data, "255.255.255.255") == 0) {
-            cidrin.addr = 0xffffffff;
-            cidrin.mask = 0xffffffff;
+            cidr.u.in.addr = 0xffffffff;
+            cidr.u.in.mask = 0xffffffff;
 
         } else {
-            rc = ngx_ptocidr(net, &cidrin);
+            rc = ngx_ptocidr(net, &cidr);
 
             if (rc == NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid network \"%V\"", net);
+                return NGX_CONF_ERROR;
+            }
+
+            if (cidr.family != AF_INET) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"geo\" supports IPv4 only");
                 return NGX_CONF_ERROR;
             }
 
@@ -822,12 +828,13 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                                    net);
             }
 
-            cidrin.addr = ntohl(cidrin.addr);
-            cidrin.mask = ntohl(cidrin.mask);
+            cidr.u.in.addr = ntohl(cidr.u.in.addr);
+            cidr.u.in.mask = ntohl(cidr.u.in.mask);
         }
 
         if (del) {
-            if (ngx_radix32tree_delete(ctx->tree, cidrin.addr, cidrin.mask)
+            if (ngx_radix32tree_delete(ctx->tree, cidr.u.in.addr,
+                                       cidr.u.in.mask)
                 != NGX_OK)
             {
                 ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
@@ -845,7 +852,7 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     }
 
     for (i = 2; i; i--) {
-        rc = ngx_radix32tree_insert(ctx->tree, cidrin.addr, cidrin.mask,
+        rc = ngx_radix32tree_insert(ctx->tree, cidr.u.in.addr, cidr.u.in.mask,
                                     (uintptr_t) val);
         if (rc == NGX_OK) {
             return NGX_CONF_OK;
@@ -858,13 +865,13 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         /* rc == NGX_BUSY */
 
         old  = (ngx_http_variable_value_t *)
-                   ngx_radix32tree_find(ctx->tree, cidrin.addr & cidrin.mask);
+              ngx_radix32tree_find(ctx->tree, cidr.u.in.addr & cidr.u.in.mask);
 
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                 "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
                 net, val, old);
 
-        rc = ngx_radix32tree_delete(ctx->tree, cidrin.addr, cidrin.mask);
+        rc = ngx_radix32tree_delete(ctx->tree, cidr.u.in.addr, cidr.u.in.mask);
 
         if (rc == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
