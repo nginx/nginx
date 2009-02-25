@@ -155,6 +155,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                  */
                 || err == NGX_EAGAIN
 #endif
+                || err == NGX_ECONNRESET
                 || err == NGX_ENETDOWN
                 || err == NGX_ENETUNREACH
                 || err == NGX_EHOSTDOWN
