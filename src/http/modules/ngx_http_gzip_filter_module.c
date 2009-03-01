@@ -19,6 +19,7 @@ typedef struct {
 
     ngx_bufs_t           bufs;
 
+    size_t               postpone_gzipping;
     ngx_int_t            level;
     size_t               wbits;
     size_t               memlevel;
@@ -84,7 +85,7 @@ struct gztrailer {
 
 static void ngx_http_gzip_filter_memory(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t *ctx);
-static ngx_int_t ngx_http_gzip_filter_copy_recycled(ngx_http_gzip_ctx_t *ctx,
+static ngx_int_t ngx_http_gzip_filter_buffer(ngx_http_gzip_ctx_t *ctx,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_gzip_filter_deflate_start(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t *ctx);
@@ -169,6 +170,13 @@ static ngx_command_t  ngx_http_gzip_filter_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_gzip_conf_t, memlevel),
       &ngx_http_gzip_hash_p },
+
+    { ngx_string("postpone_gzipping"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_gzip_conf_t, postpone_gzipping),
+      NULL },
 
     { ngx_string("gzip_no_buffer"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -257,7 +265,7 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
     ngx_http_set_ctx(r, ctx, ngx_http_gzip_filter_module);
 
     ctx->request = r;
-    ctx->buffering = 1;
+    ctx->buffering = (conf->postpone_gzipping != 0);
 
     ngx_http_gzip_filter_memory(r, ctx);
 
@@ -301,8 +309,17 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (ctx->buffering) {
 
+        /*
+         * With default memory settings zlib starts to output gzipped data
+         * only after it has got about 90K, so it makes sense to allocate
+         * zlib memory (200-400K) only after we have enough data to compress.
+         * Although we copy buffers, nevertheless for not big responses
+         * this allows to allocate zlib memory, to compress and to output
+         * the response in one step using hot CPU cache.
+         */
+
         if (in) {
-            switch (ngx_http_gzip_filter_copy_recycled(ctx, in)) {
+            switch (ngx_http_gzip_filter_buffer(ctx, in)) {
 
             case NGX_OK:
                 return NGX_OK;
@@ -482,12 +499,13 @@ ngx_http_gzip_filter_memory(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 
 
 static ngx_int_t
-ngx_http_gzip_filter_copy_recycled(ngx_http_gzip_ctx_t *ctx, ngx_chain_t *in)
+ngx_http_gzip_filter_buffer(ngx_http_gzip_ctx_t *ctx, ngx_chain_t *in)
 {
-    size_t               size, buffered;
-    ngx_buf_t           *b, *buf;
-    ngx_chain_t         *cl, **ll;
-    ngx_http_request_t  *r;
+    size_t                 size, buffered;
+    ngx_buf_t             *b, *buf;
+    ngx_chain_t           *cl, **ll;
+    ngx_http_request_t    *r;
+    ngx_http_gzip_conf_t  *conf;
 
     r = ctx->request;
 
@@ -501,6 +519,8 @@ ngx_http_gzip_filter_copy_recycled(ngx_http_gzip_ctx_t *ctx, ngx_chain_t *in)
         ll = &cl->next;
     }
 
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_filter_module);
+
     while (in) {
         cl = ngx_alloc_chain_link(r->pool);
         if (cl == NULL) {
@@ -512,25 +532,11 @@ ngx_http_gzip_filter_copy_recycled(ngx_http_gzip_ctx_t *ctx, ngx_chain_t *in)
         size = b->last - b->pos;
         buffered += size;
 
-        if (b->flush || b->last_buf) {
-            ctx->buffering = 0;
-
-        } else if (buffered > ctx->allocated / 2) {
-
-            /*
-             * With default memory settings zlib starts to output gzipped data
-             * only after it has got about 90K, so it makes sense to allocate
-             * zlib memory (200-400K) only after we have enough data
-             * to compress.  Although we copy recycled buffers, nevertheless
-             * for responses up to 120K this allows to allocate zlib memory,
-             * to compress and to output the response in one step
-             * using hot CPU cache.
-             */
-
+        if (b->flush || b->last_buf || buffered > conf->postpone_gzipping) {
             ctx->buffering = 0;
         }
 
-        if (ctx->buffering && size && b->recycled) {
+        if (ctx->buffering && size) {
 
             buf = ngx_create_temp_buf(r->pool, size);
             if (buf == NULL) {
@@ -1077,9 +1083,10 @@ ngx_http_gzip_create_conf(ngx_conf_t *cf)
     conf->enable = NGX_CONF_UNSET;
     conf->no_buffer = NGX_CONF_UNSET;
 
+    conf->postpone_gzipping = NGX_CONF_UNSET_SIZE;
     conf->level = NGX_CONF_UNSET;
-    conf->wbits = (size_t) NGX_CONF_UNSET;
-    conf->memlevel = (size_t) NGX_CONF_UNSET;
+    conf->wbits = NGX_CONF_UNSET_SIZE;
+    conf->memlevel = NGX_CONF_UNSET_SIZE;
     conf->min_length = NGX_CONF_UNSET;
 
     return conf;
@@ -1093,16 +1100,18 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_gzip_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs,
                               (128 * 1024) / ngx_pagesize, ngx_pagesize);
 
+    ngx_conf_merge_size_value(conf->postpone_gzipping, prev->postpone_gzipping,
+                              0);
     ngx_conf_merge_value(conf->level, prev->level, 1);
     ngx_conf_merge_size_value(conf->wbits, prev->wbits, MAX_WBITS);
     ngx_conf_merge_size_value(conf->memlevel, prev->memlevel,
                               MAX_MEM_LEVEL - 1);
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
-    ngx_conf_merge_value(conf->no_buffer, prev->no_buffer, 0);
 
     if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
                              prev->types_keys, &prev->types,
