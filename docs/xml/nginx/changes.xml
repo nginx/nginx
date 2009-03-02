@@ -9,6 +9,35 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.39" date="02.03.2009">
+
+<change type="bugfix">
+<para lang="ru">
+при включённом сжатии большие ответы с использованием SSI могли зависать;
+ошибка появилась в 0.7.28.<br/>
+Спасибо Артёму Бохану.
+</para>
+<para lang="en">
+large response with SSI might hang, if gzipping was enabled;
+the bug had appeared in 0.7.28.<br/>
+Thanks to Artem Bokhan.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании коротких статических вариантов в директиве try_files
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if short static variants are used in a "try_files" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.38" date="23.02.2009">
 
 <change type="feature">
