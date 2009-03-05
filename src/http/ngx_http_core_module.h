@@ -289,7 +289,9 @@ struct ngx_http_core_loc_conf_s {
 #endif
 
     ngx_http_location_tree_node_t   *static_locations;
+#if (NGX_PCRE)
     ngx_http_core_loc_conf_t       **regex_locations;
+#endif
 
     /* pointer to the modules' loc_conf */
     void        **loc_conf;
