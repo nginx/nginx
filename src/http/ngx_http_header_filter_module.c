@@ -322,12 +322,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
         if (clcf->port_in_redirect) {
 
 #if (NGX_HTTP_SSL)
-	    if (r->connection->ssl)
-		port = (port == 443) ? 0 : port;
-	    else
+            if (r->connection->ssl)
+                port = (port == 443) ? 0 : port;
+            else
 #endif
-		port = (port == 80) ? 0 : port;
-	}
+                port = (port == 80) ? 0 : port;
+        }
 
         if (port) {
             len += sizeof(":65535") - 1;
