@@ -245,6 +245,7 @@ typedef struct {
 struct ngx_http_server_name_s {
 #if (NGX_PCRE)
     ngx_regex_t               *regex;
+    ngx_uint_t                 captures;      /* unsigned  captures:1; */
 #endif
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
     ngx_str_t                  name;
