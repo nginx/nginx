@@ -10,6 +10,7 @@
 
 #define NGX_HTTP_MAX_URI_CHANGES           10
 #define NGX_HTTP_MAX_SUBREQUESTS           50
+#define NGX_HTTP_MAX_CAPTURES              9
 
 /* must be 2^n */
 #define NGX_HTTP_LC_HEADER_LEN             32
@@ -389,6 +390,12 @@ struct ngx_http_request_s {
     ngx_uint_t                        access_code;
 
     ngx_http_variable_value_t        *variables;
+
+#if (NGX_PCRE)
+    ngx_uint_t                        ncaptures;
+    int                              *captures;
+    u_char                           *captures_data;
+#endif
 
     size_t                            limit_rate;
 

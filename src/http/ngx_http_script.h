@@ -30,9 +30,6 @@ typedef struct {
     unsigned                    is_args:1;
     unsigned                    log:1;
 
-    int                        *captures;
-    ngx_uint_t                  ncaptures;
-
     ngx_int_t                   status;
     ngx_http_request_t         *request;
 } ngx_http_script_engine_t;

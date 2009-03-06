@@ -12,7 +12,6 @@
 typedef struct {
     ngx_array_t  *codes;        /* uintptr_t */
 
-    ngx_uint_t    captures;
     ngx_uint_t    stack_size;
 
     ngx_flag_t    log;
@@ -155,16 +154,6 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
                         rlcf->stack_size * sizeof(ngx_http_variable_value_t));
     if (e->sp == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    if (rlcf->captures) {
-        e->captures = ngx_palloc(r->pool, rlcf->captures * sizeof(int));
-        if (e->captures == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-    } else {
-        e->captures = NULL;
     }
 
     e->ip = rlcf->codes->elts;
@@ -436,10 +425,6 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (regex->ncaptures) {
         regex->ncaptures = (regex->ncaptures + 1) * 3;
-
-        if (lcf->captures < regex->ncaptures) {
-            lcf->captures = regex->ncaptures;
-        }
     }
 
     regex_end = ngx_http_script_add_code(lcf->codes,
@@ -618,11 +603,6 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    if (lcf->captures < nlcf->captures) {
-        lcf->captures = nlcf->captures;
-    }
-
-
     if (elts != lcf->codes->elts) {
         if_code = (ngx_http_script_if_code_t *)
                    ((u_char *) if_code + ((u_char *) lcf->codes->elts - elts));
@@ -777,10 +757,6 @@ ngx_http_rewrite_if_condition(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf)
 
             if (n) {
                 regex->ncaptures = (n + 1) * 3;
-
-                if (lcf->captures < regex->ncaptures) {
-                    lcf->captures = regex->ncaptures;
-                }
             }
 
             return NGX_CONF_OK;
