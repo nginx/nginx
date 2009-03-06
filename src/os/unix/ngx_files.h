@@ -200,9 +200,24 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 
 #if (NGX_HAVE_D_TYPE)
 
+#if (NGX_LINUX)
+
+/* XFS on Linux does not set dirent.d_type */
+
+#define ngx_de_is_dir(dir)                                                   \
+    (((dir)->type) ? ((dir)->type == DT_DIR) : (S_ISDIR((dir)->info.st_mode)))
+#define ngx_de_is_file(dir)                                                  \
+    (((dir)->type) ? ((dir)->type == DT_REG) : (S_ISREG((dir)->info.st_mode)))
+#define ngx_de_is_link(dir)                                                  \
+    (((dir)->type) ? ((dir)->type == DT_LINK) : (S_ISLNK((dir)->info.st_mode)))
+
+#else
+
 #define ngx_de_is_dir(dir)       ((dir)->type == DT_DIR)
 #define ngx_de_is_file(dir)      ((dir)->type == DT_REG)
 #define ngx_de_is_link(dir)      ((dir)->type == DT_LINK)
+
+#endif /* NGX_LINUX */
 
 #else
 

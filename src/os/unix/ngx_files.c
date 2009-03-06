@@ -249,11 +249,6 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
     }
 
     dir->valid_info = 0;
-#if (NGX_HAVE_D_TYPE)
-    dir->valid_type = 1;
-#else
-    dir->valid_type = 0;
-#endif
 
     return NGX_OK;
 }
@@ -267,6 +262,9 @@ ngx_read_dir(ngx_dir_t *dir)
     if (dir->de) {
 #if (NGX_HAVE_D_TYPE)
         dir->type = dir->de->d_type;
+        dir->valid_type = dir->type ? 1 : 0;
+#else
+        dir->valid_type = 0;
 #endif
         return NGX_OK;
     }
