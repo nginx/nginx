@@ -1337,7 +1337,7 @@ ngx_http_core_find_location(ngx_http_request_t *r)
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *pclcf;
 #if (NGX_PCRE)
-    ngx_int_t                  n;
+    ngx_int_t                  n, len;
     ngx_uint_t                 noregex;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
@@ -1371,12 +1371,24 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 
     if (noregex == 0 && pclcf->regex_locations) {
 
+        len = 0;
+
         for (clcfp = pclcf->regex_locations; *clcfp; clcfp++) {
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "test location: ~ \"%V\"", &(*clcfp)->name);
 
-            n = ngx_regex_exec((*clcfp)->regex, &r->uri, NULL, 0);
+            if ((*clcfp)->captures && r->captures == NULL) {
+
+                len = (NGX_HTTP_MAX_CAPTURES + 1) * 3 * sizeof(int);
+
+                r->captures = ngx_palloc(r->pool, len);
+                if (r->captures == NULL) {
+                    return NGX_ERROR;
+                }
+            }
+
+            n = ngx_regex_exec((*clcfp)->regex, &r->uri, r->captures, len);
 
             if (n == NGX_REGEX_NO_MATCHED) {
                 continue;
@@ -1393,6 +1405,9 @@ ngx_http_core_find_location(ngx_http_request_t *r)
             /* match */
 
             r->loc_conf = (*clcfp)->loc_conf;
+
+            r->ncaptures = len;
+            r->captures_data = r->uri.data;
 
             /* look up nested locations */
 
@@ -1686,6 +1701,11 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
         *root_length = path->len - reserved;
         last = path->data + *root_length;
+
+        if (alias) {
+            *last = '\0';
+            return last;
+        }
     }
 
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
@@ -2534,6 +2554,7 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
     }
 
     clcf->name = *regex;
+    clcf->captures = (ngx_regex_capture_count(clcf->regex) > 0);
 
     return NGX_OK;
 
@@ -3477,18 +3498,6 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-#if (NGX_PCRE)
-
-    if (lcf->regex && alias) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the \"alias\" directive may not be used "
-                           "inside location given by regular expression");
-
-        return NGX_CONF_ERROR;
-    }
-
-#endif
-
     value = cf->args->elts;
 
     if (ngx_strstr(value[1].data, "$document_root")
@@ -3528,23 +3537,35 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     n = ngx_http_script_variables_count(&lcf->root);
 
-    if (n == 0) {
-        return NGX_CONF_OK;
-    }
-
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
-    sc.cf = cf;
-    sc.source = &lcf->root;
-    sc.lengths = &lcf->root_lengths;
-    sc.values = &lcf->root_values;
-    sc.variables = n;
-    sc.complete_lengths = 1;
-    sc.complete_values = 1;
+    if (n) {
+        sc.cf = cf;
+        sc.source = &lcf->root;
+        sc.lengths = &lcf->root_lengths;
+        sc.values = &lcf->root_values;
+        sc.variables = n;
+        sc.complete_lengths = 1;
+        sc.complete_values = 1;
 
-    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        if (ngx_http_script_compile(&sc) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+#if (NGX_PCRE)
+
+    if (alias && lcf->regex
+        && (ngx_regex_capture_count(lcf->regex) <= 0 || sc.ncaptures == 0))
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the \"alias\" directive must use captures "
+                           "inside location given by regular expression");
+
         return NGX_CONF_ERROR;
     }
+
+#endif
 
     return NGX_CONF_OK;
 }
