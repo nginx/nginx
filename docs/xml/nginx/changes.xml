@@ -9,6 +9,56 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.40" date="09.03.2009">
+
+<change type="feature">
+<para lang="ru">
+директива location поддерживает выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the "location" directive supports captures in regular expressions.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву alias с ссылками на выделения в регулярных выражениях
+можно использовать внутри location'а, заданного регулярным выражением
+с выделениями.
+</para>
+<para lang="en">
+an "alias" directive with capture references may be used inside
+a location given by a regular expression with captures.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server_name поддерживает выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the "server_name" directive supports captures in regular expressions.
+</para>
+</change>
+
+<change type="workaround"> 
+<para lang="ru">
+модуль ngx_http_autoindex_module не показывал последний слэш для каталогов
+на файловой системе XFS;
+ошибка появилась в 0.7.15.<br/>
+Спасибо Дмитрию Кузьменко.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not show the trailing slash in directories
+on XFS filesystem;
+the issue had appeared in 0.7.15.<br/>
+Thanks to Dmitry Kuzmenko.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.39" date="02.03.2009">
 
 <change type="bugfix">
