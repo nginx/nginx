@@ -1611,6 +1611,7 @@ static ngx_int_t
 ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 {
     u_char                    *server;
+    size_t                     ncaptures;
     ngx_uint_t                 hash;
     ngx_http_virtual_names_t  *vn;
     ngx_http_core_loc_conf_t  *clcf;
@@ -1653,7 +1654,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         name.len = len;
         name.data = server;
 
-        len = 0;
+        ncaptures = 0;
 
         sn = vn->regex;
 
@@ -1661,9 +1662,9 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
             if (sn[i].captures && r->captures == NULL) {
 
-                len = (NGX_HTTP_MAX_CAPTURES + 1) * 3 * sizeof(int);
+                ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3 * sizeof(int);
 
-                r->captures = ngx_palloc(r->pool, len);
+                r->captures = ngx_palloc(r->pool, ncaptures);
                 if (r->captures == NULL) {
                     return NGX_ERROR;
                 }
@@ -1679,7 +1680,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
                 }
             }
 
-            n = ngx_regex_exec(sn[i].regex, &name, r->captures, len);
+            n = ngx_regex_exec(sn[i].regex, &name, r->captures, ncaptures);
 
             if (n == NGX_REGEX_NO_MATCHED) {
                 continue;
@@ -1697,7 +1698,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
             cscf = sn[i].core_srv_conf;
 
-            r->ncaptures = len;
+            r->ncaptures = ncaptures;
             r->captures_data = server;
 
             goto found;
