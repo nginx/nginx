@@ -9,6 +9,27 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.41" date="11.03.2009">
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если в server_name или location были выделения в регулярных выражениях;
+ошибка появилась в 0.7.40.<br/>
+Спасибо Владимиру Сопоту.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if a "server_name" or a "location" directives had captures
+in regular expressions;
+the issue had appeared in 0.7.40.<br/>
+Thanks to Vladimir Sopot.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.40" date="09.03.2009">
 
 <change type="feature">
