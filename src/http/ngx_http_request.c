@@ -1662,9 +1662,9 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
             if (sn[i].captures && r->captures == NULL) {
 
-                ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3 * sizeof(int);
+                ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
 
-                r->captures = ngx_palloc(r->pool, ncaptures);
+                r->captures = ngx_palloc(r->pool, ncaptures * sizeof(int));
                 if (r->captures == NULL) {
                     return NGX_ERROR;
                 }

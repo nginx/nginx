@@ -1380,9 +1380,9 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 
             if ((*clcfp)->captures && r->captures == NULL) {
 
-                len = (NGX_HTTP_MAX_CAPTURES + 1) * 3 * sizeof(int);
+                len = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
 
-                r->captures = ngx_palloc(r->pool, len);
+                r->captures = ngx_palloc(r->pool, len * sizeof(int));
                 if (r->captures == NULL) {
                     return NGX_ERROR;
                 }
