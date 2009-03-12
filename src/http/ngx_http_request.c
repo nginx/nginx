@@ -2421,8 +2421,15 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
                        (const void *) &tcp_nodelay, sizeof(int))
             == -1)
         {
+#if (NGX_SOLARIS)
+            /* Solaris returns EINVAL if a socket has been shut down */
+            c->log_error = NGX_ERROR_IGNORE_EINVAL;
+#endif
+
             ngx_connection_error(c, ngx_socket_errno,
                                  "setsockopt(TCP_NODELAY) failed");
+
+            c->log_error = NGX_ERROR_INFO;
             ngx_http_close_connection(c);
             return;
         }
