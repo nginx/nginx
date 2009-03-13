@@ -44,6 +44,9 @@ typedef struct {
 #if (NGX_HTTP_SSL)
     unsigned                   ssl:1;
 #endif
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    unsigned                   ipv6only:2;
+#endif
 
     int                        backlog;
     int                        rcvbuf;

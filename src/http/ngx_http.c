@@ -1768,6 +1768,10 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->deferred_accept = addr->listen_conf->deferred_accept;
 #endif
 
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    ls->ipv6only = addr->listen_conf->ipv6only;
+#endif
+
     return ls;
 }
 

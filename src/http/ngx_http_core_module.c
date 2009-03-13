@@ -3332,6 +3332,45 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[n].data, "ipv6only=o", 10) == 0) {
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+            struct sockaddr  *sa;
+
+            sa = (struct sockaddr *) ls->sockaddr;
+
+            if (sa->sa_family == AF_INET6) {
+
+                if (ngx_strcmp(&value[n].data[10], "n") == 0) {
+                    ls->conf.ipv6only = 1;
+
+                } else if (ngx_strcmp(&value[n].data[10], "ff") == 0) {
+                    ls->conf.ipv6only = 2;
+
+                } else {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "invalid ipv6only flags \"%s\"",
+                                       &value[n].data[9]);
+                    return NGX_CONF_ERROR;
+                }
+
+                ls->conf.bind = 1;
+
+            } else {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "ipv6only is not supported "
+                                   "on addr \"%s\", ignored",
+                                   ls->conf.addr);
+            }
+
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "bind ipv6only is not supported "
+                               "on this platform");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         if (ngx_strcmp(value[n].data, "ssl") == 0) {
 #if (NGX_HTTP_SSL)
             ls->conf.ssl = 1;

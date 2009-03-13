@@ -56,6 +56,10 @@ struct ngx_listening_s {
     unsigned            shared:1;    /* shared between threads or processes */
     unsigned            addr_ntop:1;
 
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    unsigned            ipv6only:2;
+#endif
+
 #if (NGX_HAVE_DEFERRED_ACCEPT)
     unsigned            deferred_accept:1;
     unsigned            delete_deferred:1;
