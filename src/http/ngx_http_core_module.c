@@ -1672,13 +1672,11 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         return NULL;
     }
 
-    reserved += r->uri.len - alias + 1;
-
     if (clcf->root_lengths == NULL) {
 
         *root_length = clcf->root.len;
 
-        path->len = clcf->root.len + reserved;
+        path->len = clcf->root.len + reserved + r->uri.len - alias + 1;
 
         path->data = ngx_pnalloc(r->pool, path->len);
         if (path->data == NULL) {
@@ -1688,7 +1686,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
 
     } else {
-        if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
+        if (ngx_http_script_run(r, path, clcf->root_lengths->elts, ++reserved,
                                 clcf->root_values->elts)
             == NULL)
         {
