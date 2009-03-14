@@ -1378,13 +1378,15 @@ ngx_http_core_find_location(ngx_http_request_t *r)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "test location: ~ \"%V\"", &(*clcfp)->name);
 
-            if ((*clcfp)->captures && r->captures == NULL) {
+            if ((*clcfp)->captures) {
 
                 len = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
 
-                r->captures = ngx_palloc(r->pool, len * sizeof(int));
                 if (r->captures == NULL) {
-                    return NGX_ERROR;
+                    r->captures = ngx_palloc(r->pool, len * sizeof(int));
+                    if (r->captures == NULL) {
+                        return NGX_ERROR;
+                    }
                 }
             }
 
