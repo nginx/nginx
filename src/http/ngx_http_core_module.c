@@ -1122,7 +1122,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
             path.len = e.pos - path.data;
 
-            *e.pos++ = '\0';
+            *e.pos = '\0';
 
             if (alias && ngx_strncmp(name, clcf->name.data, alias) == 0) {
                 ngx_memcpy(name, name + alias, len - alias);

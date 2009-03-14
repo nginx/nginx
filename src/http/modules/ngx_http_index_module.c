@@ -198,7 +198,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
             path.len = e.pos - path.data;
 
-            *e.pos++ = '\0';
+            *e.pos = '\0';
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
