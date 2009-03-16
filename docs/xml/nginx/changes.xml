@@ -9,6 +9,90 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.42" date="16.03.2009">
+
+<change type="change">
+<para lang="ru">
+ошибка "Invalid argument", возвращаемая setsockopt(TCP_NODELAY) на Solaris,
+теперь игнорируется.
+</para>
+<para lang="en">
+now the "Invalid argument" error returned by setsockopt(TCP_NODELAY) on Solaris,
+is ignored.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при отсутствии файла, указанного в директиве auth_basic_user_file,
+теперь возвращается ошибка 403 вместо 500.
+</para>
+<para lang="en">
+now if a file specified in a "auth_basic_user_file" directive is absent,
+then the 405 error is returned instead of the 500 one.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива auth_basic_user_file поддерживает переменные.
+<br/>
+Спасибо Кириллу Коринскому.
+</para>
+<para lang="en">
+the "auth_basic_user_file" directive supports variables.<br/>
+Thanks to Kirill A. Korinskiy.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива listen поддерживает параметр ipv6only.<br/>
+Спасибо Zhang Hua.
+</para>
+<para lang="en">
+the "listen" directive supports the "ipv6only" parameter.
+<br/>
+Thanks to Zhang Hua.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве alias со ссылками на выделения в регулярных выражениях;
+ошибка появилась в 0.7.40.
+</para>
+<para lang="en">
+in an "alias" directive with references to captures of regular expressions;
+the bug had appeared in 0.7.40.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с Tru64 UNIX.<br/>
+Спасибо Dustin Marquess.
+</para>
+<para lang="en">
+compatibility with Tru64 UNIX.<br/>
+Thanks to Dustin Marquess.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без библиотеки PCRE;
+ошибка появилась в 0.7.41.
+</para>
+<para lang="en">
+nginx could not be built without PCRE library;
+the bug had appeared in 0.7.41.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.41" date="11.03.2009">
 
 <change type="bugfix">
