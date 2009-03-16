@@ -470,10 +470,7 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t                  *value;
     ngx_uint_t                  n;
-    ngx_http_core_loc_conf_t   *clcf;
     ngx_http_script_compile_t   sc;
-
-    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     if (alcf->user_file.data) {
         return "is duplicate";
