@@ -9,6 +9,35 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.43" date="18.03.2009">
+
+<change type="bugfix">
+<para lang="ru">
+запрос обрабатывался неверно, если директива root использовала переменные;
+ошибка появилась в 0.7.42.
+</para>
+<para lang="en">
+a request was handled incorrectly, if a "root" directive used variables;
+the bug had appeared in 0.7.42.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если сервер слушал на адресах типа "*", то значение переменной $server_addr
+было "0.0.0.0";
+ошибка появилась в 0.7.36.
+</para>
+<para lang="en">
+if a server listened on wildcard address, then the $server_addr variable
+value was "0.0.0.0";
+the bug had appeared in 0.7.36.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.42" date="16.03.2009">
 
 <change type="change">
@@ -29,7 +58,7 @@ is ignored.
 </para>
 <para lang="en">
 now if a file specified in a "auth_basic_user_file" directive is absent,
-then the 405 error is returned instead of the 500 one.
+then the 403 error is returned instead of the 500 one.
 </para>
 </change>
 
