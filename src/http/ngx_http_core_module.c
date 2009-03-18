@@ -1688,7 +1688,9 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
 
     } else {
-        if (ngx_http_script_run(r, path, clcf->root_lengths->elts, ++reserved,
+        reserved += alias ? 1 : r->uri.len + 1;
+
+        if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
                                 clcf->root_values->elts)
             == NULL)
         {
