@@ -1037,7 +1037,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 {
     size_t                        len, root, alias, reserve, allocated;
     u_char                       *p, *name;
-    ngx_str_t                     path;
+    ngx_str_t                     path, args;
     ngx_uint_t                    test_dir;
     ngx_http_try_file_t          *tf;
     ngx_open_file_info_t          of;
@@ -1146,7 +1146,9 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
                 (void) ngx_http_named_location(r, &path);
 
             } else {
-                (void) ngx_http_internal_redirect(r, &path, NULL);
+                ngx_http_split_args(r, &path, &args);
+
+                (void) ngx_http_internal_redirect(r, &path, &args);
             }
 
             return NGX_OK;
