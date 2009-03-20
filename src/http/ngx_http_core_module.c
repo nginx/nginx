@@ -542,7 +542,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("try_files"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
       ngx_http_core_try_files,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
