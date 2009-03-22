@@ -3904,7 +3904,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         err->value = cv;
-	err->args = args;
+        err->args = args;
     }
 
     return NGX_CONF_OK;
