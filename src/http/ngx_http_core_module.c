@@ -3791,13 +3791,13 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    u_char                     *args;
-    ngx_int_t                   overwrite;
-    ngx_str_t                  *value, uri;
-    ngx_uint_t                  i, n, nvar;
-    ngx_array_t                *uri_lengths, *uri_values;
-    ngx_http_err_page_t        *err;
-    ngx_http_script_compile_t   sc;
+    u_char                            *p;
+    ngx_int_t                          overwrite;
+    ngx_str_t                         *value, uri, args;
+    ngx_uint_t                         i, n;
+    ngx_http_err_page_t               *err;
+    ngx_http_complex_value_t           cv;
+    ngx_http_compile_complex_value_t   ccv;
 
     if (lcf->error_pages == NULL) {
         lcf->error_pages = ngx_array_create(cf->pool, 4,
@@ -3839,28 +3839,31 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     uri = value[cf->args->nelts - 1];
-    uri_lengths = NULL;
-    uri_values = NULL;
 
-    nvar = ngx_http_script_variables_count(&uri);
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-    if (nvar) {
-        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+    ccv.cf = cf;
+    ccv.value = &uri;
+    ccv.complex_value = &cv;
 
-        sc.cf = cf;
-        sc.source = &uri;
-        sc.lengths = &uri_lengths;
-        sc.values = &uri_values;
-        sc.variables = nvar;
-        sc.complete_lengths = 1;
-        sc.complete_values = 1;
-
-        if (ngx_http_script_compile(&sc) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
-    args = (u_char *) ngx_strchr(uri.data, '?');
+    args.len = 0;
+    args.data = NULL;
+
+    if (cv.lengths == NULL) {
+        p = (u_char *) ngx_strchr(uri.data, '?');
+
+        if (p) {
+            cv.value.len = p - uri.data;
+            cv.value.data = uri.data;
+            p++;
+            args.len = (uri.data + uri.len) - p;
+            args.data = p;
+        }
+    }
 
     for (i = 1; i < cf->args->nelts - n; i++) {
         err = ngx_array_push(lcf->error_pages);
@@ -3900,21 +3903,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
-        if (args) {
-            err->uri.len = args - uri.data;
-            err->uri.data = uri.data;
-            args++;
-            err->args.len = (uri.data + uri.len) - args;
-            err->args.data = args;
-
-        } else {
-            err->uri = uri;
-            err->args.len = 0;
-            err->args.data = NULL;
-        }
-
-        err->uri_lengths = uri_lengths;
-        err->uri_values = uri_values;
+        err->value = cv;
+	err->args = args;
     }
 
     return NGX_CONF_OK;

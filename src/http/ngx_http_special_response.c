@@ -432,9 +432,8 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 static ngx_int_t
 ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 {
-    u_char                     ch, *p, *last;
     ngx_int_t                  overwrite;
-    ngx_str_t                 *uri, *args, u, a;
+    ngx_str_t                  uri, args;
     ngx_table_elt_t           *location;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -448,67 +447,29 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     r->zero_in_uri = 0;
 
-    if (err_page->uri_lengths) {
-        if (ngx_http_script_run(r, &u, err_page->uri_lengths->elts, 0,
-                                err_page->uri_values->elts)
-            == NULL)
-        {
-            return NGX_ERROR;
-        }
-
-        p = u.data;
-        uri = &u;
-        args = NULL;
-
-        if (*p == '/') {
-
-            last = p + uri->len;
-
-            while (p < last) {
-
-                ch = *p++;
-
-                if (ch == '?') {
-                    a.len = last - p;
-                    a.data = p;
-                    args = &a;
-
-                    u.len = p - 1 - u.data;
-
-                    while (p < last) {
-                        if (*p++ == '\0') {
-                            r->zero_in_uri = 1;
-                            break;
-                        }
-                    }
-
-                    break;
-                }
-
-                if (ch == '\0') {
-                    r->zero_in_uri = 1;
-                    continue;
-                }
-            }
-        }
-
-    } else {
-        uri = &err_page->uri;
-        args = &err_page->args;
+    if (ngx_http_complex_value(r, &err_page->value, &uri) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    if (uri->data[0] == '/') {
+    if (err_page->value.lengths) {
+        ngx_http_split_args(r, &uri, &args);
+
+    } else {
+        args = err_page->args;
+    }
+
+    if (uri.data[0] == '/') {
 
         if (r->method != NGX_HTTP_HEAD) {
             r->method = NGX_HTTP_GET;
             r->method_name = ngx_http_get_name;
         }
 
-        return ngx_http_internal_redirect(r, uri, args);
+        return ngx_http_internal_redirect(r, &uri, &args);
     }
 
-    if (uri->data[0] == '@') {
-        return ngx_http_named_location(r, uri);
+    if (uri.data[0] == '@') {
+        return ngx_http_named_location(r, &uri);
     }
 
     location = ngx_list_push(&r->headers_out.headers);
@@ -522,7 +483,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
     location->hash = 1;
     location->key.len = sizeof("Location") - 1;
     location->key.data = (u_char *) "Location";
-    location->value = *uri;
+    location->value = uri;
 
     r->headers_out.location = location;
 
