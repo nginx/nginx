@@ -53,10 +53,32 @@ typedef struct {
     unsigned                    compile_args:1;
     unsigned                    complete_lengths:1;
     unsigned                    complete_values:1;
-    unsigned                    dup_capture:1;
+    unsigned                    zero:1;
+    unsigned                    conf_prefix:1;
+    unsigned                    root_prefix:1;
 
+    unsigned                    dup_capture:1;
     unsigned                    args:1;
 } ngx_http_script_compile_t;
+
+
+typedef struct {
+    ngx_str_t                   value;
+    ngx_uint_t                 *flushes;
+    void                       *lengths;
+    void                       *values;
+} ngx_http_complex_value_t;
+
+
+typedef struct {
+    ngx_conf_t                 *cf;
+    ngx_str_t                  *value;
+    ngx_http_complex_value_t   *complex_value;
+
+    unsigned                    zero:1;
+    unsigned                    conf_prefix:1;
+    unsigned                    root_prefix:1;
+} ngx_http_compile_complex_value_t;
 
 
 typedef void (*ngx_http_script_code_pt) (ngx_http_script_engine_t *e);
@@ -64,75 +86,81 @@ typedef size_t (*ngx_http_script_len_code_pt) (ngx_http_script_engine_t *e);
 
 
 typedef struct {
-    ngx_http_script_code_pt         code;
-    uintptr_t                       len;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   len;
 } ngx_http_script_copy_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt         code;
-    uintptr_t                       index;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   index;
 } ngx_http_script_var_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt         code;
-    ngx_http_set_variable_pt        handler;
-    uintptr_t                       data;
+    ngx_http_script_code_pt     code;
+    ngx_http_set_variable_pt    handler;
+    uintptr_t                   data;
 } ngx_http_script_var_handler_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    uintptr_t                        n;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   n;
 } ngx_http_script_copy_capture_code_t;
 
 
 #if (NGX_PCRE)
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    ngx_regex_t                     *regex;
-    ngx_array_t                     *lengths;
-    uintptr_t                        size;
-    uintptr_t                        ncaptures;
-    uintptr_t                        status;
-    uintptr_t                        next;
+    ngx_http_script_code_pt     code;
+    ngx_regex_t                *regex;
+    ngx_array_t                *lengths;
+    uintptr_t                   size;
+    uintptr_t                   ncaptures;
+    uintptr_t                   status;
+    uintptr_t                   next;
 
-    uintptr_t                        test:1;
-    uintptr_t                        negative_test:1;
-    uintptr_t                        uri:1;
-    uintptr_t                        args:1;
+    uintptr_t                   test:1;
+    uintptr_t                   negative_test:1;
+    uintptr_t                   uri:1;
+    uintptr_t                   args:1;
 
     /* add the r->args to the new arguments */
-    uintptr_t                        add_args:1;
+    uintptr_t                   add_args:1;
 
-    uintptr_t                        redirect:1;
-    uintptr_t                        break_cycle:1;
+    uintptr_t                   redirect:1;
+    uintptr_t                   break_cycle:1;
 
-    ngx_str_t                        name;
+    ngx_str_t                   name;
 } ngx_http_script_regex_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
+    ngx_http_script_code_pt     code;
 
-    uintptr_t                        uri:1;
-    uintptr_t                        args:1;
+    uintptr_t                   uri:1;
+    uintptr_t                   args:1;
 
     /* add the r->args to the new arguments */
-    uintptr_t                        add_args:1;
+    uintptr_t                   add_args:1;
 
-    uintptr_t                        redirect:1;
+    uintptr_t                   redirect:1;
 } ngx_http_script_regex_end_code_t;
 
 #endif
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    uintptr_t                        status;
-    uintptr_t                        null;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   prefix;
+} ngx_http_script_full_name_code_t;
+
+
+typedef struct {
+    ngx_http_script_code_pt     code;
+    uintptr_t                   status;
+    uintptr_t                   null;
 } ngx_http_script_return_code_t;
 
 
@@ -149,31 +177,37 @@ typedef enum {
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    uintptr_t                        op;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   op;
 } ngx_http_script_file_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    uintptr_t                        next;
-    void                           **loc_conf;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   next;
+    void                      **loc_conf;
 } ngx_http_script_if_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    ngx_array_t                     *lengths;
+    ngx_http_script_code_pt     code;
+    ngx_array_t                *lengths;
 } ngx_http_script_complex_value_code_t;
 
 
 typedef struct {
-    ngx_http_script_code_pt          code;
-    uintptr_t                        value;
-    uintptr_t                        text_len;
-    uintptr_t                        text_data;
+    ngx_http_script_code_pt     code;
+    uintptr_t                   value;
+    uintptr_t                   text_len;
+    uintptr_t                   text_data;
 } ngx_http_script_value_code_t;
 
+
+void ngx_http_scrip_flush_complex_value(ngx_http_request_t *r,
+    ngx_http_complex_value_t *val);
+ngx_int_t ngx_http_complex_value(ngx_http_request_t *r,
+    ngx_http_complex_value_t *val, ngx_str_t *value);
+ngx_int_t ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv);
 
 ngx_uint_t ngx_http_script_variables_count(ngx_str_t *value);
 ngx_int_t ngx_http_script_compile(ngx_http_script_compile_t *sc);
