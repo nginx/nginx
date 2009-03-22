@@ -13,15 +13,13 @@
 
 
 typedef struct {
-    ngx_str_t     passwd;
+    ngx_str_t                 passwd;
 } ngx_http_auth_basic_ctx_t;
 
 
 typedef struct {
-    ngx_str_t     realm;
-    ngx_str_t     user_file;
-    ngx_array_t  *user_file_lengths;
-    ngx_array_t  *user_file_values;
+    ngx_str_t                 realm;
+    ngx_http_complex_value_t  user_file;
 } ngx_http_auth_basic_loc_conf_t;
 
 
@@ -117,7 +115,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_basic_module);
 
-    if (alcf->realm.len == 0 || alcf->user_file.len == 0) {
+    if (alcf->realm.len == 0 || alcf->user_file.value.len == 0) {
         return NGX_DECLINED;
     }
 
@@ -142,18 +140,8 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (alcf->user_file_lengths) {
-        if (ngx_http_script_run(r, &user_file, alcf->user_file_lengths->elts, 1,
-                                alcf->user_file_values->elts)
-            == NULL)
-        {
-            return NGX_ERROR;
-        }
-
-        user_file.data[--user_file.len] = '\0';
-
-    } else {
-        user_file = alcf->user_file;
+    if (ngx_http_complex_value(r, &alcf->user_file, &user_file) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     fd = ngx_open_file(user_file.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
@@ -401,10 +389,8 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->realm = prev->realm;
     }
 
-    if (conf->user_file.data == NULL) {
+    if (conf->user_file.value.len == 0) {
         conf->user_file = prev->user_file;
-        conf->user_file_lengths = prev->user_file_lengths;
-        conf->user_file_values = prev->user_file_values;
     }
 
     return NGX_CONF_OK;
@@ -468,47 +454,24 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_auth_basic_loc_conf_t *alcf = conf;
 
-    ngx_str_t                  *value;
-    ngx_uint_t                  n;
-    ngx_http_script_compile_t   sc;
+    ngx_str_t                         *value;
+    ngx_http_compile_complex_value_t   ccv;
 
-    if (alcf->user_file.data) {
+    if (alcf->user_file.value.len) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    alcf->user_file = value[1];
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-    if (alcf->user_file.len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid parameter \"%V\"", &alcf->user_file);
-        return NGX_CONF_ERROR;
-    }
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &alcf->user_file;
+    ccv.zero = 1;
+    ccv.conf_prefix = 1;
 
-    if (alcf->user_file.data[0] != '$') {
-        if (ngx_conf_full_name(cf->cycle, &alcf->user_file, 1) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    n = ngx_http_script_variables_count(&alcf->user_file);
-
-    if (n == 0) {
-        return NGX_CONF_OK;
-    }
-
-    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
-
-    sc.cf = cf;
-    sc.source = &alcf->user_file;
-    sc.lengths = &alcf->user_file_lengths;
-    sc.values = &alcf->user_file_values;
-    sc.variables = n;
-    sc.complete_lengths = 1;
-    sc.complete_values = 1;
-
-    if (ngx_http_script_compile(&sc) != NGX_OK) {
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

@@ -16,18 +16,18 @@ typedef ngx_int_t (*ngx_http_set_header_pt)(ngx_http_request_t *r,
 
 
 typedef struct {
-    ngx_str_t                name;
-    ngx_uint_t               offset;
-    ngx_http_set_header_pt   handler;
+    ngx_str_t                  name;
+    ngx_uint_t                 offset;
+    ngx_http_set_header_pt     handler;
 } ngx_http_set_header_t;
 
 
 struct ngx_http_header_val_s {
-    ngx_table_elt_t          value;
-    ngx_uint_t               offset;
-    ngx_http_set_header_pt   handler;
-    ngx_array_t             *lengths;
-    ngx_array_t             *values;
+    ngx_http_complex_value_t   value;
+    ngx_uint_t                 hash;
+    ngx_str_t                  key;
+    ngx_http_set_header_pt     handler;
+    ngx_uint_t                 offset;
 };
 
 
@@ -162,16 +162,8 @@ ngx_http_headers_filter(ngx_http_request_t *r)
         h = conf->headers->elts;
         for (i = 0; i < conf->headers->nelts; i++) {
 
-            if (h[i].lengths == NULL) {
-                value = h[i].value.value;
-
-            } else {
-                if (ngx_http_script_run(r, &value, h[i].lengths->elts, 0,
-                                        h[i].values->elts)
-                    == NULL)
-                {
-                    return NGX_ERROR;
-                }
+            if (ngx_http_complex_value(r, &h[i].value, &value) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             if (h[i].handler(r, &h[i], &value) != NGX_OK) {
@@ -331,8 +323,8 @@ ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
             return NGX_ERROR;
         }
 
-        h->hash = hv->value.hash;
-        h->key = hv->value.key;
+        h->hash = hv->hash;
+        h->key = hv->key;
         h->value = *value;
     }
 
@@ -414,8 +406,8 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
         }
     }
 
-    h->hash = hv->value.hash;
-    h->key = hv->value.key;
+    h->hash = hv->hash;
+    h->key = hv->key;
     h->value = *value;
 
     return NGX_OK;
@@ -578,12 +570,11 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_headers_conf_t *hcf = conf;
 
-    ngx_int_t                   n;
-    ngx_str_t                  *value;
-    ngx_uint_t                  i;
-    ngx_http_header_val_t      *h;
-    ngx_http_set_header_t      *sh;
-    ngx_http_script_compile_t   sc;
+    ngx_str_t                         *value;
+    ngx_uint_t                         i;
+    ngx_http_header_val_t             *hv;
+    ngx_http_set_header_t             *set;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
@@ -595,47 +586,35 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    h = ngx_array_push(hcf->headers);
-    if (h == NULL) {
+    hv = ngx_array_push(hcf->headers);
+    if (hv == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    h->value.hash = 1;
-    h->value.key = value[1];
-    h->value.value = value[2];
-    h->offset = 0;
-    h->handler = ngx_http_add_header;
-    h->lengths = NULL;
-    h->values = NULL;
+    hv->hash = 1;
+    hv->key = value[1];
+    hv->handler = ngx_http_add_header;
+    hv->offset = 0;
 
-    sh = ngx_http_set_headers;
-    for (i = 0; sh[i].name.len; i++) {
-        if (ngx_strcasecmp(value[1].data, sh[i].name.data) != 0) {
+    set = ngx_http_set_headers;
+    for (i = 0; set[i].name.len; i++) {
+        if (ngx_strcasecmp(value[1].data, set[i].name.data) != 0) {
             continue;
         }
 
-        h->offset = sh[i].offset;
-        h->handler = sh[i].handler;
+        hv->offset = set[i].offset;
+        hv->handler = set[i].handler;
+
         break;
     }
 
-    n = ngx_http_script_variables_count(&value[2]);
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-    if (n == 0) {
-        return NGX_CONF_OK;
-    }
+    ccv.cf = cf;
+    ccv.value = &value[2];
+    ccv.complex_value = &hv->value;
 
-    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
-
-    sc.cf = cf;
-    sc.source = &value[2];
-    sc.lengths = &h->lengths;
-    sc.values = &h->values;
-    sc.variables = n;
-    sc.complete_lengths = 1;
-    sc.complete_values = 1;
-
-    if (ngx_http_script_compile(&sc) != NGX_OK) {
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

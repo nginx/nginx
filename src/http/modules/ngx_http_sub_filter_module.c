@@ -10,17 +10,14 @@
 
 
 typedef struct {
-    ngx_str_t      match;
-    ngx_str_t      sub;
+    ngx_str_t                  match;
+    ngx_http_complex_value_t   value;
 
-    ngx_hash_t     types;
+    ngx_hash_t                 types;
 
-    ngx_array_t   *sub_lengths;
-    ngx_array_t   *sub_values;
+    ngx_flag_t                 once;
 
-    ngx_flag_t     once;
-
-    ngx_array_t   *types_keys;
+    ngx_array_t               *types_keys;
 } ngx_http_sub_loc_conf_t;
 
 
@@ -31,27 +28,27 @@ typedef enum {
 
 
 typedef struct {
-    ngx_str_t      match;
+    ngx_str_t                  match;
 
-    ngx_uint_t     once;   /* unsigned  once:1 */
+    ngx_uint_t                 once;   /* unsigned  once:1 */
 
-    ngx_buf_t     *buf;
+    ngx_buf_t                 *buf;
 
-    u_char        *pos;
-    u_char        *copy_start;
-    u_char        *copy_end;
+    u_char                    *pos;
+    u_char                    *copy_start;
+    u_char                    *copy_end;
 
-    ngx_chain_t   *in;
-    ngx_chain_t   *out;
-    ngx_chain_t  **last_out;
-    ngx_chain_t   *busy;
-    ngx_chain_t   *free;
+    ngx_chain_t               *in;
+    ngx_chain_t               *out;
+    ngx_chain_t              **last_out;
+    ngx_chain_t               *busy;
+    ngx_chain_t               *free;
 
-    ngx_str_t      sub;
+    ngx_str_t                  sub;
 
-    ngx_uint_t     state;
-    size_t         saved;
-    size_t         looked;
+    ngx_uint_t                 state;
+    size_t                     saved;
+    size_t                     looked;
 } ngx_http_sub_ctx_t;
 
 
@@ -154,7 +151,6 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
 
     ctx->match = slcf->match;
     ctx->last_out = &ctx->out;
-    ctx->sub = slcf->sub;
 
     r->filter_need_in_memory = 1;
 
@@ -346,9 +342,8 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             if (ctx->sub.data == NULL) {
 
-                if (ngx_http_script_run(r, &ctx->sub, slcf->sub_lengths->elts,
-                                        0, slcf->sub_values->elts)
-                    == NULL)
+                if (ngx_http_complex_value(r, &slcf->value, &ctx->sub)
+                    != NGX_OK)
                 {
                     return NGX_ERROR;
                 }
@@ -609,9 +604,8 @@ ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_sub_loc_conf_t *slcf = conf;
 
-    ngx_str_t                  *value;
-    ngx_int_t                   n;
-    ngx_http_script_compile_t   sc;
+    ngx_str_t                         *value;
+    ngx_http_compile_complex_value_t   ccv;
 
     if (slcf->match.len) {
         return "is duplicate";
@@ -623,24 +617,13 @@ ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     slcf->match = value[1];
 
-    n = ngx_http_script_variables_count(&value[2]);
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-    if (n == 0) {
-        slcf->sub = value[2];
-        return NGX_CONF_OK;
-    }
+    ccv.cf = cf;
+    ccv.value = &value[2];
+    ccv.complex_value = &slcf->value;
 
-    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
-
-    sc.cf = cf;
-    sc.source = &value[2];
-    sc.lengths = &slcf->sub_lengths;
-    sc.values = &slcf->sub_values;
-    sc.variables = n;
-    sc.complete_lengths = 1;
-    sc.complete_values = 1;
-
-    if (ngx_http_script_compile(&sc) != NGX_OK) {
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -684,10 +667,8 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->once, prev->once, 1);
     ngx_conf_merge_str_value(conf->match, prev->match, "");
 
-    if (conf->sub.data == NULL && conf->sub_lengths == NULL) {
-        conf->sub = prev->sub;
-        conf->sub_lengths = prev->sub_lengths;
-        conf->sub_values = prev->sub_values;
+    if (conf->value.value.len == 0) {
+        conf->value = prev->value;
     }
 
     if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,

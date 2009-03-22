@@ -38,14 +38,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_array_t         *lengths;
-    ngx_array_t         *values;
-} ngx_http_xslt_param_t;
-
-
-typedef struct {
     xsltStylesheetPtr    stylesheet;
-    ngx_array_t          params;       /* ngx_http_xslt_param_t */
+    ngx_array_t          params;       /* ngx_http_complex_value_t */
 } ngx_http_xslt_sheet_t;
 
 
@@ -867,30 +861,25 @@ static ngx_int_t
 ngx_http_xslt_params(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     ngx_array_t *params)
 {
-    u_char                 *p, *last, *value, *dst, *src, **s;
-    size_t                  len;
-    ngx_uint_t              i;
-    ngx_str_t               string;
-    ngx_http_xslt_param_t  *param;
+    u_char                    *p, *last, *value, *dst, *src, **s;
+    size_t                     len;
+    ngx_uint_t                 i;
+    ngx_str_t                  string;
+    ngx_http_complex_value_t  *param;
 
     param = params->elts;
 
     for (i = 0; i < params->nelts; i++) {
 
-        if (ngx_http_script_run(r, &string, param[i].lengths->elts, 1,
-                                param[i].values->elts)
-            == NULL)
-        {
+        if (ngx_http_complex_value(r, &param[i], &string) != NGX_OK) {
             return NGX_ERROR;
         }
-
-        last = string.data + string.len - 1;
-        *last = '\0';
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "xslt filter param: \"%s\"", string.data);
 
         p = string.data;
+        last = string.data + string.len - 1;
 
         while (p && *p) {
 
@@ -1073,8 +1062,8 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_pool_cleanup_t                *cln;
     ngx_http_xslt_file_t              *file;
     ngx_http_xslt_sheet_t             *sheet;
-    ngx_http_xslt_param_t             *param;
-    ngx_http_script_compile_t          sc;
+    ngx_http_complex_value_t          *param;
+    ngx_http_compile_complex_value_t   ccv;
     ngx_http_xslt_filter_main_conf_t  *xmcf;
 
     value = cf->args->elts;
@@ -1142,7 +1131,7 @@ found:
     }
 
     if (ngx_array_init(&sheet->params, cf->pool, n - 2,
-                       sizeof(ngx_http_xslt_param_t))
+                       sizeof(ngx_http_complex_value_t))
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -1155,22 +1144,17 @@ found:
             return NGX_CONF_ERROR;
         }
 
-        param->lengths = NULL;
-        param->values = NULL;
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+        ccv.cf = cf;
+        ccv.value = &value[i];
+        ccv.complex_value = param;
+        ccv.zero = 1;
 
-        sc.cf = cf;
-        sc.source = &value[i];
-        sc.lengths = &param->lengths;
-        sc.values = &param->values;
-        sc.variables = ngx_http_script_variables_count(&value[i]);
-        sc.complete_lengths = 1;
-        sc.complete_values = 1;
-
-        if (ngx_http_script_compile(&sc) != NGX_OK) {
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
+
     }
 
     return NGX_CONF_OK;
