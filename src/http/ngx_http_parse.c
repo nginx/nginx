@@ -1536,24 +1536,24 @@ ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 
     while (p < last) {
 
-	ch = *p++;
+        ch = *p++;
 
-	if (ch == '?') {
-	    args->len = last - p;
-	    args->data = p;
+        if (ch == '?') {
+            args->len = last - p;
+            args->data = p;
 
-	    uri->len = p - 1 - uri->data;
+            uri->len = p - 1 - uri->data;
 
-	    if (ngx_strlchr(p, last, '\0') != NULL) {
-		r->zero_in_uri = 1;
-	    }
+            if (ngx_strlchr(p, last, '\0') != NULL) {
+                r->zero_in_uri = 1;
+            }
 
-	    return;
-	}
+            return;
+        }
 
-	if (ch == '\0') {
-	    r->zero_in_uri = 1;
-	    continue;
-	}
+        if (ch == '\0') {
+            r->zero_in_uri = 1;
+            continue;
+        }
     }
 }
