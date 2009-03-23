@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.44" date="23.03.2009">
+
+<change type="feature">
+<para lang="ru">
+предварительная поддержка кэширования в модуле ngx_http_proxy_module.
+</para>
+<para lang="en">
+the ngx_http_proxy_module preliminary cache support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр --with-pcre в configure.
+</para>
+<para lang="en">
+the --with-pcre option in the configure.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива try_files может быть использована на уровне server.
+</para>
+<para lang="en">
+the "try_files" directive is now allowed on the server block level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files неправильно обрабатывала строку запроса в последнем
+параметре.
+</para>
+<para lang="en">
+the "try_files" directive handled incorrectly a query string
+in a fallback parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files могла неверно тестировать каталоги.
+</para>
+<para lang="en">
+the "try_files" directive might test incorrectly directories.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если для пары адрес:порт описан только один сервер, то выделения
+в регулярных выражениях в директиве server_name не работали.
+</para>
+<para lang="en">
+if there is the single server for given address:port pair,
+then captures in regular expressions in a "server_name" directive did not work.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.43" date="18.03.2009">
 
 <change type="bugfix">
