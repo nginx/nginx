@@ -323,7 +323,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
     { ngx_string("proxy_cache"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_http_proxy_cache,
-      0,
+      NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
