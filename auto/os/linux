@@ -11,7 +11,8 @@ CORE_SRCS="$UNIX_SRCS $LINUX_SRCS"
 ngx_spacer='
 '
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+cc_aux_flags="$CC_AUX_FLAGS"
+CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 
 # Linux kernel version
@@ -60,7 +61,7 @@ fi
 
 # sendfile()
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS -D_GNU_SOURCE"
+CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE"
 ngx_feature="sendfile()"
 ngx_feature_name="NGX_HAVE_SENDFILE"
 ngx_feature_run=yes
@@ -81,7 +82,7 @@ fi
 
 # sendfile64()
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64"
+CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 ngx_feature="sendfile64()"
 ngx_feature_name="NGX_HAVE_SENDFILE64"
 ngx_feature_run=yes
@@ -121,3 +122,6 @@ ngx_feature_libs=
 ngx_feature_test="long mask = 0;
                   sched_setaffinity(0, 32, (cpu_set_t *) &mask)"
 . auto/feature
+
+
+CC_AUX_FLAGS=$cc_aux_flags
