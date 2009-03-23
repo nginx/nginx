@@ -190,8 +190,8 @@ ngx_feature='mmap("/dev/zero", MAP_SHARED)'
 ngx_feature_name="NGX_HAVE_MAP_DEVZERO"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>"
+                  #include <sys/stat.h>
+                  #include <fcntl.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test='void *p; int  fd;
@@ -205,7 +205,7 @@ ngx_feature="System V shared memory"
 ngx_feature_name="NGX_HAVE_SYSVSHM"
 ngx_feature_run=yes
 ngx_feature_incs="#include <sys/ipc.h>
-#include <sys/shm.h>"
+                  #include <sys/shm.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int  id;
@@ -229,7 +229,7 @@ ngx_feature="ioctl(FIONBIO)"
 ngx_feature_name="NGX_HAVE_FIONBIO"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/ioctl.h>
-$NGX_INCLUDE_SYS_FILIO_H"
+                  $NGX_INCLUDE_SYS_FILIO_H"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="int i; i = FIONBIO"
