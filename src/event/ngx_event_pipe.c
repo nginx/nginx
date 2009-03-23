@@ -423,7 +423,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
     size_t             bsize;
     ngx_int_t          rc;
     ngx_uint_t         flush, prev_last_shadow;
-    ngx_chain_t       *out, **ll, *cl;
+    ngx_chain_t       *out, **ll, *cl, file;
     ngx_connection_t  *downstream;
 
     downstream = p->downstream;
@@ -486,6 +486,18 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 }
 
                 p->in = NULL;
+            }
+
+            if (p->cacheable && p->buf_to_file) {
+
+                file.buf = p->buf_to_file;
+                file.next = NULL;
+
+                if (ngx_write_chain_to_temp_file(p->temp_file, &file)
+                    == NGX_ERROR)
+                {
+                    return NGX_ABORT;
+                }
             }
 
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,

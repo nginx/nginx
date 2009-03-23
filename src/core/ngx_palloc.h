@@ -82,6 +82,7 @@ ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
 
 
 ngx_pool_cleanup_t *ngx_pool_cleanup_add(ngx_pool_t *p, size_t size);
+void ngx_pool_run_cleanup_file(ngx_pool_t *p, ngx_fd_t fd);
 void ngx_pool_cleanup_file(void *data);
 void ngx_pool_delete_file(void *data);
 

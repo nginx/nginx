@@ -288,7 +288,7 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.temp_path),
-      (void *) ngx_garbage_collector_temp_handler },
+      NULL },
 
     { ngx_string("fastcgi_max_temp_file_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -433,6 +433,11 @@ static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
     ngx_string("X-Accel-Buffering"),
     ngx_string("X-Accel-Charset"),
     ngx_null_string
+};
+
+
+static ngx_path_init_t  ngx_http_fastcgi_temp_path = {
+    ngx_string(NGX_HTTP_FASTCGI_TEMP_PATH), { 1, 2, 0 }
 };
 
 
@@ -1923,10 +1928,13 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                        |NGX_HTTP_UPSTREAM_FT_OFF;
     }
 
-    ngx_conf_merge_path_value(conf->upstream.temp_path,
+    if (ngx_conf_merge_path_value(cf, &conf->upstream.temp_path,
                               prev->upstream.temp_path,
-                              NGX_HTTP_FASTCGI_TEMP_PATH, 1, 2, 0,
-                              ngx_garbage_collector_temp_handler, cf);
+                              &ngx_http_fastcgi_temp_path)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     ngx_conf_merge_value(conf->upstream.pass_request_headers,
                               prev->upstream.pass_request_headers, 1);

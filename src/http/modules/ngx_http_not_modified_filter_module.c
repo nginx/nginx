@@ -83,6 +83,7 @@ ngx_int_t ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     }
 
     r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
+    r->headers_out.status_line.len = 0;
     r->headers_out.content_type.len = 0;
     ngx_http_clear_content_length(r);
     ngx_http_clear_accept_ranges(r);

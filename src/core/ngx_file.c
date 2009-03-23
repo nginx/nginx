@@ -264,7 +264,7 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     path->len = 0;
-    path->cleaner = (ngx_gc_handler_pt) cmd->post;
+    path->cleaner = (ngx_path_cleaner_pt) cmd->post;
     path->conf_file = cf->conf_file->file.name.data;
     path->line = cf->conf_file->line;
 
@@ -285,6 +285,49 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *slot = path;
 
     if (ngx_add_path(cf, slot) == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
+    ngx_path_init_t *init)
+{
+    if (*path) {
+        return NGX_CONF_OK;
+    }
+
+    if (prev) {
+        *path = prev;
+        return NGX_CONF_OK;
+    }
+
+    *path = ngx_palloc(cf->pool, sizeof(ngx_path_t));
+    if (*path == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    (*path)->name = init->name;
+
+    if (ngx_conf_full_name(cf->cycle, &(*path)->name, 0) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    (*path)->level[0] = init->level[0];
+    (*path)->level[1] = init->level[1];
+    (*path)->level[2] = init->level[2];
+
+    (*path)->len = init->level[0] + (init->level[0] ? 1 : 0)
+                   + init->level[1] + (init->level[1] ? 1 : 0)
+                   + init->level[2] + (init->level[2] ? 1 : 0);
+
+    (*path)->cleaner = NULL;
+    (*path)->conf_file = NULL;
+
+    if (ngx_add_path(cf, path) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

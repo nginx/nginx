@@ -33,8 +33,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_cycle.h \
            src/core/ngx_conf_file.h \
            src/core/ngx_resolver.h \
-           src/core/ngx_open_file_cache.h \
-           src/core/ngx_garbage_collector.h"
+           src/core/ngx_open_file_cache.h"
 
 
 CORE_SRCS="src/core/nginx.c \
@@ -62,8 +61,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_cpuinfo.c \
            src/core/ngx_conf_file.c \
            src/core/ngx_resolver.c \
-           src/core/ngx_open_file_cache.c \
-           src/core/ngx_garbage_collector.c"
+           src/core/ngx_open_file_cache.c"
 
 
 REGEX_DEPS=src/core/ngx_regex.h
@@ -254,8 +252,6 @@ HTTP_MODULES="ngx_http_module \
               ngx_http_log_module \
               ngx_http_upstream_module"
 
-HTTP_CACHE_MODULE=ngx_http_cache_module
-
 HTTP_WRITE_FILTER_MODULE="ngx_http_write_filter_module"
 HTTP_HEADER_FILTER_MODULE="ngx_http_header_filter_module"
 
@@ -313,7 +309,6 @@ HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
 
 HTTP_POSTPONE_FILTER_SRCS=src/http/ngx_http_postpone_filter_module.c
 
-HTTP_CACHE_SRCS=src/http/ngx_http_cache.c
 HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 

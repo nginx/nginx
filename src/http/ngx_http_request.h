@@ -348,7 +348,9 @@ struct ngx_http_request_s {
     ngx_http_event_handler_pt         read_event_handler;
     ngx_http_event_handler_pt         write_event_handler;
 
+#if (NGX_HTTP_CACHE)
     ngx_http_cache_t                 *cache;
+#endif
 
     ngx_http_upstream_t              *upstream;
     ngx_array_t                      *upstream_states;
@@ -443,6 +445,9 @@ struct ngx_http_request_s {
     unsigned                          subrequest_in_memory:1;
     unsigned                          waited:1;
 
+#if (NGX_HTTP_CACHE)
+    unsigned                          cached:1;
+#endif
     unsigned                          gzip:2;
 
     unsigned                          proxy:1;

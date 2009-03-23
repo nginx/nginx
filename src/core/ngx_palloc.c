@@ -326,6 +326,27 @@ ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
 
 
 void
+ngx_pool_run_cleanup_file(ngx_pool_t *p, ngx_fd_t fd)
+{
+    ngx_pool_cleanup_t       *c;
+    ngx_pool_cleanup_file_t  *cf;
+
+    for (c = p->cleanup; c; c = c->next) {
+        if (c->handler == ngx_pool_cleanup_file) {
+
+            cf = c->data;
+
+            if (cf->fd == fd) {
+                c->handler(cf);
+                c->handler = NULL;
+                return;
+            }
+        }
+    }
+}
+
+
+void
 ngx_pool_cleanup_file(void *data)
 {
     ngx_pool_cleanup_file_t  *c = data;

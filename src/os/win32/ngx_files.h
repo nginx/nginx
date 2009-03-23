@@ -75,6 +75,7 @@ typedef struct {
 #define NGX_FILE_APPEND             0
 
 #define NGX_FILE_DEFAULT_ACCESS     0
+#define NGX_FILE_OWNER_ACCESS       0
 
 
 ngx_int_t ngx_file_append_mode(ngx_fd_t fd);

@@ -10,24 +10,19 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_garbage_collector.h>
 
 
-typedef struct ngx_http_request_s   ngx_http_request_t;
-typedef struct ngx_http_upstream_s  ngx_http_upstream_t;
-typedef struct ngx_http_log_ctx_s   ngx_http_log_ctx_t;
+typedef struct ngx_http_request_s     ngx_http_request_t;
+typedef struct ngx_http_upstream_s    ngx_http_upstream_t;
+typedef struct ngx_http_cache_s       ngx_http_cache_t;
+typedef struct ngx_http_file_cache_s  ngx_http_file_cache_t;
+typedef struct ngx_http_log_ctx_s     ngx_http_log_ctx_t;
 
 typedef ngx_int_t (*ngx_http_header_handler_pt)(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
     ngx_http_request_t *sr, u_char *buf, size_t len);
 
-
-#if (NGX_HTTP_CACHE)
-#include <ngx_http_cache.h>
-#endif
-/* STUB */
-#include <ngx_http_cache.h>
 
 #include <ngx_http_variables.h>
 #include <ngx_http_request.h>
@@ -38,6 +33,9 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
 #include <ngx_http_script.h>
 #include <ngx_http_core_module.h>
 
+#if (NGX_HTTP_CACHE)
+#include <ngx_http_cache.h>
+#endif
 #if (NGX_HTTP_SSI)
 #include <ngx_http_ssi_filter_module.h>
 #endif

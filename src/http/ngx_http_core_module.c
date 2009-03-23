@@ -119,6 +119,11 @@ static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
 };
 
 
+static ngx_path_init_t  ngx_http_client_temp_path = {
+    ngx_string(NGX_HTTP_CLIENT_TEMP_PATH), { 0, 0, 0 }
+};
+
+
 #if (NGX_HTTP_GZIP)
 
 static ngx_conf_enum_t  ngx_http_gzip_http_version[] = {
@@ -347,7 +352,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_path_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, client_body_temp_path),
-      (void *) ngx_garbage_collector_temp_handler },
+      NULL },
 
     { ngx_string("client_body_in_file_only"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -2185,6 +2190,10 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 
     ngx_http_update_location_config(r);
 
+#if (NGX_HTTP_CACHE)
+    r->cache = NULL;
+#endif
+
     r->internal = 1;
 
     ngx_http_handler(r);
@@ -3156,10 +3165,13 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->resolver = prev->resolver;
     }
 
-    ngx_conf_merge_path_value(conf->client_body_temp_path,
+    if (ngx_conf_merge_path_value(cf, &conf->client_body_temp_path,
                               prev->client_body_temp_path,
-                              NGX_HTTP_CLIENT_TEMP_PATH, 0, 0, 0,
-                              ngx_garbage_collector_temp_handler, cf);
+                              &ngx_http_client_temp_path)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
