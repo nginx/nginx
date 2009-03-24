@@ -895,8 +895,9 @@ ngx_http_file_cache_cleaner(void *data)
 
     now = ngx_time();
 
-    if (now >= cache->next_clean_time) {
-
+    if (now >= cache->next_clean_time
+        && now >= cache->created + cache->inactive)
+    {
         ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
                       "clean unused cache files");
 
