@@ -251,6 +251,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
                    "http file cache fd: %d", of.fd);
 
     c->file.fd = of.fd;
+    c->file.log = r->connection->log;
 
     c->buf = ngx_create_temp_buf(r->pool, c->body_start);
     if (c->buf == NULL) {
