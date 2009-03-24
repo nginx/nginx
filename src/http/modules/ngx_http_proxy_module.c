@@ -2068,10 +2068,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->upstream.cache_valid,
                              prev->upstream.cache_valid, NULL);
 
-    if (conf->upstream.cache_valid == NULL) {
-        conf->upstream.cache = NULL;
-    }
-
 #endif
 
     if (conf->method.len == 0) {
