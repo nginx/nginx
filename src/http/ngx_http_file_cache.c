@@ -356,10 +356,7 @@ ngx_http_file_cache_exists(ngx_http_request_t *r, ngx_http_file_cache_t *cache)
         if (fcn->uses >= r->cache->min_uses) {
 
             r->cache->exists = fcn->exists;
-
-            if (fcn->body_start) {
-                r->cache->body_start = fcn->body_start;
-            }
+            r->cache->body_start = fcn->body_start;
 
             rc = NGX_OK;
 
