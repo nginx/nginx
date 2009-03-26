@@ -1695,7 +1695,15 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         last = ngx_copy(path->data, clcf->root.data, clcf->root.len);
 
     } else {
-        reserved += alias ? 1 : r->uri.len + 1;
+
+#if (NGX_PCRE)
+        ngx_uint_t  captures;
+
+        captures = alias && clcf->captures;
+        reserved += captures ? 1 : r->uri.len - alias + 1;
+#else
+        reserved += r->uri.len - alias + 1;
+#endif
 
         if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
                                 clcf->root_values->elts)
@@ -1711,10 +1719,12 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         *root_length = path->len - reserved;
         last = path->data + *root_length;
 
-        if (alias) {
+#if (NGX_PCRE)
+        if (captures) {
             *last = '\0';
             return last;
         }
+#endif
     }
 
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
