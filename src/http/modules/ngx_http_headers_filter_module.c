@@ -608,6 +608,11 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         break;
     }
 
+    if (value[2].len == 0) {
+        ngx_memzero(&hv->value, sizeof(ngx_http_complex_value_t));
+        return NGX_CONF_OK;
+    }
+
     ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
     ccv.cf = cf;
