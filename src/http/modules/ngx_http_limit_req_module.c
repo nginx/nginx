@@ -224,11 +224,6 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         node = ngx_slab_alloc_locked(ctx->shpool, n);
         if (node == NULL) {
             ngx_shmtx_unlock(&ctx->shpool->mutex);
-
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "could not allocate memory in zone \"%V\"",
-                          &lrcf->shm_zone->name);
-
             return NGX_HTTP_SERVICE_UNAVAILABLE;
         }
     }
