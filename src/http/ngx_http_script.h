@@ -203,7 +203,7 @@ typedef struct {
 } ngx_http_script_value_code_t;
 
 
-void ngx_http_scrip_flush_complex_value(ngx_http_request_t *r,
+void ngx_http_script_flush_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val);
 ngx_int_t ngx_http_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val, ngx_str_t *value);

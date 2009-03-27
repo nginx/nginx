@@ -32,7 +32,7 @@ static uintptr_t ngx_http_script_exit_code = (uintptr_t) NULL;
 
 
 void
-ngx_http_scrip_flush_complex_value(ngx_http_request_t *r,
+ngx_http_script_flush_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val)
 {
     ngx_uint_t *index;
@@ -67,7 +67,7 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
         return NGX_OK;
     }
 
-    ngx_http_scrip_flush_complex_value(r, val);
+    ngx_http_script_flush_complex_value(r, val);
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
