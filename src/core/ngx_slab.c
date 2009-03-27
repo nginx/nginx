@@ -6,23 +6,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-/*
-
-                         12
-    2048   2             11
-    1024   4             10
-    512    8             9
-    256   16             8
-
-    128   32   4   32    7
-
-    64    64   8   63    6      1
-    32   128  16  127    5      1
-    16   256  32  254    4      2
-    8    512  64  504    3      8
-
- */
-
 
 #define NGX_SLAB_PAGE_MASK   3
 #define NGX_SLAB_PAGE        0
@@ -146,12 +129,6 @@ ngx_slab_init(ngx_slab_pool_t *pool)
         pages -= m;
         pool->pages->slab = pages;
     }
-
-#if 0
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "slab: %p, %p, %ui, %d",
-                  pool, pool->start, pages,
-                  (pool->end - pool->start) / ngx_pagesize - pages);
-#endif
 }
 
 
