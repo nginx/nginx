@@ -34,6 +34,9 @@ typedef struct {
     u_char           *end;
 
     ngx_shmtx_t       mutex;
+
+    u_char           *log_ctx;
+    u_char            zero;
 } ngx_slab_pool_t;
 
 

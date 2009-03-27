@@ -321,6 +321,7 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 {
     ngx_http_limit_zone_ctx_t  *octx = data;
 
+    size_t                      len;
     ngx_slab_pool_t            *shpool;
     ngx_rbtree_node_t          *sentinel;
     ngx_http_limit_zone_ctx_t  *ctx;
@@ -355,6 +356,15 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_rbtree_init(ctx->rbtree, sentinel,
                     ngx_http_limit_zone_rbtree_insert_value);
+
+    len = sizeof(" in limit_zone \"\"") + shm_zone->name.len;
+
+    shpool->log_ctx = ngx_slab_alloc(shpool, len);
+    if (shpool->log_ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_sprintf(shpool->log_ctx, " in limit_zone \"%V\"%Z", &shm_zone->name);
 
     return NGX_OK;
 }

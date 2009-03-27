@@ -33,6 +33,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 {
     ngx_http_file_cache_t  *ocache = data;
 
+    size_t                  len;
     ngx_rbtree_node_t      *sentinel;
     ngx_http_file_cache_t  *cache;
 
@@ -78,6 +79,16 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     }
 
     ngx_queue_init(cache->queue);
+
+    len = sizeof(" in cache keys zone \"\"") + shm_zone->name.len;
+
+    cache->shpool->log_ctx = ngx_slab_alloc(cache->shpool, len);
+    if (cache->shpool->log_ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_sprintf(cache->shpool->log_ctx, " in cache keys zone \"%V\"%Z",
+                &shm_zone->name);
 
     cache->created = ngx_time();
 

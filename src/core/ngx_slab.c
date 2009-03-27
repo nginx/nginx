@@ -63,6 +63,8 @@ static ngx_slab_page_t *ngx_slab_alloc_pages(ngx_slab_pool_t *pool,
     ngx_uint_t pages);
 static void ngx_slab_free_pages(ngx_slab_pool_t *pool, ngx_slab_page_t *page,
     ngx_uint_t pages);
+static void ngx_slab_error(ngx_slab_pool_t *pool, ngx_uint_t level,
+    char *text);
 
 
 static ngx_uint_t  ngx_slab_max_size;
@@ -129,6 +131,9 @@ ngx_slab_init(ngx_slab_pool_t *pool)
         pages -= m;
         pool->pages->slab = pages;
     }
+
+    pool->log_ctx = &pool->zero;
+    pool->zero = '\0';
 }
 
 
@@ -415,8 +420,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
     ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0, "slab free: %p", p);
 
     if ((u_char *) p < pool->start || (u_char *) p > pool->end) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                      "ngx_slab_free(): outside of pool");
+        ngx_slab_error(pool, NGX_LOG_ALERT, "ngx_slab_free(): outside of pool");
         goto fail;
     }
 
@@ -564,14 +568,14 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
         }
 
         if (slab == NGX_SLAB_PAGE_FREE) {
-            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                          "ngx_slab_free(): page is already free");
+            ngx_slab_error(pool, NGX_LOG_ALERT,
+                           "ngx_slab_free(): page is already free");
             goto fail;
         }
 
         if (slab == NGX_SLAB_PAGE_BUSY) {
-            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                          "ngx_slab_free(): pointer to wrong page");
+            ngx_slab_error(pool, NGX_LOG_ALERT,
+                           "ngx_slab_free(): pointer to wrong page");
             goto fail;
         }
 
@@ -597,15 +601,15 @@ done:
 
 wrong_chunk:
 
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                      "ngx_slab_free(): pointer to wrong chunk");
+    ngx_slab_error(pool, NGX_LOG_ALERT,
+                   "ngx_slab_free(): pointer to wrong chunk");
 
     goto fail;
 
 chunk_already_free:
 
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                      "ngx_slab_free(): chunk is already free");
+    ngx_slab_error(pool, NGX_LOG_ALERT,
+                   "ngx_slab_free(): chunk is already free");
 
 fail:
 
@@ -656,8 +660,7 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
         }
     }
 
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, NGX_ENOMEM,
-                  "ngx_slab_alloc(): failed");
+    ngx_slab_error(pool, NGX_LOG_CRIT, "ngx_slab_alloc() failed: no memory");
 
     return NULL;
 }
@@ -687,4 +690,11 @@ ngx_slab_free_pages(ngx_slab_pool_t *pool, ngx_slab_page_t *page,
     page->next->prev = (uintptr_t) page;
 
     pool->free.next = page;
+}
+
+
+static void
+ngx_slab_error(ngx_slab_pool_t *pool, ngx_uint_t level, char *text)
+{
+    ngx_log_error(level, ngx_cycle->log, 0, "%s%s", text, pool->log_ctx);
 }
