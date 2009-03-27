@@ -118,11 +118,6 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
         return NGX_ERROR;
     }
 
-    ccv->complex_value->value = *v;
-    ccv->complex_value->flushes = NULL;
-    ccv->complex_value->lengths = NULL;
-    ccv->complex_value->values = NULL;
-
     nv = 0;
     nc = 0;
 
@@ -146,6 +141,11 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
         ccv->conf_prefix = 0;
         ccv->root_prefix = 0;
     }
+
+    ccv->complex_value->value = *v;
+    ccv->complex_value->flushes = NULL;
+    ccv->complex_value->lengths = NULL;
+    ccv->complex_value->values = NULL;
 
     if (nv == 0 && nc == 0) {
         return NGX_OK;
