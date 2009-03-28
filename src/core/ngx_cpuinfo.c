@@ -72,7 +72,7 @@ void
 ngx_cpuinfo(void)
 {
     u_char    *vendor;
-    uint32_t   vbuf[5], cpu[4];
+    uint32_t   vbuf[5], cpu[4], model;
 
     vbuf[0] = 0;
     vbuf[1] = 0;
@@ -103,8 +103,10 @@ ngx_cpuinfo(void)
         case 6:
             ngx_cacheline_size = 32;
 
-            if ((cpu[0] & 0xf0) >= 0xd0) {
-                /* Intel Core */
+            model = ((cpu[0] & 0xf0000) >> 8) | (cpu[0] & 0xf0);
+
+            if (model >= 0xd0) {
+                /* Intel Core, Core 2, Atom */
                 ngx_cacheline_size = 64;
             }
 
