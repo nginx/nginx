@@ -118,7 +118,8 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         c->sent += sent;
 
-        for (cl = in; cl && sent > 0; cl = cl->next) {
+        for (cl = in; cl; cl = cl->next) {
+
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }
