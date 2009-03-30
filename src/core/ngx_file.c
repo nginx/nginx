@@ -264,7 +264,7 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     path->len = 0;
-    path->cleaner = (ngx_path_cleaner_pt) cmd->post;
+    path->manager = (ngx_path_manager_pt) cmd->post;
     path->conf_file = cf->conf_file->file.name.data;
     path->line = cf->conf_file->line;
 
@@ -324,7 +324,7 @@ ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
                    + init->level[1] + (init->level[1] ? 1 : 0)
                    + init->level[2] + (init->level[2] ? 1 : 0);
 
-    (*path)->cleaner = NULL;
+    (*path)->manager = NULL;
     (*path)->conf_file = NULL;
 
     if (ngx_add_path(cf, path) != NGX_OK) {

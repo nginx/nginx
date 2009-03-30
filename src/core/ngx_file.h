@@ -29,7 +29,7 @@ struct ngx_file_s {
 #define NGX_MAX_PATH_LEVEL  3
 
 
-typedef time_t (*ngx_path_cleaner_pt) (void *data);
+typedef time_t (*ngx_path_manager_pt) (void *data);
 
 
 typedef struct {
@@ -37,7 +37,7 @@ typedef struct {
     size_t                     len;
     size_t                     level[3];
 
-    ngx_path_cleaner_pt        cleaner;
+    ngx_path_manager_pt        manager;
     void                      *data;
 
     u_char                    *conf_file;

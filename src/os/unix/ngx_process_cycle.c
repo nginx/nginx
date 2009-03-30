@@ -12,7 +12,7 @@
 
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ngx_int_t type);
-static void ngx_start_cleaner_process(ngx_cycle_t *cycle, ngx_int_t type);
+static void ngx_start_cache_manager_process(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo);
 static ngx_uint_t ngx_reap_children(ngx_cycle_t *cycle);
 static void ngx_master_process_exit(ngx_cycle_t *cycle);
@@ -24,8 +24,8 @@ static void ngx_channel_handler(ngx_event_t *ev);
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
 static ngx_thread_value_t ngx_worker_thread_cycle(void *data);
 #endif
-static void ngx_cleaner_process_cycle(ngx_cycle_t *cycle, void *data);
-static void ngx_cleaner_process_handler(ngx_event_t *ev);
+static void ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data);
+static void ngx_cache_manager_process_handler(ngx_event_t *ev);
 
 
 ngx_uint_t    ngx_process;
@@ -122,7 +122,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
-    ngx_start_cleaner_process(cycle, NGX_PROCESS_RESPAWN);
+    ngx_start_cache_manager_process(cycle, NGX_PROCESS_RESPAWN);
 
     ngx_new_binary = 0;
     delay = 0;
@@ -203,7 +203,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             if (ngx_new_binary) {
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
-                ngx_start_cleaner_process(cycle, NGX_PROCESS_RESPAWN);
+                ngx_start_cache_manager_process(cycle, NGX_PROCESS_RESPAWN);
                 ngx_noaccepting = 0;
 
                 continue;
@@ -222,7 +222,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                                                    ngx_core_module);
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_JUST_RESPAWN);
-            ngx_start_cleaner_process(cycle, NGX_PROCESS_JUST_RESPAWN);
+            ngx_start_cache_manager_process(cycle, NGX_PROCESS_JUST_RESPAWN);
             live = 1;
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
@@ -232,7 +232,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_restart = 0;
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_RESPAWN);
-            ngx_start_cleaner_process(cycle, NGX_PROCESS_RESPAWN);
+            ngx_start_cache_manager_process(cycle, NGX_PROCESS_RESPAWN);
             live = 1;
         }
 
@@ -360,7 +360,7 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 
 
 static void
-ngx_start_cleaner_process(ngx_cycle_t *cycle, ngx_int_t type)
+ngx_start_cache_manager_process(ngx_cycle_t *cycle, ngx_int_t type)
 {
     ngx_int_t        i;
     ngx_uint_t       n;
@@ -369,7 +369,7 @@ ngx_start_cleaner_process(ngx_cycle_t *cycle, ngx_int_t type)
 
     path = ngx_cycle->pathes.elts;
     for (n = 0; n < ngx_cycle->pathes.nelts; n++) {
-        if (path[n]->cleaner) {
+        if (path[n]->manager) {
             goto start;
         }
     }
@@ -380,8 +380,8 @@ start:
 
     ch.command = NGX_CMD_OPEN_CHANNEL;
 
-    ngx_spawn_process(cycle, ngx_cleaner_process_cycle, NULL,
-                      "cleaner process", type);
+    ngx_spawn_process(cycle, ngx_cache_manager_process_cycle, NULL,
+                      "cache manager process", type);
 
     ch.pid = ngx_processes[ngx_process_slot].pid;
     ch.slot = ngx_process_slot;
@@ -1263,7 +1263,7 @@ ngx_worker_thread_cycle(void *data)
 
 
 static void
-ngx_cleaner_process_cycle(ngx_cycle_t *cycle, void *data)
+ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     void         *ident[4];
     ngx_event_t   ev;
@@ -1275,14 +1275,14 @@ ngx_cleaner_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_close_listening_sockets(cycle);
 
     ngx_memzero(&ev, sizeof(ngx_event_t));
-    ev.handler = ngx_cleaner_process_handler;
+    ev.handler = ngx_cache_manager_process_handler;
     ev.data = ident;
     ev.log = cycle->log;
     ident[3] = (void *) -1;
 
     ngx_use_accept_mutex = 0;
 
-    ngx_setproctitle("cleaner process");
+    ngx_setproctitle("cache manager process");
 
     ngx_add_timer(&ev, 0);
 
@@ -1305,7 +1305,7 @@ ngx_cleaner_process_cycle(ngx_cycle_t *cycle, void *data)
 
 
 static void
-ngx_cleaner_process_handler(ngx_event_t *ev)
+ngx_cache_manager_process_handler(ngx_event_t *ev)
 {
     time_t        next, n;
     ngx_uint_t    i;
@@ -1316,8 +1316,8 @@ ngx_cleaner_process_handler(ngx_event_t *ev)
     path = ngx_cycle->pathes.elts;
     for (i = 0; i < ngx_cycle->pathes.nelts; i++) {
 
-        if (path[i]->cleaner) {
-            n = path[i]->cleaner(path[i]->data);
+        if (path[i]->manager) {
+            n = path[i]->manager(path[i]->data);
 
             next = (n <= next) ? n : next;
 
