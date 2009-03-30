@@ -1534,6 +1534,8 @@ ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 
     last = p + uri->len;
 
+    args->len = 0;
+
     while (p < last) {
 
         ch = *p++;
