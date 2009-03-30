@@ -44,6 +44,12 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#if (NGX_HAVE_SYS_MOUNT_H)
+#include <sys/mount.h>          /* statfs() */
+#endif
+#if (NGX_HAVE_SYS_STATVFS_H)
+#include <sys/statvfs.h>        /* statvfs() */
+#endif
 
 #if (NGX_HAVE_SYS_FILIO_H)
 #include <sys/filio.h>          /* FIONBIO */

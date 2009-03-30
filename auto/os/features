@@ -205,3 +205,27 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="directio(0, DIRECTIO_ON);"
 . auto/feature
+
+
+ngx_feature="statfs()"
+ngx_feature_name="NGX_HAVE_STATFS"
+ngx_feature_run=no
+ngx_feature_incs="$NGX_INCLUDE_SYS_MOUNT_H
+                  $NGX_INCLUDE_SYS_VFS_H"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct statfs  fs;
+                  statfs(NULL, &fs);"
+. auto/feature
+
+
+ngx_feature="statvfs()"
+ngx_feature_name="NGX_HAVE_STATVFS"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/types.h>
+                  #include <sys/statvfs.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct statvfs  fs;
+                  statvfs(NULL, &fs);"
+. auto/feature

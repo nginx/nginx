@@ -274,4 +274,7 @@ ngx_int_t ngx_directio_off(ngx_fd_t fd);
 #endif
 
 
+size_t ngx_fs_bsize(u_char *name);
+
+
 #endif /* _NGX_FILES_H_INCLUDED_ */

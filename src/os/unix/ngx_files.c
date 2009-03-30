@@ -416,3 +416,50 @@ ngx_directio_off(ngx_fd_t fd)
 }
 
 #endif
+
+
+#if (NGX_HAVE_STATFS)
+
+size_t
+ngx_fs_bsize(u_char *name)
+{
+    struct statfs  fs;
+
+    if (statfs((char *) name, &fs) == -1) {
+        return 512;
+    }
+
+    if ((fs.f_bsize % 512) != 0) {
+        return 512;
+    }
+
+    return (size_t) fs.f_bsize;
+}
+
+#elif (NGX_HAVE_STATVFS)
+
+size_t
+ngx_fs_bsize(u_char *name)
+{
+    struct statvfs  fs;
+
+    if (statvfs((char *) name, &fs) == -1) {
+        return 512;
+    }
+
+    if ((fs.f_frsize % 512) != 0) {
+        return 512;
+    }
+
+    return (size_t) fs.f_frsize;
+}
+
+#else
+
+size_t
+ngx_fs_bsize(u_char *name)
+{
+    return 512;
+}
+
+#endif

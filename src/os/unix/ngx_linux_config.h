@@ -28,6 +28,7 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#include <sys/vfs.h>            /* statfs() */
 
 #include <sys/uio.h>
 #include <sys/stat.h>

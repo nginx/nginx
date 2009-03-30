@@ -124,4 +124,7 @@ ngx_feature_test="long mask = 0;
 . auto/feature
 
 
+ngx_include="sys/vfs.h";     . auto/include
+
+
 CC_AUX_FLAGS=$cc_aux_flags
