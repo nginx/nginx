@@ -16,6 +16,7 @@ ngx_found=no
 
 cat << END > $NGX_AUTOTEST.c
 
+$NGX_INCLUDE_SYS_PARAM_H
 #include <$ngx_include>
 
 int main() {

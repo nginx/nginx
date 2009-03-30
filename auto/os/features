@@ -210,7 +210,8 @@ ngx_feature_test="directio(0, DIRECTIO_ON);"
 ngx_feature="statfs()"
 ngx_feature_name="NGX_HAVE_STATFS"
 ngx_feature_run=no
-ngx_feature_incs="$NGX_INCLUDE_SYS_MOUNT_H
+ngx_feature_incs="$NGX_INCLUDE_SYS_PARAM_H
+                  $NGX_INCLUDE_SYS_MOUNT_H
                   $NGX_INCLUDE_SYS_VFS_H"
 ngx_feature_path=
 ngx_feature_libs=
