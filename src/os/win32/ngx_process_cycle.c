@@ -11,6 +11,7 @@
 
 
 static ngx_thread_value_t __stdcall ngx_worker_thread_cycle(void *data);
+static void ngx_process_tray(ngx_cycle_t *cycle);
 static long __stdcall ngx_window_procedure(HWND window, u_int message,
     u_int wparam, long lparam);
 
@@ -57,16 +58,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
-    int               rc;
     ngx_int_t         i;
     ngx_err_t         err;
     ngx_tid_t         tid;
-    MSG               message;
-    HWND              window;
-    HMENU             menu;
-    HICON             icon,tray;
-    WNDCLASS          wc;
-    HINSTANCE         instance;
     ngx_core_conf_t  *ccf;
 
     ngx_init_temp_number();
@@ -80,11 +74,10 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         }
     }
 
-
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-    if (ngx_init_threads(ngx_threads_n,
-                                   ccf->thread_stack_size, cycle) == NGX_ERROR)
+    if (ngx_init_threads(ngx_threads_n, ccf->thread_stack_size, cycle)
+        != NGX_OK)
     {
         /* fatal */
         exit(2);
@@ -98,6 +91,44 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
+    if (ngx_create_thread(&tid, ngx_worker_thread_cycle, NULL, cycle->log)
+        != 0)
+    {
+        /* fatal */
+        exit(2);
+    }
+
+    ngx_process_tray(cycle);
+}
+
+
+static ngx_thread_value_t __stdcall
+ngx_worker_thread_cycle(void *data)
+{
+    ngx_cycle_t  *cycle;
+
+    cycle = (ngx_cycle_t *) ngx_cycle;
+
+    while (!ngx_quit) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
+
+        ngx_process_events_and_timers(cycle);
+    }
+
+    return 0;
+}
+
+
+static void
+ngx_process_tray(ngx_cycle_t *cycle)
+{
+    int        rc;
+    MSG        message;
+    HWND       window;
+    HMENU      menu;
+    HICON      icon, tray;
+    WNDCLASS   wc;
+    HINSTANCE  instance;
 
     instance = GetModuleHandle(NULL);
 
@@ -152,7 +183,6 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
-
     window = CreateWindow("nginx", "nginx", WS_OVERLAPPEDWINDOW,
                           CW_USEDEFAULT, CW_USEDEFAULT,
                           CW_USEDEFAULT, CW_USEDEFAULT,
@@ -175,14 +205,6 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
-
-    if (ngx_create_thread(&tid, ngx_worker_thread_cycle, NULL, cycle->log) != 0)
-    {
-        /* fatal */
-        exit(2);
-    }
-
-
     for ( ;; ) {
         rc = GetMessage(&message, NULL, 0, 0);
 
@@ -199,23 +221,6 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         TranslateMessage(&message);
         DispatchMessage(&message);
     }
-}
-
-
-static ngx_thread_value_t __stdcall
-ngx_worker_thread_cycle(void *data)
-{
-    ngx_cycle_t  *cycle;
-
-    cycle = (ngx_cycle_t *) ngx_cycle;
-
-    while (!ngx_quit) {
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
-        ngx_process_events_and_timers(cycle);
-    }
-
-    return 0;
 }
 
 
@@ -241,7 +246,8 @@ ngx_window_procedure(HWND window, u_int message, u_int wparam, long lparam)
             }
 
             if (TrackPopupMenu(ngx_menu, TPM_RIGHTBUTTON,
-                               mouse.x, mouse.y, 0, window, NULL) == 0)
+                               mouse.x, mouse.y, 0, window, NULL)
+                == 0)
             {
                 ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_errno,
                               "TrackPopupMenu() failed");
@@ -254,7 +260,7 @@ ngx_window_procedure(HWND window, u_int message, u_int wparam, long lparam)
     case WM_COMMAND:
         if (wparam == NGX_WM_ABOUT) {
             ngx_message_box("nginx", MB_OK, 0,
-                            NGINX_VER CRLF "(C) 2002-2005 Igor Sysoev");
+                            NGINX_VER CRLF "(C) 2002-2009 Igor Sysoev");
             return 0;
         }
 
