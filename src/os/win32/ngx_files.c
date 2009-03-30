@@ -8,6 +8,38 @@
 #include <ngx_core.h>
 
 
+#define NGX_UTF16_BUFLEN  256
+
+static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
+
+
+/* FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory */
+
+ngx_fd_t
+ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
+{
+    u_short   *u;
+    ngx_fd_t   fd;
+    u_short    utf16[NGX_UTF16_BUFLEN];
+
+    u = ngx_utf8_to_utf16(utf16, name, NGX_UTF16_BUFLEN);
+
+    if (u == NULL) {
+        return INVALID_HANDLE_VALUE;
+    }
+
+    fd = CreateFileW(u, mode,
+                     FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                     NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+    if (u != utf16) {
+        ngx_free(u);
+    }
+
+    return fd;
+}
+
+
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
@@ -528,4 +560,83 @@ ngx_fs_bsize(u_char *name)
     }
 
     return sc * bs;
+}
+
+
+static u_short *
+ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
+{
+    u_char    *p;
+    u_short   *u, *last;
+    uint32_t   n;
+
+    p = utf8;
+    u = utf16;
+    last = utf16 + len;
+
+    while (u < last) {
+
+        if (*p < 0x80) {
+            *u = (u_short) *p;
+
+            if (*p == 0) {
+                return utf16;
+            }
+
+            u++;
+            p++;
+
+            continue;
+        }
+
+        n = ngx_utf8_decode(&p, 4);
+
+        if (n > 0xffff) {
+            free(utf16);
+            ngx_set_errno(NGX_EILSEQ);
+            return NULL;
+        }
+
+        *u++ = (u_short) n;
+    }
+
+    /* the given buffer is not enough, allocate a new one */
+
+    u = malloc(((p - utf8) + ngx_strlen(p) + 1) * sizeof(u_short));
+    if (u == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(u, utf16, len * 2);
+
+    utf16 = u;
+    u += len;
+
+    for ( ;; ) {
+
+        if (*p < 0x80) {
+            *u = (u_short) *p;
+
+            if (*p == 0) {
+                return utf16;
+            }
+
+            u++;
+            p++;
+
+            continue;
+        }
+
+        n = ngx_utf8_decode(&p, 4);
+
+        if (n > 0xffff) {
+            free(utf16);
+            ngx_set_errno(NGX_EILSEQ);
+            return NULL;
+        }
+
+        *u++ = (u_short) n;
+    }
+
+    /* unreachable */
 }

@@ -57,22 +57,16 @@ typedef struct {
 #define NGX_FILE_ERROR              0
 
 
-/*
- * FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory
- */
-
-#define ngx_open_file(name, mode, create, access)                            \
-    CreateFile((const char *) name, mode,                                    \
-               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
-               NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL)
+ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 #define ngx_open_file_n             "CreateFile()"
 
 #define NGX_FILE_RDONLY             GENERIC_READ
 #define NGX_FILE_WRONLY             GENERIC_WRITE
 #define NGX_FILE_RDWR               GENERIC_READ|GENERIC_WRITE
+#define NGX_FILE_APPEND             FILE_APPEND_DATA|SYNCHRONIZE
+
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
-#define NGX_FILE_APPEND             0
 
 #define NGX_FILE_DEFAULT_ACCESS     0
 #define NGX_FILE_OWNER_ACCESS       0

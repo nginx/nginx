@@ -200,21 +200,15 @@ ngx_log_init(void)
 
     ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
 
-    ngx_stderr.fd = ngx_open_file(NGX_ERROR_LOG_PATH, NGX_FILE_RDWR,
-                                  NGX_FILE_CREATE_OR_OPEN|NGX_FILE_APPEND, 0);
+    ngx_stderr.fd = ngx_open_file((u_char *) NGX_ERROR_LOG_PATH,
+                                  NGX_FILE_RDWR|NGX_FILE_APPEND,
+                                  NGX_FILE_CREATE_OR_OPEN,
+                                  NGX_FILE_DEFAULT_ACCESS);
 
     if (ngx_stderr.fd == NGX_INVALID_FILE) {
         ngx_message_box("nginx", MB_OK, ngx_errno,
                         "Could not open error log file: "
                         ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
-        return NULL;
-    }
-
-    if (ngx_file_append_mode(ngx_stderr.fd) == NGX_ERROR) {
-        ngx_message_box("nginx", MB_OK, ngx_errno,
-                        "Could not open error log file: "
-                        ngx_file_append_mode_n " \"" NGX_ERROR_LOG_PATH
-                        "\" failed");
         return NULL;
     }
 

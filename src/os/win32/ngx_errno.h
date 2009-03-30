@@ -48,6 +48,7 @@ typedef DWORD                      ngx_err_t;
 #define NGX_EHOSTDOWN              WSAEHOSTDOWN
 #define NGX_EHOSTUNREACH           WSAEHOSTUNREACH
 #define NGX_ENOMOREFILES           ERROR_NO_MORE_FILES
+#define NGX_EILSEQ                 ERROR_NO_UNICODE_TRANSLATION
 
 #define NGX_EALREADY               WSAEALREADY
 #define NGX_EINVAL                 WSAEINVAL
