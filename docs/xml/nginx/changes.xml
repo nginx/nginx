@@ -9,6 +9,100 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.45" date="30.03.2009">
+
+<change type="change">
+<para lang="ru">
+теперь директивы proxy_cache и proxy_cache_valid можно задавать
+на разных уровнях.
+</para>
+<para lang="en">
+now the "proxy_cache" and the "proxy_cache_valid" can be set on
+different levels.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр clean_time в директиве proxy_cache_path удалён.
+</para>
+<para lang="en">
+the "clean_time" parameter of the "proxy_cache_path" directive is canceled.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр max_size в директиве proxy_cache_path.
+</para>
+<para lang="en">
+the "max_size" parameter of the "proxy_cache_path" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+предварительная поддержка кэширования в модуле ngx_http_fastcgi_module.
+</para>
+<para lang="en">
+the ngx_http_fastcgi_module preliminary cache support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при ошибках выделения в разделяемой памяти в логе указываются
+названия директивы и зоны.
+</para>
+<para lang="en">
+now on shared memory allocation errors directive and zone names are logged.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "add_header last-modified ''" не удаляла в заголовке ответа
+строку "Last-Modified";
+ошибка появилась в 0.7.44.
+</para>
+<para lang="en">
+the directive "add_header last-modified ''" did not delete a "Last-Modified"
+response header line;
+the bug had appeared in 0.7.44.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве auth_basic_user_file не работал относительный путь,
+заданный строкой без переменных;
+ошибка появилась в 0.7.44.<br/>
+Спасибо Jerome Loyet.
+</para>
+<para lang="en">
+a relative path in the "auth_basic_user_file" directive given without variables
+did not work;
+the bug had appeared in 0.7.44.<br/>
+Thanks to Jerome Loyet.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве alias, заданной переменными
+без ссылок на выделения в регулярных выражениях;
+ошибка появилась в 0.7.42.
+</para>
+<para lang="en">
+in an "alias" directive given using variables
+without references to captures of regular expressions;
+the bug had appeared in 0.7.42.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.44" date="23.03.2009">
 
 <change type="feature">
