@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.46" date="30.03.2009">
+
+<change type="bugfix">
+<para lang="ru">
+архив предыдущего релиза был неверным.
+</para>
+<para lang="en">
+the previous release tarball was incorrect.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.45" date="30.03.2009">
 
 <change type="change">
