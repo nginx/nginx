@@ -360,7 +360,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         file[i].fd = ngx_open_file(file[i].name.data,
-                                   NGX_FILE_RDWR|NGX_FILE_APPEND,
+                                   NGX_FILE_APPEND,
                                    NGX_FILE_CREATE_OR_OPEN,
                                    NGX_FILE_DEFAULT_ACCESS);
 
@@ -1065,7 +1065,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             file[i].pos = file[i].buffer;
         }
 
-        fd = ngx_open_file(file[i].name.data, NGX_FILE_RDWR|NGX_FILE_APPEND,
+        fd = ngx_open_file(file[i].name.data, NGX_FILE_APPEND,
                            NGX_FILE_CREATE_OR_OPEN, NGX_FILE_DEFAULT_ACCESS);
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
