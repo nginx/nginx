@@ -215,6 +215,7 @@ do
         --with-debug)                    NGX_DEBUG=YES              ;;
 
         --without-pcre)                  USE_PCRE=DISABLED          ;;
+        --with-pcre)                     USE_PCRE=YES               ;;
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
 
@@ -333,7 +334,8 @@ cat << END
                                      pentium, pentiumpro, pentium3, pentium4,
                                      athlon, opteron, sparc32, sparc64, ppc64
 
-  --without-pcre                     disable PCRE libarary usage
+  --without-pcre                     disable PCRE library usage
+  --with-pcre                        force PCRE library usage
   --with-pcre=DIR                    set path to PCRE library sources
   --with-pcre-opt=OPTIONS            set additional options for PCRE building
 
