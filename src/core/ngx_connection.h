@@ -71,10 +71,11 @@ struct ngx_listening_s {
 
 
 typedef enum {
-     NGX_ERROR_CRIT = 0,
+     NGX_ERROR_ALERT = 0,
      NGX_ERROR_ERR,
      NGX_ERROR_INFO,
-     NGX_ERROR_IGNORE_ECONNRESET
+     NGX_ERROR_IGNORE_ECONNRESET,
+     NGX_ERROR_IGNORE_EINVAL
 } ngx_connection_log_error_e;
 
 
@@ -135,7 +136,7 @@ struct ngx_connection_s {
 
     unsigned            buffered:8;
 
-    unsigned            log_error:2;     /* ngx_connection_log_error_e */
+    unsigned            log_error:3;     /* ngx_connection_log_error_e */
 
     unsigned            single_connection:1;
     unsigned            unexpected_eof:1;
