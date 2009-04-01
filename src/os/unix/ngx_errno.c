@@ -10,10 +10,11 @@
 
 #if (NGX_HAVE_STRERROR_R)
 
-u_char *ngx_strerror_r(int err, u_char *errstr, size_t size)
+u_char *
+ngx_strerror_r(int err, u_char *errstr, size_t size)
 {
     if (size == 0) {
-        return 0;
+        return errstr;
     }
 
     errstr[0] = '\0';
@@ -32,12 +33,13 @@ u_char *ngx_strerror_r(int err, u_char *errstr, size_t size)
 
 /* Linux strerror_r() */
 
-u_char *ngx_strerror_r(int err, u_char *errstr, size_t size)
+u_char *
+ngx_strerror_r(int err, u_char *errstr, size_t size)
 {
     char  *str;
 
     if (size == 0) {
-        return 0;
+        return errstr;
     }
 
     errstr[0] = '\0';

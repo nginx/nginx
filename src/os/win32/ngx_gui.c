@@ -36,13 +36,8 @@ ngx_message_box(char *title, ngx_uint_t type, ngx_err_t err,
             *p++ = '.';
         }
 
-        if ((unsigned) err >= 0x80000000) {
-            p = ngx_snprintf(p, last - p, " (%Xd: ", err);
-
-        } else {
-            p = ngx_snprintf(p, last - p, " (%d: ", err);
-        }
-
+        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
+                                           ? " (%d: " : " (%Xd: ", err);
         p = ngx_strerror_r(err, p, last - p);
 
         if (p < last) {
