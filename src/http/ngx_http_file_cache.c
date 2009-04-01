@@ -1065,6 +1065,9 @@ ngx_http_file_cache_manager(void *data)
 
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "http file cache size: %O", size);
+
         if (size < cache->max_size) {
             return next;
         }
