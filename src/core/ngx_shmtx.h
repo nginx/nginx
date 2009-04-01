@@ -57,7 +57,15 @@ ngx_shmtx_trylock(ngx_shmtx_t *mtx)
         return 0;
     }
 
-    ngx_log_abort(err, ngx_trylock_fd_n " failed");
+#if __osf__ /* Tru64 UNIX */
+
+    if (err == NGX_EACCESS) {
+        return 0;
+    }
+
+#endif
+
+    ngx_log_abort(err, ngx_trylock_fd_n " %s failed", mtx->name);
 
     return 0;
 }
@@ -74,7 +82,7 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
         return;
     }
 
-    ngx_log_abort(err, ngx_lock_fd_n " failed");
+    ngx_log_abort(err, ngx_lock_fd_n " %s failed", mtx->name);
 }
 
 
@@ -89,7 +97,7 @@ ngx_shmtx_unlock(ngx_shmtx_t *mtx)
         return;
     }
 
-    ngx_log_abort(err, ngx_unlock_fd_n " failed");
+    ngx_log_abort(err, ngx_unlock_fd_n " %s failed", mtx->name);
 }
 
 
