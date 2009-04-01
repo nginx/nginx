@@ -494,10 +494,16 @@ ngx_process_get_status(void)
         }
 
         if (WTERMSIG(status)) {
+#ifdef WCOREDUMP
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                           "%s %P exited on signal %d%s",
                           process, pid, WTERMSIG(status),
                           WCOREDUMP(status) ? " (core dumped)" : "");
+#else
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "%s %P exited on signal %d",
+                          process, pid, WTERMSIG(status));
+#endif
 
         } else {
             ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
