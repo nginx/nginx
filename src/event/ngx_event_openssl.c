@@ -10,7 +10,7 @@
 
 
 typedef struct {
-    ngx_str_t  engine;
+    ngx_uint_t  engine;   /* unsigned  engine:1; */
 } ngx_openssl_conf_t;
 
 
@@ -37,26 +37,17 @@ static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
-static char *ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf);
+static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_openssl_exit(ngx_cycle_t *cycle);
-
-#if !(NGX_SSL_ENGINE)
-static char *ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd,
-     void *conf);
-#endif
 
 
 static ngx_command_t  ngx_openssl_commands[] = {
 
     { ngx_string("ssl_engine"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-#if (NGX_SSL_ENGINE)
-      ngx_conf_set_str_slot,
-#else
-      ngx_openssl_noengine,
-#endif
+      ngx_openssl_engine,
       0,
-      offsetof(ngx_openssl_conf_t, engine),
+      0,
       NULL },
 
       ngx_null_command
@@ -66,7 +57,7 @@ static ngx_command_t  ngx_openssl_commands[] = {
 static ngx_core_module_t  ngx_openssl_module_ctx = {
     ngx_string("openssl"),
     ngx_openssl_create_conf,
-    ngx_openssl_init_conf
+    NULL
 };
 
 
@@ -1921,8 +1912,7 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
     /*
      * set by ngx_pcalloc():
      *
-     *     oscf->engine.len = 0;
-     *     oscf->engine.data = NULL;
+     *     oscf->engine = 0;
      */
 
     return oscf;
@@ -1930,53 +1920,54 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
 
 
 static char *
-ngx_openssl_init_conf(ngx_cycle_t *cycle, void *conf)
+ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #if (NGX_SSL_ENGINE)
     ngx_openssl_conf_t *oscf = conf;
 
-    ENGINE  *engine;
+    ENGINE     *engine;
+    ngx_str_t  *value;
 
-    if (oscf->engine.len == 0) {
-        return NGX_CONF_OK;
+    if (oscf->engine) {
+        return "is duplicate";
     }
 
-    engine = ENGINE_by_id((const char *) oscf->engine.data);
+    oscf->engine = 1;
+
+    value = cf->args->elts;
+
+    engine = ENGINE_by_id((const char *) value[1].data);
 
     if (engine == NULL) {
-        ngx_ssl_error(NGX_LOG_WARN, cycle->log, 0,
-                      "ENGINE_by_id(\"%V\") failed", &oscf->engine);
+        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
+                      "ENGINE_by_id(\"%V\") failed", &value[1]);
         return NGX_CONF_ERROR;
     }
 
     if (ENGINE_set_default(engine, ENGINE_METHOD_ALL) == 0) {
-        ngx_ssl_error(NGX_LOG_WARN, cycle->log, 0,
+        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
                       "ENGINE_set_default(\"%V\", ENGINE_METHOD_ALL) failed",
-                      &oscf->engine);
+                      &value[1]);
+
+        ENGINE_free(engine);
+
         return NGX_CONF_ERROR;
     }
 
     ENGINE_free(engine);
 
-#endif
-
     return NGX_CONF_OK;
-}
 
+#else
 
-#if !(NGX_SSL_ENGINE)
-
-static char *
-ngx_openssl_noengine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "\"ssl_engine\" directive is available only in "
                        "OpenSSL 0.9.7 and higher,");
 
     return NGX_CONF_ERROR;
-}
 
 #endif
+}
 
 
 static void
