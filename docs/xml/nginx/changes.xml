@@ -9,6 +9,75 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.47" date="01.04.2009">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на FreeBSD 6 и более ранних версиях;
+ошибка появилась в 0.7.46.
+</para>
+<para lang="en">
+nginx could not be built on FreeBSD 6 and early versions;
+the bug had appeared in 0.7.46.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на MacOSX;
+ошибка появилась в 0.7.46.
+</para>
+<para lang="en">
+nginx could not be built on MacOSX;
+the bug had <nobr>appeared in 0.7.46.</nobr>
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если использовался параметр max_size, то cache manager мог удалить весь кэш;
+ошибка появилась в 0.7.46.
+</para>
+<para lang="en">
+if the "max_size" parameter was set, then the cache manager might purge
+a whole cache;
+the bug had appeared in 0.7.46.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если директивы proxy_cache/fastcgi_cache
+и proxy_cache_valid/ fastcgi_cache_valid не были заданы на одном уровне;
+ошибка появилась в 0.7.46.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if the "proxy_cache"/"fastcgi_cache" and
+the "proxy_cache_valid"/ "fastcgi_cache_valid" were set on different levels;
+the bug had appeared in 0.7.46.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+при перенаправлении запроса проксированному или FastCGI-серверу
+с помощью error_page или try_files;
+ошибка появилась в 0.7.44.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if a request was redirected to a proxied or FastCGI server via
+error_page or try_files;
+the bug had appeared in 0.7.44.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.46" date="30.03.2009">
 
 <change type="bugfix">
@@ -31,7 +100,7 @@ the previous release tarball was incorrect.
 на разных уровнях.
 </para>
 <para lang="en">
-now the "proxy_cache" and the "proxy_cache_valid" can be set on
+now the "proxy_cache" and the "proxy_cache_valid" directives can be set on
 different levels.
 </para>
 </change>
