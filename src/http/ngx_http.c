@@ -896,8 +896,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 if (in_addr[i].hash.buckets == NULL
                     && (in_addr[i].wc_head == NULL
                         || in_addr[i].wc_head->hash.buckets == NULL)
-                    && (in_addr[i].wc_head == NULL
-                        || in_addr[i].wc_head->hash.buckets == NULL))
+                    && (in_addr[i].wc_tail == NULL
+                        || in_addr[i].wc_tail->hash.buckets == NULL))
                 {
                     continue;
                 }
