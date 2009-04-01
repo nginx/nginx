@@ -299,6 +299,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                 if (err != NGX_ENOENT) {
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
                                   ngx_de_info_n " \"%s\" failed", filename);
+
+                    if (err == NGX_EACCES) {
+                        continue;
+                    }
+
                     return ngx_http_autoindex_error(r, &dir, &path);
                 }
 
