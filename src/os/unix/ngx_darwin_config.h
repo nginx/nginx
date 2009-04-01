@@ -24,6 +24,7 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#include <sys/mount.h>          /* statfs() */
 
 #include <sys/filio.h>          /* FIONBIO */
 #include <sys/ioctl.h>
