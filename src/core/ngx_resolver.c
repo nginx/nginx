@@ -578,6 +578,7 @@ failed:
 ngx_int_t
 ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 {
+    u_char               *name;
     ngx_resolver_t       *r;
     ngx_resolver_node_t  *rn;
 
@@ -601,11 +602,13 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ngx_queue_insert_head(&r->addr_expire_queue, &rn->queue);
 
-            ctx->name.len = rn->nlen;
-            ctx->name.data = ngx_resolver_dup(r, rn->name, rn->nlen);
-            if (ctx->name.data == NULL) {
+            name = ngx_resolver_dup(r, rn->name, rn->nlen);
+            if (name == NULL) {
                 goto failed;
             }
+
+            ctx->name.len = rn->nlen;
+            ctx->name.data = name;
 
             /* unlock addr mutex */
 
@@ -613,7 +616,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ctx->handler(ctx);
 
-            ngx_resolver_free(r, ctx->name.data);
+            ngx_resolver_free(r, name);
 
             return NGX_OK;
         }
@@ -623,7 +626,9 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             ctx->next = rn->waiting;
             rn->waiting = ctx;
 
-            return NGX_AGAIN;
+            /* unlock addr mutex */
+
+            return NGX_OK;
         }
 
         ngx_queue_remove(&rn->queue);
@@ -1306,7 +1311,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
              ctx->handler(ctx);
         }
 
-        if (naddrs) {
+        if (naddrs > 1) {
             ngx_resolver_free(r, addrs);
         }
 
@@ -1483,20 +1488,23 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         goto short_response;
     }
 
-    len -= 2;
-
     if (ngx_resolver_copy(r, &name, buf, &buf[i], &buf[n]) != NGX_OK) {
         return;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0, "resolver an:%V", &name);
 
-    if (len != (size_t) rn->nlen || ngx_strncmp(name.data, rn->name, len) != 0)
+    if (name.len != (size_t) rn->nlen
+        || ngx_strncmp(name.data, rn->name, name.len) != 0)
     {
-        ngx_resolver_free(r, rn->name);
+        if (rn->nlen) {
+            ngx_resolver_free(r, rn->name);
+        }
+
+        rn->nlen = (u_short) name.len;
         rn->name = name.data;
 
-        name.data = ngx_resolver_dup(r, rn->name, len);
+        name.data = ngx_resolver_dup(r, rn->name, name.len);
         if (name.data == NULL) {
             goto failed;
         }
