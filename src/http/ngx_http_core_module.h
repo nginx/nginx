@@ -28,6 +28,11 @@
 #define NGX_HTTP_SATISFY_ANY            1
 
 
+#define NGX_HTTP_IMS_OFF                0
+#define NGX_HTTP_IMS_EXACT              1
+#define NGX_HTTP_IMS_BEFORE             2
+
+
 typedef struct {
     unsigned                   default_server:1;
     unsigned                   bind:1;
@@ -292,6 +297,7 @@ struct ngx_http_core_loc_conf_s {
     time_t        keepalive_header;        /* keepalive_timeout */
 
     ngx_uint_t    satisfy;                 /* satisfy */
+    ngx_uint_t    if_modified_since;       /* if_modified_since */
 
     ngx_flag_t    internal;                /* internal */
     ngx_flag_t    client_body_in_file_only; /* client_body_in_file_only */
