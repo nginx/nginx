@@ -448,6 +448,7 @@ renew:
     fcn->valid_sec = 0;
     fcn->uniq = 0;
     fcn->body_start = 0;
+    fcn->length = 0;
 
 done:
 
