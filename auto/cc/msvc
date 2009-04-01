@@ -2,7 +2,9 @@
 # Copyright (C) Igor Sysoev
 
 
-# MSVC 6.0 SP2, MSVC Toolkit 2003 (7.1), MSVC 2005 Express Edition SP1 (8.0)
+# MSVC 6.0 SP2
+# MSVC Toolkit 2003 (7.1)
+# MSVC 2005 Express Edition SP1 (8.0)
 
 # optimizations
 
@@ -76,13 +78,11 @@ LINK="\$(CC)"
 # the link flags
 CORE_LINK="$CORE_LINK -link -verbose:lib"
 
-if [ $NGX_CC_NAME = msvc7 ]; then
-    # link with libcmt.lib, multithreaded
-    LIBC="-MT"
-else
-    # link with msvcrt.dll
-    LIBC="-MD"
-fi
+# link with libcmt.lib, multithreaded
+LIBC="-MT"
+# link with msvcrt.dll
+# however, MSVC Toolkit 2003 has no MSVCRT.LIB
+#LIBC="-MD"
 
 CFLAGS="$CFLAGS $LIBC"
 
