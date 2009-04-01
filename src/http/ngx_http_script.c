@@ -244,10 +244,21 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
 
         name.data = &sc->source->data[i];
 
-        while (i < sc->source->len
-               && sc->source->data[i] != '$'
-               && !(sc->source->data[i] == '?' && sc->compile_args))
-        {
+        while (i < sc->source->len) {
+
+            if (sc->source->data[i] == '$') {
+                break;
+            }
+
+            if (sc->source->data[i] == '?') {
+
+                sc->args = 1;
+
+                if (sc->compile_args) {
+                    break;
+                }
+            }
+
             i++;
             name.len++;
         }
