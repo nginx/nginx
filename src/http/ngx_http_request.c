@@ -1388,9 +1388,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->method & (NGX_HTTP_POST|NGX_HTTP_PUT)
-        && r->headers_in.content_length_n == -1)
-    {
+    if (r->method & NGX_HTTP_PUT && r->headers_in.content_length_n == -1) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent %V method without \"Content-Length\" header",
                   &r->method_name);
