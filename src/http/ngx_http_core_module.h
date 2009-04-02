@@ -79,6 +79,7 @@ typedef enum {
     NGX_HTTP_ACCESS_PHASE,
     NGX_HTTP_POST_ACCESS_PHASE,
 
+    NGX_HTTP_TRY_FILES_PHASE,
     NGX_HTTP_CONTENT_PHASE,
 
     NGX_HTTP_LOG_PHASE
@@ -126,6 +127,8 @@ typedef struct {
     ngx_uint_t                 variables_hash_bucket_size;
 
     ngx_hash_keys_arrays_t    *variables_keys;
+
+    ngx_uint_t                 try_files;       /* unsigned  try_files:1 */
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 } ngx_http_core_main_conf_t;
@@ -236,6 +239,14 @@ typedef struct {
 } ngx_http_err_page_t;
 
 
+typedef struct {
+    ngx_array_t               *lengths;
+    ngx_array_t               *values;
+    ngx_str_t                  name;
+    ngx_uint_t                 test_dir;   /* unsigned  test_dir:1; */
+} ngx_http_try_file_t;
+
+
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
 struct ngx_http_core_loc_conf_s {
@@ -325,6 +336,7 @@ struct ngx_http_core_loc_conf_s {
 #endif
 
     ngx_array_t  *error_pages;             /* error_page */
+    ngx_http_try_file_t    *try_files;     /* try_files */
 
     ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
 
@@ -355,6 +367,8 @@ ngx_int_t ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
 ngx_int_t ngx_http_core_access_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);
 ngx_int_t ngx_http_core_post_access_phase(ngx_http_request_t *r,
+    ngx_http_phase_handler_t *ph);
+ngx_int_t ngx_http_core_try_files_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);
 ngx_int_t ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);

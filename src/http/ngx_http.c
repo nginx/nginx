@@ -406,7 +406,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
     use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
 
-    n = use_rewrite + use_access + 1; /* find config phase */
+    n = use_rewrite + use_access + cmcf->try_files + 1 /* find config phase */;
 
     for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
         n += cmcf->phases[i].handlers.nelts;
@@ -470,6 +470,15 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (use_access) {
                 ph->checker = ngx_http_core_post_access_phase;
                 ph->next = n;
+                ph++;
+            }
+
+            continue;
+
+        case NGX_HTTP_TRY_FILES_PHASE:
+            if (cmcf->try_files) {
+                ph->checker = ngx_http_core_try_files_phase;
+                n++;
                 ph++;
             }
 

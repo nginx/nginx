@@ -1467,3 +1467,39 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
 
     return NGX_DECLINED;
 }
+
+
+void
+ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
+{
+    u_char  ch, *p, *last;
+
+    p = uri->data;
+
+    last = p + uri->len;
+
+    args->len = 0;
+
+    while (p < last) {
+
+        ch = *p++;
+
+        if (ch == '?') {
+            args->len = last - p;
+            args->data = p;
+
+            uri->len = p - 1 - uri->data;
+
+            if (ngx_strlchr(p, last, '\0') != NULL) {
+                r->zero_in_uri = 1;
+            }
+
+            return;
+        }
+
+        if (ch == '\0') {
+            r->zero_in_uri = 1;
+            continue;
+        }
+    }
+}
