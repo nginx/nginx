@@ -44,6 +44,9 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#if (NGX_HAVE_SYS_PARAM_H)
+#include <sys/param.h>          /* statfs() */
+#endif
 #if (NGX_HAVE_SYS_MOUNT_H)
 #include <sys/mount.h>          /* statfs() */
 #endif
