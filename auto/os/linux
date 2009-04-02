@@ -124,6 +124,19 @@ ngx_feature_test="long mask = 0;
 . auto/feature
 
 
+# crypt_r()
+
+ngx_feature="crypt_r()"
+ngx_feature_name="NGX_HAVE_GNU_CRYPT_R"
+ngx_feature_run=no
+ngx_feature_incs="#include <crypt.h>"
+ngx_feature_path=
+ngx_feature_libs=-lcrypt
+ngx_feature_test="struct crypt_data  cd;
+                  crypt_r(NULL, NULL, &cd);"
+. auto/feature
+
+
 ngx_include="sys/vfs.h";     . auto/include
 
 
