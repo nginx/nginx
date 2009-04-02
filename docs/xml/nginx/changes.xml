@@ -9,6 +9,168 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.36" date="02.04.2009">
+
+<change type="change">
+<para lang="ru">
+ошибка "Invalid argument", возвращаемая setsockopt(TCP_NODELAY) на Solaris,
+теперь игнорируется.
+</para>
+<para lang="en">
+now the "Invalid argument" error returned by setsockopt(TCP_NODELAY) on Solaris,
+is ignored.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь разрешаются POST'ы без строки "Content-Length" в заголовке запроса.
+</para>
+<para lang="en">
+now POSTs without "Content-Length" header line are allowed.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива try_files.
+</para>
+<para lang="en">
+the "try_files" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр --with-pcre в configure.
+</para>
+<para lang="en">
+the --with-pcre option in the configure.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива if_modified_since.
+</para>
+<para lang="en">
+the "if_modified_since" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$cookie_...".
+</para>
+<para lang="en">
+the "$cookie_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$arg_...".
+</para>
+<para lang="en">
+the "$arg_..." variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с Tru64 UNIX.<br/>
+Спасибо Dustin Marquess.
+</para>
+<para lang="en">
+compatibility with Tru64 UNIX.<br/>
+Thanks to Dustin Marquess.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_engine не использовала SSL-акселератор
+для асимметричных шифров.<br/>
+Спасибо Marcin Gozdalik.
+</para>
+<para lang="en">
+a "ssl_engine" directive did not use a SSL-accelerator
+for asymmetric ciphers.<br/>
+Thanks to Marcin Gozdalik.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве rewrite, возвращающей редирект, старые аргументы присоединялись
+к новым через символ "?" вместо "&amp;";<br/>
+ошибка появилась в 0.1.18.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in a redirect rewrite directive original arguments were concatenated with
+new arguments by a "?" rather than an "&amp;";<br/>
+the bug had appeared in 0.1.18.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на AIX.
+</para>
+<para lang="en">
+nginx could not be built on AIX.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если на запрос с телом возвращался редирект, то ответ мог быть двойным
+при использовании методов epoll или rtsig.<br/>
+Спасибо Eden Li.
+</para>
+<para lang="en">
+a double response might be returned if the epoll or rtsig methods are used
+and a redirect was returned to a request with body.<br/>
+Thanks to Eden Li.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы resolver в SMTP прокси-сервере
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+if "resolver" directive was used in SMTP proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+fastcgi_store не всегда сохранял файлы.
+</para>
+<para lang="en">
+fastcgi_store stored files not always.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не обрабатывал ответ FastCGI-сервера,
+если перед ответом сервер передавал много сообщений в stderr.
+</para>
+<para lang="en">
+nginx did not process a FastCGI server response,
+if the server send too many messages to stderr before response.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.35" date="26.01.2009">
 
 <change type="bugfix">
@@ -9763,8 +9925,8 @@ the proxy_set_x_var and fastcgi_set_var directives were not inherited.
 к URI через символ "&amp;" вместо "?".
 </para>
 <para lang="en">
-in the redirect rewrite directive the arguments were concatenated with URI
-by the "&amp;" rather than the "?".
+in a redirect rewrite directive arguments were concatenated with URI
+by an "&amp;" rather than a "?".
 </para>
 </change>
 
