@@ -216,8 +216,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Expires"),
-                 ngx_http_upstream_process_accel_expires,
-                 offsetof(ngx_http_upstream_headers_in_t, x_accel_expires),
+                 ngx_http_upstream_process_accel_expires, 0,
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Redirect"),
