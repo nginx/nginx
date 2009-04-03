@@ -581,6 +581,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     } else if (rc == NGX_HTTP_CACHE_STALE) {
 
+        c->valid_sec = 0;
         u->stale_cache = 1;
         u->buffer.start = NULL;
 
