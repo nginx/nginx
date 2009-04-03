@@ -74,6 +74,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_limit_rate(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_buffering(ngx_http_request_t *r,
@@ -214,7 +216,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Expires"),
-                 ngx_http_upstream_process_header_line,
+                 ngx_http_upstream_process_accel_expires,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_expires),
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
@@ -1914,14 +1916,19 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (u->cacheable) {
         time_t  now, valid;
 
-        valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                          u->headers_in.status_n);
+        now = ngx_time();
+
+        valid = r->cache->valid_sec;
+
+        if (valid == 0) {
+            valid = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                              u->headers_in.status_n);
+            if (valid) {
+                r->cache->valid_sec = now + valid;
+            }
+        }
+
         if (valid) {
-
-            now = ngx_time();
-
-            r->cache->valid_sec = now + valid;
-
             r->cache->last_modified = r->headers_out.last_modified_time;
             r->cache->date = now;
             r->cache->body_start = (u_short) (u->buffer.pos - u->buffer.start);
@@ -2827,6 +2834,54 @@ static ngx_int_t
 ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+    u_char     *p;
+    size_t      len;
+    ngx_int_t   n;
+
+    r->upstream->headers_in.x_accel_expires = h;
+
+    if (r->cache == NULL) {
+        return NGX_OK;
+    }
+
+    len = h->value.len;
+    p = h->value.data;
+
+    if (p[0] != '@') {
+        n = ngx_atoi(p, len);
+
+        switch (n) {
+        case 0:
+            r->upstream->cacheable = 0;
+            break;
+
+        case NGX_ERROR:
+            break;
+
+        default:
+            r->cache->valid_sec = ngx_time() + n;
+            break;
+        }
+
+    } else {
+        p++;
+        len--;
+
+        n = ngx_atoi(p, len);
+
+        if (n != NGX_ERROR) {
+            r->cache->valid_sec = n;
+        }
+    }
+
     return NGX_OK;
 }
 
