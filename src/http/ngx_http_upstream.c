@@ -531,6 +531,10 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_int_t          rc;
     ngx_http_cache_t  *c;
 
+    if (!(r->method & NGX_HTTP_GET)) {
+        return NGX_DECLINED;
+    }
+
     c = ngx_pcalloc(r->pool, sizeof(ngx_http_cache_t));
     if (c == NULL) {
         return NGX_ERROR;
