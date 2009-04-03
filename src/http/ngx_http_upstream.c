@@ -74,6 +74,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_expires(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_limit_rate(ngx_http_request_t *r,
@@ -192,8 +194,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  offsetof(ngx_http_headers_out_t, cache_control), 1 },
 
     { ngx_string("Expires"),
-                 ngx_http_upstream_process_header_line,
-                 offsetof(ngx_http_upstream_headers_in_t, expires),
+                 ngx_http_upstream_process_expires, 0,
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, expires), 1 },
 
@@ -2834,6 +2835,35 @@ static ngx_int_t
 ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    time_t  expires;
+
+    r->upstream->headers_in.expires = h;
+
+    if (r->cache == NULL) {
+        return NGX_OK;
+    }
+
+    if (r->cache->valid_sec != 0) {
+        return NGX_OK;
+    }
+
+    expires = ngx_http_parse_time(h->value.data, h->value.len);
+
+    if (expires == NGX_ERROR || expires < ngx_time()) {
+        r->upstream->cacheable = 0;
+        return NGX_OK;
+    }
+
+    r->cache->valid_sec = expires;
+
     return NGX_OK;
 }
 
