@@ -70,7 +70,7 @@ static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
-    ngx_http_upstream_process_multi_header_lines(ngx_http_request_t *r,
+    ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
@@ -188,8 +188,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_header_line, 0, 1 },
 
     { ngx_string("Cache-Control"),
-                 ngx_http_upstream_process_multi_header_lines,
-                 offsetof(ngx_http_upstream_headers_in_t, cache_control),
+                 ngx_http_upstream_process_cache_control, 0,
                  ngx_http_upstream_copy_multi_header_lines,
                  offsetof(ngx_http_headers_out_t, cache_control), 1 },
 
@@ -2805,13 +2804,23 @@ ngx_http_upstream_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
-ngx_http_upstream_process_multi_header_lines(ngx_http_request_t *r,
+ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
+    u_char            *p, *last;
+    ngx_int_t          n;
     ngx_array_t       *pa;
     ngx_table_elt_t  **ph;
 
-    pa = (ngx_array_t *) ((char *) &r->upstream->headers_in + offset);
+    pa = &r->upstream->headers_in.cache_control;
 
     if (pa->elts == NULL) {
        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
@@ -2827,14 +2836,51 @@ ngx_http_upstream_process_multi_header_lines(ngx_http_request_t *r,
 
     *ph = h;
 
-    return NGX_OK;
-}
+    if (r->cache == NULL) {
+        return NGX_OK;
+    }
 
+    if (r->cache->valid_sec != 0) {
+        return NGX_OK;
+    }
 
-static ngx_int_t
-ngx_http_upstream_ignore_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
-    ngx_uint_t offset)
-{
+    last = h->value.data + h->value.len;
+
+    if (ngx_strlcasestrn(h->value.data, last, (u_char *) "no-cache", 8 - 1)
+        != NULL)
+    {
+        r->upstream->cacheable = 0;
+        return NGX_OK;
+    }
+
+    p = ngx_strlcasestrn(h->value.data, last, (u_char *) "max-age=", 8 - 1);
+
+    if (p == NULL) {
+        return NGX_OK;
+    }
+
+    n = 0;
+
+    for (p += 8; p < last; p++) {
+        if (*p == ';' || *p == ' ') {
+            break;
+        }
+
+        if (*p >= '0' && *p <= '9') {
+            n = n * 10 + *p - '0';
+            continue;
+        }
+
+        r->upstream->cacheable = 0;
+        return NGX_OK;
+    }
+
+    if (n == 0) {
+        r->upstream->cacheable = 0;
+        return NGX_OK;
+    }
+
+    r->cache->valid_sec = ngx_time() + n;
     return NGX_OK;
 }
 
