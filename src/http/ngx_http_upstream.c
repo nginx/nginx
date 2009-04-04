@@ -2891,25 +2891,22 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         switch (n) {
         case 0:
             r->upstream->cacheable = 0;
-            break;
-
         case NGX_ERROR:
-            break;
+            return NGX_OK;
 
         default:
             r->cache->valid_sec = ngx_time() + n;
-            break;
+            return NGX_OK;
         }
+    }
 
-    } else {
-        p++;
-        len--;
+    p++;
+    len--;
 
-        n = ngx_atoi(p, len);
+    n = ngx_atoi(p, len);
 
-        if (n != NGX_ERROR) {
-            r->cache->valid_sec = n;
-        }
+    if (n != NGX_ERROR) {
+        r->cache->valid_sec = n;
     }
 
     return NGX_OK;
