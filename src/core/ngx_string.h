@@ -149,6 +149,7 @@ u_char *ngx_strnstr(u_char *s1, char *s2, size_t n);
 
 u_char *ngx_strstrn(u_char *s1, char *s2, size_t n);
 u_char *ngx_strcasestrn(u_char *s1, char *s2, size_t n);
+u_char *ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n);
 
 ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n);
