@@ -697,7 +697,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
-            *r->request_end = '\0';
 
 
             if (r->args_start) {

@@ -1486,20 +1486,20 @@ ngx_http_parse_multi_header_lines(ngx_array_t *headers, ngx_str_t *name,
 ngx_int_t
 ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len, ngx_str_t *value)
 {
-    u_char  *p;
+    u_char  *p, *last;
 
     if (r->args.len == 0) {
         return NGX_DECLINED;
     }
 
-    for (p = r->args.data; *p && *p != ' '; p++) {
+    p = r->args.data;
+    last = p + r->args.len;
 
-        /*
-         * although r->args.data is not null-terminated by itself,
-         * however, there is null in the end of request line
-         */
+    for ( /* void */ ; p < last; p++) {
 
-        p = ngx_strcasestrn(p, (char *) name, len - 1);
+        /* we need '=' after name, so drop one char from last */
+
+        p = ngx_strlcasestrn(p, last - 1, name, len - 1);
 
         if (p == NULL) {
             return NGX_DECLINED;
@@ -1509,7 +1509,7 @@ ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len, ngx_str_t *value)
 
             value->data = p + len + 1;
 
-            p = (u_char *) ngx_strchr(p, '&');
+            p = ngx_strlchr(p, last, '&');
 
             if (p == NULL) {
                 p = r->args.data + r->args.len;
