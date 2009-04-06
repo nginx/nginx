@@ -8,8 +8,8 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define nginx_version       007048
-#define NGINX_VERSION      "0.7.48"
+#define nginx_version       007049
+#define NGINX_VERSION      "0.7.49"
 #define NGINX_VER          "nginx/" NGINX_VERSION
 
 #define NGINX_VAR          "NGINX"
