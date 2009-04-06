@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.49" date="06.04.2009">
+
+<change type="change">
+<para lang="ru">
+если использовании переменных $arg_...
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.7.48.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if the $arg_... variables were used;
+the bug had appeared in 0.7.48.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.48" date="06.04.2009">
 
 <change type="feature">
