@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.48" date="06.04.2009">
+
+<change type="feature">
+<para lang="ru">
+директива proxy_cache_key.
+</para>
+<para lang="en">
+the "proxy_cache_key" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx учитывает при кэшировании строки "X-Accel-Expires",
+"Expires" и "Cache-Control" в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+now nginx takes into account the "X-Accel-Expires", "Expires", and
+"Cache-Control" header lines in a backend response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx кэширует только ответы на запросы GET.
+</para>
+<para lang="en">
+now nginx caches responses for the GET requests only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива fastcgi_cache_key не наследовалась.
+</para>
+<para lang="en">
+the "fastcgi_cache_key" directive was not inherited.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные $arg_... не работали с SSI-подзапросами.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the $arg_... variables did not work with SSI subrequests.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с библиотекой uclibc.<br/>
+Спасибо Timothy Redaelli.
+</para>
+<para lang="en">
+nginx could not be built with uclibc library.<br/>
+Thanks to Timothy Redaelli.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на OpenBSD;
+ошибка появилась <nobr>в 0.7.46.</nobr>
+</para>
+<para lang="en">
+nginx could not be built on OpenBSD;
+the bug had <nobr>appeared in 0.7.46.</nobr>
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.47" date="01.04.2009">
 
 <change type="bugfix">
@@ -634,7 +710,7 @@ Thanks to Maxim Dounin.
 </para>
 <para lang="en">
 in a redirect rewrite directive original arguments were concatenated with
-new arguments by an "?" rather than an "&amp;";<br/>
+new arguments by a "?" rather than an "&amp;";<br/>
 the bug had appeared in 0.1.18.<br/>
 Thanks to Maxim Dounin.
 </para>
@@ -11746,7 +11822,7 @@ the proxy_set_x_var and fastcgi_set_var directives were not inherited.
 </para>
 <para lang="en">
 in a redirect rewrite directive arguments were concatenated with URI
-by an "&amp;" rather than an "?".
+by an "&amp;" rather than a "?".
 </para>
 </change>
 
