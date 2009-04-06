@@ -703,17 +703,13 @@ ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n)
 {
     ngx_uint_t  c1, c2;
 
-    if (s1 <= last) {
-        return NULL;
-    }
-
     c2 = (ngx_uint_t) *s2++;
     c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
     last -= n;
 
     do {
         do {
-            if (s1 == last) {
+            if (s1 >= last) {
                 return NULL;
             }
 
