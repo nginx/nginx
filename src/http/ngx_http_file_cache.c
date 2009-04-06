@@ -1357,13 +1357,12 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strncmp(value[i].data, "levels=", 7) == 0) {
 
-            n = 0;
             p = value[i].data + 7;
             last = value[i].data + value[i].len;
 
-            while (p < last) {
+            for (n = 0; n < 3 && p < last; n++) {
 
-                if (*p > '0' && *p < '6') {
+                if (*p > '0' && *p < '3') {
 
                     cache->path->level[n] = *p++ - '0';
                     cache->path->len += cache->path->level[n] + 1;
@@ -1372,20 +1371,11 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                         break;
                     }
 
-                    if (*p++ == ':') {
-
-                        if (n > 2) {
-                            goto invalid_levels;
-                        }
-
-                        if (cache->path->level[n] == 0) {
-                            goto invalid_levels;
-                        }
-
-                        n++;
-
+                    if (*p++ == ':' && n < 2 && p != last) {
                         continue;
                     }
+
+                    goto invalid_levels;
                 }
 
                 goto invalid_levels;
