@@ -3875,7 +3875,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     args.len = 0;
     args.data = NULL;
 
-    if (cv.lengths == NULL) {
+    if (cv.lengths == NULL && uri.data[0] == '/') {
         p = (u_char *) ngx_strchr(uri.data, '?');
 
         if (p) {

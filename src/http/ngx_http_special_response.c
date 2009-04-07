@@ -451,14 +451,14 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return NGX_ERROR;
     }
 
-    if (err_page->value.lengths) {
-        ngx_http_split_args(r, &uri, &args);
-
-    } else {
-        args = err_page->args;
-    }
-
     if (uri.data[0] == '/') {
+
+        if (err_page->value.lengths) {
+            ngx_http_split_args(r, &uri, &args);
+
+        } else {
+            args = err_page->args;
+        }
 
         if (r->method != NGX_HTTP_HEAD) {
             r->method = NGX_HTTP_GET;
