@@ -67,6 +67,7 @@ ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
+#define NGX_FILE_TRUNCATE           CREATE_ALWAYS
 
 #define NGX_FILE_DEFAULT_ACCESS     0
 #define NGX_FILE_OWNER_ACCESS       0

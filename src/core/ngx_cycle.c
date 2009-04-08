@@ -930,7 +930,7 @@ ngx_int_t
 ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 {
     size_t            len;
-    ngx_uint_t        trunc;
+    ngx_uint_t        create;
     ngx_file_t        file;
     u_char            pid[NGX_INT64_LEN + 2];
 
@@ -939,11 +939,10 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
     file.name = *name;
     file.log = log;
 
-    trunc = ngx_test_config ? 0 : NGX_FILE_TRUNCATE;
+    create = ngx_test_config ? NGX_FILE_CREATE_OR_OPEN : NGX_FILE_TRUNCATE;
 
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR,
-                            NGX_FILE_CREATE_OR_OPEN|trunc,
-                            NGX_FILE_DEFAULT_ACCESS);
+                            create, NGX_FILE_DEFAULT_ACCESS);
 
     if (file.fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
