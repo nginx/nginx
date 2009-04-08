@@ -1373,10 +1373,10 @@ static ngx_int_t
 ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_array_t *ports)
 {
-    ngx_uint_t                s, p, a;
-    ngx_http_conf_port_t     *port;
-    ngx_http_conf_addr_t     *addr;
-    ngx_http_server_name_t   *name;
+    ngx_uint_t               s, p, a;
+    ngx_http_conf_port_t    *port;
+    ngx_http_conf_addr_t    *addr;
+    ngx_http_server_name_t  *name;
 
     port = ports->elts;
     for (p = 0; p < ports->nelts; p++) {
@@ -1425,13 +1425,13 @@ static ngx_int_t
 ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_http_conf_addr_t *addr)
 {
-    ngx_int_t                  rc;
-    ngx_uint_t                 s;
-    ngx_hash_init_t            hash;
-    ngx_http_server_name_t    *name;
-    ngx_hash_keys_arrays_t     ha;
+    ngx_int_t                rc;
+    ngx_uint_t               s;
+    ngx_hash_init_t          hash;
+    ngx_hash_keys_arrays_t   ha;
+    ngx_http_server_name_t  *name;
 #if (NGX_PCRE)
-    ngx_uint_t                 regex, i;
+    ngx_uint_t               regex, i;
 
     regex = 0;
 #endif
