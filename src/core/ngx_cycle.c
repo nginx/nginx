@@ -375,14 +375,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-#if (NGX_WIN32)
-        if (ngx_file_append_mode(file[i].fd) != NGX_OK) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          ngx_file_append_mode_n " \"%s\" failed",
-                          file[i].name.data);
-            goto failed;
-        }
-#else
+#if !(NGX_WIN32)
         if (fcntl(file[i].fd, F_SETFD, FD_CLOEXEC) == -1) {
             ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                           "fcntl(FD_CLOEXEC) \"%s\" failed",
@@ -1077,21 +1070,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             continue;
         }
 
-#if (NGX_WIN32)
-        if (ngx_file_append_mode(fd) == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          ngx_file_append_mode_n " \"%s\" failed",
-                          file[i].name.data);
-
-            if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                              ngx_close_file_n " \"%s\" failed",
-                              file[i].name.data);
-            }
-
-            continue;
-        }
-#else
+#if !(NGX_WIN32)
         if (user != (ngx_uid_t) NGX_CONF_UNSET_UINT) {
             ngx_file_info_t  fi;
 

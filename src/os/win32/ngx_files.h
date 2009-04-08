@@ -73,10 +73,6 @@ ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 #define NGX_FILE_OWNER_ACCESS       0
 
 
-ngx_int_t ngx_file_append_mode(ngx_fd_t fd);
-#define ngx_file_append_mode_n      "SetFilePointer()"
-
-
 #define ngx_open_tempfile(name, persistent, access)                          \
     CreateFile((const char *) name,                                          \
                GENERIC_READ|GENERIC_WRITE,                                   \

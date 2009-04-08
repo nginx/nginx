@@ -506,31 +506,6 @@ ngx_de_link_info(u_char *name, ngx_dir_t *dir)
 
 
 ngx_int_t
-ngx_file_append_mode(ngx_fd_t fd)
-{
-#if 0
-    if (LockFile(fd, 0, 0, 0xffffffff, 0xffffffff) == 0) {
-        return NGX_ERROR;
-    }
-#endif
-
-    if (SetFilePointer(fd, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER) {
-        if (ngx_errno != NO_ERROR) {
-            return NGX_ERROR;
-        }
-    }
-
-#if 0
-    if (UnlockFile(fd, 0, 0, 0xffffffff, 0xffffffff) == 0) {
-        return NGX_ERROR;
-    }
-#endif
-
-    return NGX_OK;
-}
-
-
-ngx_int_t
 ngx_directio_on(ngx_fd_t fd)
 {
     return 0;
