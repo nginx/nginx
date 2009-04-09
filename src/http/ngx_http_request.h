@@ -387,6 +387,8 @@ struct ngx_http_request_s {
     ngx_http_post_subrequest_t       *post_subrequest;
     ngx_http_posted_request_t        *posted_requests;
 
+    ngx_http_virtual_names_t         *virtual_names;
+
     ngx_int_t                         phase_handler;
     ngx_http_handler_pt               content_handler;
     ngx_uint_t                        access_code;

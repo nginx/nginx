@@ -1825,7 +1825,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
             return NGX_ERROR;
         }
 
-        addrs[i].conf.core_srv_conf->virtual_names = vn;
+        addrs[i].conf.virtual_names = vn;
 
         vn->names.hash = addr[i].hash;
         vn->names.wc_head = addr[i].wc_head;
@@ -1882,7 +1882,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
             return NGX_ERROR;
         }
 
-        addrs6[i].conf.core_srv_conf->virtual_names = vn;
+        addrs6[i].conf.virtual_names = vn;
 
         vn->names.hash = addr[i].hash;
         vn->names.wc_head = addr[i].wc_head;
