@@ -2771,7 +2771,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
 #endif
 
-    if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
+    if (u->header_sent
+        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
     {
         rc = 0;
     }
