@@ -417,7 +417,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
     if (fcn == NULL) {
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
-        ngx_http_file_cache_forced_expire(cache);
+        (void) ngx_http_file_cache_forced_expire(cache);
 
         ngx_shmtx_lock(&cache->shpool->mutex);
 
