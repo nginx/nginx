@@ -818,12 +818,12 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
 
     name = ngx_alloc(len + 1, ngx_cycle->log);
     if (name == NULL) {
-        return 60;
+        return 10;
     }
 
     ngx_memcpy(name, path->name.data, path->name.len);
 
-    wait = 60;
+    wait = 10;
     tries = 0;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
@@ -891,7 +891,7 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
 
     name = ngx_alloc(len + 1, ngx_cycle->log);
     if (name == NULL) {
-        return 60;
+        return 10;
     }
 
     ngx_memcpy(name, path->name.data, path->name.len);
@@ -903,7 +903,7 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
     for ( ;; ) {
 
         if (ngx_queue_empty(cache->queue)) {
-            wait = 60;
+            wait = 10;
             break;
         }
 
@@ -914,7 +914,7 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
         wait = fcn->expire - now;
 
         if (wait > 0) {
-            wait = wait > 60 ? 60 : wait;
+            wait = wait > 10 ? 10 : wait;
             break;
         }
 
@@ -1042,7 +1042,7 @@ ngx_http_file_cache_manager(void *data)
         cache->files = 0;
 
         if (ngx_walk_tree(&tree, &cache->path->name) == NGX_ABORT) {
-            return 60;
+            return 10;
         }
 
         *cache->cold = 0;
