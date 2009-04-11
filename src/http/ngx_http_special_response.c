@@ -275,14 +275,16 @@ static ngx_str_t ngx_http_error_pages[] = {
 
     ngx_null_string,                     /* 201, 204 */
 
-#define NGX_HTTP_LEVEL_200  1
+#define NGX_HTTP_LAST_LEVEL_200  202
+#define NGX_HTTP_LEVEL_200       (NGX_HTTP_LAST_LEVEL_200 - 201)
 
     /* ngx_null_string, */               /* 300 */
     ngx_string(ngx_http_error_301_page),
     ngx_string(ngx_http_error_302_page),
     ngx_null_string,                     /* 303 */
 
-#define NGX_HTTP_LEVEL_300  3
+#define NGX_HTTP_LAST_LEVEL_300  304
+#define NGX_HTTP_LEVEL_300       (NGX_HTTP_LAST_LEVEL_300 - 301)
 
     ngx_string(ngx_http_error_400_page),
     ngx_string(ngx_http_error_401_page),
@@ -302,7 +304,8 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_415_page),
     ngx_string(ngx_http_error_416_page),
 
-#define NGX_HTTP_LEVEL_400  17
+#define NGX_HTTP_LAST_LEVEL_400  417
+#define NGX_HTTP_LEVEL_400       (NGX_HTTP_LAST_LEVEL_400 - 400)
 
     ngx_string(ngx_http_error_495_page), /* 495, https certificate error */
     ngx_string(ngx_http_error_496_page), /* 496, https no certificate */
@@ -318,6 +321,9 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_null_string,                     /* 505 */
     ngx_null_string,                     /* 506 */
     ngx_string(ngx_http_error_507_page)
+
+#define NGX_HTTP_LAST_LEVEL_500  508
+
 };
 
 
@@ -402,16 +408,22 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         /* 204 */
         err = 0;
 
-    } else if (error < NGX_HTTP_BAD_REQUEST) {
+    } else if (error >= NGX_HTTP_MOVED_PERMANENTLY
+               && error < NGX_HTTP_LAST_LEVEL_300)
+    {
         /* 3XX */
         err = error - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_LEVEL_200;
 
-    } else if (error < NGX_HTTP_OWN_CODES) {
+    } else if (error >= NGX_HTTP_BAD_REQUEST
+               && error < NGX_HTTP_LAST_LEVEL_400)
+    {
         /* 4XX */
         err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_200
                                            + NGX_HTTP_LEVEL_300;
 
-    } else {
+    } else if (error >= NGX_HTTP_OWN_CODES
+               && error < NGX_HTTP_LAST_LEVEL_500)
+    {
         /* 49X, 5XX */
         err = error - NGX_HTTP_OWN_CODES + NGX_HTTP_LEVEL_200
                                          + NGX_HTTP_LEVEL_300
@@ -423,6 +435,10 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
                 r->err_status = NGX_HTTP_BAD_REQUEST;
                 break;
         }
+
+    } else {
+        /* unknown code, zero body */
+        err = 0;
     }
 
     return ngx_http_send_special_response(r, clcf, err);
