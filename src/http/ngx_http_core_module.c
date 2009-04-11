@@ -1144,6 +1144,11 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
         if (tf->lengths == NULL && tf->name.len == 0) {
 
+            if (tf->code) {
+                ngx_http_finalize_request(r, tf->code);
+                return NGX_OK;
+            }
+
             path.len -= root;
             path.data += root;
 
@@ -3939,6 +3944,7 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t                  *value;
+    ngx_int_t                   code;
     ngx_uint_t                  i, n;
     ngx_http_try_file_t        *tf;
     ngx_http_script_compile_t   sc;
@@ -3992,6 +3998,20 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             /* add trailing '\0' to length */
             tf[i].name.len++;
         }
+    }
+
+    if (tf[i - 1].name.data[0] == '=') {
+
+        code = ngx_atoi(tf[i - 1].name.data + 1, tf[i - 1].name.len - 2);
+
+        if (code == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid code \"%*s\"",
+                               tf[i - 1].name.len - 1, tf[i - 1].name.data);
+            return NGX_CONF_ERROR;
+        }
+
+        tf[i].code = code;
     }
 
     return NGX_CONF_OK;
