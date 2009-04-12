@@ -9,18 +9,63 @@
 <title lang="en">nginx changelog</title>
 
 
-<changes ver="0.7.50" date="06.04.2009">
+<changes ver="0.7.51" date="12.04.2009">
 
-<change type="change">
+<change type="feature">
 <para lang="ru">
-при использовании переменных $arg_...
-в рабочем процессе мог произойти segmentation fault;
-ошибка появилась в 0.7.48.
+директива try_files поддерживает код ответа в последнем параметре.
 </para>
 <para lang="en">
-a segmentation fault might occur in worker process,
-if the $arg_... variables were used;
-the bug had appeared in 0.7.48.
+the "try_files" directive supports a response code in the fallback parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь в директиве return можно использовать любой код ответа.
+</para>
+<para lang="en">
+now any response code can be used in the "return" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page делала внешний редирект без строки запроса;
+ошибка появилась в 0.7.44.
+</para>
+<para lang="en">
+the "error_page" directive made an external redirect without query string;
+the bug had appeared in 0.7.44.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если сервера слушали на нескольких явно описанных адресах,
+то виртуальные сервера могли не работать;
+ошибка появилась в 0.7.39.
+</para>
+<para lang="en">
+if servers listened on several defined explicitly addresses,
+then virtual servers might not work;
+the bug had appeared in 0.7.39.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.7.50" date="06.04.2009">
+
+<change type="bugfix">
+<para lang="ru">
+переменные $arg_... не работали;
+ошибка появилась в 0.7.49.
+</para>
+<para lang="en">
+the $arg_... variables did not work;
+the bug had appeared in 0.7.49.
 </para>
 </change>
 
@@ -29,7 +74,7 @@ the bug had appeared in 0.7.48.
 
 <changes ver="0.7.49" date="06.04.2009">
 
-<change type="change">
+<change type="bugfix">
 <para lang="ru">
 при использовании переменных $arg_...
 в рабочем процессе мог произойти segmentation fault;
@@ -693,7 +738,7 @@ original request extension.
 <para lang="en">
 "*domain.tld" names were handled incorrectly in
 "server_name", "valid_referers", and "map" directives,
-if an ".domain.tld" and ".subdomain.domain.tld" wildcards were used;
+if ".domain.tld" and ".subdomain.domain.tld" wildcards were used;
 <nobr>the bug had</nobr> appeared in 0.7.9.
 </para>
 </change>
