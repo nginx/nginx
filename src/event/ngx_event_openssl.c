@@ -1387,7 +1387,7 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
         }
     }
 
-    SSL_CTX_set_timeout(ssl->ctx, timeout);
+    SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
 
     if (shm_zone) {
         shm_zone->init = ngx_ssl_session_cache_init;

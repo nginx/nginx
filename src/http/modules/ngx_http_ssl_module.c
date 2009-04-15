@@ -320,8 +320,8 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 
     sscf->enable = NGX_CONF_UNSET;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
-    sscf->verify = NGX_CONF_UNSET;
-    sscf->verify_depth = NGX_CONF_UNSET;
+    sscf->verify = NGX_CONF_UNSET_UINT;
+    sscf->verify_depth = NGX_CONF_UNSET_UINT;
     sscf->builtin_session_cache = NGX_CONF_UNSET;
     sscf->session_timeout = NGX_CONF_UNSET;
 
