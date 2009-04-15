@@ -1830,11 +1830,20 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
+    c = r->connection;
+
     if (r->header_only) {
+
         if (u->cacheable || u->store) {
+
+            if (ngx_shutdown_socket(c->fd, NGX_WRITE_SHUTDOWN) == -1) {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     ngx_shutdown_socket_n " failed");
+            }
+
             r->read_event_handler = ngx_http_request_empty_handler;
             r->write_event_handler = ngx_http_request_empty_handler;
-            r->connection->error = 1;
+            c->error = 1;
 
         } else {
             ngx_http_upstream_finalize_request(r, u, rc);
@@ -1848,8 +1857,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_pool_run_cleanup_file(r->pool, r->request_body->temp_file->file.fd);
         r->request_body->temp_file->file.fd = NGX_INVALID_FILE;
     }
-
-    c = r->connection;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
