@@ -484,6 +484,25 @@ static ngx_keyval_t  ngx_http_proxy_headers[] = {
 };
 
 
+#if (NGX_HTTP_CACHE)
+
+static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
+    { ngx_string("Host"), ngx_string("$proxy_host") },
+    { ngx_string("Connection"), ngx_string("close") },
+    { ngx_string("Keep-Alive"), ngx_string("") },
+    { ngx_string("Expect"), ngx_string("") },
+    { ngx_string("If-Modified-Since"), ngx_string("") },
+    { ngx_string("If-Unmodified-Since"), ngx_string("") },
+    { ngx_string("If-Match-None"), ngx_string("") },
+    { ngx_string("If-Match"), ngx_string("") },
+    { ngx_string("Range"), ngx_string("") },
+    { ngx_string("If-Range"), ngx_string("") },
+    { ngx_null_string, ngx_null_string }
+};
+
+#endif
+
+
 static ngx_str_t  ngx_http_proxy_hide_headers[] = {
     ngx_string("Date"),
     ngx_string("Server"),
@@ -2286,7 +2305,17 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 
     src = conf->headers_source->elts;
 
-    for (h = ngx_http_proxy_headers; h->key.len; h++) {
+#if (NGX_HTTP_CACHE)
+
+    h = conf->upstream.cache ? ngx_http_proxy_cache_headers:
+                               ngx_http_proxy_headers;
+#else
+
+    h = ngx_http_proxy_headers;
+
+#endif
+
+    while (h->key.len) {
 
         for (i = 0; i < conf->headers_source->nelts; i++) {
             if (ngx_strcasecmp(h->key.data, src[i].key.data) == 0) {
@@ -2305,7 +2334,7 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 
     next:
 
-        continue;
+        h++;
     }
 
 
