@@ -1958,6 +1958,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         } else {
             u->cacheable = 0;
+            r->headers_out.last_modified_time = -1;
         }
     }
 
@@ -3179,7 +3180,7 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 #if (NGX_HTTP_CACHE)
 
-    if (r->cached) {
+    if (r->cached || r->upstream->cacheable) {
         r->headers_out.last_modified = ho;
         r->headers_out.last_modified_time = ngx_http_parse_time(h->value.data,
                                                                 h->value.len);
