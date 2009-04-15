@@ -4,7 +4,7 @@
 
 if [ $MD5 != NONE ]; then
 
-    if grep MD5_Init $MD5/md5.h >/dev/null; then
+    if grep MD5_Init $MD5/md5.h 2>&1 >/dev/null; then
         # OpenSSL md5
         OPENSSL_MD5=YES
         have=NGX_HAVE_OPENSSL_MD5 . auto/have
