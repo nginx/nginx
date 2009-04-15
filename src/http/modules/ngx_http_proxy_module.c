@@ -484,6 +484,19 @@ static ngx_keyval_t  ngx_http_proxy_headers[] = {
 };
 
 
+static ngx_str_t  ngx_http_proxy_hide_headers[] = {
+    ngx_string("Date"),
+    ngx_string("Server"),
+    ngx_string("X-Pad"),
+    ngx_string("X-Accel-Expires"),
+    ngx_string("X-Accel-Redirect"),
+    ngx_string("X-Accel-Limit-Rate"),
+    ngx_string("X-Accel-Buffering"),
+    ngx_string("X-Accel-Charset"),
+    ngx_null_string
+};
+
+
 #if (NGX_HTTP_CACHE)
 
 static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
@@ -500,10 +513,8 @@ static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
     { ngx_null_string, ngx_null_string }
 };
 
-#endif
 
-
-static ngx_str_t  ngx_http_proxy_hide_headers[] = {
+static ngx_str_t  ngx_http_proxy_hide_cache_headers[] = {
     ngx_string("Date"),
     ngx_string("Server"),
     ngx_string("X-Pad"),
@@ -512,8 +523,12 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
     ngx_string("X-Accel-Limit-Rate"),
     ngx_string("X-Accel-Buffering"),
     ngx_string("X-Accel-Charset"),
+    ngx_string("Set-Cookie"),
+    ngx_string("P3P"),
     ngx_null_string
 };
+
+#endif
 
 
 static ngx_http_variable_t  ngx_http_proxy_vars[] = {
@@ -1925,6 +1940,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_proxy_loc_conf_t *conf = child;
 
     size_t                      size;
+    ngx_str_t                  *h;
     ngx_keyval_t               *s;
     ngx_hash_init_t             hash;
     ngx_http_proxy_redirect_t  *pr;
@@ -2189,9 +2205,18 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.bucket_size = conf->headers_hash_bucket_size;
     hash.name = "proxy_headers_hash";
 
+#if (NGX_HTTP_CACHE)
+
+    h = conf->upstream.cache ? ngx_http_proxy_hide_cache_headers:
+                               ngx_http_proxy_hide_headers;
+#else
+
+    h = ngx_http_proxy_hide_headers;
+
+#endif
+
     if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream,
-                                            &prev->upstream,
-                                            ngx_http_proxy_hide_headers, &hash)
+                                            &prev->upstream, h, &hash)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
