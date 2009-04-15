@@ -1041,15 +1041,13 @@ ngx_http_perl_init_worker(ngx_cycle_t *cycle)
 
     pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
 
-    {
+    if (pmcf) {
+        dTHXa(pmcf->perl);
+        PERL_SET_CONTEXT(pmcf->perl);
 
-    dTHXa(pmcf->perl);
-    PERL_SET_CONTEXT(pmcf->perl);
+        /* set worker's $$ */
 
-    /* set worker's $$ */
-
-    sv_setiv(GvSV(gv_fetchpv("$", TRUE, SVt_PV)), (I32) ngx_pid);
-
+        sv_setiv(GvSV(gv_fetchpv("$", TRUE, SVt_PV)), (I32) ngx_pid);
     }
 
     return NGX_OK;
