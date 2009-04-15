@@ -6,6 +6,21 @@ if [ $OPENSSL != NONE ]; then
     CORE_INCS="$CORE_INCS $OPENSSL/include"
 
     case "$CC" in
+
+        cl|bcc32)
+            have=NGX_OPENSSL . auto/have
+            have=NGX_SSL . auto/have
+
+            LINK_DEPS="$LINK_DEPS $OPENSSL/out32/ssleay32.lib"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/out32/ssleay32.lib"
+
+            LINK_DEPS="$LINK_DEPS $OPENSSL/out32/libeay32.lib"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/out32/libeay32.lib"
+
+            # libeay32.lib requires gdi32.lib and advapi32.lib
+            CORE_LIBS="$CORE_LIBS gdi32.lib advapi32.lib"
+        ;;
+
         *)
             have=NGX_OPENSSL . auto/have
             have=NGX_SSL . auto/have
@@ -34,10 +49,8 @@ else
             CORE_LIBS="$CORE_LIBS c:/openssl/ssleay32.lib"
             CORE_LIBS="$CORE_LIBS c:/openssl/libeay32.lib"
 
-            # libeay32.lib requires gdi32.lib
-            CORE_LIBS="$CORE_LIBS gdi32.lib"
-            # OpenSSL 0.8's libeay32.lib requires advapi32.lib
-            CORE_LIBS="$CORE_LIBS advapi32.lib"
+            # libeay32.lib requires gdi32.lib and advapi32.lib
+            CORE_LIBS="$CORE_LIBS gdi32.lib advapi32.lib"
         ;;
 
         *)

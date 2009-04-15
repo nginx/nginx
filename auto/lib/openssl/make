@@ -13,7 +13,38 @@ case $USE_THREADS in
     *)  NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG threads" ;;
 esac
 
-case "$NGX_PLATFORM" in
+case "$CC" in
+    cl)
+        cat << END                                            >> $NGX_MAKEFILE
+
+$OPENSSL/out32/ssleay32.lib:
+	cd $OPENSSL
+	perl Configure VC-WIN32 no-shared
+	ms\\do_ms
+	\$(MAKE) -f ms\\nt.mak
+	cd ..\\..\\..
+
+END
+
+    ;;
+
+    bcc32)
+        cat << END                                            >> $NGX_MAKEFILE
+
+`echo "$OPENSSL\\out32\\libeay32.lib:	$OPENSSL\\out32\\ssleay32.lib" \
+	| sed -e "s/\//$ngx_regex_dirsep/g"`
+
+`echo "$OPENSSL\\out32\\ssleay32.lib:" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	cd `echo "$OPENSSL" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	perl Configure BC-32 no-shared
+	ms\\do_nasm
+	\$(MAKE) -f ms\\bcb.mak
+	cd ..\\..\\..
+
+END
+
+    ;;
+
     *)
         cat << END                                            >> $NGX_MAKEFILE
 

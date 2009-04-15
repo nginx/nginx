@@ -51,12 +51,12 @@ case $CPU in
     ;;
 esac
 
-# __cdecl, use with OpenSSL, md5 asm, and sha1 asm
+# __cdecl, default, must be used with OpenSSL, md5 asm, and sha1 asm
 #CPU_OPT="$CPU_OPT -Gd"
 # __stdcall
 #CPU_OPT="$CPU_OPT -Gz"
 # __fastcall
-CPU_OPT="$CPU_OPT -Gr"
+#CPU_OPT="$CPU_OPT -Gr"
 
 
 CFLAGS="$CFLAGS $CPU_OPT"
