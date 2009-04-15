@@ -584,9 +584,9 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
 
         ngx_slab_free_pages(pool, &pool->pages[n], size);
 
-        size <<= ngx_pagesize_shift;
+        ngx_slab_junk(p, size << ngx_pagesize_shift);
 
-        goto done;
+        return;
     }
 
     /* not reached */
