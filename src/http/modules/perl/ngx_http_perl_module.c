@@ -1061,12 +1061,10 @@ ngx_http_perl_exit(ngx_cycle_t *cycle)
 
     pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
 
-    {
+    if (pmcf) {
+        dTHXa(pmcf->perl);
+        PERL_SET_CONTEXT(pmcf->perl);
 
-    dTHXa(pmcf->perl);
-    PERL_SET_CONTEXT(pmcf->perl);
-
-    PERL_SYS_TERM();
-
+        PERL_SYS_TERM();
     }
 }
