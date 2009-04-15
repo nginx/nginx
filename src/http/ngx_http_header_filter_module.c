@@ -247,7 +247,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
             len += ngx_http_status_lines[status].len;
 
         } else if (status >= NGX_HTTP_BAD_REQUEST
-                   && status < NGX_HTTP_LAST_LEVEL_400) 
+                   && status < NGX_HTTP_LAST_LEVEL_400)
         {
             /* 4XX */
             status = status - NGX_HTTP_BAD_REQUEST
