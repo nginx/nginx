@@ -532,8 +532,12 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_int_t          rc;
     ngx_http_cache_t  *c;
 
-    if (!(r->method & NGX_HTTP_GET)) {
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_DECLINED;
+    }
+
+    if (r->method & NGX_HTTP_HEAD) {
+        u->method = ngx_http_core_get_method;
     }
 
     c = ngx_pcalloc(r->pool, sizeof(ngx_http_cache_t));
@@ -1821,9 +1825,21 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     rc = ngx_http_send_header(r);
 
-    if (rc == NGX_ERROR || rc > NGX_OK || r->post_action || r->header_only) {
+    if (rc == NGX_ERROR || rc > NGX_OK || r->post_action) {
         ngx_http_upstream_finalize_request(r, u, rc);
         return;
+    }
+
+    if (r->header_only) {
+        if (u->cacheable || u->store) {
+            r->read_event_handler = ngx_http_request_empty_handler;
+            r->write_event_handler = ngx_http_request_empty_handler;
+            r->connection->error = 1;
+
+        } else {
+            ngx_http_upstream_finalize_request(r, u, rc);
+            return;
+        }
     }
 
     u->header_sent = 1;

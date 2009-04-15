@@ -691,7 +691,7 @@ ngx_module_t  ngx_http_core_module = {
 };
 
 
-static ngx_str_t  ngx_http_core_get_method = { 3, (u_char *) "GET " };
+ngx_str_t  ngx_http_core_get_method = { 3, (u_char *) "GET " };
 
 
 void

@@ -468,6 +468,8 @@ extern ngx_module_t  ngx_http_core_module;
 
 extern ngx_uint_t ngx_http_max_module;
 
+extern ngx_str_t  ngx_http_core_get_method;
+
 
 #define ngx_http_clear_content_length(r)                                      \
                                                                               \
