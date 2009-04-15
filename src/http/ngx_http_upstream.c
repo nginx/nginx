@@ -2843,8 +2843,6 @@ static ngx_int_t
 ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    u_char            *p, *last;
-    ngx_int_t          n;
     ngx_array_t       *pa;
     ngx_table_elt_t  **ph;
 
@@ -2863,6 +2861,11 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     }
 
     *ph = h;
+
+#if (NGX_HTTP_CACHE)
+    {
+    u_char     *p, *last;
+    ngx_int_t   n;
 
     if (r->cache == NULL) {
         return NGX_OK;
@@ -2909,6 +2912,9 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     }
 
     r->cache->valid_sec = ngx_time() + n;
+    }
+#endif
+
     return NGX_OK;
 }
 
@@ -2917,9 +2923,11 @@ static ngx_int_t
 ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    time_t  expires;
-
     r->upstream->headers_in.expires = h;
+
+#if (NGX_HTTP_CACHE)
+    {
+    time_t  expires;
 
     if (r->cache == NULL) {
         return NGX_OK;
@@ -2937,6 +2945,8 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->cache->valid_sec = expires;
+    }
+#endif
 
     return NGX_OK;
 }
@@ -2946,11 +2956,13 @@ static ngx_int_t
 ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
+    r->upstream->headers_in.x_accel_expires = h;
+
+#if (NGX_HTTP_CACHE)
+    {
     u_char     *p;
     size_t      len;
     ngx_int_t   n;
-
-    r->upstream->headers_in.x_accel_expires = h;
 
     if (r->cache == NULL) {
         return NGX_OK;
@@ -2982,6 +2994,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
     if (n != NGX_ERROR) {
         r->cache->valid_sec = n;
     }
+    }
+#endif
 
     return NGX_OK;
 }
