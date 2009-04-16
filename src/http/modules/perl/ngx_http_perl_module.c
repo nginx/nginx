@@ -154,10 +154,14 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 #endif
 
 
-static ngx_str_t  ngx_null_name = ngx_null_string;
+static ngx_str_t    ngx_null_name = ngx_null_string;
 
+static HV          *nginx_stash;
 
-static HV  *nginx_stash;
+#if (NGX_HAVE_PERL_MULTIPLICITY)
+static ngx_uint_t   ngx_perl_term;
+#endif
+
 
 static void
 ngx_http_perl_xs_init(pTHX)
@@ -821,6 +825,12 @@ ngx_http_perl_cleanup_perl(void *data)
     (void) perl_destruct(perl);
 
     perl_free(perl);
+
+    if (ngx_perl_term) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0, "perl term");
+
+        PERL_SYS_TERM();
+    }
 }
 
 #endif
@@ -1057,14 +1067,24 @@ ngx_http_perl_init_worker(ngx_cycle_t *cycle)
 static void
 ngx_http_perl_exit(ngx_cycle_t *cycle)
 {
+#if (NGX_HAVE_PERL_MULTIPLICITY)
+
+    ngx_perl_term = 1;
+
+#else
     ngx_http_perl_main_conf_t  *pmcf;
 
     pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
 
-    if (pmcf) {
-        dTHXa(pmcf->perl);
-        PERL_SET_CONTEXT(pmcf->perl);
+    if (pmcf && nginx_stash) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "perl term");
+
+        (void) perl_destruct(pmcf->perl);
+
+        perl_free(pmcf->perl);
 
         PERL_SYS_TERM();
     }
+
+#endif
 }
