@@ -1433,7 +1433,7 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_queue_init(&cache->expire_queue);
 
-    len = sizeof(" in SSL session shared cache \"\"") + shm_zone->name.len;
+    len = sizeof(" in SSL session shared cache \"\"") + shm_zone->shm.name.len;
 
     shpool->log_ctx = ngx_slab_alloc(shpool, len);
     if (shpool->log_ctx == NULL) {
@@ -1441,7 +1441,7 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     }
 
     ngx_sprintf(shpool->log_ctx, " in SSL session shared cache \"%V\"%Z",
-                &shm_zone->name);
+                &shm_zone->shm.name);
 
     shm_zone->data = cache;
 

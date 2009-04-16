@@ -29,7 +29,6 @@ struct ngx_shm_zone_s {
     void                     *data;
     ngx_shm_t                 shm;
     ngx_shm_zone_init_pt      init;
-    ngx_str_t                 name;
     void                     *tag;
 };
 

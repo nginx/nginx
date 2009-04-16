@@ -8,20 +8,16 @@
 #include <ngx_core.h>
 
 
-/*
- * TODO:
- *     maping name or inheritable handle
- */
-
 ngx_int_t
 ngx_shm_alloc(ngx_shm_t *shm)
 {
     shm->handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
-                                    0, shm->size, NULL);
+                                    0, shm->size, (char *) shm->name.data);
 
     if (shm->handle == NULL) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                      "CreateFileMapping(%uz) failed", shm->size);
+                      "CreateFileMapping(%uz, %s) failed",
+                      shm->size, shm->name.data);
         return NGX_ERROR;
     }
 

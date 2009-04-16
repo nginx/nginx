@@ -179,7 +179,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "limiting requests, excess: %ui.%03ui by zone \"%V\"",
-                      excess / 1000, excess % 1000, &lrcf->shm_zone->name);
+                      excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
 
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
@@ -193,7 +193,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                       "delaying request, excess: %ui.%03ui, by zone \"%V\"",
-                      excess / 1000, excess % 1000, &lrcf->shm_zone->name);
+                      excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
 
         if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -463,7 +463,7 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
             ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
                           "limit_req \"%V\" uses the \"%V\" variable "
                           "while previously it used the \"%V\" variable",
-                          &shm_zone->name, &ctx->var, &octx->var);
+                          &shm_zone->shm.name, &ctx->var, &octx->var);
             return NGX_ERROR;
         }
 
@@ -496,7 +496,7 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_queue_init(ctx->queue);
 
-    len = sizeof(" in limit_req zone \"\"") + shm_zone->name.len;
+    len = sizeof(" in limit_req zone \"\"") + shm_zone->shm.name.len;
 
     ctx->shpool->log_ctx = ngx_slab_alloc(ctx->shpool, len);
     if (ctx->shpool->log_ctx == NULL) {
@@ -504,7 +504,7 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     }
 
     ngx_sprintf(ctx->shpool->log_ctx, " in limit_req zone \"%V\"%Z",
-                &shm_zone->name);
+                &shm_zone->shm.name);
 
     return NGX_OK;
 }
@@ -574,6 +574,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             p = (u_char *) ngx_strchr(name.data, ':');
 
             if (p) {
+                *p = '\0';
+
                 name.len = p - name.data;
 
                 p++;
@@ -744,7 +746,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (lrcf->shm_zone->data == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "unknown limit_req_zone \"%V\"",
-                           &lrcf->shm_zone->name);
+                           &lrcf->shm_zone->shm.name);
         return NGX_CONF_ERROR;
     }
 

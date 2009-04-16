@@ -54,7 +54,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
             ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
                           "cache \"%V\" uses the \"%V\" cache path "
                           "while previously it used the \"%V\" cache path",
-                          &shm_zone->name, &cache->path->name,
+                          &shm_zone->shm.name, &cache->path->name,
                           &ocache->path->name);
 
             return NGX_ERROR;
@@ -112,7 +112,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     cache->max_size /= cache->bsize;
 
-    len = sizeof(" in cache keys zone \"\"") + shm_zone->name.len;
+    len = sizeof(" in cache keys zone \"\"") + shm_zone->shm.name.len;
 
     cache->shpool->log_ctx = ngx_slab_alloc(cache->shpool, len);
     if (cache->shpool->log_ctx == NULL) {
@@ -120,7 +120,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     }
 
     ngx_sprintf(cache->shpool->log_ctx, " in cache keys zone \"%V\"%Z",
-                &shm_zone->name);
+                &shm_zone->shm.name);
 
     return NGX_OK;
 }
@@ -1399,6 +1399,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             p = (u_char *) ngx_strchr(name.data, ':');
 
             if (p) {
+                *p = '\0';
+
                 name.len = p - name.data;
 
                 p++;

@@ -2043,7 +2043,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"fastcgi_cache\" zone \"%V\" is unknown",
-                           &shm_zone->name);
+                           &shm_zone->shm.name);
 
         return NGX_CONF_ERROR;
     }
