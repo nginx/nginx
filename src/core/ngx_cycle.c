@@ -482,7 +482,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #else
 
         lock_file = ngx_pnalloc(cycle->pool,
-                                cycle->lock_file.len + shm_zone[i].name.len);
+                               cycle->lock_file.len + shm_zone[i].shm.name.len);
 
         if (lock_file == NULL) {
             goto failed;
@@ -490,7 +490,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         (void) ngx_cpystrn(ngx_cpymem(lock_file, cycle->lock_file.data,
                                       cycle->lock_file.len),
-                           shm_zone[i].name.data, shm_zone[i].name.len + 1);
+                           shm_zone[i].shm.name.data,
+                           shm_zone[i].shm.name.len + 1);
 
 #endif
 
