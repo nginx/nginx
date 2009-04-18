@@ -1421,12 +1421,20 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
         return NGX_OK;
     }
 
+    if (shm_zone->shm.exists) {
+        shm_zone->data = data;
+        return NGX_OK;
+    }
+
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
     cache = ngx_slab_alloc(shpool, sizeof(ngx_ssl_session_cache_t));
     if (cache == NULL) {
         return NGX_ERROR;
     }
+
+    shpool->data = cache;
+    shm_zone->data = cache;
 
     ngx_rbtree_init(&cache->session_rbtree, &cache->sentinel,
                     ngx_ssl_session_rbtree_insert_value);
@@ -1442,8 +1450,6 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_sprintf(shpool->log_ctx, " in SSL session shared cache \"%V\"%Z",
                 &shm_zone->shm.name);
-
-    shm_zone->data = cache;
 
     return NGX_OK;
 }

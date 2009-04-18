@@ -10,30 +10,39 @@
 
 
 typedef struct {
-    u_char              color;
-    u_char              dummy;
-    u_short             len;
-    ngx_queue_t         queue;
-    ngx_msec_t          last;
-    ngx_uint_t          excess; /* integer value, 1 corresponds to 0.001 r/s */
-    u_char              data[1];
+    u_char                       color;
+    u_char                       dummy;
+    u_short                      len;
+    ngx_queue_t                  queue;
+    ngx_msec_t                   last;
+    /* integer value, 1 corresponds to 0.001 r/s */
+    ngx_uint_t                   excess;
+    u_char                       data[1];
 } ngx_http_limit_req_node_t;
 
 
 typedef struct {
-    ngx_rbtree_t       *rbtree;
-    ngx_queue_t        *queue;
-    ngx_slab_pool_t    *shpool;
-    ngx_uint_t          rate;   /* integer value, 1 corresponds to 0.001 r/s */
-    ngx_int_t           index;
-    ngx_str_t           var;
+    ngx_rbtree_t                  rbtree;
+    ngx_rbtree_node_t             sentinel;
+    ngx_queue_t                   queue;
+} ngx_http_limit_req_shctx_t;
+
+
+typedef struct {
+    ngx_http_limit_req_shctx_t  *sh;
+    ngx_slab_pool_t             *shpool;
+    /* integer value, 1 corresponds to 0.001 r/s */
+    ngx_uint_t                   rate;
+    ngx_int_t                    index;
+    ngx_str_t                    var;
 } ngx_http_limit_req_ctx_t;
 
 
 typedef struct {
-    ngx_shm_zone_t     *shm_zone;
-    ngx_uint_t          burst;  /* integer value, 1 corresponds to 0.001 r/s */
-    ngx_uint_t          nodelay;/* unsigned  nodelay:1 */
+    ngx_shm_zone_t              *shm_zone;
+    /* integer value, 1 corresponds to 0.001 r/s */
+    ngx_uint_t                   burst;
+    ngx_uint_t                   nodelay;/* unsigned  nodelay:1 */
 } ngx_http_limit_req_conf_t;
 
 
@@ -163,7 +172,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     if (lr) {
         ngx_queue_remove(&lr->queue);
 
-        ngx_queue_insert_head(ctx->queue, &lr->queue);
+        ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
         excess = lr->excess;
 
@@ -239,9 +248,9 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     lr->excess = 0;
     ngx_memcpy(lr->data, vv->data, len);
 
-    ngx_rbtree_insert(ctx->rbtree, node);
+    ngx_rbtree_insert(&ctx->sh->rbtree, node);
 
-    ngx_queue_insert_head(ctx->queue, &lr->queue);
+    ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
 done:
 
@@ -324,8 +333,8 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
 
     ctx = lrcf->shm_zone->data;
 
-    node = ctx->rbtree->root;
-    sentinel = ctx->rbtree->sentinel;
+    node = ctx->sh->rbtree.root;
+    sentinel = ctx->sh->rbtree.sentinel;
 
     while (node != sentinel) {
 
@@ -411,11 +420,11 @@ ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx, ngx_uint_t n)
 
     while (n < 3) {
 
-        if (ngx_queue_empty(ctx->queue)) {
+        if (ngx_queue_empty(&ctx->sh->queue)) {
             return;
         }
 
-        q = ngx_queue_last(ctx->queue);
+        q = ngx_queue_last(&ctx->sh->queue);
 
         lr = ngx_queue_data(q, ngx_http_limit_req_node_t, queue);
 
@@ -440,7 +449,7 @@ ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx, ngx_uint_t n)
         node = (ngx_rbtree_node_t *)
                    ((u_char *) lr - offsetof(ngx_rbtree_node_t, color));
 
-        ngx_rbtree_delete(ctx->rbtree, node);
+        ngx_rbtree_delete(&ctx->sh->rbtree, node);
 
         ngx_slab_free_locked(ctx->shpool, node);
     }
@@ -453,7 +462,6 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     ngx_http_limit_req_ctx_t  *octx = data;
 
     size_t                     len;
-    ngx_rbtree_node_t         *sentinel;
     ngx_http_limit_req_ctx_t  *ctx;
 
     ctx = shm_zone->data;
@@ -467,8 +475,7 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
             return NGX_ERROR;
         }
 
-        ctx->rbtree = octx->rbtree;
-        ctx->queue = octx->queue;
+        ctx->sh = octx->sh;
         ctx->shpool = octx->shpool;
 
         return NGX_OK;
@@ -476,25 +483,23 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     ctx->shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
-    ctx->rbtree = ngx_slab_alloc(ctx->shpool, sizeof(ngx_rbtree_t));
-    if (ctx->rbtree == NULL) {
+    if (shm_zone->shm.exists) {
+        ctx->sh = ctx->shpool->data;
+
+        return NGX_OK;
+    }
+
+    ctx->sh = ngx_slab_alloc(ctx->shpool, sizeof(ngx_http_limit_req_shctx_t));
+    if (ctx->sh == NULL) {
         return NGX_ERROR;
     }
 
-    sentinel = ngx_slab_alloc(ctx->shpool, sizeof(ngx_rbtree_node_t));
-    if (sentinel == NULL) {
-        return NGX_ERROR;
-    }
+    ctx->shpool->data = ctx->sh;
 
-    ngx_rbtree_init(ctx->rbtree, sentinel,
+    ngx_rbtree_init(&ctx->sh->rbtree, &ctx->sh->sentinel,
                     ngx_http_limit_req_rbtree_insert_value);
 
-    ctx->queue = ngx_slab_alloc(ctx->shpool, sizeof(ngx_queue_t));
-    if (ctx->queue == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_queue_init(ctx->queue);
+    ngx_queue_init(&ctx->sh->queue);
 
     len = sizeof(" in limit_req zone \"\"") + shm_zone->shm.name.len;
 

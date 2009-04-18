@@ -11,31 +11,50 @@
 ngx_int_t
 ngx_shm_alloc(ngx_shm_t *shm)
 {
+    u_char  *name;
+
+    name = ngx_alloc(shm->name.len + 2 + sizeof(NGX_INT32_LEN), shm->log);
+    if (name == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_sprintf(name, "%V_%s%Z", &shm->name, ngx_unique); 
+
+    ngx_set_errno(0);
+
     shm->handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
-                                    0, shm->size, (char *) shm->name.data);
+                                    0, shm->size, (char *) name);
 
     if (shm->handle == NULL) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "CreateFileMapping(%uz, %s) failed",
                       shm->size, shm->name.data);
-        return NGX_ERROR;
+        goto failed;
+    }
+
+    if (ngx_errno == ERROR_ALREADY_EXISTS) {
+        shm->exists = 1;
     }
 
     shm->addr = MapViewOfFile(shm->handle, FILE_MAP_WRITE, 0, 0, 0);
 
-    if (shm->addr == NULL) {
-        ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                      "MapViewOfFile(%uz) failed", shm->size);
-
-        if (CloseHandle(shm->handle) == 0) {
-            ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                          "CloseHandle() failed");
-        }
-
-        return NGX_ERROR;
+    if (shm->addr != NULL) {
+        return NGX_OK;
     }
 
-    return NGX_OK;
+    ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
+                  "MapViewOfFile(%uz) failed", shm->size);
+
+    if (CloseHandle(shm->handle) == 0) {
+        ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
+                      "CloseHandle() failed");
+    }
+
+failed:
+
+    ngx_free(name);
+
+    return NGX_ERROR;
 }
 
 

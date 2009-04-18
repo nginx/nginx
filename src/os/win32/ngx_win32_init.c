@@ -17,6 +17,7 @@ ngx_uint_t  ngx_inherited_nonblocking = 1;
 ngx_uint_t  ngx_tcp_nodelay_and_tcp_nopush;
 
 ngx_fd_t    ngx_stderr_fileno;
+char        ngx_unique[NGX_INT32_LEN + 1];
 
 
 ngx_os_io_t ngx_os_io = {
@@ -60,6 +61,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     DWORD        bytes;
     SOCKET       s;
     WSADATA      wsd;
+    ngx_err_t    err;
     ngx_uint_t   n;
     SYSTEM_INFO  si;
 
@@ -203,6 +205,23 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
     if (ngx_close_socket(s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
+    }
+
+    if (GetEnvironmentVariable("nginx_unique", ngx_unique, NGX_INT32_LEN + 1)
+        != 0)
+    {
+        ngx_process = NGX_PROCESS_WORKER;
+
+    } else {
+        err = ngx_errno;
+
+        if (err != ERROR_ENVVAR_NOT_FOUND) {
+            ngx_log_error(NGX_LOG_EMERG, log, err,
+                          "GetEnvironmentVariable(\"nginx_unique\") failed");
+            return NGX_ERROR;
+        }
+
+        ngx_sprintf((u_char *) ngx_unique, "%P%Z", ngx_pid);
     }
 
     return NGX_OK;

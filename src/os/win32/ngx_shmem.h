@@ -13,11 +13,12 @@
 
 
 typedef struct {
-    u_char     *addr;
-    size_t      size;
-    ngx_str_t   name;
-    HANDLE      handle;
-    ngx_log_t  *log;
+    u_char      *addr;
+    size_t       size;
+    ngx_str_t    name;
+    HANDLE       handle;
+    ngx_log_t   *log;
+    ngx_uint_t   exists;   /* unsigned  exists:1;  */
 } ngx_shm_t;
 
 

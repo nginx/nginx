@@ -506,6 +506,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 #endif
 
     shm.size = size;
+    shm.name.len = sizeof("nginx_shared_zone");
+    shm.name.data = (u_char *) "nginx_shared_zone";
     shm.log = cycle->log;
 
     if (ngx_shm_alloc(&shm) != NGX_OK) {
@@ -535,7 +537,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 #endif
 
-    *ngx_connection_counter = 1;
+    (void) ngx_atomic_cmp_set(ngx_connection_counter, 0, 1);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "counter: %p, %d",

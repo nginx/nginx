@@ -94,15 +94,20 @@ typedef struct {
 } ngx_http_file_cache_header_t;
 
 
+typedef struct {
+    ngx_rbtree_t                     rbtree;
+    ngx_rbtree_node_t                sentinel;
+    ngx_queue_t                      queue;
+    ngx_atomic_t                     cold;
+    off_t                            size;
+} ngx_http_file_cache_sh_t;
+
+
 struct ngx_http_file_cache_s {
-    ngx_rbtree_t                    *rbtree;
-    ngx_queue_t                     *queue;
+    ngx_http_file_cache_sh_t        *sh;
     ngx_slab_pool_t                 *shpool;
 
     ngx_path_t                      *path;
-
-    ngx_atomic_t                    *cold;
-    off_t                           *size;
 
     off_t                            max_size;
     size_t                           bsize;

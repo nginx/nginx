@@ -339,10 +339,18 @@ ngx_http_limit_zone_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
+    if (shm_zone->shm.exists) {
+        ctx->rbtree = shpool->data;
+
+        return NGX_OK;
+    }
+
     ctx->rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
     if (ctx->rbtree == NULL) {
         return NGX_ERROR;
     }
+
+    shpool->data = ctx->rbtree;
 
     sentinel = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_node_t));
     if (sentinel == NULL) {

@@ -9,9 +9,11 @@
 #include <ngx_event.h>
 
 
-static ngx_int_t ngx_test_lockfile(u_char *file, ngx_log_t *log);
 static void ngx_destroy_cycle_pools(ngx_conf_t *conf);
 static ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2);
+static ngx_int_t ngx_init_zone_pool(ngx_cycle_t *cycle,
+    ngx_shm_zone_t *shm_zone);
+static ngx_int_t ngx_test_lockfile(u_char *file, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 
 
@@ -44,7 +46,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void                *rv;
     char               **senv, **env;
-    u_char              *lock_file;
     ngx_uint_t           i, n;
     ngx_log_t           *log;
     ngx_time_t          *tp;
@@ -52,7 +53,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_pool_t          *pool;
     ngx_cycle_t         *cycle, **old;
     ngx_shm_zone_t      *shm_zone, *oshm_zone;
-    ngx_slab_pool_t     *shpool;
     ngx_list_part_t     *part, *opart;
     ngx_open_file_t     *file;
     ngx_listening_t     *ls, *nls;
@@ -470,38 +470,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-        shpool = (ngx_slab_pool_t *) shm_zone[i].shm.addr;
+        if (!shm_zone[i].shm.exists) {
 
-        shpool->end = shm_zone[i].shm.addr + shm_zone[i].shm.size;
-        shpool->min_shift = 3;
-
-#if (NGX_HAVE_ATOMIC_OPS)
-
-        lock_file = NULL;
-
-#else
-
-        lock_file = ngx_pnalloc(cycle->pool,
-                               cycle->lock_file.len + shm_zone[i].shm.name.len);
-
-        if (lock_file == NULL) {
-            goto failed;
+	    if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
+		goto failed;
+	    }
         }
-
-        (void) ngx_cpystrn(ngx_cpymem(lock_file, cycle->lock_file.data,
-                                      cycle->lock_file.len),
-                           shm_zone[i].shm.name.data,
-                           shm_zone[i].shm.name.len + 1);
-
-#endif
-
-        if (ngx_shmtx_create(&shpool->mutex, (void *) &shpool->lock, lock_file)
-            != NGX_OK)
-        {
-            goto failed;
-        }
-
-        ngx_slab_init(shpool);
 
         if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
             goto failed;
@@ -919,6 +893,42 @@ ngx_cmp_sockaddr(struct sockaddr *sa1, struct sockaddr *sa2)
 }
 
 
+static ngx_int_t
+ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
+{
+    u_char           *file;
+    ngx_slab_pool_t  *sp;
+
+    sp = (ngx_slab_pool_t *) zn->shm.addr;
+
+    sp->end = zn->shm.addr + zn->shm.size;
+    sp->min_shift = 3;
+
+#if (NGX_HAVE_ATOMIC_OPS)
+
+    file = NULL;
+
+#else
+
+    file = ngx_pnalloc(cycle->pool, cycle->lock_file.len + zn->shm.name.len);
+    if (file == NULL) {
+	return NGX_ERROR;
+    }
+
+    (void) ngx_sprintf(file, "%V%V%Z", &cycle->lock_file, &zn->shm.name);
+
+#endif
+
+    if (ngx_shmtx_create(&sp->mutex, (void *) &sp->lock, file) != NGX_OK) {
+	return NGX_ERROR;
+    }
+
+    ngx_slab_init(sp);
+
+    return NGX_OK;
+}
+
+
 #if !(NGX_WIN32)
 
 ngx_int_t
@@ -1216,6 +1226,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
     shm_zone->shm.log = cf->cycle->log;
     shm_zone->shm.size = size;
     shm_zone->shm.name = *name;
+    shm_zone->shm.exists = 0;
     shm_zone->init = NULL;
     shm_zone->tag = tag;
 
