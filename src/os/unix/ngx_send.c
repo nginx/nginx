@@ -40,6 +40,8 @@ ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
                 wev->ready = 0;
             }
 
+            c->sent += n;
+
             return n;
         }
 
