@@ -175,7 +175,6 @@ ngx_http_perl_xs_init(pTHX)
 static ngx_int_t
 ngx_http_perl_handler(ngx_http_request_t *r)
 {
-    /* TODO: Win32 */
     if (r->zero_in_uri) {
         return NGX_HTTP_NOT_FOUND;
     }
