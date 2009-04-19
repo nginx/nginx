@@ -97,6 +97,12 @@ if [ $NGX_CC_NAME != msvc8 ]; then
 fi
 
 
+# MSVC 2005 supports C99 variadic macros
+if [ $NGX_CC_NAME = msvc8 ]; then
+   have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
+fi
+
+
 # precompiled headers
 CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
 NGX_PCH="$NGX_OBJS/ngx_config.pch"
