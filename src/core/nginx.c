@@ -191,8 +191,6 @@ static char **ngx_os_environ;
 int ngx_cdecl
 main(int argc, char *const *argv)
 {
-    char             *p;
-    ssize_t           n;
     ngx_int_t         i;
     ngx_log_t        *log;
     ngx_cycle_t      *cycle, init_cycle;
@@ -243,29 +241,14 @@ main(int argc, char *const *argv)
 
     if (ngx_show_version) {
 
-        p = "nginx version: " NGINX_VER CRLF;
-        n = sizeof("nginx version: " NGINX_VER CRLF) - 1;
-
-        if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
-            return 1;
-        }
+        ngx_log_stderr("nginx version: " NGINX_VER);
 
         if (ngx_show_configure) {
 #ifdef NGX_COMPILER
-            p = "built by " NGX_COMPILER CRLF;
-            n = sizeof("built by " NGX_COMPILER CRLF) - 1;
-
-            if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
-                return 1;
-            }
+            ngx_log_stderr("built by " NGX_COMPILER);
 #endif
 
-            p = "configure arguments: " NGX_CONFIGURE CRLF;
-            n = sizeof("configure arguments :" NGX_CONFIGURE CRLF) - 1;
-
-            if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
-                return 1;
-            }
+            ngx_log_stderr("configure arguments: " NGX_CONFIGURE);
         }
 
         if (!ngx_test_config) {
@@ -301,18 +284,16 @@ main(int argc, char *const *argv)
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
-            ngx_log_error(NGX_LOG_EMERG, log, 0,
-                          "the configuration file %s test failed",
-                          init_cycle.conf_file.data);
+            ngx_log_stderr("the configuration file %s test failed",
+                           init_cycle.conf_file.data);
         }
 
         return 1;
     }
 
     if (ngx_test_config) {
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "the configuration file %s was tested successfully",
-                      cycle->conf_file.data);
+        ngx_log_stderr("the configuration file %s was tested successfully",
+                       cycle->conf_file.data);
         return 0;
     }
 

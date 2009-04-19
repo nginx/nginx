@@ -190,6 +190,27 @@ ngx_log_abort(ngx_err_t err, const char *text, void *param)
 }
 
 
+void ngx_cdecl
+ngx_log_stderr(const char *fmt, ...)
+{
+    u_char   *p;
+    va_list   args;
+    u_char    errstr[NGX_MAX_ERROR_STR];
+
+    va_start(args, fmt);
+    p = ngx_vsnprintf(errstr, NGX_MAX_ERROR_STR, fmt, args);
+    va_end(args);
+
+    if (p > errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE) {
+        p = errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE;
+    }
+
+    ngx_linefeed(p);
+
+    (void) ngx_write_fd(ngx_stderr_fileno, errstr, p - errstr);
+}
+
+
 ngx_log_t *
 ngx_log_init(void)
 {

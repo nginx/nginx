@@ -270,9 +270,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (ngx_test_config) {
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "the configuration file %s syntax is ok",
-                      cycle->conf_file.data);
+        ngx_log_stderr("the configuration file %s syntax is ok",
+                       cycle->conf_file.data);
     }
 
 
