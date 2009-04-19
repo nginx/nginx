@@ -60,11 +60,23 @@ ngx_libc_gmtime(time_t s, struct tm *tm)
 ngx_int_t
 ngx_gettimezone(void)
 {
+    u_long                 n;
     TIME_ZONE_INFORMATION  tz;
 
-    if (GetTimeZoneInformation(&tz) != TIME_ZONE_ID_INVALID) {
-        return -tz.Bias;
-    }
+    n = GetTimeZoneInformation(&tz);
 
-    return 0;
+    switch (n) {
+
+    case TIME_ZONE_ID_UNKNOWN:
+        return -tz.Bias;
+
+    case TIME_ZONE_ID_STANDARD:
+        return -(tz.Bias + tz.StandardBias);
+
+    case TIME_ZONE_ID_DAYLIGHT:
+        return -(tz.Bias + tz.DaylightBias);
+
+    default: /* TIME_ZONE_ID_INVALID */
+        return 0;
+    }
 }
