@@ -46,7 +46,7 @@ NGX_USE_PCH="-Hu -H=$NGX_OBJS/ngx_config.csm"
 
 
 # Win32 GUI mode application
-LINK="\$(CC) -laa"
+#LINK="\$(CC) -laa"
 
 
 # the resource file

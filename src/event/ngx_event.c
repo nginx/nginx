@@ -442,7 +442,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     ecf = (*cf)[ngx_event_core_module.ctx_index];
 
-    if (!ngx_test_config) {
+    if (!ngx_test_config && ngx_process <= NGX_PROCESS_MASTER) {
         ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                       "using the \"%s\" event method", ecf->name);
     }

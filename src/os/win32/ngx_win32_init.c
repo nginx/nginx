@@ -24,7 +24,7 @@ ngx_os_io_t ngx_os_io = {
     ngx_wsarecv,
     ngx_wsarecv_chain,
     ngx_udp_wsarecv,
-    NULL,
+    ngx_wsasend,
     ngx_wsasend_chain,
     0
 };
@@ -56,7 +56,8 @@ static GUID cx_guid = WSAID_CONNECTEX;
 static GUID dx_guid = WSAID_DISCONNECTEX;
 
 
-ngx_int_t ngx_os_init(ngx_log_t *log)
+ngx_int_t
+ngx_os_init(ngx_log_t *log)
 {
     DWORD        bytes;
     SOCKET       s;
@@ -207,7 +208,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
                       ngx_close_socket_n " failed");
     }
 
-    if (GetEnvironmentVariable("nginx_unique", ngx_unique, NGX_INT32_LEN + 1)
+    if (GetEnvironmentVariable("ngx_unique", ngx_unique, NGX_INT32_LEN + 1)
         != 0)
     {
         ngx_process = NGX_PROCESS_WORKER;
@@ -217,7 +218,7 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 
         if (err != ERROR_ENVVAR_NOT_FOUND) {
             ngx_log_error(NGX_LOG_EMERG, log, err,
-                          "GetEnvironmentVariable(\"nginx_unique\") failed");
+                          "GetEnvironmentVariable(\"ngx_unique\") failed");
             return NGX_ERROR;
         }
 
@@ -228,7 +229,8 @@ ngx_int_t ngx_os_init(ngx_log_t *log)
 }
 
 
-void ngx_os_status(ngx_log_t *log)
+void
+ngx_os_status(ngx_log_t *log)
 {
     ngx_osviex_stub_t  *osviex_stub;
 

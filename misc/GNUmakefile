@@ -1,8 +1,13 @@
 
-VER=	$(shell grep 'define NGINX_VERSION' src/core/nginx.h		\
-		| sed -e 's/^.*\"\(.*\)\"/\1/')
-NGINX=	nginx-$(VER)
-TEMP=	tmp
+VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
+			| sed -e 's/^.*\"\(.*\)\"/\1/')
+NGINX =		nginx-$(VER)
+TEMP =		tmp
+
+OBJS =		objs.msvc8
+OPENSSL =	openssl-0.9.8k
+ZLIB =		zlib-1.2.3
+PCRE =		pcre-4.4
 
 
 release:
@@ -64,7 +69,45 @@ snapshot:
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
 
 
-icons:	src/os/win32/nginx.ico src/os/win32/nginx_tray.ico
+zip:
+	rm -rf $(TEMP)
+	rm -f $(NGINX).zip
+
+	mkdir -p $(TEMP)/$(NGINX)/docs
+	mkdir -p $(TEMP)/$(NGINX)/logs
+	mkdir -p $(TEMP)/$(NGINX)/temp
+
+	svn export -rHEAD conf $(TEMP)/$(NGINX)/conf/
+	perl -pi -e 's/$$/\r/' $(TEMP)/$(NGINX)/conf/*
+
+	svn export -rHEAD contrib $(TEMP)/$(NGINX)/contrib/
+	svn export -rHEAD docs/html $(TEMP)/$(NGINX)/html/
+
+	$(MAKE) -f docs/GNUmakefile changes
+
+	cp -p $(OBJS)/nginx.exe $(TEMP)/$(NGINX)
+
+	cp -p docs/text/LICENSE $(TEMP)/$(NGINX)/docs/
+	cp -p docs/text/README $(TEMP)/$(NGINX)/docs/
+	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
+
+	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE				\
+		$(TEMP)/$(NGINX)/docs/OpenSSL.LICENSE
+
+	cp -p $(OBJS)/lib/$(PCRE)/COPYING				\
+		$(TEMP)/$(NGINX)/docs/PCRE.COPYING
+
+	perl -ne 'print if /^ \(C\) 1995-2004/ .. /^  jloup\@gzip.org/'	\
+		$(OBJS)/lib/$(ZLIB)/README				\
+		> $(TEMP)/$(NGINX)/docs/zlib.LICENSE
+
+	touch -r $(OBJS)/lib/$(ZLIB)/README				\
+		$(TEMP)/$(NGINX)/docs/zlib.LICENSE
+
+	cd $(TEMP) && zip -r ../$(NGINX).zip $(NGINX)
+
+
+icons:	src/os/win32/nginx.ico
 
 # 32x32 and 16x16 icons
 
@@ -82,15 +125,3 @@ src/os/win32/nginx.ico:	src/os/win32/nginx_icon32.xpm			\
 	ppmtowinicon -output src/os/win32/nginx.ico -andpgms		\
 		$(TEMP)/nginx32.ppm $(TEMP)/nginx32.pbm			\
 		$(TEMP)/nginx16.ppm $(TEMP)/nginx16.pbm
-
-# tray icon
-
-src/os/win32/nginx_tray.ico:	src/os/win32/nginx_tray.xpm
-
-	test -d $(TEMP) || mkdir $(TEMP)
-
-	xpmtoppm --alphaout=$(TEMP)/nginx_tray.pbm			\
-		src/os/win32/nginx_tray.xpm > $(TEMP)/nginx_tray.ppm
-
-	ppmtowinicon -output src/os/win32/nginx_tray.ico -andpgms	\
-		$(TEMP)/nginx_tray.ppm $(TEMP)/nginx_tray.pbm

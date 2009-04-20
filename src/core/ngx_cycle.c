@@ -295,8 +295,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
-#if !(NGX_WIN32)
-
     if (ngx_test_config) {
 
         if (ngx_create_pidfile(&ccf->pid, log) != NGX_OK) {
@@ -324,8 +322,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             ngx_delete_pidfile(old_cycle);
         }
     }
-
-#endif
 
 
     if (ngx_test_lockfile(cycle->lock_file.data, log) != NGX_OK) {
@@ -928,8 +924,6 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 }
 
 
-#if !(NGX_WIN32)
-
 ngx_int_t
 ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 {
@@ -937,6 +931,10 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
     ngx_uint_t  create;
     ngx_file_t  file;
     u_char      pid[NGX_INT64_LEN + 2];
+
+    if (ngx_process > NGX_PROCESS_MASTER) {
+        return NGX_OK;
+    }
 
     ngx_memzero(&file, sizeof(ngx_file_t));
 
@@ -986,8 +984,6 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
                       ngx_delete_file_n " \"%s\" failed", name);
     }
 }
-
-#endif
 
 
 static ngx_int_t

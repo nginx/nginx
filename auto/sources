@@ -215,8 +215,6 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_socket.h \
             src/os/win32/ngx_os.h \
             src/os/win32/ngx_user.h \
-            src/os/win32/ngx_gui.h \
-            src/os/win32/ngx_gui_resources.h \
             src/os/win32/ngx_process_cycle.h"
 
 WIN32_CONFIG=src/os/win32/ngx_win32_config.h
@@ -233,14 +231,15 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_wsarecv.c \
             src/os/win32/ngx_wsarecv_chain.c \
             src/os/win32/ngx_udp_wsarecv.c \
+            src/os/win32/ngx_wsasend.c \
             src/os/win32/ngx_wsasend_chain.c \
             src/os/win32/ngx_win32_init.c \
             src/os/win32/ngx_user.c \
-            src/os/win32/ngx_gui.c \
+            src/os/win32/ngx_event_log.c \
             src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
 
-NGX_WIN32_ICONS="src/os/win32/nginx.ico src/os/win32/nginx_tray.ico"
+NGX_WIN32_ICONS="src/os/win32/nginx.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"
 
 

@@ -10,7 +10,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_gui.h>
 
 #define NGX_IO_SENDFILE    1
 
@@ -40,10 +39,14 @@ ssize_t ngx_udp_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_udp_overlapped_wsarecv(ngx_connection_t *c, u_char *buf,
     size_t size);
 ssize_t ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain);
+ssize_t ngx_wsasend(ngx_connection_t *c, u_char *buf, size_t size);
+ssize_t ngx_overlapped_wsasend(ngx_connection_t *c, u_char *buf, size_t size);
 ngx_chain_t *ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit);
 ngx_chain_t *ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit);
+
+void ngx_cdecl ngx_event_log(ngx_err_t err, const char *fmt, ...);
 
 
 extern ngx_os_io_t  ngx_os_io;
@@ -57,6 +60,4 @@ extern ngx_fd_t     ngx_stderr_fileno;
 extern char         ngx_unique[];
 
 
-
 #endif /* _NGX_OS_H_INCLUDED_ */
-
