@@ -9,6 +9,86 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.52" date="20.04.2009">
+
+<change type="feature">
+<para lang="ru">
+первая бинарная версия под Windows.
+</para>
+<para lang="en">
+the first native Windows binary release.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+корректная обработка метода HEAD при кэшировании.
+</para>
+<para lang="en">
+in processing HEAD method while caching.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+корректная обработка строк "If-Modified-Since", "If-Range" и им подобных
+в заголовке запроса клиента при кэшировании.
+</para>
+<para lang="en">
+in processing the "If-Modified-Since", "If-Range", etc. client request
+header lines while caching.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь строки "Set-Cookie" и "P3P" скрываются в заголовке ответа
+для закэшированных ответов.
+</para>
+<para lang="en">
+now the "Set-Cookie" and "P3P" header lines are hidden in cacheable responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_perl_module и perl
+поддерживал потоки, то при выходе основного процесса
+могла выдаваться ошибка "panic: MUTEX_LOCK".
+</para>
+<para lang="en">
+if nginx was built with the ngx_http_perl_module and with a perl which
+supports threads, then during a master process exit
+the message "panic: MUTEX_LOCK" might be issued.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http-cache;
+ошибка появилась в 0.7.48.
+</para>
+<para lang="en">
+nginx could not be built --without-http-cache;
+the bug had appeared in 0.7.48.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.7.42.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.7.42.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.51" date="12.04.2009">
 
 <change type="feature">
