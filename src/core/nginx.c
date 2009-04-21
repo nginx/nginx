@@ -183,6 +183,7 @@ ngx_module_t  ngx_core_module = {
 
 ngx_uint_t          ngx_max_module;
 
+static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
 static u_char      *ngx_conf_file;
@@ -209,6 +210,29 @@ main(int argc, char *const *argv)
 
     if (ngx_show_version) {
         ngx_log_stderr("nginx version: " NGINX_VER);
+
+        if (ngx_show_help) {
+            ngx_log_stderr(
+                "Usage: nginx [-?hvVt]"
+#if (NGX_WIN32)
+                            " [-s signal]"
+#endif
+                            " [-c filename] [-g directives]" CRLF CRLF
+                "Options:" CRLF
+                "  -?,-h         : this help" CRLF
+                "  -v            : show version and exit" CRLF
+                "  -V            : show version and configure options then exit"
+                                   CRLF
+                "  -t            : test configuration and exit" CRLF
+#if (NGX_WIN32)
+                "  -s signal     : send signal to a master process" CRLF
+#endif
+                "  -c filename   : set configuration file (default: "
+                                   NGX_CONF_PATH ")" CRLF
+                "  -g directives : set global directives out of configuration "
+                                   "file" CRLF
+                );
+        }
 
         if (ngx_show_configure) {
 #ifdef NGX_COMPILER
@@ -613,6 +637,12 @@ ngx_get_options(int argc, char *const *argv)
         while (*p) {
 
             switch (*p++) {
+
+            case '?':
+            case 'h':
+                ngx_show_version = 1;
+                ngx_show_help = 1;
+                break;
 
             case 'v':
                 ngx_show_version = 1;
