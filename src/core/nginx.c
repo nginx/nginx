@@ -188,9 +188,7 @@ static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
 static u_char      *ngx_conf_file;
 static u_char      *ngx_conf_params;
-#if (NGX_WIN32)
 static char        *ngx_signal;
-#endif
 
 
 static char **ngx_os_environ;
@@ -213,20 +211,16 @@ main(int argc, char *const *argv)
 
         if (ngx_show_help) {
             ngx_log_stderr(
-                "Usage: nginx [-?hvVt]"
-#if (NGX_WIN32)
-                            " [-s signal]"
-#endif
-                            " [-c filename] [-g directives]" CRLF CRLF
+                "Usage: nginx [-?hvVt] [-s signal] [-c filename] "
+                             "[-g directives]" CRLF CRLF
                 "Options:" CRLF
                 "  -?,-h         : this help" CRLF
                 "  -v            : show version and exit" CRLF
                 "  -V            : show version and configure options then exit"
                                    CRLF
                 "  -t            : test configuration and exit" CRLF
-#if (NGX_WIN32)
-                "  -s signal     : send signal to a master process" CRLF
-#endif
+                "  -s signal     : send signal to a master process: "
+                                   "stop, quit, reopen, reload" CRLF
                 "  -c filename   : set configuration file (default: "
                                    NGX_CONF_PATH ")" CRLF
                 "  -g directives : set global directives out of configuration "
@@ -337,13 +331,11 @@ main(int argc, char *const *argv)
         ngx_process = NGX_PROCESS_MASTER;
     }
 
-#if (NGX_WIN32)
-
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
 
-#else
+#if !(NGX_WIN32)
 
     if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
@@ -685,7 +677,6 @@ ngx_get_options(int argc, char *const *argv)
                 ngx_log_stderr("the option \"-g\" requires parameter");
                 return NGX_ERROR;
 
-#if (NGX_WIN32)
             case 's':
                 if (*p) {
                     ngx_signal = (char *) p;
@@ -709,7 +700,6 @@ ngx_get_options(int argc, char *const *argv)
 
                 ngx_log_stderr("invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
-#endif
 
             default:
                 ngx_log_stderr("invalid option: \"%c\"", *(p - 1));

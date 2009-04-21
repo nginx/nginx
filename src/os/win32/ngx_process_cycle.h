@@ -20,7 +20,6 @@
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
 void ngx_single_process_cycle(ngx_cycle_t *cycle);
-ngx_int_t ngx_signal_process(ngx_cycle_t *cycle, char *sig);
 void ngx_close_handle(HANDLE h);
 
 

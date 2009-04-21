@@ -1006,50 +1006,11 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
 
 ngx_int_t
-ngx_signal_process(ngx_cycle_t *cycle, char *sig)
+ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_int_t pid)
 {
-    size_t            n;
-    HANDLE            ev;
-    ngx_int_t         rc, pid;
-    ngx_file_t        file;
-    ngx_core_conf_t  *ccf;
-    u_char            buf[NGX_INT64_LEN + 2];
-    char              evn[NGX_PROCESS_SYNC_NAME];
-
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "signal process started");
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    file.name = ccf->pid;
-    file.log = cycle->log;
-
-    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
-                            NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
-
-    if (file.fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", file.name.data);
-        return 1;
-    }
-
-    rc = 1;
-
-    n = ngx_read_file(&file, buf, NGX_INT64_LEN + 2, 0);
-
-    if (n == NGX_ERROR) {
-        goto failed;
-    }
-
-    while (n-- && (buf[n] == CR || buf[n] == LF)) { /* void */ }
-
-    pid = ngx_atoi(buf, ++n);
-
-    if (pid == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
-                      "invalid PID number \"%*s\" in \"%s\"",
-                      n, buf, file.name.data);
-        goto failed;
-    }
+    HANDLE     ev;
+    ngx_int_t  rc;
+    char       evn[NGX_PROCESS_SYNC_NAME];
 
     ngx_sprintf((u_char *) evn, "ngx_%s_%ul%Z", sig, pid);
 
@@ -1057,24 +1018,19 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     if (ev == NULL) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, ngx_errno,
                       "OpenEvent(\"%s\") failed", evn);
-        goto failed;
+        return 1;
     }
 
     if (SetEvent(ev) == 0) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "SetEvent(\"%s\") failed", evn);
+        rc = 1;
+
     } else {
         rc = 0;
     }
 
     ngx_close_handle(ev);
-
-failed:
-
-    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", file.name.data);
-    }
 
     return rc;
 }
