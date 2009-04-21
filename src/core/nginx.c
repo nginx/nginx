@@ -185,8 +185,8 @@ ngx_uint_t          ngx_max_module;
 
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
-static char        *ngx_conf_file;
-static char        *ngx_conf_params;
+static u_char      *ngx_conf_file;
+static u_char      *ngx_conf_params;
 #if (NGX_WIN32)
 static char        *ngx_signal;
 #endif
@@ -598,72 +598,98 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 static ngx_int_t
 ngx_get_options(int argc, char *const *argv)
 {
-    ngx_int_t  i;
+    u_char     *p;
+    ngx_int_t   i;
 
     for (i = 1; i < argc; i++) {
-        if (argv[i][0] != '-') {
+
+        p = (u_char *) argv[i];
+
+        if (*p++ != '-') {
             ngx_log_stderr("invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
 
-        switch (argv[i][1]) {
+        while (*p) {
 
-        case 'v':
-            ngx_show_version = 1;
-            break;
+            switch (*p++) {
 
-        case 'V':
-            ngx_show_version = 1;
-            ngx_show_configure = 1;
-            break;
-
-        case 't':
-            ngx_test_config = 1;
-            break;
-
-        case 'c':
-            if (argv[++i]) {
-                ngx_conf_file = argv[i];
+            case 'v':
+                ngx_show_version = 1;
                 break;
-            }
 
-            ngx_log_stderr("the option \"-c\" requires file name");
-            return NGX_ERROR;
-
-        case 'g':
-            if (argv[++i]) {
-                ngx_conf_params = argv[i];
+            case 'V':
+                ngx_show_version = 1;
+                ngx_show_configure = 1;
                 break;
-            }
 
-            ngx_log_stderr("the option \"-g\" requires parameter");
-            return NGX_ERROR;
+            case 't':
+                ngx_test_config = 1;
+                break;
+
+            case 'c':
+                if (*p) {
+                    ngx_conf_file = p;
+                    goto next;
+                }
+
+                if (argv[++i]) {
+                    ngx_conf_file = (u_char *) argv[i];
+                    goto next;
+                }
+
+                ngx_log_stderr("the option \"-c\" requires file name");
+                return NGX_ERROR;
+
+            case 'g':
+                if (*p) {
+                    ngx_conf_params = p;
+                    goto next;
+                }
+
+                if (argv[++i]) {
+                    ngx_conf_params = (u_char *) argv[i];
+                    goto next;
+                }
+
+                ngx_log_stderr("the option \"-g\" requires parameter");
+                return NGX_ERROR;
 
 #if (NGX_WIN32)
-        case 's':
-            if (argv[++i] == NULL) {
-                ngx_log_stderr("the option \"-s\" requires parameter");
+            case 's':
+                if (*p) {
+                    ngx_signal = (char *) p;
+
+                } else if (argv[++i]) {
+                    ngx_signal = argv[i];
+
+                } else {
+                    ngx_log_stderr("the option \"-s\" requires parameter");
+                    return NGX_ERROR;
+                }
+
+                if (ngx_strcmp(ngx_signal, "stop") == 0
+                    || ngx_strcmp(ngx_signal, "quit") == 0
+                    || ngx_strcmp(ngx_signal, "reopen") == 0
+                    || ngx_strcmp(ngx_signal, "reload") == 0)
+                {
+                    ngx_process = NGX_PROCESS_SIGNALLER;
+                    goto next;
+                }
+
+                ngx_log_stderr("invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
-            }
-
-            if (ngx_strcmp(argv[i], "stop") == 0
-                || ngx_strcmp(argv[i], "quit") == 0
-                || ngx_strcmp(argv[i], "reopen") == 0
-                || ngx_strcmp(argv[i], "reload") == 0)
-            {
-                ngx_process = NGX_PROCESS_SIGNALLER;
-                ngx_signal = argv[i];
-                break;
-            }
-
-            ngx_log_stderr("invalid option: \"-s %s\"", argv[i]);
-            return NGX_ERROR;
 #endif
 
-        default:
-            ngx_log_stderr("invalid option: \"%s\"", argv[i]);
-            return NGX_ERROR;
+            default:
+                ngx_log_stderr("invalid option: \"%c\"", *(p - 1));
+                return NGX_ERROR;
+            }
         }
+
+    next:
+
+        continue;
     }
 
     return NGX_OK;
@@ -717,7 +743,7 @@ ngx_process_options(ngx_cycle_t *cycle)
 {
     if (ngx_conf_file) {
         cycle->conf_file.len = ngx_strlen(ngx_conf_file);
-        cycle->conf_file.data = (u_char *) ngx_conf_file;
+        cycle->conf_file.data = ngx_conf_file;
 
     } else {
         cycle->conf_file.len = sizeof(NGX_CONF_PATH) - 1;
@@ -725,8 +751,8 @@ ngx_process_options(ngx_cycle_t *cycle)
     }
 
     if (ngx_conf_params) {
-        cycle->conf_param.data = (u_char *) ngx_conf_params;
         cycle->conf_param.len = ngx_strlen(ngx_conf_params);
+        cycle->conf_param.data = ngx_conf_params;
     }
 
     if (ngx_test_config) {
