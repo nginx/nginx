@@ -10,7 +10,8 @@
 
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
-static ngx_int_t ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv);
+static ngx_int_t ngx_get_options(int argc, char *const *argv);
+static void ngx_process_options(ngx_cycle_t *cycle);
 static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv);
 static void *ngx_core_module_create_conf(ngx_cycle_t *cycle);
 static char *ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -184,6 +185,8 @@ ngx_uint_t          ngx_max_module;
 
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
+static char        *ngx_conf_file;
+static char        *ngx_conf_params;
 #if (NGX_WIN32)
 static char        *ngx_signal;
 #endif
@@ -199,6 +202,25 @@ main(int argc, char *const *argv)
     ngx_log_t        *log;
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
+
+    if (ngx_get_options(argc, argv) != NGX_OK) {
+        return 1;
+    }
+
+    if (ngx_show_version) {
+        ngx_log_stderr("nginx version: " NGINX_VER);
+
+        if (ngx_show_configure) {
+#ifdef NGX_COMPILER
+            ngx_log_stderr("built by " NGX_COMPILER);
+#endif
+            ngx_log_stderr("configure arguments: " NGX_CONFIGURE);
+        }
+
+        if (!ngx_test_config) {
+            return 0;
+        }
+    }
 
 #if (NGX_FREEBSD)
     ngx_debug_init();
@@ -224,7 +246,10 @@ main(int argc, char *const *argv)
     ngx_ssl_init(log);
 #endif
 
-    /* init_cycle->log is required for signal handlers and ngx_getopt() */
+    /*
+     * init_cycle->log is required for signal handlers and
+     * ngx_process_options()
+     */
 
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
@@ -239,30 +264,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    if (ngx_getopt(&init_cycle, argc, ngx_argv) != NGX_OK) {
-        return 1;
-    }
-
-    if (ngx_show_version) {
-
-        ngx_log_stderr("nginx version: " NGINX_VER);
-
-        if (ngx_show_configure) {
-#ifdef NGX_COMPILER
-            ngx_log_stderr("built by " NGX_COMPILER);
-#endif
-
-            ngx_log_stderr("configure arguments: " NGX_CONFIGURE);
-        }
-
-        if (!ngx_test_config) {
-            return 0;
-        }
-    }
-
-    if (ngx_test_config) {
-        log->log_level = NGX_LOG_INFO;
-    }
+    ngx_process_options(&init_cycle);
 
     if (ngx_os_init(log) != NGX_OK) {
         return 1;
@@ -594,14 +596,13 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
 
 static ngx_int_t
-ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
+ngx_get_options(int argc, char *const *argv)
 {
     ngx_int_t  i;
 
     for (i = 1; i < argc; i++) {
         if (argv[i][0] != '-') {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "invalid option: \"%s\"", argv[i]);
+            ngx_log_stderr("invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
 
@@ -621,32 +622,27 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
             break;
 
         case 'c':
-            if (argv[i + 1] == NULL) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                              "the option \"-c\" requires file name");
-                return NGX_ERROR;
+            if (argv[++i]) {
+                ngx_conf_file = argv[i];
+                break;
             }
 
-            cycle->conf_file.data = (u_char *) argv[++i];
-            cycle->conf_file.len = ngx_strlen(cycle->conf_file.data);
-            break;
+            ngx_log_stderr("the option \"-c\" requires file name");
+            return NGX_ERROR;
 
         case 'g':
-            if (argv[i + 1] == NULL) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                              "the option \"-g\" requires parameter");
-                return NGX_ERROR;
+            if (argv[++i]) {
+                ngx_conf_params = argv[i];
+                break;
             }
 
-            cycle->conf_param.data = (u_char *) argv[++i];
-            cycle->conf_param.len = ngx_strlen(cycle->conf_param.data);
-            break;
+            ngx_log_stderr("the option \"-g\" requires parameter");
+            return NGX_ERROR;
 
 #if (NGX_WIN32)
         case 's':
             if (argv[++i] == NULL) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                              "the option \"-s\" requires parameter");
+                ngx_log_stderr("the option \"-s\" requires parameter");
                 return NGX_ERROR;
             }
 
@@ -660,21 +656,14 @@ ngx_getopt(ngx_cycle_t *cycle, int argc, char *const *argv)
                 break;
             }
 
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "invalid option: \"-s %s\"", argv[i]);
+            ngx_log_stderr("invalid option: \"-s %s\"", argv[i]);
             return NGX_ERROR;
 #endif
 
         default:
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "invalid option: \"%s\"", argv[i]);
+            ngx_log_stderr("invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
-    }
-
-    if (cycle->conf_file.data == NULL) {
-        cycle->conf_file.len = sizeof(NGX_CONF_PATH) - 1;
-        cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
     }
 
     return NGX_OK;
@@ -720,6 +709,29 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
     ngx_os_environ = environ;
 
     return NGX_OK;
+}
+
+
+static void
+ngx_process_options(ngx_cycle_t *cycle)
+{
+    if (ngx_conf_file) {
+        cycle->conf_file.len = ngx_strlen(ngx_conf_file);
+        cycle->conf_file.data = (u_char *) ngx_conf_file;
+
+    } else {
+        cycle->conf_file.len = sizeof(NGX_CONF_PATH) - 1;
+        cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
+    }
+
+    if (ngx_conf_params) {
+        cycle->conf_param.data = (u_char *) ngx_conf_params;
+        cycle->conf_param.len = ngx_strlen(ngx_conf_params);
+    }
+
+    if (ngx_test_config) {
+        cycle->log->log_level = NGX_LOG_INFO;
+    }
 }
 
 
