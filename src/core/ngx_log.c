@@ -207,6 +207,14 @@ ngx_log_stderr(const char *fmt, ...)
 
     ngx_linefeed(p);
 
+#if (NGX_WIN32)
+
+    if (ngx_stderr_fileno == NULL) {
+        ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
+    }
+
+#endif
+
     (void) ngx_write_fd(ngx_stderr_fileno, errstr, p - errstr);
 }
 
@@ -218,8 +226,6 @@ ngx_log_init(void)
     ngx_log.log_level = NGX_LOG_NOTICE;
 
 #if (NGX_WIN32)
-
-    ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
 
     ngx_stderr.fd = ngx_open_file((u_char *) NGX_ERROR_LOG_PATH,
                                   NGX_FILE_APPEND,
