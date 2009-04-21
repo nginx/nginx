@@ -109,12 +109,16 @@ zip:
 
 icons:	src/os/win32/nginx.ico
 
-# 32x32 and 16x16 icons
+# 48x48, 32x32 and 16x16 icons
 
-src/os/win32/nginx.ico:	src/os/win32/nginx_icon32.xpm			\
+src/os/win32/nginx.ico:	src/os/win32/nginx_icon48.xpm			\
+			src/os/win32/nginx_icon32.xpm			\
 			src/os/win32/nginx_icon16.xpm
 
 	test -d $(TEMP) || mkdir $(TEMP)
+
+	xpmtoppm --alphaout=$(TEMP)/nginx48.pbm				\
+		src/os/win32/nginx_icon48.xpm > $(TEMP)/nginx48.ppm
 
 	xpmtoppm --alphaout=$(TEMP)/nginx32.pbm				\
 		src/os/win32/nginx_icon32.xpm > $(TEMP)/nginx32.ppm
@@ -123,5 +127,6 @@ src/os/win32/nginx.ico:	src/os/win32/nginx_icon32.xpm			\
 		src/os/win32/nginx_icon16.xpm > $(TEMP)/nginx16.ppm
 
 	ppmtowinicon -output src/os/win32/nginx.ico -andpgms		\
+		$(TEMP)/nginx48.ppm $(TEMP)/nginx48.pbm			\
 		$(TEMP)/nginx32.ppm $(TEMP)/nginx32.pbm			\
 		$(TEMP)/nginx16.ppm $(TEMP)/nginx16.pbm
