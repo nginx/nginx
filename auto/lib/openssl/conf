@@ -17,8 +17,8 @@ if [ $OPENSSL != NONE ]; then
             LINK_DEPS="$LINK_DEPS $OPENSSL/out32/libeay32.lib"
             CORE_LIBS="$CORE_LIBS $OPENSSL/out32/libeay32.lib"
 
-            # libeay32.lib requires gdi32.lib and advapi32.lib
-            CORE_LIBS="$CORE_LIBS gdi32.lib advapi32.lib"
+            # libeay32.lib requires gdi32.lib
+            CORE_LIBS="$CORE_LIBS gdi32.lib"
         ;;
 
         *)
@@ -49,8 +49,8 @@ else
             CORE_LIBS="$CORE_LIBS c:/openssl/ssleay32.lib"
             CORE_LIBS="$CORE_LIBS c:/openssl/libeay32.lib"
 
-            # libeay32.lib requires gdi32.lib and advapi32.lib
-            CORE_LIBS="$CORE_LIBS gdi32.lib advapi32.lib"
+            # libeay32.lib requires gdi32.lib
+            CORE_LIBS="$CORE_LIBS gdi32.lib"
         ;;
 
         *)
