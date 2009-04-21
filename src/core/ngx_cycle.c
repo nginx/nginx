@@ -467,9 +467,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         if (!shm_zone[i].shm.exists) {
 
-	    if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
-		goto failed;
-	    }
+            if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
+                goto failed;
+            }
         }
 
         if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
@@ -907,7 +907,7 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 
     file = ngx_pnalloc(cycle->pool, cycle->lock_file.len + zn->shm.name.len);
     if (file == NULL) {
-	return NGX_ERROR;
+        return NGX_ERROR;
     }
 
     (void) ngx_sprintf(file, "%V%V%Z", &cycle->lock_file, &zn->shm.name);
@@ -915,7 +915,7 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 #endif
 
     if (ngx_shmtx_create(&sp->mutex, (void *) &sp->lock, file) != NGX_OK) {
-	return NGX_ERROR;
+        return NGX_ERROR;
     }
 
     ngx_slab_init(sp);
