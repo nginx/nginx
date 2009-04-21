@@ -124,7 +124,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
         }
 
         break;
- 
+
     case WAIT_TIMEOUT:
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                       "the event \"%s\" was not signaled for 5s",

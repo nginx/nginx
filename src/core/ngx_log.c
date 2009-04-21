@@ -233,7 +233,7 @@ ngx_log_init(void)
                                   NGX_FILE_DEFAULT_ACCESS);
 
     if (ngx_stderr.fd == NGX_INVALID_FILE) {
-        ngx_event_log(ngx_errno, 
+        ngx_event_log(ngx_errno,
                       "Could not open error log file: "
                       ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
         return NULL;

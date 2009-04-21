@@ -18,7 +18,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
         return NGX_ERROR;
     }
 
-    ngx_sprintf(name, "%V_%s%Z", &shm->name, ngx_unique); 
+    ngx_sprintf(name, "%V_%s%Z", &shm->name, ngx_unique);
 
     ngx_set_errno(0);
 
