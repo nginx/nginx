@@ -7,7 +7,6 @@
 /*
  * TODO:
  *   add WSA error messages for NT and 98
- *   test for English only messages
  */
 
 #include <ngx_config.h>
@@ -105,7 +104,7 @@ ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
     len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
                         |FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, err,
-                        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                        MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
                         (char *) errstr, size, NULL);
 
     if (len == 0) {
