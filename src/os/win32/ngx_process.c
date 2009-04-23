@@ -58,6 +58,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
 
     ctx.path = file;
     ctx.name = name;
+    ctx.args = GetCommandLine();
     ctx.argv = NULL;
     ctx.envp = NULL;
 
@@ -195,7 +196,7 @@ ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 
     ngx_memzero(&pi, sizeof(PROCESS_INFORMATION));
 
-    if (CreateProcess(ctx->path, /* STUB */ NULL,
+    if (CreateProcess(ctx->path, ctx->args,
                       NULL, NULL, 0, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)
         == 0)
     {

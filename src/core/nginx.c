@@ -540,6 +540,8 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ngx_core_conf_t   *ccf;
     ngx_listening_t   *ls;
 
+    ngx_memzero(&ctx, sizeof(ngx_exec_ctx_t));
+
     ctx.path = argv[0];
     ctx.name = "new binary process";
     ctx.argv = argv;

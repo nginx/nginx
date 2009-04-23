@@ -41,6 +41,7 @@ typedef struct {
 typedef struct {
     char                   *path;
     char                   *name;
+    char                   *args;
     char *const            *argv;
     char *const            *envp;
     HANDLE                  child;
