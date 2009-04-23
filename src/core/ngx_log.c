@@ -58,8 +58,8 @@ static ngx_str_t err_levels[] = {
     ngx_string("crit"),
     ngx_string("error"),
     ngx_string("warn"),
-    ngx_string("notice"), 
-    ngx_string("info"), 
+    ngx_string("notice"),
+    ngx_string("info"),
     ngx_string("debug")
 };
 
