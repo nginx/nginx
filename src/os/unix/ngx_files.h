@@ -160,6 +160,8 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_realpath_n           "realpath()"
 #define ngx_getcwd(buf, size)    (getcwd(buf, size) != NULL)
 #define ngx_getcwd_n             "getcwd()"
+#define ngx_path_separator(c)    ((c) == '/')
+
 #define NGX_MAX_PATH             PATH_MAX
 
 #define NGX_DIR_MASK_LEN         0

@@ -1337,12 +1337,7 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
         goto unsafe;
     }
 
-    if (p[0] == '.' && len == 3 && p[1] == '.' && (p[2] == '/'
-#if (NGX_WIN32)
-                                                   || p[2] == '\\'
-#endif
-        ))
-    {
+    if (p[0] == '.' && len == 3 && p[1] == '.' && (ngx_path_separator(p[2]))) {
         goto unsafe;
     }
 
@@ -1367,30 +1362,22 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
             continue;
         }
 
-        if ((ch == '/'
-#if (NGX_WIN32)
-             || ch == '\\'
-#endif
-            ) && len > 2)
-        {
+        if (ngx_path_separator(ch) && len > 2) {
+
             /* detect "/../" */
 
-            if (p[0] == '.' && p[1] == '.' && p[2] == '/') {
+            if (p[0] == '.' && p[1] == '.' && ngx_path_separator(p[2])) {
                 goto unsafe;
             }
 
 #if (NGX_WIN32)
-
-            if (p[2] == '\\') {
-                goto unsafe;
-            }
 
             if (len > 3) {
 
                 /* detect "/.../" */
 
                 if (p[0] == '.' && p[1] == '.' && p[2] == '.'
-                    && (p[3] == '/' || p[3] == '\\'))
+                    && ngx_path_separator(p[3]))
                 {
                     goto unsafe;
                 }

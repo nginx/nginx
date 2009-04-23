@@ -1587,15 +1587,9 @@ ngx_http_validate_host(u_char *host, size_t len)
             continue;
         }
 
-        if (ch == '/' || ch == '\0') {
+        if (ngx_path_separator(ch) || ch == '\0') {
             return -1;
         }
-
-#if (NGX_WIN32)
-        if (ch == '\\') {
-            return -1;
-        }
-#endif
     }
 
     if (dot) {
