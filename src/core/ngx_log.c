@@ -51,9 +51,16 @@ static ngx_log_t        ngx_log;
 static ngx_open_file_t  ngx_stderr;
 
 
-static const char *err_levels[] = {
-    "stderr", "emerg", "alert", "crit", "error",
-    "warn", "notice", "info", "debug"
+static ngx_str_t err_levels[] = {
+    ngx_string("stderr"),
+    ngx_string("emerg"),
+    ngx_string("alert"),
+    ngx_string("crit"),
+    ngx_string("error"),
+    ngx_string("warn"),
+    ngx_string("notice"), 
+    ngx_string("info"), 
+    ngx_string("debug")
 };
 
 static const char *debug_levels[] = {
@@ -92,7 +99,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     p = errstr + ngx_cached_err_log_time.len;
 
-    p = ngx_snprintf(p, last - p, " [%s] ", err_levels[level]);
+    p = ngx_snprintf(p, last - p, " [%V] ", &err_levels[level]);
 
     /* pid#tid */
     p = ngx_snprintf(p, last - p, "%P#" NGX_TID_T_FMT ": ",
@@ -288,12 +295,12 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
     for (i = 2; i < cf->args->nelts; i++) {
 
         for (n = 1; n <= NGX_LOG_DEBUG; n++) {
-            if (ngx_strcmp(value[i].data, err_levels[n]) == 0) {
+            if (ngx_strcmp(value[i].data, err_levels[n].data) == 0) {
 
                 if (log->log_level != 0) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "duplicate log level \"%s\"",
-                                       value[i].data);
+                                       "duplicate log level \"%V\"",
+                                       &value[i]);
                     return NGX_CONF_ERROR;
                 }
 
@@ -306,8 +313,8 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
             if (ngx_strcmp(value[i].data, debug_levels[n++]) == 0) {
                 if (log->log_level & ~NGX_LOG_DEBUG_ALL) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "invalid log level \"%s\"",
-                                       value[i].data);
+                                       "invalid log level \"%V\"",
+                                       &value[i]);
                     return NGX_CONF_ERROR;
                 }
 
@@ -318,7 +325,7 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 
         if (log->log_level == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid log level \"%s\"", value[i].data);
+                               "invalid log level \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
     }
