@@ -58,7 +58,6 @@ extern ngx_int_t    ngx_max_sockets;
 extern ngx_uint_t   ngx_inherited_nonblocking;
 extern ngx_uint_t   ngx_tcp_nodelay_and_tcp_nopush;
 extern ngx_uint_t   ngx_win32_version;
-extern ngx_fd_t     ngx_stderr_fileno;
 extern char         ngx_unique[];
 
 

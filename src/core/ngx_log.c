@@ -48,7 +48,8 @@ ngx_module_t  ngx_errlog_module = {
 
 
 static ngx_log_t        ngx_log;
-static ngx_open_file_t  ngx_stderr;
+static ngx_open_file_t  ngx_log_file;
+ngx_uint_t              ngx_use_stderr = 1;
 
 
 static ngx_str_t err_levels[] = {
@@ -86,7 +87,8 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #if (NGX_HAVE_VARIADIC_MACROS)
     va_list  args;
 #endif
-    u_char   errstr[NGX_MAX_ERROR_STR], *p, *last;
+    u_char  *p, *last, *msg;
+    u_char   errstr[NGX_MAX_ERROR_STR];
 
     if (log->file->fd == NGX_INVALID_FILE) {
         return;
@@ -108,6 +110,8 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     if (log->connection) {
         p = ngx_snprintf(p, last - p, "*%uA ", log->connection);
     }
+
+    msg = p;
 
 #if (NGX_HAVE_VARIADIC_MACROS)
 
@@ -158,6 +162,19 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     ngx_linefeed(p);
 
     (void) ngx_write_fd(log->file->fd, errstr, p - errstr);
+
+    if (!ngx_use_stderr
+        || level > NGX_LOG_WARN
+        || log->file->fd == ngx_stderr)
+    {
+        return;
+    }
+
+    msg -= (err_levels[level].len + 4);
+
+    (void) ngx_sprintf(msg, "[%V]: ", &err_levels[level]);
+
+    ngx_write_fd(ngx_stderr, msg, p - msg);
 }
 
 
@@ -198,9 +215,9 @@ ngx_log_abort(ngx_err_t err, const char *text, void *param)
 
 
 void ngx_cdecl
-ngx_log_stderr(const char *fmt, ...)
+ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 {
-    u_char   *p;
+    u_char   *p, *last;
     va_list   args;
     u_char    errstr[NGX_MAX_ERROR_STR];
 
@@ -212,45 +229,74 @@ ngx_log_stderr(const char *fmt, ...)
         p = errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE;
     }
 
-    ngx_linefeed(p);
+    if (err) {
+
+        last = errstr + NGX_MAX_ERROR_STR;
+
+        if (p > last - 50) {
+
+            /* leave a space for an error code */
+
+            p = last - 50;
+            *p++ = '.';
+            *p++ = '.';
+            *p++ = '.';
+        }
 
 #if (NGX_WIN32)
-
-    if (ngx_stderr_fileno == NULL) {
-        ngx_stderr_fileno = GetStdHandle(STD_ERROR_HANDLE);
-    }
-
+        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
+                                           ? " (%d: " : " (%Xd: ", err);
+#else
+        p = ngx_snprintf(p, last - p, " (%d: ", err);
 #endif
 
-    (void) ngx_write_fd(ngx_stderr_fileno, errstr, p - errstr);
+        p = ngx_strerror_r(err, p, last - p);
+
+        if (p < last) {
+            *p++ = ')';
+        }
+    }
+
+    ngx_linefeed(p);
+
+    ngx_write_fd(ngx_stderr, errstr, p - errstr);
 }
 
 
 ngx_log_t *
 ngx_log_init(void)
 {
-    ngx_log.file = &ngx_stderr;
+    ngx_log.file = &ngx_log_file;
     ngx_log.log_level = NGX_LOG_NOTICE;
 
-#if (NGX_WIN32)
+    /*
+     * we use ngx_strlen() here since BCC warns about
+     * condition is always false and unreachable code
+     */
 
-    ngx_stderr.fd = ngx_open_file((u_char *) NGX_ERROR_LOG_PATH,
-                                  NGX_FILE_APPEND,
-                                  NGX_FILE_CREATE_OR_OPEN,
-                                  NGX_FILE_DEFAULT_ACCESS);
-
-    if (ngx_stderr.fd == NGX_INVALID_FILE) {
-        ngx_event_log(ngx_errno,
-                      "Could not open error log file: "
-                      ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
-        return NULL;
+    if (ngx_strlen(NGX_ERROR_LOG_PATH) == 0) {
+        ngx_log_file.fd = ngx_stderr;
+        return &ngx_log;
     }
 
-#else
+    ngx_log_file.fd = ngx_open_file((u_char *) NGX_ERROR_LOG_PATH,
+                                    NGX_FILE_APPEND,
+                                    NGX_FILE_CREATE_OR_OPEN,
+                                    NGX_FILE_DEFAULT_ACCESS);
 
-    ngx_stderr.fd = STDERR_FILENO;
+    if (ngx_log_file.fd == NGX_INVALID_FILE) {
+        ngx_log_stderr(ngx_errno,
+                       "[emerg]: could not open error log file: "
+                       ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
 
+#if (NGX_WIN32)
+        ngx_event_log(ngx_errno,
+                       "could not open error log file: "
+                       ngx_open_file_n " \"" NGX_ERROR_LOG_PATH "\" failed");
 #endif
+
+        return NULL;
+    }
 
     return &ngx_log;
 }
@@ -349,7 +395,7 @@ ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
-        cf->cycle->new_log->file->fd = ngx_stderr.fd;
+        cf->cycle->new_log->file->fd = ngx_stderr;
         cf->cycle->new_log->file->name.len = 0;
         cf->cycle->new_log->file->name.data = NULL;
 

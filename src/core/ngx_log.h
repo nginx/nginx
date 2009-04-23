@@ -199,10 +199,11 @@ ngx_log_t *ngx_log_init(void);
 ngx_log_t *ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args);
 char *ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log);
 void ngx_log_abort(ngx_err_t err, const char *text, void *param);
-void ngx_cdecl ngx_log_stderr(const char *fmt, ...);
+void ngx_cdecl ngx_log_stderr(ngx_err_t err, const char *fmt, ...);
 
 
 extern ngx_module_t  ngx_errlog_module;
+extern ngx_uint_t    ngx_use_stderr;
 
 
 #endif /* _NGX_LOG_H_INCLUDED_ */

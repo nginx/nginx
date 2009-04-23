@@ -207,10 +207,10 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_show_version) {
-        ngx_log_stderr("nginx version: " NGINX_VER);
+        ngx_log_stderr(0, "nginx version: " NGINX_VER);
 
         if (ngx_show_help) {
-            ngx_log_stderr(
+            ngx_log_stderr(0,
                 "Usage: nginx [-?hvVt] [-s signal] [-c filename] "
                              "[-g directives]" CRLF CRLF
                 "Options:" CRLF
@@ -230,9 +230,9 @@ main(int argc, char *const *argv)
 
         if (ngx_show_configure) {
 #ifdef NGX_COMPILER
-            ngx_log_stderr("built by " NGX_COMPILER);
+            ngx_log_stderr(0, "built by " NGX_COMPILER);
 #endif
-            ngx_log_stderr("configure arguments: " NGX_CONFIGURE);
+            ngx_log_stderr(0, "configure arguments: " NGX_CONFIGURE);
         }
 
         if (!ngx_test_config) {
@@ -308,7 +308,7 @@ main(int argc, char *const *argv)
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
-            ngx_log_stderr("the configuration file %s test failed",
+            ngx_log_stderr(0, "configuration file %s test failed",
                            init_cycle.conf_file.data);
         }
 
@@ -316,7 +316,7 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_test_config) {
-        ngx_log_stderr("the configuration file %s was tested successfully",
+        ngx_log_stderr(0, "configuration file %s test is successful",
                        cycle->conf_file.data);
         return 0;
     }
@@ -354,6 +354,17 @@ main(int argc, char *const *argv)
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
+
+    if (cycle->log->file->fd != ngx_stderr) {
+
+        if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          ngx_set_stderr_n " failed");
+            return 1;
+        }
+    }
+
+    ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
         ngx_single_process_cycle(cycle);
@@ -622,7 +633,7 @@ ngx_get_options(int argc, char *const *argv)
         p = (u_char *) argv[i];
 
         if (*p++ != '-') {
-            ngx_log_stderr("invalid option: \"%s\"", argv[i]);
+            ngx_log_stderr(0, "invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
 
@@ -660,7 +671,7 @@ ngx_get_options(int argc, char *const *argv)
                     goto next;
                 }
 
-                ngx_log_stderr("the option \"-c\" requires file name");
+                ngx_log_stderr(0, "option \"-c\" requires file name");
                 return NGX_ERROR;
 
             case 'g':
@@ -674,7 +685,7 @@ ngx_get_options(int argc, char *const *argv)
                     goto next;
                 }
 
-                ngx_log_stderr("the option \"-g\" requires parameter");
+                ngx_log_stderr(0, "option \"-g\" requires parameter");
                 return NGX_ERROR;
 
             case 's':
@@ -685,7 +696,7 @@ ngx_get_options(int argc, char *const *argv)
                     ngx_signal = argv[i];
 
                 } else {
-                    ngx_log_stderr("the option \"-s\" requires parameter");
+                    ngx_log_stderr(0, "option \"-s\" requires parameter");
                     return NGX_ERROR;
                 }
 
@@ -698,11 +709,11 @@ ngx_get_options(int argc, char *const *argv)
                     goto next;
                 }
 
-                ngx_log_stderr("invalid option: \"-s %s\"", ngx_signal);
+                ngx_log_stderr(0, "invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
 
             default:
-                ngx_log_stderr("invalid option: \"%c\"", *(p - 1));
+                ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));
                 return NGX_ERROR;
             }
         }

@@ -54,7 +54,6 @@ extern ngx_int_t    ngx_max_sockets;
 extern ngx_uint_t   ngx_inherited_nonblocking;
 extern ngx_uint_t   ngx_tcp_nodelay_and_tcp_nopush;
 
-#define ngx_stderr_fileno  STDERR_FILENO
 
 #if (NGX_FREEBSD)
 #include <ngx_freebsd.h>

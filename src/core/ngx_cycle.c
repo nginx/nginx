@@ -270,7 +270,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     if (ngx_test_config) {
-        ngx_log_stderr("the configuration file %s syntax is ok",
+        ngx_log_stderr(0, "the configuration file %s syntax is ok",
                        cycle->conf_file.data);
     }
 
@@ -582,24 +582,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* commit the new cycle configuration */
 
-#if !(NGX_WIN32)
+    if (!ngx_use_stderr && cycle->log->file->fd != ngx_stderr) {
 
-    if (!ngx_test_config && cycle->log->file->fd != STDERR_FILENO) {
-
-        ngx_log_debug3(NGX_LOG_DEBUG_CORE, log, 0,
-                       "dup2: %p %d \"%s\"",
-                       cycle->log->file,
-                       cycle->log->file->fd, cycle->log->file->name.data);
-
-        if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          "dup2(STDERR) failed");
-            /* fatal */
-            exit(1);
+        if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_set_stderr_n " failed");
         }
     }
-
-#endif
 
     pool->log = cycle->log;
 
@@ -697,7 +686,7 @@ old_shm_zone_done:
             i = 0;
         }
 
-        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr_fileno) {
+        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr) {
             continue;
         }
 
@@ -797,7 +786,7 @@ failed:
             i = 0;
         }
 
-        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr_fileno) {
+        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr) {
             continue;
         }
 

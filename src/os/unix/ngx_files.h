@@ -273,8 +273,12 @@ ngx_int_t ngx_directio_off(ngx_fd_t fd);
 
 #endif
 
-
 size_t ngx_fs_bsize(u_char *name);
+
+
+#define ngx_stderr               STDERR_FILENO
+#define ngx_set_stderr(fd)       dup2(fd, STDERR_FILENO)
+#define ngx_set_stderr_n         "dup2(STDERR_FILENO)"
 
 
 #endif /* _NGX_FILES_H_INCLUDED_ */

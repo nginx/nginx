@@ -892,7 +892,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         file->name = full;
 
     } else {
-        file->fd = ngx_stderr_fileno;
+        file->fd = ngx_stderr;
         file->name.len = 0;
         file->name.data = NULL;
     }

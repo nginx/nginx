@@ -16,7 +16,6 @@ ngx_int_t   ngx_max_sockets;
 ngx_uint_t  ngx_inherited_nonblocking = 1;
 ngx_uint_t  ngx_tcp_nodelay_and_tcp_nopush;
 
-ngx_fd_t    ngx_stderr_fileno;
 char        ngx_unique[NGX_INT32_LEN + 1];
 
 
