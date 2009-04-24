@@ -162,7 +162,7 @@ typedef struct {
 
 #if (NGX_HTTP_SSL)
     ngx_ssl_t                       *ssl;
-    ngx_flag_t                      ssl_session_reuse;
+    ngx_flag_t                       ssl_session_reuse;
 #endif
 
 } ngx_http_upstream_conf_t;
