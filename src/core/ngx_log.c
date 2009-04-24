@@ -207,10 +207,19 @@ ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 #endif
 
 
-void
-ngx_log_abort(ngx_err_t err, const char *text, void *param)
+void ngx_cdecl
+ngx_log_abort(ngx_err_t err, const char *fmt, ...)
 {
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err, text, param);
+    u_char   *p;
+    va_list   args;
+    u_char    errstr[NGX_MAX_CONF_ERRSTR];
+
+    va_start(args, fmt);
+    p = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
+    va_end(args);
+
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err,
+                  "%*s", p - errstr, errstr);
 }
 
 
