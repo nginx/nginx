@@ -4101,7 +4101,11 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *lcf = conf;
 
-    lcf->err_log = ngx_log_create_errlog(cf->cycle, cf->args);
+    ngx_str_t  *value;
+
+    value = cf->args->elts;
+
+    lcf->err_log = ngx_log_create_errlog(cf->cycle, &value[1]);
     if (lcf->err_log == NULL) {
         return NGX_CONF_ERROR;
     }

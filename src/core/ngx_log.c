@@ -303,18 +303,9 @@ ngx_log_init(void)
 
 
 ngx_log_t *
-ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_array_t *args)
+ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     ngx_log_t  *log;
-    ngx_str_t  *value, *name;
-
-    if (args) {
-        value = args->elts;
-        name = &value[1];
-
-    } else {
-        name = NULL;
-    }
 
     log = ngx_pcalloc(cycle->pool, sizeof(ngx_log_t));
     if (log == NULL) {
