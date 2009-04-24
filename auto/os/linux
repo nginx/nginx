@@ -140,4 +140,4 @@ ngx_feature_test="struct crypt_data  cd;
 ngx_include="sys/vfs.h";     . auto/include
 
 
-CC_AUX_FLAGS=$cc_aux_flags
+CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
