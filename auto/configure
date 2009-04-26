@@ -3,8 +3,6 @@
 # Copyright (C) Igor Sysoev
 
 
-NGX_CONFIGURE=`echo $@ | sed 's/"/\\\\"/g'`
-
 . auto/options
 . auto/init
 . auto/sources

@@ -232,7 +232,7 @@ main(int argc, char *const *argv)
 #ifdef NGX_COMPILER
             ngx_log_stderr(0, "built by " NGX_COMPILER);
 #endif
-            ngx_log_stderr(0, "configure arguments: " NGX_CONFIGURE);
+            ngx_log_stderr(0, "configure arguments:" NGX_CONFIGURE);
         }
 
         if (!ngx_test_config) {
