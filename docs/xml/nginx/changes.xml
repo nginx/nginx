@@ -9,6 +9,139 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.53" date="27.04.2009">
+
+<change type="change">
+<para lang="ru">
+теперь лог, указанный в --error-log-path, создаётся с самого начала работы.
+</para>
+<para lang="en">
+now a log set by --error-log-path is created from the very start-up.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь ошибки и предупреждения при старте записываются в error_log
+и выводятся на stderr.
+</para>
+<para lang="en">
+now the start up errors and warnings are outputted to an error_log and stderr.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при сборке с пустым параметром --prefix= nginx использует как префикс каталог,
+в котором он был запущен.
+</para>
+<para lang="en">
+the empty --prefix= configure parameter forces nginx to use a directory
+where it was run as prefix.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -p.
+</para>
+<para lang="en">
+the -p switch.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -s на Unix-платформах.
+</para>
+<para lang="en">
+the -s switch on Unix platforms.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключи -? и -h.<br/>
+Спасибо Jerome Loyet.
+</para>
+<para lang="en">
+the -? and -h switches.<br/>
+Thanks to Jerome Loyet.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь ключи можно задавать в сжатой форме.
+</para>
+<para lang="en">
+now switches may be set in condensed form.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не работал, если файл конфигурации был задан ключём -c.
+</para>
+<para lang="en">
+nginx/Windows did not work if configuration file was given by the -c switch.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив proxy_store, fastcgi_store,
+proxy_cache или fastcgi_cache временные файлы могли не удаляться.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+temporary files might be not removed if the "proxy_store", "fastcgi_store",
+"proxy_cache", or "fastcgi_cache" were used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в заголовке Auth-Method запроса серверу аутентификации почтового
+прокси-сервера передавалось неверное значение;
+ошибка появилась в 0.7.34.<br/>
+Спасибо Simon Lecaille.
+</para>
+<para lang="en">
+an incorrect value was passed to mail proxy authentication server
+in "Auth-Method" header line;
+the bug had appeared<br/>
+in 0.7.34.<br/>
+Thanks to Simon Lecaille.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при логгировании на Linux не писались текстовые описания системных ошибок;
+ошибка появилась в 0.7.45.
+</para>
+<para lang="en">
+system error text descriptions were not logged on Linux;<br/>
+the bug had appeared in 0.7.45.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива fastcgi_cache_min_uses не работала.<br/>
+Спасибо Андрею Воробьёву.
+</para>
+<para lang="en">
+the "fastcgi_cache_min_uses" directive did not work.<br/>
+Thanks to Andrew Vorobyoff.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.52" date="20.04.2009">
 
 <change type="feature">
