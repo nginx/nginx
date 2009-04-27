@@ -182,7 +182,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
      */
 
     scf->enable = NGX_CONF_UNSET;
-    scf->starttls = NGX_CONF_UNSET;
+    scf->starttls = NGX_CONF_UNSET_UINT;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->builtin_session_cache = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
