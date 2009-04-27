@@ -353,7 +353,9 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    if (!r->post_action && !u->conf->ignore_client_abort) {
+    u->store = (u->conf->store || u->conf->store_lengths);
+
+    if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
         r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     }
@@ -438,8 +440,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     cln->handler = ngx_http_upstream_cleanup;
     cln->data = r;
     u->cleanup = &cln->handler;
-
-    u->store = (u->conf->store || u->conf->store_lengths);
 
     if (u->resolved == NULL) {
 
@@ -779,8 +779,10 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     u = r->upstream;
 
     if (c->error) {
-        ngx_http_upstream_finalize_request(r, u,
-                                           NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        if (!u->cacheable) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        }
         return;
     }
 
@@ -803,7 +805,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
             ev->error = 1;
         }
 
-        if (!u->cacheable && !u->store && u->peer.connection) {
+        if (!u->cacheable && u->peer.connection) {
             ngx_log_error(NGX_LOG_INFO, ev->log, ev->kq_errno,
                           "kevent() reported that client closed prematurely "
                           "connection, so upstream connection is closed too");
@@ -869,7 +871,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ev->eof = 1;
     c->error = 1;
 
-    if (!u->cacheable && !u->store && u->peer.connection) {
+    if (!u->cacheable && u->peer.connection) {
         ngx_log_error(NGX_LOG_INFO, ev->log, err,
                       "client closed prematurely connection, "
                       "so upstream connection is closed too");
@@ -2486,7 +2488,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream downstream error");
 
-        if (!u->cacheable && u->peer.connection) {
+        if (!u->cacheable && !u->store && u->peer.connection) {
             ngx_http_upstream_finalize_request(r, u, 0);
         }
     }
