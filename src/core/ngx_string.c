@@ -99,7 +99,7 @@ ngx_sprintf(u_char *buf, const char *fmt, ...)
     va_list   args;
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(buf, /* STUB */ 65536, fmt, args);
+    p = ngx_vslprintf(buf, (void *) -1, fmt, args);
     va_end(args);
 
     return p;
@@ -113,7 +113,21 @@ ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
     va_list   args;
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(buf, max, fmt, args);
+    p = ngx_vslprintf(buf, buf + max, fmt, args);
+    va_end(args);
+
+    return p;
+}
+
+
+u_char * ngx_cdecl
+ngx_slprintf(u_char *buf, u_char *last, const char *fmt, ...)
+{
+    u_char   *p;
+    va_list   args;
+
+    va_start(args, fmt);
+    p = ngx_vslprintf(buf, last, fmt, args);
     va_end(args);
 
     return p;
@@ -121,9 +135,9 @@ ngx_snprintf(u_char *buf, size_t max, const char *fmt, ...)
 
 
 u_char *
-ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
+ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 {
-    u_char                *p, zero, *last;
+    u_char                *p, zero;
     int                    d;
     float                  f, scale;
     size_t                 len, slen;
@@ -133,12 +147,6 @@ ngx_vsnprintf(u_char *buf, size_t max, const char *fmt, va_list args)
     ngx_uint_t             width, sign, hex, max_width, frac_width, i;
     ngx_str_t             *v;
     ngx_variable_value_t  *vv;
-
-    if (max == 0) {
-        return buf;
-    }
-
-    last = buf + max;
 
     while (*fmt && buf < last) {
 
