@@ -965,27 +965,7 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
     va_end(args);
 
     if (err) {
-
-        if (p > last - 50) {
-
-            /* leave a space for an error code */
-
-            p = last - 50;
-            *p++ = '.';
-            *p++ = '.';
-            *p++ = '.';
-        }
-
-#if (NGX_WIN32)
-        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
-                                       ? " (%d: " : " (%Xd: ", err);
-#else
-        p = ngx_slprintf(p, last, " (%d: ", err);
-#endif
-
-        p = ngx_strerror_r(err, p, last - p);
-
-        *p++ = ')';
+        p = ngx_log_errno(p, last, err);
     }
 
     if (cf->conf_file == NULL) {

@@ -126,29 +126,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #endif
 
     if (err) {
-
-        if (p > last - 50) {
-
-            /* leave a space for an error code */
-
-            p = last - 50;
-            *p++ = '.';
-            *p++ = '.';
-            *p++ = '.';
-        }
-
-#if (NGX_WIN32)
-        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
-                                       ? " (%d: " : " (%Xd: ", err);
-#else
-        p = ngx_slprintf(p, last, " (%d: ", err);
-#endif
-
-        p = ngx_strerror_r(err, p, last - p);
-
-        if (p < last) {
-            *p++ = ')';
-        }
+        p = ngx_log_errno(p, last, err);
     }
 
     if (level != NGX_LOG_DEBUG && log->handler) {
@@ -236,39 +214,47 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
     p = ngx_vslprintf(errstr, last, fmt, args);
     va_end(args);
 
-    if (p > errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE) {
-        p = errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE;
+    if (err) {
+        p = ngx_log_errno(p, last, err);
     }
 
-    if (err) {
-
-        if (p > last - 50) {
-
-            /* leave a space for an error code */
-
-            p = last - 50;
-            *p++ = '.';
-            *p++ = '.';
-            *p++ = '.';
-        }
-
-#if (NGX_WIN32)
-        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
-                                       ? " (%d: " : " (%Xd: ", err);
-#else
-        p = ngx_slprintf(p, last, " (%d: ", err);
-#endif
-
-        p = ngx_strerror_r(err, p, last - p);
-
-        if (p < last) {
-            *p++ = ')';
-        }
+    if (p > last - NGX_LINEFEED_SIZE) {
+        p = last - NGX_LINEFEED_SIZE;
     }
 
     ngx_linefeed(p);
 
     (void) ngx_write_fd(ngx_stderr, errstr, p - errstr);
+}
+
+
+u_char *
+ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err)
+{
+    if (buf > last - 50) {
+
+        /* leave a space for an error code */
+
+        buf = last - 50;
+        *buf++ = '.';
+        *buf++ = '.';
+        *buf++ = '.';
+    }
+
+#if (NGX_WIN32)
+    buf = ngx_slprintf(buf, last, ((unsigned) err < 0x80000000)
+                                       ? " (%d: " : " (%Xd: ", err);
+#else
+    buf = ngx_slprintf(buf, last, " (%d: ", err);
+#endif
+
+    buf = ngx_strerror_r(err, buf, last - buf);
+
+    if (buf < last) {
+        *buf++ = ')';
+    }
+
+    return buf;
 }
 
 

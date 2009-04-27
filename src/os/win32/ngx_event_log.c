@@ -33,24 +33,7 @@ ngx_event_log(ngx_err_t err, const char *fmt, ...)
     va_end(args);
 
     if (err) {
-
-        if (p > last - 50) {
-
-            /* leave a space for an error code */
-
-            p = last - 50;
-            *p++ = '.';
-            *p++ = '.';
-            *p++ = '.';
-        }
-
-        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
-                                       ? " (%d: " : " (%Xd: ", err);
-        p = ngx_strerror_r(err, p, last - p);
-
-        if (p < last) {
-            *p++ = ')';
-        }
+        p = ngx_log_errno(p, last, err);
     }
 
     if (p > last - NGX_LINEFEED_SIZE - 1) {
