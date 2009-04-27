@@ -20,7 +20,7 @@ ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
     len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
                         |FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, err,
-                        MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+                        MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
                         (char *) errstr, size, NULL);
 
     if (len == 0) {
