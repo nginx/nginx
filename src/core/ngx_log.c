@@ -101,14 +101,14 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     p = errstr + ngx_cached_err_log_time.len;
 
-    p = ngx_snprintf(p, last - p, " [%V] ", &err_levels[level]);
+    p = ngx_slprintf(p, last, " [%V] ", &err_levels[level]);
 
     /* pid#tid */
-    p = ngx_snprintf(p, last - p, "%P#" NGX_TID_T_FMT ": ",
+    p = ngx_slprintf(p, last, "%P#" NGX_TID_T_FMT ": ",
                     ngx_log_pid, ngx_log_tid);
 
     if (log->connection) {
-        p = ngx_snprintf(p, last - p, "*%uA ", log->connection);
+        p = ngx_slprintf(p, last, "*%uA ", log->connection);
     }
 
     msg = p;
@@ -116,12 +116,12 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #if (NGX_HAVE_VARIADIC_MACROS)
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(p, last - p, fmt, args);
+    p = ngx_vslprintf(p, last, fmt, args);
     va_end(args);
 
 #else
 
-    p = ngx_vsnprintf(p, last - p, fmt, args);
+    p = ngx_vslprintf(p, last, fmt, args);
 
 #endif
 
@@ -138,10 +138,10 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
         }
 
 #if (NGX_WIN32)
-        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
-                                           ? " (%d: " : " (%Xd: ", err);
+        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
+                                       ? " (%d: " : " (%Xd: ", err);
 #else
-        p = ngx_snprintf(p, last - p, " (%d: ", err);
+        p = ngx_slprintf(p, last, " (%d: ", err);
 #endif
 
         p = ngx_strerror_r(err, p, last - p);
@@ -230,8 +230,10 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
     va_list   args;
     u_char    errstr[NGX_MAX_ERROR_STR];
 
+    last = errstr + NGX_MAX_ERROR_STR;
+
     va_start(args, fmt);
-    p = ngx_vsnprintf(errstr, NGX_MAX_ERROR_STR, fmt, args);
+    p = ngx_vslprintf(errstr, last, fmt, args);
     va_end(args);
 
     if (p > errstr + NGX_MAX_ERROR_STR - NGX_LINEFEED_SIZE) {
@@ -239,8 +241,6 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
     }
 
     if (err) {
-
-        last = errstr + NGX_MAX_ERROR_STR;
 
         if (p > last - 50) {
 
@@ -253,10 +253,10 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
         }
 
 #if (NGX_WIN32)
-        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
-                                           ? " (%d: " : " (%Xd: ", err);
+        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
+                                       ? " (%d: " : " (%Xd: ", err);
 #else
-        p = ngx_snprintf(p, last - p, " (%d: ", err);
+        p = ngx_slprintf(p, last, " (%d: ", err);
 #endif
 
         p = ngx_strerror_r(err, p, last - p);

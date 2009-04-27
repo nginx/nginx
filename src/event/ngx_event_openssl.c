@@ -1306,7 +1306,7 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
     last = errstr + NGX_MAX_CONF_ERRSTR;
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(errstr, sizeof(errstr) - 1, fmt, args);
+    p = ngx_vslprintf(errstr, last - 1, fmt, args);
     va_end(args);
 
     p = ngx_cpystrn(p, (u_char *) " (SSL:", last - p);

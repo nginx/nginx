@@ -22,16 +22,15 @@ ngx_event_log(ngx_err_t err, const char *fmt, ...)
     const char     *msgarg[9];
     static u_char   netmsg[] = "%SystemRoot%\\System32\\netmsg.dll";
 
+    last = text + NGX_MAX_ERROR_STR;
     p = text + GetModuleFileName(NULL, (char *) text, NGX_MAX_ERROR_STR - 50);
 
     *p++ = ':';
     ngx_linefeed(p);
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(p, NGX_MAX_ERROR_STR, fmt, args);
+    p = ngx_vslprintf(p, last, fmt, args);
     va_end(args);
-
-    last = text + NGX_MAX_ERROR_STR;
 
     if (err) {
 
@@ -45,8 +44,8 @@ ngx_event_log(ngx_err_t err, const char *fmt, ...)
             *p++ = '.';
         }
 
-        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
-                                           ? " (%d: " : " (%Xd: ", err);
+        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
+                                       ? " (%d: " : " (%Xd: ", err);
         p = ngx_strerror_r(err, p, last - p);
 
         if (p < last) {

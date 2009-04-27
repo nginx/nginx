@@ -961,7 +961,7 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
     last = errstr + NGX_MAX_CONF_ERRSTR;
 
     va_start(args, fmt);
-    p = ngx_vsnprintf(errstr, last - errstr, fmt, args);
+    p = ngx_vslprintf(errstr, last, fmt, args);
     va_end(args);
 
     if (err) {
@@ -977,10 +977,10 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
         }
 
 #if (NGX_WIN32)
-        p = ngx_snprintf(p, last - p, ((unsigned) err < 0x80000000)
-                                           ? " (%d: " : " (%Xd: ", err);
+        p = ngx_slprintf(p, last, ((unsigned) err < 0x80000000)
+                                       ? " (%d: " : " (%Xd: ", err);
 #else
-        p = ngx_snprintf(p, last - p, " (%d: ", err);
+        p = ngx_slprintf(p, last, " (%d: ", err);
 #endif
 
         p = ngx_strerror_r(err, p, last - p);
