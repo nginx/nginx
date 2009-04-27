@@ -143,6 +143,7 @@ do
     case "$option" in
         --help)                          help=yes                   ;;
 
+        --prefix=)                       NGX_PREFIX="!"             ;;
         --prefix=*)                      NGX_PREFIX="$value"        ;;
         --sbin-path=*)                   NGX_SBIN_PATH="$value"     ;;
         --conf-path=*)                   NGX_CONF_PATH="$value"     ;;
@@ -415,141 +416,21 @@ if [ ".$NGX_PLATFORM" = ".win32" ]; then
 fi
 
 
-NGX_PREFIX=${NGX_PREFIX:-/usr/local/nginx}
-
-
-case ".$NGX_SBIN_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_SBIN_PATH=$NGX_PREFIX/sbin/nginx
-    ;;
-
-    *)
-        NGX_SBIN_PATH=$NGX_PREFIX/$NGX_SBIN_PATH
-    ;;
-esac
-
-
-case ".$NGX_CONF_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_CONF_PATH=$NGX_PREFIX/conf/nginx.conf
-    ;;
-
-    *)
-        NGX_CONF_PATH=$NGX_PREFIX/$NGX_CONF_PATH
-    ;;
-esac
-
-
+NGX_CONF_PATH=${NGX_CONF_PATH:-conf/nginx.conf}
 NGX_CONF_PREFIX=`dirname $NGX_CONF_PATH`
+NGX_PID_PATH=${NGX_PID_PATH:-logs/nginx.pid}
+NGX_LOCK_PATH=${NGX_LOCK_PATH:-logs/nginx.lock}
 
+if [ ".$NGX_ERROR_LOG_PATH" = ".stderr" ]; then
+    NGX_ERROR_LOG_PATH=
+else
+    NGX_ERROR_LOG_PATH=${NGX_ERROR_LOG_PATH:-logs/error.log}
+fi
 
-case ".$NGX_PID_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_PID_PATH=$NGX_PREFIX/logs/nginx.pid
-    ;;
-
-    *)
-        NGX_PID_PATH=$NGX_PREFIX/$NGX_PID_PATH
-    ;;
-esac
-
-
-case ".$NGX_LOCK_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_LOCK_PATH=$NGX_PREFIX/logs/nginx.lock
-    ;;
-
-    *)
-        NGX_LOCK_PATH=$NGX_PREFIX/$NGX_LOCK_PATH
-    ;;
-esac
-
-
-case ".$NGX_ERROR_LOG_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_ERROR_LOG_PATH=$NGX_PREFIX/logs/error.log
-    ;;
-
-    .stderr)
-        NGX_ERROR_LOG_PATH=
-    ;;
-
-    *)
-        NGX_ERROR_LOG_PATH=$NGX_PREFIX/$NGX_ERROR_LOG_PATH
-    ;;
-esac
-
-
-case ".$NGX_HTTP_LOG_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_HTTP_LOG_PATH=$NGX_PREFIX/logs/access.log
-    ;;
-
-    *)
-        NGX_HTTP_LOG_PATH=$NGX_PREFIX/$NGX_HTTP_LOG_PATH
-    ;;
-esac
-
-
-case ".$NGX_HTTP_CLIENT_TEMP_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_HTTP_CLIENT_TEMP_PATH=$NGX_PREFIX/client_body_temp
-    ;;
-
-    *)
-        NGX_HTTP_CLIENT_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_CLIENT_TEMP_PATH
-    ;;
-esac
-
-
-case ".$NGX_HTTP_PROXY_TEMP_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_HTTP_PROXY_TEMP_PATH=$NGX_PREFIX/proxy_temp
-    ;;
-
-    *)
-        NGX_HTTP_PROXY_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_PROXY_TEMP_PATH
-    ;;
-esac
-
-
-case ".$NGX_HTTP_FASTCGI_TEMP_PATH" in
-    ./*)
-    ;;
-
-    .)
-        NGX_HTTP_FASTCGI_TEMP_PATH=$NGX_PREFIX/fastcgi_temp
-    ;;
-
-    *)
-        NGX_HTTP_FASTCGI_TEMP_PATH=$NGX_PREFIX/$NGX_HTTP_FASTCGI_TEMP_PATH
-    ;;
-esac
-
+NGX_HTTP_LOG_PATH=${NGX_HTTP_LOG_PATH:-logs/access.log}
+NGX_HTTP_CLIENT_TEMP_PATH=${NGX_HTTP_CLIENT_TEMP_PATH:-client_body_temp}
+NGX_HTTP_PROXY_TEMP_PATH=${NGX_HTTP_PROXY_TEMP_PATH:-proxy_temp}
+NGX_HTTP_FASTCGI_TEMP_PATH=${NGX_HTTP_FASTCGI_TEMP_PATH:-fastcgi_temp}
 
 case ".$NGX_PERL_MODULES" in
     ./*)

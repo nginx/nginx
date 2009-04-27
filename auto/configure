@@ -52,20 +52,26 @@ fi
 . auto/modules
 . auto/lib/conf
 
-. auto/make
-. auto/lib/make
-. auto/install
+case ".$NGX_PREFIX" in
+    .)
+        NGX_PREFIX=${NGX_PREFIX:-/usr/local/nginx}
+        have=NGX_PREFIX value="\"$NGX_PREFIX/\"" . auto/define
+    ;;
 
-if [ "$NGX_PLATFORM" != win32 ]; then
-    . auto/unix
+    .!)
+        NGX_PREFIX=
+    ;;
+
+    *)
+        have=NGX_PREFIX value="\"$NGX_PREFIX/\"" . auto/define
+    ;;
+esac
+
+if [ ".$NGX_CONF_PREFIX" != "." ]; then
+    have=NGX_CONF_PREFIX value="\"$NGX_CONF_PREFIX/\"" . auto/define
 fi
 
-# STUB
-. auto/stubs
-
-have=NGX_PREFIX value="\"$NGX_PREFIX/\"" . auto/define
 have=NGX_SBIN_PATH value="\"$NGX_SBIN_PATH\"" . auto/define
-have=NGX_CONF_PREFIX value="\"$NGX_CONF_PREFIX/\"" . auto/define
 have=NGX_CONF_PATH value="\"$NGX_CONF_PATH\"" . auto/define
 have=NGX_PID_PATH value="\"$NGX_PID_PATH\"" . auto/define
 have=NGX_LOCK_PATH value="\"$NGX_LOCK_PATH\"" . auto/define
@@ -78,6 +84,17 @@ have=NGX_HTTP_PROXY_TEMP_PATH value="\"$NGX_HTTP_PROXY_TEMP_PATH\""
 . auto/define
 have=NGX_HTTP_FASTCGI_TEMP_PATH value="\"$NGX_HTTP_FASTCGI_TEMP_PATH\""
 . auto/define
+
+. auto/make
+. auto/lib/make
+. auto/install
+
+if [ "$NGX_PLATFORM" != win32 ]; then
+    . auto/unix
+fi
+
+# STUB
+. auto/stubs
 
 have=NGX_USER value="\"$NGX_USER\"" . auto/define
 have=NGX_GROUP value="\"$NGX_GROUP\"" . auto/define

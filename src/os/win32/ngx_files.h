@@ -152,12 +152,11 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 
 char *ngx_realpath(u_char *path, u_char *resolved);
 #define ngx_realpath_n              ""
-#define ngx_getcwd(buf, size)       GetCurrentDirectory(size, buf)
+#define ngx_getcwd(buf, size)       GetCurrentDirectory(size, (char *) buf)
 #define ngx_getcwd_n                "GetCurrentDirectory()"
 #define ngx_path_separator(c)       ((c) == '/' || (c) == '\\')
 
 #define NGX_MAX_PATH                MAX_PATH
-
 
 #define NGX_DIR_MASK                (u_char *) "/*"
 #define NGX_DIR_MASK_LEN            2

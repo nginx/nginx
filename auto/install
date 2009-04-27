@@ -15,6 +15,63 @@ END
 fi
 
 
+case ".$NGX_SBIN_PATH" in
+    ./*)
+    ;;
+
+    .)
+        NGX_SBIN_PATH=$NGX_PREFIX/sbin/nginx
+    ;;
+
+    *)
+        NGX_SBIN_PATH=$NGX_PREFIX/$NGX_SBIN_PATH
+    ;;
+esac
+
+
+case ".$NGX_CONF_PATH" in
+    ./*)
+    ;;
+
+    *)
+        NGX_CONF_PATH=$NGX_PREFIX/$NGX_CONF_PATH
+    ;;
+esac
+
+
+NGX_CONF_PREFIX=`dirname $NGX_CONF_PATH`
+
+
+case ".$NGX_PID_PATH" in
+    ./*)
+    ;;
+
+    *)
+        NGX_PID_PATH=$NGX_PREFIX/$NGX_PID_PATH
+    ;;
+esac
+
+
+case ".$NGX_ERROR_LOG_PATH" in
+    ./*)
+    ;;
+
+    *)
+        NGX_ERROR_LOG_PATH=$NGX_PREFIX/$NGX_ERROR_LOG_PATH
+    ;;
+esac
+
+
+case ".$NGX_HTTP_LOG_PATH" in
+    ./*)
+    ;;
+
+    *)
+        NGX_HTTP_LOG_PATH=$NGX_PREFIX/$NGX_HTTP_LOG_PATH
+    ;;
+esac
+
+
 cat << END                                                    >> $NGX_MAKEFILE
 
 install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \

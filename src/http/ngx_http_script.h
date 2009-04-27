@@ -153,7 +153,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_script_code_pt     code;
-    uintptr_t                   prefix;
+    uintptr_t                   conf_prefix;
 } ngx_http_script_full_name_code_t;
 
 

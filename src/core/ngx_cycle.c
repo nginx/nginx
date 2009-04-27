@@ -34,11 +34,7 @@ ngx_tls_key_t          ngx_core_tls_key;
 static ngx_connection_t  dumb;
 /* STUB */
 
-#ifdef NGX_ERROR_LOG_PATH
 static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
-#else
-static ngx_str_t  error_log = ngx_null_string;
-#endif
 
 
 ngx_cycle_t *
@@ -87,9 +83,20 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
-    cycle->root.len = sizeof(NGX_PREFIX) - 1;
-    cycle->root.data = (u_char *) NGX_PREFIX;
 
+    cycle->conf_prefix.len = old_cycle->conf_prefix.len;
+    cycle->conf_prefix.data = ngx_pstrdup(pool, &old_cycle->conf_prefix);
+    if (cycle->conf_prefix.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    cycle->prefix.len = old_cycle->prefix.len;
+    cycle->prefix.data = ngx_pstrdup(pool, &old_cycle->prefix);
+    if (cycle->prefix.data == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
 
     cycle->conf_file.len = old_cycle->conf_file.len;
     cycle->conf_file.data = ngx_pnalloc(pool, old_cycle->conf_file.len + 1);
@@ -100,15 +107,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_cpystrn(cycle->conf_file.data, old_cycle->conf_file.data,
                 old_cycle->conf_file.len + 1);
 
-
     cycle->conf_param.len = old_cycle->conf_param.len;
-    cycle->conf_param.data = ngx_pnalloc(pool, old_cycle->conf_param.len);
+    cycle->conf_param.data = ngx_pstrdup(pool, &old_cycle->conf_param);
     if (cycle->conf_param.data == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
-    ngx_memcpy(cycle->conf_param.data, old_cycle->conf_param.data,
-               old_cycle->conf_param.len);
 
 
     n = old_cycle->pathes.nelts ? old_cycle->pathes.nelts : 10;
@@ -162,13 +166,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    cycle->new_log = ngx_log_create_errlog(cycle, NULL);
+    cycle->new_log = ngx_log_create_errlog(cycle, &error_log);
     if (cycle->new_log == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
-
-    cycle->new_log->file->name = error_log;
 
 
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
@@ -350,7 +352,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             i = 0;
         }
 
-        if (file[i].name.data == NULL) {
+        if (file[i].name.len == 0) {
             continue;
         }
 
@@ -1083,7 +1085,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
             i = 0;
         }
 
-        if (file[i].name.data == NULL) {
+        if (file[i].name.len == 0) {
             continue;
         }
 

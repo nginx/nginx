@@ -798,10 +798,6 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
     u_char     *p, *prefix;
     ngx_str_t   old;
 
-    if (name->data[0] == '/') {
-        return NGX_OK;
-    }
-
 #if (NGX_WIN32)
 
     if (name->len > 2
@@ -812,17 +808,23 @@ ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
         return NGX_OK;
     }
 
+#else
+
+    if (name->data[0] == '/') {
+        return NGX_OK;
+    }
+
 #endif
 
     old = *name;
 
     if (conf_prefix) {
-        len = sizeof(NGX_CONF_PREFIX) - 1;
-        prefix = (u_char *) NGX_CONF_PREFIX;
+        len = cycle->conf_prefix.len;
+        prefix = cycle->conf_prefix.data;
 
     } else {
-        len = cycle->root.len;
-        prefix = cycle->root.data;
+        len = cycle->prefix.len;
+        prefix = cycle->prefix.data;
     }
 
     name->len = len + old.len;
@@ -851,7 +853,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     full.data = NULL;
 #endif
 
-    if (name) {
+    if (name && name->len) {
         full = *name;
 
         if (ngx_conf_full_name(cycle, &full, 0) != NGX_OK) {
@@ -887,7 +889,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         return NULL;
     }
 
-    if (name) {
+    if (name && name->len) {
         file->fd = NGX_INVALID_FILE;
         file->name = full;
 
