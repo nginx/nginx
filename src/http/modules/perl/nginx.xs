@@ -662,7 +662,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", filename);
+                      "%s \"%s\" failed", of.failed, filename);
         XSRETURN_EMPTY;
     }
 

@@ -1413,6 +1413,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     of.directio = clcf->directio;
     of.valid = clcf->open_file_cache_valid;
     of.min_uses = clcf->open_file_cache_min_uses;
+    of.test_only = 1;
     of.errors = clcf->open_file_cache_errors;
     of.events = clcf->open_file_cache_events;
 
@@ -1421,7 +1422,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     {
         if (of.err != NGX_ENOENT && of.err != NGX_ENOTDIR) {
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
-                          ngx_file_info_n " \"%s\" failed", value->data);
+                          "%s \"%s\" failed", of.failed, value->data);
         }
 
         switch (code->op) {

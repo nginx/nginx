@@ -128,7 +128,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
         if (rc != NGX_HTTP_NOT_FOUND || clcf->log_not_found) {
             ngx_log_error(level, log, of.err,
-                          ngx_open_file_n " \"%s\" failed", path.data);
+                          "%s \"%s\" failed", of.failed, path.data);
         }
 
         return rc;

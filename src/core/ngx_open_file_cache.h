@@ -21,13 +21,16 @@ typedef struct {
     time_t                   mtime;
     off_t                    size;
     off_t                    directio;
+
     ngx_err_t                err;
+    char                    *failed;
 
     time_t                   valid;
 
     ngx_uint_t               min_uses;
 
     unsigned                 test_dir:1;
+    unsigned                 test_only:1;
     unsigned                 log:1;
     unsigned                 errors:1;
     unsigned                 events:1;

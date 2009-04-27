@@ -83,13 +83,13 @@ ngx_module_t  ngx_http_index_module = {
 
 
 /*
- * Try to open the first index file before the test of the directory existence
- * because the valid requests should be many more than invalid ones.
- * If open() would fail, then stat() should be more quickly because some data
- * is already cached in the kernel.
- * Besides, Win32 has ERROR_PATH_NOT_FOUND (NGX_ENOTDIR).
- * Unix has ENOTDIR error, although it less helpfull - it points only
- * that path contains the usual file in place of the directory.
+ * Try to open/test the first index file before the test of directory
+ * existence because valid requests should be much more than invalid ones.
+ * If the file open()/stat() would fail, then the directory stat() should
+ * be more quickly because some data is already cached in the kernel.
+ * Besides, Win32 may return ERROR_PATH_NOT_FOUND (NGX_ENOTDIR) at once.
+ * Unix has ENOTDIR error, however, it's less helpful than Win32's one:
+ * it only indicates that path contains an usual file in place of directory.
  */
 
 static ngx_int_t
@@ -208,14 +208,15 @@ ngx_http_index_handler(ngx_http_request_t *r)
         of.directio = clcf->directio;
         of.valid = clcf->open_file_cache_valid;
         of.min_uses = clcf->open_file_cache_min_uses;
+        of.test_only = 1;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
         {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, of.err,
-                           ngx_open_file_n " \"%s\" failed", path.data);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, of.err,
+                           "%s \"%s\" failed", of.failed, path.data);
 
             if (of.err == 0) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -239,8 +240,8 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 continue;
             }
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, of.err,
-                          ngx_open_file_n " \"%s\" failed", path.data);
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
+                          "%s \"%s\" failed", of.failed, path.data);
 
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -291,6 +292,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
     ngx_memzero(&of, sizeof(ngx_open_file_info_t));
 
     of.test_dir = 1;
+    of.test_only = 1;
     of.valid = clcf->open_file_cache_valid;
     of.errors = clcf->open_file_cache_errors;
 
@@ -318,7 +320,7 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
             }
 
             ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
-                          ngx_open_file_n " \"%s\" failed", dir.data);
+                          "%s \"%s\" failed", of.failed, dir.data);
         }
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
