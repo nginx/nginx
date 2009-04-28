@@ -61,6 +61,7 @@ static ngx_uint_t argument_number[] = {
 char *
 ngx_conf_param(ngx_conf_t *cf)
 {
+    char             *rv;
     ngx_str_t        *param;
     ngx_buf_t         b;
     ngx_conf_file_t   conf_file;
@@ -82,13 +83,17 @@ ngx_conf_param(ngx_conf_t *cf)
     b.temporary = 1;
 
     conf_file.file.fd = NGX_INVALID_FILE;
-    conf_file.file.name.data = (u_char *) "command line";
-    conf_file.line = 1;
+    conf_file.file.name.data = NULL;
+    conf_file.line = 0;
 
     cf->conf_file = &conf_file;
     cf->conf_file->buffer = &b;
 
-    return ngx_conf_parse(cf, NULL);
+    rv = ngx_conf_parse(cf, NULL);
+
+    cf->conf_file = NULL;
+
+    return rv;
 }
 
 
@@ -970,6 +975,12 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
 
     if (cf->conf_file == NULL) {
         ngx_log_error(level, cf->log, 0, "%*s", p - errstr, errstr);
+        return;
+    }
+
+    if (cf->conf_file->file.fd == NGX_INVALID_FILE) {
+        ngx_log_error(level, cf->log, 0, "%*s in command line",
+                      p - errstr, errstr);
         return;
     }
 
