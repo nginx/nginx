@@ -357,6 +357,9 @@ ngx_http_header_filter(ngx_http_request_t *r)
             else
 #endif
                 port = (port == 80) ? 0 : port;
+
+        } else {
+            port = 0;
         }
 
         if (port) {
