@@ -152,7 +152,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     (void) ngx_sprintf(msg, "[%V]: ", &err_levels[level]);
 
-    (void) ngx_write_fd(ngx_stderr, msg, p - msg);
+    (void) ngx_write_console(ngx_stderr, msg, p - msg);
 }
 
 
@@ -224,7 +224,7 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 
     ngx_linefeed(p);
 
-    (void) ngx_write_fd(ngx_stderr, errstr, p - errstr);
+    (void) ngx_write_console(ngx_stderr, errstr, p - errstr);
 }
 
 

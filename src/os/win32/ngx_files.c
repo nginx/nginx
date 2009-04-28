@@ -232,6 +232,21 @@ ngx_write_fd(ngx_fd_t fd, void *buf, size_t size)
 }
 
 
+ssize_t
+ngx_write_console(ngx_fd_t fd, void *buf, size_t size)
+{
+    u_long  n;
+
+    (void) CharToOemBuff(buf, buf, size);
+
+    if (WriteFile(fd, buf, size, &n, NULL) != 0) {
+        return (size_t) n;
+    }
+
+    return -1;
+}
+
+
 ngx_int_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {

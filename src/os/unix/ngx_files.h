@@ -113,6 +113,10 @@ ngx_write_fd(ngx_fd_t fd, void *buf, size_t n)
 
 #define ngx_write_fd_n           "write()"
 
+
+#define ngx_write_console        ngx_write_fd
+
+
 #define ngx_linefeed(p)          *p++ = LF;
 #define NGX_LINEFEED_SIZE        1
 
