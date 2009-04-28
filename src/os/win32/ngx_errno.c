@@ -11,17 +11,30 @@
 u_char *
 ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
 {
-    u_int  len;
+    u_int          len;
+    static u_long  lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
     if (size == 0) {
         return errstr;
     }
 
-    len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM
-                        |FORMAT_MESSAGE_IGNORE_INSERTS,
-                        NULL, err,
-                        MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-                        (char *) errstr, size, NULL);
+    len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                        NULL, err, lang, (char *) errstr, size, NULL);
+
+    if (len == 0 && lang && GetLastError() == ERROR_RESOURCE_LANG_NOT_FOUND) {
+
+        /*
+         * Try to use English messages first and fallback to a language,
+         * based on locale: non-English Windows have no English messages
+         * at all.  This way allows to use English messages at least on
+         * Windows with MUI.
+         */
+
+        lang = 0;
+
+        len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                            NULL, err, lang, (char *) errstr, size, NULL);
+    }
 
     if (len == 0) {
         return ngx_snprintf(errstr, size,
