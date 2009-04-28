@@ -776,6 +776,10 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
             rev->handler = ngx_event_acceptex;
 
+            if (ngx_use_accept_mutex) {
+                continue;
+            }
+
             if (ngx_add_event(rev, 0, NGX_IOCP_ACCEPT) == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -791,6 +795,10 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         } else {
             rev->handler = ngx_event_accept;
+
+            if (ngx_use_accept_mutex) {
+                continue;
+            }
 
             if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
