@@ -213,7 +213,7 @@ main(int argc, char *const *argv)
         if (ngx_show_help) {
             ngx_log_stderr(0,
                 "Usage: nginx [-?hvVt] [-s signal] [-c filename] "
-                             "[-g directives]" CRLF CRLF
+                             "[-p prefix] [-g directives]" CRLF CRLF
                 "Options:" CRLF
                 "  -?,-h         : this help" CRLF
                 "  -v            : show version and exit" CRLF
