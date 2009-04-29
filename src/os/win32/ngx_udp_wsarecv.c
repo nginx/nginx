@@ -87,7 +87,9 @@ ngx_udp_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
         }
 
         if (WSAGetOverlappedResult(c->fd, (LPWSAOVERLAPPED) &rev->ovlp,
-                                   &bytes, 0, NULL) == 0) {
+                                   &bytes, 0, NULL)
+            == 0)
+        {
             ngx_connection_error(c, ngx_socket_errno,
                                "WSARecv() or WSAGetOverlappedResult() failed");
             return NGX_ERROR;

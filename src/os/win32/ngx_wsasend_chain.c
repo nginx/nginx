@@ -291,7 +291,9 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         } else {
             if (WSAGetOverlappedResult(c->fd, (LPWSAOVERLAPPED) &wev->ovlp,
-                                       &sent, 0, NULL) == 0) {
+                                       &sent, 0, NULL)
+                == 0)
+            {
                 ngx_connection_error(c, ngx_socket_errno,
                                "WSASend() or WSAGetOverlappedResult() failed");
 
