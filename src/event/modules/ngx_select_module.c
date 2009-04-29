@@ -314,7 +314,21 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
 #if (NGX_WIN32)
 
-    ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+    if (max_read || max_write) {
+        ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+
+    } else {
+
+        /*
+         * Winsock select() requires that at least one descriptor set must be
+         * be non-null, and any non-null descriptor set must contain at least
+         * one handle to a socket.  Otherwise select() returns WSAEINVAL.
+         */
+
+        ngx_msleep(timer);
+
+        ready = 0;
+    }
 
 #else
 
