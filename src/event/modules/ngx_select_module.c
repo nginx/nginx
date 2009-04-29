@@ -248,12 +248,12 @@ static ngx_int_t
 ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags)
 {
-    int                 ready, nready;
-    ngx_uint_t          i, found;
-    ngx_err_t           err;
-    ngx_event_t        *ev, **queue;
-    ngx_connection_t   *c;
-    struct timeval      tv, *tp;
+    int                ready, nready;
+    ngx_err_t          err;
+    ngx_uint_t         i, found;
+    ngx_event_t       *ev, **queue;
+    struct timeval     tv, *tp;
+    ngx_connection_t  *c;
 
 #if !(NGX_WIN32)
 
