@@ -302,16 +302,6 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     work_read_fd_set = master_read_fd_set;
     work_write_fd_set = master_write_fd_set;
 
-#if 1
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   /*
-                    * (void *) disables "dereferencing type-punned
-                    * pointer will break strict-aliasing rules
-                    */
-                   "select read fd_set: %08Xd",
-                   *(int *) (void *) &work_read_fd_set);
-#endif
-
 #if (NGX_WIN32)
 
     if (max_read || max_write) {
