@@ -311,7 +311,7 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
     /* NT4 and Win98 */
 
     if (GetFileAttributesEx((char *) file, GetFileExInfoStandard, &fa) == 0) {
-        return NGX_ERROR;
+        return NGX_FILE_ERROR;
     }
 
     sb->dwFileAttributes = fa.dwFileAttributes;
@@ -321,7 +321,7 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
     sb->nFileSizeHigh = fa.nFileSizeHigh;
     sb->nFileSizeLow = fa.nFileSizeLow;
 
-    return NGX_OK;
+    return ~NGX_FILE_ERROR;
 }
 
 

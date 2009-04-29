@@ -221,7 +221,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
     temp = &r->request_body->temp_file->file.name;
 
-    if (ngx_file_info(path.data, &fi) == -1) {
+    if (ngx_file_info(path.data, &fi) == NGX_FILE_ERROR) {
         status = NGX_HTTP_CREATED;
 
     } else {
@@ -326,7 +326,7 @@ ok:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http delete filename: \"%s\"", path.data);
 
-    if (ngx_file_info(path.data, &fi) == -1) {
+    if (ngx_file_info(path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
         rc = (err == NGX_ENOTDIR) ? NGX_HTTP_CONFLICT : NGX_HTTP_NOT_FOUND;
@@ -678,7 +678,7 @@ overwrite_done:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http copy to: \"%s\"", copy.path.data);
 
-    if (ngx_file_info(copy.path.data, &fi) == -1) {
+    if (ngx_file_info(copy.path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
         if (err != NGX_ENOENT) {
@@ -712,7 +712,7 @@ overwrite_done:
         dir = ngx_is_dir(&fi);
     }
 
-    if (ngx_file_info(path.data, &fi) == -1) {
+    if (ngx_file_info(path.data, &fi) == NGX_FILE_ERROR) {
         return ngx_http_dav_error(r->connection->log, ngx_errno,
                                   NGX_HTTP_NOT_FOUND, ngx_file_info_n,
                                   path.data);
