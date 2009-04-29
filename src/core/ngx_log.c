@@ -288,15 +288,16 @@ ngx_log_init(u_char *prefix)
 #else
     if (name[0] != '/') {
 #endif
-        plen = 0;
 
         if (prefix) {
             plen = ngx_strlen(prefix);
 
-#ifdef NGX_PREFIX
         } else {
+#ifdef NGX_PREFIX
             prefix = (u_char *) NGX_PREFIX;
             plen = ngx_strlen(prefix);
+#else
+            plen = 0;
 #endif
         }
 
