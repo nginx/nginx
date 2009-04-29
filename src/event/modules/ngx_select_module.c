@@ -429,7 +429,10 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_mutex_unlock(ngx_posted_events_mutex);
 
     if (ready != nready) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "select ready != events");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "select ready != events: %d:%d", ready, nready);
+
+        ngx_select_repair_fd_sets(cycle);
     }
 
     return NGX_OK;
