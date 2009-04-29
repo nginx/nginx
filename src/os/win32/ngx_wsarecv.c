@@ -16,6 +16,7 @@ ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
     u_long        bytes, flags;
     WSABUF        wsabuf[1];
     ngx_err_t     err;
+    ngx_uint_t    n;
     ngx_event_t  *rev;
 
     wsabuf[0].buf = (char *) buf;
@@ -40,10 +41,13 @@ ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
             return NGX_AGAIN;
         }
 
-        rev->error = 1;
-        ngx_connection_error(c, err, "WSARecv() failed");
+        n = ngx_connection_error(c, err, "WSARecv() failed");
 
-        return NGX_ERROR;
+        if (n == NGX_ERROR){
+            rev->error = 1;
+        }
+
+        return n;
     }
 
     if (bytes < size) {
@@ -65,6 +69,7 @@ ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
     u_long            bytes, flags;
     WSABUF            wsabuf[1];
     ngx_err_t         err;
+    ngx_uint_t        n;
     ngx_event_t      *rev;
     LPWSAOVERLAPPED   ovlp;
 
@@ -131,9 +136,13 @@ ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
             return NGX_AGAIN;
         }
 
-        rev->error = 1;
-        ngx_connection_error(c, err, "WSARecv() failed");
-        return NGX_ERROR;
+        n = ngx_connection_error(c, err, "WSARecv() failed");
+
+        if (n == NGX_ERROR){
+            rev->error = 1;
+        }
+
+        return n;
     }
 
     if (ngx_event_flags & NGX_USE_IOCP_EVENT) {

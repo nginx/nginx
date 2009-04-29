@@ -801,15 +801,13 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
     ngx_uint_t  level;
 
+    /* Winsock may return NGX_ECONNABORTED instead of NGX_ECONNRESET */
+
+    if ((err == NGX_ECONNRESET
 #if (NGX_WIN32)
-
-    /* Winsock returns NGX_ECONNABORTED instead of NGX_ECONNRESET */
-
-    if (err == NGX_ECONNABORTED
-#else
-    if (err == NGX_ECONNRESET
+         || err == NGX_ECONNABORTED
 #endif
-        && c->log_error == NGX_ERROR_IGNORE_ECONNRESET)
+        ) && c->log_error == NGX_ERROR_IGNORE_ECONNRESET)
     {
         return 0;
     }
