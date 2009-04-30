@@ -38,6 +38,12 @@
 #define NGX_HTTP_UPSTREAM_INVALID_HEADER     40
 
 
+#define NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT    0x00000002
+#define NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES     0x00000004
+#define NGX_HTTP_UPSTREAM_IGN_EXPIRES        0x00000008
+#define NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL  0x00000010
+
+
 typedef struct {
     ngx_msec_t                       bl_time;
     ngx_uint_t                       bl_state;
@@ -128,6 +134,7 @@ typedef struct {
 
     ngx_bufs_t                       bufs;
 
+    ngx_uint_t                       ignore_headers;
     ngx_uint_t                       next_upstream;
     ngx_uint_t                       store_access;
     ngx_flag_t                       buffering;
