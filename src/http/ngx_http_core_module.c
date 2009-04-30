@@ -1292,10 +1292,10 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     }
 
     if (r == r->main) {
-        r->connection->log->file = clcf->err_log->file;
+        r->connection->log->file = clcf->error_log->file;
 
         if (!(r->connection->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {
-            r->connection->log->log_level = clcf->err_log->log_level;
+            r->connection->log->log_level = clcf->error_log->log_level;
         }
     }
 
@@ -2929,7 +2929,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     lcf->post_action = { 0, NULL };
      *     lcf->types = NULL;
      *     lcf->default_type = { 0, NULL };
-     *     lcf->err_log = NULL;
+     *     lcf->error_log = NULL;
      *     lcf->error_pages = NULL;
      *     lcf->try_files = NULL;
      *     lcf->client_body_path = NULL;
@@ -3109,11 +3109,11 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (conf->err_log == NULL) {
-        if (prev->err_log) {
-            conf->err_log = prev->err_log;
+    if (conf->error_log == NULL) {
+        if (prev->error_log) {
+            conf->error_log = prev->error_log;
         } else {
-            conf->err_log = cf->cycle->new_log;
+            conf->error_log = &cf->cycle->new_log;
         }
     }
 
@@ -4104,14 +4104,23 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t  *value;
 
+    if (lcf->error_log) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
-    lcf->err_log = ngx_log_create_errlog(cf->cycle, &value[1]);
-    if (lcf->err_log == NULL) {
+    lcf->error_log = ngx_log_create(cf->cycle, &value[1]);
+    if (lcf->error_log == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    return ngx_set_error_log_levels(cf, lcf->err_log);
+    if (cf->args->nelts == 2) {
+        lcf->error_log->log_level = NGX_LOG_ERR;
+        return NGX_CONF_OK;
+    }
+
+    return ngx_log_set_levels(cf, lcf->error_log);
 }
 
 

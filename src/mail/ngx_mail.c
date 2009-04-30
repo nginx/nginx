@@ -313,11 +313,10 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ls->handler = ngx_mail_init_connection;
             ls->pool_size = 256;
 
-            /* STUB */
-            ls->log = *cf->cycle->new_log;
+            /* TODO: error_log directive */
+            ls->logp = &cf->cycle->new_log;
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
-            /**/
 
             imip = ngx_palloc(cf->pool, sizeof(ngx_mail_in_port_t));
             if (imip == NULL) {

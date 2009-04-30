@@ -38,7 +38,7 @@ struct ngx_cycle_s {
     ngx_pool_t               *pool;
 
     ngx_log_t                *log;
-    ngx_log_t                *new_log;
+    ngx_log_t                 new_log;
 
     ngx_connection_t        **files;
     ngx_connection_t         *free_connections;

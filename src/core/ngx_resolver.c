@@ -131,14 +131,14 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_peer_addr_t *addr)
 
     r->event->handler = ngx_resolver_resend_handler;
     r->event->data = r;
-    r->event->log = cf->cycle->new_log;
+    r->event->log = &cf->cycle->new_log;
     r->ident = -1;
 
     r->resend_timeout = 5;
     r->expire = 30;
     r->valid = 300;
 
-    r->log = cf->cycle->new_log;
+    r->log = &cf->cycle->new_log;
     r->log_level = NGX_LOG_ALERT;
 
     if (addr) {
@@ -152,7 +152,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_peer_addr_t *addr)
         uc->sockaddr = addr->sockaddr;
         uc->socklen = addr->socklen;
         uc->server = addr->name;
-        uc->log = cf->cycle->new_log;
+        uc->log = &cf->cycle->new_log;
     }
 
     return r;

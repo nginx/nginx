@@ -248,6 +248,8 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 continue;
             }
 
+            ls[i].log = *ls[i].logp;
+
             if (ls[i].inherited) {
 
                 /* TODO: close on exit */

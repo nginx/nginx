@@ -8,14 +8,14 @@
 #include <ngx_core.h>
 
 
-static char *ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t  ngx_errlog_commands[] = {
 
     {ngx_string("error_log"),
      NGX_MAIN_CONF|NGX_CONF_1MORE,
-     ngx_set_error_log,
+     ngx_error_log,
      0,
      0,
      NULL},
@@ -53,7 +53,7 @@ ngx_uint_t              ngx_use_stderr = 1;
 
 
 static ngx_str_t err_levels[] = {
-    ngx_string("stderr"),
+    ngx_null_string,
     ngx_string("emerg"),
     ngx_string("alert"),
     ngx_string("crit"),
@@ -345,7 +345,7 @@ ngx_log_init(u_char *prefix)
 
 
 ngx_log_t *
-ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
+ngx_log_create(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     ngx_log_t  *log;
 
@@ -364,7 +364,7 @@ ngx_log_create_errlog(ngx_cycle_t *cycle, ngx_str_t *name)
 
 
 char *
-ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
+ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
     ngx_uint_t   i, n, d;
     ngx_str_t   *value;
@@ -409,10 +409,7 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
         }
     }
 
-    if (log->log_level == 0) {
-        log->log_level = NGX_LOG_ERR;
-
-    } else if (log->log_level == NGX_LOG_DEBUG) {
+    if (log->log_level == NGX_LOG_DEBUG) {
         log->log_level = NGX_LOG_DEBUG_ALL;
     }
 
@@ -421,26 +418,35 @@ ngx_set_error_log_levels(ngx_conf_t *cf, ngx_log_t *log)
 
 
 static char *
-ngx_set_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t  *value;
+    ngx_str_t  *value, name;
+
+    if (cf->cycle->new_log.file) {
+        return "is duplicate";
+    }
 
     value = cf->args->elts;
 
-    if (value[1].len == 6 && ngx_strcmp(value[1].data, "stderr") == 0) {
-        cf->cycle->new_log->file->fd = ngx_stderr;
-        cf->cycle->new_log->file->name.len = 0;
-        cf->cycle->new_log->file->name.data = NULL;
+    if (ngx_strcmp(value[1].data, "stderr") == 0) {
+        name.len = 0;
+        name.data = NULL;
 
     } else {
-        cf->cycle->new_log->file->name = value[1];
-
-        if (ngx_conf_full_name(cf->cycle, &cf->cycle->new_log->file->name, 0)
-            != NGX_OK)
-        {
-            return NGX_CONF_ERROR;
-        }
+        name = value[1];
     }
 
-    return ngx_set_error_log_levels(cf, cf->cycle->new_log);
+    cf->cycle->new_log.file = ngx_conf_open_file(cf->cycle, &name);
+    if (cf->cycle->new_log.file == NULL) {
+        return NULL;
+    }
+
+    if (cf->args->nelts == 2) {
+        cf->cycle->new_log.log_level = NGX_LOG_ERR;
+        return NGX_CONF_OK;
+    }
+
+    cf->cycle->new_log.log_level = 0;
+
+    return ngx_log_set_levels(cf, &cf->cycle->new_log);
 }

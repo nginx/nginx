@@ -377,7 +377,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    open_file_cache_errors;
     ngx_flag_t    open_file_cache_events;
 
-    ngx_log_t    *err_log;
+    ngx_log_t    *error_log;
 
     ngx_uint_t    types_hash_max_size;
     ngx_uint_t    types_hash_bucket_size;

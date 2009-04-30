@@ -34,6 +34,7 @@ struct ngx_listening_s {
     void               *servers;  /* array of ngx_http_in_addr_t, for example */
 
     ngx_log_t           log;
+    ngx_log_t          *logp;
 
     size_t              pool_size;
     /* should be here because of the AcceptEx() preread */

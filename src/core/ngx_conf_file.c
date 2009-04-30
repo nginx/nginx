@@ -858,7 +858,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     full.data = NULL;
 #endif
 
-    if (name && name->len) {
+    if (name->len) {
         full = *name;
 
         if (ngx_conf_full_name(cycle, &full, 0) != NGX_OK) {
@@ -894,14 +894,13 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         return NULL;
     }
 
-    if (name && name->len) {
+    if (name->len) {
         file->fd = NGX_INVALID_FILE;
         file->name = full;
 
     } else {
         file->fd = ngx_stderr;
-        file->name.len = 0;
-        file->name.data = NULL;
+        file->name = *name;
     }
 
     file->buffer = NULL;
