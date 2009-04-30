@@ -234,6 +234,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
             } else {
                 of->err = file->err;
+                of->failed = ngx_open_file_n;
             }
 
             goto found;
