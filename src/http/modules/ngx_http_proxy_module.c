@@ -2675,10 +2675,26 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        plcf->redirect = 0;
-        plcf->redirects = NULL;
-        return NGX_CONF_OK;
+    if (cf->args->nelts == 2) {
+        if (ngx_strcmp(value[1].data, "off") == 0) {
+            plcf->redirect = 0;
+            plcf->redirects = NULL;
+            return NGX_CONF_OK;
+        }
+
+        if (ngx_strcmp(value[1].data, "false") == 0) {
+            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
+                           "invalid parameter \"false\", use \"off\" instead");
+            plcf->redirect = 0;
+            plcf->redirects = NULL;
+            return NGX_CONF_OK;
+        }
+
+        if (ngx_strcmp(value[1].data, "default") != 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (plcf->redirects == NULL) {
@@ -2694,7 +2710,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "default") == 0) {
+    if (ngx_strcmp(value[1].data, "default") == 0) {
         if (plcf->url.data == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_rewrite_location default\" must go "
