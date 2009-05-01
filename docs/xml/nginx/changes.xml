@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.54" date="01.05.2009">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_image_filter_module.
+</para>
+<para lang="en">
+the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_ignore_headers и fastcgi_ignore_headers.
+</para>
+<para lang="en">
+the "proxy_ignore_headers" and "fastcgi_ignore_headers" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменных "open_file_cache_errors on"
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.7.53.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if an "open_file_cache_errors off" directive was used;
+the bug had appeared in 0.7.53.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "port_in_redirect off" не работала;
+ошибка появилась в 0.7.39.
+</para>
+<para lang="en">
+the "port_in_redirect off" directive did not work;
+the bug had appeared in 0.7.39.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+улучшение обработки ошибок метода select.
+</para>
+<para lang="en">
+improve handling of "select" method errors.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "select() failed (10022: ...)" в nginx/Windows.
+</para>
+<para lang="en">
+of "select() failed (10022: ...)" error in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в текстовых сообщениях об ошибках в nginx/Windows;
+ошибка появилась в 0.7.53.
+</para>
+<para lang="en">
+in error text descriptions in nginx/Windows;
+the bug had appeared in 0.7.53.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.53" date="27.04.2009">
 
 <change type="change">
