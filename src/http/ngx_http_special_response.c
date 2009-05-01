@@ -445,6 +445,40 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 }
 
 
+ngx_int_t
+ngx_http_filter_finalize_request(ngx_http_request_t *r, ngx_int_t error)
+{
+    ngx_int_t  rc;
+
+    ngx_http_clean_header(r);
+
+    /* clear the modules contexts */
+    ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
+
+    rc = ngx_http_special_response_handler(r, error);
+
+    /* NGX_ERROR resets any pending data */
+
+    return (rc == NGX_OK) ? NGX_ERROR : rc;
+}
+
+
+void
+ngx_http_clean_header(ngx_http_request_t *r)
+{
+    ngx_memzero(&r->headers_out.status,
+                sizeof(ngx_http_headers_out_t)
+                    - offsetof(ngx_http_headers_out_t, status));
+
+    r->headers_out.headers.part.nelts = 0;
+    r->headers_out.headers.part.next = NULL;
+    r->headers_out.headers.last = &r->headers_out.headers.part;
+
+    r->headers_out.content_length_n = -1;
+    r->headers_out.last_modified_time = -1;
+}
+
+
 static ngx_int_t
 ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 {

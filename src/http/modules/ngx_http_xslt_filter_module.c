@@ -64,7 +64,6 @@ typedef struct {
 
 static ngx_int_t ngx_http_xslt_send(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx, ngx_buf_t *b);
-static ngx_int_t ngx_http_xslt_filter_internal_error(ngx_http_request_t *r);
 static ngx_int_t ngx_http_xslt_add_chunk(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx, ngx_buf_t *b);
 
@@ -320,14 +319,15 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     ctx->done = 1;
 
     if (b == NULL) {
-        return ngx_http_xslt_filter_internal_error(r);
+        return ngx_http_filter_finalize_request(r,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
 
     if (cln == NULL) {
         ngx_free(b->pos);
-        return ngx_http_special_response_handler(r,
+        return ngx_http_filter_finalize_request(r,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
@@ -356,22 +356,6 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     out.next = NULL;
 
     return ngx_http_next_body_filter(r, &out);
-}
-
-
-static ngx_int_t
-ngx_http_xslt_filter_internal_error(ngx_http_request_t *r)
-{
-    ngx_int_t  rc;
-
-    /* clear the modules contexts */
-    ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
-
-    rc = ngx_http_special_response_handler(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-
-    /* NGX_ERROR resets any pending data */
-
-    return (rc == NGX_OK) ? NGX_ERROR : rc;
 }
 
 

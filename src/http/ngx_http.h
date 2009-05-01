@@ -103,6 +103,9 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
 ngx_int_t ngx_http_send_header(ngx_http_request_t *r);
 ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r,
     ngx_int_t error);
+ngx_int_t ngx_http_filter_finalize_request(ngx_http_request_t *r,
+    ngx_int_t error);
+void ngx_http_clean_header(ngx_http_request_t *r);
 
 
 time_t ngx_http_parse_time(u_char *value, size_t len);
