@@ -104,6 +104,7 @@ fi
 #     ngx_http_charset_filter
 #     ngx_http_ssi_filter
 #         ngx_http_xslt_filter
+#         ngx_http_image_filter_filter
 #         ngx_http_sub_filter
 #         ngx_http_addition_filter
 #         ngx_http_userid_filter
