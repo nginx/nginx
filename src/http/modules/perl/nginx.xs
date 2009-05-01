@@ -607,7 +607,7 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     ngx_http_request_t        *r;
     char                      *filename;
-    int                        offset;
+    off_t                      offset;
     size_t                     bytes;
     ngx_str_t                  path;
     ngx_buf_t                 *b;
