@@ -60,6 +60,7 @@ HTTP_SSI=YES
 HTTP_POSTPONE=NO
 HTTP_REALIP=NO
 HTTP_XSLT=NO
+HTTP_IMAGE_FILTER=NO
 HTTP_SUB=NO
 HTTP_ADDITION=NO
 HTTP_DAV=NO
@@ -123,6 +124,7 @@ USE_PERL=NO
 NGX_PERL=perl
 
 USE_LIBXSLT=NO
+USE_LIBGD=NO
 
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
@@ -181,6 +183,7 @@ do
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
+        --with-http_image_filter_module) HTTP_IMAGE_FILTER=YES      ;;
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;

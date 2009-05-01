@@ -328,6 +328,10 @@ HTTP_XSLT_FILTER_MODULE=ngx_http_xslt_filter_module
 HTTP_XSLT_SRCS=src/http/modules/ngx_http_xslt_filter_module.c
 
 
+HTTP_IMAGE_FILTER_MODULE=ngx_http_image_filter_module
+HTTP_IMAGE_SRCS=src/http/modules/ngx_http_image_filter_module.c
+
+
 HTTP_SUB_FILTER_MODULE=ngx_http_sub_filter_module
 HTTP_SUB_SRCS=src/http/modules/ngx_http_sub_filter_module.c
 

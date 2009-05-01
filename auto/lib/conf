@@ -45,6 +45,10 @@ if [ $USE_LIBXSLT = YES ]; then
     . auto/lib/libxslt/conf
 fi
 
+if [ $USE_LIBGD = YES ]; then
+    . auto/lib/libgd/conf
+fi
+
 if [ $USE_PERL = YES ]; then
     . auto/lib/perl/conf
 fi
