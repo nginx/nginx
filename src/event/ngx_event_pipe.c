@@ -397,7 +397,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         p->free_raw_bufs = p->free_raw_bufs->next;
 
-        if (p->free_bufs) {
+        if (p->free_bufs && p->buf_to_file == NULL) {
             for (cl = p->free_raw_bufs; cl; cl = cl->next) {
                 if (cl->buf->shadow == NULL) {
                     ngx_pfree(p->pool, cl->buf->start);
