@@ -12,52 +12,6 @@
 ngx_os_io_t  ngx_io;
 
 
-ngx_listening_t *
-ngx_listening_inet_stream_socket(ngx_conf_t *cf, in_addr_t addr, in_port_t port)
-{
-    size_t               len;
-    ngx_listening_t     *ls;
-    struct sockaddr_in  *sin;
-
-    ls = ngx_array_push(&cf->cycle->listening);
-    if (ls == NULL) {
-        return NULL;
-    }
-
-    ngx_memzero(ls, sizeof(ngx_listening_t));
-
-    sin = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
-    if (sin == NULL) {
-        return NULL;
-    }
-
-    sin->sin_family = AF_INET;
-    sin->sin_addr.s_addr = addr;
-    sin->sin_port = htons(port);
-
-
-    ls->addr_text.data = ngx_pnalloc(cf->pool,
-                                    NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1);
-    if (ls->addr_text.data == NULL) {
-        return NULL;
-    }
-
-    len = ngx_inet_ntop(AF_INET, &addr, ls->addr_text.data,
-                        NGX_INET_ADDRSTRLEN);
-
-    ls->addr_text.len = ngx_sprintf(ls->addr_text.data + len, ":%d", port)
-                        - ls->addr_text.data;
-
-    ls->fd = (ngx_socket_t) -1;
-    ls->type = SOCK_STREAM;
-    ls->sockaddr = (struct sockaddr *) sin;
-    ls->socklen = sizeof(struct sockaddr_in);
-    ls->addr_text_max_len = NGX_INET_ADDRSTRLEN;
-
-    return ls;
-}
-
-
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
