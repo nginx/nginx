@@ -284,7 +284,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_url_t                   u;
     ngx_uint_t                  i, m;
-    ngx_mail_listen_t          *imls;
+    ngx_mail_listen_t          *ls;
     ngx_mail_module_t          *module;
     ngx_mail_core_main_conf_t  *cmcf;
 
@@ -312,11 +312,11 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cmcf = ngx_mail_conf_get_module_main_conf(cf, ngx_mail_core_module);
 
-    imls = cmcf->listen.elts;
+    ls = cmcf->listen.elts;
 
     for (i = 0; i < cmcf->listen.nelts; i++) {
 
-        if (imls[i].addr != u.addr.in_addr || imls[i].port != u.port) {
+        if (ls[i].addr != u.addr.in_addr || ls[i].port != u.port) {
             continue;
         }
 
@@ -325,17 +325,17 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    imls = ngx_array_push(&cmcf->listen);
-    if (imls == NULL) {
+    ls = ngx_array_push(&cmcf->listen);
+    if (ls == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    ngx_memzero(imls, sizeof(ngx_mail_listen_t));
+    ngx_memzero(ls, sizeof(ngx_mail_listen_t));
 
-    imls->addr = u.addr.in_addr;
-    imls->port = u.port;
-    imls->family = u.family;
-    imls->ctx = cf->ctx;
+    ls->addr = u.addr.in_addr;
+    ls->port = u.port;
+    ls->family = u.family;
+    ls->ctx = cf->ctx;
 
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
@@ -359,13 +359,13 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 2; i < cf->args->nelts; i++) {
 
         if (ngx_strcmp(value[i].data, "bind") == 0) {
-            imls->bind = 1;
+            ls->bind = 1;
             continue;
         }
 
         if (ngx_strcmp(value[i].data, "ssl") == 0) {
 #if (NGX_MAIL_SSL)
-            imls->ssl = 1;
+            ls->ssl = 1;
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

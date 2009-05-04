@@ -26,20 +26,20 @@ ngx_mail_init_connection(ngx_connection_t *c)
     ngx_uint_t            i;
     struct sockaddr_in    sin;
     ngx_mail_log_ctx_t   *ctx;
-    ngx_mail_in_port_t   *imip;
-    ngx_mail_in_addr_t   *imia;
+    ngx_mail_in_port_t   *mip;
+    ngx_mail_in_addr_t   *mia;
     ngx_mail_session_t   *s;
 
     /* find the server configuration for the address:port */
 
     /* AF_INET only */
 
-    imip = c->listening->servers;
-    imia = imip->addrs;
+    mip = c->listening->servers;
+    mia = mip->addrs;
 
     i = 0;
 
-    if (imip->naddrs > 1) {
+    if (mip->naddrs > 1) {
 
         /*
          * There are several addresses on this port and one of them
@@ -70,8 +70,8 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
         /* the last address is "*" */
 
-        for ( /* void */ ; i < imip->naddrs - 1; i++) {
-            if (in_addr == imia[i].addr) {
+        for ( /* void */ ; i < mip->naddrs - 1; i++) {
+            if (in_addr == mia[i].addr) {
                 break;
             }
         }
@@ -84,10 +84,10 @@ ngx_mail_init_connection(ngx_connection_t *c)
         return;
     }
 
-    s->main_conf = imia[i].ctx->main_conf;
-    s->srv_conf = imia[i].ctx->srv_conf;
+    s->main_conf = mia[i].ctx->main_conf;
+    s->srv_conf = mia[i].ctx->srv_conf;
 
-    s->addr_text = &imia[i].addr_text;
+    s->addr_text = &mia[i].addr_text;
 
     c->data = s;
     s->connection = c;
@@ -124,7 +124,7 @@ ngx_mail_init_connection(ngx_connection_t *c)
         return;
     }
 
-    if (imia[i].ssl) {
+    if (mia[i].ssl) {
 
         c->log->action = "SSL handshaking";
 
