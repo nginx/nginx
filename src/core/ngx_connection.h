@@ -163,11 +163,6 @@ struct ngx_connection_s {
 };
 
 
-#ifndef ngx_ssl_set_nosendshut
-#define ngx_ssl_set_nosendshut(ssl)
-#endif
-
-
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
 void ngx_configure_listening_socket(ngx_cycle_t *cycle);
