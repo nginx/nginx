@@ -186,7 +186,7 @@ ngx_http_image_header_filter(ngx_http_request_t *r)
 
     len = r->headers_out.content_length_n;
 
-    if (len != -1 && len > conf->buffer_size) {
+    if (len != -1 && len > (off_t) conf->buffer_size) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "image filter: too big response: %O", len);
 
