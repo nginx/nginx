@@ -1472,6 +1472,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 static ngx_int_t
 ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
+    ngx_int_t                  rc;
     ngx_uint_t                 status;
     ngx_http_upstream_next_t  *un;
 
@@ -1491,8 +1492,14 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #if (NGX_HTTP_CACHE)
 
         if (u->stale_cache && (u->conf->cache_use_stale & un->mask)) {
-            ngx_http_upstream_finalize_request(r, u,
-                                           ngx_http_upstream_cache_send(r, u));
+
+            rc = u->reinit_request(r);
+
+            if (rc == NGX_OK) {
+                rc = ngx_http_upstream_cache_send(r, u);
+            }
+
+            ngx_http_upstream_finalize_request(r, u, rc);
             return NGX_OK;
         }
 
@@ -2643,9 +2650,15 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 #if (NGX_HTTP_CACHE)
 
             if (u->stale_cache && (u->conf->cache_use_stale & ft_type)) {
+                ngx_int_t  rc;
 
-                ngx_http_upstream_finalize_request(r, u,
-                                           ngx_http_upstream_cache_send(r, u));
+                rc = u->reinit_request(r);
+
+                if (rc == NGX_OK) {
+                    rc = ngx_http_upstream_cache_send(r, u);
+                }
+
+                ngx_http_upstream_finalize_request(r, u, rc);
                 return;
             }
 #endif
