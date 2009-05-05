@@ -202,8 +202,6 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 continue;
             }
 
-            ls[i].log = *ls[i].logp;
-
             if (ls[i].inherited) {
 
                 /* TODO: close on exit */
@@ -356,6 +354,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
+
+        ls[i].log = *ls[i].logp;
 
         if (ls[i].rcvbuf != -1) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF,
