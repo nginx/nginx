@@ -573,7 +573,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         if (!ngx_test_config) {
-            ngx_configure_listening_socket(cycle);
+            ngx_configure_listening_sockets(cycle);
         }
     }
 

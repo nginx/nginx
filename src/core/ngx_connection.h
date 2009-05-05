@@ -165,7 +165,7 @@ struct ngx_connection_s {
 
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
-void ngx_configure_listening_socket(ngx_cycle_t *cycle);
+void ngx_configure_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_connection(ngx_connection_t *c);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);

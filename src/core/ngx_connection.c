@@ -342,7 +342,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
 
 void
-ngx_configure_listening_socket(ngx_cycle_t *cycle)
+ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 {
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
