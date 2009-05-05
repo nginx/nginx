@@ -1475,10 +1475,6 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_uint_t                 status;
     ngx_http_upstream_next_t  *un;
 
-    if (!(u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_STATUS)) {
-        return NGX_DECLINED;
-    }
-
     status = u->headers_in.status_n;
 
     for (un = ngx_http_upstream_next_errors; un->status; un++) {
@@ -1494,10 +1490,7 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
 #if (NGX_HTTP_CACHE)
 
-        if (u->peer.tries == 0
-            && u->stale_cache
-            && (u->conf->cache_use_stale & un->mask))
-        {
+        if (u->stale_cache && (u->conf->cache_use_stale & un->mask)) {
             ngx_http_upstream_finalize_request(r, u,
                                            ngx_http_upstream_cache_send(r, u));
             return NGX_OK;
