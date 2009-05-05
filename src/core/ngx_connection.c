@@ -249,7 +249,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                                (const void *) &ipv6only, sizeof(int))
                     == -1)
                 {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   "setsockopt(IPV6_V6ONLY) %V failed, ignored",
                                   &ls[i].addr_text);
                 }
@@ -273,7 +273,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 }
             }
 
-            ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
                            "bind() %V #%d ", &ls[i].addr_text, s);
 
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
