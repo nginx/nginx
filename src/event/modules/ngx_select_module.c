@@ -205,6 +205,7 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 static ngx_int_t
 ngx_select_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
+    ngx_event_t       *e;
     ngx_connection_t  *c;
 
     c = ev->data;
@@ -245,8 +246,9 @@ ngx_select_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 #endif
 
     if (ev->index < --nevents) {
-        event_index[ev->index] = event_index[nevents];
-        event_index[ev->index]->index = ev->index;
+        e = event_index[nevents];
+        event_index[ev->index] = e;
+        e->index = ev->index;
     }
 
     ev->index = NGX_INVALID_INDEX;
