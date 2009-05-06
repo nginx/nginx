@@ -768,6 +768,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     int                  n;
     char                 buf[1];
     ngx_err_t            err;
+    ngx_int_t            event;
     ngx_connection_t     *c;
     ngx_http_upstream_t  *u;
 
@@ -779,10 +780,22 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     u = r->upstream;
 
     if (c->error) {
+        if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
+
+            event = ev->write ? NGX_WRITE_EVENT : NGX_READ_EVENT;
+
+            if (ngx_del_event(ev, event, 0) != NGX_OK) {
+                ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+        }
+
         if (!u->cacheable) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_CLIENT_CLOSED_REQUEST);
         }
+
         return;
     }
 
@@ -836,17 +849,15 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, err,
                    "http upstream recv(): %d", n);
 
-    /*
-     * we do not need to disable the write event because
-     * that event has NGX_USE_CLEAR_EVENT type
-     */
-
     if (ev->write && (n >= 0 || err == NGX_EAGAIN)) {
         return;
     }
 
     if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
-        if (ngx_del_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+
+        event = ev->write ? NGX_WRITE_EVENT : NGX_READ_EVENT;
+
+        if (ngx_del_event(ev, event, 0) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
