@@ -9,6 +9,75 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.55" date="06.05.2009">
+
+<change type="bugfix">
+<para lang="ru">
+параметры http_XXX в директиве proxy_cache_use_stale
+и fastcgi_cache_use_stale не работали.
+</para>
+<para lang="en">
+the http_XXX parameters in "proxy_cache_use_stale" and
+"fastcgi_cache_use_stale" directives did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+fastcgi кэш не кэшировал ответы, состоящие только из заголовка.
+</para>
+<para lang="en">
+fastcgi cache did not cache header only responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "select() failed (9: Bad file descriptor)" в nginx/Unix
+и "select() failed (10022: ...)" в nginx/Windows.
+</para>
+<para lang="en">
+of "select() failed (9: Bad file descriptor)" error in nginx/Unix
+and "select() failed (10022: ...)" error in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы debug_connection
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.7.54.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if an "debug_connection" directive was used;
+the bug had appeared in 0.7.54.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в сборке модуля ngx_http_image_filter_module.
+</para>
+<para lang="en">
+fix ngx_http_image_filter_module building errors.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+файлы больше 2G не передавались с использованием $r->sendfile.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the files bigger than 2G could not be transferred using $r->sendfile.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.54" date="01.05.2009">
 
 <change type="feature">
@@ -157,7 +226,7 @@ now switches may be set in condensed form.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не работал, если файл конфигурации был задан ключём -c.
+nginx/Windows не работал, если файл конфигурации был задан ключом -c.
 </para>
 <para lang="en">
 nginx/Windows did not work if configuration file was given by the -c switch.
