@@ -95,6 +95,7 @@ EVENT_SRCS="src/event/ngx_event.c \
 
 SELECT_MODULE=ngx_select_module
 SELECT_SRCS=src/event/modules/ngx_select_module.c
+WIN32_SELECT_SRCS=src/event/modules/ngx_win32_select_module.c
 
 POLL_MODULE=ngx_poll_module
 POLL_SRCS=src/event/modules/ngx_poll_module.c

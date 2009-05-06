@@ -26,7 +26,8 @@ static fd_set         master_write_fd_set;
 static fd_set         work_read_fd_set;
 static fd_set         work_write_fd_set;
 
-static ngx_int_t      max_fd;
+static ngx_uint_t     max_read;
+static ngx_uint_t     max_write;
 static ngx_uint_t     nevents;
 
 static ngx_event_t  **event_index;
@@ -105,7 +106,8 @@ ngx_select_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 
     ngx_event_flags = NGX_USE_LEVEL_EVENT;
 
-    max_fd = -1;
+    max_read = 0;
+    max_write = 0;
 
     return NGX_OK;
 }
@@ -145,15 +147,22 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
+    if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
+        || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
+    {
+        ngx_log_error(NGX_LOG_ERR, ev->log, 0,
+                      "maximum number of descriptors "
+                      "supported by select() is %d", FD_SETSIZE);
+        return NGX_ERROR;
+    }
+
     if (event == NGX_READ_EVENT) {
         FD_SET(c->fd, &master_read_fd_set);
+        max_read++;
 
     } else if (event == NGX_WRITE_EVENT) {
         FD_SET(c->fd, &master_write_fd_set);
-    }
-
-    if (max_fd != -1 && max_fd < c->fd) {
-        max_fd = c->fd;
+        max_write++;
     }
 
     ev->active = 1;
@@ -185,13 +194,11 @@ ngx_select_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     if (event == NGX_READ_EVENT) {
         FD_CLR(c->fd, &master_read_fd_set);
+        max_read--;
 
     } else if (event == NGX_WRITE_EVENT) {
         FD_CLR(c->fd, &master_write_fd_set);
-    }
-
-    if (max_fd == c->fd) {
-        max_fd = -1;
+        max_write--;
     }
 
     if (ev->index < --nevents) {
@@ -217,18 +224,6 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     struct timeval     tv, *tp;
     ngx_connection_t  *c;
 
-    if (max_fd == -1) {
-        for (i = 0; i < nevents; i++) {
-            c = event_index[i]->data;
-            if (max_fd < c->fd) {
-                max_fd = c->fd;
-            }
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "change max_fd: %d", max_fd);
-    }
-
 #if (NGX_DEBUG)
     if (cycle->log->log_level & NGX_LOG_DEBUG_ALL) {
         for (i = 0; i < nevents; i++) {
@@ -237,9 +232,6 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "select event: fd:%d wr:%d", c->fd, ev->write);
         }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "max_fd: %d", max_fd);
     }
 #endif
 
@@ -258,7 +250,21 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     work_read_fd_set = master_read_fd_set;
     work_write_fd_set = master_write_fd_set;
 
-    ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+    if (max_read || max_write) {
+        ready = select(0, &work_read_fd_set, &work_write_fd_set, NULL, tp);
+
+    } else {
+
+        /*
+         * Winsock select() requires that at least one descriptor set must be
+         * be non-null, and any non-null descriptor set must contain at least
+         * one handle to a socket.  Otherwise select() returns WSAEINVAL.
+         */
+
+        ngx_msleep(timer);
+
+        ready = 0;
+    }
 
     if (ready == -1) {
         err = ngx_socket_errno;
@@ -274,24 +280,9 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                    "select ready %d", ready);
 
     if (err) {
-        ngx_uint_t  level;
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, err, "select() failed");
 
-        if (err == NGX_EINTR) {
-
-            if (ngx_event_timer_alarm) {
-                ngx_event_timer_alarm = 0;
-                return NGX_OK;
-            }
-
-            level = NGX_LOG_INFO;
-
-        } else {
-            level = NGX_LOG_ALERT;
-        }
-
-        ngx_log_error(level, cycle->log, err, "select() failed");
-
-        if (err == EBADF) {
+        if (err == WSAENOTSOCK) {
             ngx_select_repair_fd_sets(cycle);
         }
 
@@ -360,19 +351,17 @@ static void
 ngx_select_repair_fd_sets(ngx_cycle_t *cycle)
 {
     int           n;
+    u_int         i;
     socklen_t     len;
     ngx_err_t     err;
     ngx_socket_t  s;
 
-    for (s = 0; s <= max_fd; s++) {
+    for (i = 0; i < master_read_fd_set.fd_count; i++) {
 
-        if (FD_ISSET(s, &master_read_fd_set) == 0) {
-            continue;
-        }
-
+        s = master_read_fd_set.fd_array[i];
         len = sizeof(int);
 
-        if (getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1) {
+        if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char *) &n, &len) == -1) {
             err = ngx_socket_errno;
 
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
@@ -382,15 +371,12 @@ ngx_select_repair_fd_sets(ngx_cycle_t *cycle)
         }
     }
 
-    for (s = 0; s <= max_fd; s++) {
+    for (i = 0; i < master_write_fd_set.fd_count; i++) {
 
-        if (FD_ISSET(s, &master_write_fd_set) == 0) {
-            continue;
-        }
-
+        s = master_write_fd_set.fd_array[i];
         len = sizeof(int);
 
-        if (getsockopt(s, SOL_SOCKET, SO_TYPE, &n, &len) == -1) {
+        if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char *) &n, &len) == -1) {
             err = ngx_socket_errno;
 
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
@@ -399,8 +385,6 @@ ngx_select_repair_fd_sets(ngx_cycle_t *cycle)
             FD_CLR(s, &master_write_fd_set);
         }
     }
-
-    max_fd = -1;
 }
 
 
@@ -415,24 +399,5 @@ ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_OK;
     }
 
-    /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
-
-    if (cycle->connection_n > FD_SETSIZE) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "the maximum number of files "
-                      "supported by select() is %ud", FD_SETSIZE);
-        return NGX_CONF_ERROR;
-    }
-
-#if (NGX_THREADS)
-
-    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                  "select() is not supported in the threaded mode");
-    return NGX_CONF_ERROR;
-
-#else
-
     return NGX_CONF_OK;
-
-#endif
 }
