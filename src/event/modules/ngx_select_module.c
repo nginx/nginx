@@ -147,6 +147,16 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         return NGX_OK;
     }
 
+    if ((event == NGX_READ_EVENT && ev->write)
+        || (event == NGX_WRITE_EVENT && !ev->write))
+    {
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "invalid select %s event fd:%d ev:%i",
+                      ev->write ? "write" : "read", c->fd, event);
+        return NGX_ERROR;
+    }
+
+
 #if (NGX_WIN32)
 
     if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
