@@ -46,30 +46,30 @@ else
 
     if [ "$NGX_PLATFORM" != win32 ]; then
 
-        MD5=NO
+            MD5=NO
 
-        # Solaris 8/9
+            # FreeBSD, Solaris 10
 
-        ngx_feature="rsaref md5 library"
-        ngx_feature_name=
-        ngx_feature_run=no
-        ngx_feature_incs="#include <md5.h>"
-        ngx_feature_path=
-        ngx_feature_libs="-lmd5"
-        ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
-        . auto/feature
-
-        ngx_md5_lib="system md5"
-
-        if [ $ngx_found = no ]; then
-
-            # FreeBSD
-
-            ngx_feature="rsaref md library"
+            ngx_feature="system md library"
+            ngx_feature_name=
+            ngx_feature_run=no
+            ngx_feature_incs="#include <md5.h>"
+            ngx_feature_path=
             ngx_feature_libs="-lmd"
+            ngx_feature_test="MD5_CTX md5; MD5Init(&md5)"
             . auto/feature
 
             ngx_md5_lib="system md"
+
+        if [ $ngx_found = no ]; then
+
+            # Solaris 8/9
+
+            ngx_feature="system md5 library"
+            ngx_feature_libs="-lmd5"
+            . auto/feature
+
+            ngx_md5_lib="system md5"
         fi
 
         if [ $ngx_found = no ]; then
