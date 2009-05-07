@@ -649,7 +649,21 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 
     (void) ngx_cpystrn(p, host, len);
 
+#if (NGX_WIN32)
+
+    rc = WSAStringToAddress((char *) p, AF_INET6, NULL,
+                            (SOCKADDR *) sin6, &u->socklen);
+    rc = !rc;
+
+    if (u->port) {
+        sin6->sin6_port = htons(u->port);
+    }
+
+#else
+
     rc = inet_pton(AF_INET6, (const char *) p, &sin6->sin6_addr);
+
+#endif
 
     ngx_free(p);
 
