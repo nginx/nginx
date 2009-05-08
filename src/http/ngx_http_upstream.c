@@ -1483,7 +1483,6 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 static ngx_int_t
 ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
-    ngx_int_t                  rc;
     ngx_uint_t                 status;
     ngx_http_upstream_next_t  *un;
 
@@ -1503,6 +1502,7 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #if (NGX_HTTP_CACHE)
 
         if (u->stale_cache && (u->conf->cache_use_stale & un->mask)) {
+            ngx_int_t  rc;
 
             rc = u->reinit_request(r);
 
