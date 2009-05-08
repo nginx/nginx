@@ -31,7 +31,7 @@ if [ $OPENSSL != NONE ]; then
 
     case "$NGX_SYSTEM" in
         SunOS|Linux)
-            CORE_LIBS="$CORE_LIBS -ldl"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
         ;;
     esac
 
@@ -72,7 +72,7 @@ else
 
                 case "$NGX_SYSTEM" in
                     SunOS)
-                        CORE_LIBS="$CORE_LIBS -ldl"
+                        CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
                     ;;
                 esac
             fi

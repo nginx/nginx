@@ -185,6 +185,28 @@ if [ $ngx_found != yes ]; then
 fi
 
 
+ngx_feature="dlopen()"
+ngx_feature_name=
+ngx_feature_run=no
+ngx_feature_incs="#include <dlfcn.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="dlopen(NULL, 0)"
+. auto/feature
+
+
+if [ $ngx_found != yes ]; then
+
+    ngx_feature="dlopen() in libdl"
+    ngx_feature_libs="-ldl"
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        NGX_LIBDL="-ldl"
+    fi
+fi
+
+
 ngx_feature="mmap(MAP_ANON|MAP_SHARED)"
 ngx_feature_name="NGX_HAVE_MAP_ANON"
 ngx_feature_run=yes
