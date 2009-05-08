@@ -45,21 +45,6 @@ fi
 case "$NGX_MACHINE" in
 
     i86pc)
-        ngx_feature="PAUSE hardware capability bug"
-        ngx_feature_name=
-        ngx_feature_run=bug
-        ngx_feature_incs=
-        ngx_feature_path=
-        ngx_feature_libs=
-        ngx_feature_test='__asm ("pause")'
-
-        . auto/feature
-
-        if [ $ngx_found = yes ]; then
-            # disable [ PAUSE ] hwcap for Sun Studio 11
-            CORE_LINK="$CORE_LINK -Msrc/os/unix/ngx_sunpro_x86.map"
-        fi
-
         NGX_AUX=" src/os/unix/ngx_sunpro_x86.il"
     ;;
 
