@@ -198,6 +198,14 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                               ngx_reload_event_name);
             }
 
+            cycle = ngx_init_cycle(cycle);
+            if (cycle == NULL) {
+                cycle = (ngx_cycle_t *) ngx_cycle;
+                continue;
+            }
+
+            ngx_cycle = cycle;
+
             ngx_start_worker_processes(cycle, NGX_PROCESS_JUST_RESPAWN);
             ngx_quit_worker_processes(cycle, 1);
 
