@@ -1815,6 +1815,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                    "http finalize request: %d, \"%V?%V\" %d",
                    rc, &r->uri, &r->args, r == c->data);
 
+    if (rc == NGX_OK && r->filter_finalize) {
+        c->error = 1;
+        return;
+    }
+
     if (rc == NGX_DECLINED) {
         r->content_handler = NULL;
         r->write_event_handler = ngx_http_core_run_phases;

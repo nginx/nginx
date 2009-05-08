@@ -7,7 +7,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include "gd.h"
+
+#include <gd.h>
 
 
 #define NGX_HTTP_IMAGE_OFF       0
@@ -20,7 +21,8 @@
 #define NGX_HTTP_IMAGE_START     0
 #define NGX_HTTP_IMAGE_READ      1
 #define NGX_HTTP_IMAGE_PROCESS   2
-#define NGX_HTTP_IMAGE_DONE      3
+#define NGX_HTTP_IMAGE_PASS      3
+#define NGX_HTTP_IMAGE_DONE      4
 
 
 #define NGX_HTTP_IMAGE_NONE      0
@@ -55,6 +57,8 @@ typedef struct {
 } ngx_http_image_filter_ctx_t;
 
 
+static ngx_int_t ngx_http_image_send(ngx_http_request_t *r,
+    ngx_http_image_filter_ctx_t *ctx, ngx_chain_t *in);
 static ngx_uint_t ngx_http_image_test(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_int_t ngx_http_image_read(ngx_http_request_t *r, ngx_chain_t *in);
 static ngx_buf_t *ngx_http_image_process(ngx_http_request_t *r);
@@ -247,9 +251,9 @@ ngx_http_image_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 if (out.buf) {
                     out.next = NULL;
-                    in = &out;
+                    ctx->phase = NGX_HTTP_IMAGE_DONE;
 
-                    break;
+                    return ngx_http_image_send(r, ctx, &out);
                 }
             }
 
@@ -264,7 +268,9 @@ ngx_http_image_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         r->headers_out.content_type = *ct;
 
         if (conf->filter == NGX_HTTP_IMAGE_TEST) {
-            break;
+            ctx->phase = NGX_HTTP_IMAGE_PASS;
+
+            return ngx_http_image_send(r, ctx, in);
         }
 
         ctx->phase = NGX_HTTP_IMAGE_READ;
@@ -296,24 +302,44 @@ ngx_http_image_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         out.next = NULL;
-        in = &out;
+        ctx->phase = NGX_HTTP_IMAGE_PASS;
 
-        break;
+        return ngx_http_image_send(r, ctx, &out);
+
+    case NGX_HTTP_IMAGE_PASS:
+
+        return ngx_http_next_body_filter(r, in);
 
     default: /* NGX_HTTP_IMAGE_DONE */
 
-        return ngx_http_next_body_filter(r, in);
-    }
+        rc = ngx_http_next_body_filter(r, NULL);
 
-    ctx->phase = NGX_HTTP_IMAGE_DONE;
+        /* NGX_ERROR resets any pending data */
+        return (rc == NGX_OK) ? NGX_ERROR : rc;
+    }
+}
+
+
+static ngx_int_t
+ngx_http_image_send(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx,
+    ngx_chain_t *in)
+{
+    ngx_int_t  rc;
 
     rc = ngx_http_next_header_filter(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-        return rc;
+        return NGX_ERROR;
     }
 
-    return ngx_http_next_body_filter(r, in);
+    rc = ngx_http_next_body_filter(r, in);
+
+    if (ctx->phase == NGX_HTTP_IMAGE_DONE) {
+        /* NGX_ERROR resets any pending data */
+        return (rc == NGX_OK) ? NGX_ERROR : rc;
+    }
+
+    return rc;
 }
 
 

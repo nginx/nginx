@@ -455,11 +455,21 @@ ngx_http_filter_finalize_request(ngx_http_request_t *r, ngx_int_t error)
     /* clear the modules contexts */
     ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
 
+    r->filter_finalize = 1;
+
     rc = ngx_http_special_response_handler(r, error);
 
     /* NGX_ERROR resets any pending data */
 
-    return (rc == NGX_OK) ? NGX_ERROR : rc;
+    switch (rc) {
+
+    case NGX_OK:
+    case NGX_DONE:
+        return NGX_ERROR;
+
+    default:
+        return rc;
+    }
 }
 
 
