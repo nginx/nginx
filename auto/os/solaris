@@ -7,14 +7,14 @@ have=NGX_SOLARIS . auto/have_headers
 CORE_INCS="$UNIX_INCS"
 CORE_DEPS="$UNIX_DEPS $SOLARIS_DEPS"
 CORE_SRCS="$UNIX_SRCS $SOLARIS_SRCS "
-CORE_LIBS="$CORE_LIBS -lsocket -lnsl -lrt"
+CORE_LIBS="$CORE_LIBS -lsocket -lnsl"
 
 NGX_RPATH=YES
 
 # Solaris's make does not support a blank line between target and rules
 ngx_spacer=
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64 -lsocket -lnsl -lrt"
+CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64 -lsocket -lnsl"
 
 
 if [ $ZLIB_ASM != NO ]; then
