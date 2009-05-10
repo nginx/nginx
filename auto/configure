@@ -31,6 +31,12 @@ if test -z "$NGX_PLATFORM"; then
 
     NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
 
+    case "$NGX_SYSTEM" in
+        MINGW32_*)
+            NGX_PLATFORM=win32
+        ;;
+    esac
+
 else
     echo "building for $NGX_PLATFORM"
     NGX_SYSTEM=$NGX_PLATFORM

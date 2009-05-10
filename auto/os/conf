@@ -22,7 +22,7 @@ case "$NGX_PLATFORM" in
         . auto/os/darwin
     ;;
 
-    win32 | MINGW32_* )
+    win32)
         . auto/os/win32
     ;;
 
