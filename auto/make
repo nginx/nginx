@@ -23,20 +23,10 @@ LINK =	$LINK
 
 END
 
+
 if test -n "$NGX_PERL_CFLAGS"; then
     echo NGX_PERL_CFLAGS = $NGX_PERL_CFLAGS                   >> $NGX_MAKEFILE
     echo NGX_PM_CFLAGS = $NGX_PM_CFLAGS                       >> $NGX_MAKEFILE
-fi
-
-if [ "$BMAKE" = wmake ]; then
-    echo MAKE = wmake                                         >> $NGX_MAKEFILE
-
-    ngx_regex_cont=' '
-    ngx_long_regex_cont=' '
-    ngx_cont=' '
-    ngx_long_cont=' '
-    ngx_tab=' '
-
 fi
 
 

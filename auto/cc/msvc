@@ -124,24 +124,13 @@ ngx_binout="-Fe"
 ngx_objext="obj"
 ngx_binext=".exe"
 
-if [ "$BMAKE" = nmake ]; then
-    # MS nmake
-
-    ngx_long_start='@<<
+ngx_long_start='@<<
         '
-    ngx_long_end='<<'
-    ngx_long_regex_cont=' \
+ngx_long_end='<<'
+ngx_long_regex_cont=' \
 	'
-    ngx_long_cont='
+ngx_long_cont='
 	'
-
-else
-    # Borland make
-
-    ngx_long_start='@&&|
-        '
-    ngx_long_end='|'
-fi
 
 # MSVC understand / in path
 #ngx_regex_dirsep='\\'

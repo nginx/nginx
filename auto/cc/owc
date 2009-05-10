@@ -87,3 +87,9 @@ ngx_binext=".exe"
 
 ngx_regex_dirsep='\\'
 ngx_dirsep="\\"
+
+ngx_regex_cont=' '
+ngx_long_regex_cont=' '
+ngx_cont=' '
+ngx_long_cont=' '
+ngx_tab=' '
