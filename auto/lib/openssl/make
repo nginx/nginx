@@ -22,7 +22,7 @@ $OPENSSL/out32/ssleay32.lib:
 	perl Configure VC-WIN32 no-shared
 	ms\\do_ms
 	\$(MAKE) -f ms\\nt.mak
-	cd ..\\..\\..
+	cd \$(CURDIR)
 
 END
 
@@ -39,7 +39,7 @@ END
 	perl Configure BC-32 no-shared
 	ms\\do_nasm
 	\$(MAKE) -f ms\\bcb.mak
-	cd ..\\..\\..
+	cd \$(CURDIR)
 
 END
 

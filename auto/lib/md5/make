@@ -35,7 +35,7 @@ case "$NGX_PLATFORM" in
 `echo "$MD5/md5.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
 	cd `echo $MD5 | sed -e "s/\//$ngx_regex_dirsep/g"`
 	\$(MAKE) -f $ngx_makefile $ngx_opt
-	cd ..\\..\\..
+	cd \$(CURDIR)
 
 END
 

@@ -36,7 +36,7 @@ case "$NGX_PLATFORM" in
 `echo "$ZLIB/zlib.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
 	cd `echo $ZLIB | sed -e "s/\//$ngx_regex_dirsep/g"`
 	\$(MAKE) -f $ngx_makefile $ngx_opt
-	cd ..\\..\\..
+	cd \$(CURDIR)
 
 END
 

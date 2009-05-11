@@ -35,7 +35,7 @@ case "$NGX_PLATFORM" in
 `echo "$SHA1/sha1.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
 	cd `echo $SHA1 | sed -e "s/\//$ngx_regex_dirsep/g"`
 	\$(MAKE) -f $ngx_makefile $ngx_opt
-	cd ..\\..\\..
+	cd \$(CURDIR)
 
 END
 
