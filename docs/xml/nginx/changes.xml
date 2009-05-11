@@ -9,6 +9,29 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.56" date="11.05.2009">
+
+<change type="feature">
+<para lang="ru">
+nginx/Windows поддерживает IPv6 в директиве listen модуля HTTP.
+</para>
+<para lang="en">
+nginx/Windows supports IPv6 in a "listen" directive of the HTTP module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+in ngx_http_image_filter_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.55" date="06.05.2009">
 
 <change type="bugfix">
@@ -34,11 +57,11 @@ fastcgi cache did not cache header only responses.
 <change type="bugfix">
 <para lang="ru">
 ошибки "select() failed (9: Bad file descriptor)" в nginx/Unix
-и "select() failed (10022: ...)" в nginx/Windows.
+и "select() failed (10038: ...)" в nginx/Windows.
 </para>
 <para lang="en">
 of "select() failed (9: Bad file descriptor)" error in nginx/Unix
-and "select() failed (10022: ...)" error in nginx/Windows.
+and "select() failed (10038: ...)" error in nginx/Windows.
 </para>
 </change>
 
