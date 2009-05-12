@@ -7,16 +7,19 @@ case "$NGX_CC_NAME" in
     msvc*)
         ngx_makefile=makefile.msvc
         ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
+        ngx_pcre="PCRE=\"$PCRE\""
     ;;
 
     owc*)
         ngx_makefile=makefile.owc
         ngx_opt="CPU_OPT=\"$CPU_OPT\""
+        ngx_pcre=`echo PCRE=\"$PCRE\" | sed -e "s/\//$ngx_regex_dirsep/g"`
     ;;
 
     bcc)
         ngx_makefile=makefile.bcc
         ngx_opt="-DCPU_OPT=\"$CPU_OPT\""
+        ngx_pcre=`echo \-DPCRE=\"$PCRE\" | sed -e "s/\//$ngx_regex_dirsep/g"`
     ;;
 
 esac
@@ -29,21 +32,14 @@ case "$NGX_PLATFORM" in
         cp auto/lib/pcre/patch.pcre.in.owc $PCRE
         cp auto/lib/pcre/patch.config.in $PCRE
         cp auto/lib/pcre/patch.pcre.c $PCRE
-        cp auto/lib/pcre/$ngx_makefile $PCRE
-
-        ngx_pcre=`echo $PCRE | sed -e "s/\//$ngx_regex_dirsep/g"`
 
         cat << END                                            >> $NGX_MAKEFILE
 
 `echo "$PCRE/pcre.h:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
-	cd $ngx_pcre
-	\$(MAKE) -f $ngx_makefile pcre.h
-	cd \$(CURDIR)
+	\$(MAKE) -f auto/lib/pcre/$ngx_makefile $ngx_pcre pcre.h
 
 `echo "$PCRE/pcre.lib:	$PCRE/pcre.h" | sed -e "s/\//$ngx_regex_dirsep/g"`
-	cd $ngx_pcre
-	\$(MAKE) -f $ngx_makefile $ngx_opt
-	cd \$(CURDIR)
+	\$(MAKE) -f auto/lib/pcre/$ngx_makefile $ngx_pcre $ngx_opt
 
 END
 

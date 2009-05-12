@@ -1,0 +1,12 @@
+
+# Copyright (C) Igor Sysoev
+
+
+ssleay32.lib:
+	cd $(OPENSSL)
+
+	perl Configure BC-32 no-shared
+
+	ms\do_nasm
+
+	$(MAKE) -f ms\bcb.mak

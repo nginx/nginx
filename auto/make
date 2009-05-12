@@ -22,7 +22,6 @@ CC =	$CC
 CFLAGS = $CFLAGS
 CPP =	$CPP
 LINK =	$LINK
-CURDIR = `pwd`
 
 END
 

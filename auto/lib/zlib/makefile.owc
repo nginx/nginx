@@ -5,5 +5,7 @@
 CFLAGS = -zq -bt=nt -ot -op -oi -oe -s -bm $(CPU_OPT)
 
 zlib.lib:
+	cd $(ZLIB)
+
 	wcl386 -c $(CFLAGS) adler32.c crc32.c deflate.c trees.c zutil.c compress.c
 	wlib -n zlib.lib adler32.obj crc32.obj deflate.obj trees.obj zutil.obj compress.obj
