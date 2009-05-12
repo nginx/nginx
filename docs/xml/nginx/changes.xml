@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.57" date="12.05.2009">
+
+<change type="bugfix">
+<para lang="ru">
+при перенаправлении ошибок модуля ngx_http_image_filter_module
+в именованный location в рабочем процессе происходил floating-point fault;
+ошибка появилась в 0.7.56.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if the ngx_http_image_filter_module errors were redirected to named location;
+the bug had appeared in 0.7.56.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.56" date="11.05.2009">
 
 <change type="feature">
