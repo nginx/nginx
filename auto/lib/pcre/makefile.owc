@@ -3,20 +3,21 @@
 
 
 CFLAGS =	-c -zq -bt=nt -ot -op -oi -oe -s -bm $(CPU_OPT)
-PCREFLAGS =	-DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
+PCREFLAGS =	-DHAVE_CONFIG_H -DPCRE_STATIC -DPOSIX_MALLOC_THRESHOLD=10
 
 
 pcre.lib:
 	cd $(PCRE)
 
-	wcl386 -zq -bt=nt -l=nt -fe=dftables dftables.c
-	dftables > chartables.c
+	wcl386 $(CFLAGS) -i=. $(PCREFLAGS) pcre_*.c
 
-	wcl386 $(CFLAGS) $(PCREFLAGS) maketables.c get.c study.c pcre.c
-	wlib -n pcre.lib maketables.obj get.obj study.obj pcre.obj
+	dir /b *.obj > pcre.lst
 
+	wlib -n pcre.lib @pcre.lst
 
 pcre.h:
 	cd $(PCRE)
-	patch -o pcre.h pcre.in patch.pcre.in.owc
-	patch -o config.h config.in patch.config.in
+
+	copy /y pcre.h.generic pcre.h
+	copy /y config.h.generic config.h
+	copy /y pcre_chartables.c.dist pcre_chartables.c
