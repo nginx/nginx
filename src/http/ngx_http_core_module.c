@@ -2953,8 +2953,8 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     lcf->satisfy = NGX_CONF_UNSET_UINT;
     lcf->if_modified_since = NGX_CONF_UNSET_UINT;
+    lcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
     lcf->internal = NGX_CONF_UNSET;
-    lcf->client_body_in_file_only = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
     lcf->directio = NGX_CONF_UNSET;
