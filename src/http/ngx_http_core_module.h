@@ -341,6 +341,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    if_modified_since;       /* if_modified_since */
     ngx_uint_t    client_body_in_file_only; /* client_body_in_file_only */
 
+    ngx_flag_t    client_body_in_single_buffer;
+                                           /* client_body_in_singe_buffer */
     ngx_flag_t    internal;                /* internal */
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */

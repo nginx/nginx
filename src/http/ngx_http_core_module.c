@@ -361,6 +361,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_in_file_only),
       &ngx_http_core_request_body_in_file },
 
+    { ngx_string("client_body_in_single_buffer"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, client_body_in_single_buffer),
+      NULL },
+
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_TAKE1,
@@ -1316,6 +1323,8 @@ ngx_http_update_location_config(ngx_http_request_t *r)
     } else {
         r->request_body_file_log_level = NGX_LOG_WARN;
     }
+
+    r->request_body_in_single_buf = clcf->client_body_in_single_buffer;
 
     if (r->keepalive && clcf->keepalive_timeout == 0) {
         r->keepalive = 0;
@@ -2954,6 +2963,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->satisfy = NGX_CONF_UNSET_UINT;
     lcf->if_modified_since = NGX_CONF_UNSET_UINT;
     lcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
+    lcf->client_body_in_single_buffer = NGX_CONF_UNSET;
     lcf->internal = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
@@ -3146,6 +3156,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               NGX_HTTP_IMS_EXACT);
     ngx_conf_merge_uint_value(conf->client_body_in_file_only,
                               prev->client_body_in_file_only, 0);
+    ngx_conf_merge_value(conf->client_body_in_single_buffer,
+                              prev->client_body_in_single_buffer, 0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
