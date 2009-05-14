@@ -62,6 +62,8 @@ static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_body(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
@@ -200,6 +202,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("request_completion"), NULL,
       ngx_http_variable_request_completion,
+      0, 0, 0 },
+
+    { ngx_string("request_body"), NULL,
+      ngx_http_variable_request_body,
       0, 0, 0 },
 
     { ngx_string("request_body_file"), NULL,
@@ -1472,6 +1478,56 @@ ngx_http_variable_request_completion(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) "";
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_body(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char       *p;
+    size_t        len;
+    ngx_buf_t    *buf, *next;
+    ngx_chain_t  *cl;
+
+    if (r->request_body == NULL || r->request_body->temp_file) {
+        v->not_found = 1;
+
+        return NGX_OK;
+    }
+
+    cl = r->request_body->bufs;
+    buf = cl->buf;
+
+    if (cl->next == NULL) {
+        v->len = buf->last - buf->pos;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = buf->pos;
+
+        return NGX_OK;
+    }
+
+    next = cl->next->buf;
+    len = (buf->last - buf->pos) + (next->last - next->pos);
+
+    p = ngx_pnalloc(r->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
+    ngx_memcpy(p, next->pos, next->last - next->pos);
+
+    v->len = len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     return NGX_OK;
 }
