@@ -446,7 +446,9 @@ ngx_conf_read_token(ngx_conf_t *cf)
     last_space = 1;
     sharp_comment = 0;
     variable = 0;
-    quoted = s_quoted = d_quoted = 0;
+    quoted = 0;
+    s_quoted = 0;
+    d_quoted = 0;
 
     cf->args->nelts = 0;
     b = cf->conf_file->buffer;

@@ -134,12 +134,14 @@ ngx_aio_del_connection(ngx_connection_t *c, ngx_uint_t flags)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "aio_cancel: %d", rc);
 
     if (rc == AIO_CANCELED) {
-        c->read->active = c->write->active = 0;
+        c->read->active = 0;
+        c->write->active = 0;
         return NGX_OK;
     }
 
     if (rc == AIO_ALLDONE) {
-        c->read->active = c->write->active = 0;
+        c->read->active = 0;
+        c->write->active = 0;
         ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                       "aio_cancel() returned AIO_ALLDONE");
         return NGX_OK;

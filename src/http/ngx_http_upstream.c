@@ -972,7 +972,9 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->output.sendfile = c->sendfile;
 
     c->pool = r->pool;
-    c->read->log = c->write->log = c->log = r->connection->log;
+    c->log = r->connection->log;
+    c->read->log = c->log;
+    c->write->log = c->log;
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
 
