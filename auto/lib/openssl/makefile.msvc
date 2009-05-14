@@ -1,0 +1,14 @@
+
+# Copyright (C) Igor Sysoev
+
+
+all:
+	cd $(OPENSSL)
+
+	perl Configure VC-WIN32 no-shared --prefix=openssl -DNO_SYS_TYPES_H \
+		$(OPENSSL_OPT)
+
+	ms\do_ms
+
+	$(MAKE) -f ms\nt.mak
+	$(MAKE) -f ms\nt.mak install

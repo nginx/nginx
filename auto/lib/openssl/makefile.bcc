@@ -2,11 +2,17 @@
 # Copyright (C) Igor Sysoev
 
 
-ssleay32.lib:
+all:
 	cd $(OPENSSL)
 
-	perl Configure BC-32 no-shared
+	perl Configure BC-32 no-shared --prefix=openssl -DNO_SYS_TYPES_H \
+		$(OPENSSL_OPT)
 
 	ms\do_nasm
 
 	$(MAKE) -f ms\bcb.mak
+	$(MAKE) -f ms\bcb.mak install
+
+	# Borland's make does not expand "[ch]" in
+	#    copy "inc32\openssl\*.[ch]" "openssl\include\openssl"
+	copy inc32\openssl\*.h openssl\include\openssl

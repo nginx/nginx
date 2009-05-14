@@ -3,7 +3,7 @@
 
 
 if test -n "$OPENSSL_OPT"; then
-    NGX_OPENSSL_CONFIG="./Configure \"$OPENSSL_OPT\""
+    NGX_OPENSSL_CONFIG="./Configure $OPENSSL_OPT"
 else
     NGX_OPENSSL_CONFIG="./config"
 fi
@@ -14,29 +14,37 @@ case $USE_THREADS in
 esac
 
 case "$CC" in
+
     cl)
+
         cat << END                                            >> $NGX_MAKEFILE
 
-$OPENSSL/out32/ssleay32.lib:
-	cd $OPENSSL
-	perl Configure VC-WIN32 no-shared
-	ms\\do_ms
-	\$(MAKE) -f ms\\nt.mak
-	cd \$(MAKEDIR)
+$OPENSSL/openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
+	\$(MAKE) -f auto/lib/openssl/makefile.msvc			\
+		OPENSSL="$OPENSSL" OPENSSL_OPT="$OPENSSL_OPT"
 
 END
 
     ;;
 
-    bcc32)
+    cl | bcc32)
+
+        ngx_opt=`echo "-DOPENSSL=\"$OPENSSL\" -DOPENSSL_OPT=\"$OPENSSL_OPT\"" \
+            | sed -e "s/\//$ngx_regex_dirsep/g"`
+
         cat << END                                            >> $NGX_MAKEFILE
 
-`echo "$OPENSSL\\out32\\libeay32.lib:	$OPENSSL\\out32\\ssleay32.lib" \
+`echo "$OPENSSL\\openssl\\lib\\libeay32.lib:				\
+	$OPENSSL\\openssl\\include\\openssl\\ssl.h"			\
 	| sed -e "s/\//$ngx_regex_dirsep/g"`
 
-`echo "$OPENSSL\\out32\\ssleay32.lib:" | sed -e "s/\//$ngx_regex_dirsep/g"`
-	\$(MAKE) -f auto/lib/openssl/$ngx_makefile			\
-	-DOPENSSL=`echo \"$OPENSSL\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+`echo "$OPENSSL\\openssl\\lib\\ssleay32.lib:				\
+	$OPENSSL\\openssl\\include\\openssl\\ssl.h"			\
+	| sed -e "s/\//$ngx_regex_dirsep/g"`
+
+`echo "$OPENSSL\\openssl\\include\\openssl\\ssl.h:	$NGX_MAKEFILE"	\
+	| sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f auto/lib/openssl/makefile.bcc $ngx_opt
 
 END
 
@@ -45,7 +53,7 @@ END
     *)
         cat << END                                            >> $NGX_MAKEFILE
 
-$OPENSSL/libssl.a:
+$OPENSSL/libssl.a:	$NGX_MAKEFILE
 	cd $OPENSSL \\
 	&& \$(MAKE) clean \\
 	&& $NGX_OPENSSL_CONFIG no-shared \\
