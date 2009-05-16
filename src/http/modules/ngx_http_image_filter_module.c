@@ -38,6 +38,7 @@ typedef struct {
     ngx_uint_t                   filter;
     ngx_uint_t                   width;
     ngx_uint_t                   height;
+    ngx_int_t                    jpeg_quality;
 
     size_t                       buffer_size;
 } ngx_http_image_filter_conf_t;
@@ -96,6 +97,13 @@ static ngx_command_t  ngx_http_image_filter_commands[] = {
       ngx_http_image_filter,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("image_filter_jpeg_quality"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_image_filter_conf_t, jpeg_quality),
       NULL },
 
     { ngx_string("image_filter_buffer"),
@@ -886,15 +894,17 @@ static u_char *
 ngx_http_image_out(ngx_http_request_t *r, ngx_uint_t type, gdImagePtr img,
     int *size)
 {
-    char    *failed;
-    u_char  *out;
+    char                          *failed;
+    u_char                        *out;
+    ngx_http_image_filter_conf_t  *conf;
 
     out = NULL;
 
     switch (type) {
 
     case NGX_HTTP_IMAGE_JPEG:
-        out = gdImageJpegPtr(img, size, /* default quality */ -1);
+        conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
+        out = gdImageJpegPtr(img, size, conf->jpeg_quality);
         failed = "gdImageJpegPtr() failed";
         break;
 
@@ -939,6 +949,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
     }
 
     conf->filter = NGX_CONF_UNSET_UINT;
+    conf->jpeg_quality = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
 
     return conf;
@@ -962,6 +973,9 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->height = prev->height;
         }
     }
+
+    /* 75 is libjpeg default quality */
+    ngx_conf_merge_value(conf->jpeg_quality, prev->jpeg_quality, 75);
 
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               1 * 1024 * 1024);
