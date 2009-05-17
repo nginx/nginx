@@ -1180,12 +1180,12 @@ ngx_http_add_ports(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
             continue;
         }
 
-        /* a port is already in the in_port list */
+        /* a port is already in the port list */
 
         return ngx_http_add_addresses(cf, cscf, &port[i], listen);
     }
 
-    /* add a port to the in_port list */
+    /* add a port to the port list */
 
     port = ngx_array_push(ports);
     if (port == NULL) {
@@ -1279,7 +1279,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
 /*
  * add the server address, the server names and the server core module
- * configurations to the port (in_port)
+ * configurations to the port list
  */
 
 static ngx_int_t
