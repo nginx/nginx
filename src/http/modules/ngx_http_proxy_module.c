@@ -1899,6 +1899,12 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->proxy_values = prev->proxy_values;
     }
 
+#if (NGX_HTTP_SSL)
+    if (conf->upstream.ssl == NULL) {
+        conf->upstream.ssl = prev->upstream.ssl;
+    }
+#endif
+
     ngx_conf_merge_uint_value(conf->headers_hash_max_size,
                               prev->headers_hash_max_size, 512);
 
