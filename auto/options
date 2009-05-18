@@ -119,9 +119,12 @@ NGX_GOOGLE_PERFTOOLS=NO
 
 NGX_CPU_CACHE_LINE=
 
+opt=
 
 for option
 do
+    opt="$opt `echo $option | sed -e \"s/\(--[^=]*=\)\(.* .*\)/\1'\2'/\"`"
+
     case "$option" in
         -*=*) value=`echo "$option" | sed -e 's/[-_a-zA-Z0-9]*=//'` ;;
            *) value="" ;;
@@ -246,6 +249,9 @@ do
         ;;
     esac
 done
+
+
+NGX_CONFIGURE="$opt"
 
 
 if [ $help = yes ]; then

@@ -261,8 +261,8 @@ main(int argc, char *const *argv)
             }
 #endif
 
-            p = "configure arguments: " NGX_CONFIGURE CRLF;
-            n = sizeof("configure arguments :" NGX_CONFIGURE CRLF) - 1;
+            p = "configure arguments:" NGX_CONFIGURE CRLF;
+            n = sizeof("configure arguments:" NGX_CONFIGURE CRLF) - 1;
 
             if (ngx_write_fd(ngx_stderr_fileno, p, n) != n) {
                 return 1;
