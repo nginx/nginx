@@ -9,6 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.37" date="18.05.2009">
+
+<change type="feature">
+<para lang="ru">
+поддержка Microsoft-специфичного режима
+<nobr>"AUTH LOGIN with User Name"</nobr>
+в почтовом прокси-сервере.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+Microsoft specific "AUTH LOGIN with User Name" mode support
+in mail proxy server.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ошибка появилась в 0.6.36.
+</para>
+<para lang="en">
+nginx could not be built on platforms different from i386, amd64, sparc,
+and ppc;
+the bug had appeared in 0.6.36.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.36" date="02.04.2009">
 
 <change type="change">
