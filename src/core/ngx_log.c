@@ -184,9 +184,9 @@ ngx_log_debug_core(ngx_log_t *log, ngx_err_t err, const char *fmt, ...)
 
 
 void
-ngx_log_abort(ngx_err_t err, const char *text)
+ngx_log_abort(ngx_err_t err, const char *text, void *param)
 {
-    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err, text);
+    ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err, text, param);
 }
 
 
