@@ -7,7 +7,7 @@ TEMP =		tmp
 OBJS =		objs.msvc8
 OPENSSL =	openssl-0.9.8k
 ZLIB =		zlib-1.2.3
-PCRE =		pcre-4.4
+PCRE =		pcre-7.9
 
 
 release:
@@ -94,8 +94,8 @@ zip:
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE				\
 		$(TEMP)/$(NGINX)/docs/OpenSSL.LICENSE
 
-	cp -p $(OBJS)/lib/$(PCRE)/COPYING				\
-		$(TEMP)/$(NGINX)/docs/PCRE.COPYING
+	cp -p $(OBJS)/lib/$(PCRE)/LICENCE				\
+		$(TEMP)/$(NGINX)/docs/PCRE.LICENCE
 
 	perl -ne 'print if /^ \(C\) 1995-2004/ .. /^  jloup\@gzip.org/'	\
 		$(OBJS)/lib/$(ZLIB)/README				\
