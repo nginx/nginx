@@ -811,6 +811,66 @@ ngx_close_connection(ngx_connection_t *c)
 
 
 ngx_int_t
+ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
+    ngx_uint_t port)
+{
+    socklen_t             len;
+    ngx_uint_t            addr;
+    u_char                sa[NGX_SOCKADDRLEN];
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    ngx_uint_t            i;
+    struct sockaddr_in6  *sin6;
+#endif
+
+    switch (c->local_sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+        for (addr = 0, i = 0; addr == 0 && i < 16; i++) {
+            addr |= sin6->sin6_addr.s6_addr[i];
+        }
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) c->local_sockaddr;
+        addr = sin->sin_addr.s_addr;
+        break;
+    }
+
+    if (addr == 0) {
+
+        len = NGX_SOCKADDRLEN;
+
+        if (getsockname(c->fd, (struct sockaddr *) &sa, &len) == -1) {
+            ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
+            return NGX_ERROR;
+        }
+
+        c->local_sockaddr = ngx_palloc(c->pool, len);
+        if (c->local_sockaddr == NULL) {
+            return NGX_ERROR;
+        }
+
+        c->local_socklen = len;
+        ngx_memcpy(c->local_sockaddr, &sa, len);
+    }
+
+    if (s == NULL) {
+        return NGX_OK;
+    }
+
+    s->len = ngx_sock_ntop(c->local_sockaddr, s->data, s->len, port);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
     ngx_uint_t  level;
