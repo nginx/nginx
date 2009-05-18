@@ -9,6 +9,71 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.58" date="18.05.2009">
+
+<change type="feature">
+<para lang="ru">
+директива listen почтового прокси-сервера поддерживает IPv6.
+</para>
+<para lang="en">
+a "listen" directive of the mail proxy module supports IPv6.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_jpeg_quality.
+</para>
+<para lang="en">
+the "image_filter_jpeg_quality" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива client_body_in_single_buffer.
+</para>
+<para lang="en">
+the "client_body_in_single_buffer" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $request_body.
+</para>
+<para lang="en">
+the $request_body variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module в ссылках на имена файлов,
+содержащих символ ":".
+</para>
+<para lang="en">
+in ngx_http_autoindex_module in file name links
+having a ":" symbol in the name.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+процедура "make upgrade" не работала;
+ошибка появилась в 0.7.53.<br/>
+Спасибо Денису Латыпову.
+</para>
+<para lang="en">
+"make upgrade" procedure did not work;
+the bug had appeared in 0.7.53.<br/>
+Thanks to Denis F. Latypoff.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.57" date="12.05.2009">
 
 <change type="bugfix">
