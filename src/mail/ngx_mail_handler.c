@@ -335,21 +335,22 @@ ngx_mail_auth_plain(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
 
 
 ngx_int_t
-ngx_mail_auth_login_username(ngx_mail_session_t *s, ngx_connection_t *c)
+ngx_mail_auth_login_username(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n)
 {
     ngx_str_t  *arg;
 
     arg = s->args.elts;
 
     ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                   "mail auth login username: \"%V\"", &arg[0]);
+                   "mail auth login username: \"%V\"", &arg[n]);
 
-    s->login.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[0].len));
+    s->login.data = ngx_palloc(c->pool, ngx_base64_decoded_length(arg[n].len));
     if (s->login.data == NULL){
         return NGX_ERROR;
     }
 
-    if (ngx_decode_base64(&s->login, &arg[0]) != NGX_OK) {
+    if (ngx_decode_base64(&s->login, &arg[n]) != NGX_OK) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
             "client sent invalid base64 encoding in AUTH LOGIN command");
         return NGX_MAIL_PARSE_INVALID_COMMAND;

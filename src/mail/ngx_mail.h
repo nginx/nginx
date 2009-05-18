@@ -164,7 +164,7 @@ typedef struct {
     unsigned                no_sync_literal:1;
     unsigned                starttls:1;
     unsigned                esmtp:1;
-    unsigned                auth_method:2;
+    unsigned                auth_method:3;
     unsigned                auth_wait:1;
 
     ngx_str_t               login;
@@ -243,10 +243,11 @@ typedef struct {
 #define NGX_SMTP_STARTTLS      13
 
 
-#define NGX_MAIL_AUTH_PLAIN     0
-#define NGX_MAIL_AUTH_LOGIN     1
-#define NGX_MAIL_AUTH_APOP      2
-#define NGX_MAIL_AUTH_CRAM_MD5  3
+#define NGX_MAIL_AUTH_PLAIN             0
+#define NGX_MAIL_AUTH_LOGIN             1
+#define NGX_MAIL_AUTH_LOGIN_USERNAME    2
+#define NGX_MAIL_AUTH_APOP              3
+#define NGX_MAIL_AUTH_CRAM_MD5          4
 
 
 #define NGX_MAIL_AUTH_PLAIN_ENABLED     0x0002
@@ -329,7 +330,7 @@ ngx_int_t ngx_mail_salt(ngx_mail_session_t *s, ngx_connection_t *c,
 ngx_int_t ngx_mail_auth_plain(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_uint_t n);
 ngx_int_t ngx_mail_auth_login_username(ngx_mail_session_t *s,
-    ngx_connection_t *c);
+    ngx_connection_t *c, ngx_uint_t n);
 ngx_int_t ngx_mail_auth_login_password(ngx_mail_session_t *s,
     ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,

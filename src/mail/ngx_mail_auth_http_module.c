@@ -140,6 +140,7 @@ ngx_module_t  ngx_mail_auth_http_module = {
 static ngx_str_t   ngx_mail_auth_http_method[] = {
     ngx_string("plain"),
     ngx_string("plain"),
+    ngx_string("plain"),
     ngx_string("apop"),
     ngx_string("cram-md5")
 };
