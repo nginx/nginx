@@ -938,7 +938,7 @@ ngx_http_variable_server_addr(ngx_http_request_t *r,
     s.len = NGX_SOCKADDR_STRLEN;
     s.data = addr;
 
-    if (ngx_http_server_addr(r, &s) != NGX_OK) {
+    if (ngx_connection_local_sockaddr(r->connection, &s, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -974,7 +974,7 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    if (ngx_http_server_addr(r, NULL) != NGX_OK) {
+    if (ngx_connection_local_sockaddr(r->connection, NULL, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 

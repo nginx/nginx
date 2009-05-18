@@ -310,7 +310,7 @@ ngx_http_init_request(ngx_event_t *rev)
          * is required to determine a server address
          */
 
-        if (ngx_http_server_addr(r, NULL) != NGX_OK) {
+        if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
             ngx_http_close_connection(c);
             return;
         }

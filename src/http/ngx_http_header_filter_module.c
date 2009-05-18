@@ -165,6 +165,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_chain_t                out;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
+    ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     struct sockaddr_in        *sin;
@@ -309,6 +310,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT" CRLF) - 1;
     }
 
+    c = r->connection;
+
     if (r->headers_out.location
         && r->headers_out.location->value.len
         && r->headers_out.location->value.data[0] == '/')
@@ -326,21 +329,21 @@ ngx_http_header_filter(ngx_http_request_t *r)
             host.len = NGX_SOCKADDR_STRLEN;
             host.data = addr;
 
-            if (ngx_http_server_addr(r, &host) != NGX_OK) {
+            if (ngx_connection_local_sockaddr(c, &host, 0) != NGX_OK) {
                 return NGX_ERROR;
             }
         }
 
-        switch (r->connection->local_sockaddr->sa_family) {
+        switch (c->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) r->connection->local_sockaddr;
+            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
             port = ntohs(sin6->sin6_port);
             break;
 #endif
         default: /* AF_INET */
-            sin = (struct sockaddr_in *) r->connection->local_sockaddr;
+            sin = (struct sockaddr_in *) c->local_sockaddr;
             port = ntohs(sin->sin_port);
             break;
         }
@@ -352,7 +355,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         if (clcf->port_in_redirect) {
 
 #if (NGX_HTTP_SSL)
-            if (r->connection->ssl)
+            if (c->ssl)
                 port = (port == 443) ? 0 : port;
             else
 #endif
@@ -511,7 +514,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
                              sizeof("Location: http") - 1);
 
 #if (NGX_HTTP_SSL)
-        if (r->connection->ssl) {
+        if (c->ssl) {
             *b->last++ ='s';
         }
 #endif
@@ -588,7 +591,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         *b->last++ = CR; *b->last++ = LF;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "%*s", (size_t) (b->last - b->pos), b->pos);
 
     /* the end of HTTP header */

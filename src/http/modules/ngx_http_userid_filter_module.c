@@ -390,11 +390,12 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 
         } else {
             if (conf->service == NGX_CONF_UNSET) {
-                if (ngx_http_server_addr(r, NULL) != NGX_OK) {
-                    return NGX_ERROR;
-                }
 
                 c = r->connection;
+
+                if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
+                    return NGX_ERROR;
+                }
 
                 switch (c->local_sockaddr->sa_family) {
 
