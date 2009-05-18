@@ -518,7 +518,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
         (void) ngx_cpystrn(p, host, len);
 
-        u->addr.in_addr = inet_addr((const char *) p);
         sin->sin_addr.s_addr = inet_addr((const char *) p);
 
         if (sin->sin_addr.s_addr == INADDR_NONE) {
@@ -530,7 +529,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
                 return NGX_ERROR;
             }
 
-            u->addr.in_addr = *(in_addr_t *) (h->h_addr_list[0]);
             sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[0]);
         }
 
@@ -541,7 +539,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         ngx_free(p);
 
     } else {
-        u->addr.in_addr = INADDR_ANY;
         sin->sin_addr.s_addr = INADDR_ANY;
         u->wildcard = 1;
     }

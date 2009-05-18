@@ -61,11 +61,6 @@ typedef struct {
 } ngx_cidr_t;
 
 
-typedef union {
-    in_addr_t                 in_addr;
-} ngx_url_addr_t;
-
-
 typedef struct {
     struct sockaddr          *sockaddr;
     socklen_t                 socklen;
@@ -90,8 +85,6 @@ typedef struct {
 
     unsigned                  no_port:1;
     unsigned                  wildcard:1;
-
-    ngx_url_addr_t            addr;
 
     socklen_t                 socklen;
     u_char                    sockaddr[NGX_SOCKADDRLEN];
