@@ -66,6 +66,12 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
         return;
     }
 
+    if (c->sockaddr->sa_family != AF_INET) {
+        s->host = smtp_tempunavail;
+        ngx_mail_smtp_greeting(s, c);
+        return;
+    }
+
     c->log->action = "in resolving client address";
 
     ctx = ngx_resolve_start(cscf->resolver, NULL);

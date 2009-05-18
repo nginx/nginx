@@ -771,6 +771,8 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
+            /* AF_INET only */
+
             sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
             if (sin == NULL) {
                 ngx_destroy_pool(ctx->pool);

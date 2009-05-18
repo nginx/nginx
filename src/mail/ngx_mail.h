@@ -26,50 +26,76 @@ typedef struct {
 
 
 typedef struct {
-    in_addr_t               addr;
-    in_port_t               port;
-    int                     family;
+    u_char                  sockaddr[NGX_SOCKADDRLEN];
+    socklen_t               socklen;
 
     /* server ctx */
     ngx_mail_conf_ctx_t    *ctx;
 
     unsigned                bind:1;
+    unsigned                wildcard:1;
 #if (NGX_MAIL_SSL)
     unsigned                ssl:1;
+#endif
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    unsigned                ipv6only:2;
 #endif
 } ngx_mail_listen_t;
 
 
 typedef struct {
-    in_addr_t               addr;
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
 #if (NGX_MAIL_SSL)
     ngx_uint_t              ssl;    /* unsigned   ssl:1; */
 #endif
-} ngx_mail_in_addr_t;
-
-
-typedef struct {
-    ngx_mail_in_addr_t     *addrs;       /* array of ngx_mail_in_addr_t */
-    ngx_uint_t              naddrs;
-} ngx_mail_in_port_t;
-
-
-typedef struct {
-    in_port_t               port;
-    ngx_array_t             addrs;       /* array of ngx_mail_conf_in_addr_t */
-} ngx_mail_conf_in_port_t;
-
+} ngx_mail_addr_conf_t;
 
 typedef struct {
     in_addr_t               addr;
+    ngx_mail_addr_conf_t    conf;
+} ngx_mail_in_addr_t;
+
+
+#if (NGX_HAVE_INET6)
+
+typedef struct {
+    struct in6_addr         addr6;
+    ngx_mail_addr_conf_t    conf;
+} ngx_mail_in6_addr_t;
+
+#endif
+
+
+typedef struct {
+    /* ngx_mail_in_addr_t or ngx_mail_in6_addr_t */
+    void                   *addrs;
+    ngx_uint_t              naddrs;
+} ngx_mail_port_t;
+
+
+typedef struct {
+    int                     family;
+    in_port_t               port;
+    ngx_array_t             addrs;       /* array of ngx_mail_conf_addr_t */
+} ngx_mail_conf_port_t;
+
+
+typedef struct {
+    struct sockaddr        *sockaddr;
+    socklen_t               socklen;
+
     ngx_mail_conf_ctx_t    *ctx;
+
     unsigned                bind:1;
+    unsigned                wildcard:1;
 #if (NGX_MAIL_SSL)
     unsigned                ssl:1;
 #endif
-} ngx_mail_conf_in_addr_t;
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    unsigned                ipv6only:2;
+#endif
+} ngx_mail_conf_addr_t;
 
 
 typedef struct {
