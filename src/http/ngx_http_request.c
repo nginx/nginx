@@ -321,7 +321,7 @@ ngx_http_init_request(ngx_event_t *rev)
         case AF_INET6:
             sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
 
-            addr6 = (ngx_http_in6_addr_t *) port->addrs;
+            addr6 = port->addrs;
 
             /* the last address is "*" */
 
@@ -360,7 +360,7 @@ ngx_http_init_request(ngx_event_t *rev)
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
-            addr6 = (ngx_http_in6_addr_t *) port->addrs;
+            addr6 = port->addrs;
             addr_conf = &addr6[0].conf;
             break;
 #endif
