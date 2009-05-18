@@ -1557,16 +1557,24 @@ ngx_http_send_header(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    ngx_int_t  rc;
+    ngx_int_t          rc;
+    ngx_connection_t  *c;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    c = r->connection;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http output filter \"%V?%V\"", &r->uri, &r->args);
 
     rc = ngx_http_top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
+
+        if (c->destroyed) {
+            return NGX_DONE;
+        }
+
         /* NGX_ERROR may be returned by any filter */
-        r->connection->error = 1;
+        c->error = 1;
     }
 
     return rc;
