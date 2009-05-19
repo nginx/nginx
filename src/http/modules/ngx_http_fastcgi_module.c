@@ -353,6 +353,13 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.cache_use_stale),
       &ngx_http_fastcgi_next_upstream_masks },
 
+    { ngx_string("fastcgi_cache_methods"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_conf_set_bitmask_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.cache_methods),
+      &ngx_http_upstream_cache_method_mask },
+
 #endif
 
     { ngx_string("fastcgi_temp_path"),
@@ -1835,7 +1842,8 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.bufs.num = 0;
      *     conf->upstream.ignore_headers = 0;
      *     conf->upstream.next_upstream = 0;
-     *     conf->upstream.use_stale_cache = 0;
+     *     conf->upstream.cache_use_stale = 0;
+     *     conf->upstream.cache_methods = 0;
      *     conf->upstream.temp_path = NULL;
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
      *     conf->upstream.uri = { 0, NULL };
@@ -2082,6 +2090,12 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->upstream.cache_use_stale = NGX_CONF_BITMASK_SET
                                          |NGX_HTTP_UPSTREAM_FT_OFF;
     }
+
+    if (conf->upstream.cache_methods == 0) {
+        conf->upstream.cache_methods = prev->upstream.cache_methods;
+    }
+
+    conf->upstream.cache_methods |= NGX_HTTP_GET|NGX_HTTP_HEAD;
 
     ngx_conf_merge_ptr_value(conf->upstream.cache_valid,
                              prev->upstream.cache_valid, NULL);

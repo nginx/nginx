@@ -156,6 +156,7 @@ typedef struct {
 
     ngx_uint_t                       cache_min_uses;
     ngx_uint_t                       cache_use_stale;
+    ngx_uint_t                       cache_methods;
 
     ngx_array_t                     *cache_valid;
 #endif
@@ -327,7 +328,9 @@ ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     uscf->srv_conf[module.ctx_index]
 
 
-extern ngx_module_t  ngx_http_upstream_module;
+extern ngx_module_t        ngx_http_upstream_module;
+extern ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[];
+
 
 
 #endif /* _NGX_HTTP_UPSTREAM_H_INCLUDED_ */

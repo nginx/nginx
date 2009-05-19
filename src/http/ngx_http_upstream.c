@@ -329,6 +329,15 @@ static ngx_http_upstream_next_t  ngx_http_upstream_next_errors[] = {
     { 0, 0 }
 };
 
+
+ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
+   { ngx_string("GET"),  NGX_HTTP_GET},
+   { ngx_string("HEAD"), NGX_HTTP_HEAD },
+   { ngx_string("POST"), NGX_HTTP_POST },
+   { ngx_null_string, 0 }
+};
+
+
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {
@@ -532,7 +541,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_int_t          rc;
     ngx_http_cache_t  *c;
 
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
+    if (!(r->method & u->conf->cache_methods)) {
         return NGX_DECLINED;
     }
 
