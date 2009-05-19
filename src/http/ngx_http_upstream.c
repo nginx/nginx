@@ -562,8 +562,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->cacheable = 1;
 
-    c->min_uses = r->upstream->conf->cache_min_uses;
-    c->body_start = r->upstream->conf->buffer_size;
+    c->min_uses = u->conf->cache_min_uses;
+    c->body_start = u->conf->buffer_size;
     c->file_cache = u->conf->cache->data;
 
     rc = ngx_http_file_cache_open(r);
