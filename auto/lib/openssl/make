@@ -2,15 +2,9 @@
 # Copyright (C) Igor Sysoev
 
 
-if test -n "$OPENSSL_OPT"; then
-    NGX_OPENSSL_CONFIG="./Configure $OPENSSL_OPT"
-else
-    NGX_OPENSSL_CONFIG="./config"
-fi
-
 case $USE_THREADS in
-    NO) NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG no-threads" ;;
-    *)  NGX_OPENSSL_CONFIG="$NGX_OPENSSL_CONFIG threads" ;;
+    NO) OPENSSL_OPT="$OPENSSL_OPT no-threads" ;;
+    *)  OPENSSL_OPT="$OPENSSL_OPT threads" ;;
 esac
 
 case "$CC" in
@@ -53,11 +47,12 @@ END
     *)
         cat << END                                            >> $NGX_MAKEFILE
 
-$OPENSSL/libssl.a:	$NGX_MAKEFILE
+$OPENSSL/openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
 	cd $OPENSSL \\
 	&& \$(MAKE) clean \\
-	&& $NGX_OPENSSL_CONFIG no-shared \\
-	&& \$(MAKE)
+	&& ./config --prefix=$PWD/$OPENSSL/openssl no-shared $OPENSSL_OPT \\
+	&& \$(MAKE) \\
+	&& \$(MAKE) install
 
 END
 
