@@ -29,15 +29,9 @@ if [ $OPENSSL != NONE ]; then
             CORE_DEPS="$CORE_DEPS $OPENSSL/openssl/include/openssl/ssl.h"
             CORE_LIBS="$CORE_LIBS $OPENSSL/openssl/lib/libssl.a"
             CORE_LIBS="$CORE_LIBS $OPENSSL/openssl/lib/libcrypto.a"
-        ;;
-    esac
-
-    case "$NGX_SYSTEM" in
-        SunOS|Linux)
             CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
         ;;
     esac
-
 
 else
 
@@ -70,14 +64,8 @@ else
 
             if [ $ngx_found = yes ]; then
                 have=NGX_SSL . auto/have
-                CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+                CORE_LIBS="$CORE_LIBS $ngx_feature_libs $NGX_LIBDL"
                 OPENSSL=YES
-
-                case "$NGX_SYSTEM" in
-                    SunOS)
-                        CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
-                    ;;
-                esac
             fi
         ;;
 
