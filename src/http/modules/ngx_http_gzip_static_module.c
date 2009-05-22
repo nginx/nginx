@@ -205,6 +205,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
     h->value.data = (u_char *) "gzip";
 
     r->headers_out.content_encoding = h;
+    r->ignore_content_encoding = 1;
 
     /* we need to allocate all before the header would be sent */
 

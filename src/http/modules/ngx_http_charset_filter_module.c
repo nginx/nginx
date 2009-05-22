@@ -224,7 +224,8 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
     if (r == r->main) {
 
-        if (r->headers_out.content_encoding
+        if (!r->ignore_content_encoding
+            && r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)
         {
             return ngx_http_next_header_filter(r);
