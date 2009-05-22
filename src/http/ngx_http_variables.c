@@ -1492,7 +1492,10 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
     ngx_buf_t    *buf, *next;
     ngx_chain_t  *cl;
 
-    if (r->request_body == NULL || r->request_body->temp_file) {
+    if (r->request_body == NULL
+        || r->request_body->bufs == NULL
+        || r->request_body->temp_file)
+    {
         v->not_found = 1;
 
         return NGX_OK;
