@@ -45,12 +45,24 @@ END
     ;;
 
     *)
+        case $OPENSSL in
+
+        /*)
+            ngx_prefix="$OPENSSL/openssl"
+        ;;
+
+        *)
+            ngx_prefix="$PWD/$OPENSSL/openssl"
+        ;;
+
+        esac
+
         cat << END                                            >> $NGX_MAKEFILE
 
 $OPENSSL/openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
 	cd $OPENSSL \\
 	&& \$(MAKE) clean \\
-	&& ./config --prefix=$PWD/$OPENSSL/openssl no-shared $OPENSSL_OPT \\
+	&& ./config --prefix=$ngx_prefix no-shared $OPENSSL_OPT \\
 	&& \$(MAKE) \\
 	&& \$(MAKE) install
 
