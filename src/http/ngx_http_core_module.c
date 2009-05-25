@@ -1530,38 +1530,38 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 void *
 ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash)
 {
-    u_char       c, *p;
-    ngx_uint_t   i, hash;
+    u_char      c, *lowcase;
+    size_t      len;
+    ngx_uint_t  i, hash;
 
     if (r->headers_out.content_type.len == 0) {
         return NULL;
     }
 
+    len = r->headers_out.content_type_len;
+
     if (r->headers_out.content_type_lowcase == NULL) {
 
-        p = ngx_pnalloc(r->pool, r->headers_out.content_type_len);
-
-        if (p == NULL) {
+        lowcase = ngx_pnalloc(r->pool, len);
+        if (lowcase == NULL) {
             return NULL;
         }
 
-        r->headers_out.content_type_lowcase = p;
+        r->headers_out.content_type_lowcase = lowcase;
 
         hash = 0;
 
-        for (i = 0; i < r->headers_out.content_type_len; i++) {
+        for (i = 0; i < len; i++) {
             c = ngx_tolower(r->headers_out.content_type.data[i]);
             hash = ngx_hash(hash, c);
-            *p++ = c;
+            lowcase[i] = c;
         }
 
         r->headers_out.content_type_hash = hash;
     }
 
-    return ngx_hash_find(types_hash,
-                         r->headers_out.content_type_hash,
-                         r->headers_out.content_type_lowcase,
-                         r->headers_out.content_type_len);
+    return ngx_hash_find(types_hash, r->headers_out.content_type_hash,
+                         r->headers_out.content_type_lowcase, len);
 }
 
 
