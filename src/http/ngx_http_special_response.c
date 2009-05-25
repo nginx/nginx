@@ -610,6 +610,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
             r->headers_out.content_type_len = sizeof("text/html") - 1;
             r->headers_out.content_type.len = sizeof("text/html") - 1;
             r->headers_out.content_type.data = (u_char *) "text/html";
+            r->headers_out.content_type_lowcase = NULL;
 
         } else {
             r->headers_out.content_length_n = -1;
@@ -712,6 +713,7 @@ ngx_http_send_refresh(ngx_http_request_t *r)
     r->headers_out.content_type_len = sizeof("text/html") - 1;
     r->headers_out.content_type.len = sizeof("text/html") - 1;
     r->headers_out.content_type.data = (u_char *) "text/html";
+    r->headers_out.content_type_lowcase = NULL;
 
     r->headers_out.location->hash = 0;
     r->headers_out.location = NULL;

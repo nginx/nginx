@@ -282,6 +282,7 @@ ngx_http_image_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ct = &ngx_http_image_types[ctx->type - 1];
         r->headers_out.content_type_len = ct->len;
         r->headers_out.content_type = *ct;
+        r->headers_out.content_type_lowcase = NULL;
 
         if (conf->filter == NGX_HTTP_IMAGE_TEST) {
             ctx->phase = NGX_HTTP_IMAGE_PASS;
@@ -502,6 +503,7 @@ ngx_http_image_json(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_type.len = sizeof("text/plain") - 1;
     r->headers_out.content_type.data = (u_char *) "text/plain";
+    r->headers_out.content_type_lowcase = NULL;
 
     if (ctx == NULL) {
         b->pos = (u_char *) "{}" CRLF;

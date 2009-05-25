@@ -456,6 +456,8 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    r->headers_out.content_type_lowcase = NULL;
+
     /* "Content-Type: multipart/byteranges; boundary=0123456789" */
 
     r->headers_out.content_type.len =
@@ -464,6 +466,7 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
                                        boundary)
                            - r->headers_out.content_type.data;
 
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
 
     /* the size of the last boundary CRLF "--0123456789--" CRLF */
 

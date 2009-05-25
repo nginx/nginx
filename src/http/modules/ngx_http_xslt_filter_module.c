@@ -837,6 +837,8 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
         r->headers_out.content_type.data = (u_char *) "text/html";
     }
 
+    r->headers_out.content_type_lowcase = NULL;
+
     return b;
 }
 

@@ -3174,6 +3174,7 @@ ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     r->headers_out.content_type_len = h->value.len;
     r->headers_out.content_type = h->value;
+    r->headers_out.content_type_lowcase = NULL;
 
     for (p = h->value.data; *p; p++) {
 
