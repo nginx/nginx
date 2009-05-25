@@ -145,7 +145,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     ngx_int_t                       rc, size;
     ngx_str_t                       path;
     ngx_dir_t                       dir;
-    ngx_uint_t                      i, level;
+    ngx_uint_t                      i, level, utf8;
     ngx_pool_t                     *pool;
     ngx_time_t                     *tp;
     ngx_chain_t                     out;
@@ -252,6 +252,16 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     filename = path.data;
     filename[path.len] = '/';
 
+    if (r->headers_out.charset.len == 5
+        && ngx_strncasecmp(r->headers_out.charset.data, (u_char *) "utf-8", 5)
+           == 0)
+    {
+        utf8 = 1;
+
+    } else {
+        utf8 = 0;
+    }
+
     for ( ;; ) {
         ngx_set_errno(0);
 
@@ -335,7 +345,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
                                            NGX_ESCAPE_HTML);
 
-        if (r->utf8) {
+        if (utf8) {
             entry->utf_len = ngx_utf8_length(entry->name.data, entry->name.len);
         } else {
             entry->utf_len = len;
