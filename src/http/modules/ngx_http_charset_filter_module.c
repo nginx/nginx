@@ -288,7 +288,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
 
     ngx_http_set_charset(r, &dst);
 
-    if (source_charset == charset) {
+    if (source_charset != charset) {
         return ngx_http_charset_ctx(r, charsets, charset, source_charset);
     }
 
@@ -410,6 +410,7 @@ ngx_http_main_request_charset(ngx_http_request_t *r, ngx_str_t *src)
 
     ctx->charset = charset;
     ctx->charset_name = *main_charset;
+    *src = *main_charset;
 
     return charset;
 }
@@ -518,6 +519,7 @@ ngx_http_charset_ctx(ngx_http_request_t *r, ngx_http_charset_t *charsets,
 
     ctx->table = charsets[source_charset].tables[charset];
     ctx->charset = charset;
+    ctx->charset_name = charsets[charset].name;
     ctx->length = charsets[charset].length;
     ctx->from_utf8 = charsets[source_charset].utf8;
     ctx->to_utf8 = charsets[charset].utf8;
