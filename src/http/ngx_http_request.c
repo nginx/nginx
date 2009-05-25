@@ -2098,6 +2098,11 @@ ngx_http_writer(ngx_http_request_t *r)
                    "http writer output filter: %d, \"%V?%V\"",
                    rc, &r->uri, &r->args);
 
+    if (rc == NGX_ERROR) {
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
     if (r->buffered || r->postponed || (r == r->main && c->buffered)) {
 
         if (!wev->ready && !wev->delayed) {
