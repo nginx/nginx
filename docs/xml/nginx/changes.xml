@@ -9,6 +9,81 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.59" date="25.05.2009">
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache_methods и fastcgi_cache_methods.
+</para>
+<para lang="en">
+the "proxy_cache_methods" and "fastcgi_cache_methods" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов;
+ошибка появилась в 0.7.25.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+socket leak;
+the bug had appeared in 0.7.25.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной $request_body
+в рабочем процессе происходил segmentation fault,
+если в запросе не было тела;
+ошибка появилась в 0.7.58.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+<nobr>if a request</nobr> had no body and the $request_body
+variable was used;<br/>
+the bug had appeared in 0.7.58.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-модули могли не собираться на Solaris и Linux;
+ошибка появилась в 0.7.56.
+</para>
+<para lang="en">
+the SSL modules might not built on Solaris and Linux;<br/>
+the bug had appeared in 0.7.58.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы модуля ngx_http_xslt_filter_module не обрабатывались
+SSI-, charset- и gzip-фильтрами.
+</para>
+<para lang="en">
+ngx_http_xslt_filter_module responses were not handled by SSI, charset,
+and gzip filters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива charset не ставила кодировку для ответов модуля
+ngx_http_gzip_static_module.
+</para>
+<para lang="en">
+a "charset" directive did not set a charset to ngx_http_gzip_static_module
+responses.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.58" date="18.05.2009">
 
 <change type="feature">
@@ -83,7 +158,7 @@ Thanks to Denis F. Latypoff.
 ошибка появилась в 0.7.56.
 </para>
 <para lang="en">
-a segmentation fault occurred in worker process,
+a floating-point fault occurred in worker process,
 if the ngx_http_image_filter_module errors were redirected to named location;
 the bug had appeared in 0.7.56.
 </para>
@@ -4418,7 +4493,7 @@ directives.
 
 <change type="bugfix">
 <para lang="ru">
-утечка сокетов;
+утечки сокетов;
 ошибка появилась в 0.6.7.
 </para>
 <para lang="en">
