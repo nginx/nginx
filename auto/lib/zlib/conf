@@ -57,6 +57,17 @@ else
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             ZLIB=YES
             ngx_found=no
+        else
+
+cat << END
+
+$0: error: the HTTP gzip module requires the zlib library.
+You can either disable the module by using --without-http_gzip_module
+option, or install the zlib library into the system, or build the zlib library
+statically from the source with nginx by using --with-zlib=<path> option.
+
+END
+            exit 1
         fi
     fi
 

@@ -74,65 +74,6 @@ esac
 echo
 
 
-if [ $HTTP_REWRITE = YES ]; then
-    if [ $USE_PCRE = DISABLED ]; then
-
-cat << END
-$0: error: the HTTP rewrite module requires the PCRE library.
-You can either disable the module by using --without-http_rewrite_module
-option or you have to enable the PCRE support.
-
-END
-        exit 1
-    fi
-
-    if [ $PCRE = NONE -o $PCRE = NO ]; then
-
-cat << END
-$0: error: the HTTP rewrite module requires the PCRE library.
-You can either disable the module by using --without-http_rewrite_module
-option, or install the PCRE library into the system, or build the PCRE library
-statically from the source with nginx by using --with-pcre=<path> option.
-
-END
-
-        exit 1
-    fi
-fi
-
-
-if [ $HTTP_GZIP = YES ]; then
-    if [ $ZLIB = NONE -o $ZLIB = NO ]; then
-
-cat << END
-$0: error: the HTTP gzip module requires the zlib library.
-You can either disable the module by using --without-http_gzip_module
-option, or install the zlib library into the system, or build the zlib library
-statically from the source with nginx by using --with-zlib=<path> option.
-
-END
-
-        exit 1
-    fi
-fi
-
-
-if [ $HTTP_SSL = YES ]; then
-    if [ $OPENSSL = NONE -o $OPENSSL = NO ]; then
-
-cat << END
-$0: error: the HTTP SSL module requires the OpenSSL library.
-You can either do not enable the module, or install the OpenSSL library
-into the system, or build the OpenSSL library statically from the source
-with nginx by using --with-openssl=<path> option.
-
-END
-
-        exit 1
-    fi
-fi
-
-
 cat << END
   nginx path prefix: "$NGX_PREFIX"
   nginx binary file: "$NGX_SBIN_PATH"

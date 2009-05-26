@@ -30,4 +30,15 @@ fi
 
 if [ $ngx_found = yes ]; then
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+else
+
+cat << END
+
+$0: error: the Google perftool module requires the Google perftools
+library. You can either do not enable the module or install the library.
+
+END
+
+    exit 1
 fi

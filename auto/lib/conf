@@ -4,7 +4,21 @@
 
 if [ $USE_PCRE = YES -o $PCRE != NONE ]; then
     . auto/lib/pcre/conf
+
+else
+    if [ $USE_PCRE = DISABLED -a $HTTP_REWRITE = YES ]; then
+
+cat << END
+
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option or you have to enable the PCRE support.
+
+END
+        exit 1
+    fi
 fi
+
 
 if [ $USE_OPENSSL = YES ]; then
     . auto/lib/openssl/conf
