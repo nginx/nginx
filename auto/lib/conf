@@ -12,7 +12,7 @@ fi
 
 if [ $USE_MD5 = YES ]; then
 
-    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+    if [ $USE_OPENSSL = YES ]; then
         have=NGX_HAVE_OPENSSL_MD5_H . auto/have
         have=NGX_OPENSSL_MD5 . auto/have
         MD5=YES
@@ -26,7 +26,7 @@ fi
 
 if [ $USE_SHA1 = YES ]; then
 
-    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+    if [ $USE_OPENSSL = YES ]; then
         have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
         SHA1=YES
         SHA1_LIB=OpenSSL
