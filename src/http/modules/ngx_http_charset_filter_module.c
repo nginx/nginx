@@ -252,10 +252,7 @@ ngx_http_charset_header_filter(ngx_http_request_t *r)
                    "charset: \"%V\" > \"%V\"", &src, &dst);
 
     if (source_charset == NGX_HTTP_CHARSET_OFF) {
-
-        if (r == r->main) {
-            ngx_http_set_charset(r, &dst);
-        }
+        ngx_http_set_charset(r, &dst);
 
         return ngx_http_next_header_filter(r);
     }
@@ -488,6 +485,10 @@ ngx_http_get_charset(ngx_http_request_t *r, ngx_str_t *name)
 static ngx_inline void
 ngx_http_set_charset(ngx_http_request_t *r, ngx_str_t *charset)
 {
+    if (r != r->main) {
+        return;
+    }
+
     if (r->headers_out.status == NGX_HTTP_MOVED_PERMANENTLY
         || r->headers_out.status == NGX_HTTP_MOVED_TEMPORARILY)
     {
