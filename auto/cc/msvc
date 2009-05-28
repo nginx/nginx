@@ -125,7 +125,7 @@ ngx_objext="obj"
 ngx_binext=".exe"
 
 ngx_long_start='@<<
-        '
+	'
 ngx_long_end='<<'
 ngx_long_regex_cont=' \
 	'
