@@ -1973,7 +1973,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.store != 0) {
         ngx_conf_merge_value(conf->upstream.store,
-                                  prev->upstream.store, 0);
+                              prev->upstream.store, 0);
 
         if (conf->upstream.store_lengths == NULL) {
             conf->upstream.store_lengths = prev->upstream.store_lengths;
@@ -2809,7 +2809,8 @@ ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_http_script_compile_t   sc;
 
-    if (plcf->upstream.store != NGX_CONF_UNSET || plcf->upstream.store_lengths)
+    if (plcf->upstream.store != NGX_CONF_UNSET
+        || plcf->upstream.store_lengths)
     {
         return "is duplicate";
     }
