@@ -2817,13 +2817,23 @@ ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "on") == 0) {
-        plcf->upstream.store = 1;
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        plcf->upstream.store = 0;
         return NGX_CONF_OK;
     }
 
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        plcf->upstream.store = 0;
+#if (NGX_HTTP_CACHE)
+
+    if (plcf->upstream.cache != NGX_CONF_UNSET_PTR
+        && plcf->upstream.cache != NULL)
+    {
+        return "is incompatible with \"proxy_cache\"";
+    }
+
+#endif
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        plcf->upstream.store = 1;
         return NGX_CONF_OK;
     }
 
@@ -2866,6 +2876,10 @@ ngx_http_proxy_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_strcmp(value[1].data, "off") == 0) {
         plcf->upstream.cache = NULL;
         return NGX_CONF_OK;
+    }
+
+    if (plcf->upstream.store > 0 || plcf->upstream.store_lengths) {
+        return "is incompatible with \"proxy_store\"";
     }
 
     plcf->upstream.cache = ngx_shared_memory_add(cf, &value[1], 0,
