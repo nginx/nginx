@@ -2,11 +2,6 @@
 # Copyright (C) Igor Sysoev
 
 
-case $USE_THREADS in
-    NO) OPENSSL_OPT="$OPENSSL_OPT no-threads" ;;
-    *)  OPENSSL_OPT="$OPENSSL_OPT threads" ;;
-esac
-
 case "$CC" in
 
     cl)
@@ -21,7 +16,7 @@ END
 
     ;;
 
-    cl | bcc32)
+    bcc32)
 
         ngx_opt=`echo "-DOPENSSL=\"$OPENSSL\" -DOPENSSL_OPT=\"$OPENSSL_OPT\"" \
             | sed -e "s/\//$ngx_regex_dirsep/g"`
@@ -45,16 +40,14 @@ END
     ;;
 
     *)
+        case $USE_THREADS in
+            NO) OPENSSL_OPT="$OPENSSL_OPT no-threads" ;;
+            *)  OPENSSL_OPT="$OPENSSL_OPT threads" ;;
+        esac
+
         case $OPENSSL in
-
-        /*)
-            ngx_prefix="$OPENSSL/openssl"
-        ;;
-
-        *)
-            ngx_prefix="$PWD/$OPENSSL/openssl"
-        ;;
-
+            /*) ngx_prefix="$OPENSSL/openssl" ;;
+            *)  ngx_prefix="$PWD/$OPENSSL/openssl" ;;
         esac
 
         cat << END                                            >> $NGX_MAKEFILE
