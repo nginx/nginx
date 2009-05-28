@@ -280,7 +280,7 @@ ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return ngx_http_xslt_send(r, ctx, NULL);
         }
 
-        if (cl->buf->last_buf) {
+        if (cl->buf->last_buf || cl->buf->last_in_chain) {
 
             ctx->doc = ctx->ctxt->myDoc;
 
@@ -427,8 +427,8 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
         ctx->request = r;
     }
 
-    err = xmlParseChunk(ctx->ctxt, (char *) b->pos,
-                        (int) (b->last - b->pos), b->last_buf);
+    err = xmlParseChunk(ctx->ctxt, (char *) b->pos, (int) (b->last - b->pos),
+                        (b->last_buf) || (b->last_in_chain));
 
     if (err == 0) {
         b->pos = b->last;
@@ -812,7 +812,6 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     b->pos = buf;
     b->last = buf + len;
     b->memory = 1;
-    b->last_buf = 1;
 
     if (encoding) {
         r->headers_out.charset.len = ngx_strlen(encoding);
@@ -822,6 +821,8 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     if (r != r->main) {
         return b;
     }
+
+    b->last_buf = 1;
 
     if (type) {
         len = ngx_strlen(type);
