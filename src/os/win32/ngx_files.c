@@ -269,7 +269,7 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
     for ( ;; ) {
         num = ngx_next_temp_number(collision);
 
-        ngx_sprintf(name + to->len, ".%0muA.DELETE", num);
+        ngx_sprintf(name + to->len, ".%0muA.DELETE%Z", num);
 
         if (MoveFile((const char *) to->data, (const char *) name) != 0) {
             break;
