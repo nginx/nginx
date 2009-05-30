@@ -11,7 +11,8 @@
 ngx_int_t
 ngx_shm_alloc(ngx_shm_t *shm)
 {
-    u_char  *name;
+    u_char    *name;
+    uint64_t   size;
 
     name = ngx_alloc(shm->name.len + 2 + sizeof(NGX_INT32_LEN), shm->log);
     if (name == NULL) {
@@ -22,8 +23,12 @@ ngx_shm_alloc(ngx_shm_t *shm)
 
     ngx_set_errno(0);
 
+    size = shm->size;
+
     shm->handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
-                                    0, shm->size, (char *) name);
+                                    (u_long) (size >> 32),
+                                    (u_long) (size & 0xffffffff),
+                                    (char *) name);
 
     if (shm->handle == NULL) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
