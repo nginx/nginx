@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.0" date="02.06.2009">
+
+<change type="feature">
+<para lang="ru">
+директива keepalive_requests.
+</para>
+<para lang="en">
+the "keepalive_requests" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива limit_rate_after.<br/>
+Спасибо Ivan Debnar.
+</para>
+<para lang="en">
+the "limit_rate_after" directive.<br/>
+Thanks to Ivan Debnar.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+XSLT-фильтр не работал в подзапросах.
+</para>
+<para lang="en">
+XLST filter did not work in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обработке относительных путей в in nginx/Windows.
+</para>
+<para lang="en">
+in relative paths handling in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в proxy_store, fastcgi_store, proxy_cache и fastcgi_cache в nginx/Windows.
+</para>
+<para lang="en">
+in proxy_store, fastcgi_store, proxy_cache, and fastcgi_cache in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.<br/>
+Спасибо Максиму Дунину и Кириллу Коринскому.
+</para>
+<para lang="en">
+in memory allocation error handling.<br/>
+Thanks to Maxim Dounin and Kirill A. Korinskiy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.59" date="25.05.2009">
 
 <change type="feature">
