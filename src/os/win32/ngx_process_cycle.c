@@ -495,7 +495,7 @@ ngx_reap_worker(ngx_cycle_t *cycle, HANDLE h)
         }
 
         if (GetExitCodeProcess(h, &code) == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "GetExitCodeProcess(%P) failed",
                           ngx_processes[n].pid);
         }
