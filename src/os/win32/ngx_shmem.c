@@ -19,7 +19,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
         return NGX_ERROR;
     }
 
-    ngx_sprintf(name, "%V_%s%Z", &shm->name, ngx_unique);
+    (void) ngx_sprintf(name, "%V_%s%Z", &shm->name, ngx_unique);
 
     ngx_set_errno(0);
 
@@ -33,9 +33,13 @@ ngx_shm_alloc(ngx_shm_t *shm)
     if (shm->handle == NULL) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "CreateFileMapping(%uz, %s) failed",
-                      shm->size, shm->name.data);
-        goto failed;
+                      shm->size, name);
+        ngx_free(name);
+
+        return NGX_ERROR;
     }
+
+    ngx_free(name);
 
     if (ngx_errno == ERROR_ALREADY_EXISTS) {
         shm->exists = 1;
@@ -48,16 +52,14 @@ ngx_shm_alloc(ngx_shm_t *shm)
     }
 
     ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                  "MapViewOfFile(%uz) failed", shm->size);
+                  "MapViewOfFile(%uz) of file mapping \"%V\" failed",
+                  shm->size, &shm->name);
 
     if (CloseHandle(shm->handle) == 0) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                      "CloseHandle() failed");
+                      "CloseHandle() of file mapping \"%V\" failed",
+                      &shm->name);
     }
-
-failed:
-
-    ngx_free(name);
 
     return NGX_ERROR;
 }
@@ -68,11 +70,13 @@ ngx_shm_free(ngx_shm_t *shm)
 {
     if (UnmapViewOfFile(shm->addr) == 0) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                      "UnmapViewOfFile(%p) failed", shm->addr);
+                      "UnmapViewOfFile(%p) of file mapping \"%V\" failed",
+                      shm->addr, &shm->name);
     }
 
     if (CloseHandle(shm->handle) == 0) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
-                      "CloseHandle() failed");
+                      "CloseHandle() of file mapping \"%V\" failed",
+                      &shm->name);
     }
 }
