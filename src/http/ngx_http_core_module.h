@@ -324,6 +324,7 @@ struct ngx_http_core_loc_conf_s {
     size_t        send_lowat;              /* send_lowat */
     size_t        postpone_output;         /* postpone_output */
     size_t        limit_rate;              /* limit_rate */
+    size_t        limit_rate_after;        /* limit_rate_after */
     size_t        sendfile_max_chunk;      /* sendfile_max_chunk */
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */

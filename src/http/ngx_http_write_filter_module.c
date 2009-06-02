@@ -46,7 +46,7 @@ ngx_module_t  ngx_http_write_filter_module = {
 ngx_int_t
 ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    off_t                      size, sent, limit;
+    off_t                      size, sent, nsent, limit;
     ngx_uint_t                 last, flush;
     ngx_msec_t                 delay;
     ngx_chain_t               *cl, *ln, **ll, *chain;
@@ -210,7 +210,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (r->limit_rate) {
-        limit = r->limit_rate * (ngx_time() - r->start_sec + 1) - c->sent;
+        limit = r->limit_rate * (ngx_time() - r->start_sec + 1)
+                - (c->sent - clcf->limit_rate_after);
 
         if (limit <= 0) {
             c->write->delayed = 1;
@@ -245,7 +246,23 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (r->limit_rate) {
-        delay = (ngx_msec_t) ((c->sent - sent) * 1000 / r->limit_rate + 1);
+
+        nsent = c->sent;
+
+        if (clcf->limit_rate_after) {
+
+            sent -= clcf->limit_rate_after;
+            if (sent < 0) {
+                sent = 0;
+            }
+
+            nsent -= clcf->limit_rate_after;
+            if (nsent < 0) {
+                nsent = 0;
+            }
+        }
+
+        delay = (ngx_msec_t) ((nsent - sent) * 1000 / r->limit_rate + 1);
 
         if (delay > 0) {
             c->write->delayed = 1;
