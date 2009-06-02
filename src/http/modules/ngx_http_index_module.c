@@ -366,7 +366,7 @@ ngx_http_index_create_loc_conf(ngx_conf_t *cf)
 
     conf = ngx_palloc(cf->pool, sizeof(ngx_http_index_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->indices = NULL;

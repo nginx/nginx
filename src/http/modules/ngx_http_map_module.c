@@ -160,7 +160,7 @@ ngx_http_map_create_conf(ngx_conf_t *cf)
 
     mcf = ngx_palloc(cf->pool, sizeof(ngx_http_map_conf_t));
     if (mcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     mcf->hash_max_size = NGX_CONF_UNSET_UINT;

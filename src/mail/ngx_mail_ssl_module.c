@@ -166,7 +166,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
 
     scf = ngx_pcalloc(cf->pool, sizeof(ngx_mail_ssl_conf_t));
     if (scf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

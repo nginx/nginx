@@ -302,7 +302,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 
     sscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssl_srv_conf_t));
     if (sscf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

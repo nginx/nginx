@@ -632,7 +632,7 @@ ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
 
     conf = ngx_palloc(cf->pool, sizeof(ngx_http_autoindex_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->enable = NGX_CONF_UNSET;

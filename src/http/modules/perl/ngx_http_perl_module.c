@@ -784,7 +784,7 @@ ngx_http_perl_create_main_conf(ngx_conf_t *cf)
 
     pmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_perl_main_conf_t));
     if (pmcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&pmcf->requires, cf->pool, 1, sizeof(u_char *))
@@ -869,7 +869,7 @@ ngx_http_perl_create_loc_conf(ngx_conf_t *cf)
 
     plcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_perl_loc_conf_t));
     if (plcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

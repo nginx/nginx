@@ -220,7 +220,7 @@ ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_rewrite_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->stack_size = NGX_CONF_UNSET_UINT;

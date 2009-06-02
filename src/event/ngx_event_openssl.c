@@ -2115,7 +2115,7 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
 
     oscf = ngx_pcalloc(cycle->pool, sizeof(ngx_openssl_conf_t));
     if (oscf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

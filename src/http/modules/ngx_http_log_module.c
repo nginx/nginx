@@ -714,18 +714,18 @@ ngx_http_log_create_main_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_main_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&conf->formats, cf->pool, 4, sizeof(ngx_http_log_fmt_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     fmt = ngx_array_push(&conf->formats);
     if (fmt == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     fmt->name.len = sizeof("combined") - 1;
@@ -735,7 +735,7 @@ ngx_http_log_create_main_conf(ngx_conf_t *cf)
 
     fmt->ops = ngx_array_create(cf->pool, 16, sizeof(ngx_http_log_op_t));
     if (fmt->ops == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     return conf;
@@ -749,7 +749,7 @@ ngx_http_log_create_loc_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->open_file_cache = NGX_CONF_UNSET_PTR;

@@ -120,20 +120,20 @@ ngx_mail_core_create_main_conf(ngx_conf_t *cf)
 
     cmcf = ngx_pcalloc(cf->pool, sizeof(ngx_mail_core_main_conf_t));
     if (cmcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&cmcf->servers, cf->pool, 4,
                        sizeof(ngx_mail_core_srv_conf_t *))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&cmcf->listen, cf->pool, 4, sizeof(ngx_mail_listen_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     return cmcf;

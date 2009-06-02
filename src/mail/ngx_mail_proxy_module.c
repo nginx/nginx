@@ -1061,7 +1061,7 @@ ngx_mail_proxy_create_conf(ngx_conf_t *cf)
 
     pcf = ngx_pcalloc(cf->pool, sizeof(ngx_mail_proxy_conf_t));
     if (pcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     pcf->enable = NGX_CONF_UNSET;

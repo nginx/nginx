@@ -691,7 +691,7 @@ ngx_rtsig_create_conf(ngx_cycle_t *cycle)
 
     rtscf = ngx_palloc(cycle->pool, sizeof(ngx_rtsig_conf_t));
     if (rtscf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     rtscf->signo = NGX_CONF_UNSET;

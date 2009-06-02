@@ -768,7 +768,7 @@ ngx_kqueue_create_conf(ngx_cycle_t *cycle)
 
     kcf = ngx_palloc(cycle->pool, sizeof(ngx_kqueue_conf_t));
     if (kcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     kcf->changes = NGX_CONF_UNSET;
