@@ -463,11 +463,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-        if (!shm_zone[i].shm.exists) {
-
-            if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
-                goto failed;
-            }
+        if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
+            goto failed;
         }
 
         if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
@@ -885,8 +882,21 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 
     sp = (ngx_slab_pool_t *) zn->shm.addr;
 
+    if (zn->shm.exists) {
+
+        if (sp == sp->addr) {
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "shared zone \"%V\" has no equal addresses: %p vs %p",
+                      &zn->shm.name, sp->addr, sp);
+        return NGX_ERROR;
+    }
+
     sp->end = zn->shm.addr + zn->shm.size;
     sp->min_shift = 3;
+    sp->addr = zn->shm.addr;
 
 #if (NGX_HAVE_ATOMIC_OPS)
 

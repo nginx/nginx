@@ -39,6 +39,7 @@ typedef struct {
     u_char            zero;
 
     void             *data;
+    void             *addr;
 } ngx_slab_pool_t;
 
 
