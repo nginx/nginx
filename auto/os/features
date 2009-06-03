@@ -252,3 +252,25 @@ if [ $ngx_found != yes ]; then
         NGX_LIBDL="-ldl"
     fi
 fi
+
+
+ngx_feature="sched_yield()"
+ngx_feature_name="NGX_HAVE_SCHED_YIELD"
+ngx_feature_run=no
+ngx_feature_incs="#include <sched.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="sched_yield()"
+. auto/feature
+
+
+if [ $ngx_found != yes ]; then
+
+    ngx_feature="sched_yield() in librt"
+    ngx_feature_libs="-lrt"
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -lrt"
+    fi
+fi
