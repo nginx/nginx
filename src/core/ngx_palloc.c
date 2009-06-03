@@ -214,11 +214,25 @@ static void *
 ngx_palloc_large(ngx_pool_t *pool, size_t size)
 {
     void              *p;
+    ngx_uint_t         n;
     ngx_pool_large_t  *large;
 
     p = ngx_alloc(size, pool->log);
     if (p == NULL) {
         return NULL;
+    }
+
+    n = 0;
+
+    for (large = pool->large; large; large = large->next) {
+        if (large->alloc == NULL) {
+            large->alloc = p;
+            return p;
+        }
+
+        if (n++ > 3) {
+            break;
+        }
     }
 
     large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
