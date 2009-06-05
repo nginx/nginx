@@ -428,7 +428,7 @@ ngx_quit_worker_processes(ngx_cycle_t *cycle, ngx_uint_t old)
     for (n = 0; n < ngx_last_process; n++) {
 
         ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "process: %d %P %p e:%d t:%d r:%d j:%d",
+                       "process: %d %P %p e:%d j:%d",
                        n,
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,
@@ -538,7 +538,7 @@ found:
     for (n = 0; n < ngx_last_process; n++) {
 
         ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "process: %d %P %p e:%d t:%d r:%d j:%d",
+                       "process: %d %P %p e:%d j:%d",
                        n,
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,
