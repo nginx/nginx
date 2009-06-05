@@ -46,6 +46,7 @@ typedef struct {
     u_char               *last;
     u_char               *end;
     ngx_pool_t           *next;
+    ngx_uint_t            failed;
 } ngx_pool_data_t;
 
 

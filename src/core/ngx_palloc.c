@@ -25,6 +25,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     p->d.last = (u_char *) p + sizeof(ngx_pool_t);
     p->d.end = (u_char *) p + size;
     p->d.next = NULL;
+    p->d.failed = 0;
 
     size = size - sizeof(ngx_pool_t);
     p->max = (size < NGX_MAX_ALLOC_FROM_POOL) ? size : NGX_MAX_ALLOC_FROM_POOL;
@@ -189,6 +190,7 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
 
     new->d.end = m + psize;
     new->d.next = NULL;
+    new->d.failed = 0;
 
     m += sizeof(ngx_pool_data_t);
     m = ngx_align_ptr(m, NGX_ALIGNMENT);
@@ -197,7 +199,7 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     current = pool->current;
 
     for (p = current; p->d.next; p = p->d.next) {
-        if ((size_t) (p->d.end - p->d.last) < NGX_ALIGNMENT) {
+        if (p->d.failed++ > 4) {
             current = p->d.next;
         }
     }
