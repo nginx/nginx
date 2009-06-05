@@ -30,12 +30,15 @@ ngx_cpystrn(u_char *dst, u_char *src, size_t n)
         return dst;
     }
 
-    for ( /* void */ ; --n; dst++, src++) {
+    while (--n) {
         *dst = *src;
 
         if (*dst == '\0') {
             return dst;
         }
+
+        dst++;
+        src++;
     }
 
     *dst = '\0';
