@@ -383,11 +383,12 @@ ngx_http_image_test(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_HTTP_IMAGE_JPEG;
 
     } else if (p[0] == 'G' && p[1] == 'I' && p[2] == 'F' && p[3] == '8'
-               && p[4] == '9' && p[5] == 'a')
+               && p[5] == 'a')
     {
-        /* GIF */
-
-        return NGX_HTTP_IMAGE_GIF;
+        if (p[4] == '9' || p[4] == '7') {
+            /* GIF */
+            return NGX_HTTP_IMAGE_GIF;
+        }
 
     } else if (p[0] == 0x89 && p[1] == 'P' && p[2] == 'N' && p[3] == 'G'
                && p[4] == 0x0d && p[5] == 0x0a && p[6] == 0x1a && p[7] == 0x0a)
