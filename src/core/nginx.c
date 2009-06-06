@@ -330,6 +330,10 @@ main(int argc, char *const *argv)
         return 0;
     }
 
+    if (ngx_signal) {
+        return ngx_signal_process(cycle, ngx_signal);
+    }
+
     ngx_os_status(cycle->log);
 
     ngx_cycle = cycle;
@@ -338,10 +342,6 @@ main(int argc, char *const *argv)
 
     if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
         ngx_process = NGX_PROCESS_MASTER;
-    }
-
-    if (ngx_signal) {
-        return ngx_signal_process(cycle, ngx_signal);
     }
 
 #if !(NGX_WIN32)

@@ -269,7 +269,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                        cycle->conf_file.data);
     }
 
-
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -287,6 +286,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+    if (ngx_process == NGX_PROCESS_SIGNALLER) {
+        return cycle;
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -564,14 +566,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (ngx_process != NGX_PROCESS_SIGNALLER) {
-        if (ngx_open_listening_sockets(cycle) != NGX_OK) {
-            goto failed;
-        }
+    if (ngx_open_listening_sockets(cycle) != NGX_OK) {
+        goto failed;
+    }
 
-        if (!ngx_test_config) {
-            ngx_configure_listening_sockets(cycle);
-        }
+    if (!ngx_test_config) {
+        ngx_configure_listening_sockets(cycle);
     }
 
 
