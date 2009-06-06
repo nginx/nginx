@@ -340,8 +340,6 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         return NGX_HTTP_CACHE_STALE;
     }
 
-    /* TODO: NGX_HTTP_CACHE_AGED */
-
     return NGX_OK;
 }
 

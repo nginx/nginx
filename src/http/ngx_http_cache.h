@@ -13,11 +13,7 @@
 #include <ngx_http.h>
 
 
-/**/
 #define NGX_HTTP_CACHE_STALE         1
-#define NGX_HTTP_CACHE_AGED          2
-#define NGX_HTTP_CACHE_THE_SAME      3
-/**/
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 
@@ -27,8 +23,6 @@ typedef struct {
     time_t                           valid;
 } ngx_http_cache_valid_t;
 
-
-/* ngx_http_file_cache_node_t takes exactly 64 bytes on FreeBSD/i386 */
 
 typedef struct {
     ngx_rbtree_node_t                node;
@@ -41,8 +35,8 @@ typedef struct {
     unsigned                         uses:10;
     unsigned                         valid_msec:10;
     unsigned                         error:10;
-                                     /* 7 unused bits */
     unsigned                         exists:1;
+                                     /* 13 unused bits */
 
     ngx_file_uniq_t                  uniq;
     time_t                           expire;
