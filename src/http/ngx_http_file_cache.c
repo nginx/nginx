@@ -172,9 +172,8 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     rc = ngx_http_file_cache_exists(cache, c);
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http file cache exists: %i u:%ui e:%d",
-                   rc, c->uses, c->exists);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http file cache exists: %i e:%d", rc, c->exists);
 
     if (rc == NGX_ERROR) {
         return rc;
@@ -332,8 +331,6 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     if (c->valid_sec < now) {
 
-        c->uses = c->min_uses;
-
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http file cache expired: %T %T", c->valid_sec, now);
 
@@ -440,7 +437,6 @@ done:
     ngx_queue_insert_head(&cache->sh->queue, &fcn->queue);
 
     c->uniq = fcn->uniq;
-    c->uses = fcn->uses;
     c->error = fcn->error;
     c->node = fcn;
 

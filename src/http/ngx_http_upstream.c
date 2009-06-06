@@ -577,8 +577,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     rc = ngx_http_file_cache_open(r);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http upstream cache: %i u:%ui", rc, c->uses);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http upstream cache: %i", rc);
 
     if (rc == NGX_OK) {
 

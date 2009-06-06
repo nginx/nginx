@@ -62,7 +62,6 @@ struct ngx_http_cache_s {
     off_t                            length;
 
     ngx_uint_t                       min_uses;
-    ngx_uint_t                       uses;
     ngx_uint_t                       error;
     ngx_uint_t                       valid_msec;
 
