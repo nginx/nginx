@@ -14,6 +14,7 @@
 
 
 #define NGX_HTTP_CACHE_STALE         1
+#define NGX_HTTP_CACHE_UPDATING      2
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 
@@ -36,7 +37,8 @@ typedef struct {
     unsigned                         valid_msec:10;
     unsigned                         error:10;
     unsigned                         exists:1;
-                                     /* 13 unused bits */
+    unsigned                         updating:1;
+                                     /* 12 unused bits */
 
     ngx_file_uniq_t                  uniq;
     time_t                           expire;

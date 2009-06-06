@@ -331,10 +331,23 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     if (c->valid_sec < now) {
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http file cache expired: %T %T", c->valid_sec, now);
+        ngx_shmtx_lock(&cache->shpool->mutex);
 
-        return NGX_HTTP_CACHE_STALE;
+        if (c->node->updating) {
+            rc = NGX_HTTP_CACHE_UPDATING;
+
+        } else {
+            c->node->updating = 1;
+            rc = NGX_HTTP_CACHE_STALE;
+        }
+
+        ngx_shmtx_unlock(&cache->shpool->mutex);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http file cache expired: %i %T %T",
+                       rc, c->valid_sec, now);
+
+        return rc;
     }
 
     return NGX_OK;
@@ -648,6 +661,8 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
         c->node->exists = 1;
     }
 
+    c->node->updating = 0;
+
     ngx_shmtx_unlock(&cache->shpool->mutex);
 }
 
@@ -729,6 +744,8 @@ ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
         c->node->valid_msec = c->valid_msec;
         c->node->error = c->error;
     }
+
+    c->node->updating = 0;
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
