@@ -653,7 +653,8 @@ old_shm_zone_done:
 
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
-        if (ls[i].remain) {
+
+        if (ls[i].remain || ls[i].fd == -1) {
             continue;
         }
 
