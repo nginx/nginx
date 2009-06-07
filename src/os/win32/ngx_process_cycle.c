@@ -208,6 +208,8 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             ngx_cycle = cycle;
 
+            ngx_close_listening_sockets(cycle);
+
             if (ngx_start_worker_processes(cycle, NGX_PROCESS_JUST_RESPAWN)) {
                 ngx_quit_worker_processes(cycle, 1);
             }
