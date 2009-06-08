@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.1" date="08.06.2009">
+
+<change type="feature">
+<para lang="ru">
+параметр updating в директивах proxy_cache_use_stale и fastcgi_cache_use_stale.
+</para>
+<para lang="en">
+the "updating" parameter in "proxy_cache_use_stale" and
+"fastcgi_cache_use_stale" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "If-Modified-Since", "If-Range" и им подобные в заголовке запроса
+клиента передавались бэкенду при кэшировании, если не использовалась
+директива proxy_set_header с любыми параметрами.
+</para>
+<para lang="en">
+the "If-Modified-Since", "If-Range", etc. client request header lines
+were passed to backend while caching if no "proxy_set_header" directive
+was used with any parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "Set-Cookie" и "P3P" в заголовке ответа бэкенда не скрывались
+при кэшировании, если не использовались директивы
+proxy_hide_header/fastcgi_hide_header с любыми параметрами.
+</para>
+<para lang="en">
+the "Set-Cookie" and "P3P" response header lines were not hidden while caching
+if no "proxy_hide_header/fastcgi_hide_header" directives were used with
+any parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_image_filter_module не понимал формат GIF87a.<br/>
+Спасибо Денис Ильиных.
+</para>
+<para lang="en">
+the ngx_http_image_filter_module did not support GIF87a format.<br/>
+Thanks to Denis Ilyinyh.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris 10 и более ранних;
+ошибка появилась в 0.7.56.
+</para>
+<para lang="en">
+nginx could not be built modules on Solaris 10 and early;
+the bug had appeared in 0.7.56.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.0" date="02.06.2009">
 
 <change type="feature">
@@ -42,7 +105,7 @@ XLST filter did not work in subrequests.
 
 <change type="bugfix">
 <para lang="ru">
-обработке относительных путей в in nginx/Windows.
+обработке относительных путей в nginx/Windows.
 </para>
 <para lang="en">
 in relative paths handling in nginx/Windows.
@@ -118,7 +181,7 @@ SSL-модули могли не собираться на Solaris и Linux;
 </para>
 <para lang="en">
 the SSL modules might not built on Solaris and Linux;<br/>
-the bug had appeared in 0.7.58.
+the bug had appeared in 0.7.56.
 </para>
 </change>
 
@@ -257,7 +320,7 @@ in ngx_http_image_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-параметры http_XXX в директиве proxy_cache_use_stale
+параметры http_XXX в директивах proxy_cache_use_stale
 и fastcgi_cache_use_stale не работали.
 </para>
 <para lang="en">
