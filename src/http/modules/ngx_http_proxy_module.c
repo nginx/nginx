@@ -2342,7 +2342,9 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         conf->headers_source = prev->headers_source;
     }
 
-    if (conf->headers_set_hash.buckets) {
+    if (conf->headers_set_hash.buckets
+        && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL)))
+    {
         return NGX_OK;
     }
 

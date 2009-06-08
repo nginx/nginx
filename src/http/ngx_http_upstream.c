@@ -4085,7 +4085,9 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     {
         conf->hide_headers_hash = prev->hide_headers_hash;
 
-        if (conf->hide_headers_hash.buckets) {
+        if (conf->hide_headers_hash.buckets
+            && ((conf->cache == NULL) == (prev->cache == NULL)))
+        {
             return NGX_OK;
         }
 
