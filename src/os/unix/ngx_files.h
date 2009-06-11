@@ -18,13 +18,13 @@ typedef ino_t                    ngx_file_uniq_t;
 
 
 typedef struct {
-    DIR                        *dir;
-    struct dirent              *de;
-    struct stat                 info;
+    DIR                         *dir;
+    struct dirent               *de;
+    struct stat                  info;
 
-    unsigned                    type:8;
-    unsigned                    valid_info:1;
-    unsigned                    valid_type:1;
+    unsigned                     type:8;
+    unsigned                     valid_info:1;
+    unsigned                     valid_type:1;
 } ngx_dir_t;
 
 
