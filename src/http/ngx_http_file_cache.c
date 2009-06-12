@@ -320,6 +320,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
             c->node->uses = 1;
             c->node->body_start = c->body_start;
             c->node->exists = 1;
+            c->node->uniq = of.uniq;
 
             cache->sh->size += (c->length + cache->bsize - 1) / cache->bsize;
         }
