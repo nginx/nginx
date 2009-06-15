@@ -503,6 +503,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
         if (src->pos == src->last) {
             dst->flush = src->flush;
             dst->last_buf = src->last_buf;
+            dst->last_in_chain = src->last_in_chain;
         }
 
     } else {
@@ -577,6 +578,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
         if (src->file_pos == src->file_last) {
             dst->flush = src->flush;
             dst->last_buf = src->last_buf;
+            dst->last_in_chain = src->last_in_chain;
         }
     }
 
