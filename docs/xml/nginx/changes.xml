@@ -9,6 +9,29 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.2" date="15.06.2009">
+
+<change type="bugfix">
+<para lang="ru">
+во взаимодействии open_file_cache и proxy/fastcgi кэша на старте.
+</para>
+<para lang="en">
+in open_file_cache and proxy/fastcgi cache interaction on start up.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+open_file_cache мог кэшировать открытые файлы очень долго.
+</para>
+<para lang="en">
+open_file_cache might cache open file descriptors too long.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.1" date="08.06.2009">
 
 <change type="feature">
@@ -50,7 +73,7 @@ any parameters.
 <change type="bugfix">
 <para lang="ru">
 модуль ngx_http_image_filter_module не понимал формат GIF87a.<br/>
-Спасибо Денис Ильиных.
+Спасибо Денису Ильиных.
 </para>
 <para lang="en">
 the ngx_http_image_filter_module did not support GIF87a format.<br/>
