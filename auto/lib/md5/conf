@@ -94,6 +94,18 @@ else
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             MD5=YES
             MD5_LIB=$ngx_md5_lib
+        else
+
+cat << END
+
+$0: error: the HTTP cache module requires md5 functions
+from OpenSSL library.  You can either disable the module by using
+--without-http_cache option, or install the OpenSSL library into the system,
+or build the OpenSSL library statically from the source with nginx by using
+--with-openssl=<path> option.
+
+END
+            exit 1
         fi
 
     fi

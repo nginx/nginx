@@ -4,7 +4,21 @@
 
 if [ $USE_PCRE = YES -o $PCRE != NONE ]; then
     . auto/lib/pcre/conf
+
+else
+    if [ $USE_PCRE = DISABLED -a $HTTP_REWRITE = YES ]; then
+
+cat << END
+
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option or you have to enable the PCRE support.
+
+END
+        exit 1
+    fi
 fi
+
 
 if [ $USE_OPENSSL = YES ]; then
     . auto/lib/openssl/conf
@@ -12,7 +26,7 @@ fi
 
 if [ $USE_MD5 = YES ]; then
 
-    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+    if [ $USE_OPENSSL = YES ]; then
         have=NGX_HAVE_OPENSSL_MD5_H . auto/have
         have=NGX_OPENSSL_MD5 . auto/have
         MD5=YES
@@ -26,7 +40,7 @@ fi
 
 if [ $USE_SHA1 = YES ]; then
 
-    if [ $OPENSSL != NONE -a $OPENSSL != NO ]; then
+    if [ $USE_OPENSSL = YES ]; then
         have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
         SHA1=YES
         SHA1_LIB=OpenSSL

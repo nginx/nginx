@@ -161,6 +161,18 @@ else
             CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
+        else
+
+cat << END
+
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option, or install the PCRE library into the system, or build the PCRE library
+statically from the source with nginx by using --with-pcre=<path> option.
+
+END
+            exit 1
+
         fi
 
     fi
