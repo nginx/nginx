@@ -259,6 +259,8 @@ ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
+    c->requests++;
+
     hc = c->data;
 
     if (hc == NULL) {

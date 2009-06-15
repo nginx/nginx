@@ -135,6 +135,8 @@ struct ngx_connection_s {
 
     ngx_atomic_uint_t   number;
 
+    ngx_uint_t          requests;
+
     unsigned            buffered:8;
 
     unsigned            log_error:3;     /* ngx_connection_log_error_e */
