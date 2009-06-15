@@ -360,6 +360,7 @@ create:
 
     file->uses = 1;
     file->count = 0;
+    file->use_event = 0;
     file->event = NULL;
 
 add_event:
