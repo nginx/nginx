@@ -9,6 +9,123 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.60" date="15.06.2009">
+
+<change type="feature">
+<para lang="ru">
+параметр updating в директивах proxy_cache_use_stale и fastcgi_cache_use_stale.
+</para>
+<para lang="en">
+the "updating" parameter in "proxy_cache_use_stale" and
+"fastcgi_cache_use_stale" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива keepalive_requests.
+</para>
+<para lang="en">
+the "keepalive_requests" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во взаимодействии open_file_cache и proxy/fastcgi кэша на старте.
+</para>
+<para lang="en">
+in open_file_cache and proxy/fastcgi cache interaction on start up.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+open_file_cache мог кэшировать открытые файлы очень долго.
+</para>
+<para lang="en">
+open_file_cache might cache open file descriptors too long.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "If-Modified-Since", "If-Range" и им подобные в заголовке запроса
+клиента передавались бэкенду при кэшировании, если не использовалась
+директива proxy_set_header с любыми параметрами.
+</para>
+<para lang="en">
+the "If-Modified-Since", "If-Range", etc. client request header lines
+were passed to backend while caching if no "proxy_set_header" directive
+was used with any parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "Set-Cookie" и "P3P" в заголовке ответа бэкенда не скрывались
+при кэшировании, если не использовались директивы
+proxy_hide_header/fastcgi_hide_header с любыми параметрами.
+</para>
+<para lang="en">
+the "Set-Cookie" and "P3P" response header lines were not hidden while caching
+if no "proxy_hide_header/fastcgi_hide_header" directives were used with
+any parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_image_filter_module не понимал формат GIF87a.<br/>
+Спасибо Денису Ильиных.
+</para>
+<para lang="en">
+the ngx_http_image_filter_module did not support GIF87a format.<br/>
+Thanks to Denis Ilyinyh.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris 10 и более ранних;
+ошибка появилась в 0.7.56.
+</para>
+<para lang="en">
+nginx could not be built modules on Solaris 10 and early;
+the bug had appeared in 0.7.56.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+XSLT-фильтр не работал в подзапросах.
+</para>
+<para lang="en">
+XLST filter did not work in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обработке относительных путей в nginx/Windows.
+</para>
+<para lang="en">
+in relative paths handling in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в proxy_store, fastcgi_store, proxy_cache и fastcgi_cache в nginx/Windows.
+</para>
+<para lang="en">
+in proxy_store, fastcgi_store, proxy_cache, and fastcgi_cache in nginx/Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.59" date="25.05.2009">
 
 <change type="feature">
@@ -55,7 +172,7 @@ SSL-модули могли не собираться на Solaris и Linux;
 </para>
 <para lang="en">
 the SSL modules might not built on Solaris and Linux;<br/>
-the bug had appeared in 0.7.58.
+the bug had appeared in 0.7.56.
 </para>
 </change>
 
@@ -194,7 +311,7 @@ in ngx_http_image_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-параметры http_XXX в директиве proxy_cache_use_stale
+параметры http_XXX в директивах proxy_cache_use_stale
 и fastcgi_cache_use_stale не работали.
 </para>
 <para lang="en">
