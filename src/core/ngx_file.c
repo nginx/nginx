@@ -558,8 +558,14 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
     err = ngx_errno;
 
-    if (err == NGX_ENOENT) {
-
+    if (err
+#if (NGX_WIN32)
+            == ERROR_PATH_NOT_FOUND
+#else
+            == NGX_ENOENT
+#endif
+       )
+    {
         if (!ext->create_path) {
             goto failed;
         }

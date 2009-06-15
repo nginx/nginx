@@ -14,7 +14,7 @@ static void ngx_process_init(ngx_cycle_t *cycle);
 static void ngx_console_init(ngx_cycle_t *cycle);
 static int __stdcall ngx_console_handler(u_long type);
 static ngx_int_t ngx_create_events(ngx_cycle_t *cycle);
-static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t type);
+static ngx_int_t ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_reopen_worker_processes(ngx_cycle_t *cycle);
 static void ngx_quit_worker_processes(ngx_cycle_t *cycle, ngx_uint_t old);
 static void ngx_terminate_worker_processes(ngx_cycle_t *cycle);
@@ -116,7 +116,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_close_listening_sockets(cycle);
 
-    ngx_start_worker_processes(cycle, NGX_PROCESS_RESPAWN);
+    if (ngx_start_worker_processes(cycle, NGX_PROCESS_RESPAWN) == 0) {
+        exit(2);
+    }
 
     timer = 0;
     timeout = INFINITE;
@@ -206,8 +208,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             ngx_cycle = cycle;
 
-            ngx_start_worker_processes(cycle, NGX_PROCESS_JUST_RESPAWN);
-            ngx_quit_worker_processes(cycle, 1);
+            ngx_close_listening_sockets(cycle);
+
+            if (ngx_start_worker_processes(cycle, NGX_PROCESS_JUST_RESPAWN)) {
+                ngx_quit_worker_processes(cycle, 1);
+            }
 
             continue;
         }
@@ -382,7 +387,7 @@ ngx_create_events(ngx_cycle_t *cycle)
 }
 
 
-static void
+static ngx_int_t
 ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t type)
 {
     ngx_int_t         n;
@@ -394,9 +399,11 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t type)
 
     for (n = 0; n < ccf->worker_processes; n++) {
         if (ngx_spawn_process(cycle, "worker", type) == NGX_INVALID_PID) {
-            return;
+            break;
         }
     }
+
+    return n;
 }
 
 
@@ -428,7 +435,7 @@ ngx_quit_worker_processes(ngx_cycle_t *cycle, ngx_uint_t old)
     for (n = 0; n < ngx_last_process; n++) {
 
         ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "process: %d %P %p e:%d t:%d r:%d j:%d",
+                       "process: %d %P %p e:%d j:%d",
                        n,
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,
@@ -495,7 +502,7 @@ ngx_reap_worker(ngx_cycle_t *cycle, HANDLE h)
         }
 
         if (GetExitCodeProcess(h, &code) == 0) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "GetExitCodeProcess(%P) failed",
                           ngx_processes[n].pid);
         }
@@ -538,7 +545,7 @@ found:
     for (n = 0; n < ngx_last_process; n++) {
 
         ngx_log_debug5(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                       "process: %d %P %p e:%d t:%d r:%d j:%d",
+                       "process: %d %P %p e:%d j:%d",
                        n,
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,

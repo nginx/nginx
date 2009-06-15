@@ -269,7 +269,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                        cycle->conf_file.data);
     }
 
-
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -287,6 +286,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
+    if (ngx_process == NGX_PROCESS_SIGNALLER) {
+        return cycle;
+    }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -463,11 +465,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-        if (!shm_zone[i].shm.exists) {
-
-            if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
-                goto failed;
-            }
+        if (ngx_init_zone_pool(cycle, &shm_zone[i]) != NGX_OK) {
+            goto failed;
         }
 
         if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
@@ -567,14 +566,12 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
     }
 
-    if (ngx_process != NGX_PROCESS_SIGNALLER) {
-        if (ngx_open_listening_sockets(cycle) != NGX_OK) {
-            goto failed;
-        }
+    if (ngx_open_listening_sockets(cycle) != NGX_OK) {
+        goto failed;
+    }
 
-        if (!ngx_test_config) {
-            ngx_configure_listening_sockets(cycle);
-        }
+    if (!ngx_test_config) {
+        ngx_configure_listening_sockets(cycle);
     }
 
 
@@ -656,7 +653,8 @@ old_shm_zone_done:
 
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
-        if (ls[i].remain) {
+
+        if (ls[i].remain || ls[i].fd == -1) {
             continue;
         }
 
@@ -885,8 +883,21 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 
     sp = (ngx_slab_pool_t *) zn->shm.addr;
 
+    if (zn->shm.exists) {
+
+        if (sp == sp->addr) {
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "shared zone \"%V\" has no equal addresses: %p vs %p",
+                      &zn->shm.name, sp->addr, sp);
+        return NGX_ERROR;
+    }
+
     sp->end = zn->shm.addr + zn->shm.size;
     sp->min_shift = 3;
+    sp->addr = zn->shm.addr;
 
 #if (NGX_HAVE_ATOMIC_OPS)
 

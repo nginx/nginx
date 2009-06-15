@@ -19,10 +19,11 @@ ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 ngx_pid_t
 ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
 {
-    u_long          rc, n;
+    u_long          rc, n, code;
     ngx_int_t       s;
     ngx_pid_t       pid;
     ngx_exec_ctx_t  ctx;
+    HANDLE          events[2];
     char            file[MAX_PATH + 1];
 
     if (respawn >= 0) {
@@ -79,12 +80,15 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
     ngx_sprintf(ngx_processes[s].reopen_event, "ngx_%s_reopen_%ul%Z",
                 name, pid);
 
-    rc = WaitForSingleObject(ngx_master_process_event, 5000);
+    events[0] = ngx_master_process_event;
+    events[1] = ctx.child;
+
+    rc = WaitForMultipleObjects(2, events, 0, 5000);
 
     ngx_time_update(0, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
-                   "WaitForSingleObject: %ul", rc);
+                   "WaitForMultipleObjects: %ul", rc);
 
     switch (rc) {
 
@@ -125,6 +129,18 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
         }
 
         break;
+
+    case WAIT_OBJECT_0 + 1:
+        if (GetExitCodeProcess(ctx.child, &code) == 0) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "GetExitCodeProcess(%P) failed", pid);
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "%s process %P exited with code %Xul",
+                      name, pid, code);
+
+        goto failed;
 
     case WAIT_TIMEOUT:
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
