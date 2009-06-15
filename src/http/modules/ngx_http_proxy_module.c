@@ -167,6 +167,7 @@ static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
     { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
     { ngx_string("http_504"), NGX_HTTP_UPSTREAM_FT_HTTP_504 },
     { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    { ngx_string("updating"), NGX_HTTP_UPSTREAM_FT_UPDATING },
     { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF },
     { ngx_null_string, 0 }
 };
@@ -1973,7 +1974,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.store != 0) {
         ngx_conf_merge_value(conf->upstream.store,
-                                  prev->upstream.store, 0);
+                              prev->upstream.store, 0);
 
         if (conf->upstream.store_lengths == NULL) {
             conf->upstream.store_lengths = prev->upstream.store_lengths;
@@ -2341,7 +2342,9 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         conf->headers_source = prev->headers_source;
     }
 
-    if (conf->headers_set_hash.buckets) {
+    if (conf->headers_set_hash.buckets
+        && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL)))
+    {
         return NGX_OK;
     }
 
@@ -2809,20 +2812,31 @@ ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_http_script_compile_t   sc;
 
-    if (plcf->upstream.store != NGX_CONF_UNSET || plcf->upstream.store_lengths)
+    if (plcf->upstream.store != NGX_CONF_UNSET
+        || plcf->upstream.store_lengths)
     {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "on") == 0) {
-        plcf->upstream.store = 1;
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        plcf->upstream.store = 0;
         return NGX_CONF_OK;
     }
 
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        plcf->upstream.store = 0;
+#if (NGX_HTTP_CACHE)
+
+    if (plcf->upstream.cache != NGX_CONF_UNSET_PTR
+        && plcf->upstream.cache != NULL)
+    {
+        return "is incompatible with \"proxy_cache\"";
+    }
+
+#endif
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        plcf->upstream.store = 1;
         return NGX_CONF_OK;
     }
 
@@ -2865,6 +2879,10 @@ ngx_http_proxy_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_strcmp(value[1].data, "off") == 0) {
         plcf->upstream.cache = NULL;
         return NGX_CONF_OK;
+    }
+
+    if (plcf->upstream.store > 0 || plcf->upstream.store_lengths) {
+        return "is incompatible with \"proxy_store\"";
     }
 
     plcf->upstream.cache = ngx_shared_memory_add(cf, &value[1], 0,

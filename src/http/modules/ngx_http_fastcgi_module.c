@@ -178,6 +178,7 @@ static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
     { ngx_string("http_500"), NGX_HTTP_UPSTREAM_FT_HTTP_500 },
     { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
     { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    { ngx_string("updating"), NGX_HTTP_UPSTREAM_FT_UPDATING },
     { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF },
     { ngx_null_string, 0 }
 };
@@ -1911,7 +1912,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.store != 0) {
         ngx_conf_merge_value(conf->upstream.store,
-                                  prev->upstream.store, 0);
+                              prev->upstream.store, 0);
 
         if (conf->upstream.store_lengths == NULL) {
             conf->upstream.store_lengths = prev->upstream.store_lengths;
@@ -2541,20 +2542,31 @@ ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_http_script_compile_t   sc;
 
-    if (flcf->upstream.store != NGX_CONF_UNSET || flcf->upstream.store_lengths)
+    if (flcf->upstream.store != NGX_CONF_UNSET
+        || flcf->upstream.store_lengths)
     {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "on") == 0) {
-        flcf->upstream.store = 1;
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        flcf->upstream.store = 0;
         return NGX_CONF_OK;
     }
 
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        flcf->upstream.store = 0;
+#if (NGX_HTTP_CACHE)
+
+    if (flcf->upstream.cache != NGX_CONF_UNSET_PTR
+        && flcf->upstream.cache != NULL)
+    {
+        return "is incompatible with \"fastcgi_cache\"";
+    }
+
+#endif
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        flcf->upstream.store = 1;
         return NGX_CONF_OK;
     }
 
@@ -2597,6 +2609,10 @@ ngx_http_fastcgi_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_strcmp(value[1].data, "off") == 0) {
         flcf->upstream.cache = NULL;
         return NGX_CONF_OK;
+    }
+
+    if (flcf->upstream.store > 0 || flcf->upstream.store_lengths) {
+        return "is incompatible with \"fastcgi_store\"";
     }
 
     flcf->upstream.cache = ngx_shared_memory_add(cf, &value[1], 0,
