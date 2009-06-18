@@ -13,8 +13,11 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_CACHE_STALE         1
-#define NGX_HTTP_CACHE_UPDATING      2
+#define NGX_HTTP_CACHE_MISS          1
+#define NGX_HTTP_CACHE_EXPIRED       2
+#define NGX_HTTP_CACHE_STALE         3
+#define NGX_HTTP_CACHE_UPDATING      4
+#define NGX_HTTP_CACHE_HIT           5
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 
@@ -124,11 +127,12 @@ ngx_int_t ngx_http_cache_send(ngx_http_request_t *);
 void ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf);
 time_t ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status);
 
-
 char *ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 char *ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+extern ngx_str_t  ngx_http_cache_status[];
 
 
 #endif /* _NGX_HTTP_CACHE_H_INCLUDED_ */

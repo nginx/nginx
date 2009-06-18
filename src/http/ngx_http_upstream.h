@@ -298,7 +298,7 @@ struct ngx_http_upstream_s {
     unsigned                         accel:1;
     unsigned                         ssl:1;
 #if (NGX_HTTP_CACHE)
-    unsigned                         stale_cache:1;
+    unsigned                         cache_status:3;
 #endif
 
     unsigned                         buffering:1;
