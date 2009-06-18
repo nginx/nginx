@@ -100,9 +100,9 @@ cat << END
 
 $0: error: the HTTP cache module requires md5 functions
 from OpenSSL library.  You can either disable the module by using
---without-http_cache option, or install the OpenSSL library into the system,
+--without-http-cache option, or install the OpenSSL library into the system,
 or build the OpenSSL library statically from the source with nginx by using
---with-openssl=<path> option.
+--with-http_ssl_module --with-openssl=<path> options.
 
 END
             exit 1
