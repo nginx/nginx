@@ -75,7 +75,7 @@ ngx_event_accept(ngx_event_t *ev)
         }
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_accepted, 1);
+        (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
         ngx_accept_disabled = ngx_cycle->connection_n / 8
@@ -93,7 +93,7 @@ ngx_event_accept(ngx_event_t *ev)
         }
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_active, 1);
+        (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
@@ -188,7 +188,7 @@ ngx_event_accept(ngx_event_t *ev)
         c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_handled, 1);
+        (void) ngx_atomic_fetch_add(ngx_stat_handled, 1);
 #endif
 
 #if (NGX_THREADS)
@@ -379,7 +379,7 @@ ngx_close_accepted_connection(ngx_connection_t *c)
     }
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_active, -1);
+    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
 }
 
