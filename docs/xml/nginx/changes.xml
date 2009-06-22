@@ -9,7 +9,23 @@
 <title lang="en">nginx changelog</title>
 
 
-<changes ver="0.8.2" date="19.06.2009">
+<changes ver="0.8.4" date="22.06.2009">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http-cache;
+ошибка появилась в 0.8.3.
+</para>
+<para lang="en">
+nginx could not be built --without-http-cache;
+the bug had appeared in 0.8.3.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.8.3" date="19.06.2009">
 
 <change type="feature">
 <para lang="ru">
