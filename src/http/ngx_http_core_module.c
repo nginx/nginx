@@ -426,6 +426,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("keepalive_requests"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_requests),
+      NULL },
+
     { ngx_string("satisfy"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
@@ -1294,8 +1301,13 @@ ngx_http_update_location_config(ngx_http_request_t *r)
         r->request_body_file_log_level = NGX_LOG_WARN;
     }
 
-    if (r->keepalive && clcf->keepalive_timeout == 0) {
-        r->keepalive = 0;
+    if (r->keepalive) {
+        if (clcf->keepalive_timeout == 0) {
+            r->keepalive = 0;
+
+        } else if (r->connection->requests >= clcf->keepalive_requests) {
+            r->keepalive = 0;
+        }
     }
 
     if (!clcf->tcp_nopush) {
@@ -2909,6 +2921,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->limit_rate = NGX_CONF_UNSET_SIZE;
     lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     lcf->keepalive_header = NGX_CONF_UNSET;
+    lcf->keepalive_requests = NGX_CONF_UNSET_UINT;
     lcf->lingering_time = NGX_CONF_UNSET_MSEC;
     lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     lcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
@@ -3103,6 +3116,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->keepalive_timeout, 75000);
     ngx_conf_merge_sec_value(conf->keepalive_header,
                               prev->keepalive_header, 0);
+    ngx_conf_merge_uint_value(conf->keepalive_requests,
+                              prev->keepalive_requests, 100);
     ngx_conf_merge_msec_value(conf->lingering_time,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
