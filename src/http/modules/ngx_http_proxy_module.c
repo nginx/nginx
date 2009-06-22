@@ -2343,7 +2343,10 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
     if (conf->headers_set_hash.buckets
-        && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL)))
+#if (NGX_HTTP_CACHE)
+        && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
+#endif
+       )
     {
         return NGX_OK;
     }
