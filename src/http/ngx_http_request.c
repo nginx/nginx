@@ -198,7 +198,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->write->handler = ngx_http_empty_handler;
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, 1);
+    (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
     if (rev->ready) {
@@ -217,7 +217,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_reading, -1);
+        (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
         ngx_http_close_connection(c);
         return;
@@ -247,7 +247,7 @@ ngx_http_init_request(ngx_event_t *rev)
 #endif
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, -1);
+    (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
 
     c = rev->data;
@@ -497,9 +497,9 @@ ngx_http_init_request(ngx_event_t *rev)
     r->log_handler = ngx_http_log_error_handler;
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, 1);
+    (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
     r->stat_reading = 1;
-    ngx_atomic_fetch_add(ngx_stat_requests, 1);
+    (void) ngx_atomic_fetch_add(ngx_stat_requests, 1);
 #endif
 
     rev->handler(rev);
@@ -1544,9 +1544,9 @@ ngx_http_process_request(ngx_http_request_t *r)
     }
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, -1);
+    (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
     r->stat_reading = 0;
-    ngx_atomic_fetch_add(ngx_stat_writing, 1);
+    (void) ngx_atomic_fetch_add(ngx_stat_writing, 1);
     r->stat_writing = 1;
 #endif
 
@@ -2316,7 +2316,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
 #if (NGX_STAT_STUB)
-        ngx_atomic_fetch_add(ngx_stat_reading, 1);
+        (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
         hc->pipeline = 1;
@@ -2546,7 +2546,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     b->last += n;
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_reading, 1);
+    (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
 
     c->log->handler = ngx_http_log_error;
@@ -2775,11 +2775,11 @@ ngx_http_request_done(ngx_http_request_t *r, ngx_int_t error)
 #if (NGX_STAT_STUB)
 
     if (r->stat_reading) {
-        ngx_atomic_fetch_add(ngx_stat_reading, -1);
+        (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
     }
 
     if (r->stat_writing) {
-        ngx_atomic_fetch_add(ngx_stat_writing, -1);
+        (void) ngx_atomic_fetch_add(ngx_stat_writing, -1);
     }
 
 #endif
@@ -2860,7 +2860,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_active, -1);
+    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
 
     c->destroyed = 1;

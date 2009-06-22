@@ -710,7 +710,7 @@ ngx_mail_close_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_STAT_STUB)
-    ngx_atomic_fetch_add(ngx_stat_active, -1);
+    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
 
     c->destroyed = 1;
