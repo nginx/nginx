@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.38" date="22.06.2009">
+
+<change type="feature">
+<para lang="ru">
+директива keepalive_requests.
+</para>
+<para lang="en">
+the "keepalive_requests" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.37" date="18.05.2009">
 
 <change type="feature">
@@ -2008,7 +2022,7 @@ directives.
 
 <change type="bugfix">
 <para lang="ru">
-утечка сокетов;
+утечки сокетов;
 ошибка появилась в 0.6.7.
 </para>
 <para lang="en">
