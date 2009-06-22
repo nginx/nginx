@@ -1573,8 +1573,9 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
 
         if (err_page[i].status == status) {
 
-            if (status == NGX_HTTP_UNAUTHORIZED) {
-
+            if (status == NGX_HTTP_UNAUTHORIZED
+                && u->headers_in.www_authenticate)
+            {
                 h = ngx_list_push(&r->headers_out.headers);
 
                 if (h == NULL) {
