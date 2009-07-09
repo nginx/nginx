@@ -181,7 +181,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                  "limit_req: %i %ui.%03ui", rc, excess / 1000, excess % 1000);
+                   "limit_req: %i %ui.%03ui", rc, excess / 1000, excess % 1000);
 
     if (rc == NGX_BUSY) {
         ngx_shmtx_unlock(&ctx->shpool->mutex);
@@ -266,7 +266,7 @@ ngx_http_limit_req_delay(ngx_http_request_t *r)
     ngx_event_t  *wev;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                  "limit_req delay");
+                   "limit_req delay");
 
     wev = r->connection->write;
 
