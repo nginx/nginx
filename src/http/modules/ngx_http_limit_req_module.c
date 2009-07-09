@@ -263,8 +263,23 @@ done:
 static void
 ngx_http_limit_req_delay(ngx_http_request_t *r)
 {
+    ngx_event_t  *wev;
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                   "limit_req delay");
+
+    wev = r->connection->write;
+
+    if (!wev->timedout) {
+
+        if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return;
+    }
+
+    wev->timedout = 0;
 
     if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
