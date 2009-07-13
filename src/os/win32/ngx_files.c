@@ -95,7 +95,13 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     }
 
     if (ReadFile(file->fd, buf, size, &n, povlp) == 0) {
-        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "ReadFile() failed");
+        err = ngx_errno;
+
+        if (err == ERROR_HANDLE_EOF) {
+            return 0;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, file->log, err, "ReadFile() failed");
         return NGX_ERROR;
     }
 
