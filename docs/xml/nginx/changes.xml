@@ -9,6 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.5" date="13.07.2009">
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx разрешает подчёркивания в методе запроса.
+</para>
+<para lang="en">
+now nginx allows underscores in a request method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP Basic-аутентификации на Windows
+для неверных имени/пароля возвращалась 500-ая ошибка.
+</para>
+<para lang="en">
+a 500 error code was returned for invalid login/password while HTTP
+Basic authentication on Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы модуля ngx_http_perl_module не работали в подзапросах.
+</para>
+<para lang="en">
+ngx_http_perl_module responses did not work in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_limit_req_module.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in ngx_http_limit_req_module.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.4" date="22.06.2009">
 
 <change type="bugfix">
@@ -59,7 +104,7 @@ the bug had appeared in 0.8.2.
 
 <change type="bugfix">
 <para lang="ru">
-если было использовался перехват 401 ошибки от бэкенда и бэкенд
+если использовался перехват 401 ошибки от бэкенда и бэкенд
 не возвращал строку "WWW-Authenticate" в заголовке ответа,
 то в рабочем процессе происходил segmentation fault.<br/>
 Спасибо Евгению Мычло.
@@ -88,10 +133,12 @@ in open_file_cache and proxy/fastcgi cache interaction on start up.
 
 <change type="bugfix">
 <para lang="ru">
-open_file_cache мог кэшировать открытые файлы очень долго.
+open_file_cache мог кэшировать открытые файлы очень долго;
+ошибка появилась в 0.7.4.
 </para>
 <para lang="en">
-open_file_cache might cache open file descriptors too long.
+open_file_cache might cache open file descriptors too long;
+the bug had appeared in 0.7.4.
 </para>
 </change>
 
