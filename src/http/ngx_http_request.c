@@ -766,6 +766,22 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 r->args.data = r->args_start;
             }
 
+#if (NGX_WIN32)
+            {
+            u_char  *p;
+
+            p = r->uri.data + r->uri.len - 1;
+
+            if (*p == '.') {
+
+                while (--p > r->uri.data && *p == '.') { /* void */ }
+
+                r->uri.len = p + 1 - r->uri.data;
+
+                ngx_http_set_exten(r);
+            }
+            }
+#endif
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request line: \"%V\"", &r->request_line);
