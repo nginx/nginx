@@ -2566,6 +2566,10 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
     err.len = NGX_MAX_CONF_ERRSTR;
     err.data = errstr;
 
+#if (NGX_HAVE_CASELESS_FILESYSTEM)
+    caseless = 1;
+#endif
+
     clcf->regex = ngx_regex_compile(regex, caseless ? NGX_REGEX_CASELESS: 0,
                                     cf->pool, &err);
 

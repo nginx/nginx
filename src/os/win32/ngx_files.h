@@ -149,6 +149,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
                                | (fi)->ftLastWriteTime.dwLowDateTime)        \
                                           - 116444736000000000) / 10000000)
 
+#define NGX_HAVE_CASELESS_FILESYSTEM  1
 
 #define ngx_filename_cmp(s1, s2, n) _strnicmp((char *) s1, (char *) s2, n)
 
