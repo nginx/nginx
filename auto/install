@@ -102,7 +102,7 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 		'\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi_params.default'
 
 	test -f '\$(DESTDIR)$NGX_CONF_PATH' \
-		|| cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX'
+		|| cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PATH'
 	cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX/nginx.conf.default'
 
 	test -d '\$(DESTDIR)`dirname "$NGX_PID_PATH"`' \
