@@ -194,7 +194,7 @@ ngx_module_t  ngx_http_xslt_filter_module = {
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
-    ngx_http_xslt_filter_exit,            /* exit process */
+    ngx_http_xslt_filter_exit,             /* exit process */
     ngx_http_xslt_filter_exit,             /* exit master */
     NGX_MODULE_V1_PADDING
 };
