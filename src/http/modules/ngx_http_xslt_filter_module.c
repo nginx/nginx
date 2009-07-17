@@ -247,6 +247,7 @@ ngx_http_xslt_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    int                          wellFormed;
     ngx_chain_t                 *cl;
     ngx_http_xslt_filter_ctx_t  *ctx;
 
@@ -288,9 +289,11 @@ ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->doc->extSubset = NULL;
 #endif
 
+            wellFormed = ctx->ctxt->wellFormed;
+
             xmlFreeParserCtxt(ctx->ctxt);
 
-            if (ctx->ctxt->wellFormed) {
+            if (wellFormed) {
                 return ngx_http_xslt_send(r, ctx,
                                        ngx_http_xslt_apply_stylesheet(r, ctx));
             }
