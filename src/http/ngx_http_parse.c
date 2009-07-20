@@ -950,9 +950,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
         sw_slash,
         sw_dot,
         sw_dot_dot,
-#if (NGX_WIN32)
-        sw_dot_dot_dot,
-#endif
         sw_quoted,
         sw_quoted_second
     } state, quoted_state;
@@ -1154,12 +1151,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto args;
             case '#':
                 goto done;
-#if (NGX_WIN32)
-            case '.':
-                state = sw_dot_dot_dot;
-                *u++ = ch;
-                break;
-#endif
             case '+':
                 r->plus_in_uri = 1;
             default:
@@ -1170,55 +1161,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
             ch = *p++;
             break;
-
-#if (NGX_WIN32)
-        case sw_dot_dot_dot:
-
-            if (usual[ch >> 5] & (1 << (ch & 0x1f))) {
-                state = sw_usual;
-                *u++ = ch;
-                ch = *p++;
-                break;
-            }
-
-            switch(ch) {
-            case '\\':
-            case '/':
-                state = sw_slash;
-                u -= 5;
-                if (u < r->uri.data) {
-                    return NGX_HTTP_PARSE_INVALID_REQUEST;
-                }
-                while (*u != '/') {
-                    u--;
-                }
-                if (u < r->uri.data) {
-                    return NGX_HTTP_PARSE_INVALID_REQUEST;
-                }
-                while (*(u - 1) != '/') {
-                    u--;
-                }
-                break;
-            case '%':
-                quoted_state = state;
-                state = sw_quoted;
-                break;
-            case '?':
-                r->args_start = p;
-                goto args;
-            case '#':
-                goto done;
-            case '+':
-                r->plus_in_uri = 1;
-            default:
-                state = sw_usual;
-                *u++ = ch;
-                break;
-            }
-
-            ch = *p++;
-            break;
-#endif
 
         case sw_quoted:
             r->quoted_uri = 1;
@@ -1369,20 +1311,6 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
             if (p[0] == '.' && p[1] == '.' && ngx_path_separator(p[2])) {
                 goto unsafe;
             }
-
-#if (NGX_WIN32)
-
-            if (len > 3) {
-
-                /* detect "/.../" */
-
-                if (p[0] == '.' && p[1] == '.' && p[2] == '.'
-                    && ngx_path_separator(p[3]))
-                {
-                    goto unsafe;
-                }
-            }
-#endif
         }
     }
 
