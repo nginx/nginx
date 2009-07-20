@@ -240,6 +240,12 @@ if [ $HTTP_GEO = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_GEO_SRCS"
 fi
 
+if [ $HTTP_GEOIP = YES ]; then
+    have=NGX_HTTP_GEOIP . auto/have
+    HTTP_MODULES="$HTTP_MODULES $HTTP_GEOIP_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_GEOIP_SRCS"
+fi
+
 if [ $HTTP_MAP = YES ]; then
     have=NGX_HTTP_MAP . auto/have
     HTTP_MODULES="$HTTP_MODULES $HTTP_MAP_MODULE"
