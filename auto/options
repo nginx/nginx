@@ -312,7 +312,7 @@ cat << END
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module
   --with-http_image_filter_module    enable ngx_http_image_filter_module
-  --with-http_geoip_module           enable ngx_http_geoip_link_module
+  --with-http_geoip_module           enable ngx_http_geoip_module
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
