@@ -2715,6 +2715,7 @@ ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags)
             b->last_buf = 1;
 
         } else {
+            b->sync = 1;
             b->last_in_chain = 1;
         }
     }
