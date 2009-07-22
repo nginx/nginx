@@ -52,7 +52,7 @@ static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
 static ngx_conf_enum_t  ngx_http_ssl_verify[] = {
     { ngx_string("off"), 0 },
     { ngx_string("on"), 1 },
-    { ngx_string("ask"), 2 },
+    { ngx_string("optional"), 2 },
     { ngx_null_string, 0 }
 };
 
@@ -205,6 +205,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
     { ngx_string("ssl_client_serial"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_serial_number, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_verify"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_verify, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };

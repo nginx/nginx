@@ -2108,6 +2108,35 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 }
 
 
+ngx_int_t
+ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    X509  *cert;
+
+    if (SSL_get_verify_result(c->ssl->connection) != X509_V_OK) {
+        s->len = sizeof("FAILED") - 1;
+        s->data = (u_char *) "FAILED";
+
+        return NGX_OK;
+    }
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+
+    if (cert) {
+        s->len = sizeof("SUCCESS") - 1;
+        s->data = (u_char *) "SUCCESS";
+
+    } else {
+        s->len = sizeof("NONE") - 1;
+        s->data = (u_char *) "NONE";
+    }
+
+    X509_free(cert);
+
+    return NGX_OK;
+}
+
+
 static void *
 ngx_openssl_create_conf(ngx_cycle_t *cycle)
 {
