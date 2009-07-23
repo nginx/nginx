@@ -13,12 +13,8 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-
-#if OPENSSL_VERSION_NUMBER >= 0x00907000
 #include <openssl/conf.h>
 #include <openssl/engine.h>
-#define NGX_SSL_ENGINE   1
-#endif
 
 #define NGX_SSL_NAME     "OpenSSL"
 
