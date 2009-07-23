@@ -1240,9 +1240,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         if (err == NGX_ECONNRESET
             || err == NGX_EPIPE
             || err == NGX_ENOTCONN
-#if !(NGX_CRIT_ETIMEDOUT)
             || err == NGX_ETIMEDOUT
-#endif
             || err == NGX_ECONNREFUSED
             || err == NGX_ENETDOWN
             || err == NGX_ENETUNREACH
