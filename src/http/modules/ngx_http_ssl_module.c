@@ -147,6 +147,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, session_timeout),
       NULL },
 
+    { ngx_string("ssl_crl"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, crl),
+      NULL },
+
       ngx_null_command
 };
 
@@ -316,6 +323,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->certificate_key = { 0, NULL };
      *     sscf->dhparam = { 0, NULL };
      *     sscf->client_certificate = { 0, NULL };
+     *     sscf->crl = { 0, NULL };
      *     sscf->ciphers.len = 0;
      *     sscf->ciphers.data = NULL;
      *     sscf->shm_zone = NULL;
@@ -362,6 +370,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
                          "");
+    ngx_conf_merge_str_value(conf->crl, prev->crl, "");
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
@@ -454,6 +463,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                                        conf->verify_depth)
             != NGX_OK)
         {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }
