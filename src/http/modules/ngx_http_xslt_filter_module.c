@@ -720,7 +720,7 @@ ngx_http_xslt_sax_error(void *data, const char *msg, ...)
     while (--n && (buf[n] == CR || buf[n] == LF)) { /* void */ }
 
     ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, 0,
-                  "libxml2 error: \"%*s\"", n, buf);
+                  "libxml2 error: \"%*s\"", n + 1, buf);
 }
 
 
