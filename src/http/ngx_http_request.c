@@ -384,6 +384,7 @@ ngx_http_init_request(ngx_event_t *rev)
     r->loc_conf = cscf->ctx->loc_conf;
 
     rev->handler = ngx_http_process_request_line;
+    r->read_event_handler = ngx_http_block_reading;
 
 #if (NGX_HTTP_SSL)
 
