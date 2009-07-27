@@ -3301,10 +3301,11 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     *ho = *h;
 
+    r->headers_out.last_modified = ho;
+
 #if (NGX_HTTP_CACHE)
 
     if (r->upstream->cacheable) {
-        r->headers_out.last_modified = ho;
         r->headers_out.last_modified_time = ngx_http_parse_time(h->value.data,
                                                                 h->value.len);
     }
@@ -3427,6 +3428,8 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     }
 
     *ho = *h;
+
+    r->headers_out.accept_ranges = ho;
 
     return NGX_OK;
 }
