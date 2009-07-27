@@ -9,6 +9,126 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.7" date="27.07.2009">
+
+<change type="change">
+<para lang="ru">
+минимальная поддерживаемая версия OpenSSL&mdash;0.9.7.
+</para>
+<para lang="en">
+minimum supported OpenSSL version is 0.9.7.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр ask директивы ssl_verify_client изменён на параметр optional
+и теперь он проверяет клиентский сертификат, если он был предложен.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the "ask" parameter of the "ssl_verify_client" directive was changed
+to the "optional" parameter and now it checks a client certificate if it was
+offered.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_verify.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the $ssl_client_verify variable.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_crl.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the "ssl_crl" directive.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy директивы geo.
+</para>
+<para lang="en">
+the "proxy" parameter of the "geo" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter поддерживает переменные для задания размеров.
+</para>
+<para lang="en">
+the "image_filter" directive supports variables for setting size.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+использование переменной $ssl_client_cert портило память;
+ошибка появилась в 0.7.7.<br/>
+Спасибо Сергею Журавлёву.
+</para>
+<para lang="en">
+the $ssl_client_cert variable usage corrupted memory;
+the bug had appeared in 0.7.7.<br/>
+Thanks to Sergey Zhuravlev.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_pass_header и fastcgi_pass_header" не передавали клиенту
+строки "X-Accel-Redirect", "X-Accel-Limit-Rate", "X-Accel-Buffering" и
+"X-Accel-Charset" из заголовка ответа бэкенда.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+"proxy_pass_header" and "fastcgi_pass_header" directives did not pass to
+a client the "X-Accel-Redirect", "X-Accel-Limit-Rate", "X-Accel-Buffering",
+and "X-Accel-Charset" lines from backend response header.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке строк "Last-Modified" и "Accept-Ranges" в заголовке ответа бэкенда;
+ошибка появилась в 0.7.44<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in handling "Last-Modified" and "Accept-Ranges" backend response header lines;
+the bug had appeared in 0.7.44.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "[alert] zero size buf" при получении пустых ответы в подзапросах;
+ошибка появилась в 0.8.5.
+</para>
+<para lang="en">
+the "[alert] zero size buf" error if subrequest returns an empty response;
+the bug had appeared in 0.8.5.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.6" date="20.07.2009">
 
 <change type="feature">
@@ -41,7 +161,7 @@ Thanks to Kuramoto Eiji.
 </para>
 <para lang="en">
 now in MacOSX, Cygwin, and nginx/Windows locations given by a regular
-expression are always tested in case insensitive mode;
+expression are always tested in case insensitive mode.
 </para>
 </change>
 
