@@ -543,19 +543,16 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
-    if (f == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_http_set_ctx(r, f, ngx_http_fastcgi_module);
-
-    u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
-    if (u == NULL) {
+    if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->upstream = u;
+    f = ngx_pcalloc(r->pool, sizeof(ngx_http_fastcgi_ctx_t));
+    if (f == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_http_set_ctx(r, f, ngx_http_fastcgi_module);
 
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
@@ -565,14 +562,10 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
         }
     }
 
+    u = r->upstream;
+
     u->schema.len = sizeof("fastcgi://") - 1;
     u->schema.data = (u_char *) "fastcgi://";
-
-    u->peer.log = r->connection->log;
-    u->peer.log_error = NGX_ERROR_ERR;
-#if (NGX_THREADS)
-    u->peer.lock = &r->connection->lock;
-#endif
 
     u->output.tag = (ngx_buf_tag_t) &ngx_http_fastcgi_module;
 

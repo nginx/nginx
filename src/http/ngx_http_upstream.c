@@ -348,6 +348,35 @@ ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
 };
 
 
+ngx_int_t
+ngx_http_upstream_create(ngx_http_request_t *r)
+{
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (u && u->cleanup) {
+        ngx_http_upstream_cleanup(r);
+        *u->cleanup = NULL;
+    }
+
+    u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
+    if (u == NULL) {
+        return NGX_ERROR;
+    }
+
+    r->upstream = u;
+
+    u->peer.log = r->connection->log;
+    u->peer.log_error = NGX_ERROR_ERR;
+#if (NGX_THREADS)
+    u->peer.lock = &r->connection->lock;
+#endif
+
+    return NGX_OK;
+}
+
+
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {

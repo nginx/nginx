@@ -590,12 +590,9 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     ngx_http_proxy_ctx_t       *ctx;
     ngx_http_proxy_loc_conf_t  *plcf;
 
-    u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
-    if (u == NULL) {
+    if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-
-    r->upstream = u;
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_ctx_t));
     if (ctx == NULL) {
@@ -605,6 +602,8 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     ngx_http_set_ctx(r, ctx, ngx_http_proxy_module);
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+    u = r->upstream;
 
     if (plcf->proxy_lengths == 0) {
         ctx->vars = plcf->vars;
@@ -618,12 +617,6 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
-
-    u->peer.log = r->connection->log;
-    u->peer.log_error = NGX_ERROR_ERR;
-#if (NGX_THREADS)
-    u->peer.lock = &r->connection->lock;
-#endif
 
     u->output.tag = (ngx_buf_tag_t) &ngx_http_proxy_module;
 
