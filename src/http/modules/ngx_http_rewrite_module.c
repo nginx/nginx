@@ -568,7 +568,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if_code = ngx_array_push_n(lcf->codes, sizeof(ngx_http_script_if_code_t));
     if (if_code == NULL) {
-        return NULL;
+        return NGX_CONF_ERROR;
     }
 
     if_code->code = ngx_http_script_if_code;
