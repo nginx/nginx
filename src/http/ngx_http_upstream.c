@@ -224,19 +224,19 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("X-Accel-Redirect"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_redirect),
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Limit-Rate"),
                  ngx_http_upstream_process_limit_rate, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Buffering"),
                  ngx_http_upstream_process_buffering, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Charset"),
                  ngx_http_upstream_process_charset, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
     { ngx_string("Content-Encoding"),
