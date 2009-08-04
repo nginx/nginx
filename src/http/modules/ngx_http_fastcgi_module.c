@@ -1065,7 +1065,7 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
-    u_char                         *p, *start, *last, *part_start;
+    u_char                         *p, *start, *last, *part_start, *part_end;
     size_t                          size;
     ngx_str_t                      *status_line, line, *pattern;
     ngx_int_t                       rc, status;
@@ -1237,6 +1237,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         for ( ;; ) {
 
             part_start = u->buffer.pos;
+            part_end = u->buffer.last;
 
             rc = ngx_http_parse_header_line(r, &u->buffer, 1);
 
@@ -1437,7 +1438,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         part = ngx_array_push(f->split_parts);
 
         part->start = part_start;
-        part->end = u->buffer.last;
+        part->end = part_end;
 
         if (u->buffer.pos < u->buffer.last) {
             continue;
