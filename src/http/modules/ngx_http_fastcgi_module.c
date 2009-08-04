@@ -1439,6 +1439,10 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         part->start = part_start;
         part->end = u->buffer.last;
 
+        if (u->buffer.pos < u->buffer.last) {
+            continue;
+        }
+
         return NGX_AGAIN;
     }
 }
