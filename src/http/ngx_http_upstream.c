@@ -2883,7 +2883,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
 #if (NGX_HTTP_CACHE)
 
-    if (u->cacheable) {
+    if (u->cacheable && r->cache) {
         time_t  valid;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
