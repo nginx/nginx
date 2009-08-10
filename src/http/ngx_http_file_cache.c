@@ -53,6 +53,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     ngx_http_file_cache_t  *ocache = data;
 
     size_t                  len;
+    ngx_uint_t              n;
     ngx_http_file_cache_t  *cache;
 
     cache = shm_zone->data;
@@ -66,6 +67,15 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
                           &ocache->path->name);
 
             return NGX_ERROR;
+        }
+
+        for (n = 0; n < 3; n++) {
+            if (cache->path->level[n] != ocache->path->level[n]) {
+                ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
+                              "cache \"%V\" had previously different levels",
+                              &shm_zone->shm.name);
+                return NGX_ERROR;
+            }
         }
 
         cache->sh = ocache->sh;
