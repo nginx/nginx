@@ -1362,7 +1362,5 @@ ngx_cache_loader_process_handler(ngx_event_t *ev)
         }
     }
 
-sleep(50);
-
     exit(0);
 }
