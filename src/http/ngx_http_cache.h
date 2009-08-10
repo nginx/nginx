@@ -97,6 +97,7 @@ typedef struct {
     ngx_rbtree_node_t                sentinel;
     ngx_queue_t                      queue;
     ngx_atomic_t                     cold;
+    ngx_atomic_t                     loading;
     off_t                            size;
 } ngx_http_file_cache_sh_t;
 
