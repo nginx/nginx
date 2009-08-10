@@ -163,11 +163,11 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
     switch (respawn) {
 
     case NGX_PROCESS_RESPAWN:
-        ngx_processes[s].just_respawn = 0;
+        ngx_processes[s].just_spawn = 0;
         break;
 
     case NGX_PROCESS_JUST_RESPAWN:
-        ngx_processes[s].just_respawn = 1;
+        ngx_processes[s].just_spawn = 1;
         break;
     }
 

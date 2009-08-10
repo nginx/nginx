@@ -456,14 +456,14 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
                        ngx_processes[i].exited,
                        ngx_processes[i].detached,
                        ngx_processes[i].respawn,
-                       ngx_processes[i].just_respawn);
+                       ngx_processes[i].just_spawn);
 
         if (ngx_processes[i].detached || ngx_processes[i].pid == -1) {
             continue;
         }
 
-        if (ngx_processes[i].just_respawn) {
-            ngx_processes[i].just_respawn = 0;
+        if (ngx_processes[i].just_spawn) {
+            ngx_processes[i].just_spawn = 0;
             continue;
         }
 
@@ -533,7 +533,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
                        ngx_processes[i].exited,
                        ngx_processes[i].detached,
                        ngx_processes[i].respawn,
-                       ngx_processes[i].just_respawn);
+                       ngx_processes[i].just_spawn);
 
         if (ngx_processes[i].pid == -1) {
             continue;

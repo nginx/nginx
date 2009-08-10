@@ -440,10 +440,10 @@ ngx_quit_worker_processes(ngx_cycle_t *cycle, ngx_uint_t old)
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,
                        ngx_processes[n].exiting,
-                       ngx_processes[n].just_respawn);
+                       ngx_processes[n].just_spawn);
 
-        if (old && ngx_processes[n].just_respawn) {
-            ngx_processes[n].just_respawn = 0;
+        if (old && ngx_processes[n].just_spawn) {
+            ngx_processes[n].just_spawn = 0;
             continue;
         }
 
@@ -550,7 +550,7 @@ found:
                        ngx_processes[n].pid,
                        ngx_processes[n].handle,
                        ngx_processes[n].exiting,
-                       ngx_processes[n].just_respawn);
+                       ngx_processes[n].just_spawn);
 
         if (ngx_processes[n].handle) {
             return 1;

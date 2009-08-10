@@ -33,7 +33,7 @@ typedef struct {
     u_char                  quit_event[NGX_PROCESS_SYNC_NAME];
     u_char                  reopen_event[NGX_PROCESS_SYNC_NAME];
 
-    unsigned                just_respawn:1;
+    unsigned                just_spawn:1;
     unsigned                exiting:1;
 } ngx_process_t;
 
