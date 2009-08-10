@@ -9,6 +9,35 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.8" date="10.08.2009">
+
+<change type="bugfix">
+<para lang="ru">
+в обработке заголовков ответа, разделённых в FastCGI-записях.
+</para>
+<para lang="en">
+in handling FastCGI headers split in records.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если запрос обрабатывался в двух проксированных или FastCGI location'ах
+и в первом из них использовалось кэширование,
+то в рабочем процессе происходил segmentation fault;
+ошибка появилась в 0.8.7.
+</para>
+<para lang="en">
+a segmentation fault occurred in worker process,
+if a request was handled in two proxied or FastCGIed locations
+and a caching was enabled in the first location;
+the bug had appeared in 0.8.7.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.7" date="27.07.2009">
 
 <change type="change">
