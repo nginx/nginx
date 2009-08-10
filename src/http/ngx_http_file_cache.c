@@ -1103,6 +1103,7 @@ ngx_http_file_cache_loader(void *data)
     cache->files = 0;
 
     if (ngx_walk_tree(&tree, &cache->path->name) == NGX_ABORT) {
+        cache->sh->loading = 0;
         return;
     }
 
