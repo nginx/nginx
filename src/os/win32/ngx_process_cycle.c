@@ -925,7 +925,7 @@ ngx_cache_manager_thread(void *data)
             return 0;
         }
 
-       break;
+        break;
     }
 
     for ( ;; ) {
