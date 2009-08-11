@@ -99,13 +99,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
             continue;
         }
 
-        if ((path->level[0] == 0)
-            || (err != NGX_ENOENT
-#if (NGX_WIN32)
-                && err != NGX_ENOTDIR
-#endif
-            ))
-        {
+        if ((path->level[0] == 0) || (err != NGX_ENOPATH)) {
             ngx_log_error(NGX_LOG_CRIT, file->log, err,
                           ngx_open_tempfile_n " \"%s\" failed",
                           file->name.data);
@@ -560,14 +554,8 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
     err = ngx_errno;
 
-    if (err
-#if (NGX_WIN32)
-            == ERROR_PATH_NOT_FOUND
-#else
-            == NGX_ENOENT
-#endif
-       )
-    {
+    if (err == NGX_ENOPATH) {
+
         if (!ext->create_path) {
             goto failed;
         }
