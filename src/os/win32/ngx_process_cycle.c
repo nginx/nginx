@@ -25,6 +25,7 @@ static void ngx_worker_process_exit(ngx_cycle_t *cycle);
 static ngx_thread_value_t __stdcall ngx_worker_thread(void *data);
 static ngx_thread_value_t __stdcall ngx_cache_manager_thread(void *data);
 static void ngx_cache_manager_process_handler(void);
+static ngx_thread_value_t __stdcall ngx_cache_loader_thread(void *data);
 
 
 ngx_uint_t     ngx_process;
@@ -670,6 +671,10 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         goto failed;
     }
 
+    if (ngx_create_thread(&cmtid, ngx_cache_loader_thread, NULL, log) != 0) {
+        goto failed;
+    }
+
     for ( ;; ) {
         ev = WaitForMultipleObjects(3, events, 0, INFINITE);
 
@@ -982,6 +987,34 @@ ngx_cache_manager_process_handler(void)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
                        "cache manager WaitForSingleObject: %ul", ev);
     }
+}
+
+
+static ngx_thread_value_t __stdcall
+ngx_cache_loader_thread(void *data)
+{
+    ngx_uint_t     i;
+    ngx_path_t   **path;
+    ngx_cycle_t   *cycle;
+
+    ngx_msleep(60000);
+
+    cycle = (ngx_cycle_t *) ngx_cycle;
+
+    path = cycle->pathes.elts;
+    for (i = 0; i < cycle->pathes.nelts; i++) {
+
+        if (ngx_terminate || ngx_quit) {
+            break;
+        }
+
+        if (path[i]->loader) {
+            path[i]->loader(path[i]->data);
+            ngx_time_update(0, 0);
+        }
+    }
+
+    return 0;
 }
 
 
