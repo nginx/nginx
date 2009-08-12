@@ -524,7 +524,9 @@ ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
 ngx_int_t
 ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 {
-    ngx_err_t  err;
+    u_char           *name;
+    ngx_err_t         err;
+    ngx_copy_file_t   cf;
 
 #if !(NGX_WIN32)
 
@@ -595,6 +597,44 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
 #endif
 
+    if (err == NGX_EXDEV) {
+
+        cf.size = -1;
+        cf.buf_size = 0;
+        cf.access = ext->access;
+        cf.time = ext->time;
+        cf.log = ext->log;
+
+        name = ngx_alloc(to->len + 1 + 10, ext->log);
+        if (name == NULL) {
+            return NGX_ERROR;
+        }
+
+        (void) ngx_sprintf(name, "%*s.%010uD%Z", to->len - 1, to->data,
+                           (uint32_t) ngx_next_temp_number(0));
+
+        if (ngx_copy_file(src->data, name, &cf) == NGX_OK) {
+
+            if (ngx_rename_file(name, to->data) == NGX_FILE_ERROR) {
+                ngx_free(name);
+                goto failed;
+            }
+
+            ngx_free(name);
+
+            if (ngx_delete_file(src->data) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
+                              ngx_delete_file_n " \"%s\" failed", src->data);
+
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
+
+        ngx_free(name);
+    }
+
 failed:
 
     if (ext->delete_file) {
@@ -604,15 +644,141 @@ failed:
         }
     }
 
-    if (err && ext->log_rename_error) {
+    if (err) {
         ngx_log_error(NGX_LOG_CRIT, ext->log, err,
                       ngx_rename_file_n " \"%s\" to \"%s\" failed",
                       src->data, to->data);
     }
 
-    ext->rename_error = err;
-
     return NGX_ERROR;
+}
+
+
+ngx_int_t
+ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
+{
+    char             *buf;
+    off_t             size;
+    size_t            len;
+    ssize_t           n;
+    ngx_fd_t          fd, nfd;
+    ngx_int_t         rc;
+    ngx_file_info_t   fi;
+
+    rc = NGX_ERROR;
+    buf = NULL;
+    nfd = NGX_INVALID_FILE;
+
+    fd = ngx_open_file(from, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+    if (fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_CRIT, cf->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", from);
+        goto failed;
+    }
+
+    if (cf->size != -1) {
+        size = cf->size;
+
+    } else {
+        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_fd_info_n " \"%s\" failed", from);
+
+            goto failed;
+        }
+
+        size = ngx_file_size(&fi);
+    }
+
+    len = cf->buf_size ? cf->buf_size : 65536;
+
+    if (len > size) {
+        len = (size_t) size;
+    }
+
+    buf = ngx_alloc(len, cf->log);
+    if (buf == NULL) {
+        goto failed;
+    }
+
+    nfd = ngx_open_file(to, NGX_FILE_WRONLY, NGX_FILE_CREATE_OR_OPEN,
+                        cf->access);
+
+    if (nfd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_CRIT, cf->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", to);
+        goto failed;
+    }
+
+    while (size > 0) {
+
+        if (len > size) {
+            len = (size_t) size;
+        }
+
+        n = ngx_read_fd(fd, buf, len);
+
+        if (n == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_read_fd_n " \"%s\" failed", from);
+            goto failed;
+        }
+
+        if ((size_t) n != len) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_read_fd_n " has read only %z of %uz from %s",
+                          n, size, from);
+            goto failed;
+        }
+
+        n = ngx_write_fd(nfd, buf, len);
+
+        if (n == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_write_fd_n " \"%s\" failed", to);
+            goto failed;
+        }
+
+        if ((size_t) n != len) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_write_fd_n " has written only %z of %uz to %s",
+                          n, size, to);
+            goto failed;
+        }
+
+        size -= n;
+    }
+
+    if (ngx_set_file_time(to, nfd, cf->time) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                      ngx_set_file_time_n " \"%s\" failed", to);
+        goto failed;
+    }
+
+    rc = NGX_OK;
+
+failed:
+
+    if (nfd != NGX_INVALID_FILE) {
+        if (ngx_close_file(nfd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed", to);
+        }
+    }
+
+    if (fd != NGX_INVALID_FILE) {
+        if (ngx_close_file(fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed", from);
+        }
+    }
+
+    if (buf) {
+        ngx_free(buf);
+    }
+
+    return rc;
 }
 
 

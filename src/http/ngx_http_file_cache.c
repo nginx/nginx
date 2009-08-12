@@ -650,7 +650,6 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     ext.time = -1;
     ext.create_path = 1;
     ext.delete_file = 1;
-    ext.log_rename_error = 1;
     ext.log = r->connection->log;
 
     rc = ngx_ext_rename_file(&tf->file.name, &c->file.name, &ext);
