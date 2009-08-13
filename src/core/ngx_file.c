@@ -693,7 +693,7 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
 
     len = cf->buf_size ? cf->buf_size : 65536;
 
-    if (len > size) {
+    if ((off_t) len > size) {
         len = (size_t) size;
     }
 
@@ -713,7 +713,7 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
 
     while (size > 0) {
 
-        if (len > size) {
+        if ((off_t) len > size) {
             len = (size_t) size;
         }
 
