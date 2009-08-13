@@ -1017,13 +1017,14 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
                 && !c[i].read->resolver)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                              "open socket #%d left in connection %ui%s",
-                              c[i].fd, i, ngx_debug_quit ? ", aborting" : "");
-                ngx_debug_point();
+                              "open socket #%d left in connection %ui",
+                              c[i].fd, i);
+                ngx_debug_quit = 1;
             }
         }
 
         if (ngx_debug_quit) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "aborting");
             ngx_debug_point();
         }
     }
