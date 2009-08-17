@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.9" date="17.08.2009">
+
+<change type="feature">
+<para lang="ru">
+теперь стартовый загрузчик кэша работает в отдельном процесс;
+это должно улучшить обработку больших кэшей.
+</para>
+<para lang="en">
+now the start cache loader runs in a separate process;
+this should improve large caches handling.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь временные файлы и постоянное место хранения могут располагаться
+на разных файловых системах.
+</para>
+<para lang="en">
+now temporarily files and permanent storage area may reside at
+different file systems.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.8" date="10.08.2009">
 
 <change type="bugfix">
