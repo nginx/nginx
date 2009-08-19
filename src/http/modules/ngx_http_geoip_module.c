@@ -181,6 +181,7 @@ ngx_http_geoip_city_variable(ngx_http_request_t *r,
 {
     u_long                  addr;
     char                   *val;
+    size_t                  len;
     GeoIPRecord            *gr;
     struct sockaddr_in     *sin;
     ngx_http_geoip_conf_t  *gcf;
@@ -207,16 +208,31 @@ ngx_http_geoip_city_variable(ngx_http_request_t *r,
     val = *(char **) ((char *) gr + data);
 
     if (val == NULL) {
-        goto not_found;
+        goto no_value;
     }
 
-    v->len = ngx_strlen(val);
+    len = ngx_strlen(val);
+    v->data = ngx_pnalloc(r->pool, len);
+
+    if (v->data == NULL) {
+        GeoIPRecord_delete(gr);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(v->data, val, len);
+
+    v->len = len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = (u_char *) val;
+
+    GeoIPRecord_delete(gr);
 
     return NGX_OK;
+
+no_value:
+
+    GeoIPRecord_delete(gr);
 
 not_found:
 
