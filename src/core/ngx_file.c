@@ -576,7 +576,6 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
         }
 
         err = ngx_errno;
-        goto failed;
     }
 
 #if (NGX_WIN32)
