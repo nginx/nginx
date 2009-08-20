@@ -615,24 +615,33 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
         if (ngx_copy_file(src->data, name, &cf) == NGX_OK) {
 
-            if (ngx_rename_file(name, to->data) == NGX_FILE_ERROR) {
+            if (ngx_rename_file(name, to->data) != NGX_FILE_ERROR) {
                 ngx_free(name);
-                goto failed;
+
+                if (ngx_delete_file(src->data) == NGX_FILE_ERROR) {
+                    ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
+                                  ngx_delete_file_n " \"%s\" failed",
+                                  src->data);
+                    return NGX_ERROR;
+                }
+
+                return NGX_OK;
             }
 
-            ngx_free(name);
+            ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
+                          ngx_rename_file_n " \"%s\" to \"%s\" failed",
+                          name, to->data);
 
-            if (ngx_delete_file(src->data) == NGX_FILE_ERROR) {
+            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
-                              ngx_delete_file_n " \"%s\" failed", src->data);
+                              ngx_delete_file_n " \"%s\" failed", name);
 
-                return NGX_ERROR;
             }
-
-            return NGX_OK;
         }
 
         ngx_free(name);
+
+        err = 0;
     }
 
 failed:
