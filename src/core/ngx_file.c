@@ -605,12 +605,12 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
         cf.time = ext->time;
         cf.log = ext->log;
 
-        name = ngx_alloc(to->len + 1 + 10, ext->log);
+        name = ngx_alloc(to->len + 1 + 10 + 1, ext->log);
         if (name == NULL) {
             return NGX_ERROR;
         }
 
-        (void) ngx_sprintf(name, "%*s.%010uD%Z", to->len - 1, to->data,
+        (void) ngx_sprintf(name, "%*s.%010uD%Z", to->len, to->data,
                            (uint32_t) ngx_next_temp_number(0));
 
         if (ngx_copy_file(src->data, name, &cf) == NGX_OK) {

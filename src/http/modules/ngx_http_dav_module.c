@@ -214,6 +214,8 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 
     ngx_http_map_uri_to_path(r, &path, &root, 0);
 
+    path.len--;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http put filename: \"%s\"", path.data);
 
