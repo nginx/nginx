@@ -8,8 +8,9 @@
 #include <ngx_core.h>
 
 
-static ngx_atomic_uint_t  ngx_temp_number;
-static ngx_atomic_uint_t  ngx_random_number;
+static ngx_atomic_t   temp_number = 0;
+ngx_atomic_t         *ngx_temp_number = &temp_number;
+ngx_atomic_int_t      ngx_random_number = 123456;
 
 
 ssize_t
@@ -205,22 +206,16 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
 }
 
 
-void
-ngx_init_temp_number(void)
-{
-    ngx_temp_number = 0;
-    ngx_random_number = 123456;
-}
-
-
 ngx_atomic_uint_t
 ngx_next_temp_number(ngx_uint_t collision)
 {
-    if (collision) {
-        ngx_temp_number += ngx_random_number;
-    }
+    ngx_atomic_uint_t  n, add;
 
-    return ngx_temp_number++;
+    add = collision ? ngx_random_number : 1;
+
+    n = ngx_atomic_fetch_add(ngx_temp_number, add);
+
+    return n + add;
 }
 
 

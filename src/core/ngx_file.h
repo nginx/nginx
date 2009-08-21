@@ -129,13 +129,16 @@ ngx_int_t ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to,
 ngx_int_t ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf);
 ngx_int_t ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree);
 
-void ngx_init_temp_number(void);
 ngx_atomic_uint_t ngx_next_temp_number(ngx_uint_t collision);
 
 char *ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path,
     ngx_path_t *prev, ngx_path_init_t *init);
 char *ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
+extern ngx_atomic_t      *ngx_temp_number;
+extern ngx_atomic_int_t   ngx_random_number;
 
 
 #endif /* _NGX_FILE_H_INCLUDED_ */

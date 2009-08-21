@@ -793,8 +793,6 @@ ngx_worker_thread(void *data)
 
     cycle = (ngx_cycle_t *) ngx_cycle;
 
-    ngx_init_temp_number();
-
     for (n = 0; ngx_modules[n]; n++) {
         if (ngx_modules[n]->init_process) {
             if (ngx_modules[n]->init_process(cycle) == NGX_ERROR) {
@@ -1023,8 +1021,6 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_int_t  i;
     ngx_tid_t  tid;
-
-    ngx_init_temp_number();
 
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->init_process) {
