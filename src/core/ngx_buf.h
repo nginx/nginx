@@ -75,13 +75,13 @@ typedef struct {
     ngx_chain_t                 *free;
     ngx_chain_t                 *busy;
 
-    unsigned                     sendfile;
-    unsigned                     directio;
+    unsigned                     sendfile:1;
+    unsigned                     directio:1;
 #if (NGX_HAVE_ALIGNED_DIRECTIO)
-    unsigned                     unaligned;
+    unsigned                     unaligned:1;
 #endif
-    unsigned                     need_in_memory;
-    unsigned                     need_in_temp;
+    unsigned                     need_in_memory:1;
+    unsigned                     need_in_temp:1;
 
     ngx_pool_t                  *pool;
     ngx_int_t                    allocated;
