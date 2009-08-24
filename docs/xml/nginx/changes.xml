@@ -9,6 +9,31 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.10" date="24.08.2009">
+
+<change type="bugfix">
+<para lang="ru">
+утечек памяти при использовании базы GeoIP City.
+</para>
+<para lang="en">
+memory leaks if GeoIP City database was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при копировании временных файлов в постоянное место хранения;
+ошибка появилась в 0.8.9.
+</para>
+<para lang="en">
+in copying temporary files to permanent storage area;
+the bug had appeared in 0.8.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.9" date="17.08.2009">
 
 <change type="feature">
@@ -28,7 +53,7 @@ this should improve large caches handling.
 на разных файловых системах.
 </para>
 <para lang="en">
-now temporarily files and permanent storage area may reside at
+now temporary files and permanent storage area may reside at
 different file systems.
 </para>
 </change>
@@ -326,7 +351,6 @@ nginx не собирался на MacOSX 10.6.
 </para>
 <para lang="en">
 nginx could not be built on MacOSX 10.6.
-the bug had appeared in 0.8.2.
 </para>
 </change>
 
@@ -6310,7 +6334,7 @@ the bug had appeared in 0.5.8.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if the temporarily files were used while working with FastCGI server;
+if the temporary files were used while working with FastCGI server;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -9199,7 +9223,7 @@ the bug had appeared in 0.3.18.
 </para>
 <para lang="en">
 if the HTTPS protocol was used in the "proxy_pass" directive and
-the request body was in temporarily file then the request was not transferred.
+the request body was in temporary file then the request was not transferred.
 </para>
 </change>
 
