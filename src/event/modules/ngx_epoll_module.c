@@ -43,10 +43,6 @@ struct epoll_event {
     epoll_data_t  data;
 };
 
-int epoll_create(int size);
-int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
-int epoll_wait(int epfd, struct epoll_event *events, int nevents, int timeout);
-
 int epoll_create(int size)
 {
     return -1;

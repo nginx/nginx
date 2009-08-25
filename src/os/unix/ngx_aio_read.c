@@ -7,20 +7,10 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_aio.h>
-
-#if (NGX_HAVE_KQUEUE)
-#include <ngx_kqueue_module.h>
-#endif
 
 
-/*
- * the ready data requires 3 syscalls:
- *     aio_write(), aio_error(), aio_return()
- * the non-ready data requires 4 (kqueue) or 5 syscalls:
- *     aio_write(), aio_error(), notifiction, aio_error(), aio_return()
- *                               timeout, aio_cancel(), aio_error()
- */
+extern int  ngx_kqueue;
+
 
 ssize_t
 ngx_aio_read(ngx_connection_t *c, u_char *buf, size_t size)
