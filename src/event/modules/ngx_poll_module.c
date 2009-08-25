@@ -260,11 +260,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
     ready = poll(event_list, (u_int) nevents, (int) timer);
 
-    if (ready == -1) {
-        err = ngx_errno;
-    } else {
-        err = 0;
-    }
+    err = (ready == -1) ? ngx_errno : 0;
 
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);

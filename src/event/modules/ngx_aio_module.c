@@ -73,7 +73,6 @@ ngx_module_t  ngx_aio_module = {
 };
 
 
-
 #if (NGX_HAVE_KQUEUE)
 
 static ngx_int_t

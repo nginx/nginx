@@ -260,11 +260,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
     ready = select(max_fd + 1, &work_read_fd_set, &work_write_fd_set, NULL, tp);
 
-    if (ready == -1) {
-        err = ngx_socket_errno;
-    } else {
-        err = 0;
-    }
+    err = (ready == -1) ? ngx_errno : 0;
 
     if (flags & NGX_UPDATE_TIME) {
         ngx_time_update(0, 0);
