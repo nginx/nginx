@@ -2260,10 +2260,6 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
             if (u->out_bufs || u->busy_bufs) {
                 rc = ngx_http_output_filter(r, u->out_bufs);
 
-                if (downstream->destroyed) {
-                    return;
-                }
-
                 if (rc == NGX_ERROR) {
                     ngx_http_upstream_finalize_request(r, u, 0);
                     return;
@@ -2436,11 +2432,6 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
             }
 
             if (ngx_event_pipe(p, wev->write) == NGX_ABORT) {
-
-                if (c->destroyed) {
-                    return;
-                }
-
                 ngx_http_upstream_finalize_request(r, u, 0);
                 return;
             }
@@ -2466,11 +2457,6 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
         }
 
         if (ngx_event_pipe(p, 1) == NGX_ABORT) {
-
-            if (c->destroyed) {
-                return;
-            }
-
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
         }
@@ -2498,14 +2484,7 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
 
     } else {
-        c = r->connection;
-
         if (ngx_event_pipe(u->pipe, 0) == NGX_ABORT) {
-
-            if (c->destroyed) {
-                return;
-            }
-
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
         }

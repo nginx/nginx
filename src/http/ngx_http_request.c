@@ -2004,10 +2004,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_del_timer(c->write);
     }
 
-    if (c->destroyed) {
-        return;
-    }
-
     if (c->read->eof) {
         ngx_http_close_request(r, 0);
         return;
@@ -2178,10 +2174,6 @@ ngx_http_writer(ngx_http_request_t *r)
     }
 
     rc = ngx_http_output_filter(r, NULL);
-
-    if (c->destroyed) {
-        return;
-    }
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http writer output filter: %d, \"%V?%V\"",

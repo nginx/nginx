@@ -1685,11 +1685,6 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
     rc = ngx_http_top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
-
-        if (c->destroyed) {
-            return NGX_DONE;
-        }
-
         /* NGX_ERROR may be returned by any filter */
         c->error = 1;
     }

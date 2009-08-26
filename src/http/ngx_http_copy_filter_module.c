@@ -109,17 +109,15 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     rc = ngx_output_chain(ctx, in);
 
-    if (!c->destroyed) {
+    if (ctx->in == NULL) {
+        r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
 
-        if (ctx->in == NULL) {
-            r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
-        } else {
-            r->buffered |= NGX_HTTP_COPY_BUFFERED;
-        }
-
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
+    } else {
+        r->buffered |= NGX_HTTP_COPY_BUFFERED;
     }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
 
     return rc;
 }

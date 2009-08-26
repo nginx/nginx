@@ -686,15 +686,6 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
 
     SPAGAIN;
 
-    if (c->destroyed) {
-        PUTBACK;
-
-        FREETMPS;
-        LEAVE;
-
-        return NGX_DONE;
-    }
-
     if (n) {
         if (rv == NULL) {
             status = POPi;

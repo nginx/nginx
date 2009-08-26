@@ -454,10 +454,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
                 rc = p->output_filter(p->output_ctx, p->out);
 
-                if (downstream->destroyed) {
-                    return NGX_ABORT;
-                }
-
                 if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
                     return ngx_event_pipe_drain_chains(p);
@@ -475,10 +471,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 }
 
                 rc = p->output_filter(p->output_ctx, p->in);
-
-                if (downstream->destroyed) {
-                    return NGX_ABORT;
-                }
 
                 if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
@@ -623,10 +615,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         }
 
         rc = p->output_filter(p->output_ctx, out);
-
-        if (downstream->destroyed) {
-            return NGX_ABORT;
-        }
 
         if (rc == NGX_ERROR) {
             p->downstream_error = 1;
