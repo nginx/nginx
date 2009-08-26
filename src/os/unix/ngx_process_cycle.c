@@ -145,7 +145,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             delay *= 2;
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "temination cycle: %d", delay);
+                           "termination cycle: %d", delay);
 
             itv.it_interval.tv_sec = 0;
             itv.it_interval.tv_usec = 0;
