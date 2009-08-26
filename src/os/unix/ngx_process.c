@@ -73,6 +73,8 @@ ngx_signal_t  signals[] = {
 
     { SIGCHLD, "SIGCHLD", "", ngx_signal_handler },
 
+    { SIGSYS, "SIGSYS, SIG_IGN", "", SIG_IGN },
+
     { SIGPIPE, "SIGPIPE, SIG_IGN", "", SIG_IGN },
 
     { 0, NULL, "", NULL }
