@@ -514,8 +514,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         if (kill(ngx_processes[i].pid, signo) == -1) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                          "kill(%P, %d) failed",
-                          ngx_processes[i].pid, signo);
+                          "kill(%P, %d) failed", ngx_processes[i].pid, signo);
 
             if (err == NGX_ESRCH) {
                 ngx_processes[i].exited = 1;
