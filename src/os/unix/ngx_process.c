@@ -373,6 +373,7 @@ ngx_signal_handler(int signo)
             break;
 
         case SIGALRM:
+            ngx_sigalrm = 1;
             break;
 
         case SIGIO:

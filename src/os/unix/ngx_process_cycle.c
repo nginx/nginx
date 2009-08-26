@@ -37,6 +37,7 @@ ngx_uint_t    ngx_threaded;
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_sigio;
+sig_atomic_t  ngx_sigalrm;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
 sig_atomic_t  ngx_debug_quit;
@@ -142,7 +143,10 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     for ( ;; ) {
         if (delay) {
-            delay *= 2;
+            if (ngx_sigalrm) {
+                delay *= 2;
+                ngx_sigalrm = 0;
+            }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "termination cycle: %d", delay);
