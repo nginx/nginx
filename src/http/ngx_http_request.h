@@ -502,6 +502,7 @@ struct ngx_http_request_s {
 #endif
 
     unsigned                          subrequests:8;
+    unsigned                          count:8;
 
     /* used to parse HTTP headers */
 

@@ -1260,10 +1260,6 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
     rc = ph->handler(r);
 
-    if (rc == NGX_DONE) {
-        return NGX_OK;
-    }
-
     if (rc != NGX_DECLINED) {
         ngx_http_finalize_request(r, rc);
         return NGX_OK;
@@ -2126,6 +2122,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
 
     r->main->subrequests++;
+    r->main->count++;
 
     *psr = sr;
 
@@ -2178,6 +2175,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 #endif
 
     r->internal = 1;
+    r->main->count++;
 
     ngx_http_handler(r);
 
@@ -2191,6 +2189,8 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
     ngx_http_core_srv_conf_t    *cscf;
     ngx_http_core_loc_conf_t   **clcfp;
     ngx_http_core_main_conf_t   *cmcf;
+
+    r->main->count++;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
