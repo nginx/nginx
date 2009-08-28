@@ -401,6 +401,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("directio_alignment"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_off_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, directio_alignment),
+      NULL },
+
     { ngx_string("tcp_nopush"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -2931,6 +2938,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->aio = NGX_CONF_UNSET;
 #endif
     lcf->directio = NGX_CONF_UNSET;
+    lcf->directio_alignment = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
     lcf->send_timeout = NGX_CONF_UNSET_MSEC;
@@ -3132,6 +3140,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
     ngx_conf_merge_off_value(conf->directio, prev->directio,
                               NGX_MAX_OFF_T_VALUE);
+    ngx_conf_merge_off_value(conf->directio_alignment, prev->directio_alignment,
+                              512);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 

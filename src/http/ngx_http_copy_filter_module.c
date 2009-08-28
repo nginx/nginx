@@ -94,8 +94,6 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
 
     if (ctx == NULL) {
-        conf = ngx_http_get_module_loc_conf(r, ngx_http_copy_filter_module);
-
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_output_chain_ctx_t));
         if (ctx == NULL) {
             return NGX_ERROR;
@@ -103,10 +101,15 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ngx_http_set_ctx(r, ctx, ngx_http_copy_filter_module);
 
+        conf = ngx_http_get_module_loc_conf(r, ngx_http_copy_filter_module);
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
         ctx->sendfile = c->sendfile;
         ctx->need_in_memory = r->main_filter_need_in_memory
                               || r->filter_need_in_memory;
         ctx->need_in_temp = r->filter_need_temporary;
+
+        ctx->alignment = clcf->directio_alignment;
 
         ctx->pool = r->pool;
         ctx->bufs = conf->bufs;
@@ -116,7 +119,6 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->filter_ctx = r;
 
 #if (NGX_HAVE_FILE_AIO)
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         if (clcf->aio) {
             ctx->aio = ngx_http_copy_aio_handler;
         }

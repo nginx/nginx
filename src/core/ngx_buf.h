@@ -90,6 +90,8 @@ struct ngx_output_chain_ctx_s {
     unsigned                     need_in_memory:1;
     unsigned                     need_in_temp:1;
 
+    off_t                        alignment;
+
     ngx_pool_t                  *pool;
     ngx_int_t                    allocated;
     ngx_bufs_t                   bufs;
