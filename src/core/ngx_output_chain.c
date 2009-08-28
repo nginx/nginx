@@ -346,7 +346,7 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
         size = (size_t) bsize;
 
     } else {
-        size = ctx->alignment - size;
+        size = (size_t) ctx->alignment - size;
 
         if ((off_t) size > bsize) {
             size = (size_t) bsize;
@@ -421,7 +421,7 @@ ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
          * userland buffer direct usage conjunctly with directio
          */
 
-        b->start = ngx_pmemalign(ctx->pool, size, ctx->alignment);
+        b->start = ngx_pmemalign(ctx->pool, size, (size_t) ctx->alignment);
         if (b->start == NULL) {
             return NGX_ERROR;
         }
