@@ -18,6 +18,7 @@ static ngx_int_t ngx_http_upstream_cache_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 #endif
 
+static void ngx_http_upstream_init_request(ngx_http_request_t *r);
 static void ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx);
 static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r);
@@ -386,15 +387,7 @@ ngx_http_upstream_create(ngx_http_request_t *r)
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
 {
-    ngx_str_t                      *host;
-    ngx_uint_t                      i;
-    ngx_connection_t               *c;
-    ngx_resolver_ctx_t             *ctx, temp;
-    ngx_http_cleanup_t             *cln;
-    ngx_http_upstream_t            *u;
-    ngx_http_core_loc_conf_t       *clcf;
-    ngx_http_upstream_srv_conf_t   *uscf, **uscfp;
-    ngx_http_upstream_main_conf_t  *umcf;
+    ngx_connection_t     *c;
 
     c = r->connection;
 
@@ -403,15 +396,6 @@ ngx_http_upstream_init(ngx_http_request_t *r)
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
-    }
-
-    u = r->upstream;
-
-    u->store = (u->conf->store || u->conf->store_lengths);
-
-    if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
-        r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
-        r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     }
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
@@ -426,9 +410,27 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         }
     }
 
-    if (r->request_body) {
-        u->request_bufs = r->request_body->bufs;
+    ngx_http_upstream_init_request(r);
+}
+
+
+static void
+ngx_http_upstream_init_request(ngx_http_request_t *r)
+{
+    ngx_str_t                      *host;
+    ngx_uint_t                      i;
+    ngx_resolver_ctx_t             *ctx, temp;
+    ngx_http_cleanup_t             *cln;
+    ngx_http_upstream_t            *u;
+    ngx_http_core_loc_conf_t       *clcf;
+    ngx_http_upstream_srv_conf_t   *uscf, **uscfp;
+    ngx_http_upstream_main_conf_t  *umcf;
+
+    if (r->aio) {
+        return;
     }
+
+    u = r->upstream;
 
 #if (NGX_HTTP_CACHE)
 
@@ -436,6 +438,11 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         ngx_int_t  rc;
 
         rc = ngx_http_upstream_cache(r, u);
+
+        if (rc == NGX_AGAIN) {
+            r->write_event_handler = ngx_http_upstream_init_request;
+            return;
+        }
 
         if (rc == NGX_DONE) {
             return;
@@ -448,6 +455,17 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 
 #endif
+
+    u->store = (u->conf->store || u->conf->store_lengths);
+
+    if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
+        r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
+        r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
+    }
+
+    if (r->request_body) {
+        u->request_bufs = r->request_body->bufs;
+    }
 
     if (u->create_request(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -543,7 +561,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
         }
 
         if (ctx == NGX_NO_RESOLVER) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "no resolver defined to resolve %V", host);
 
             ngx_http_finalize_request(r, NGX_HTTP_BAD_GATEWAY);
@@ -657,10 +675,6 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         break;
 
-    case NGX_ERROR:
-
-        return NGX_ERROR;
-
     case NGX_HTTP_CACHE_STALE:
 
         c->valid_sec = 0;
@@ -681,11 +695,19 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         break;
 
-    case NGX_AGAIN:
+    case NGX_HTTP_CACHE_SCARCE:
 
         u->cacheable = 0;
 
         break;
+
+    case NGX_AGAIN:
+
+        return NGX_AGAIN;
+
+    case NGX_ERROR:
+
+        return NGX_ERROR;
 
     default:
 

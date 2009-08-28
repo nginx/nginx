@@ -62,16 +62,6 @@
 #endif
 
 
-#if (NGX_HAVE_SENDFILE)
-#include <sys/sendfile.h>
-#endif
-
-
-#if (NGX_HAVE_AIO)
-#include <aio.h>
-#endif
-
-
 #if (NGX_HAVE_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>
@@ -80,6 +70,11 @@
 
 #if (NGX_HAVE_EVENTPORT)
 #include <port.h>
+#endif
+
+
+#if (NGX_HAVE_SENDFILE)
+#include <sys/sendfile.h>
 #endif
 
 

@@ -18,6 +18,7 @@
 #define NGX_HTTP_CACHE_STALE         3
 #define NGX_HTTP_CACHE_UPDATING      4
 #define NGX_HTTP_CACHE_HIT           5
+#define NGX_HTTP_CACHE_SCARCE        6
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 

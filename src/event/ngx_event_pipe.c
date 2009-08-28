@@ -24,14 +24,21 @@ ngx_int_t
 ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
 {
     u_int         flags;
+    ngx_int_t     rc;
     ngx_event_t  *rev, *wev;
 
     for ( ;; ) {
         if (do_write) {
             p->log->action = "sending to client";
 
-            if (ngx_event_pipe_write_to_downstream(p) == NGX_ABORT) {
+            rc = ngx_event_pipe_write_to_downstream(p);
+
+            if (rc == NGX_ABORT) {
                 return NGX_ABORT;
+            }
+
+            if (rc == NGX_BUSY) {
+                return NGX_OK;
             }
         }
 
@@ -422,7 +429,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
     u_char            *prev;
     size_t             bsize;
     ngx_int_t          rc;
-    ngx_uint_t         flush, prev_last_shadow;
+    ngx_uint_t         flush, flushed, prev_last_shadow;
     ngx_chain_t       *out, **ll, *cl, file;
     ngx_connection_t  *downstream;
 
@@ -430,6 +437,8 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                    "pipe write downstream: %d", downstream->write->ready);
+
+    flushed = 0;
 
     for ( ;; ) {
         if (p->downstream_error) {
@@ -610,8 +619,16 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe write: out:%p, f:%d", out, flush);
 
-        if (out == NULL && !flush) {
-            break;
+        if (out == NULL) {
+
+            if (!flush) {
+                break;
+            }
+
+            /* a workaround for AIO */
+            if (flushed++ > 10) {
+                return NGX_BUSY;
+            }
         }
 
         rc = p->output_filter(p->output_ctx, out);

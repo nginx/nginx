@@ -125,6 +125,8 @@ AIO_SRCS="src/event/modules/ngx_aio_module.c \
           src/os/unix/ngx_aio_read_chain.c \
           src/os/unix/ngx_aio_write_chain.c"
 
+FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
+LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
 
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 

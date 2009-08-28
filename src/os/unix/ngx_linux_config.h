@@ -81,6 +81,13 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
+#if (NGX_HAVE_FILE_AIO)
+#include <sys/syscall.h>
+#include <linux/aio_abi.h>
+typedef struct iocb  ngx_aiocb_t;
+#endif
+
+
 #define NGX_LISTEN_BACKLOG        511
 
 

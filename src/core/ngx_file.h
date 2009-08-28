@@ -22,9 +22,14 @@ struct ngx_file_s {
 
     ngx_log_t                 *log;
 
+#if (NGX_HAVE_FILE_AIO)
+    ngx_event_aio_t           *aio;
+#endif
+
     unsigned                   valid_info:1;
     unsigned                   directio:1;
 };
+
 
 #define NGX_MAX_PATH_LEVEL  3
 

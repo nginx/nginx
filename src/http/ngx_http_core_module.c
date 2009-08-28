@@ -383,6 +383,17 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, sendfile_max_chunk),
       NULL },
 
+#if (NGX_HAVE_FILE_AIO)
+
+    { ngx_string("aio"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, aio),
+      NULL },
+
+#endif
+
     { ngx_string("directio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_directio,
@@ -2916,6 +2927,9 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     lcf->internal = NGX_CONF_UNSET;
     lcf->sendfile = NGX_CONF_UNSET;
     lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
+#if (NGX_HAVE_FILE_AIO)
+    lcf->aio = NGX_CONF_UNSET;
+#endif
     lcf->directio = NGX_CONF_UNSET;
     lcf->tcp_nopush = NGX_CONF_UNSET;
     lcf->tcp_nodelay = NGX_CONF_UNSET;
@@ -3113,6 +3127,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
+#if (NGX_HAVE_FILE_AIO)
+    ngx_conf_merge_value(conf->aio, prev->aio, 0);
+#endif
     ngx_conf_merge_off_value(conf->directio, prev->directio,
                               NGX_MAX_OFF_T_VALUE);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);

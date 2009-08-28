@@ -10,6 +10,11 @@
 #include <ngx_md5.h>
 
 
+static ngx_int_t ngx_http_file_cache_read(ngx_http_request_t *r,
+    ngx_http_cache_t *c);
+#if (NGX_HAVE_FILE_AIO)
+static void ngx_http_cache_aio_event_handler(ngx_event_t *ev);
+#endif
 static ngx_int_t ngx_http_file_cache_exists(ngx_http_file_cache_t *cache,
     ngx_http_cache_t *c);
 static ngx_http_file_cache_node_t *
@@ -173,20 +178,22 @@ ngx_http_file_cache_create_key(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_file_cache_open(ngx_http_request_t *r)
 {
-    u_char                        *p;
-    time_t                         now;
-    ssize_t                        n;
-    ngx_int_t                      rc, rv;
-    ngx_uint_t                     cold, test;
-    ngx_path_t                    *path;
-    ngx_http_cache_t              *c;
-    ngx_pool_cleanup_t            *cln;
-    ngx_open_file_info_t           of;
-    ngx_http_file_cache_t         *cache;
-    ngx_http_core_loc_conf_t      *clcf;
-    ngx_http_file_cache_header_t  *h;
+    u_char                    *p;
+    ngx_int_t                  rc, rv;
+    ngx_uint_t                 cold, test;
+    ngx_path_t                *path;
+    ngx_http_cache_t          *c;
+    ngx_pool_cleanup_t        *cln;
+    ngx_open_file_info_t       of;
+    ngx_http_file_cache_t     *cache;
+    ngx_http_core_loc_conf_t  *clcf;
 
     c = r->cache;
+
+    if (c->buf) {
+        return ngx_http_file_cache_read(r, c);
+    }
+
     cache = c->file_cache;
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
@@ -207,7 +214,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     cln->data = c;
 
     if (rc == NGX_AGAIN) {
-        return rc;
+        return NGX_HTTP_CACHE_SCARCE;
     }
 
     cold = cache->sh->cold;
@@ -227,11 +234,11 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         if (c->min_uses > 1) {
 
             if (!cold) {
-                return NGX_AGAIN;
+                return NGX_HTTP_CACHE_SCARCE;
             }
 
             test = 1;
-            rv = NGX_AGAIN;
+            rv = NGX_HTTP_CACHE_SCARCE;
 
         } else {
             c->temp_file = 1;
@@ -299,13 +306,57 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     c->file.fd = of.fd;
     c->file.log = r->connection->log;
+    c->uniq = of.uniq;
+    c->length = of.size;
 
     c->buf = ngx_create_temp_buf(r->pool, c->body_start);
     if (c->buf == NULL) {
         return NGX_ERROR;
     }
 
+    return ngx_http_file_cache_read(r, c);
+}
+
+
+static ngx_int_t
+ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
+{
+    time_t                         now;
+    ssize_t                        n;
+    ngx_int_t                      rc;
+    ngx_http_file_cache_t         *cache;
+    ngx_http_file_cache_header_t  *h;
+
+    c = r->cache;
+
+#if (NGX_HAVE_FILE_AIO)
+    {
+    ngx_http_core_loc_conf_t      *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->aio) {
+        n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
+
+        if (n == NGX_AGAIN) {
+            c->file.aio->data = r;
+            c->file.aio->handler = ngx_http_cache_aio_event_handler;
+
+            r->main->blocked++;
+            r->aio = 1;
+
+            return NGX_AGAIN;
+        }
+
+    } else {
+        n = ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
+    }
+    }
+#else
+
     n = ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
+
+#endif
 
     if (n == NGX_ERROR) {
         return n;
@@ -331,12 +382,13 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     c->last_modified = h->last_modified;
     c->date = h->date;
     c->valid_msec = h->valid_msec;
-    c->length = of.size;
     c->body_start = h->body_start;
 
     r->cached = 1;
 
-    if (cold) {
+    cache = c->file_cache;
+
+    if (cache->sh->cold) {
 
         ngx_shmtx_lock(&cache->shpool->mutex);
 
@@ -344,7 +396,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
             c->node->uses = 1;
             c->node->body_start = c->body_start;
             c->node->exists = 1;
-            c->node->uniq = of.uniq;
+            c->node->uniq = c->uniq;
 
             cache->sh->size += (c->length + cache->bsize - 1) / cache->bsize;
         }
@@ -377,6 +429,27 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     return NGX_OK;
 }
+
+
+#if (NGX_HAVE_FILE_AIO)
+
+
+static void
+ngx_http_cache_aio_event_handler(ngx_event_t *ev)
+{
+    ngx_event_aio_t     *aio;
+    ngx_http_request_t  *r;
+
+    aio = ev->data;
+    r = aio->data;
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    r->connection->write->handler(r->connection->write);
+}
+
+#endif
 
 
 static ngx_int_t

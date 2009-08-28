@@ -14,6 +14,12 @@ typedef struct {
 } ngx_http_copy_filter_conf_t;
 
 
+#if (NGX_HAVE_FILE_AIO)
+static void ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx,
+    ngx_file_t *file);
+static void ngx_http_copy_aio_event_handler(ngx_event_t *ev);
+#endif
+
 static void *ngx_http_copy_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_copy_filter_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -73,9 +79,14 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_int_t                     rc;
     ngx_connection_t             *c;
     ngx_output_chain_ctx_t       *ctx;
+    ngx_http_core_loc_conf_t     *clcf;
     ngx_http_copy_filter_conf_t  *conf;
 
     c = r->connection;
+
+    if (r->aio) {
+        return NGX_AGAIN;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "copy filter: \"%V?%V\"", &r->uri, &r->args);
@@ -104,6 +115,13 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->output_filter = (ngx_output_chain_filter_pt) ngx_http_next_filter;
         ctx->filter_ctx = r;
 
+#if (NGX_HAVE_FILE_AIO)
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        if (clcf->aio) {
+            ctx->aio = ngx_http_copy_aio_handler;
+        }
+#endif
+
         r->request_output = 1;
     }
 
@@ -121,6 +139,41 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     return rc;
 }
+
+
+#if (NGX_HAVE_FILE_AIO)
+
+static void
+ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx, ngx_file_t *file)
+{
+    ngx_http_request_t *r;
+
+    r = ctx->filter_ctx;
+
+    file->aio->data = r;
+    file->aio->handler = ngx_http_copy_aio_event_handler;
+
+    r->main->blocked++;
+    r->aio = 1;
+}
+
+
+static void
+ngx_http_copy_aio_event_handler(ngx_event_t *ev)
+{
+    ngx_event_aio_t     *aio;
+    ngx_http_request_t  *r;
+
+    aio = ev->data;
+    r = aio->data;
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    r->connection->write->handler(r->connection->write);
+}
+
+#endif
 
 
 static void *

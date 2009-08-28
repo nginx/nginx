@@ -416,6 +416,12 @@ struct ngx_http_request_s {
 
     ngx_http_cleanup_t               *cleanup;
 
+    unsigned                          subrequests:8;
+    unsigned                          count:8;
+    unsigned                          blocked:8;
+
+    unsigned                          aio:1;
+
     unsigned                          http_state:4;
 
     /* URI with "/." and on Win32 with "//" */
@@ -500,9 +506,6 @@ struct ngx_http_request_s {
     unsigned                          stat_reading:1;
     unsigned                          stat_writing:1;
 #endif
-
-    unsigned                          subrequests:8;
-    unsigned                          count:8;
 
     /* used to parse HTTP headers */
 

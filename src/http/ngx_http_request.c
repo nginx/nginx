@@ -1868,6 +1868,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             return;
         }
 
+        if (r->main->blocked) {
+            r->write_event_handler = ngx_http_request_finalizer;
+        }
+
         ngx_http_terminate_request(r, rc);
         return;
     }
@@ -1969,7 +1973,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->buffered || c->buffered || r->postponed) {
+    if (r->buffered || c->buffered || r->postponed || r->blocked) {
 
         if (ngx_http_set_write_handler(r) != NGX_OK) {
             ngx_http_terminate_request(r, 0);
@@ -2022,7 +2026,7 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     mr = r->main;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http terminate request count: %d", mr->count);
+                   "http terminate request count:%d", mr->count);
 
     cln = mr->cleanup;
     mr->cleanup = NULL;
@@ -2035,10 +2039,16 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
         cln = cln->next;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http terminate cleanup count: %d", mr->count);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http terminate cleanup count:%d blk:%d",
+                   mr->count, mr->blocked);
 
     if (mr->write_event_handler) {
+
+        if (mr->blocked) {
+            return;
+        }
+
         mr->posted_requests = NULL;
         mr->write_event_handler = ngx_http_terminate_handler;
         (void) ngx_http_post_request(mr);
@@ -2053,7 +2063,7 @@ static void
 ngx_http_terminate_handler(ngx_http_request_t *r)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http terminate handler count: %d", r->count);
+                   "http terminate handler count:%d", r->count);
 
     r->count = 1;
 
@@ -2161,7 +2171,7 @@ ngx_http_writer(ngx_http_request_t *r)
         }
 
     } else {
-        if (wev->delayed) {
+        if (wev->delayed || r->aio) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                            "http writer delayed");
 
@@ -2830,8 +2840,8 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
     r = r->main;
     c = r->connection;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http request count: %d", r->count);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http request count:%d blk:%d", r->count, r->blocked);
 
     if (r->count == 0) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "http request count is zero");
@@ -2839,7 +2849,7 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
 
     r->count--;
 
-    if (r->count) {
+    if (r->count || r->blocked) {
         return;
     }
 

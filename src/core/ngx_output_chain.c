@@ -519,7 +519,25 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 
 #endif
 
+#if (NGX_HAVE_FILE_AIO)
+
+        if (ctx->aio) {
+            n = ngx_file_aio_read(src->file, dst->pos, (size_t) size,
+                                  src->file_pos, ctx->pool);
+            if (n == NGX_AGAIN) {
+                ctx->aio(ctx, src->file);
+                return NGX_AGAIN;
+            }
+
+        } else {
+            n = ngx_read_file(src->file, dst->pos, (size_t) size,
+                              src->file_pos);
+        }
+#else
+
         n = ngx_read_file(src->file, dst->pos, (size_t) size, src->file_pos);
+
+#endif
 
 #if (NGX_HAVE_ALIGNED_DIRECTIO)
 
@@ -544,12 +562,6 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
         if (n == NGX_ERROR) {
             return (ngx_int_t) n;
         }
-
-#if (NGX_FILE_AIO_READ)
-        if (n == NGX_AGAIN) {
-            return (ngx_int_t) n;
-        }
-#endif
 
         if (n != size) {
             ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,

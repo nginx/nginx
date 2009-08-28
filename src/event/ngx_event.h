@@ -189,6 +189,33 @@ struct ngx_event_s {
 };
 
 
+#if (NGX_HAVE_FILE_AIO)
+
+struct ngx_event_aio_s {
+    void                      *data;
+    ngx_event_handler_pt       handler;
+    ngx_file_t                *file;
+
+    ngx_fd_t                   fd;
+
+#if (NGX_HAVE_EVENTFD)
+    int64_t                    res;
+#if (NGX_TEST_BUILD_EPOLL)
+    ngx_err_t                  err;
+    size_t                     nbytes;
+#endif
+#else
+    ngx_err_t                  err;
+    size_t                     nbytes;
+#endif
+
+    ngx_aiocb_t                aiocb;
+    ngx_event_t                event;
+};
+
+#endif
+
+
 typedef struct {
     in_addr_t  mask;
     in_addr_t  addr;

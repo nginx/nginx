@@ -73,13 +73,14 @@
 #endif
 
 
-#if (NGX_HAVE_AIO)
-#include <aio.h>
+#if (NGX_HAVE_KQUEUE)
+#include <sys/event.h>
 #endif
 
 
-#if (NGX_HAVE_KQUEUE)
-#include <sys/event.h>
+#if (NGX_HAVE_FILE_AIO || NGX_HAVE_AIO)
+#include <aio.h>
+typedef struct aiocb  ngx_aiocb_t;
 #endif
 
 

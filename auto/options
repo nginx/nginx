@@ -43,6 +43,7 @@ EVENT_AIO=NO
 
 USE_THREADS=NO
 
+NGX_FILE_AIO=NO
 NGX_IPV6=NO
 
 HTTP=YES
@@ -170,6 +171,7 @@ do
         #--with-threads=*)                USE_THREADS="$value"       ;;
         #--with-threads)                  USE_THREADS="pthreads"     ;;
 
+        --with-file-aio)                 NGX_FILE_AIO=YES           ;;
         --with-ipv6)                     NGX_IPV6=YES               ;;
 
         --without-http)                  HTTP=NO                    ;;
@@ -305,6 +307,7 @@ cat << END
   --with-poll_module                 enable poll module
   --without-poll_module              disable poll module
 
+  --with-file-aio                    enable file aio support
   --with-ipv6                        enable ipv6 support
 
   --with-http_ssl_module             enable ngx_http_ssl_module

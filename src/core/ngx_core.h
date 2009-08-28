@@ -19,6 +19,7 @@ typedef struct ngx_open_file_s   ngx_open_file_t;
 typedef struct ngx_command_s     ngx_command_t;
 typedef struct ngx_file_s        ngx_file_t;
 typedef struct ngx_event_s       ngx_event_t;
+typedef struct ngx_event_aio_s   ngx_event_aio_t;
 typedef struct ngx_connection_s  ngx_connection_t;
 
 typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);

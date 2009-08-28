@@ -287,4 +287,12 @@ size_t ngx_fs_bsize(u_char *name);
 #define ngx_set_stderr_n         "dup2(STDERR_FILENO)"
 
 
+#if (NGX_HAVE_FILE_AIO)
+
+ssize_t ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size,
+    off_t offset, ngx_pool_t *pool);
+
+#endif
+
+
 #endif /* _NGX_FILES_H_INCLUDED_ */
