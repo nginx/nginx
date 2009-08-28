@@ -2039,9 +2039,9 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
                    "http terminate cleanup count: %d", mr->count);
 
     if (mr->write_event_handler) {
-	mr->posted_requests = NULL;
-	mr->write_event_handler = ngx_http_terminate_handler;
-	(void) ngx_http_post_request(mr);
+        mr->posted_requests = NULL;
+        mr->write_event_handler = ngx_http_terminate_handler;
+        (void) ngx_http_post_request(mr);
         return;
     }
 
