@@ -1386,8 +1386,13 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
                 r->headers_in.msie4 = 1;
                 /* fall through */
             case '5':
-            case '6':
                 r->headers_in.msie6 = 1;
+                break;
+            case '6':
+                if (ngx_strstrn(msie + 8, "SV1", 3 - 1) == NULL) {
+                    r->headers_in.msie6 = 1;
+                }
+                break;
             }
         }
 
