@@ -439,10 +439,12 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         rc = ngx_http_upstream_cache(r, u);
 
-        if (rc == NGX_AGAIN) {
+        if (rc == NGX_BUSY) {
             r->write_event_handler = ngx_http_upstream_init_request;
             return;
         }
+
+        r->write_event_handler = ngx_http_request_empty_handler;
 
         if (rc == NGX_DONE) {
             return;
@@ -704,7 +706,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     case NGX_AGAIN:
 
-        return NGX_AGAIN;
+        return NGX_BUSY;
 
     case NGX_ERROR:
 
