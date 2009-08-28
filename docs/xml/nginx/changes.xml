@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.11" date="28.08.2009">
+
+<change type="change">
+<para lang="ru">
+директива "gzip_disable msie6" разрешает сжатие для <nobr>MSIE 6.0 SV1.</nobr>
+</para>
+<para lang="en">
+directive "gzip_disable msie6" enables gzipping for <nobr>MSIE 6.0 SV1.</nobr>
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка файлового AIO во FreeBSD и Linux.
+</para>
+<para lang="en">
+file AIO support on FreeBSD and Linux.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива directio_alignment.
+</para>
+<para lang="en">
+the "directio_alignment" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.10" date="24.08.2009">
 
 <change type="bugfix">
