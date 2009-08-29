@@ -211,6 +211,8 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
     u->input_filter = ngx_http_memcached_filter;
     u->input_filter_ctx = ctx;
 
+    r->main->count++;
+
     ngx_http_upstream_init(r);
 
     return NGX_DONE;
