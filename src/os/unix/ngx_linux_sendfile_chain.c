@@ -263,19 +263,22 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             if (rc == -1) {
                 err = ngx_errno;
 
-                if (err == NGX_EAGAIN || err == NGX_EINTR) {
-                    if (err == NGX_EINTR) {
-                        eintr = 1;
-                    }
+                switch (err) {
+                case NGX_EAGAIN:
+                    break;
 
-                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
-                                   "sendfile() is not ready");
+                case NGX_EINTR:
+                    eintr = 1;
+                    break;
 
-                } else {
+                default:
                     wev->error = 1;
                     ngx_connection_error(c, err, "sendfile() failed");
                     return NGX_CHAIN_ERROR;
                 }
+
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                               "sendfile() is not ready");
             }
 
             sent = rc > 0 ? rc : 0;
@@ -290,19 +293,22 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             if (rc == -1) {
                 err = ngx_errno;
 
-                if (err == NGX_EAGAIN || err == NGX_EINTR) {
-                    if (err == NGX_EINTR) {
-                        eintr = 1;
-                    }
+                switch (err) {
+                case NGX_EAGAIN:
+                    break;
 
-                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
-                                   "writev() not ready");
+                case NGX_EINTR:
+                    eintr = 1;
+                    break;
 
-                } else {
+                default:
                     wev->error = 1;
                     ngx_connection_error(c, err, "writev() failed");
                     return NGX_CHAIN_ERROR;
                 }
+
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                               "writev() not ready");
             }
 
             sent = rc > 0 ? rc : 0;
