@@ -510,6 +510,21 @@ struct ngx_http_request_s {
     /* used to parse HTTP headers */
 
     ngx_uint_t                        state;
+
+    ngx_uint_t                        header_hash;
+    ngx_uint_t                        lowcase_index;
+    u_char                            lowcase_header[NGX_HTTP_LC_HEADER_LEN];
+
+    u_char                           *header_name_start;
+    u_char                           *header_name_end;
+    u_char                           *header_start;
+    u_char                           *header_end;
+
+    /*
+     * a memory that can be reused after parsing a request line
+     * via ngx_http_ephemeral_t
+     */
+
     u_char                           *uri_start;
     u_char                           *uri_end;
     u_char                           *uri_ext;
@@ -523,18 +538,15 @@ struct ngx_http_request_s {
     u_char                           *host_end;
     u_char                           *port_start;
     u_char                           *port_end;
-    u_char                           *header_name_start;
-    u_char                           *header_name_end;
-    u_char                           *header_start;
-    u_char                           *header_end;
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;
-
-    ngx_uint_t                        header_hash;
-    ngx_uint_t                        lowcase_index;
-    u_char                            lowcase_header[NGX_HTTP_LC_HEADER_LEN];
 };
+
+
+typedef struct {
+    ngx_http_posted_request_t         terminal_posted_request;
+} ngx_http_ephemeral_t;
 
 
 extern ngx_http_header_t       ngx_http_headers_in[];

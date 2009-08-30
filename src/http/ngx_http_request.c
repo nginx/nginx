@@ -1810,13 +1810,15 @@ ngx_http_run_posted_requests(ngx_connection_t *c)
 
 
 ngx_int_t
-ngx_http_post_request(ngx_http_request_t *r)
+ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
 {
-    ngx_http_posted_request_t  *pr, **p;
+    ngx_http_posted_request_t  **p;
 
-    pr = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
     if (pr == NULL) {
-        return NGX_ERROR;
+        pr = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
+        if (pr == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     pr->request = r;
@@ -1965,7 +1967,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             }
         }
 
-        if (ngx_http_post_request(pr) != NGX_OK) {
+        if (ngx_http_post_request(pr, NULL) != NGX_OK) {
             r->main->count++;
             ngx_http_terminate_request(r, 0);
             return;
@@ -2025,8 +2027,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 static void
 ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
 {
-    ngx_http_cleanup_t  *cln;
-    ngx_http_request_t  *mr;
+    ngx_http_cleanup_t    *cln;
+    ngx_http_request_t    *mr;
+    ngx_http_ephemeral_t  *e;
 
     mr = r->main;
 
@@ -2054,9 +2057,10 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
             return;
         }
 
+        e = ngx_http_ephemeral(mr);
         mr->posted_requests = NULL;
         mr->write_event_handler = ngx_http_terminate_handler;
-        (void) ngx_http_post_request(mr);
+        (void) ngx_http_post_request(mr, &e->terminal_posted_request);
         return;
     }
 

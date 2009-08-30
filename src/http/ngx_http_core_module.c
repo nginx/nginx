@@ -2139,7 +2139,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     *psr = sr;
 
-    return ngx_http_post_request(sr);
+    return ngx_http_post_request(sr, NULL);
 }
 
 

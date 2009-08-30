@@ -102,7 +102,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             c->data = pr->request;
 
-            return ngx_http_post_request(pr->request);
+            return ngx_http_post_request(pr->request, NULL);
         }
 
         if (pr->out == NULL) {
