@@ -104,6 +104,20 @@ static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
 };
 
 
+#if (NGX_HAVE_FILE_AIO)
+
+static ngx_conf_enum_t  ngx_http_core_aio[] = {
+    { ngx_string("off"), NGX_HTTP_AIO_OFF  },
+    { ngx_string("on"), NGX_HTTP_AIO_ON },
+#if (NGX_HAVE_AIO_SENDFILE)
+    { ngx_string("sendfile"), NGX_HTTP_AIO_SENDFILE },
+#endif
+    { ngx_null_string, 0 }
+};
+
+#endif
+
+
 static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
     { ngx_string("all"), NGX_HTTP_SATISFY_ALL },
     { ngx_string("any"), NGX_HTTP_SATISFY_ANY },
@@ -386,11 +400,11 @@ static ngx_command_t  ngx_http_core_commands[] = {
 #if (NGX_HAVE_FILE_AIO)
 
     { ngx_string("aio"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, aio),
-      NULL },
+      &ngx_http_core_aio },
 
 #endif
 

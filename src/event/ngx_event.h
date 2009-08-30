@@ -209,6 +209,10 @@ struct ngx_event_aio_s {
     size_t                     nbytes;
 #endif
 
+#if (NGX_HAVE_AIO_SENDFILE)
+    off_t                      last_offset;
+#endif
+
     ngx_aiocb_t                aiocb;
     ngx_event_t                event;
 };

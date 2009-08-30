@@ -18,6 +18,9 @@ typedef struct {
 static void ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx,
     ngx_file_t *file);
 static void ngx_http_copy_aio_event_handler(ngx_event_t *ev);
+#if (NGX_HAVE_AIO_SENDFILE)
+static void ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev);
+#endif
 #endif
 
 static void *ngx_http_copy_filter_create_conf(ngx_conf_t *cf);
@@ -121,6 +124,9 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if (NGX_HAVE_FILE_AIO)
         if (clcf->aio) {
             ctx->aio = ngx_http_copy_aio_handler;
+#if (NGX_HAVE_AIO_SENDFILE)
+            c->aio_sendfile = (clcf->aio == NGX_HTTP_AIO_SENDFILE);
+#endif
         }
 #endif
 
@@ -138,6 +144,42 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
+
+#if (NGX_HAVE_AIO_SENDFILE)
+
+    if (c->busy_sendfile) {
+        off_t                  offset;
+        ngx_file_t            *file;
+        ngx_http_ephemeral_t  *e;
+
+        file = c->busy_sendfile->file;
+        offset = c->busy_sendfile->file_pos;
+
+        if (file->aio) {
+            c->aio_sendfile = (offset != file->aio->last_offset);
+            file->aio->last_offset = offset;
+
+            if (c->aio_sendfile == 0) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "sendfile(%V) returned busy again", &file->name);
+            }
+        }
+
+        c->busy_sendfile = NULL;
+        e = (ngx_http_ephemeral_t *) &r->uri_start;
+
+        (void) ngx_file_aio_read(file, e->preload, 4, offset, r->pool);
+
+        if (file->aio) {
+            file->aio->data = r;
+            file->aio->handler = ngx_http_copy_aio_sendfile_event_handler;
+
+            r->main->blocked++;
+            r->aio = 1;
+        }
+    }
+
+#endif
 
     return rc;
 }
@@ -175,6 +217,26 @@ ngx_http_copy_aio_event_handler(ngx_event_t *ev)
     r->connection->write->handler(r->connection->write);
 }
 
+
+#if (NGX_HAVE_AIO_SENDFILE)
+
+static void
+ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev)
+{
+    ngx_event_aio_t     *aio;
+    ngx_http_request_t  *r;
+
+    aio = ev->data;
+    r = aio->data;
+
+    r->main->blocked--;
+    r->aio = 0;
+    ev->complete = 0;
+
+    r->connection->write->handler(r->connection->write);
+}
+
+#endif
 #endif
 
 

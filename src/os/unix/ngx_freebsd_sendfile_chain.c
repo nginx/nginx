@@ -40,7 +40,7 @@
 ngx_chain_t *
 ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    int              rc;
+    int              rc, flags;
     u_char          *prev;
     off_t            size, send, prev_send, aligned, sent, fprev;
     size_t           header_size, file_size;
@@ -78,6 +78,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     send = 0;
     eagain = 0;
+    flags = 0;
 
     header.elts = headers;
     header.size = sizeof(struct iovec);
@@ -261,8 +262,12 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             sent = 0;
 
+#if (NGX_HAVE_AIO_SENDFILE)
+            flags = c->aio_sendfile ? SF_NODISKIO : 0;
+#endif
+
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
-                          file_size + header_size, &hdtr, &sent, 0);
+                          file_size + header_size, &hdtr, &sent, flags);
 
             if (rc == -1) {
                 err = ngx_errno;
@@ -275,6 +280,12 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 case NGX_EINTR:
                     eintr = 1;
                     break;
+
+#if (NGX_HAVE_AIO_SENDFILE)
+                case NGX_EBUSY:
+                    c->busy_sendfile = file;
+                    break;
+#endif
 
                 default:
                     wev->error = 1;
@@ -382,6 +393,12 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             break;
         }
+
+#if (NGX_HAVE_AIO_SENDFILE)
+        if (c->busy_sendfile) {
+            return cl;
+        }
+#endif
 
         if (eagain) {
 

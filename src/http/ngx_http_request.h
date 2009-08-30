@@ -546,6 +546,9 @@ struct ngx_http_request_s {
 
 typedef struct {
     ngx_http_posted_request_t         terminal_posted_request;
+#if (NGX_HAVE_AIO_SENDFILE)
+    u_char                            preload[4];
+#endif
 } ngx_http_ephemeral_t;
 
 

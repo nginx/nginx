@@ -15,7 +15,8 @@
  *    if an asked data are already in VM cache, then aio_error() returns 0,
  *    and the data are already copied in buffer;
  *
- *    aio_read() preread in VM cache as minimum 32K;
+ *    aio_read() preread in VM cache as minimum 16K (probably BKVASIZE);
+ *    the first AIO preload may be up to 128K;
  *
  *    aio_read/aio_error() may return EINPROGRESS for just written data;
  *
@@ -60,6 +61,9 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
         aio->event.data = aio;
         aio->event.ready = 1;
         aio->event.log = file->log;
+#if (NGX_HAVE_AIO_SENDFILE)
+        aio->last_offset = -1;
+#endif
         file->aio = aio;
     }
 

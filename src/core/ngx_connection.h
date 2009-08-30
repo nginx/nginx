@@ -159,6 +159,11 @@ struct ngx_connection_s {
     unsigned            accept_context_updated:1;
 #endif
 
+#if (NGX_HAVE_AIO_SENDFILE)
+    unsigned            aio_sendfile:1;
+    ngx_buf_t          *busy_sendfile;
+#endif
+
 #if (NGX_THREADS)
     ngx_atomic_t        lock;
 #endif

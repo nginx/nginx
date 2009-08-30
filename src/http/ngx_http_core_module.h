@@ -24,6 +24,11 @@
 #define NGX_HTTP_GZIP_PROXIED_ANY       0x0200
 
 
+#define NGX_HTTP_AIO_OFF                0
+#define NGX_HTTP_AIO_ON                 1
+#define NGX_HTTP_AIO_SENDFILE           2
+
+
 #define NGX_HTTP_SATISFY_ALL            0
 #define NGX_HTTP_SATISFY_ANY            1
 
