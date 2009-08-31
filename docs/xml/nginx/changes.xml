@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.13" date="31.08.2009">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве "aio sendfile";
+ошибка появилась в 0.8.12.
+</para>
+<para lang="en">
+in the "aio sendfile" directive.
+the bug had appeared in 0.8.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без параметра --with-file-aio на FreeBSD;
+ошибка появилась в 0.8.12.
+</para>
+<para lang="en">
+nginx could not be built without the --with-file-aio option on FreeBSD;
+the bug had appeared in 0.8.12.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.12" date="31.08.2009">
 
 <change type="feature">
