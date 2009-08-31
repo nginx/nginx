@@ -9,14 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.12" date="31.08.2009">
+
+<change type="feature">
+<para lang="ru">
+параметр sendfile в директиве aio во FreeBSD.
+</para>
+<para lang="en">
+the "sendfile" parameter in the "aio" directive on FreeBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании try_files;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+in try_files;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании memcached;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+in memcached;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
 <changes ver="0.8.11" date="28.08.2009">
 
 <change type="change">
 <para lang="ru">
-директива "gzip_disable msie6" разрешает сжатие для <nobr>MSIE 6.0 SV1.</nobr>
+теперь директива "gzip_disable msie6" не запрещает сжатие для
+<nobr>MSIE 6.0 SV1.</nobr>
 </para>
 <para lang="en">
-directive "gzip_disable msie6" enables gzipping for <nobr>MSIE 6.0 SV1.</nobr>
+now directive "gzip_disable msie6" does not disable gzipping for
+<nobr>MSIE 6.0 SV1.</nobr>
 </para>
 </change>
 
