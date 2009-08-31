@@ -145,7 +145,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_FILE_AIO && NGX_HAVE_AIO_SENDFILE)
 
     if (c->busy_sendfile) {
         off_t                  offset;
