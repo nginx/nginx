@@ -133,55 +133,64 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         r->request_output = 1;
     }
 
-    rc = ngx_output_chain(ctx, in);
+    for ( ;; ) {
+        rc = ngx_output_chain(ctx, in);
 
-    if (ctx->in == NULL) {
-        r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
+        if (ctx->in == NULL) {
+            r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
 
-    } else {
-        r->buffered |= NGX_HTTP_COPY_BUFFERED;
-    }
+        } else {
+            r->buffered |= NGX_HTTP_COPY_BUFFERED;
+        }
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
 
 #if (NGX_HAVE_FILE_AIO && NGX_HAVE_AIO_SENDFILE)
 
-    if (c->busy_sendfile) {
-        off_t                  offset;
-        ngx_file_t            *file;
-        ngx_http_ephemeral_t  *e;
+        if (c->busy_sendfile) {
+            ssize_t                n;
+            off_t                  offset;
+            ngx_file_t            *file;
+            ngx_http_ephemeral_t  *e;
 
-        file = c->busy_sendfile->file;
-        offset = c->busy_sendfile->file_pos;
+            file = c->busy_sendfile->file;
+            offset = c->busy_sendfile->file_pos;
 
-        if (file->aio) {
-            c->aio_sendfile = (offset != file->aio->last_offset);
-            file->aio->last_offset = offset;
+            if (file->aio) {
+                c->aio_sendfile = (offset != file->aio->last_offset);
+                file->aio->last_offset = offset;
 
-            if (c->aio_sendfile == 0) {
-                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                              "sendfile(%V) returned busy again", &file->name);
+                if (c->aio_sendfile == 0) {
+                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                                  "sendfile(%V) returned busy again",
+                                  &file->name);
+                }
+            }
+
+            c->busy_sendfile = NULL;
+            e = (ngx_http_ephemeral_t *) &r->uri_start;
+
+            n = ngx_file_aio_read(file, e->preload, 4, offset, r->pool);
+
+            if (n > 0) {
+                continue;
+            }
+
+            rc = n;
+
+            if (file->aio) {
+                file->aio->data = r;
+                file->aio->handler = ngx_http_copy_aio_sendfile_event_handler;
+
+                r->main->blocked++;
+                r->aio = 1;
             }
         }
-
-        c->busy_sendfile = NULL;
-        e = (ngx_http_ephemeral_t *) &r->uri_start;
-
-        (void) ngx_file_aio_read(file, e->preload, 4, offset, r->pool);
-
-        if (file->aio) {
-            file->aio->data = r;
-            file->aio->handler = ngx_http_copy_aio_sendfile_event_handler;
-
-            r->main->blocked++;
-            r->aio = 1;
-        }
-    }
-
 #endif
 
-    return rc;
+        return rc;
+    }
 }
 
 
