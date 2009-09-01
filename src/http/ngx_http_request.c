@@ -893,9 +893,10 @@ ngx_http_process_request_line(ngx_event_t *rev)
 static void
 ngx_http_process_request_headers(ngx_event_t *rev)
 {
+    u_char                     *p;
+    size_t                      len;
     ssize_t                     n;
     ngx_int_t                   rc, rv;
-    ngx_str_t                   header;
     ngx_table_elt_t            *h;
     ngx_connection_t           *c;
     ngx_http_header_t          *hh;
@@ -935,19 +936,17 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 }
 
                 if (rv == NGX_DECLINED) {
-                    header.len = r->header_in->end - r->header_name_start;
-                    header.data = r->header_name_start;
+                    len = r->header_in->end - r->header_name_start;
+                    p = r->header_name_start;
 
-                    if (header.len > NGX_MAX_ERROR_STR - 300) {
-                        header.len = NGX_MAX_ERROR_STR - 300;
-                        header.data[header.len++] = '.';
-                        header.data[header.len++] = '.';
-                        header.data[header.len++] = '.';
+                    if (len > NGX_MAX_ERROR_STR - 300) {
+                        len = NGX_MAX_ERROR_STR - 300;
+                        p[len++] = '.'; p[len++] = '.'; p[len++] = '.';
                     }
 
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "client sent too long header line: \"%V\"",
-                                  &header);
+                                  "client sent too long header line: \"%*s\"",
+                                  len, r->header_name_start);
                     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                     return;
                 }
@@ -969,12 +968,10 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
                 /* there was error while a header line parsing */
 
-                header.len = r->header_end - r->header_name_start;
-                header.data = r->header_name_start;
-
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid header line: \"%V\"",
-                              &header);
+                              "client sent invalid header line: \"%*s\"",
+                              r->header_end - r->header_name_start,
+                              r->header_name_start);
                 continue;
             }
 
@@ -1054,11 +1051,10 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
         /* rc == NGX_HTTP_PARSE_INVALID_HEADER: "\r" is not followed by "\n" */
 
-        header.len = r->header_end - r->header_name_start;
-        header.data = r->header_name_start;
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client sent invalid header line: \"%V\\r...\"",
-                      &header);
+                      "client sent invalid header line: \"%*s\\r...\"",
+                      r->header_end - r->header_name_start,
+                      r->header_name_start);
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return;
     }
