@@ -743,6 +743,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
 
             switch (ch) {
             case CR:
+                r->header_name_start = p;
                 r->header_end = p;
                 state = sw_header_almost_done;
                 break;
