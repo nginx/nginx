@@ -739,11 +739,11 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* first char */
         case sw_start:
+            r->header_name_start = p;
             r->invalid_header = 0;
 
             switch (ch) {
             case CR:
-                r->header_name_start = p;
                 r->header_end = p;
                 state = sw_header_almost_done;
                 break;
@@ -752,7 +752,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 goto header_done;
             default:
                 state = sw_name;
-                r->header_name_start = p;
 
                 c = lowcase[ch];
 
