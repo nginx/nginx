@@ -2113,6 +2113,10 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http cacheable: %d", u->cacheable);
 
+    if (u->cacheable == 0 && r->cache) {
+        ngx_http_file_cache_free(r, u->pipe->temp_file);
+    }
+
 #endif
 
     p = u->pipe;
