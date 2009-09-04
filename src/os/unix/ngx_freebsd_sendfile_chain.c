@@ -310,8 +310,8 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                  */
 
                 ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                              "sendfile() reported that \"%s\" was truncated",
-                              file->file->name.data);
+                         "sendfile() reported that \"%s\" was truncated at %O",
+                         file->file->name.data, file->file_pos);
 
                 return NGX_CHAIN_ERROR;
             }
