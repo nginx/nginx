@@ -171,7 +171,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
             c->busy_sendfile = NULL;
             e = (ngx_http_ephemeral_t *) &r->uri_start;
 
-            n = ngx_file_aio_read(file, e->preload, 4, offset, r->pool);
+            n = ngx_file_aio_read(file, e->aio_preload, 1, offset, r->pool);
 
             if (n > 0) {
                 continue;
