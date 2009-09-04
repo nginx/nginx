@@ -295,14 +295,13 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
                                "sendfile() sent only %O bytes", sent);
-            }
 
             /*
              * sendfile() in FreeBSD 3.x-4.x may return value >= 0
              * on success, although only 0 is documented
              */
 
-            if (rc >= 0 && sent == 0) {
+            } else if (rc >= 0 && sent == 0) {
 
                 /*
                  * if rc is OK and sent equal to zero, then someone
