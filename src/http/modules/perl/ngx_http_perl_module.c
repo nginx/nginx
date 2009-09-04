@@ -179,6 +179,8 @@ ngx_http_perl_handler(ngx_http_request_t *r)
         return NGX_HTTP_NOT_FOUND;
     }
 
+    r->main->count++;
+
     ngx_http_perl_handle_request(r);
 
     return NGX_DONE;
@@ -232,6 +234,9 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "perl handler done: %i", rc);
+
     if (rc == NGX_DONE) {
         return;
     }
@@ -239,9 +244,6 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     if (rc > 600) {
         rc = NGX_OK;
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "perl handler done: %i", rc);
 
     if (ctx->redirect_uri.len) {
         uri = ctx->redirect_uri;
