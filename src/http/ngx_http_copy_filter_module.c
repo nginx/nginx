@@ -174,6 +174,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
             n = ngx_file_aio_read(file, &e->aio_preload, 1, offset, r->pool);
 
             if (n > 0) {
+                in = NULL;
                 continue;
             }
 
