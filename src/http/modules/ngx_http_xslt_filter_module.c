@@ -194,7 +194,7 @@ ngx_module_t  ngx_http_xslt_filter_module = {
     NULL,                                  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
-    ngx_http_xslt_filter_exit,            /* exit process */
+    ngx_http_xslt_filter_exit,             /* exit process */
     ngx_http_xslt_filter_exit,             /* exit master */
     NGX_MODULE_V1_PADDING
 };
@@ -247,6 +247,7 @@ ngx_http_xslt_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    int                          wellFormed;
     ngx_chain_t                 *cl;
     ngx_http_xslt_filter_ctx_t  *ctx;
 
@@ -288,9 +289,11 @@ ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->doc->extSubset = NULL;
 #endif
 
+            wellFormed = ctx->ctxt->wellFormed;
+
             xmlFreeParserCtxt(ctx->ctxt);
 
-            if (ctx->ctxt->wellFormed) {
+            if (wellFormed) {
                 return ngx_http_xslt_send(r, ctx,
                                        ngx_http_xslt_apply_stylesheet(r, ctx));
             }
@@ -717,7 +720,7 @@ ngx_http_xslt_sax_error(void *data, const char *msg, ...)
     while (--n && (buf[n] == CR || buf[n] == LF)) { /* void */ }
 
     ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, 0,
-                  "libxml2 error: \"%*s\"", n, buf);
+                  "libxml2 error: \"%*s\"", n + 1, buf);
 }
 
 
