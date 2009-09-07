@@ -35,6 +35,15 @@ static ngx_int_t ngx_http_file_cache_delete_file(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 
 
+ngx_str_t  ngx_http_cache_status[] = {
+    ngx_string("MISS"),
+    ngx_string("EXPIRED"),
+    ngx_string("STALE"),
+    ngx_string("UPDATING"),
+    ngx_string("HIT")
+};
+
+
 static u_char  ngx_http_file_cache_key[] = { LF, 'K', 'E', 'Y', ':', ' ' };
 
 
