@@ -87,7 +87,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *
  *  reserved:
  *    %t                        ptrdiff_t
- *    %S                        null-teminated wchar string
+ *    %S                        null-terminated wchar string
  *    %C                        wchar
  */
 

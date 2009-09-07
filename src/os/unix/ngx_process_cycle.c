@@ -34,6 +34,7 @@ ngx_uint_t    ngx_threaded;
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_sigio;
+sig_atomic_t  ngx_sigalrm;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
 sig_atomic_t  ngx_debug_quit;
@@ -130,10 +131,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     for ( ;; ) {
         if (delay) {
-            delay *= 2;
+            if (ngx_sigalrm) {
+                delay *= 2;
+                ngx_sigalrm = 0;
+            }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "temination cycle: %d", delay);
+                           "termination cycle: %d", delay);
 
             itv.it_interval.tv_sec = 0;
             itv.it_interval.tv_usec = 0;
@@ -492,8 +496,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         if (kill(ngx_processes[i].pid, signo) == -1) {
             err = ngx_errno;
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                          "kill(%P, %d) failed",
-                          ngx_processes[i].pid, signo);
+                          "kill(%P, %d) failed", ngx_processes[i].pid, signo);
 
             if (err == NGX_ESRCH) {
                 ngx_processes[i].exited = 1;
