@@ -1074,11 +1074,7 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
             return;
         }
 
-        if (ngx_http_set_exten(r) != NGX_OK) {
-            e->ip = ngx_http_script_exit;
-            e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            return;
-        }
+        ngx_http_set_exten(r);
     }
 
     e->ip += sizeof(ngx_http_script_regex_end_code_t);

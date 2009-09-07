@@ -1220,10 +1220,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             ngx_memcpy(p, name, path.len);
         }
 
-        if (ngx_http_set_exten(r) != NGX_OK) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return NGX_OK;
-        }
+        ngx_http_set_exten(r);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "try file uri: \"%V\"", &r->uri);
@@ -1633,7 +1630,7 @@ ngx_http_set_content_type(ngx_http_request_t *r)
 }
 
 
-ngx_int_t
+void
 ngx_http_set_exten(ngx_http_request_t *r)
 {
     ngx_int_t  i;
@@ -1647,14 +1644,14 @@ ngx_http_set_exten(ngx_http_request_t *r)
             r->exten.len = r->uri.len - i - 1;
             r->exten.data = &r->uri.data[i + 1];
 
-            break;
+            return;
 
         } else if (r->uri.data[i] == '/') {
-            break;
+            return;
         }
     }
 
-    return NGX_OK;
+    return;
 }
 
 
@@ -2079,9 +2076,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->method_name = ngx_http_core_get_method;
     sr->http_protocol = r->http_protocol;
 
-    if (ngx_http_set_exten(sr) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    ngx_http_set_exten(sr);
 
     sr->main = r->main;
     sr->parent = r;
@@ -2160,10 +2155,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "internal redirect: \"%V?%V\"", uri, &r->args);
 
-    if (ngx_http_set_exten(r) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return NGX_DONE;
-    }
+    ngx_http_set_exten(r);
 
     /* clear the modules contexts */
     ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
@@ -2565,6 +2557,10 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
 
     err.len = NGX_MAX_CONF_ERRSTR;
     err.data = errstr;
+
+#if (NGX_HAVE_CASELESS_FILESYSTEM)
+    caseless = 1;
+#endif
 
     clcf->regex = ngx_regex_compile(regex, caseless ? NGX_REGEX_CASELESS: 0,
                                     cf->pool, &err);
