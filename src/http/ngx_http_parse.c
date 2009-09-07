@@ -1192,7 +1192,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 while (*u != '/') {
                     u--;
                 }
-                if (u < r->uri.data) {
+                if (u == r->uri.data) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 while (*(u - 1) != '/') {
