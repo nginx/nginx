@@ -1134,11 +1134,15 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 #endif
             case '/':
                 state = sw_slash;
-                u -= 4;
-                if (u < r->uri.data) {
-                    return NGX_HTTP_PARSE_INVALID_REQUEST;
-                }
-                while (*(u - 1) != '/') {
+                u -= 5;
+                for ( ;; ) {
+                    if (u < r->uri.data) {
+                        return NGX_HTTP_PARSE_INVALID_REQUEST;
+                    }
+                    if (*u == '/') {
+                        u++;
+                        break;
+                    }
                     u--;
                 }
                 break;
