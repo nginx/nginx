@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.14" date="07.09.2009">
+
+<change type="bugfix">
+<para lang="ru">
+устаревший закэшированный запрос мог залипнуть в состоянии "UPDATING".
+</para>
+<para lang="en">
+an expired cached response might stick in the "UPDATING" state.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании error_log на уровне info или debug
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if error_log was set to info or debug level.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании встроенного перла;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+in embedded perl module;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не перенаправляла ошибку 413;
+ошибка появилась в 0.6.10.
+</para>
+<para lang="en">
+an "error_page" directive did not redirect a 413 error;
+the bug had appeared in 0.6.10.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.13" date="31.08.2009">
 
 <change type="bugfix">
@@ -17,7 +66,7 @@
 ошибка появилась в 0.8.12.
 </para>
 <para lang="en">
-in the "aio sendfile" directive.
+in the "aio sendfile" directive;
 the bug had appeared in 0.8.12.
 </para>
 </change>
