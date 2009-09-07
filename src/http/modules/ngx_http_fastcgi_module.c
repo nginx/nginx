@@ -1072,9 +1072,10 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 {
-    u_char                         *p, *start, *last, *part_start;
+    u_char                         *p, *msg, *start, *last,
+                                   *part_start, *part_end;
     size_t                          size;
-    ngx_str_t                      *status_line, line, *pattern;
+    ngx_str_t                      *status_line, *pattern;
     ngx_int_t                       rc, status;
     ngx_buf_t                       buf;
     ngx_uint_t                      i;
@@ -1158,40 +1159,39 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         if (f->type == NGX_HTTP_FASTCGI_STDERR) {
 
             if (f->length) {
-                line.data = u->buffer.pos;
+                msg = u->buffer.pos;
 
                 if (u->buffer.pos + f->length <= u->buffer.last) {
-                    line.len = f->length;
                     u->buffer.pos += f->length;
                     f->length = 0;
                     f->state = ngx_http_fastcgi_st_padding;
 
                 } else {
-                    line.len = u->buffer.last - u->buffer.pos;
                     f->length -= u->buffer.last - u->buffer.pos;
                     u->buffer.pos = u->buffer.last;
                 }
 
-                while (line.data[line.len - 1] == LF
-                       || line.data[line.len - 1] == CR
-                       || line.data[line.len - 1] == '.'
-                       || line.data[line.len - 1] == ' ')
-                {
-                    line.len--;
+                for (p = u->buffer.pos - 1; msg < p; p--) {
+                    if (*p != LF && *p != CR && *p != '.' && *p != ' ') {
+                        break;
+                    }
                 }
 
+                p++;
+
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "FastCGI sent in stderr: \"%V\"", &line);
+                              "FastCGI sent in stderr: \"%*s\"", p - msg, msg);
 
                 flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
                 if (flcf->catch_stderr) {
                     pattern = flcf->catch_stderr->elts;
 
-                    line.data[line.len - 1] = '\0';
-
                     for (i = 0; i < flcf->catch_stderr->nelts; i++) {
-                        if (ngx_strstr(line.data, pattern[i].data)) {
+                        if (ngx_strnstr(msg, (char *) pattern[i].data,
+                                        p - msg)
+                            != NULL)
+                        {
                             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                         }
                     }
@@ -1244,6 +1244,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         for ( ;; ) {
 
             part_start = u->buffer.pos;
+            part_end = u->buffer.last;
 
             rc = ngx_http_parse_header_line(r, &u->buffer, 1);
 
@@ -1444,7 +1445,11 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         part = ngx_array_push(f->split_parts);
 
         part->start = part_start;
-        part->end = u->buffer.last;
+        part->end = part_end;
+
+        if (u->buffer.pos < u->buffer.last) {
+            continue;
+        }
 
         return NGX_AGAIN;
     }
@@ -1454,9 +1459,9 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 {
+    u_char                  *m, *msg;
     ngx_int_t                rc;
     ngx_buf_t               *b, **prev;
-    ngx_str_t                line;
     ngx_chain_t             *cl;
     ngx_http_request_t      *r;
     ngx_http_fastcgi_ctx_t  *f;
@@ -1540,30 +1545,27 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                     break;
                 }
 
-                line.data = f->pos;
+                msg = f->pos;
 
                 if (f->pos + f->length <= f->last) {
-                    line.len = f->length;
                     f->pos += f->length;
                     f->length = 0;
                     f->state = ngx_http_fastcgi_st_padding;
 
                 } else {
-                    line.len = f->last - f->pos;
                     f->length -= f->last - f->pos;
                     f->pos = f->last;
                 }
 
-                while (line.data[line.len - 1] == LF
-                       || line.data[line.len - 1] == CR
-                       || line.data[line.len - 1] == '.'
-                       || line.data[line.len - 1] == ' ')
-                {
-                    line.len--;
+                for (m = f->pos - 1; msg < m; m--) {
+                    if (*m != LF && *m != CR && *m != '.' && *m != ' ') {
+                        break;
+                    }
                 }
 
                 ngx_log_error(NGX_LOG_ERR, p->log, 0,
-                              "FastCGI sent in stderr: \"%V\"", &line);
+                              "FastCGI sent in stderr: \"%*s\"",
+                              m + 1 - msg, msg);
 
                 if (f->pos == f->last) {
                     break;
