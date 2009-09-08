@@ -238,6 +238,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
                    "perl handler done: %i", rc);
 
     if (rc == NGX_DONE) {
+        ngx_http_finalize_request(r, rc);
         return;
     }
 
@@ -257,11 +258,13 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     ctx->redirect_uri.len = 0;
 
     if (ctx->done || ctx->next) {
+        ngx_http_finalize_request(r, NGX_DONE);
         return;
     }
 
     if (uri.len) {
         ngx_http_internal_redirect(r, &uri, &args);
+        ngx_http_finalize_request(r, NGX_DONE);
         return;
     }
 
