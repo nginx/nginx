@@ -363,6 +363,7 @@ ngx_http_upstream_create(ngx_http_request_t *r)
     u = r->upstream;
 
     if (u && u->cleanup) {
+        r->main->count++;
         ngx_http_upstream_cleanup(r);
         *u->cleanup = NULL;
     }
