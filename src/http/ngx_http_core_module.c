@@ -994,6 +994,7 @@ ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
                       "rewrite or internal redirection cycle "
                       "while processing \"%V\"", &r->uri);
 
+        r->main->count++;
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_OK;
     }
@@ -2172,6 +2173,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
                       "rewrite or internal redirection cycle "
                       "while internal redirect to \"%V\"", uri);
 
+        r->main->count++;
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_DONE;
     }
