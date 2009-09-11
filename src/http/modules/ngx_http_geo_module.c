@@ -906,7 +906,7 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
         /* rc == NGX_BUSY */
 
-        old  = (ngx_http_variable_value_t *)
+        old = (ngx_http_variable_value_t *)
               ngx_radix32tree_find(ctx->tree, cidr.u.in.addr & cidr.u.in.mask);
 
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,

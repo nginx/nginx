@@ -404,7 +404,7 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
         sax->endElementNs = ngx_http_xslt_sax_end_element;
 
         sax->characters = ngx_http_xslt_sax_characters;
-        sax->ignorableWhitespace  = ngx_http_xslt_sax_characters;
+        sax->ignorableWhitespace = ngx_http_xslt_sax_characters;
         sax->cdataBlock = ngx_http_xslt_sax_cdata_block;
         sax->getEntity = ngx_http_xslt_sax_get_entity;
         sax->resolveEntity = ngx_http_xslt_sax_resolve_entity;

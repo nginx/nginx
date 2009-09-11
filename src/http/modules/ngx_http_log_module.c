@@ -676,7 +676,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
 
         /* find the number of the characters to be escaped */
 
-        n  = 0;
+        n = 0;
 
         for (i = 0; i < size; i++) {
             if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
