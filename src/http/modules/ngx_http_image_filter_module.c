@@ -679,7 +679,7 @@ static ngx_buf_t *
 ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
     int                            sx, sy, dx, dy, ox, oy,
-                                   colors, transparent, size;
+                                   colors, transparent, red, green, blue, size;
     u_char                        *out;
     ngx_buf_t                     *b;
     ngx_uint_t                     resize;
@@ -707,6 +707,16 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 
     colors = gdImageColorsTotal(src);
     transparent = gdImageGetTransparent(src);
+
+    if (transparent != -1 && colors) {
+        red = gdImageRed(src, transparent);
+        green = gdImageGreen(src, transparent);
+        blue = gdImageBlue(src, transparent);
+        gdImageColorTransparent(src, -1);
+
+    } else {
+        red = 0; green = 0; blue = 0;
+    }
 
     dx = sx;
     dy = sy;
@@ -806,7 +816,9 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
         }
     }
 
-    gdImageColorTransparent(dst, transparent);
+    if (transparent != -1 && colors) {
+        gdImageColorTransparent(dst, gdImageColorExact(dst, red, green, blue));
+    }
 
     out = ngx_http_image_out(r, ctx->type, dst, &size);
 
