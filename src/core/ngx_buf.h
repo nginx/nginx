@@ -89,6 +89,11 @@ struct ngx_output_chain_ctx_s {
 #endif
     unsigned                     need_in_memory:1;
     unsigned                     need_in_temp:1;
+#if (NGX_HAVE_FILE_AIO)
+    unsigned                     aio:1;
+
+    ngx_output_chain_aio_pt      aio_handler;
+#endif
 
     off_t                        alignment;
 
@@ -99,10 +104,6 @@ struct ngx_output_chain_ctx_s {
 
     ngx_output_chain_filter_pt   output_filter;
     void                        *filter_ctx;
-
-#if (NGX_HAVE_FILE_AIO)
-    ngx_output_chain_aio_pt      aio;
-#endif
 };
 
 

@@ -87,10 +87,6 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     c = r->connection;
 
-    if (r->aio) {
-        return NGX_AGAIN;
-    }
-
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http copy filter: \"%V?%V\"", &r->uri, &r->args);
 
@@ -123,7 +119,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if (NGX_HAVE_FILE_AIO)
         if (clcf->aio) {
-            ctx->aio = ngx_http_copy_aio_handler;
+            ctx->aio_handler = ngx_http_copy_aio_handler;
 #if (NGX_HAVE_AIO_SENDFILE)
             c->aio_sendfile = (clcf->aio == NGX_HTTP_AIO_SENDFILE);
 #endif
@@ -132,6 +128,10 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         r->request_output = 1;
     }
+
+#if (NGX_HAVE_FILE_AIO)
+    ctx->aio = r->aio;
+#endif
 
     for ( ;; ) {
         rc = ngx_output_chain(ctx, in);

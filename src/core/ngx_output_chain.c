@@ -74,6 +74,12 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
         }
     }
 
+#if (NGX_HAVE_FILE_AIO)
+    if (ctx->aio) {
+        return NGX_AGAIN;
+    }
+#endif
+
     out = NULL;
     last_out = &out;
     last = NGX_NONE;
@@ -519,11 +525,11 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 
 #if (NGX_HAVE_FILE_AIO)
 
-        if (ctx->aio) {
+        if (ctx->aio_handler) {
             n = ngx_file_aio_read(src->file, dst->pos, (size_t) size,
                                   src->file_pos, ctx->pool);
             if (n == NGX_AGAIN) {
-                ctx->aio(ctx, src->file);
+                ctx->aio_handler(ctx, src->file);
                 return NGX_AGAIN;
             }
 
