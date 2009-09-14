@@ -9,6 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.6.39" date="14.09.2009">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Chris Ries.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+while specially crafted request handling.<br/>
+Thanks to Chris Ries.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании error_log на уровне info или debug
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if error_log was set to info or debug level.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.6.38" date="22.06.2009">
 
 <change type="feature">
@@ -3338,7 +3369,7 @@ the bug had appeared in 0.5.8.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if the temporarily files were used while working with FastCGI server;
+if the temporary files were used while working with FastCGI server;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -6227,7 +6258,7 @@ the bug had appeared in 0.3.18.
 </para>
 <para lang="en">
 if the HTTPS protocol was used in the "proxy_pass" directive and
-the request body was in temporarily file then the request was not transferred.
+the request body was in temporary file then the request was not transferred.
 </para>
 </change>
 
