@@ -9,6 +9,124 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.62" date="14.09.2009">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Chris Ries.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+while specially crafted request handling.<br/>
+Thanks to Chris Ries.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_cache_status.
+</para>
+<para lang="en">
+the $upstream_cache_status variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+устаревший закэшированный запрос мог залипнуть в состоянии "UPDATING".
+</para>
+<para lang="en">
+an expired cached response might stick in the "UPDATING" state.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании error_log на уровне info или debug
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if error_log was set to info or debug level.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке заголовков ответа, разделённых в FastCGI-записях.
+</para>
+<para lang="en">
+in handling FastCGI headers split in records.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+XSLT-фильтр мог выдавать ошибку "not well formed XML document" для
+правильного документа.<br/>
+Спасибо Kuramoto Eiji.
+</para>
+<para lang="en">
+XSLT filter may fail with message "not well formed XML document"
+for valid XML document.<br/>
+Thanks to Kuramoto Eiji.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в MacOSX, Cygwin и nginx/Windows при проверке location'ов, заданных
+регулярным выражением, теперь всегда делается сравнение без учёта
+регистра символов.
+</para>
+<para lang="en">
+now in MacOSX, Cygwin, and nginx/Windows locations given by a regular
+expression are always tested in case insensitive mode.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx/Windows игнорирует точки в конце URI.<br/>
+Спасибо Hugo Leisink.
+</para>
+<para lang="en">
+now nginx/Windows ignores trailing dots in URI.<br/>
+Thanks to Hugo Leisink.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+имя файла указанного в --conf-path игнорировалось при установке;
+ошибка появилась в 0.6.6.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+name of file specified in --conf-path was not honored during installation;
+the bug had appeared in 0.6.6.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP Basic-аутентификации на Windows
+для неверных имени/пароля возвращалась 500-ая ошибка.
+</para>
+<para lang="en">
+a 500 error code was returned for invalid login/password while HTTP
+Basic authentication on Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.61" date="22.06.2009">
 
 <change type="bugfix">
@@ -17,7 +135,6 @@ nginx не собирался на MacOSX 10.6.
 </para>
 <para lang="en">
 nginx could not be built on MacOSX 10.6.
-the bug had appeared in 0.8.2.
 </para>
 </change>
 
@@ -34,7 +151,7 @@ the bug had appeared in 0.7.60.
 
 <change type="bugfix">
 <para lang="ru">
-если было использовался перехват 401 ошибки от бэкенда и бэкенд
+если использовался перехват 401 ошибки от бэкенда и бэкенд
 не возвращал строку "WWW-Authenticate" в заголовке ответа,
 то в рабочем процессе происходил segmentation fault.<br/>
 Спасибо Евгению Мычло.
@@ -82,10 +199,12 @@ in open_file_cache and proxy/fastcgi cache interaction on start up.
 
 <change type="bugfix">
 <para lang="ru">
-open_file_cache мог кэшировать открытые файлы очень долго.
+open_file_cache мог кэшировать открытые файлы очень долго;
+ошибка появилась в 0.7.4.
 </para>
 <para lang="en">
-open_file_cache might cache open file descriptors too long.
+open_file_cache might cache open file descriptors too long;
+the bug had appeared in 0.7.4.
 </para>
 </change>
 
@@ -5968,7 +6087,7 @@ the bug had appeared in 0.5.8.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if the temporarily files were used while working with FastCGI server;
+if the temporary files were used while working with FastCGI server;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -8857,7 +8976,7 @@ the bug had appeared in 0.3.18.
 </para>
 <para lang="en">
 if the HTTPS protocol was used in the "proxy_pass" directive and
-the request body was in temporarily file then the request was not transferred.
+the request body was in temporary file then the request was not transferred.
 </para>
 </change>
 
