@@ -9,6 +9,37 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.5.38" date="14.09.2009">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Chris Ries.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+while specially crafted request handling.<br/>
+Thanks to Chris Ries.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании error_log на уровне info или debug
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Сергею Боченкову.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process,
+if error_log was set to info or debug level.<br/>
+Thanks to Sergey Bochenkov.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.5.37" date="07.07.2008">
 
 <change type="bugfix">
@@ -1748,7 +1779,7 @@ the bug had appeared in 0.5.8.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if the temporarily files were used while working with FastCGI server;
+if the temporary files were used while working with FastCGI server;
 the bug had appeared in 0.5.8.
 </para>
 </change>
@@ -3506,11 +3537,11 @@ then the proxied request was sent unescaped.
 
 <change type="bugfix">
 <para lang="ru">
-метод $r->headers_in("Cookie") модуля ngx_http_perl_module теперь возвращает
+метод $r->header_in("Cookie") модуля ngx_http_perl_module теперь возвращает
 все строки "Cookie" в заголовке запроса.
 </para>
 <para lang="en">
-the $r->headers_in("Cookie") of the ngx_http_perl_module now returns
+the $r->header_in("Cookie") of the ngx_http_perl_module now returns
 all "Cookie" header lines.
 </para>
 </change>
@@ -4637,7 +4668,7 @@ the bug had appeared in 0.3.18.
 </para>
 <para lang="en">
 if the HTTPS protocol was used in the "proxy_pass" directive and
-the request body was in temporarily file then the request was not transferred.
+the request body was in temporary file then the request was not transferred.
 </para>
 </change>
 
@@ -8380,8 +8411,8 @@ the proxy_set_x_var and fastcgi_set_var directives were not inherited.
 к URI через символ "&amp;" вместо "?".
 </para>
 <para lang="en">
-in the redirect rewrite directive the arguments were concatenated with URI
-by the "&amp;" rather than the "?".
+in a redirect rewrite directive arguments were concatenated with URI
+by an "&amp;" rather than a "?".
 </para>
 </change>
 
