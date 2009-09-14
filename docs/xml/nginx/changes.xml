@@ -9,6 +9,75 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.15" date="14.09.2009">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Chris Ries.
+</para>
+<para lang="en">
+a segmentation fault might occur in worker process
+while specially crafted request handling.<br/>
+Thanks to Chris Ries.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если были описаны имена .domain.tld, .sub.domain.tld и .domain-some.tld,
+то имя .sub.domain.tld попадало под маску .domain.tld.
+</para>
+<para lang="en">
+if names .domain.tld, .sub.domain.tld, and .domain-some.tld were defined,
+then the name .sub.domain.tld was matched by .domain.tld.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке прозрачности в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+in transparency support in the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в файловом AIO.
+</para>
+<para lang="en">
+in file AIO.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании X-Accel-Redirect;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+in X-Accel-Redirect usage;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании встроенного перла;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+in embedded perl module;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.14" date="07.09.2009">
 
 <change type="bugfix">
