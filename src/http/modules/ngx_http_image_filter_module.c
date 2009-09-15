@@ -768,6 +768,11 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             return NULL;
         }
 
+        if (colors == 0) {
+            gdImageSaveAlpha(dst, 1);
+            gdImageAlphaBlending(dst, 0);
+        }
+
         gdImageCopyResampled(dst, src, 0, 0, 0, 0, dx, dy, sx, sy);
 
         gdImageDestroy(src);
@@ -809,6 +814,11 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "image crop: %d x %d @ %d x %d",
                            dx, dy, ox, oy);
+
+            if (colors == 0) {
+                gdImageSaveAlpha(dst, 1);
+                gdImageAlphaBlending(dst, 0);
+            }
 
             gdImageCopy(dst, src, 0, 0, ox, oy, dx - ox, dy - oy);
 
