@@ -40,6 +40,8 @@ typedef struct {
     ngx_uint_t                   height;
     ngx_int_t                    jpeg_quality;
 
+    ngx_flag_t                   transparency;
+
     ngx_http_complex_value_t    *wcv;
     ngx_http_complex_value_t    *hcv;
 
@@ -113,6 +115,13 @@ static ngx_command_t  ngx_http_image_filter_commands[] = {
       ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_image_filter_conf_t, jpeg_quality),
+      NULL },
+
+    { ngx_string("image_filter_transparency"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_image_filter_conf_t, transparency),
       NULL },
 
     { ngx_string("image_filter_buffer"),
@@ -678,8 +687,9 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 static ngx_buf_t *
 ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
-    int                            sx, sy, dx, dy, ox, oy,
-                                   colors, transparent, red, green, blue, size;
+    int                            sx, sy, dx, dy, ox, oy, size,
+                                   colors, palette, transparent,
+                                   red, green, blue;
     u_char                        *out;
     ngx_buf_t                     *b;
     ngx_uint_t                     resize;
@@ -706,17 +716,29 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     }
 
     colors = gdImageColorsTotal(src);
-    transparent = gdImageGetTransparent(src);
 
-    if (transparent != -1 && colors) {
-        red = gdImageRed(src, transparent);
-        green = gdImageGreen(src, transparent);
-        blue = gdImageBlue(src, transparent);
-        gdImageColorTransparent(src, -1);
+    if (colors && conf->transparency) {
+        transparent = gdImageGetTransparent(src);
 
-    } else {
-        red = 0; green = 0; blue = 0;
+        if (transparent != -1) {
+            palette = colors;
+            red = gdImageRed(src, transparent);
+            green = gdImageGreen(src, transparent);
+            blue = gdImageBlue(src, transparent);
+
+            goto transparent;
+        }
     }
+
+    palette = 0;
+    transparent = -1;
+    red = 0;
+    green = 0;
+    blue = 0;
+
+transparent:
+
+    gdImageColorTransparent(src, -1);
 
     dx = sx;
     dy = sy;
@@ -762,7 +784,7 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     }
 
     if (resize) {
-        dst = ngx_http_image_new(r, dx, dy, colors);
+        dst = ngx_http_image_new(r, dx, dy, palette);
         if (dst == NULL) {
             gdImageDestroy(src);
             return NULL;
@@ -774,6 +796,10 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
         }
 
         gdImageCopyResampled(dst, src, 0, 0, 0, 0, dx, dy, sx, sy);
+
+        if (colors) {
+            gdImageTrueColorToPalette(dst, 1, 256);
+        }
 
         gdImageDestroy(src);
 
@@ -821,6 +847,10 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             }
 
             gdImageCopy(dst, src, 0, 0, ox, oy, dx - ox, dy - oy);
+
+            if (colors) {
+                gdImageTrueColorToPalette(dst, 1, 256);
+            }
 
             gdImageDestroy(src);
         }
@@ -1031,6 +1061,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
 
     conf->filter = NGX_CONF_UNSET_UINT;
     conf->jpeg_quality = NGX_CONF_UNSET;
+    conf->transparency = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
 
     return conf;
@@ -1059,6 +1090,8 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     /* 75 is libjpeg default quality */
     ngx_conf_merge_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+
+    ngx_conf_merge_value(conf->transparency, prev->transparency, 1);
 
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               1 * 1024 * 1024);
