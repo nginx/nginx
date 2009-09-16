@@ -1149,6 +1149,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         goto failed;
     }
 
+    ngx_resolver_free(r, name.data);
+
     if (code == 0 && nan == 0) {
         code = 3; /* NXDOMAIN */
     }
@@ -1399,6 +1401,8 @@ invalid:
 failed:
 
     /* unlock name mutex */
+
+    ngx_resolver_free(r, name.data);
 
     return;
 }
