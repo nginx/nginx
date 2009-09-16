@@ -18,9 +18,10 @@ static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
 ngx_fd_t
 ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 {
-    u_short   *u;
-    ngx_fd_t   fd;
-    u_short    utf16[NGX_UTF16_BUFLEN];
+    u_short    *u;
+    ngx_fd_t    fd;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
 
     u = ngx_utf8_to_utf16(utf16, name, NGX_UTF16_BUFLEN);
 
@@ -33,7 +34,9 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
                      NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
     if (u != utf16) {
+        err = ngx_errno;
         ngx_free(u);
+        ngx_set_errno(err);
     }
 
     return fd;
