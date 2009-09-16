@@ -319,12 +319,24 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 ngx_int_t
 ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
-    WIN32_FILE_ATTRIBUTE_DATA  fa;
+    long                        rc;
+    u_short                    *u;
+    ngx_err_t                   err;
+    WIN32_FILE_ATTRIBUTE_DATA   fa;
+    u_short                     utf16[NGX_UTF16_BUFLEN];
 
-    /* NT4 and Win98 */
+    u = ngx_utf8_to_utf16(utf16, file, NGX_UTF16_BUFLEN);
 
-    if (GetFileAttributesEx((char *) file, GetFileExInfoStandard, &fa) == 0) {
+    if (u == NULL) {
         return NGX_FILE_ERROR;
+    }
+
+    rc = GetFileAttributesExW(u, GetFileExInfoStandard, &fa);
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
     }
 
     sb->dwFileAttributes = fa.dwFileAttributes;
@@ -334,7 +346,7 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
     sb->nFileSizeHigh = fa.nFileSizeHigh;
     sb->nFileSizeLow = fa.nFileSizeLow;
 
-    return ~NGX_FILE_ERROR;
+    return rc;
 }
 
 
