@@ -255,11 +255,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
 
     if (ngx_conf_param(&conf) != NGX_CONF_OK) {
+        environ = senv;
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
 
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
+        environ = senv;
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
@@ -280,6 +282,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
                 == NGX_CONF_ERROR)
             {
+                environ = senv;
                 ngx_destroy_cycle_pools(&conf);
                 return NULL;
             }
