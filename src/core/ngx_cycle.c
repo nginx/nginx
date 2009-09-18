@@ -698,8 +698,8 @@ old_shm_zone_done:
     if (ngx_process == NGX_PROCESS_MASTER || ngx_is_init_cycle(old_cycle)) {
 
         /*
-         * perl_destruct() frees environ if it is not the same as it was at
-         * perl_construct() time.  So we have saved an previous cycle
+         * perl_destruct() frees environ, if it is not the same as it was at
+         * perl_construct() time, therefore we save the previous cycle
          * environment before ngx_conf_parse() where it will be changed.
          */
 
