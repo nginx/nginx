@@ -406,9 +406,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                                                ngx_http_ssl_servername)
         == 0)
     {
-        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                      "SSL_CTX_set_tlsext_servername_callback() failed");
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+            "nginx was build with SNI support, however, now it is linked "
+            "dynamically to an OpenSSL library which has no tlsext support, "
+            "therefore SNI is not available");
     }
 
 #endif
