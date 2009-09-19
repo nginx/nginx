@@ -1599,7 +1599,6 @@ static ngx_resolver_node_t *
 ngx_resolver_lookup_name(ngx_resolver_t *r, ngx_str_t *name, uint32_t hash)
 {
     ngx_int_t             rc;
-    size_t                len;
     ngx_rbtree_node_t    *node, *sentinel;
     ngx_resolver_node_t  *rn;
 
@@ -1623,9 +1622,7 @@ ngx_resolver_lookup_name(ngx_resolver_t *r, ngx_str_t *name, uint32_t hash)
         do {
             rn = (ngx_resolver_node_t *) node;
 
-            len = (name->len > (size_t) rn->nlen) ? rn->nlen : name->len;
-
-            rc = ngx_strncmp(name->data, rn->name, len);
+            rc = ngx_memn2cmp(name->data, rn->name, name->len, rn->nlen);
 
             if (rc == 0) {
                 return rn;
@@ -1679,7 +1676,6 @@ static void
 ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    size_t                 len;
     ngx_rbtree_node_t    **p;
     ngx_resolver_node_t   *rn, *rn_temp;
 
@@ -1698,10 +1694,8 @@ ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
             rn = (ngx_resolver_node_t *) node;
             rn_temp = (ngx_resolver_node_t *) temp;
 
-            len = (rn->nlen > rn_temp->nlen) ? rn_temp->nlen : rn->nlen;
-
-            p = (ngx_strncmp(rn->name, rn_temp->name, len) < 0)
-                    ? &temp->left : &temp->right;
+            p = (ngx_memn2cmp(rn->name, rn_temp->name, rn->nlen, rn_temp->nlen)
+                 < 0) ? &temp->left : &temp->right;
         }
 
         if (*p == sentinel) {
