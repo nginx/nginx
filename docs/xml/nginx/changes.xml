@@ -9,6 +9,104 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.16" date="22.09.2009">
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_transparency.
+</para>
+<para lang="en">
+the "image_filter_transparency" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "addition_types" была неверно названа "addtion_types".
+</para>
+<para lang="en">
+"addition_types" directive was incorrectly named "addtion_types".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+порчи кэша resolver'а.<br/>
+Спасибо Matthew Dempsky.
+</para>
+<para lang="en">
+resolver cache poisoning.<br/>
+Thanks to Matthew Dempsky.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в resolver'е.<br/>
+Спасибо Matthew Dempsky.
+</para>
+<para lang="en">
+memory leak in resolver.<br/>
+Thanks to Matthew Dempsky.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неверная строка запроса в переменной $request записывалась в access_log
+только при использовании error_log на уровне info или debug.
+</para>
+<para lang="en">
+invalid request line in $request variable was written in access_log
+only if error_log was set to "info" or "debug" level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке альфа-канала PNG в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+in PNG alpha-channel support in the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx всегда добавлял строку "Vary: Accept-Encoding" в заголовок ответа,
+если обе директивы gzip_static и gzip_vary были включены.
+</para>
+<para lang="en">
+nginx always added "Vary: Accept-Encoding" response header line,
+if both "gzip_static" and "gzip_vary" were on.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке кодировки UTF-8 директивой try_files в nginx/Windows.
+</para>
+<para lang="en">
+in UTF-8 encoding support by "try_files" directive in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании post_action;
+ошибка появилась в 0.8.11.<br/>
+Спасибо Игорю Артемьеву.
+</para>
+<para lang="en">
+in "post_action" directive usage;
+the bug had appeared in 0.8.11.<br/>
+Thanks to Igor Artemiev.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.15" date="14.09.2009">
 
 <change type="security">
