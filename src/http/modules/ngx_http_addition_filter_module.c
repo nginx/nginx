@@ -45,7 +45,7 @@ static ngx_command_t  ngx_http_addition_commands[] = {
       offsetof(ngx_http_addition_conf_t, after_body),
       NULL },
 
-    { ngx_string("addtion_types"),
+    { ngx_string("addition_types"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_types_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
