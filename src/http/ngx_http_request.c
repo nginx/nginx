@@ -1616,7 +1616,7 @@ static ssize_t
 ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
     ngx_uint_t alloc)
 {
-    u_char      *p, *h, ch;
+    u_char      *h, ch;
     size_t       i, last;
     ngx_uint_t   dot;
 
@@ -1657,16 +1657,12 @@ ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
     }
 
     if (alloc) {
-        p = ngx_pnalloc(r->pool, last) ;
-        if (p == NULL) {
+        *host = ngx_pnalloc(r->pool, last) ;
+        if (*host == NULL) {
             return -1;
         }
 
-        *host = p;
-
-        for (i = 0; i < last; i++) {
-            *p++ = ngx_tolower(h[i]);
-        }
+        ngx_strlow(*host, h, last);
     }
 
     return last;
