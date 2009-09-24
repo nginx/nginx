@@ -96,6 +96,13 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
         return NGX_ERROR;
     }
 
+    if (n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
+                      "WriteFile() \"%s\" has written only %ul of %uz",
+                      file->name.data, n, size);
+        return NGX_ERROR;
+    }
+
     file->offset += n;
 
     return n;
