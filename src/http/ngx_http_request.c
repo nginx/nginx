@@ -31,7 +31,8 @@ static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 static void ngx_http_process_request(ngx_http_request_t *r);
-static ssize_t ngx_http_validate_host(u_char *host, size_t len);
+static ssize_t ngx_http_validate_host(ngx_http_request_t *r, u_char **host,
+    size_t len, ngx_uint_t alloc);
 static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r,
     u_char *host, size_t len);
 
@@ -627,6 +628,7 @@ int
 ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
     size_t                    len;
+    u_char                   *host;
     const char               *servername;
     ngx_connection_t         *c;
     ngx_http_request_t       *r;
@@ -651,7 +653,15 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     r = c->data;
 
-    if (ngx_http_find_virtual_server(r, (u_char *) servername, len) != NGX_OK) {
+    host = (u_char *) servername;
+
+    len = ngx_http_validate_host(r, &host, len, 1);
+
+    if (len <= 0) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    if (ngx_http_find_virtual_server(r, host, len) != NGX_OK) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
@@ -670,6 +680,7 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
+    u_char                    *host;
     ssize_t                    n;
     ngx_int_t                  rc, rv;
     ngx_connection_t          *c;
@@ -801,18 +812,25 @@ ngx_http_process_request_line(ngx_event_t *rev)
                            "http exten: \"%V\"", &r->exten);
 
             if (r->host_start && r->host_end) {
-                n = ngx_http_validate_host(r->host_start,
-                                           r->host_end - r->host_start);
 
-                if (n <= 0) {
+                host = r->host_start;
+                n = ngx_http_validate_host(r, &host,
+                                           r->host_end - r->host_start, 0);
+
+                if (n == 0) {
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent invalid host in request line");
                     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                     return;
                 }
 
+                if (n < 0) {
+                    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+
                 r->headers_in.server.len = n;
-                r->headers_in.server.data = r->host_start;
+                r->headers_in.server.data = host;
             }
 
             if (r->http_version < NGX_HTTP_VERSION_10) {
@@ -1312,18 +1330,25 @@ static ngx_int_t
 ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ssize_t  len;
+    u_char   *host;
+    ssize_t   len;
 
     if (r->headers_in.host == NULL) {
         r->headers_in.host = h;
     }
 
-    len = ngx_http_validate_host(h->value.data, h->value.len);
+    host = h->value.data;
+    len = ngx_http_validate_host(r, &host, h->value.len, 0);
 
-    if (len <= 0) {
+    if (len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent invalid host header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    if (len < 0) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
@@ -1332,7 +1357,7 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->headers_in.server.len = len;
-    r->headers_in.server.data = h->value.data;
+    r->headers_in.server.data = host;
 
     return NGX_OK;
 }
@@ -1588,21 +1613,23 @@ ngx_http_process_request(ngx_http_request_t *r)
 
 
 static ssize_t
-ngx_http_validate_host(u_char *host, size_t len)
+ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
+    ngx_uint_t alloc)
 {
-    u_char      ch;
-    size_t      i, last;
-    ngx_uint_t  dot;
+    u_char      *p, *h, ch;
+    size_t       i, last;
+    ngx_uint_t   dot;
 
     last = len;
+    h = *host;
     dot = 0;
 
     for (i = 0; i < len; i++) {
-        ch = host[i];
+        ch = h[i];
 
         if (ch == '.') {
             if (dot) {
-                return -1;
+                return 0;
             }
 
             dot = 1;
@@ -1617,12 +1644,29 @@ ngx_http_validate_host(u_char *host, size_t len)
         }
 
         if (ngx_path_separator(ch) || ch == '\0') {
-            return -1;
+            return 0;
+        }
+
+        if (ch >= 'A' || ch < 'Z') {
+            alloc = 1;
         }
     }
 
     if (dot) {
         last--;
+    }
+
+    if (alloc) {
+        p = ngx_pnalloc(r->pool, last) ;
+        if (p == NULL) {
+            return -1;
+        }
+
+        *host = p;
+
+        for (i = 0; i < last; i++) {
+            *p++ = ngx_tolower(h[i]);
+        }
     }
 
     return last;
@@ -1632,29 +1676,15 @@ ngx_http_validate_host(u_char *host, size_t len)
 static ngx_int_t
 ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 {
-    u_char                    *server;
-    ngx_uint_t                 hash;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
-    u_char                     buf[32];
 
     if (r->virtual_names == NULL) {
         return NGX_DECLINED;
     }
 
-    if (len <= 32) {
-        server = buf;
-
-    } else {
-        server = ngx_pnalloc(r->pool, len);
-        if (server == NULL) {
-            return NGX_ERROR;
-        }
-    }
-
-    hash = ngx_hash_strlow(server, host, len);
-
-    cscf = ngx_hash_find_combined(&r->virtual_names->names, hash, server, len);
+    cscf = ngx_hash_find_combined(&r->virtual_names->names,
+                                  ngx_hash_key(host, len), host, len);
 
     if (cscf) {
         goto found;
@@ -1670,7 +1700,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         ngx_http_server_name_t  *sn;
 
         name.len = len;
-        name.data = server;
+        name.data = host;
 
         ncaptures = 0;
 
@@ -1685,16 +1715,6 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
                 r->captures = ngx_palloc(r->pool, ncaptures * sizeof(int));
                 if (r->captures == NULL) {
                     return NGX_ERROR;
-                }
-
-                if (server == buf) {
-                    server = ngx_pnalloc(r->pool, len);
-                    if (server == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    ngx_memcpy(server, buf, len);
-                    name.data = server;
                 }
             }
 
@@ -1717,7 +1737,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
             cscf = sn[i].core_srv_conf;
 
             r->ncaptures = ncaptures;
-            r->captures_data = server;
+            r->captures_data = host;
 
             goto found;
         }
