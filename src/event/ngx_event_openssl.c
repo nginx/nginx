@@ -1588,7 +1588,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     hash = ngx_crc32_short(sess->session_id, sess->session_id_length);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "http ssl new session: %08XD:%d:%d",
+                   "ssl new session: %08XD:%d:%d",
                    hash, sess->session_id_length, len);
 
     sess_id->node.key = hash;
@@ -1651,7 +1651,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     *copy = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "http ssl get session: %08XD:%d", hash, len);
+                   "ssl get session: %08XD:%d", hash, len);
 
     shm_zone = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl_conn),
                                    ngx_ssl_session_cache_index);
@@ -1765,7 +1765,7 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
     hash = ngx_crc32_short(id, len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                   "http ssl remove session: %08XD:%uz", hash, len);
+                   "ssl remove session: %08XD:%uz", hash, len);
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
