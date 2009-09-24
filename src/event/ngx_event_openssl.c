@@ -1947,7 +1947,7 @@ ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     s->len = 2 * len;
     s->data = ngx_pnalloc(pool, 2 * len);
     if (s->data == NULL) {
-        ngx_free(p);
+        ngx_free(buf);
         return NGX_ERROR;
     }
 
