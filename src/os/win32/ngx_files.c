@@ -46,56 +46,17 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    long        high_offset;
     u_long      n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
-    if (ngx_win32_version < NGX_WIN_NT) {
+    ovlp.Internal = 0;
+    ovlp.InternalHigh = 0;
+    ovlp.Offset = (u_long) offset;
+    ovlp.OffsetHigh = (u_long) (offset >> 32);
+    ovlp.hEvent = NULL;
 
-        /*
-         * under Win9X the overlapped pointer must be NULL
-         * so we have to use SetFilePointer() to set the offset
-         */
-
-        if (file->offset != offset) {
-
-            /*
-             * the maximum file size on the FAT16 is 2G, but on the FAT32
-             * the size is 4G so we have to use the high_offset
-             * because a single offset is signed value
-             */
-
-            high_offset = (long) (offset >> 32);
-
-            if (SetFilePointer(file->fd, (long) offset, &high_offset,
-                               FILE_BEGIN) == INVALID_SET_FILE_POINTER)
-            {
-                /*
-                 * INVALID_SET_FILE_POINTER is 0xffffffff and it can be valid
-                 * value for large file so we need also to check GetLastError()
-                 */
-
-                err = ngx_errno;
-                if (err != NO_ERROR) {
-                    ngx_log_error(NGX_LOG_ERR, file->log, err,
-                                  "SeekFilePointer() failed");
-                    return NGX_ERROR;
-                }
-            }
-        }
-
-        povlp = NULL;
-
-    } else {
-        ovlp.Internal = 0;
-        ovlp.InternalHigh = 0;
-        ovlp.Offset = (u_long) offset;
-        ovlp.OffsetHigh = (u_long) (offset >> 32);
-        ovlp.hEvent = NULL;
-
-        povlp = &ovlp;
-    }
+    povlp = &ovlp;
 
     if (ReadFile(file->fd, buf, size, &n, povlp) == 0) {
         err = ngx_errno;
@@ -117,55 +78,16 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 ssize_t
 ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    long        high_offset;
     u_long      n;
-    ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
-    if (ngx_win32_version < NGX_WIN_NT) {
+    ovlp.Internal = 0;
+    ovlp.InternalHigh = 0;
+    ovlp.Offset = (u_long) offset;
+    ovlp.OffsetHigh = (u_long) (offset >> 32);
+    ovlp.hEvent = NULL;
 
-        /*
-         * under Win9X the overlapped pointer must be NULL
-         * so we have to use SetFilePointer() to set the offset
-         */
-
-        if (file->offset != offset) {
-
-            /*
-             * the maximum file size on the FAT16 is 2G, but on the FAT32
-             * the size is 4G so we have to use high_offset
-             * because a single offset is signed value
-             */
-
-            high_offset = (long) (offset >> 32);
-            if (SetFilePointer(file->fd, (long) offset, &high_offset,
-                               FILE_BEGIN) == INVALID_SET_FILE_POINTER)
-            {
-                /*
-                 * INVALID_SET_FILE_POINTER is 0xffffffff and it can be valid
-                 * value for large file so we need also to check GetLastError()
-                 */
-
-                err = ngx_errno;
-                if (err != NO_ERROR) {
-                    ngx_log_error(NGX_LOG_ERR, file->log, err,
-                                  "SeekFilePointer() failed");
-                    return NGX_ERROR;
-                }
-            }
-        }
-
-        povlp = NULL;
-
-    } else {
-        ovlp.Internal = 0;
-        ovlp.InternalHigh = 0;
-        ovlp.Offset = (u_long) offset;
-        ovlp.OffsetHigh = (u_long) (offset >> 32);
-        ovlp.hEvent = NULL;
-
-        povlp = &ovlp;
-    }
+    povlp = &ovlp;
 
     if (WriteFile(file->fd, buf, size, &n, povlp) == 0) {
         ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "WriteFile() failed");
