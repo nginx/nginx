@@ -22,7 +22,7 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                      "pread() failed, file \"%s\"", file->name.data);
+                      "pread() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
@@ -30,7 +30,8 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "lseek() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
@@ -40,7 +41,8 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     n = read(file->fd, buf, size);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "read() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "read() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
@@ -67,13 +69,15 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     n = pwrite(file->fd, buf, size, offset);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pwrite() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "pwrite() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
     if ((size_t) n != size) {
         ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                      "pwrite() has written only %z of %uz", n, size);
+                      "pwrite() \"%s\" has written only %z of %uz",
+                      file->name.data, n, size);
         return NGX_ERROR;
     }
 
@@ -81,7 +85,8 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "lseek() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
@@ -91,13 +96,15 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     n = write(file->fd, buf, size);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "write() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "write() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
     if ((size_t) n != size) {
         ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                      "write() has written only %z of %uz", n, size);
+                      "write() \"%s\" has written only %z of %uz",
+                      file->name.data, n, size);
         return NGX_ERROR;
     }
 
@@ -191,7 +198,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
         if (file->sys_offset != offset) {
             if (lseek(file->fd, offset, SEEK_SET) == -1) {
                 ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                              "lseek() failed");
+                              "lseek() \"%s\" failed", file->name.data);
                 return NGX_ERROR;
             }
 
@@ -202,13 +209,14 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
         if (n == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                          "writev() failed");
+                          "writev() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
         if ((size_t) n != size) {
             ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                          "writev() has written only %z of %uz", n, size);
+                          "writev() \"%s\" has written only %z of %uz",
+                          file->name.data, n, size);
             return NGX_ERROR;
         }
 
