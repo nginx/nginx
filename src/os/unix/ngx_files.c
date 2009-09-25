@@ -406,7 +406,7 @@ ngx_directio_on(ngx_fd_t fd)
     flags = fcntl(fd, F_GETFL);
 
     if (flags == -1) {
-        return -1;
+        return NGX_FILE_ERROR;
     }
 
     return fcntl(fd, F_SETFL, flags | O_DIRECT);
@@ -421,7 +421,7 @@ ngx_directio_off(ngx_fd_t fd)
     flags = fcntl(fd, F_GETFL);
 
     if (flags == -1) {
-        return -1;
+        return NGX_FILE_ERROR;
     }
 
     return fcntl(fd, F_SETFL, flags & ~O_DIRECT);

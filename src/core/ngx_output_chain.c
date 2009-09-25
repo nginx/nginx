@@ -514,7 +514,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 #if (NGX_HAVE_ALIGNED_DIRECTIO)
 
         if (ctx->unaligned) {
-            if (ngx_directio_off(src->file->fd) == -1) {
+            if (ngx_directio_off(src->file->fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, ngx_errno,
                               ngx_directio_off_n " \"%s\" failed",
                               src->file->name.data);
@@ -550,7 +550,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 
             err = ngx_errno;
 
-            if (ngx_directio_on(src->file->fd) == -1) {
+            if (ngx_directio_on(src->file->fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, ngx_errno,
                               ngx_directio_on_n " \"%s\" failed",
                               src->file->name.data);

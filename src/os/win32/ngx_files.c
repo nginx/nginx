@@ -479,14 +479,14 @@ ngx_de_link_info(u_char *name, ngx_dir_t *dir)
 ngx_int_t
 ngx_directio_on(ngx_fd_t fd)
 {
-    return 0;
+    return ~NGX_FILE_ERROR;
 }
 
 
 ngx_int_t
 ngx_directio_off(ngx_fd_t fd)
 {
-    return 0;
+    return ~NGX_FILE_ERROR;
 }
 
 

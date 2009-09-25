@@ -525,7 +525,7 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
         of->fd = fd;
 
         if (of->directio <= ngx_file_size(&fi)) {
-            if (ngx_directio_on(fd) == -1) {
+            if (ngx_directio_on(fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                               ngx_directio_on_n " \"%s\" failed", name);
 
