@@ -222,7 +222,10 @@ ngx_http_index_handler(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            if (of.err == NGX_ENOTDIR || of.err == NGX_EACCES) {
+            if (of.err == NGX_ENOTDIR
+                || of.err == NGX_ENAMETOOLONG
+                || of.err == NGX_EACCES)
+            {
                 return ngx_http_index_error(r, clcf, path.data, of.err);
             }
 
