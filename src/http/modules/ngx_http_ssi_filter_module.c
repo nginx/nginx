@@ -1908,7 +1908,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     args.len = 0;
     args.data = NULL;
-    flags = 0;
+    flags = NGX_HTTP_LOG_UNSAFE;
 
     if (ngx_http_parse_unsafe_uri(r, uri, &args, &flags) != NGX_OK) {
         return NGX_HTTP_SSI_ERROR;

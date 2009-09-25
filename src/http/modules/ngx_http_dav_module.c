@@ -516,8 +516,8 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
     size_t                    len, root;
     ngx_err_t                 err;
     ngx_int_t                 rc, depth;
-    ngx_uint_t                overwrite, slash, dir;
-    ngx_str_t                 path, uri;
+    ngx_uint_t                overwrite, slash, dir, flags;
+    ngx_str_t                 path, uri, duri, args;
     ngx_tree_ctx_t            tree;
     ngx_copy_file_t           cf;
     ngx_file_info_t           fi;
@@ -594,6 +594,14 @@ invalid_destination:
 
 destination_done:
 
+    duri.len = last - p;
+    duri.data = p;
+    flags = 0;
+
+    if (ngx_http_parse_unsafe_uri(r, &duri, &args, &flags) != NGX_OK) {
+        goto invalid_destination;
+    }
+
     if ((r->uri.data[r->uri.len - 1] == '/' && *(last - 1) != '/')
         || (r->uri.data[r->uri.len - 1] != '/' && *(last - 1) == '/'))
     {
@@ -656,9 +664,7 @@ overwrite_done:
                    "http copy from: \"%s\"", path.data);
 
     uri = r->uri;
-
-    r->uri.len = last - p;
-    r->uri.data = p;
+    r->uri = duri;
 
     ngx_http_map_uri_to_path(r, &copy.path, &root, 0);
 

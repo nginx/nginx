@@ -1322,8 +1322,10 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
 
 unsafe:
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "unsafe URI \"%V\" was detected", uri);
+    if (*flags & NGX_HTTP_LOG_UNSAFE) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "unsafe URI \"%V\" was detected", uri);
+    }
 
     return NGX_ERROR;
 }

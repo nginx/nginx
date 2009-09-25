@@ -1797,7 +1797,7 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
         uri = &u->headers_in.x_accel_redirect->value;
         args.len = 0;
         args.data = NULL;
-        flags = 0;
+        flags = NGX_HTTP_LOG_UNSAFE;
 
         if (ngx_http_parse_unsafe_uri(r, uri, &args, &flags) != NGX_OK) {
             ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
