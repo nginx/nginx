@@ -17,7 +17,7 @@
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 
 #if defined( __WATCOMC__ ) || defined( __BORLANDC__ ) || ( _MSC_VER >= 1300 )

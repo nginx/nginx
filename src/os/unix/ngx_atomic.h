@@ -31,7 +31,7 @@
 
 typedef int64_t                     ngx_atomic_int_t;
 typedef uint64_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-9223372036854775808") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
 
 #define ngx_atomic_cmp_set(lock, old, new)                                    \
     OSAtomicCompareAndSwap64Barrier(old, new, (int64_t *) lock)
@@ -43,7 +43,7 @@ typedef uint64_t                    ngx_atomic_uint_t;
 
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 #define ngx_atomic_cmp_set(lock, old, new)                                    \
     OSAtomicCompareAndSwap32Barrier(old, new, (int32_t *) lock)
@@ -68,7 +68,7 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 
 #if ( __SUNPRO_C )
@@ -109,7 +109,7 @@ ngx_cpu_pause(void);
 typedef int64_t                     ngx_atomic_int_t;
 typedef uint64_t                    ngx_atomic_uint_t;
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-9223372036854775808") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
 
 
 #if ( __SUNPRO_C )
@@ -151,13 +151,13 @@ ngx_cpu_pause(void);
 
 typedef int64_t                     ngx_atomic_int_t;
 typedef uint64_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-9223372036854775808") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
 
 #else
 
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 #endif
 
@@ -188,13 +188,13 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 
 typedef int64_t                     ngx_atomic_int_t;
 typedef uint64_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-9223372036854775808") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
 
 #else
 
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 #endif
 
@@ -216,7 +216,7 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 typedef int32_t                     ngx_atomic_int_t;
 typedef uint32_t                    ngx_atomic_uint_t;
 typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
-#define NGX_ATOMIC_T_LEN            sizeof("-2147483648") - 1
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
 
 
 static ngx_inline ngx_atomic_uint_t
