@@ -477,8 +477,9 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->count++;
-    (void) ngx_http_read_discarded_request_body(r);
+    if (ngx_http_read_discarded_request_body(r) != NGX_OK) {
+        r->count++;
+    }
 
     return NGX_OK;
 }
