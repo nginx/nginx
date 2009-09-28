@@ -532,7 +532,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             if (ngx_http_upstream_create_round_robin_peer(r, u->resolved)
                 != NGX_OK)
             {
-                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
             }
 
@@ -564,7 +565,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         ctx = ngx_resolve_start(clcf->resolver, &temp);
         if (ctx == NULL) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
 
@@ -572,7 +574,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "no resolver defined to resolve %V", host);
 
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_GATEWAY);
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
             return;
         }
 
@@ -586,7 +588,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         if (ngx_resolve_name(ctx) != NGX_OK) {
             u->resolved->ctx = NULL;
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
         }
 
@@ -596,7 +599,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 found:
 
     if (uscf->peer.init(r, uscf) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
 
@@ -789,11 +793,13 @@ static void
 ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
 {
     ngx_http_request_t            *r;
+    ngx_http_upstream_t           *u;
     ngx_http_upstream_resolved_t  *ur;
 
     r = ctx->data;
 
-    r->upstream->resolved->ctx = NULL;
+    u = r->upstream;
+    ur = u->resolved;
 
     if (ctx->state) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -801,12 +807,10 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
                       &ctx->name, ctx->state,
                       ngx_resolver_strerror(ctx->state));
 
-        ngx_resolve_name_done(ctx);
-        ngx_http_finalize_request(r, NGX_HTTP_BAD_GATEWAY);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
         return;
     }
 
-    ur = r->upstream->resolved;
     ur->naddrs = ctx->naddrs;
     ur->addrs = ctx->addrs;
 
@@ -827,14 +831,15 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
 #endif
 
     if (ngx_http_upstream_create_round_robin_peer(r, ur) != NGX_OK) {
-        ngx_resolve_name_done(ctx);
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
 
     ngx_resolve_name_done(ctx);
+    ur->ctx = NULL;
 
-    ngx_http_upstream_connect(r, r->upstream);
+    ngx_http_upstream_connect(r, u);
 }
 
 
@@ -921,10 +926,6 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         return;
     }
 
-    if (u->peer.connection == NULL) {
-        return;
-    }
-
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -956,7 +957,6 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         if (u->peer.connection == NULL) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_CLIENT_CLOSED_REQUEST);
-            return;
         }
 
         return;
@@ -1019,7 +1019,6 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     if (u->peer.connection == NULL) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
-        return;
     }
 }
 
@@ -2837,6 +2836,7 @@ ngx_http_upstream_cleanup(void *data)
 
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
+        u->resolved->ctx = NULL;
     }
 
     ngx_http_upstream_finalize_request(r, u, NGX_DONE);
@@ -2854,6 +2854,11 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (u->cleanup) {
         *u->cleanup = NULL;
+    }
+
+    if (u->resolved && u->resolved->ctx) {
+        ngx_resolve_name_done(u->resolved->ctx);
+        u->resolved->ctx = NULL;
     }
 
     if (u->state && u->state->response_sec) {
