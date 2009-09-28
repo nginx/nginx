@@ -623,8 +623,8 @@ static ngx_int_t
 ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 {
     char       **script;
+    u_char      *err;
     STRLEN       len;
-    ngx_str_t    err;
     ngx_uint_t   i;
 
     script = requires->elts;
@@ -634,14 +634,12 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
         if (SvTRUE(ERRSV)) {
 
-            err.data = (u_char *) SvPV(ERRSV, len);
-            for (len--; err.data[len] == LF || err.data[len] == CR; len--) {
-                /* void */
-            }
-            err.len = len + 1;
+            err = (u_char *) SvPV(ERRSV, len);
+            while (--len && (err[len] == CR || err[len] == LF)) { /* void */ }
 
             ngx_log_error(NGX_LOG_EMERG, log, 0,
-                          "require_pv(\"%s\") failed: \"%V\"", script[i], &err);
+                          "require_pv(\"%s\") failed: \"%*s\"",
+                          script[i], len + 1, err);
 
             return NGX_ERROR;
         }
@@ -658,8 +656,8 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
     SV                *sv;
     int                n, status;
     char              *line;
+    u_char            *err;
     STRLEN             len, n_a;
-    ngx_str_t          err;
     ngx_uint_t         i;
     ngx_connection_t  *c;
 
@@ -720,14 +718,11 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
 
     if (SvTRUE(ERRSV)) {
 
-        err.data = (u_char *) SvPV(ERRSV, len);
-        for (len--; err.data[len] == LF || err.data[len] == CR; len--) {
-            /* void */
-        }
-        err.len = len + 1;
+        err = (u_char *) SvPV(ERRSV, len);
+        while (--len && (err[len] == CR || err[len] == LF)) { /* void */ }
 
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "call_sv(\"%V\") failed: \"%V\"", handler, &err);
+                      "call_sv(\"%V\") failed: \"%*s\"", handler, len + 1, err);
 
         if (rv) {
             return NGX_ERROR;
