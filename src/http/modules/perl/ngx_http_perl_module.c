@@ -14,7 +14,7 @@ typedef struct {
     PerlInterpreter   *perl;
     HV                *nginx;
     ngx_str_t          modules;
-    ngx_array_t        requires;
+    ngx_array_t       *requires;
 } ngx_http_perl_main_conf_t;
 
 
@@ -57,8 +57,6 @@ static char *ngx_http_perl_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_perl_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_perl_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static char *ngx_http_perl_require(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
@@ -81,9 +79,9 @@ static ngx_command_t  ngx_http_perl_commands[] = {
 
     { ngx_string("perl_require"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_http_perl_require,
+      ngx_conf_set_str_array_slot,
       NGX_HTTP_MAIN_CONF_OFFSET,
-      0,
+      offsetof(ngx_http_perl_main_conf_t, requires),
       NULL },
 
     { ngx_string("perl"),
@@ -495,7 +493,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
             return NGX_CONF_ERROR;
         }
 
-        if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log)
+        if (ngx_http_perl_run_requires(aTHX_ pmcf->requires, cf->log)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
@@ -601,7 +599,7 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
         goto fail;
     }
 
-    if (ngx_http_perl_run_requires(aTHX_ &pmcf->requires, cf->log) != NGX_OK) {
+    if (ngx_http_perl_run_requires(aTHX_ pmcf->requires, cf->log) != NGX_OK) {
         goto fail;
     }
 
@@ -622,15 +620,19 @@ fail:
 static ngx_int_t
 ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 {
-    char       **script;
     u_char      *err;
     STRLEN       len;
+    ngx_str_t   *script;
     ngx_uint_t   i;
+
+    if (requires == NGX_CONF_UNSET_PTR) {
+        return NGX_OK;
+    }
 
     script = requires->elts;
     for (i = 0; i < requires->nelts; i++) {
 
-        require_pv(script[i]);
+        require_pv((char *) script[i].data);
 
         if (SvTRUE(ERRSV)) {
 
@@ -639,7 +641,7 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
             ngx_log_error(NGX_LOG_EMERG, log, 0,
                           "require_pv(\"%s\") failed: \"%*s\"",
-                          script[i], len + 1, err);
+                          script[i].data, len + 1, err);
 
             return NGX_ERROR;
         }
@@ -781,11 +783,7 @@ ngx_http_perl_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    if (ngx_array_init(&pmcf->requires, cf->pool, 1, sizeof(u_char *))
-        != NGX_OK)
-    {
-        return NULL;
-    }
+    pmcf->requires = NGX_CONF_UNSET_PTR;
 
     return pmcf;
 }
@@ -886,28 +884,6 @@ ngx_http_perl_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->sub = prev->sub;
         conf->handler = prev->handler;
     }
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_perl_require(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_perl_main_conf_t *pmcf = conf;
-
-    u_char     **p;
-    ngx_str_t   *value;
-
-    value = cf->args->elts;
-
-    p = ngx_array_push(&pmcf->requires);
-
-    if (p == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    *p = value[1].data;
 
     return NGX_CONF_OK;
 }
