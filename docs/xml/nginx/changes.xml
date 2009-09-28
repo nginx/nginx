@@ -9,6 +9,49 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.17" date="28.09.2009">
+
+<change type="security">
+<para lang="ru">
+теперь символы "/../" запрещены в строке "Destination" в заголовке запроса.
+</para>
+<para lang="en">
+now "/../" are disabled in "Destination" request header line.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь значение переменной $host всегда в нижнем регистре.
+</para>
+<para lang="en">
+now $host variable value is always low case.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_session_id.
+</para>
+<para lang="en">
+the $ssl_session_id variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+socket leak;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.16" date="22.09.2009">
 
 <change type="feature">
