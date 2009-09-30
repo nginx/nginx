@@ -13,7 +13,7 @@
 typedef struct {
     PerlInterpreter   *perl;
     HV                *nginx;
-    ngx_str_t          modules;
+    ngx_array_t       *modules;
     ngx_array_t       *requires;
 } ngx_http_perl_main_conf_t;
 
@@ -72,7 +72,7 @@ static ngx_command_t  ngx_http_perl_commands[] = {
 
     { ngx_string("perl_modules"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
+      ngx_conf_set_str_array_slot,
       NGX_HTTP_MAIN_CONF_OFFSET,
       offsetof(ngx_http_perl_main_conf_t, modules),
       NULL },
@@ -461,8 +461,10 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 static char *
 ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 {
+    ngx_str_t               *m;
+    ngx_uint_t               i;
 #if (NGX_HAVE_PERL_MULTIPLICITY)
-    ngx_pool_cleanup_t       *cln;
+    ngx_pool_cleanup_t      *cln;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
@@ -474,14 +476,29 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 #endif
 
 #ifdef NGX_PERL_MODULES
-    if (pmcf->modules.data == NULL) {
-        pmcf->modules.data = NGX_PERL_MODULES;
+    if (pmcf->modules == NGX_CONF_UNSET_PTR) {
+
+        pmcf->modules = ngx_array_create(cf->pool, 1, sizeof(ngx_str_t));
+        if (pmcf->modules == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        m = ngx_array_push(pmcf->modules);
+        if (m == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        m->len = sizeof(NGX_PERL_MODULES) - 1;
+        m->data = NGX_PERL_MODULES;
     }
 #endif
 
-    if (pmcf->modules.data) {
-        if (ngx_conf_full_name(cf->cycle, &pmcf->modules, 0) != NGX_OK) {
-            return NGX_CONF_ERROR;
+    if (pmcf->modules != NGX_CONF_UNSET_PTR) {
+        m = pmcf->modules->elts;
+        for (i = 0; i < pmcf->modules->nelts; i++) {
+            if (ngx_conf_full_name(cf->cycle, &m[i], 0) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
         }
     }
 
@@ -541,7 +558,9 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
     int                n;
     STRLEN             len;
     SV                *sv;
-    char              *ver, *embedding[6];
+    char              *ver, **embedding;
+    ngx_str_t         *m;
+    ngx_uint_t         i;
     PerlInterpreter   *perl;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cf->log, 0, "create perl interpreter");
@@ -567,15 +586,21 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
     PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
+    n = (pmcf->modules != NGX_CONF_UNSET_PTR) ? pmcf->modules->nelts * 2 : 0;
+
+    embedding = ngx_palloc(cf->pool, (4 + n) * sizeof(char *));
+    if (embedding == NULL) {
+        goto fail;
+    }
+
     embedding[0] = "";
 
-    if (pmcf->modules.data) {
-        embedding[1] = "-I";
-        embedding[2] = (char *) pmcf->modules.data;
-        n = 3;
-
-    } else {
-        n = 1;
+    if (n++) {
+        m = pmcf->modules->elts;
+        for (i = 0; i < pmcf->modules->nelts; i++) {
+            embedding[2 * i + 1] = "-I";
+            embedding[2 * i + 2] = (char *) m[i].data;
+        }
     }
 
     embedding[n++] = "-Mnginx";
@@ -783,6 +808,7 @@ ngx_http_perl_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    pmcf->modules = NGX_CONF_UNSET_PTR;
     pmcf->requires = NGX_CONF_UNSET_PTR;
 
     return pmcf;
