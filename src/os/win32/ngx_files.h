@@ -232,6 +232,8 @@ ssize_t ngx_write_file(ngx_file_t *file, u_char *buf, size_t size,
 ssize_t ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *ce,
     off_t offset, ngx_pool_t *pool);
 
+ngx_int_t ngx_read_ahead(ngx_fd_t fd, size_t n);
+#define ngx_read_ahead_n            "ngx_read_ahead_n"
 
 ngx_int_t ngx_directio_on(ngx_fd_t fd);
 #define ngx_directio_on_n           "ngx_directio_on_n"

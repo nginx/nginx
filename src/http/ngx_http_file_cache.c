@@ -281,6 +281,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     of.min_uses = clcf->open_file_cache_min_uses;
     of.events = clcf->open_file_cache_events;
     of.directio = NGX_OPEN_FILE_DIRECTIO_OFF;
+    of.read_ahead = clcf->read_ahead;
 
     if (ngx_open_cached_file(clcf->open_file_cache, &c->file.name, &of, r->pool)
         != NGX_OK)

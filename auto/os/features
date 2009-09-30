@@ -172,6 +172,26 @@ if [ $ngx_found = no ]; then
 fi
 
 
+ngx_feature="F_READAHEAD"
+ngx_feature_name="NGX_HAVE_F_READAHEAD"
+ngx_feature_run=no
+ngx_feature_incs="#include <fcntl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="fcntl(0, F_READAHEAD, 1);"
+. auto/feature
+
+
+ngx_feature="posix_fadvise()"
+ngx_feature_name="NGX_HAVE_POSIX_FADVISE"
+ngx_feature_run=no
+ngx_feature_incs="#include <fcntl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="posix_fadvise(0, 0, 0, POSIX_FADV_SEQUENTIAL);"
+. auto/feature
+
+
 ngx_feature="O_DIRECT"
 ngx_feature_name="NGX_HAVE_O_DIRECT"
 ngx_feature_run=no

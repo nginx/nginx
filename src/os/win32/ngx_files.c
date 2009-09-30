@@ -477,6 +477,13 @@ ngx_de_link_info(u_char *name, ngx_dir_t *dir)
 
 
 ngx_int_t
+ngx_read_ahead(ngx_fd_t fd, size_t n)
+{
+    return ~NGX_FILE_ERROR;
+}
+
+
+ngx_int_t
 ngx_directio_on(ngx_fd_t fd)
 {
     return ~NGX_FILE_ERROR;

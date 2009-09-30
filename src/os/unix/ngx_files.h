@@ -254,6 +254,28 @@ ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
 #define ngx_unlock_fd_n          "fcntl(F_SETLK, F_UNLCK)"
 
 
+#if (NGX_HAVE_F_READAHEAD)
+
+#define NGX_HAVE_READ_AHEAD      1
+
+#define ngx_read_ahead(fd, n)    fcntl(fd, F_READAHEAD, (int) n)
+#define ngx_read_ahead_n         "fcntl(fd, F_READAHEAD)"
+
+#elif (NGX_HAVE_POSIX_FADVISE)
+
+#define NGX_HAVE_READ_AHEAD      1
+
+#define ngx_read_ahead(fd, n)    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL)
+#define ngx_read_ahead_n         "posix_fadvise(POSIX_FADV_SEQUENTIAL)"
+
+#else
+
+#define ngx_read_ahead(fd, n)    0
+#define ngx_read_ahead_n         "ngx_read_ahead_n"
+
+#endif
+
+
 #if (NGX_HAVE_O_DIRECT)
 
 ngx_int_t ngx_directio_on(ngx_fd_t fd);

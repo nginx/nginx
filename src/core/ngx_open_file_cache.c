@@ -17,6 +17,9 @@
  */
 
 
+#define NGX_MIN_READ_AHEAD  (128 * 1024)
+
+
 static void ngx_open_file_cache_cleanup(void *data);
 static ngx_int_t ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of,
     ngx_log_t *log);
@@ -523,6 +526,13 @@ ngx_open_and_stat_file(u_char *name, ngx_open_file_info_t *of, ngx_log_t *log)
 
     } else {
         of->fd = fd;
+
+        if (of->read_ahead && ngx_file_size(&fi) > NGX_MIN_READ_AHEAD) {
+            if (ngx_read_ahead(fd, of->read_ahead) == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                              ngx_read_ahead_n " \"%s\" failed", name);
+            }
+        }
 
         if (of->directio <= ngx_file_size(&fi)) {
             if (ngx_directio_on(fd) == NGX_FILE_ERROR) {

@@ -21,6 +21,7 @@ typedef struct {
     time_t                   mtime;
     off_t                    size;
     off_t                    directio;
+    size_t                   read_ahead;
 
     ngx_err_t                err;
     char                    *failed;
