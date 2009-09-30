@@ -2048,6 +2048,10 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http terminate request count:%d", mr->count);
 
+    if (rc > 0 && (mr->headers_out.status == 0 || mr->connection->sent == 0)) {
+        mr->headers_out.status = rc;
+    }
+
     cln = mr->cleanup;
     mr->cleanup = NULL;
 
