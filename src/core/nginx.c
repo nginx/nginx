@@ -280,6 +280,9 @@ main(int argc, char *const *argv)
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
 
+    /* dummy pagesize to create aligned pool */
+    ngx_pagesize = 1024;
+
     init_cycle.pool = ngx_create_pool(1024, log);
     if (init_cycle.pool == NULL) {
         return 1;
