@@ -2411,6 +2411,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         }
     }
 
+    r->keepalive = 0;
+
     ngx_http_free_request(r, 0);
 
     c->data = hc;
