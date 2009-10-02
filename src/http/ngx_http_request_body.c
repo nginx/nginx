@@ -475,7 +475,10 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_http_read_discarded_request_body(r) != NGX_OK) {
+    if (ngx_http_read_discarded_request_body(r) == NGX_OK) {
+        r->lingering_close = 0;
+
+    } else {
         r->count++;
         r->discard_body = 1;
     }
@@ -508,6 +511,7 @@ ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
 
         if (timer <= 0) {
             r->discard_body = 0;
+            r->lingering_close = 0;
             ngx_http_finalize_request(r, 0);
             return;
         }
@@ -521,6 +525,7 @@ ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
     if (rc == NGX_OK) {
 
         r->discard_body = 0;
+        r->lingering_close = 0;
 
         if (r->done) {
             ngx_http_finalize_request(r, 0);
