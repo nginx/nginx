@@ -490,6 +490,7 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
     p = ngx_http_map_uri_to_path(r, &path, &root, 0);
 
     *(p - 1) = '\0';
+    r->uri.len--;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http mkcol path: \"%s\"", path.data);
