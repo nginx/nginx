@@ -42,7 +42,10 @@ typedef struct {
     ngx_shm_zone_t              *shm_zone;
     /* integer value, 1 corresponds to 0.001 r/s */
     ngx_uint_t                   burst;
-    ngx_uint_t                   nodelay;/* unsigned  nodelay:1 */
+    ngx_uint_t                   limit_log_level;
+    ngx_uint_t                   delay_log_level;
+
+    ngx_uint_t                   nodelay; /* unsigned  nodelay:1 */
 } ngx_http_limit_req_conf_t;
 
 
@@ -62,6 +65,15 @@ static char *ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_int_t ngx_http_limit_req_init(ngx_conf_t *cf);
 
 
+static ngx_conf_enum_t  ngx_http_limit_req_log_levels[] = {
+    { ngx_string("info"), NGX_LOG_INFO },
+    { ngx_string("notice"), NGX_LOG_NOTICE },
+    { ngx_string("warn"), NGX_LOG_WARN },
+    { ngx_string("error"), NGX_LOG_ERR },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_limit_req_commands[] = {
 
     { ngx_string("limit_req_zone"),
@@ -77,6 +89,13 @@ static ngx_command_t  ngx_http_limit_req_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("limit_req_log_level"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_limit_req_conf_t, limit_log_level),
+      &ngx_http_limit_req_log_levels },
 
       ngx_null_command
 };
@@ -186,7 +205,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     if (rc == NGX_BUSY) {
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
                       "limiting requests, excess: %ui.%03ui by zone \"%V\"",
                       excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
 
@@ -200,7 +219,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
             return NGX_DECLINED;
         }
 
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+        ngx_log_error(lrcf->delay_log_level, r->connection->log, 0,
                       "delaying request, excess: %ui.%03ui, by zone \"%V\"",
                       excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
 
@@ -549,6 +568,8 @@ ngx_http_limit_req_create_conf(ngx_conf_t *cf)
      *     conf->nodelay = 0;
      */
 
+    conf->limit_log_level = NGX_CONF_UNSET_UINT;
+
     return conf;
 }
 
@@ -562,6 +583,12 @@ ngx_http_limit_req_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->shm_zone == NULL) {
         *conf = *prev;
     }
+
+    ngx_conf_merge_uint_value(conf->limit_log_level, prev->limit_log_level,
+                              NGX_LOG_ERR);
+
+    conf->delay_log_level = (conf->limit_log_level == NGX_LOG_INFO) ?
+                                NGX_LOG_INFO : conf->limit_log_level + 1;
 
     return NGX_CONF_OK;
 }
