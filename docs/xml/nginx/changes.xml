@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.19" date="06.10.2009">
+
+<change type="change">
+<para lang="ru">
+теперь протокол SSLv2 по умолчанию запрещён.
+</para>
+<para lang="en">
+now SSLv2 protocol is disabled by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию используются следующие шифры SSL:
+"ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM".
+</para>
+<para lang="en">
+now default SSL ciphers are "ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_req не работала;
+ошибка появилась в 0.8.18.
+</para>
+<para lang="en">
+a "limit_req" directive did not work;
+the bug had appeared in 0.8.18.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.18" date="06.10.2009">
 
 <change type="feature">
@@ -25,7 +60,7 @@ the "read_ahead" directive.
 теперь можно использовать несколько директив perl_modules.
 </para>
 <para lang="en">
-now several "perl_modules" directive may be used.
+now several "perl_modules" directives may be used.
 </para>
 </change>
 
