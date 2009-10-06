@@ -9,6 +9,94 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.18" date="06.10.2009">
+
+<change type="feature">
+<para lang="ru">
+директива read_ahead.
+</para>
+<para lang="en">
+the "read_ahead" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь можно использовать несколько директив perl_modules.
+</para>
+<para lang="en">
+now several "perl_modules" directive may be used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы limit_req_log_level и limit_conn_log_level.
+</para>
+<para lang="en">
+the "limit_req_log_level" and "limit_conn_log_level" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+Теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now "limit_req" directive conforms to the leaky bucket algorithm.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не работал на Linux/sparc.<br/>
+Спасибо Marcus Ramberg.
+</para>
+<para lang="en">
+nginx did not work on Linux/sparc.<br/>
+Thanks to Marcus Ramberg.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx слал символ '\0' в строке "Location" в заголовке в ответе на запрос
+MKCOL.<br/>
+Спасибо Xie Zhenye.
+</para>
+<para lang="en">
+nginx sent '\0' in a "Location" response header line on MKCOL request.<br/>
+Thanks to Xie Zhenye.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+вместо кода ответа 499 в лог записывался код 0;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+zero status code was logged instead of 499 status code;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+socket leak;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.17" date="28.09.2009">
 
 <change type="security">
