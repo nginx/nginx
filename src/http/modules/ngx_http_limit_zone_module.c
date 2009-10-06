@@ -33,6 +33,7 @@ typedef struct {
 typedef struct {
     ngx_shm_zone_t     *shm_zone;
     ngx_uint_t          conn;
+    ngx_uint_t          log_level;
 } ngx_http_limit_zone_conf_t;
 
 
@@ -46,6 +47,15 @@ static char *ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_http_limit_zone_init(ngx_conf_t *cf);
+
+
+static ngx_conf_enum_t  ngx_http_limit_conn_log_levels[] = {
+    { ngx_string("info"), NGX_LOG_INFO },
+    { ngx_string("notice"), NGX_LOG_NOTICE },
+    { ngx_string("warn"), NGX_LOG_WARN },
+    { ngx_string("error"), NGX_LOG_ERR },
+    { ngx_null_string, 0 }
+};
 
 
 static ngx_command_t  ngx_http_limit_zone_commands[] = {
@@ -63,6 +73,13 @@ static ngx_command_t  ngx_http_limit_zone_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("limit_conn_log_level"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_limit_zone_conf_t, log_level),
+      &ngx_http_limit_conn_log_levels },
 
       ngx_null_command
 };
@@ -189,7 +206,7 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 
                 ngx_shmtx_unlock(&shpool->mutex);
 
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(lzcf->log_level, r->connection->log, 0,
                               "limiting connections by zone \"%V\"",
                               &lzcf->shm_zone->shm.name);
 
@@ -391,6 +408,8 @@ ngx_http_limit_zone_create_conf(ngx_conf_t *cf)
      *     conf->conn = 0;
      */
 
+    conf->log_level = NGX_CONF_UNSET_UINT;
+
     return conf;
 }
 
@@ -404,6 +423,8 @@ ngx_http_limit_zone_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->shm_zone == NULL) {
         *conf = *prev;
     }
+
+    ngx_conf_merge_uint_value(conf->log_level, prev->log_level, NGX_LOG_ERR);
 
     return NGX_CONF_OK;
 }
