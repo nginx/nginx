@@ -379,6 +379,11 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
 
                 excess = lr->excess - ctx->rate * ngx_abs(ms) / 1000 + 1000;
 
+                if ((ngx_uint_t) excess > lrcf->burst) {
+                    *lrp = lr;
+                    return NGX_BUSY;
+                }
+
                 if (excess < 0) {
                     excess = 0;
                 }
@@ -387,10 +392,6 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
                 lr->last = now;
 
                 *lrp = lr;
-
-                if ((ngx_uint_t) excess > lrcf->burst) {
-                    return NGX_BUSY;
-                }
 
                 if (excess) {
                     return NGX_AGAIN;
