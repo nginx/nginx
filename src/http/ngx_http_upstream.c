@@ -2098,11 +2098,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             r->cache->date = now;
             r->cache->body_start = (u_short) (u->buffer.pos - u->buffer.start);
 
-            if (r->headers_out.content_length_n != -1) {
-                r->cache->length = r->cache->body_start
-                                   + r->headers_out.content_length_n;
-            }
-
             ngx_http_file_cache_set_header(r, u->buffer.start);
 
         } else {
