@@ -3035,7 +3035,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     n = 0;
 
     for (p += 8; p < last; p++) {
-        if (*p == ';' || *p == ' ') {
+        if (*p == ',' || *p == ';' || *p == ' ') {
             break;
         }
 
