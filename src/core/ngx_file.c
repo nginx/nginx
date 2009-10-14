@@ -183,7 +183,13 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
     u_char     *p, ch;
     ngx_err_t   err;
 
-    for (p = dir + 1; *p; p++) {
+#if (NGX_WIN32)
+    p = dir + 3;
+#else
+    p = dir + 1;
+#endif
+
+    for ( /* void */ ; *p; p++) {
         ch = *p;
 
         if (ch != '/') {
