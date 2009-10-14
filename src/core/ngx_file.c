@@ -183,6 +183,8 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
     u_char     *p, ch;
     ngx_err_t   err;
 
+    err = 0;
+
 #if (NGX_WIN32)
     p = dir + 3;
 #else
@@ -200,7 +202,14 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
 
         if (ngx_create_dir(dir, access) == NGX_FILE_ERROR) {
             err = ngx_errno;
-            if (err != NGX_EEXIST) {
+
+            switch (err) {
+            case NGX_EEXIST:
+                err = 0;
+            case NGX_EACCES:
+                break;
+
+            default:
                 return err;
             }
         }
@@ -208,7 +217,7 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
         *p = '/';
     }
 
-    return 0;
+    return err;
 }
 
 
