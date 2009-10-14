@@ -9,6 +9,90 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.20" date="14.10.2009">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию используются следующие шифры SSL: "HIGH:!ADH:!MD5".
+</para>
+<para lang="en">
+now default SSL ciphers are "HIGH:!ADH:!MD5".
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+модуль ngx_http_autoindex_module не показывал последний слэш для линков
+на каталоги;
+ошибка появилась в 0.7.15.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not show the trailing slash in links to
+a directory;
+the bug had appeared in 0.7.15.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx не закрывал лог, заданный параметром конфигурации --error-log-path;
+ошибка появилась в 0.7.53.
+</para>
+<para lang="en">
+nginx did not close a log file set by the --error-log-path configuration option;
+the bug had appeared in 0.7.53.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx не считал запятую разделителем в строке "Cache-Control" в строке
+заголовка бэкенда.
+</para>
+<para lang="en">
+nginx did not treat a comma as separator in the "Cache-Control" backend response
+header line.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx/Windows мог не создать временный файл, файл в кэше или файл
+с помощью директив proxy/fastcgi_store, если рабочий процесс не имел
+достаточно прав для работы с каталогами верхнего уровня.
+</para>
+<para lang="en">
+nginx/Windows might not create temporary file, a cache file, or
+"proxy/fastcgi_store"d file if a worker has no enough access rights
+for top level directories.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "Set-Cookie" и "P3P" в заголовке ответа FastCGI-сервера не скрывались
+при кэшировании, если не использовались директивы
+fastcgi_hide_header с любыми параметрами.
+</para>
+<para lang="en">
+the "Set-Cookie" and "P3P" FastCGI response header lines were not hidden
+while caching if no "fastcgi_hide_header" directives were used with
+any parameters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неверно считал размер кэша на диске.
+</para>
+<para lang="en">
+nginx counted incorrectly disk cache size.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.19" date="06.10.2009">
 
 <change type="change">
