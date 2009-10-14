@@ -274,9 +274,8 @@ ngx_read_dir(ngx_dir_t *dir)
     if (dir->de) {
 #if (NGX_HAVE_D_TYPE)
         dir->type = dir->de->d_type;
-        dir->valid_type = dir->type ? 1 : 0;
 #else
-        dir->valid_type = 0;
+        dir->type = 0;
 #endif
         return NGX_OK;
     }

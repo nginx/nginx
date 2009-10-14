@@ -21,7 +21,7 @@ typedef struct {
     WIN32_FIND_DATA                 finddata;
 
     unsigned                        valid_info:1;
-    unsigned                        valid_type:1;
+    unsigned                        type:1;
     unsigned                        ready:1;
 } ngx_dir_t;
 
