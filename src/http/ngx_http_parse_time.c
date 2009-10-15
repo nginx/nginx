@@ -16,6 +16,7 @@ ngx_http_parse_time(u_char *value, size_t len)
     u_char      *p, *end;
     ngx_int_t    month;
     ngx_uint_t   day, year, hour, min, sec;
+    uint64_t     time;
     enum {
         no = 0,
         rfc822,   /* Tue, 10 Nov 2002 23:50:13   */
@@ -230,14 +231,6 @@ ngx_http_parse_time(u_char *value, size_t len)
         return NGX_ERROR;
     }
 
-#if (NGX_TIME_T_SIZE <= 4)
-
-    if (year >= 2038) {
-        return NGX_ERROR;
-    }
-
-#endif
-
     /*
      * shift new year to March 1 and start months from 1 (not 0),
      * it is needed for Gauss' formula
@@ -250,7 +243,7 @@ ngx_http_parse_time(u_char *value, size_t len)
 
     /* Gauss' formula for Grigorian days since March 1, 1 BC */
 
-    return (
+    time = (uint64_t) (
             /* days in years including leap years since March 1, 1 BC */
 
             365 * year + year / 4 - year / 100 + year / 400
@@ -269,4 +262,14 @@ ngx_http_parse_time(u_char *value, size_t len)
              */
 
             - 719527 + 31 + 28) * 86400 + hour * 3600 + min * 60 + sec;
+
+#if (NGX_TIME_T_SIZE <= 4)
+
+    if (time > 0x7fffffff) {
+        return NGX_ERROR;
+    }
+
+#endif
+
+    return (time_t) time;
 }
