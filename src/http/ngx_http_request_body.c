@@ -13,7 +13,6 @@ static void ngx_http_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_write_request_body(ngx_http_request_t *r,
     ngx_chain_t *body);
-static void ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_read_discarded_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_test_expect(ngx_http_request_t *r);
 
@@ -470,7 +469,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         }
     }
 
-    r->read_event_handler = ngx_http_read_discarded_request_body_handler;
+    r->read_event_handler = ngx_http_discarded_request_body_handler;
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -488,8 +487,8 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 }
 
 
-static void
-ngx_http_read_discarded_request_body_handler(ngx_http_request_t *r)
+void
+ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
 {
     ngx_int_t                  rc;
     ngx_msec_t                 timer;
