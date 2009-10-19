@@ -239,6 +239,9 @@ main(int argc, char *const *argv)
 #ifdef NGX_COMPILER
             ngx_log_stderr(0, "built by " NGX_COMPILER);
 #endif
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+            ngx_log_stderr(0, "TLS SNI support enabled");
+#endif
             ngx_log_stderr(0, "configure arguments:" NGX_CONFIGURE);
         }
 
