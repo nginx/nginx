@@ -460,6 +460,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 
     if (size) {
         if (r->headers_in.content_length_n > size) {
+            r->header_in->pos += size;
             r->headers_in.content_length_n -= size;
 
         } else {
