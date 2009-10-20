@@ -2107,7 +2107,6 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 
         if (r->discard_body) {
             r->read_event_handler = ngx_http_discarded_request_body_handler;
-            r->write_event_handler = ngx_http_request_empty_handler;
 
             if (r->lingering_time == 0) {
                 r->lingering_time = ngx_time()
@@ -2248,6 +2247,8 @@ ngx_http_writer(ngx_http_request_t *r)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                    "http writer done: \"%V?%V\"", &r->uri, &r->args);
+
+    r->write_event_handler = ngx_http_request_empty_handler;
 
     ngx_http_finalize_request(r, rc);
 }
