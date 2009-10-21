@@ -1213,17 +1213,13 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
         if (listen->opt.default_server) {
 
-            if (addr[i].default_server) {
+            if (addr[i].opt.default_server) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "the duplicate default server");
                 return NGX_ERROR;
             }
 
             addr[i].core_srv_conf = cscf;
-            addr[i].default_server = 1;
-#if (NGX_HTTP_SSL)
-            addr[i].ssl = listen->opt.ssl;
-#endif
             addr[i].opt = listen->opt;
         }
 
@@ -1273,12 +1269,6 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     addr->regex = NULL;
 #endif
     addr->core_srv_conf = cscf;
-    addr->default_server = listen->opt.default_server;
-    addr->bind = listen->opt.bind;
-    addr->wildcard = listen->opt.wildcard;
-#if (NGX_HTTP_SSL)
-    addr->ssl = listen->opt.ssl;
-#endif
     addr->opt = listen->opt;
 
     return ngx_http_add_names(cf, cscf, addr);
@@ -1531,17 +1521,17 @@ ngx_http_cmp_conf_addrs(const void *one, const void *two)
     first = (ngx_http_conf_addr_t *) one;
     second = (ngx_http_conf_addr_t *) two;
 
-    if (first->wildcard) {
+    if (first->opt.wildcard) {
         /* a wildcard address must be the last resort, shift it to the end */
         return 1;
     }
 
-    if (first->bind && !second->bind) {
+    if (first->opt.bind && !second->opt.bind) {
         /* shift explicit bind()ed addresses to the start */
         return -1;
     }
 
-    if (!first->bind && second->bind) {
+    if (!first->opt.bind && second->opt.bind) {
         /* shift explicit bind()ed addresses to the start */
         return 1;
     }
@@ -1582,8 +1572,8 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
      * implicit bindings go, and wildcard binding is in the end.
      */
 
-    if (addr[last - 1].wildcard) {
-        addr[last - 1].bind = 1;
+    if (addr[last - 1].opt.wildcard) {
+        addr[last - 1].opt.bind = 1;
         bind_wildcard = 1;
 
     } else {
@@ -1594,7 +1584,7 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
 
     while (i < last) {
 
-        if (bind_wildcard && !addr[i].bind) {
+        if (bind_wildcard && !addr[i].opt.bind) {
             i++;
             continue;
         }
@@ -1723,7 +1713,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
         addrs[i].addr = sin->sin_addr.s_addr;
         addrs[i].conf.core_srv_conf = addr[i].core_srv_conf;
 #if (NGX_HTTP_SSL)
-        addrs[i].conf.ssl = addr[i].ssl;
+        addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
 
         if (addr[i].hash.buckets == NULL
@@ -1784,7 +1774,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
         addrs6[i].addr6 = sin6->sin6_addr;
         addrs6[i].conf.core_srv_conf = addr[i].core_srv_conf;
 #if (NGX_HTTP_SSL)
-        addrs6[i].conf.ssl = addr[i].ssl;
+        addrs6[i].conf.ssl = addr[i].opt.ssl;
 #endif
 
         if (addr[i].hash.buckets == NULL

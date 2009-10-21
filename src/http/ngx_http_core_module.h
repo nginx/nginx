@@ -237,13 +237,6 @@ typedef struct {
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
 
-    unsigned                   default_server:1;
-    unsigned                   bind:1;
-    unsigned                   wildcard:1;
-#if (NGX_HTTP_SSL)
-    unsigned                   ssl:1;
-#endif
-
     ngx_http_listen_opt_t      opt;
 } ngx_http_conf_addr_t;
 
