@@ -3306,7 +3306,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (n = 2; n < cf->args->nelts; n++) {
 
-        if (ngx_strcmp(value[n].data, "default") == 0) {
+        if (ngx_strcmp(value[n].data, "default_server") == 0
+            || ngx_strcmp(value[n].data, "default") == 0)
+        {
             lsopt.default_server = 1;
             continue;
         }
