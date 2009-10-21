@@ -204,7 +204,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
-    ngx_memcpy(cycle->hostname.data, hostname, cycle->hostname.len);
+    ngx_strlow(cycle->hostname.data, (u_char *) hostname, cycle->hostname.len);
 
 
     for (i = 0; ngx_modules[i]; i++) {
