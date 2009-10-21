@@ -46,6 +46,7 @@ typedef struct {
     u_char                     sockaddr[NGX_SOCKADDRLEN];
     socklen_t                  socklen;
 
+    unsigned                   set:1;
     unsigned                   default_server:1;
     unsigned                   bind:1;
     unsigned                   wildcard:1;

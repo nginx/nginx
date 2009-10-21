@@ -3304,31 +3304,22 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     (void) ngx_sock_ntop((struct sockaddr *) &lsopt.sockaddr, lsopt.addr,
                          NGX_SOCKADDR_STRLEN, 1);
 
-    if (cf->args->nelts > 2 && ngx_strcmp(value[2].data, "default") == 0) {
-        lsopt.default_server = 1;
-        n = 3;
+    for (n = 2; n < cf->args->nelts; n++) {
 
-    } else {
-        n = 2;
-    }
-
-    for ( /* void */ ; n < cf->args->nelts; n++) {
-
-        if (lsopt.default_server == 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "\"%V\" parameter can be specified for "
-                               "the default \"listen\" directive only",
-                               &value[n]);
-            return NGX_CONF_ERROR;
+        if (ngx_strcmp(value[n].data, "default") == 0) {
+            lsopt.default_server = 1;
+            continue;
         }
 
         if (ngx_strcmp(value[n].data, "bind") == 0) {
+            lsopt.set = 1;
             lsopt.bind = 1;
             continue;
         }
 
         if (ngx_strncmp(value[n].data, "backlog=", 8) == 0) {
             lsopt.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
+            lsopt.set = 1;
             lsopt.bind = 1;
 
             if (lsopt.backlog == NGX_ERROR || lsopt.backlog == 0) {
@@ -3345,6 +3336,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             size.data = value[n].data + 7;
 
             lsopt.rcvbuf = ngx_parse_size(&size);
+            lsopt.set = 1;
             lsopt.bind = 1;
 
             if (lsopt.rcvbuf == NGX_ERROR) {
@@ -3361,6 +3353,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             size.data = value[n].data + 7;
 
             lsopt.sndbuf = ngx_parse_size(&size);
+            lsopt.set = 1;
             lsopt.bind = 1;
 
             if (lsopt.sndbuf == NGX_ERROR) {
@@ -3375,6 +3368,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strncmp(value[n].data, "accept_filter=", 14) == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
             lsopt.accept_filter = (char *) &value[n].data[14];
+            lsopt.set = 1;
             lsopt.bind = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3388,6 +3382,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strcmp(value[n].data, "deferred") == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
             lsopt.deferred_accept = 1;
+            lsopt.set = 1;
             lsopt.bind = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3418,6 +3413,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     return NGX_CONF_ERROR;
                 }
 
+                lsopt.set = 1;
                 lsopt.bind = 1;
 
             } else {
@@ -3437,6 +3433,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[n].data, "ssl") == 0) {
 #if (NGX_HTTP_SSL)
+            lsopt.set = 1;
             lsopt.ssl = 1;
             continue;
 #else
