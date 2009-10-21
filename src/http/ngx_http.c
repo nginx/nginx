@@ -1215,7 +1215,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
             if (addr[i].opt.default_server) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "the duplicate default server");
+                        "a duplicate default server for %s", addr[i].opt.addr);
                 return NGX_ERROR;
             }
 
