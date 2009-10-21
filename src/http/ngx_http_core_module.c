@@ -2807,13 +2807,6 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
      *     conf->client_large_buffers.num = 0;
      */
 
-    if (ngx_array_init(&cscf->listen, cf->temp_pool, 4,
-                       sizeof(ngx_http_listen_t))
-        != NGX_OK)
-    {
-        return NULL;
-    }
-
     if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
                        sizeof(ngx_http_server_name_t))
         != NGX_OK)
@@ -2839,21 +2832,16 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_core_srv_conf_t *prev = parent;
     ngx_http_core_srv_conf_t *conf = child;
 
-    ngx_http_listen_t       *ls;
+    ngx_http_listen_t        ls;
     struct sockaddr_in      *sin;
     ngx_http_server_name_t  *sn;
 
     /* TODO: it does not merge, it inits only */
 
-    if (conf->listen.nelts == 0) {
-        ls = ngx_array_push(&conf->listen);
-        if (ls == NULL) {
-            return NGX_CONF_ERROR;
-        }
+    if (!conf->listen) {
+        ngx_memzero(&ls, sizeof(ngx_http_listen_t));
 
-        ngx_memzero(ls, sizeof(ngx_http_listen_t));
-
-        sin = (struct sockaddr_in *) &ls->sockaddr;
+        sin = (struct sockaddr_in *) &ls.sockaddr;
 
         sin->sin_family = AF_INET;
 #if (NGX_WIN32)
@@ -2863,15 +2851,19 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
         sin->sin_addr.s_addr = INADDR_ANY;
 
-        ls->socklen = sizeof(struct sockaddr_in);
+        ls.socklen = sizeof(struct sockaddr_in);
 
-        ls->conf.backlog = NGX_LISTEN_BACKLOG;
-        ls->conf.rcvbuf = -1;
-        ls->conf.sndbuf = -1;
-        ls->conf.wildcard = 1;
+        ls.opt.backlog = NGX_LISTEN_BACKLOG;
+        ls.opt.rcvbuf = -1;
+        ls.opt.sndbuf = -1;
+        ls.opt.wildcard = 1;
 
-        (void) ngx_sock_ntop((struct sockaddr *) &ls->sockaddr, ls->conf.addr,
+        (void) ngx_sock_ntop((struct sockaddr *) &ls.sockaddr, ls.opt.addr,
                              NGX_SOCKADDR_STRLEN, 1);
+
+        if (ngx_http_add_listen(cf, conf, &ls) == NGX_OK) {
+            return NGX_CONF_OK;
+        }
     }
 
     if (conf->server_name.data == NULL) {
@@ -3273,17 +3265,14 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static char *
 ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_srv_conf_t *scf = conf;
+    ngx_http_core_srv_conf_t *cscf = conf;
 
     ngx_str_t          *value, size;
     ngx_url_t           u;
     ngx_uint_t          n;
-    ngx_http_listen_t  *ls;
+    ngx_http_listen_t   ls;
 
-    /*
-     * TODO: check duplicate 'listen' directives,
-     *       add resolved name to server names ???
-     */
+    cscf->listen = 1;
 
     value = cf->args->elts;
 
@@ -3303,32 +3292,21 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ls = ngx_array_push(&scf->listen);
-    if (ls == NULL) {
-        return NGX_CONF_ERROR;
-    }
+    ngx_memzero(&ls, sizeof(ngx_http_listen_t));
 
-    ngx_memzero(ls, sizeof(ngx_http_listen_t));
+    ngx_memcpy(ls.sockaddr, u.sockaddr, u.socklen);
 
-    ngx_memcpy(ls->sockaddr, u.sockaddr, u.socklen);
+    ls.socklen = u.socklen;
+    ls.opt.backlog = NGX_LISTEN_BACKLOG;
+    ls.opt.rcvbuf = -1;
+    ls.opt.sndbuf = -1;
+    ls.opt.wildcard = u.wildcard;
 
-    ls->socklen = u.socklen;
-    ls->file_name = cf->conf_file->file.name.data;
-    ls->line = cf->conf_file->line;
-    ls->conf.backlog = NGX_LISTEN_BACKLOG;
-    ls->conf.rcvbuf = -1;
-    ls->conf.sndbuf = -1;
-    ls->conf.wildcard = u.wildcard;
-
-    (void) ngx_sock_ntop((struct sockaddr *) &ls->sockaddr, ls->conf.addr,
+    (void) ngx_sock_ntop((struct sockaddr *) &ls.sockaddr, ls.opt.addr,
                          NGX_SOCKADDR_STRLEN, 1);
 
-    if (cf->args->nelts == 2) {
-        return NGX_CONF_OK;
-    }
-
-    if (ngx_strcmp(value[2].data, "default") == 0) {
-        ls->conf.default_server = 1;
+    if (cf->args->nelts > 2 && ngx_strcmp(value[2].data, "default") == 0) {
+        ls.opt.default_server = 1;
         n = 3;
 
     } else {
@@ -3337,7 +3315,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for ( /* void */ ; n < cf->args->nelts; n++) {
 
-        if (ls->conf.default_server == 0) {
+        if (ls.opt.default_server == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" parameter can be specified for "
                                "the default \"listen\" directive only",
@@ -3346,15 +3324,15 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[n].data, "bind") == 0) {
-            ls->conf.bind = 1;
+            ls.opt.bind = 1;
             continue;
         }
 
         if (ngx_strncmp(value[n].data, "backlog=", 8) == 0) {
-            ls->conf.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
-            ls->conf.bind = 1;
+            ls.opt.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
+            ls.opt.bind = 1;
 
-            if (ls->conf.backlog == NGX_ERROR || ls->conf.backlog == 0) {
+            if (ls.opt.backlog == NGX_ERROR || ls.opt.backlog == 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid backlog \"%V\"", &value[n]);
                 return NGX_CONF_ERROR;
@@ -3367,10 +3345,10 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             size.len = value[n].len - 7;
             size.data = value[n].data + 7;
 
-            ls->conf.rcvbuf = ngx_parse_size(&size);
-            ls->conf.bind = 1;
+            ls.opt.rcvbuf = ngx_parse_size(&size);
+            ls.opt.bind = 1;
 
-            if (ls->conf.rcvbuf == NGX_ERROR) {
+            if (ls.opt.rcvbuf == NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid rcvbuf \"%V\"", &value[n]);
                 return NGX_CONF_ERROR;
@@ -3383,10 +3361,10 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             size.len = value[n].len - 7;
             size.data = value[n].data + 7;
 
-            ls->conf.sndbuf = ngx_parse_size(&size);
-            ls->conf.bind = 1;
+            ls.opt.sndbuf = ngx_parse_size(&size);
+            ls.opt.bind = 1;
 
-            if (ls->conf.sndbuf == NGX_ERROR) {
+            if (ls.opt.sndbuf == NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid sndbuf \"%V\"", &value[n]);
                 return NGX_CONF_ERROR;
@@ -3397,8 +3375,8 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strncmp(value[n].data, "accept_filter=", 14) == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
-            ls->conf.accept_filter = (char *) &value[n].data[14];
-            ls->conf.bind = 1;
+            ls.opt.accept_filter = (char *) &value[n].data[14];
+            ls.opt.bind = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "accept filters \"%V\" are not supported "
@@ -3410,8 +3388,8 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[n].data, "deferred") == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-            ls->conf.deferred_accept = 1;
-            ls->conf.bind = 1;
+            ls.opt.deferred_accept = 1;
+            ls.opt.bind = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the deferred accept is not supported "
@@ -3424,15 +3402,15 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
             struct sockaddr  *sa;
 
-            sa = (struct sockaddr *) ls->sockaddr;
+            sa = (struct sockaddr *) ls.sockaddr;
 
             if (sa->sa_family == AF_INET6) {
 
                 if (ngx_strcmp(&value[n].data[10], "n") == 0) {
-                    ls->conf.ipv6only = 1;
+                    ls.opt.ipv6only = 1;
 
                 } else if (ngx_strcmp(&value[n].data[10], "ff") == 0) {
-                    ls->conf.ipv6only = 2;
+                    ls.opt.ipv6only = 2;
 
                 } else {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3441,13 +3419,12 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     return NGX_CONF_ERROR;
                 }
 
-                ls->conf.bind = 1;
+                ls.opt.bind = 1;
 
             } else {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "ipv6only is not supported "
-                                   "on addr \"%s\", ignored",
-                                   ls->conf.addr);
+                                   "on addr \"%s\", ignored", ls.opt.addr);
             }
 
             continue;
@@ -3461,7 +3438,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[n].data, "ssl") == 0) {
 #if (NGX_HTTP_SSL)
-            ls->conf.ssl = 1;
+            ls.opt.ssl = 1;
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3476,7 +3453,11 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    return NGX_CONF_OK;
+    if (ngx_http_add_listen(cf, cscf, &ls) == NGX_OK) {
+        return NGX_CONF_OK;
+    }
+
+    return NGX_CONF_ERROR;
 }
 
 

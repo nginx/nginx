@@ -65,17 +65,14 @@ typedef struct {
 #endif
 
     u_char                     addr[NGX_SOCKADDR_STRLEN + 1];
-} ngx_http_listen_conf_t;
+} ngx_http_listen_opt_t;
 
 
 typedef struct {
     u_char                     sockaddr[NGX_SOCKADDRLEN];
     socklen_t                  socklen;
 
-    u_char                    *file_name;
-    ngx_uint_t                 line;
-
-    ngx_http_listen_conf_t     conf;
+    ngx_http_listen_opt_t      opt;
 } ngx_http_listen_t;
 
 
@@ -142,6 +139,8 @@ typedef struct {
 
     ngx_hash_keys_arrays_t    *variables_keys;
 
+    ngx_array_t               *ports;
+
     ngx_uint_t                 try_files;       /* unsigned  try_files:1 */
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
@@ -149,9 +148,6 @@ typedef struct {
 
 
 typedef struct {
-    /* array of the ngx_http_listen_t, "listen" directive */
-    ngx_array_t                 listen;
-
     /* array of the ngx_http_server_name_t, "server_name" directive */
     ngx_array_t                 server_names;
 
@@ -171,6 +167,8 @@ typedef struct {
     ngx_flag_t                  ignore_invalid_headers;
     ngx_flag_t                  merge_slashes;
     ngx_flag_t                  underscores_in_headers;
+
+    ngx_uint_t                  listen;         /* unsigned  listen:1; */
 
     ngx_http_core_loc_conf_t  **named_locations;
 } ngx_http_core_srv_conf_t;
@@ -222,7 +220,7 @@ typedef struct {
 
 
 typedef struct {
-    struct sockaddr           *sockaddr;
+    u_char                     sockaddr[NGX_SOCKADDRLEN];
     socklen_t                  socklen;
 
     ngx_hash_t                 hash;
@@ -246,7 +244,7 @@ typedef struct {
     unsigned                   ssl:1;
 #endif
 
-    ngx_http_listen_conf_t    *listen_conf;
+    ngx_http_listen_opt_t      opt;
 } ngx_http_conf_addr_t;
 
 
