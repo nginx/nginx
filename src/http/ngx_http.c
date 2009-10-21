@@ -19,10 +19,10 @@ static ngx_int_t ngx_http_init_phase_handlers(ngx_conf_t *cf,
 
 static ngx_int_t ngx_http_add_addresses(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_conf_port_t *port,
-    ngx_http_listen_t *listen);
+    ngx_http_listen_opt_t *lsopt);
 static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_conf_port_t *port,
-    ngx_http_listen_t *listen);
+    ngx_http_listen_opt_t *lsopt);
 static ngx_int_t ngx_http_add_server(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_conf_addr_t *addr);
 
@@ -1095,7 +1095,7 @@ inclusive:
 
 ngx_int_t
 ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
-    ngx_http_listen_t *listen)
+    ngx_http_listen_opt_t *lsopt)
 {
     in_port_t                   p;
     ngx_uint_t                  i;
@@ -1117,7 +1117,7 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
     }
 
-    sa = (struct sockaddr *) &listen->sockaddr;
+    sa = (struct sockaddr *) &lsopt->sockaddr;
 
     switch (sa->sa_family) {
 
@@ -1143,7 +1143,7 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
         /* a port is already in the port list */
 
-        return ngx_http_add_addresses(cf, cscf, &port[i], listen);
+        return ngx_http_add_addresses(cf, cscf, &port[i], lsopt);
     }
 
     /* add a port to the port list */
@@ -1157,13 +1157,13 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     port->port = p;
     port->addrs.elts = NULL;
 
-    return ngx_http_add_address(cf, cscf, port, listen);
+    return ngx_http_add_address(cf, cscf, port, lsopt);
 }
 
 
 static ngx_int_t
 ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
-    ngx_http_conf_port_t *port, ngx_http_listen_t *listen)
+    ngx_http_conf_port_t *port, ngx_http_listen_opt_t *lsopt)
 {
     u_char                *p;
     size_t                 len, off;
@@ -1176,7 +1176,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
      * may fill some fields in inherited sockaddr struct's
      */
 
-    sa = (struct sockaddr *) &listen->sockaddr;
+    sa = (struct sockaddr *) &lsopt->sockaddr;
 
     switch (sa->sa_family) {
 
@@ -1193,13 +1193,13 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         break;
     }
 
-    p = listen->sockaddr + off;
+    p = lsopt->sockaddr + off;
 
     addr = port->addrs.elts;
 
     for (i = 0; i < port->addrs.nelts; i++) {
 
-        if (ngx_memcmp(p, (u_char *) addr[i].sockaddr + off, len) != 0) {
+        if (ngx_memcmp(p, (u_char *) addr[i].opt.sockaddr + off, len) != 0) {
             continue;
         }
 
@@ -1211,7 +1211,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
         /* check the duplicate "default" server for this address:port */
 
-        if (listen->opt.default_server) {
+        if (lsopt->default_server) {
 
             if (addr[i].opt.default_server) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1219,8 +1219,8 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
                 return NGX_ERROR;
             }
 
+            addr[i].opt = *lsopt;
             addr[i].core_srv_conf = cscf;
-            addr[i].opt = listen->opt;
         }
 
         return NGX_OK;
@@ -1228,7 +1228,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
     /* add the address to the addresses list that bound to this port */
 
-    return ngx_http_add_address(cf, cscf, port, listen);
+    return ngx_http_add_address(cf, cscf, port, lsopt);
 }
 
 
@@ -1239,7 +1239,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
 static ngx_int_t
 ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
-    ngx_http_conf_port_t *port, ngx_http_listen_t *listen)
+    ngx_http_conf_port_t *port, ngx_http_listen_opt_t *lsopt)
 {
     ngx_http_conf_addr_t  *addr;
 
@@ -1257,8 +1257,7 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         return NGX_ERROR;
     }
 
-    ngx_memcpy(addr->sockaddr, listen->sockaddr, listen->socklen);
-    addr->socklen = listen->socklen;
+    addr->opt = *lsopt;
     addr->hash.buckets = NULL;
     addr->hash.size = 0;
     addr->wc_head = NULL;
@@ -1269,7 +1268,6 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
     addr->core_srv_conf = cscf;
     addr->servers.elts = NULL;
-    addr->opt = listen->opt;
 
     return ngx_http_add_server(cf, cscf, addr);
 }
@@ -1629,7 +1627,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
-    ls = ngx_create_listening(cf, addr->sockaddr, addr->socklen);
+    ls = ngx_create_listening(cf, addr->opt.sockaddr, addr->opt.socklen);
     if (ls == NULL) {
         return NULL;
     }
@@ -1698,7 +1696,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 
     for (i = 0; i < hport->naddrs; i++) {
 
-        sin = (struct sockaddr_in *) addr[i].sockaddr;
+        sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
         addrs[i].addr = sin->sin_addr.s_addr;
         addrs[i].conf.core_srv_conf = addr[i].core_srv_conf;
 #if (NGX_HTTP_SSL)
@@ -1759,7 +1757,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 
     for (i = 0; i < hport->naddrs; i++) {
 
-        sin6 = (struct sockaddr_in6 *) addr[i].sockaddr;
+        sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
         addrs6[i].addr6 = sin6->sin6_addr;
         addrs6[i].conf.core_srv_conf = addr[i].core_srv_conf;
 #if (NGX_HTTP_SSL)

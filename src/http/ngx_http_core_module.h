@@ -43,6 +43,9 @@ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
 
 typedef struct {
+    u_char                     sockaddr[NGX_SOCKADDRLEN];
+    socklen_t                  socklen;
+
     unsigned                   default_server:1;
     unsigned                   bind:1;
     unsigned                   wildcard:1;
@@ -66,14 +69,6 @@ typedef struct {
 
     u_char                     addr[NGX_SOCKADDR_STRLEN + 1];
 } ngx_http_listen_opt_t;
-
-
-typedef struct {
-    u_char                     sockaddr[NGX_SOCKADDRLEN];
-    socklen_t                  socklen;
-
-    ngx_http_listen_opt_t      opt;
-} ngx_http_listen_t;
 
 
 typedef enum {
@@ -223,8 +218,7 @@ typedef struct {
 
 
 typedef struct {
-    u_char                     sockaddr[NGX_SOCKADDRLEN];
-    socklen_t                  socklen;
+    ngx_http_listen_opt_t      opt;
 
     ngx_hash_t                 hash;
     ngx_hash_wildcard_t       *wc_head;
@@ -238,8 +232,6 @@ typedef struct {
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
     ngx_array_t                servers;  /* array of ngx_http_core_srv_conf_t */
-
-    ngx_http_listen_opt_t      opt;
 } ngx_http_conf_addr_t;
 
 
