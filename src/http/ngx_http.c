@@ -1220,7 +1220,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
             }
 
             addr[i].opt = *lsopt;
-            addr[i].core_srv_conf = cscf;
+            addr[i].default_server = cscf;
         }
 
         return NGX_OK;
@@ -1266,7 +1266,7 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     addr->nregex = 0;
     addr->regex = NULL;
 #endif
-    addr->core_srv_conf = cscf;
+    addr->default_server = cscf;
     addr->servers.elts = NULL;
 
     return ngx_http_add_server(cf, cscf, addr);
@@ -1325,7 +1325,7 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
 
             if (addr[a].servers.nelts > 1
 #if (NGX_PCRE)
-                || addr[a].core_srv_conf->captures
+                || addr[a].default_server->captures
 #endif
                )
             {
@@ -1388,7 +1388,7 @@ ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
             }
 #endif
 
-            rc = ngx_hash_add_key(&ha, &name[n].name, name[n].core_srv_conf,
+            rc = ngx_hash_add_key(&ha, &name[n].name, name[n].server,
                                   NGX_HASH_WILDCARD_KEY);
 
             if (rc == NGX_ERROR) {
@@ -1636,7 +1636,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
     ls->handler = ngx_http_init_connection;
 
-    cscf = addr->core_srv_conf;
+    cscf = addr->default_server;
     ls->pool_size = cscf->connection_pool_size;
     ls->post_accept_timeout = cscf->client_header_timeout;
 
@@ -1698,7 +1698,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 
         sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
         addrs[i].addr = sin->sin_addr.s_addr;
-        addrs[i].conf.core_srv_conf = addr[i].core_srv_conf;
+        addrs[i].conf.default_server = addr[i].default_server;
 #if (NGX_HTTP_SSL)
         addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
@@ -1759,7 +1759,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 
         sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
         addrs6[i].addr6 = sin6->sin6_addr;
-        addrs6[i].conf.core_srv_conf = addr[i].core_srv_conf;
+        addrs6[i].conf.default_server = addr[i].default_server;
 #if (NGX_HTTP_SSL)
         addrs6[i].conf.ssl = addr[i].opt.ssl;
 #endif

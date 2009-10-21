@@ -2877,7 +2877,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_PCRE)
         sn->regex = NULL;
 #endif
-        sn->core_srv_conf = conf;
+        sn->server = conf;
         sn->name.len = conf->server_name.len;
         sn->name.data = conf->server_name.data;
     }
@@ -3529,7 +3529,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_PCRE)
         sn->regex = NULL;
 #endif
-        sn->core_srv_conf = cscf;
+        sn->server = cscf;
         sn->name = value[i];
 
         ngx_strlow(sn->name.data, sn->name.data, sn->name.len);

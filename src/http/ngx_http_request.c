@@ -381,7 +381,7 @@ ngx_http_init_request(ngx_event_t *rev)
     r->virtual_names = addr_conf->virtual_names;
 
     /* the default server configuration for the address:port */
-    cscf = addr_conf->core_srv_conf;
+    cscf = addr_conf->default_server;
 
     r->main_conf = cscf->ctx->main_conf;
     r->srv_conf = cscf->ctx->srv_conf;
@@ -1704,7 +1704,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
         for (i = 0; i < r->virtual_names->nregex; i++) {
 
-            if (sn[i].core_srv_conf->captures && r->captures == NULL) {
+            if (sn[i].server->captures && r->captures == NULL) {
 
                 ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
 
@@ -1730,7 +1730,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
             /* match */
 
-            cscf = sn[i].core_srv_conf;
+            cscf = sn[i].server;
 
             r->ncaptures = ncaptures;
             r->captures_data = host;
