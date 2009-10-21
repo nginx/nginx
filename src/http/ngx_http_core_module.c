@@ -2876,7 +2876,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #if (NGX_PCRE)
         sn->regex = NULL;
-        sn->captures = 0;
 #endif
         sn->core_srv_conf = conf;
         sn->name.len = conf->server_name.len;
@@ -3529,10 +3528,11 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
         sn->regex = NULL;
-        sn->captures = 0;
 #endif
         sn->core_srv_conf = cscf;
         sn->name = value[i];
+
+        ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
 
         if (value[i].data[0] != '~') {
             continue;
@@ -3562,8 +3562,8 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        sn->captures = (ngx_regex_capture_count(sn->regex) > 0);
         sn->name = value[i];
+        cscf->captures = (ngx_regex_capture_count(sn->regex) > 0);
         }
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

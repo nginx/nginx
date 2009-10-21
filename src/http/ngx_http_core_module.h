@@ -168,7 +168,10 @@ typedef struct {
     ngx_flag_t                  merge_slashes;
     ngx_flag_t                  underscores_in_headers;
 
-    ngx_uint_t                  listen;         /* unsigned  listen:1; */
+    unsigned                    listen:1;
+#if (NGX_PCRE)
+    unsigned                    captures:1;
+#endif
 
     ngx_http_core_loc_conf_t  **named_locations;
 } ngx_http_core_srv_conf_t;
@@ -227,8 +230,6 @@ typedef struct {
     ngx_hash_wildcard_t       *wc_head;
     ngx_hash_wildcard_t       *wc_tail;
 
-    ngx_array_t                names;      /* array of ngx_http_server_name_t */
-
 #if (NGX_PCRE)
     ngx_uint_t                 nregex;
     ngx_http_server_name_t    *regex;
@@ -236,6 +237,7 @@ typedef struct {
 
     /* the default server configuration for this address:port */
     ngx_http_core_srv_conf_t  *core_srv_conf;
+    ngx_array_t                servers;  /* array of ngx_http_core_srv_conf_t */
 
     ngx_http_listen_opt_t      opt;
 } ngx_http_conf_addr_t;
@@ -244,7 +246,6 @@ typedef struct {
 struct ngx_http_server_name_s {
 #if (NGX_PCRE)
     ngx_regex_t               *regex;
-    ngx_uint_t                 captures;      /* unsigned  captures:1; */
 #endif
     ngx_http_core_srv_conf_t  *core_srv_conf; /* virtual name server conf */
     ngx_str_t                  name;

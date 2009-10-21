@@ -1704,7 +1704,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
         for (i = 0; i < r->virtual_names->nregex; i++) {
 
-            if (sn[i].captures && r->captures == NULL) {
+            if (sn[i].core_srv_conf->captures && r->captures == NULL) {
 
                 ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
 
