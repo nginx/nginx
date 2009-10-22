@@ -1289,6 +1289,7 @@ static ngx_int_t
 ngx_http_add_server(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_conf_addr_t *addr)
 {
+    ngx_uint_t                  i;
     ngx_http_core_srv_conf_t  **server;
 
     if (addr->servers.elts == NULL) {
@@ -1297,6 +1298,16 @@ ngx_http_add_server(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
             != NGX_OK)
         {
             return NGX_ERROR;
+        }
+
+    } else {
+        server = addr->servers.elts;
+        for (i = 0; i < addr->servers.nelts; i++) {
+            if (server[i] == cscf) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "a duplicate listen %s", addr->opt.addr);
+                return NGX_ERROR;
+            }
         }
     }
 
