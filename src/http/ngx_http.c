@@ -1167,7 +1167,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 {
     u_char                *p;
     size_t                 len, off;
-    ngx_uint_t             i;
+    ngx_uint_t             i, default_server;
     struct sockaddr       *sa;
     ngx_http_conf_addr_t  *addr;
 
@@ -1209,6 +1209,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
             return NGX_ERROR;
         }
 
+        /* preserve default_server bit during listen options overwriting */
+        default_server = addr[i].opt.default_server;
+
         if (lsopt->set) {
 
             if (addr[i].opt.set) {
@@ -1224,14 +1227,17 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
         if (lsopt->default_server) {
 
-            if (addr[i].opt.default_server) {
+            if (default_server) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "a duplicate default server for %s", addr[i].opt.addr);
                 return NGX_ERROR;
             }
 
+            default_server = 1;
             addr[i].default_server = cscf;
         }
+
+        addr[i].opt.default_server = default_server;
 
         return NGX_OK;
     }
