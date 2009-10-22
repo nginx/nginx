@@ -1209,10 +1209,15 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
             return NGX_ERROR;
         }
 
-        if (lsopt->set && addr[i].opt.set) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+        if (lsopt->set) {
+
+            if (addr[i].opt.set) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                         "a duplicate listen options for %s", addr[i].opt.addr);
-            return NGX_ERROR;
+                return NGX_ERROR;
+            }
+
+            addr[i].opt = *lsopt;
         }
 
         /* check the duplicate "default" server for this address:port */
@@ -1225,7 +1230,6 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
                 return NGX_ERROR;
             }
 
-            addr[i].opt = *lsopt;
             addr[i].default_server = cscf;
         }
 
