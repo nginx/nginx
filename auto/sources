@@ -377,6 +377,10 @@ HTTP_GEO_MODULE=ngx_http_geo_module
 HTTP_GEO_SRCS=src/http/modules/ngx_http_geo_module.c
 
 
+HTTP_GEOIP_MODULE=ngx_http_geoip_module
+HTTP_GEOIP_SRCS=src/http/modules/ngx_http_geoip_module.c
+
+
 HTTP_MAP_MODULE=ngx_http_map_module
 HTTP_MAP_SRCS=src/http/modules/ngx_http_map_module.c
 

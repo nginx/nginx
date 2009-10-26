@@ -67,6 +67,9 @@ if [ $USE_PERL = YES ]; then
     . auto/lib/perl/conf
 fi
 
+if [ $HTTP_GEOIP = YES ]; then
+    . auto/lib/geoip/conf
+fi
 if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
     . auto/lib/google-perftools/conf
 fi

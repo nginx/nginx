@@ -71,6 +71,7 @@ HTTP_AUTOINDEX=YES
 HTTP_RANDOM_INDEX=NO
 HTTP_STATUS=NO
 HTTP_GEO=YES
+HTTP_GEOIP=NO
 HTTP_MAP=YES
 HTTP_REFERER=YES
 HTTP_REWRITE=YES
@@ -184,6 +185,7 @@ do
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
         --with-http_image_filter_module) HTTP_IMAGE_FILTER=YES      ;;
+        --with-http_geoip_module)        HTTP_GEOIP=YES             ;;
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
@@ -310,6 +312,7 @@ cat << END
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module
   --with-http_image_filter_module    enable ngx_http_image_filter_module
+  --with-http_geoip_module           enable ngx_http_geoip_module
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
