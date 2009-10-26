@@ -60,6 +60,7 @@
 #define NGX_HTTP_ZERO_IN_URI               1
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
 #define NGX_HTTP_SUBREQUEST_WAITED         4
+#define NGX_HTTP_LOG_UNSAFE                8
 
 
 #define NGX_HTTP_OK                        200
