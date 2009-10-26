@@ -9,6 +9,325 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.63" date="26.10.2009">
+
+<change type="security">
+<para lang="ru">
+теперь символы "/../" запрещены в строке "Destination" в заголовке запроса.
+</para>
+<para lang="en">
+now "/../" are disabled in "Destination" request header line.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+минимальная поддерживаемая версия OpenSSL&mdash;0.9.7.
+</para>
+<para lang="en">
+minimum supported OpenSSL version is 0.9.7.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+параметр ask директивы ssl_verify_client изменён на параметр optional
+и теперь он проверяет клиентский сертификат, если он был предложен.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the "ask" parameter of the "ssl_verify_client" directive was changed
+to the "optional" parameter and now it checks a client certificate if it was
+offered.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь ключ -V показывает статус поддержки TLS SNI.
+</para>
+<para lang="en">
+now the "-V" switch shows TLS SNI support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_verify.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the $ssl_client_verify variable.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_crl.<br/>
+Спасибо Brice Figureau.
+</para>
+<para lang="en">
+the "ssl_crl" directive.<br/>
+Thanks to Brice Figureau.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+использование переменной $ssl_client_cert портило память;
+ошибка появилась в 0.7.7.<br/>
+Спасибо Сергею Журавлёву.
+</para>
+<para lang="en">
+the $ssl_client_cert variable usage corrupted memory;
+the bug had appeared in 0.7.7.<br/>
+Thanks to Sergey Zhuravlev.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь стартовый загрузчик кэша работает в отдельном процесс;
+это должно улучшить обработку больших кэшей.
+</para>
+<para lang="en">
+now the start cache loader runs in a separate process;
+this should improve large caches handling.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь временные файлы и постоянное место хранения могут располагаться
+на разных файловых системах.
+</para>
+<para lang="en">
+now temporary files and permanent storage area may reside at
+different file systems.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неверно считал размер кэша на диске.
+</para>
+<para lang="en">
+nginx counted incorrectly disk cache size.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь директива "gzip_disable msie6" не запрещает сжатие для
+<nobr>MSIE 6.0 SV1.</nobr>
+</para>
+<para lang="en">
+now directive "gzip_disable msie6" does not disable gzipping for
+<nobr>MSIE 6.0 SV1.</nobr>
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx всегда добавлял строку "Vary: Accept-Encoding" в заголовок ответа,
+если обе директивы gzip_static и gzip_vary были включены.
+</para>
+<para lang="en">
+nginx always added "Vary: Accept-Encoding" response header line,
+if both "gzip_static" and "gzip_vary" were on.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy директивы geo.
+</para>
+<para lang="en">
+the "proxy" parameter of the "geo" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_geoip_module.
+</para>
+<para lang="en">
+the ngx_http_geoip_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива limit_rate_after.<br/>
+Спасибо Ivan Debnar.
+</para>
+<para lang="en">
+the "limit_rate_after" directive.<br/>
+Thanks to Ivan Debnar.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы limit_req_log_level и limit_conn_log_level.
+</para>
+<para lang="en">
+the "limit_req_log_level" and "limit_conn_log_level" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+Теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now "limit_req" directive conforms to the leaky bucket algorithm.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_limit_req_module.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in ngx_http_limit_req_module.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx разрешает подчёркивания в методе запроса.
+</para>
+<para lang="en">
+now nginx allows underscores in a request method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_pass_header и fastcgi_pass_header" не передавали клиенту
+строки "X-Accel-Redirect", "X-Accel-Limit-Rate", "X-Accel-Buffering" и
+"X-Accel-Charset" из заголовка ответа бэкенда.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+"proxy_pass_header" and "fastcgi_pass_header" directives did not pass to
+a client the "X-Accel-Redirect", "X-Accel-Limit-Rate", "X-Accel-Buffering",
+and "X-Accel-Charset" lines from backend response header.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке строк "Last-Modified" и "Accept-Ranges" в заголовке ответа бэкенда;
+ошибка появилась в 0.7.44<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in handling "Last-Modified" and "Accept-Ranges" backend response header lines;
+the bug had appeared in 0.7.44.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_transparency.
+</para>
+<para lang="en">
+the "image_filter_transparency" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter поддерживает переменные для задания размеров.
+</para>
+<para lang="en">
+the "image_filter" directive supports variables for setting size.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке альфа-канала PNG в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+in PNG alpha-channel support in the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке прозрачности в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+in transparency support in the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь можно использовать несколько директив perl_modules.
+</para>
+<para lang="en">
+now several "perl_modules" directives may be used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы модуля ngx_http_perl_module не работали в подзапросах.
+</para>
+<para lang="en">
+ngx_http_perl_module responses did not work in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx слал символ '\0' в строке "Location" в заголовке в ответе на запрос
+MKCOL.<br/>
+Спасибо Xie Zhenye.
+</para>
+<para lang="en">
+nginx sent '\0' in a "Location" response header line on MKCOL request.<br/>
+Thanks to Xie Zhenye.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не перенаправляла ошибку 413;
+ошибка появилась в 0.6.10.
+</para>
+<para lang="en">
+an "error_page" directive did not redirect a 413 error;
+the bug had appeared in 0.6.10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.<br/>
+Спасибо Максиму Дунину и Кириллу Коринскому.
+</para>
+<para lang="en">
+in memory allocation error handling.<br/>
+Thanks to Maxim Dounin and Kirill A. Korinskiy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.62" date="14.09.2009">
 
 <change type="security">
