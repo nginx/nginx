@@ -43,7 +43,7 @@ ngx_uint_t            ngx_event_flags;
 ngx_event_actions_t   ngx_event_actions;
 
 
-ngx_atomic_t          connection_counter = 1;
+static ngx_atomic_t   connection_counter = 1;
 ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 
@@ -429,6 +429,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     u_char              *shared;
     size_t               size, cl;
     ngx_shm_t            shm;
+    ngx_time_t          *tp;
     ngx_core_conf_t     *ccf;
     ngx_event_conf_t    *ecf;
 
@@ -492,7 +493,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     cl = 128;
 
     size = cl            /* ngx_accept_mutex */
-           + cl;         /* ngx_connection_counter */
+           + cl          /* ngx_connection_counter */
+           + cl;         /* ngx_temp_number */
 
 #if (NGX_STAT_STUB)
 
@@ -526,22 +528,28 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     ngx_connection_counter = (ngx_atomic_t *) (shared + 1 * cl);
 
-#if (NGX_STAT_STUB)
-
-    ngx_stat_accepted = (ngx_atomic_t *) (shared + 2 * cl);
-    ngx_stat_handled = (ngx_atomic_t *) (shared + 3 * cl);
-    ngx_stat_requests = (ngx_atomic_t *) (shared + 4 * cl);
-    ngx_stat_active = (ngx_atomic_t *) (shared + 5 * cl);
-    ngx_stat_reading = (ngx_atomic_t *) (shared + 6 * cl);
-    ngx_stat_writing = (ngx_atomic_t *) (shared + 7 * cl);
-
-#endif
-
     (void) ngx_atomic_cmp_set(ngx_connection_counter, 0, 1);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "counter: %p, %d",
                    ngx_connection_counter, *ngx_connection_counter);
+
+    ngx_temp_number = (ngx_atomic_t *) (shared + 2 * cl);
+
+    tp = ngx_timeofday();
+
+    ngx_random_number = (tp->msec << 16) + ngx_pid;
+
+#if (NGX_STAT_STUB)
+
+    ngx_stat_accepted = (ngx_atomic_t *) (shared + 3 * cl);
+    ngx_stat_handled = (ngx_atomic_t *) (shared + 4 * cl);
+    ngx_stat_requests = (ngx_atomic_t *) (shared + 5 * cl);
+    ngx_stat_active = (ngx_atomic_t *) (shared + 6 * cl);
+    ngx_stat_reading = (ngx_atomic_t *) (shared + 7 * cl);
+    ngx_stat_writing = (ngx_atomic_t *) (shared + 8 * cl);
+
+#endif
 
     return NGX_OK;
 }

@@ -16,6 +16,7 @@ typedef int               ngx_err_t;
 
 #define NGX_EPERM         EPERM
 #define NGX_ENOENT        ENOENT
+#define NGX_ENOPATH       ENOENT
 #define NGX_ESRCH         ESRCH
 #define NGX_EINTR         EINTR
 #define NGX_ECHILD        ECHILD

@@ -21,6 +21,7 @@ typedef DWORD                      ngx_err_t;
 
 #define NGX_EPERM                  ERROR_ACCESS_DENIED
 #define NGX_ENOENT                 ERROR_FILE_NOT_FOUND
+#define NGX_ENOPATH                ERROR_PATH_NOT_FOUND
 #define NGX_ENOMEM                 ERROR_NOT_ENOUGH_MEMORY
 #define NGX_EACCES                 ERROR_ACCESS_DENIED
 /* it's seems that ERROR_FILE_EXISTS is not appropriate error code */
