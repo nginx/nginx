@@ -2706,7 +2706,14 @@ ngx_http_send_special(ngx_http_request_t *r, ngx_uint_t flags)
     }
 
     if (flags & NGX_HTTP_LAST) {
-        b->last_buf = 1;
+
+        if (r == r->main && !r->post_action) {
+            b->last_buf = 1;
+
+        } else {
+            b->sync = 1;
+            b->last_in_chain = 1;
+        }
     }
 
     if (flags & NGX_HTTP_FLUSH) {
