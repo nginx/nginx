@@ -35,6 +35,7 @@ typedef struct {
     ngx_radix_tree_t                *tree;
     ngx_rbtree_t                     rbtree;
     ngx_rbtree_node_t                sentinel;
+    ngx_array_t                     *proxies;
     ngx_pool_t                      *pool;
     ngx_pool_t                      *temp_pool;
 } ngx_http_geo_conf_ctx_t;
@@ -46,11 +47,15 @@ typedef struct {
         ngx_http_geo_high_ranges_t  *high;
     } u;
 
+    ngx_array_t                     *proxies;
+
     ngx_int_t                        index;
 } ngx_http_geo_ctx_t;
 
 
 static in_addr_t ngx_http_geo_addr(ngx_http_request_t *r,
+    ngx_http_geo_ctx_t *ctx);
+static in_addr_t ngx_http_geo_real_addr(ngx_http_request_t *r,
     ngx_http_geo_ctx_t *ctx);
 static char *ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf);
@@ -64,6 +69,10 @@ static char *ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value);
 static ngx_http_variable_value_t *ngx_http_geo_value(ngx_conf_t *cf,
     ngx_http_geo_conf_ctx_t *ctx, ngx_str_t *value);
+static char *ngx_http_geo_add_proxy(ngx_conf_t *cf,
+    ngx_http_geo_conf_ctx_t *ctx, ngx_cidr_t *cidr);
+static ngx_int_t ngx_http_geo_cidr_value(ngx_conf_t *cf, ngx_str_t *net,
+    ngx_cidr_t *cidr);
 
 
 static ngx_command_t  ngx_http_geo_commands[] = {
@@ -168,6 +177,50 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 static in_addr_t
 ngx_http_geo_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx)
 {
+    u_char           *p, *ip;
+    size_t            len;
+    in_addr_t         addr;
+    ngx_uint_t        i, n;
+    ngx_in_cidr_t    *proxies;
+    ngx_table_elt_t  *xfwd;
+
+    addr = ngx_http_geo_real_addr(r, ctx);
+
+    xfwd = r->headers_in.x_forwarded_for;
+
+    if (xfwd == NULL || ctx->proxies == NULL) {
+        return addr;
+    }
+
+    proxies = ctx->proxies->elts;
+    n = ctx->proxies->nelts;
+
+    for (i = 0; i < n; i++) {
+        if ((addr & proxies[i].mask) == proxies[i].addr) {
+
+            len = xfwd->value.len;
+            ip = xfwd->value.data;
+
+            for (p = ip + len - 1; p > ip; p--) {
+                if (*p == ' ' || *p == ',') {
+                    p++;
+                    len -= p - ip;
+                    ip = p;
+                    break;
+                }
+            }
+
+            return ntohl(ngx_inet_addr(ip, len));
+        }
+    }
+
+    return addr;
+}
+
+
+static in_addr_t
+ngx_http_geo_real_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx)
+{
     struct sockaddr_in         *sin;
     ngx_http_variable_value_t  *v;
 
@@ -259,6 +312,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ctx.high = NULL;
     ctx.tree = NULL;
+    ctx.proxies = NULL;
     ctx.pool = cf->pool;
 
     save = *cf;
@@ -270,6 +324,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     rv = ngx_conf_parse(cf, NULL);
 
     *cf = save;
+
+    geo->proxies = ctx.proxies;
 
     if (ctx.high) {
 
@@ -341,6 +397,7 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     char                     *rv;
     ngx_str_t                *value, file;
+    ngx_cidr_t                cidr;
     ngx_http_geo_conf_ctx_t  *ctx;
 
     ctx = cf->ctx;
@@ -392,6 +449,16 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
         rv = ngx_conf_parse(cf, &file);
+
+        goto done;
+
+    } else if (ngx_strcmp(value[0].data, "proxy") == 0) {
+
+        if (ngx_http_geo_cidr_value(cf, &value[1], &cidr) != NGX_OK) {
+            goto failed;
+        }
+
+        rv = ngx_http_geo_add_proxy(cf, ctx, &cidr);
 
         goto done;
     }
@@ -803,33 +870,8 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             del = 0;
         }
 
-        if (ngx_strcmp(net->data, "255.255.255.255") == 0) {
-            cidr.u.in.addr = 0xffffffff;
-            cidr.u.in.mask = 0xffffffff;
-
-        } else {
-            rc = ngx_ptocidr(net, &cidr);
-
-            if (rc == NGX_ERROR) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid network \"%V\"", net);
-                return NGX_CONF_ERROR;
-            }
-
-            if (cidr.family != AF_INET) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "\"geo\" supports IPv4 only");
-                return NGX_CONF_ERROR;
-            }
-
-            if (rc == NGX_DONE) {
-                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                                   "low address bits of %V are meaningless",
-                                   net);
-            }
-
-            cidr.u.in.addr = ntohl(cidr.u.in.addr);
-            cidr.u.in.mask = ntohl(cidr.u.in.mask);
+        if (ngx_http_geo_cidr_value(cf, net, &cidr) != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
 
         if (del) {
@@ -926,4 +968,65 @@ ngx_http_geo_value(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_rbtree_insert(&ctx->rbtree, &vvn->node);
 
     return val;
+}
+
+
+static char *
+ngx_http_geo_add_proxy(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
+    ngx_cidr_t *cidr)
+{
+    ngx_in_cidr_t  *c;
+
+    if (ctx->proxies == NULL) {
+        ctx->proxies = ngx_array_create(ctx->pool, 4, sizeof(ngx_in_cidr_t));
+        if (ctx->proxies == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    c = ngx_array_push(ctx->proxies);
+    if (c == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    c->addr = cidr->u.in.addr;
+    c->mask = cidr->u.in.mask;
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_geo_cidr_value(ngx_conf_t *cf, ngx_str_t *net, ngx_cidr_t *cidr)
+{
+    ngx_int_t  rc;
+
+    if (ngx_strcmp(net->data, "255.255.255.255") == 0) {
+        cidr->u.in.addr = 0xffffffff;
+        cidr->u.in.mask = 0xffffffff;
+
+        return NGX_OK;
+    }
+
+    rc = ngx_ptocidr(net, cidr);
+
+    if (rc == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid network \"%V\"", net);
+        return NGX_ERROR;
+    }
+
+    if (cidr->family != AF_INET) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"geo\" supports IPv4 only");
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_DONE) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "low address bits of %V are meaningless", net);
+    }
+
+    cidr->u.in.addr = ntohl(cidr->u.in.addr);
+    cidr->u.in.mask = ntohl(cidr->u.in.mask);
+
+    return NGX_OK;
 }

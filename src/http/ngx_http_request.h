@@ -184,7 +184,7 @@ typedef struct {
 
     ngx_table_elt_t                  *keep_alive;
 
-#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP)
+#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP || NGX_HTTP_GEO)
     ngx_table_elt_t                  *x_forwarded_for;
 #endif
 
