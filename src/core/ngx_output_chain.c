@@ -314,11 +314,10 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 
 #endif
 
+        cl->next = NULL;
         *ll = cl;
         ll = &cl->next;
     }
-
-    *ll = NULL;
 
     return NGX_OK;
 }

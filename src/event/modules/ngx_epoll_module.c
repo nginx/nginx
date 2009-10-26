@@ -552,7 +552,7 @@ ngx_epoll_create_conf(ngx_cycle_t *cycle)
 
     epcf = ngx_palloc(cycle->pool, sizeof(ngx_epoll_conf_t));
     if (epcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     epcf->events = NGX_CONF_UNSET;

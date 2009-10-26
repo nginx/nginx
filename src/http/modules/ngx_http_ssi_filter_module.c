@@ -2689,14 +2689,14 @@ ngx_http_ssi_create_main_conf(ngx_conf_t *cf)
 
     smcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssi_main_conf_t));
     if (smcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     smcf->commands.pool = cf->pool;
     smcf->commands.temp_pool = cf->temp_pool;
 
     if (ngx_hash_keys_array_init(&smcf->commands, NGX_HASH_SMALL) != NGX_OK) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     return smcf;
@@ -2736,7 +2736,7 @@ ngx_http_ssi_create_loc_conf(ngx_conf_t *cf)
 
     slcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_ssi_loc_conf_t));
     if (slcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

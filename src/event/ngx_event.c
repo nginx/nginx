@@ -1113,7 +1113,7 @@ ngx_event_create_conf(ngx_cycle_t *cycle)
 
     ecf = ngx_palloc(cycle->pool, sizeof(ngx_event_conf_t));
     if (ecf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     ecf->connections = NGX_CONF_UNSET_UINT;
@@ -1128,7 +1128,7 @@ ngx_event_create_conf(ngx_cycle_t *cycle)
     if (ngx_array_init(&ecf->debug_connection, cycle->pool, 4,
                        sizeof(ngx_event_debug_t)) == NGX_ERROR)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
 #endif

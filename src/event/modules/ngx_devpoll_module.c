@@ -550,7 +550,7 @@ ngx_devpoll_create_conf(ngx_cycle_t *cycle)
 
     dpcf = ngx_palloc(cycle->pool, sizeof(ngx_devpoll_conf_t));
     if (dpcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     dpcf->changes = NGX_CONF_UNSET;

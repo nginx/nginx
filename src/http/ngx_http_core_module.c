@@ -2699,14 +2699,14 @@ ngx_http_core_create_main_conf(ngx_conf_t *cf)
 
     cmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_main_conf_t));
     if (cmcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&cmcf->servers, cf->pool, 4,
                        sizeof(ngx_http_core_srv_conf_t *))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     cmcf->server_names_hash_max_size = NGX_CONF_UNSET_UINT;
@@ -2758,7 +2758,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
 
     cscf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_srv_conf_t));
     if (cscf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*
@@ -2771,14 +2771,14 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
                        sizeof(ngx_http_listen_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
                        sizeof(ngx_http_server_name_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     cscf->connection_pool_size = NGX_CONF_UNSET_SIZE;
@@ -2889,7 +2889,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 
     lcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_loc_conf_t));
     if (lcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

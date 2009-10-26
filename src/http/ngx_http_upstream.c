@@ -4274,7 +4274,7 @@ ngx_http_upstream_create_main_conf(ngx_conf_t *cf)
                        sizeof(ngx_http_upstream_srv_conf_t *))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     return umcf;

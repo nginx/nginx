@@ -561,7 +561,7 @@ ngx_http_script_add_code(ngx_array_t *codes, size_t size, void *code)
 
     new = ngx_array_push_n(codes, size);
     if (new == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (code) {

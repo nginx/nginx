@@ -948,7 +948,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_image_filter_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->filter = NGX_CONF_UNSET_UINT;

@@ -1172,7 +1172,7 @@ ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf)
 
     conf = ngx_palloc(cf->pool, sizeof(ngx_http_xslt_filter_main_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&conf->dtd_files, cf->pool, 1,
@@ -1200,7 +1200,7 @@ ngx_http_xslt_filter_create_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_xslt_filter_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

@@ -220,7 +220,7 @@ ngx_http_rewrite_create_loc_conf(ngx_conf_t *cf)
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_rewrite_loc_conf_t));
     if (conf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     conf->stack_size = NGX_CONF_UNSET_UINT;
@@ -568,7 +568,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if_code = ngx_array_push_n(lcf->codes, sizeof(ngx_http_script_if_code_t));
     if (if_code == NULL) {
-        return NULL;
+        return NGX_CONF_ERROR;
     }
 
     if_code->code = ngx_http_script_if_code;

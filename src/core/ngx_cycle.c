@@ -216,7 +216,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         if (module->create_conf) {
             rv = module->create_conf(cycle);
-            if (rv == NGX_CONF_ERROR) {
+            if (rv == NULL) {
                 ngx_destroy_pool(pool);
                 return NULL;
             }

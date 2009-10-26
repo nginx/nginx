@@ -638,7 +638,7 @@ ngx_http_sub_create_conf(ngx_conf_t *cf)
 
     slcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_sub_loc_conf_t));
     if (slcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*

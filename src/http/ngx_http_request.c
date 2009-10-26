@@ -451,13 +451,15 @@ ngx_http_init_request(ngx_event_t *rev)
                       sizeof(ngx_table_elt_t))
         != NGX_OK)
     {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_destroy_pool(r->pool);
+        ngx_http_close_connection(c);
         return;
     }
 
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_destroy_pool(r->pool);
+        ngx_http_close_connection(c);
         return;
     }
 
@@ -466,7 +468,8 @@ ngx_http_init_request(ngx_event_t *rev)
     r->variables = ngx_pcalloc(r->pool, cmcf->variables.nelts
                                         * sizeof(ngx_http_variable_value_t));
     if (r->variables == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_destroy_pool(r->pool);
+        ngx_http_close_connection(c);
         return;
     }
 

@@ -1302,7 +1302,7 @@ ngx_mail_auth_http_create_conf(ngx_conf_t *cf)
 
     ahcf = ngx_pcalloc(cf->pool, sizeof(ngx_mail_auth_http_conf_t));
     if (ahcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     ahcf->timeout = NGX_CONF_UNSET_MSEC;

@@ -1488,27 +1488,27 @@ ngx_http_charset_create_main_conf(ngx_conf_t *cf)
 
     mcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_charset_main_conf_t));
     if (mcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&mcf->charsets, cf->pool, 2, sizeof(ngx_http_charset_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&mcf->tables, cf->pool, 1,
                        sizeof(ngx_http_charset_tables_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     if (ngx_array_init(&mcf->recodes, cf->pool, 2,
                        sizeof(ngx_http_charset_recode_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     return mcf;
@@ -1522,7 +1522,7 @@ ngx_http_charset_create_loc_conf(ngx_conf_t *cf)
 
     lcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_charset_loc_conf_t));
     if (lcf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     /*
