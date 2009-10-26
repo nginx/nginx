@@ -534,7 +534,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
             next_name->key.len = names[n].key.len - len;
             next_name->key.data = names[n].key.data + len;
-            next_name->key_hash= 0;
+            next_name->key_hash = 0;
             next_name->value = names[n].value;
 
 #if 0
@@ -562,7 +562,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
             next_name->key.len = names[i].key.len - dot_len;
             next_name->key.data = names[i].key.data + dot_len;
-            next_name->key_hash= 0;
+            next_name->key_hash = 0;
             next_name->value = names[i].value;
 
 #if 0

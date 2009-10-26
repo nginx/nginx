@@ -30,12 +30,15 @@ ngx_cpystrn(u_char *dst, u_char *src, size_t n)
         return dst;
     }
 
-    for ( /* void */ ; --n; dst++, src++) {
+    while (--n) {
         *dst = *src;
 
         if (*dst == '\0') {
             return dst;
         }
+
+        dst++;
+        src++;
     }
 
     *dst = '\0';
@@ -565,8 +568,8 @@ ngx_strcasecmp(u_char *s1, u_char *s2)
         c1 = (ngx_uint_t) *s1++;
         c2 = (ngx_uint_t) *s2++;
 
-        c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
-        c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+        c1 = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+        c2 = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
 
         if (c1 == c2) {
 
@@ -591,8 +594,8 @@ ngx_strncasecmp(u_char *s1, u_char *s2, size_t n)
         c1 = (ngx_uint_t) *s1++;
         c2 = (ngx_uint_t) *s2++;
 
-        c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
-        c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+        c1 = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+        c2 = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
 
         if (c1 == c2) {
 
@@ -680,7 +683,7 @@ ngx_strcasestrn(u_char *s1, char *s2, size_t n)
     ngx_uint_t  c1, c2;
 
     c2 = (ngx_uint_t) *s2++;
-    c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+    c2 = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
 
     do {
         do {
@@ -690,7 +693,7 @@ ngx_strcasestrn(u_char *s1, char *s2, size_t n)
                 return NULL;
             }
 
-            c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+            c1 = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
 
         } while (c1 != c2);
 
@@ -712,7 +715,7 @@ ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n)
     ngx_uint_t  c1, c2;
 
     c2 = (ngx_uint_t) *s2++;
-    c2  = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
+    c2 = (c2 >= 'A' && c2 <= 'Z') ? (c2 | 0x20) : c2;
     last -= n;
 
     do {
@@ -723,7 +726,7 @@ ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n)
 
             c1 = (ngx_uint_t) *s1++;
 
-            c1  = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
+            c1 = (c1 >= 'A' && c1 <= 'Z') ? (c1 | 0x20) : c1;
 
         } while (c1 != c2);
 
@@ -1337,7 +1340,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
         /* find the number of the characters to be escaped */
 
-        n  = 0;
+        n = 0;
 
         for (i = 0; i < size; i++) {
             if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
