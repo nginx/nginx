@@ -97,16 +97,12 @@ int  ngx_ssl_session_cache_index;
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x00907000
     OPENSSL_config(NULL);
-#endif
 
     SSL_library_init();
     SSL_load_error_strings();
 
-#if (NGX_SSL_ENGINE)
     ENGINE_load_builtin_engines();
-#endif
 
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
@@ -169,9 +165,7 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_D5_BUG);
     SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_BLOCK_PADDING_BUG);
 
-#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
     SSL_CTX_set_options(ssl->ctx, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
-#endif
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_DH_USE);
 
@@ -262,6 +256,51 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ERR_clear_error();
 
     SSL_CTX_set_client_CA_list(ssl->ctx, list);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
+{
+    X509_STORE   *store;
+    X509_LOOKUP  *lookup;
+
+    if (crl->len == 0) {
+        return NGX_OK;
+    }
+
+    if (ngx_conf_full_name(cf->cycle, crl, 1) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    store = SSL_CTX_get_cert_store(ssl->ctx);
+
+    if (store == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_get_cert_store() failed");
+        return NGX_ERROR;
+    }
+
+    lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+
+    if (lookup == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "X509_STORE_add_lookup() failed");
+        return NGX_ERROR;
+    }
+
+    if (X509_LOOKUP_load_file(lookup, (char *) crl->data, X509_FILETYPE_PEM)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "X509_LOOKUP_load_file(\"%s\") failed", crl->data);
+        return NGX_ERROR;
+    }
+
+    X509_STORE_set_flags(store,
+                         X509_V_FLAG_CRL_CHECK|X509_V_FLAG_CRL_CHECK_ALL);
 
     return NGX_OK;
 }
@@ -1201,9 +1240,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         if (err == NGX_ECONNRESET
             || err == NGX_EPIPE
             || err == NGX_ENOTCONN
-#if !(NGX_CRIT_ETIMEDOUT)
             || err == NGX_ETIMEDOUT
-#endif
             || err == NGX_ECONNREFUSED
             || err == NGX_ENETDOWN
             || err == NGX_ENETUNREACH
@@ -1974,7 +2011,7 @@ ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     p = s->data;
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < cert.len - 1; i++) {
         *p++ = cert.data[i];
         if (cert.data[i] == LF) {
             *p++ = '\t';
@@ -2108,6 +2145,35 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 }
 
 
+ngx_int_t
+ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    X509  *cert;
+
+    if (SSL_get_verify_result(c->ssl->connection) != X509_V_OK) {
+        s->len = sizeof("FAILED") - 1;
+        s->data = (u_char *) "FAILED";
+
+        return NGX_OK;
+    }
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+
+    if (cert) {
+        s->len = sizeof("SUCCESS") - 1;
+        s->data = (u_char *) "SUCCESS";
+
+    } else {
+        s->len = sizeof("NONE") - 1;
+        s->data = (u_char *) "NONE";
+    }
+
+    X509_free(cert);
+
+    return NGX_OK;
+}
+
+
 static void *
 ngx_openssl_create_conf(ngx_cycle_t *cycle)
 {
@@ -2131,7 +2197,6 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
 static char *
 ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-#if (NGX_SSL_ENGINE)
     ngx_openssl_conf_t *oscf = conf;
 
     ENGINE     *engine;
@@ -2166,23 +2231,11 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ENGINE_free(engine);
 
     return NGX_CONF_OK;
-
-#else
-
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "\"ssl_engine\" directive is available only in "
-                       "OpenSSL 0.9.7 and higher,");
-
-    return NGX_CONF_ERROR;
-
-#endif
 }
 
 
 static void
 ngx_openssl_exit(ngx_cycle_t *cycle)
 {
-#if (NGX_SSL_ENGINE)
     ENGINE_cleanup();
-#endif
 }

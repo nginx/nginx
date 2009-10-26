@@ -22,15 +22,6 @@ static char *ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-#if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
-
-static char *ngx_mail_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
-
-static char  ngx_mail_ssl_openssl097[] = "OpenSSL 0.9.7 and higher";
-
-#endif
-
 
 static ngx_conf_enum_t  ngx_http_starttls_state[] = {
     { ngx_string("off"), NGX_MAIL_STARTTLS_OFF },
@@ -102,14 +93,10 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
 
     { ngx_string("ssl_prefer_server_ciphers"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
-#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
       ngx_conf_set_flag_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, prefer_server_ciphers),
       NULL },
-#else
-      ngx_mail_ssl_nosupported, 0, 0, ngx_mail_ssl_openssl097 },
-#endif
 
     { ngx_string("ssl_session_cache"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE12,
@@ -297,13 +284,9 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
-
     if (conf->prefer_server_ciphers) {
         SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
     }
-
-#endif
 
     if (ngx_ssl_generate_rsa512_key(&conf->ssl) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -492,18 +475,3 @@ invalid:
 
     return NGX_CONF_ERROR;
 }
-
-
-#if !defined (SSL_OP_CIPHER_SERVER_PREFERENCE)
-
-static char *
-ngx_mail_ssl_nosupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "\"%V\" directive is available only in %s,",
-                       &cmd->name, cmd->post);
-
-    return NGX_CONF_ERROR;
-}
-
-#endif
