@@ -230,19 +230,19 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("X-Accel-Redirect"),
                  ngx_http_upstream_process_header_line,
                  offsetof(ngx_http_upstream_headers_in_t, x_accel_redirect),
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Limit-Rate"),
                  ngx_http_upstream_process_limit_rate, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Buffering"),
                  ngx_http_upstream_process_buffering, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Charset"),
                  ngx_http_upstream_process_charset, 0,
-                 ngx_http_upstream_ignore_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
 #if (NGX_HTTP_GZIP)
     { ngx_string("Content-Encoding"),
@@ -3340,10 +3340,11 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     *ho = *h;
 
+    r->headers_out.last_modified = ho;
+
 #if (NGX_HTTP_CACHE)
 
     if (r->upstream->cacheable) {
-        r->headers_out.last_modified = ho;
         r->headers_out.last_modified_time = ngx_http_parse_time(h->value.data,
                                                                 h->value.len);
     }
@@ -3466,6 +3467,8 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     }
 
     *ho = *h;
+
+    r->headers_out.accept_ranges = ho;
 
     return NGX_OK;
 }
