@@ -9,6 +9,69 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.21" date="26.10.2009">
+
+<change type="feature">
+<para lang="ru">
+теперь ключ -V показывает статус поддержки TLS SNI.
+</para>
+<para lang="en">
+now the "-V" switch shows TLS SNI support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива listen модуля HTTP поддерживает unix domain сокеты.<br/>
+Спасибо Hongli Lai.
+</para>
+<para lang="en">
+the "listen" directive of the HTTP module supports unix domain sockets.<br/>
+Thanks to Hongli Lai.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр "default_server" в директиве listen.
+</para>
+<para lang="en">
+the "default_server" parameter of the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь параметр "default" не обязателен для установки параметров listen-сокета.
+</para>
+<para lang="en">
+now a "default" parameter is not required to set listen socket options.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал даты в 2038 году на 32-битных платформах;
+</para>
+<para lang="en">
+nginx did not support dates in 2038 year on 32-bit platforms;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+socket leak;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.20" date="14.10.2009">
 
 <change type="change">
@@ -63,7 +126,7 @@ nginx/Windows мог не создать временный файл, файл в кэше или файл
 </para>
 <para lang="en">
 nginx/Windows might not create temporary file, a cache file, or
-"proxy/fastcgi_store"d file if a worker has no enough access rights
+"proxy/fastcgi_store"d file if a worker had no enough access rights
 for top level directories.
 </para>
 </change>
@@ -71,8 +134,8 @@ for top level directories.
 <change type="bugfix">
 <para lang="ru">
 строки "Set-Cookie" и "P3P" в заголовке ответа FastCGI-сервера не скрывались
-при кэшировании, если не использовались директивы
-fastcgi_hide_header с любыми параметрами.
+при кэшировании, если не использовались директивы fastcgi_hide_header
+с любыми параметрами.
 </para>
 <para lang="en">
 the "Set-Cookie" and "P3P" FastCGI response header lines were not hidden
