@@ -53,6 +53,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     ngx_http_file_cache_t  *ocache = data;
 
     size_t                  len;
+    ngx_uint_t              n;
     ngx_http_file_cache_t  *cache;
 
     cache = shm_zone->data;
@@ -68,12 +69,25 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
             return NGX_ERROR;
         }
 
+        for (n = 0; n < 3; n++) {
+            if (cache->path->level[n] != ocache->path->level[n]) {
+                ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
+                              "cache \"%V\" had previously different levels",
+                              &shm_zone->shm.name);
+                return NGX_ERROR;
+            }
+        }
+
         cache->sh = ocache->sh;
 
         cache->shpool = ocache->shpool;
         cache->bsize = ocache->bsize;
 
         cache->max_size /= cache->bsize;
+
+        if (!cache->sh->cold || cache->sh->loading) {
+            cache->path->loader = NULL;
+        }
 
         return NGX_OK;
     }
@@ -100,6 +114,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     ngx_queue_init(&cache->sh->queue);
 
     cache->sh->cold = 1;
+    cache->sh->loading = 0;
     cache->sh->size = 0;
 
     cache->bsize = ngx_fs_bsize(cache->path->name.data);
@@ -603,7 +618,7 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 void
 ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 {
-    off_t                   size;
+    off_t                   size, length;
     ngx_int_t               rc;
     ngx_file_uniq_t         uniq;
     ngx_file_info_t         fi;
@@ -625,6 +640,7 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     cache = c->file_cache;
 
     uniq = 0;
+    length = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache rename: \"%s\" to \"%s\"",
@@ -650,10 +666,11 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
         } else {
             uniq = ngx_file_uniq(&fi);
+            length = ngx_file_size(&fi);
         }
     }
 
-    size = (c->length + cache->bsize - 1) / cache->bsize;
+    size = (length + cache->bsize - 1) / cache->bsize;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
@@ -663,7 +680,7 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
     size = size - (c->node->length + cache->bsize - 1) / cache->bsize;
 
-    c->node->length = c->length;
+    c->node->length = length;
 
     cache->sh->size += size;
 
@@ -1026,39 +1043,8 @@ ngx_http_file_cache_manager(void *data)
 {
     ngx_http_file_cache_t  *cache = data;
 
-    off_t           size;
-    time_t          next;
-    ngx_tree_ctx_t  tree;
-
-    if (cache->sh->cold) {
-
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "http file cache manager update");
-
-        tree.init_handler = NULL;
-        tree.file_handler = ngx_http_file_cache_manage_file;
-        tree.pre_tree_handler = ngx_http_file_cache_noop;
-        tree.post_tree_handler = ngx_http_file_cache_noop;
-        tree.spec_handler = ngx_http_file_cache_delete_file;
-        tree.data = cache;
-        tree.alloc = 0;
-        tree.log = ngx_cycle->log;
-
-        cache->last = ngx_current_msec;
-        cache->files = 0;
-
-        if (ngx_walk_tree(&tree, &cache->path->name) == NGX_ABORT) {
-            return 10;
-        }
-
-        cache->sh->cold = 0;
-
-        ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
-                      "http file cache: %V %.3fM, bsize: %uz",
-                      &cache->path->name,
-                      ((double) cache->sh->size * cache->bsize) / (1024 * 1024),
-                      cache->bsize);
-    }
+    off_t   size;
+    time_t  next;
 
     next = ngx_http_file_cache_expire(cache);
 
@@ -1085,6 +1071,52 @@ ngx_http_file_cache_manager(void *data)
             return next;
         }
     }
+}
+
+
+static void
+ngx_http_file_cache_loader(void *data)
+{
+    ngx_http_file_cache_t  *cache = data;
+
+    ngx_tree_ctx_t  tree;
+
+    if (!cache->sh->cold || cache->sh->loading) {
+        return;
+    }
+
+    if (!ngx_atomic_cmp_set(&cache->sh->loading, 0, ngx_pid)) {
+        return;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "http file cache loader");
+
+    tree.init_handler = NULL;
+    tree.file_handler = ngx_http_file_cache_manage_file;
+    tree.pre_tree_handler = ngx_http_file_cache_noop;
+    tree.post_tree_handler = ngx_http_file_cache_noop;
+    tree.spec_handler = ngx_http_file_cache_delete_file;
+    tree.data = cache;
+    tree.alloc = 0;
+    tree.log = ngx_cycle->log;
+
+    cache->last = ngx_current_msec;
+    cache->files = 0;
+
+    if (ngx_walk_tree(&tree, &cache->path->name) == NGX_ABORT) {
+        cache->sh->loading = 0;
+        return;
+    }
+
+    cache->sh->cold = 0;
+    cache->sh->loading = 0;
+
+    ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
+                  "http file cache: %V %.3fM, bsize: %uz",
+                  &cache->path->name,
+                  ((double) cache->sh->size * cache->bsize) / (1024 * 1024),
+                  cache->bsize);
 }
 
 
@@ -1468,6 +1500,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     cache->path->manager = ngx_http_file_cache_manager;
+    cache->path->loader = ngx_http_file_cache_loader;
     cache->path->data = cache;
 
     if (ngx_add_path(cf, &cache->path) != NGX_OK) {

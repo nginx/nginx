@@ -214,21 +214,33 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 
     switch (respawn) {
 
+    case NGX_PROCESS_NORESPAWN:
+        ngx_processes[s].respawn = 0;
+        ngx_processes[s].just_spawn = 0;
+        ngx_processes[s].detached = 0;
+        break;
+
+    case NGX_PROCESS_JUST_SPAWN:
+        ngx_processes[s].respawn = 0;
+        ngx_processes[s].just_spawn = 1;
+        ngx_processes[s].detached = 0;
+        break;
+
     case NGX_PROCESS_RESPAWN:
         ngx_processes[s].respawn = 1;
-        ngx_processes[s].just_respawn = 0;
+        ngx_processes[s].just_spawn = 0;
         ngx_processes[s].detached = 0;
         break;
 
     case NGX_PROCESS_JUST_RESPAWN:
         ngx_processes[s].respawn = 1;
-        ngx_processes[s].just_respawn = 1;
+        ngx_processes[s].just_spawn = 1;
         ngx_processes[s].detached = 0;
         break;
 
     case NGX_PROCESS_DETACHED:
         ngx_processes[s].respawn = 0;
-        ngx_processes[s].just_respawn = 0;
+        ngx_processes[s].just_spawn = 0;
         ngx_processes[s].detached = 1;
         break;
     }

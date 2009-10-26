@@ -30,6 +30,7 @@ struct ngx_file_s {
 
 
 typedef time_t (*ngx_path_manager_pt) (void *data);
+typedef void (*ngx_path_loader_pt) (void *data);
 
 
 typedef struct {
@@ -38,6 +39,7 @@ typedef struct {
     size_t                     level[3];
 
     ngx_path_manager_pt        manager;
+    ngx_path_loader_pt         loader;
     void                      *data;
 
     u_char                    *conf_file;

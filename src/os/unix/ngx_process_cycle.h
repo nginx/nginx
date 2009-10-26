@@ -25,6 +25,13 @@
 #define NGX_PROCESS_SIGNALLER  3
 
 
+typedef struct {
+    ngx_event_handler_pt       handler;
+    char                      *name;
+    ngx_msec_t                 delay;
+} ngx_cache_manager_ctx_t;
+
+
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
 void ngx_single_process_cycle(ngx_cycle_t *cycle);
 
