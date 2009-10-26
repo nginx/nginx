@@ -95,7 +95,13 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
     gzcf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_static_module);
 
-    if (!gzcf->enable || ngx_http_gzip_ok(r) != NGX_OK) {
+    if (!gzcf->enable) {
+        return NGX_DECLINED;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->gzip_vary && ngx_http_gzip_ok(r) != NGX_OK) {
         return NGX_DECLINED;
     }
 
@@ -115,8 +121,6 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
                    "http filename: \"%s\"", path.data);
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_memzero(&of, sizeof(ngx_open_file_info_t));
 
@@ -138,6 +142,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
         case NGX_ENOTDIR:
         case NGX_ENAMETOOLONG:
 
+            r->gzip = 0;
             return NGX_DECLINED;
 
         case NGX_EACCES:
