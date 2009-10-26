@@ -12,20 +12,25 @@
 #include <ngx_core.h>
 
 
-#define NGX_INET_ADDRSTRLEN   (sizeof("255.255.255.255") - 1)
-#define NGX_INET6_ADDRSTRLEN                                                 \
-    (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
-
-#define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1)
-
-
 /*
- * TODO: autoconfigure NGX_SOCKADDRLEN as
+ * TODO: autoconfigure NGX_SOCKADDRLEN and NGX_SOCKADDR_STRLEN as
  *       sizeof(struct sockaddr_storage)
  *       sizeof(struct sockaddr_un)
  *       sizeof(struct sockaddr_in6)
  *       sizeof(struct sockaddr_in)
  */
+
+#define NGX_INET_ADDRSTRLEN   (sizeof("255.255.255.255") - 1)
+#define NGX_INET6_ADDRSTRLEN                                                 \
+    (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
+#define NGX_UNIX_ADDRSTRLEN                                                  \
+    (sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+#define NGX_SOCKADDR_STRLEN   (sizeof("unix:") - 1 + NGX_UNIX_ADDRSTRLEN)
+#else
+#define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1)
+#endif
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 #define NGX_SOCKADDRLEN       sizeof(struct sockaddr_un)

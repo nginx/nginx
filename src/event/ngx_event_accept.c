@@ -156,6 +156,17 @@ ngx_event_accept(ngx_event_t *ev)
 
         c->unexpected_eof = 1;
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+        if (c->sockaddr->sa_family == AF_UNIX) {
+            c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
+            c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
+#if (NGX_SOLARIS)
+            /* Solaris's sendfilev() supports AF_NCA, AF_INET, and AF_INET6 */
+            c->sendfile = 0;
+#endif
+        }
+#endif
+
         rev = c->read;
         wev = c->write;
 

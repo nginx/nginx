@@ -1128,6 +1128,12 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        p = 0;
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) sa;
         p = sin->sin_port;
@@ -1170,6 +1176,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_uint_t             i, default_server;
     struct sockaddr       *sa;
     ngx_http_conf_addr_t  *addr;
+#if (NGX_HAVE_UNIX_DOMAIN)
+    struct sockaddr_un    *saun;
+#endif
 
     /*
      * we can not compare whole sockaddr struct's as kernel
@@ -1184,6 +1193,13 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     case AF_INET6:
         off = offsetof(struct sockaddr_in6, sin6_addr);
         len = 16;
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        off = offsetof(struct sockaddr_un, sun_path);
+        len = sizeof(saun->sun_path);
         break;
 #endif
 

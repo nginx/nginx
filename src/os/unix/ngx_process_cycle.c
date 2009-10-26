@@ -675,6 +675,8 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
         }
     }
 
+    ngx_close_listening_sockets(cycle);
+
     /*
      * Copy ngx_cycle->log related data to the special static exit cycle,
      * log, and log file structures enough to allow a signal handler to log.

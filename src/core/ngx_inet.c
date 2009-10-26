@@ -68,6 +68,9 @@ ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len, ngx_uint_t port)
     size_t                n;
     struct sockaddr_in6  *sin6;
 #endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+    struct sockaddr_un   *saun;
+#endif
 
     switch (sa->sa_family) {
 
@@ -106,6 +109,17 @@ ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len, ngx_uint_t port)
         }
 
         return n;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+
+    case AF_UNIX:
+        saun = (struct sockaddr_un *) sa;
+
+        /* we do not include trailing zero in address length */
+
+        return ngx_snprintf(text, len, "unix:%s%Z", saun->sun_path) - text - 1;
+
 #endif
 
     default:
