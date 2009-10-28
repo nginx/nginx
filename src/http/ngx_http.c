@@ -1348,7 +1348,7 @@ static ngx_int_t
 ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_array_t *ports)
 {
-    ngx_uint_t               p, a;
+    ngx_uint_t             p, a;
     ngx_http_conf_port_t  *port;
     ngx_http_conf_addr_t  *addr;
 
