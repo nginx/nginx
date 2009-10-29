@@ -2838,6 +2838,33 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     /* TODO: it does not merge, it inits only */
 
+    ngx_conf_merge_size_value(conf->connection_pool_size,
+                              prev->connection_pool_size, 256);
+    ngx_conf_merge_size_value(conf->request_pool_size,
+                              prev->request_pool_size, 4096);
+    ngx_conf_merge_msec_value(conf->client_header_timeout,
+                              prev->client_header_timeout, 60000);
+    ngx_conf_merge_size_value(conf->client_header_buffer_size,
+                              prev->client_header_buffer_size, 1024);
+    ngx_conf_merge_bufs_value(conf->large_client_header_buffers,
+                              prev->large_client_header_buffers,
+                              4, ngx_pagesize);
+
+    if (conf->large_client_header_buffers.size < conf->connection_pool_size) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the \"large_client_header_buffers\" size must be "
+                           "equal to or bigger than \"connection_pool_size\"");
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_conf_merge_value(conf->ignore_invalid_headers,
+                              prev->ignore_invalid_headers, 1);
+
+    ngx_conf_merge_value(conf->merge_slashes, prev->merge_slashes, 1);
+
+    ngx_conf_merge_value(conf->underscores_in_headers,
+                              prev->underscores_in_headers, 0);
+
     if (!conf->listen) {
         ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
@@ -2881,33 +2908,6 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         sn->name.len = conf->server_name.len;
         sn->name.data = conf->server_name.data;
     }
-
-    ngx_conf_merge_size_value(conf->connection_pool_size,
-                              prev->connection_pool_size, 256);
-    ngx_conf_merge_size_value(conf->request_pool_size,
-                              prev->request_pool_size, 4096);
-    ngx_conf_merge_msec_value(conf->client_header_timeout,
-                              prev->client_header_timeout, 60000);
-    ngx_conf_merge_size_value(conf->client_header_buffer_size,
-                              prev->client_header_buffer_size, 1024);
-    ngx_conf_merge_bufs_value(conf->large_client_header_buffers,
-                              prev->large_client_header_buffers,
-                              4, ngx_pagesize);
-
-    if (conf->large_client_header_buffers.size < conf->connection_pool_size) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the \"large_client_header_buffers\" size must be "
-                           "equal to or bigger than \"connection_pool_size\"");
-        return NGX_CONF_ERROR;
-    }
-
-    ngx_conf_merge_value(conf->ignore_invalid_headers,
-                              prev->ignore_invalid_headers, 1);
-
-    ngx_conf_merge_value(conf->merge_slashes, prev->merge_slashes, 1);
-
-    ngx_conf_merge_value(conf->underscores_in_headers,
-                              prev->underscores_in_headers, 0);
 
     return NGX_CONF_OK;
 }
