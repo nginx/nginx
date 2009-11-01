@@ -894,7 +894,6 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
             return NGX_ERROR;
         }
 
-        c->local_socklen = len;
         ngx_memcpy(c->local_sockaddr, &sa, len);
     }
 

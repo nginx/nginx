@@ -129,7 +129,6 @@ struct ngx_connection_s {
 #endif
 
     struct sockaddr    *local_sockaddr;
-    socklen_t           local_socklen;
 
     ngx_buf_t          *buffer;
 
