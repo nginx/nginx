@@ -698,7 +698,6 @@ static ngx_int_t
 ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 {
 #if (NGX_HAVE_INET6)
-    int                   rc;
     u_char               *p, *host, *port, *last, *uri;
     size_t                len;
     ngx_int_t             n;
@@ -770,35 +769,10 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    u->host.len = len++;
+    u->host.len = len;
     u->host.data = host;
 
-    p = ngx_alloc(len, pool->log);
-    if (p == NULL) {
-        return NGX_ERROR;
-    }
-
-    (void) ngx_cpystrn(p, host, len);
-
-#if (NGX_WIN32)
-
-    rc = WSAStringToAddress((char *) p, AF_INET6, NULL,
-                            (SOCKADDR *) sin6, &u->socklen);
-    rc = !rc;
-
-    if (u->port) {
-        sin6->sin6_port = htons(u->port);
-    }
-
-#else
-
-    rc = inet_pton(AF_INET6, (const char *) p, &sin6->sin6_addr);
-
-#endif
-
-    ngx_free(p);
-
-    if (rc == 0) {
+    if (ngx_inet6_addr(host, len, (u_char *) &sin6->sin6_addr) != NGX_OK) {
         u->err = "invalid IPv6 address";
         return NGX_ERROR;
     }
