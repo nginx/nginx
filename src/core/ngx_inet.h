@@ -109,6 +109,7 @@ size_t ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len,
     ngx_uint_t port);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr);
+ngx_addr_t *ngx_parse_addr(ngx_pool_t *pool, ngx_str_t *addr);
 ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u);
 
