@@ -650,7 +650,7 @@ ngx_http_log_variable(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
 static uintptr_t
 ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
 {
-    ngx_uint_t      i, n;
+    ngx_uint_t      n;
     static u_char   hex[] = "0123456789ABCDEF";
 
     static uint32_t   escape[] = {
@@ -678,17 +678,18 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
 
         n = 0;
 
-        for (i = 0; i < size; i++) {
+        while (size) {
             if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
                 n++;
             }
             src++;
+            size--;
         }
 
         return (uintptr_t) n;
     }
 
-    for (i = 0; i < size; i++) {
+    while (size) {
         if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
             *dst++ = '\\';
             *dst++ = 'x';
@@ -699,6 +700,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
         } else {
             *dst++ = *src++;
         }
+        size--;
     }
 
     return (uintptr_t) dst;

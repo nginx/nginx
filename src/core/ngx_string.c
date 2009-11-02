@@ -15,10 +15,11 @@ static u_char *ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64,
 void
 ngx_strlow(u_char *dst, u_char *src, size_t n)
 {
-    while (n--) {
+    while (n) {
         *dst = ngx_tolower(*src);
         dst++;
         src++;
+        n--;
     }
 }
 
@@ -147,7 +148,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
     int64_t                i64;
     uint64_t               ui64;
     ngx_msec_t             ms;
-    ngx_uint_t             width, sign, hex, max_width, frac_width, i;
+    ngx_uint_t             width, sign, hex, max_width, frac_width, n;
     ngx_str_t             *v;
     ngx_variable_value_t  *vv;
 
@@ -377,7 +378,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 
                     scale = 1.0;
 
-                    for (i = 0; i < frac_width; i++) {
+                    for (n = frac_width; n; n--) {
                         scale *= 10.0;
                     }
 
@@ -1255,7 +1256,7 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
 uintptr_t
 ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 {
-    ngx_uint_t      i, n;
+    ngx_uint_t      n;
     uint32_t       *escape;
     static u_char   hex[] = "0123456789abcdef";
 
@@ -1373,17 +1374,18 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
         n = 0;
 
-        for (i = 0; i < size; i++) {
+        while (size) {
             if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
                 n++;
             }
             src++;
+            size--;
         }
 
         return (uintptr_t) n;
     }
 
-    for (i = 0; i < size; i++) {
+    while (size) {
         if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
             *dst++ = '%';
             *dst++ = hex[*src >> 4];
@@ -1393,6 +1395,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         } else {
             *dst++ = *src++;
         }
+        size--;
     }
 
     return (uintptr_t) dst;
@@ -1533,13 +1536,13 @@ uintptr_t
 ngx_escape_html(u_char *dst, u_char *src, size_t size)
 {
     u_char      ch;
-    ngx_uint_t  i, len;
+    ngx_uint_t  len;
 
     if (dst == NULL) {
 
         len = 0;
 
-        for (i = 0; i < size; i++) {
+        while (size) {
             switch (*src++) {
 
             case '<':
@@ -1557,12 +1560,13 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
             default:
                 break;
             }
+            size--;
         }
 
         return (uintptr_t) len;
     }
 
-    for (i = 0; i < size; i++) {
+    while (size) {
         ch = *src++;
 
         switch (ch) {
@@ -1584,6 +1588,7 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
             *dst++ = ch;
             break;
         }
+        size--;
     }
 
     return (uintptr_t) dst;
