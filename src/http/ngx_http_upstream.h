@@ -334,5 +334,4 @@ extern ngx_module_t        ngx_http_upstream_module;
 extern ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[];
 
 
-
 #endif /* _NGX_HTTP_UPSTREAM_H_INCLUDED_ */

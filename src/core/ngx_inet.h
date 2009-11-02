@@ -110,5 +110,4 @@ ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u);
 
 
-
 #endif /* _NGX_INET_H_INCLUDED_ */

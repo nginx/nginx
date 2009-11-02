@@ -124,5 +124,4 @@ ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 #endif
 
 
-
 #endif /* _NGX_THREAD_H_INCLUDED_ */

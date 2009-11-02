@@ -81,5 +81,4 @@ void ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 #endif
 
 
-
 #endif /* _NGX_HTTP_UPSTREAM_ROUND_ROBIN_H_INCLUDED_ */

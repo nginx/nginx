@@ -47,5 +47,4 @@ void ngx_libc_gmtime(time_t s, struct tm *tm);
 void ngx_gettimeofday(struct timeval *tp);
 
 
-
 #endif /* _NGX_TIME_H_INCLUDED_ */
