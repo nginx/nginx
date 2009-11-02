@@ -4204,22 +4204,32 @@ ngx_http_upsteam_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     char  *p = conf;
 
+    ngx_int_t     rc;
     ngx_str_t    *value;
     ngx_addr_t  **paddr;
 
     paddr = (ngx_addr_t **) (p + cmd->offset);
 
-    value = cf->args->elts;
-
-    *paddr = ngx_parse_addr(cf->pool, &value[1]);
-    if (*paddr) {
-        return NGX_CONF_OK;
+    *paddr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
+    if (*paddr == NULL) {
+        return NGX_CONF_ERROR;
     }
 
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid address \"%V\"", &value[1]);
+    value = cf->args->elts;
 
-    return NGX_CONF_ERROR;
+    rc = ngx_parse_addr(cf->pool, *paddr, value[1].data, value[1].len);
+
+    switch (rc) {
+    case NGX_OK:
+        (*paddr)->name = value[1];
+        return NGX_CONF_OK;
+
+    case NGX_DECLINED:
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid address \"%V\"", &value[1]);
+    default:
+        return NGX_CONF_ERROR;
+    }
 }
 
 

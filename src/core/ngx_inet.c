@@ -416,66 +416,57 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 }
 
 
-ngx_addr_t *
-ngx_parse_addr(ngx_pool_t *pool, ngx_str_t *addr)
+ngx_int_t
+ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text, size_t len)
 {
-    size_t                len;
     in_addr_t             inaddr;
     ngx_uint_t            family;
-    ngx_addr_t           *a;
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
     struct in6_addr       inaddr6;
     struct sockaddr_in6  *sin6;
 #endif
 
-    inaddr = ngx_inet_addr(addr->data, addr->len);
+    inaddr = ngx_inet_addr(text, len);
 
     if (inaddr != INADDR_NONE) {
         family = AF_INET;
         len = sizeof(struct sockaddr_in);
 
 #if (NGX_HAVE_INET6)
-    } else if (ngx_inet6_addr(addr->data, addr->len, inaddr6.s6_addr) == NGX_OK)
-    {
+    } else if (ngx_inet6_addr(text, len, inaddr6.s6_addr) == NGX_OK) {
         family = AF_INET6;
         len = sizeof(struct sockaddr_in6);
 
 #endif
     } else {
-        return NULL;
+        return NGX_DECLINED;
     }
 
-    a = ngx_palloc(pool, sizeof(ngx_addr_t));
-    if (a == NULL) {
-        return NULL;
+    addr->sockaddr = ngx_pcalloc(pool, len);
+    if (addr->sockaddr == NULL) {
+        return NGX_ERROR;
     }
 
-    a->sockaddr = ngx_pcalloc(pool, len);
-    if (a->sockaddr == NULL) {
-        return NULL;
-    }
-
-    a->sockaddr->sa_family = family;
-    a->socklen = len;
-    a->name = *addr;
+    addr->sockaddr->sa_family = (u_char) family;
+    addr->socklen = len;
 
     switch (family) {
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) a->sockaddr;
+        sin6 = (struct sockaddr_in6 *) addr->sockaddr;
         ngx_memcpy(sin6->sin6_addr.s6_addr, inaddr6.s6_addr, 16);
         break;
 #endif
 
     default: /* AF_INET */
-        sin = (struct sockaddr_in *) a->sockaddr;
+        sin = (struct sockaddr_in *) addr->sockaddr;
         sin->sin_addr.s_addr = inaddr;
         break;
     }
 
-    return a;
+    return NGX_OK;
 }
 
 
