@@ -29,9 +29,10 @@ typedef struct {
 
 
 typedef struct {
-    ngx_connection_t  *connection;
-    in_addr_t          addr;
-    ngx_str_t          addr_text;
+    ngx_connection_t   *connection;
+    struct sockaddr    *sockaddr;
+    socklen_t           socklen;
+    ngx_str_t           addr_text;
 } ngx_http_realip_ctx_t;
 
 
@@ -103,8 +104,9 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 {
     u_char                      *ip, *p;
     size_t                       len;
-    in_addr_t                    addr;
+    ngx_int_t                    rc;
     ngx_uint_t                   i, hash;
+    ngx_addr_t                   addr;
     ngx_list_part_t             *part;
     ngx_table_elt_t             *header;
     struct sockaddr_in          *sin;
@@ -226,10 +228,15 @@ found:
 
             ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
-            addr = ngx_inet_addr(ip, len);
+            rc = ngx_parse_addr(c->pool, &addr, ip, len);
 
-            if (addr == INADDR_NONE) {
+            switch (rc) {
+            case NGX_DECLINED:
                 return NGX_DECLINED;
+            case NGX_ERROR:
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            default: /* NGX_OK */
+                break;
             }
 
             p = ngx_pnalloc(c->pool, len);
@@ -242,11 +249,12 @@ found:
             cln->handler = ngx_http_realip_cleanup;
 
             ctx->connection = c;
-            ctx->addr = sin->sin_addr.s_addr;
+            ctx->sockaddr = c->sockaddr;
+            ctx->socklen = c->socklen;
             ctx->addr_text = c->addr_text;
 
-            sin->sin_addr.s_addr = addr;
-
+            c->sockaddr = addr.sockaddr;
+            c->socklen = addr.socklen;
             c->addr_text.len = len;
             c->addr_text.data = p;
 
@@ -263,14 +271,12 @@ ngx_http_realip_cleanup(void *data)
 {
     ngx_http_realip_ctx_t *ctx = data;
 
-    ngx_connection_t    *c;
-    struct sockaddr_in  *sin;
+    ngx_connection_t  *c;
 
     c = ctx->connection;
 
-    sin = (struct sockaddr_in *) c->sockaddr;
-    sin->sin_addr.s_addr = ctx->addr;
-
+    c->sockaddr = ctx->sockaddr;
+    c->socklen = ctx->socklen;
     c->addr_text = ctx->addr_text;
 }
 
