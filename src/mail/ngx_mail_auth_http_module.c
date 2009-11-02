@@ -795,8 +795,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
 
             sin->sin_port = htons((in_port_t) port);
 
-            ctx->addr.data[ctx->addr.len] = '\0';
-            sin->sin_addr.s_addr = inet_addr((char *) ctx->addr.data);
+            sin->sin_addr.s_addr = ngx_inet_addr(ctx->addr.data, ctx->addr.len);
             if (sin->sin_addr.s_addr == INADDR_NONE) {
                 ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "auth http server %V sent invalid server "

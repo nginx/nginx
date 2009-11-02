@@ -226,7 +226,7 @@ found:
 
             ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
-            addr = inet_addr((char *) ip);
+            addr = ngx_inet_addr(ip, len);
 
             if (addr == INADDR_NONE) {
                 return NGX_DECLINED;

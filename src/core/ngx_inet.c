@@ -643,19 +643,20 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_OK;
     }
 
-    if (len++) {
-
-        p = ngx_alloc(len, pool->log);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        (void) ngx_cpystrn(p, host, len);
-
-        sin->sin_addr.s_addr = inet_addr((const char *) p);
+    if (len) {
+        sin->sin_addr.s_addr = ngx_inet_addr(host, len);
 
         if (sin->sin_addr.s_addr == INADDR_NONE) {
+            p = ngx_alloc(++len, pool->log);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            (void) ngx_cpystrn(p, host, len);
+
             h = gethostbyname((const char *) p);
+
+            ngx_free(p);
 
             if (h == NULL || h->h_addr_list[0] == NULL) {
                 ngx_free(p);
@@ -669,8 +670,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         if (sin->sin_addr.s_addr == INADDR_ANY) {
             u->wildcard = 1;
         }
-
-        ngx_free(p);
 
     } else {
         sin->sin_addr.s_addr = INADDR_ANY;
@@ -815,20 +814,20 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
     struct hostent      *h;
     struct sockaddr_in  *sin;
 
-    host = ngx_alloc(u->host.len + 1, pool->log);
-    if (host == NULL) {
-        return NGX_ERROR;
-    }
-
-    (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
-
     /* AF_INET only */
 
     port = htons(u->port);
 
-    in_addr = inet_addr((char *) host);
+    in_addr = ngx_inet_addr(u->host.data, u->host.len);
 
     if (in_addr == INADDR_NONE) {
+        host = ngx_alloc(u->host.len + 1, pool->log);
+        if (host == NULL) {
+            return NGX_ERROR;
+        }
+
+        (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
+
         h = gethostbyname((char *) host);
 
         ngx_free(host);
@@ -882,8 +881,6 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
         }
 
     } else {
-
-        ngx_free(host);
 
         /* MP: ngx_shared_palloc() */
 
