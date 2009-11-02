@@ -887,7 +887,7 @@ ngx_http_variable_binary_remote_addr(ngx_http_request_t *r,
         v->valid = 1;
         v->no_cacheable = 0;
         v->not_found = 0;
-        v->data = (u_char *) &sin6->sin6_addr;
+        v->data = sin6->sin6_addr.s6_addr;
 
         break;
 #endif

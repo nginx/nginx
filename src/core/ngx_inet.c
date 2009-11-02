@@ -221,7 +221,7 @@ ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len, ngx_uint_t port)
             text[n++] = '[';
         }
 
-        n = ngx_inet6_ntop((u_char *) &sin6->sin6_addr, &text[n], len);
+        n = ngx_inet6_ntop(sin6->sin6_addr.s6_addr, &text[n], len);
 
         if (port) {
             n = ngx_sprintf(&text[1 + n], "]:%d",
@@ -771,7 +771,7 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
     u->host.len = len;
     u->host.data = host;
 
-    if (ngx_inet6_addr(host, len, (u_char *) &sin6->sin6_addr) != NGX_OK) {
+    if (ngx_inet6_addr(host, len, sin6->sin6_addr.s6_addr) != NGX_OK) {
         u->err = "invalid IPv6 address";
         return NGX_ERROR;
     }
