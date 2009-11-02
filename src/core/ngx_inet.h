@@ -102,6 +102,9 @@ typedef struct {
 
 
 in_addr_t ngx_inet_addr(u_char *text, size_t len);
+#if (NGX_HAVE_INET6)
+ngx_int_t ngx_inet6_addr(u_char *p, size_t len, u_char *addr);
+#endif
 size_t ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len,
     ngx_uint_t port);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
