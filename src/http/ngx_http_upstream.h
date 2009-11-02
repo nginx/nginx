@@ -80,7 +80,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_peer_addr_t                 *addrs;
+    ngx_addr_t                      *addrs;
     ngx_uint_t                       naddrs;
     ngx_uint_t                       weight;
     ngx_uint_t                       max_fails;

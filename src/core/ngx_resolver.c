@@ -92,7 +92,7 @@ static void *ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size);
 /* STUB: ngx_peer_addr_t * */
 
 ngx_resolver_t *
-ngx_resolver_create(ngx_conf_t *cf, ngx_peer_addr_t *addr)
+ngx_resolver_create(ngx_conf_t *cf, ngx_addr_t *addr)
 {
     ngx_resolver_t        *r;
     ngx_pool_cleanup_t    *cln;

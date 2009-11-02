@@ -10,8 +10,8 @@
 
 
 typedef struct {
-    ngx_peer_addr_t  *peers;
-    ngx_uint_t        npeers;
+    ngx_addr_t  *peers;
+    ngx_uint_t   npeers;
 } ngx_http_mysql_test_conf_t;
 
 

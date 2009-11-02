@@ -108,7 +108,7 @@ static u_char  smtp_auth_ok[] = "235 2.0.0 OK" CRLF;
 
 
 void
-ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_peer_addr_t *peer)
+ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
 {
     int                        keepalive;
     ngx_int_t                  rc;

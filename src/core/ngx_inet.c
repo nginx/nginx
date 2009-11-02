@@ -485,7 +485,7 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
     saun->sun_family = AF_UNIX;
     (void) ngx_cpystrn((u_char *) saun->sun_path, path, len);
 
-    u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
+    u->addrs = ngx_pcalloc(pool, sizeof(ngx_addr_t));
     if (u->addrs == NULL) {
         return NGX_ERROR;
     }
@@ -846,7 +846,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
         /* MP: ngx_shared_palloc() */
 
-        u->addrs = ngx_pcalloc(pool, i * sizeof(ngx_peer_addr_t));
+        u->addrs = ngx_pcalloc(pool, i * sizeof(ngx_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }
@@ -884,7 +884,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
         /* MP: ngx_shared_palloc() */
 
-        u->addrs = ngx_pcalloc(pool, sizeof(ngx_peer_addr_t));
+        u->addrs = ngx_pcalloc(pool, sizeof(ngx_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }

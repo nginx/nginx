@@ -70,7 +70,7 @@ typedef struct {
     struct sockaddr          *sockaddr;
     socklen_t                 socklen;
     ngx_str_t                 name;
-} ngx_peer_addr_t;
+} ngx_addr_t;
 
 
 typedef struct {
@@ -94,7 +94,7 @@ typedef struct {
     socklen_t                 socklen;
     u_char                    sockaddr[NGX_SOCKADDRLEN];
 
-    ngx_peer_addr_t          *addrs;
+    ngx_addr_t               *addrs;
     ngx_uint_t                naddrs;
 
     char                     *err;

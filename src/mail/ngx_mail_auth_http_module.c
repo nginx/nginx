@@ -12,7 +12,7 @@
 
 
 typedef struct {
-    ngx_peer_addr_t                *peer;
+    ngx_addr_t                     *peer;
 
     ngx_msec_t                      timeout;
 
@@ -457,7 +457,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
     time_t               timer;
     size_t               len, size;
     ngx_int_t            rc, port, n;
-    ngx_peer_addr_t     *peer;
+    ngx_addr_t          *peer;
     struct sockaddr_in  *sin;
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
@@ -764,7 +764,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
-            peer = ngx_pcalloc(s->connection->pool, sizeof(ngx_peer_addr_t));
+            peer = ngx_pcalloc(s->connection->pool, sizeof(ngx_addr_t));
             if (peer == NULL) {
                 ngx_destroy_pool(ctx->pool);
                 ngx_mail_session_internal_server_error(s);
