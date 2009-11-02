@@ -479,6 +479,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         return;
     }
 
+    u->peer.local = u->conf->local;
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     u->output.alignment = clcf->directio_alignment;
@@ -4193,6 +4195,31 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
     *uscfp = uscf;
 
     return uscf;
+}
+
+
+char *
+ngx_http_upsteam_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t    *value;
+    ngx_addr_t  **paddr;
+
+    paddr = (ngx_addr_t **) (p + cmd->offset);
+
+    value = cf->args->elts;
+
+    *paddr = ngx_parse_addr(cf->pool, &value[1]);
+    if (*paddr) {
+        return NGX_CONF_OK;
+    }
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid address \"%V\"", &value[1]);
+
+    return NGX_CONF_ERROR;
 }
 
 

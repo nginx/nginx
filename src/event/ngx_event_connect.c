@@ -54,15 +54,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           "setsockopt(SO_RCVBUF) failed");
-
-            ngx_free_connection(c);
-
-            if (ngx_close_socket(s) == -1) {
-                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
-                              ngx_close_socket_n " failed");
-            }
-
-            return NGX_ERROR;
+            goto failed;
         }
     }
 
@@ -70,14 +62,16 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
 
-        ngx_free_connection(c);
+        goto failed;
+    }
 
-        if (ngx_close_socket(s) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
-                          ngx_close_socket_n " failed");
+    if (pc->local) {
+        if (bind(s, pc->local->sockaddr, pc->local->socklen) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, pc->log, ngx_socket_errno,
+                          "bind(%V) failed", &pc->local->name);
+
+            goto failed;
         }
-
-        return NGX_ERROR;
     }
 
     c->recv = ngx_recv;
@@ -127,7 +121,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {
-            return NGX_ERROR;
+            goto failed;
         }
     }
 
@@ -199,7 +193,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         if (ngx_blocking(s) == -1) {
             ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                           ngx_blocking_n " failed");
-            return NGX_ERROR;
+            goto failed;
         }
 
         /*
@@ -229,7 +223,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (rc == -1) {
@@ -237,7 +231,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         /* NGX_EINPROGRESS */
 
         if (ngx_add_event(wev, NGX_WRITE_EVENT, event) != NGX_OK) {
-            return NGX_ERROR;
+            goto failed;
         }
 
         return NGX_AGAIN;
@@ -248,6 +242,17 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     wev->ready = 1;
 
     return NGX_OK;
+
+failed:
+
+    ngx_free_connection(c);
+
+    if (ngx_close_socket(s) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                      ngx_close_socket_n " failed");
+    }
+
+    return NGX_ERROR;
 }
 
 

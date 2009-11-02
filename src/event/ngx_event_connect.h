@@ -55,6 +55,8 @@ struct ngx_peer_connection_s {
     ngx_atomic_t                    *lock;
 #endif
 
+    ngx_addr_t                      *local;
+
     int                              rcvbuf;
 
     ngx_log_t                       *log;
