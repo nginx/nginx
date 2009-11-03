@@ -347,7 +347,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (cidr.family != AF_INET) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"realip_from\" supports IPv4 only");
+                           "\"set_realip_from\" supports IPv4 only");
         return NGX_CONF_ERROR;
     }
 
