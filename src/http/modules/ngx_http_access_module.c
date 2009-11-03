@@ -113,7 +113,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
 
 #if (NGX_HAVE_INET6)
 
-    if (r->connection->sockaddr->sa_family == AF_INET6) {
+    if (alcf->rules6 && r->connection->sockaddr->sa_family == AF_INET6) {
         u_char               *p;
         in_addr_t             addr;
         struct sockaddr_in6  *sin6;
@@ -134,7 +134,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
 
 #endif
 
-    if (r->connection->sockaddr->sa_family == AF_INET) {
+    if (alcf->rules && r->connection->sockaddr->sa_family == AF_INET) {
         sin = (struct sockaddr_in *) r->connection->sockaddr;
         return ngx_http_access_inet(r, alcf, sin->sin_addr.s_addr);
     }
