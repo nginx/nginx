@@ -35,6 +35,12 @@ then
 fi
 
 
+# posix_fadvise64() had been implemented in 2.5.60
+
+if [ $version -lt 132412 ]; then
+    have=NGX_HAVE_POSIX_FADVISE . auto/nohave
+fi
+
 # epoll, EPOLLET version
 
 ngx_feature="epoll"
