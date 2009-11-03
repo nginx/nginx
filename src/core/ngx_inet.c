@@ -8,9 +8,6 @@
 #include <ngx_core.h>
 
 
-#if (NGX_HAVE_INET6)
-static size_t ngx_inet6_ntop(u_char *p, u_char *text, size_t len);
-#endif
 static ngx_int_t ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u);
 static ngx_int_t ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u);
 static ngx_int_t ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u);
@@ -278,7 +275,7 @@ ngx_inet_ntop(int family, void *addr, u_char *text, size_t len)
 
 #if (NGX_HAVE_INET6)
 
-static size_t
+size_t
 ngx_inet6_ntop(u_char *p, u_char *text, size_t len)
 {
     u_char      *dst;
