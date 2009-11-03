@@ -9,6 +9,115 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.22" date="03.11.2009">
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_bind, fastcgi_bind и memcached_bind.
+</para>
+<para lang="en">
+the "proxy_bind", "fastcgi_bind", and "memcached_bind" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы access и deny поддерживают IPv6.
+</para>
+<para lang="en">
+the "access" and the "deny" directives support IPv6.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива set_real_ip_from поддерживает IPv6 адреса в заголовках запроса.
+</para>
+<para lang="en">
+the "set_real_ip_from" directive supports IPv6 addresses in request headers.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр "unix:" в директиве set_real_ip_from.
+</para>
+<para lang="en">
+the "unix:" parameter of the "set_real_ip_from" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не удалял unix domain сокет после тестирования конфигурации.
+</para>
+<para lang="en">
+nginx did not delete unix domain socket after configuration testing.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx удалял unix domain сокет во время обновления без перерыва.
+</para>
+<para lang="en">
+nginx deleted unix domain socket while online upgrade.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+оператор "!-x" не работал.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "!-x" operator did not work.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+при использовании limit_rate в HTTPS сервере.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if limit_rate was used in HTTPS server.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при записи в лог переменной $limit_rate
+в рабочем процессе происходил segmentation fault.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+while $limit_rate logging.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если внутри блока server не было директивы listen;
+ошибка появилась в 0.8.21.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if there was no "listen" directive in "server" block;
+the bug had appeared in 0.8.21.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.21" date="26.10.2009">
 
 <change type="feature">
