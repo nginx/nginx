@@ -946,7 +946,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     for ( ;; ) {
 
-        while (in && buf->last < buf->end) {
+        while (in && buf->last < buf->end && send < limit) {
             if (in->buf->last_buf || in->buf->flush) {
                 flush = 1;
             }
@@ -973,8 +973,8 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             ngx_memcpy(buf->last, in->buf->pos, size);
 
             buf->last += size;
-
             in->buf->pos += size;
+            send += size;
 
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
@@ -999,7 +999,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         buf->pos += n;
-        send += n;
         c->sent += n;
 
         if (n < size) {
