@@ -954,8 +954,16 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 }
 
                 if (rv == NGX_DECLINED) {
-                    len = r->header_in->end - r->header_name_start;
                     p = r->header_name_start;
+
+                    if (p == NULL) {
+                        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                      "client sent too large request");
+                        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                        return;
+                    }
+
+                    len = r->header_in->end - p;
 
                     if (len > NGX_MAX_ERROR_STR - 300) {
                         len = NGX_MAX_ERROR_STR - 300;
