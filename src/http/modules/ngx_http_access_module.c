@@ -10,18 +10,37 @@
 
 
 typedef struct {
-    in_addr_t     mask;
-    in_addr_t     addr;
-    ngx_uint_t    deny;      /* unsigned  deny:1; */
+    in_addr_t         mask;
+    in_addr_t         addr;
+    ngx_uint_t        deny;      /* unsigned  deny:1; */
 } ngx_http_access_rule_t;
 
+#if (NGX_HAVE_INET6)
 
 typedef struct {
-    ngx_array_t  *rules;     /* array of ngx_http_access_rule_t */
+    struct in6_addr   addr;
+    struct in6_addr   mask;
+    ngx_uint_t        deny;      /* unsigned  deny:1; */
+} ngx_http_access_rule6_t;
+
+#endif
+
+typedef struct {
+    ngx_array_t      *rules;     /* array of ngx_http_access_rule_t */
+#if (NGX_HAVE_INET6)
+    ngx_array_t      *rules6;    /* array of ngx_http_access_rule6_t */
+#endif
 } ngx_http_access_loc_conf_t;
 
 
 static ngx_int_t ngx_http_access_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_access_inet(ngx_http_request_t *r,
+    ngx_http_access_loc_conf_t *alcf, in_addr_t addr);
+#if (NGX_HAVE_INET6)
+static ngx_int_t ngx_http_access_inet6(ngx_http_request_t *r,
+    ngx_http_access_loc_conf_t *alcf, u_char *p);
+#endif
+static ngx_int_t ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny);
 static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf);
@@ -87,50 +106,130 @@ ngx_module_t  ngx_http_access_module = {
 static ngx_int_t
 ngx_http_access_handler(ngx_http_request_t *r)
 {
-    ngx_uint_t                   i;
     struct sockaddr_in          *sin;
-    ngx_http_access_rule_t      *rule;
-    ngx_http_core_loc_conf_t    *clcf;
     ngx_http_access_loc_conf_t  *alcf;
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_access_module);
 
-    if (alcf->rules == NULL) {
-        return NGX_DECLINED;
+#if (NGX_HAVE_INET6)
+
+    if (r->connection->sockaddr->sa_family == AF_INET6) {
+        u_char               *p;
+        in_addr_t             addr;
+        struct sockaddr_in6  *sin6;
+
+        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
+        p = sin6->sin6_addr.s6_addr;
+
+        if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
+            addr = p[12] << 24;
+            addr += p[13] << 16;
+            addr += p[14] << 8;
+            addr += p[15];
+            return ngx_http_access_inet(r, alcf, htonl(addr));
+        }
+
+        return ngx_http_access_inet6(r, alcf, p);
     }
 
-    /* AF_INET only */
+#endif
 
-    if (r->connection->sockaddr->sa_family != AF_INET) {
-        return NGX_DECLINED;
+    if (r->connection->sockaddr->sa_family == AF_INET) {
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+        return ngx_http_access_inet(r, alcf, sin->sin_addr.s_addr);
     }
 
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_http_access_inet(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
+    in_addr_t addr)
+{
+    ngx_uint_t               i;
+    ngx_http_access_rule_t  *rule;
 
     rule = alcf->rules->elts;
     for (i = 0; i < alcf->rules->nelts; i++) {
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "access: %08XD %08XD %08XD",
-                       sin->sin_addr.s_addr, rule[i].mask, rule[i].addr);
+                       addr, rule[i].mask, rule[i].addr);
 
-        if ((sin->sin_addr.s_addr & rule[i].mask) == rule[i].addr) {
-            if (rule[i].deny) {
-                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-                if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "access forbidden by rule");
-                }
-
-                return NGX_HTTP_FORBIDDEN;
-            }
-
-            return NGX_OK;
+        if ((addr & rule[i].mask) == rule[i].addr) {
+            return ngx_http_access_found(r, rule[i].deny);
         }
     }
 
     return NGX_DECLINED;
+}
+
+
+#if (NGX_HAVE_INET6)
+
+static ngx_int_t
+ngx_http_access_inet6(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
+    u_char *p)
+{
+    ngx_uint_t                n;
+    ngx_uint_t                i;
+    ngx_http_access_rule6_t  *rule6;
+
+    rule6 = alcf->rules6->elts;
+    for (i = 0; i < alcf->rules6->nelts; i++) {
+
+#if (NGX_DEBUG)
+        {
+        size_t  cl, ml, al;
+        u_char  ct[NGX_INET6_ADDRSTRLEN];
+        u_char  mt[NGX_INET6_ADDRSTRLEN];
+        u_char  at[NGX_INET6_ADDRSTRLEN];
+
+        cl = ngx_inet6_ntop(p, ct, NGX_INET6_ADDRSTRLEN);
+        ml = ngx_inet6_ntop(rule6[i].mask.s6_addr, mt, NGX_INET6_ADDRSTRLEN);
+        al = ngx_inet6_ntop(rule6[i].addr.s6_addr, at, NGX_INET6_ADDRSTRLEN);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "access: %*s %*s %*s", cl, ct, ml, mt, al, at);
+        }
+#endif
+
+        for (n = 0; n < 16; n++) {
+            if ((p[n] & rule6[i].mask.s6_addr[n]) != rule6[i].addr.s6_addr[n]) {
+                goto next;
+            }
+        }
+
+        return ngx_http_access_found(r, rule6[i].deny);
+
+    next:
+        continue;
+    }
+
+    return NGX_DECLINED;
+}
+
+#endif
+
+
+static ngx_int_t
+ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny)
+{
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (deny) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "access forbidden by rule");
+        }
+
+        return NGX_HTTP_FORBIDDEN;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -139,56 +238,86 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_access_loc_conf_t *alcf = conf;
 
-    ngx_int_t                rc;
-    ngx_str_t               *value;
-    ngx_cidr_t               cidr;
-    ngx_http_access_rule_t  *rule;
+    ngx_int_t                 rc;
+    ngx_uint_t                all;
+    ngx_str_t                *value;
+    ngx_cidr_t                cidr;
+    ngx_http_access_rule_t   *rule;
+#if (NGX_HAVE_INET6)
+    ngx_http_access_rule6_t  *rule6;
+#endif
 
-    if (alcf->rules == NULL) {
-        alcf->rules = ngx_array_create(cf->pool, 4,
-                                       sizeof(ngx_http_access_rule_t));
-        if (alcf->rules == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    rule = ngx_array_push(alcf->rules);
-    if (rule == NULL) {
-        return NGX_CONF_ERROR;
-    }
+    ngx_memzero(&cidr, sizeof(ngx_cidr_t));
 
     value = cf->args->elts;
 
-    rule->deny = (value[0].data[0] == 'd') ? 1 : 0;
+    all = (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0);
 
-    if (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0) {
-        rule->mask = 0;
-        rule->addr = 0;
+    if (!all) {
 
-        return NGX_CONF_OK;
+        rc = ngx_ptocidr(&value[1], &cidr);
+
+        if (rc == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                         "invalid parameter \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        if (rc == NGX_DONE) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                         "low address bits of %V are meaningless", &value[1]);
+        }
     }
 
-    rc = ngx_ptocidr(&value[1], &cidr);
+    switch (cidr.family) {
 
-    if (rc == NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid parameter \"%V\"",
-                           &value[1]);
-        return NGX_CONF_ERROR;
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+    case 0: /* all */
+
+        if (alcf->rules6 == NULL) {
+            alcf->rules6 = ngx_array_create(cf->pool, 4,
+                                            sizeof(ngx_http_access_rule6_t));
+            if (alcf->rules6 == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
+
+        rule6 = ngx_array_push(alcf->rules6);
+        if (rule6 == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        rule6->mask = cidr.u.in6.mask;
+        rule6->addr = cidr.u.in6.addr;
+        rule6->deny = (value[0].data[0] == 'd') ? 1 : 0;
+
+        if (!all) {
+            break;
+        }
+
+        /* "all" passes through */
+#endif
+
+    default: /* AF_INET */
+
+        if (alcf->rules == NULL) {
+            alcf->rules = ngx_array_create(cf->pool, 4,
+                                           sizeof(ngx_http_access_rule_t));
+            if (alcf->rules == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
+
+        rule = ngx_array_push(alcf->rules);
+        if (rule == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        rule->mask = cidr.u.in.mask;
+        rule->addr = cidr.u.in.addr;
+        rule->deny = (value[0].data[0] == 'd') ? 1 : 0;
     }
-
-    if (cidr.family != AF_INET) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"allow\" supports IPv4 only");
-        return NGX_CONF_ERROR;
-    }
-
-    if (rc == NGX_DONE) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "low address bits of %V are meaningless", &value[1]);
-    }
-
-    rule->mask = cidr.u.in.mask;
-    rule->addr = cidr.u.in.addr;
 
     return NGX_CONF_OK;
 }
@@ -217,6 +346,12 @@ ngx_http_access_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->rules == NULL) {
         conf->rules = prev->rules;
     }
+
+#if (NGX_HAVE_INET6)
+    if (conf->rules6 == NULL) {
+        conf->rules6 = prev->rules6;
+    }
+#endif
 
     return NGX_CONF_OK;
 }
