@@ -141,7 +141,7 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_is_dir(sb)           (S_ISDIR((sb)->st_mode))
 #define ngx_is_file(sb)          (S_ISREG((sb)->st_mode))
 #define ngx_is_link(sb)          (S_ISLNK((sb)->st_mode))
-#define ngx_is_exec(sb)          ((sb)->st_mode & S_IXUSR)
+#define ngx_is_exec(sb)          (((sb)->st_mode & S_IXUSR) == S_IXUSR)
 #define ngx_file_access(sb)      ((sb)->st_mode & 0777)
 #define ngx_file_size(sb)        (sb)->st_size
 #define ngx_file_mtime(sb)       (sb)->st_mtime
