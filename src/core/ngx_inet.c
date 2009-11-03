@@ -354,29 +354,45 @@ ngx_inet6_ntop(u_char *p, u_char *text, size_t len)
 #endif
 
 
-/* AF_INET only */
-
 ngx_int_t
 ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 {
-    u_char     *addr, *mask, *last;
-    ngx_int_t   shift;
+    u_char      *addr, *mask, *last;
+    size_t       len;
+    ngx_int_t    shift;
+#if (NGX_HAVE_INET6)
+    ngx_int_t    rc;
+    ngx_uint_t   s, i;
+#endif
 
     addr = text->data;
     last = addr + text->len;
 
     mask = ngx_strlchr(addr, last, '/');
+    len = (mask ? mask : last) - addr;
 
-    cidr->u.in.addr = ngx_inet_addr(addr, (mask ? mask : last) - addr);
+    cidr->u.in.addr = ngx_inet_addr(addr, len);
 
-    if (cidr->u.in.addr == INADDR_NONE) {
-        return NGX_ERROR;
-    }
-
-    if (mask == NULL) {
+    if (cidr->u.in.addr != INADDR_NONE) {
         cidr->family = AF_INET;
-        cidr->u.in.mask = 0xffffffff;
-        return NGX_OK;
+
+        if (mask == NULL) {
+            cidr->u.in.mask = 0xffffffff;
+            return NGX_OK;
+        }
+
+#if (NGX_HAVE_INET6)
+    } else if (ngx_inet6_addr(addr, len, cidr->u.in6.addr.s6_addr) == NGX_OK) {
+        cidr->family = AF_INET6;
+
+        if (mask == NULL) {
+            ngx_memset(cidr->u.in6.mask.s6_addr, 0xff, 16);
+            return NGX_OK;
+        }
+
+#endif
+    } else {
+        return NGX_ERROR;
     }
 
     mask++;
@@ -386,30 +402,48 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
         return NGX_ERROR;
     }
 
-    cidr->family = AF_INET;
+    switch (cidr->family) {
 
-    if (shift == 0) {
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        addr = cidr->u.in6.addr.s6_addr;
+        mask = cidr->u.in6.mask.s6_addr;
+        rc = NGX_OK;
 
-        /* the x86 compilers use the shl instruction that shifts by modulo 32 */
+        for (i = 0; i < 16; i++) {
 
-        cidr->u.in.mask = 0;
+            s = (shift > 8) ? 8 : shift;
+            shift -= s;
 
-        if (cidr->u.in.addr == 0) {
+            mask[i] = (u_char) (0 - (1 << (8 - s)));
+
+            if (addr[i] != (addr[i] & mask[i])) {
+                rc = NGX_DONE;
+                addr[i] &= mask[i];
+            }
+        }
+
+        return rc;
+#endif
+
+    default: /* AF_INET */
+
+        if (shift) {
+            cidr->u.in.mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
+
+        } else {
+            /* x86 compilers use a shl instruction that shifts by modulo 32 */
+            cidr->u.in.mask = 0;
+        }
+
+        if (cidr->u.in.addr == (cidr->u.in.addr & cidr->u.in.mask)) {
             return NGX_OK;
         }
 
+        cidr->u.in.addr &= cidr->u.in.mask;
+
         return NGX_DONE;
     }
-
-    cidr->u.in.mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
-
-    if (cidr->u.in.addr == (cidr->u.in.addr & cidr->u.in.mask)) {
-        return NGX_OK;
-    }
-
-    cidr->u.in.addr &= cidr->u.in.mask;
-
-    return NGX_DONE;
 }
 
 
@@ -422,6 +456,12 @@ ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text, size_t len)
 #if (NGX_HAVE_INET6)
     struct in6_addr       inaddr6;
     struct sockaddr_in6  *sin6;
+
+    /*
+     * prevent MSVC8 waring:
+     *    potentially uninitialized local variable 'inaddr6' used
+     */
+    ngx_memzero(inaddr6.s6_addr, sizeof(struct in6_addr));
 #endif
 
     inaddr = ngx_inet_addr(text, len);
