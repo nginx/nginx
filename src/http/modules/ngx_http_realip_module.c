@@ -126,7 +126,12 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_realip_module);
 
-    if (rlcf->from == NULL) {
+    if (rlcf->from == NULL
+#if (NGX_HAVE_UNIX_DOMAIN)
+        && !rlcf->unixsock
+#endif
+       )
+    {
         return NGX_DECLINED;
     }
 
