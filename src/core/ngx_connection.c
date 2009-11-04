@@ -117,11 +117,20 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #if (NGX_HAVE_INET6)
         case AF_INET6:
              ls[i].addr_text_max_len = NGX_INET6_ADDRSTRLEN;
+             len = NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1;
+             break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+             ls[i].addr_text_max_len = NGX_UNIX_ADDRSTRLEN;
+             len = NGX_UNIX_ADDRSTRLEN;
              break;
 #endif
 
         case AF_INET:
              ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
+             len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
              break;
 
         default:
@@ -131,8 +140,6 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             ls[i].ignore = 1;
             continue;
         }
-
-        len = ls[i].addr_text_max_len + sizeof(":65535") - 1;
 
         ls[i].addr_text.data = ngx_pnalloc(cycle->pool, len);
         if (ls[i].addr_text.data == NULL) {
