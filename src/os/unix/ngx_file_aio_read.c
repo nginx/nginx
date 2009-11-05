@@ -39,12 +39,11 @@ ssize_t
 ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     ngx_pool_t *pool)
 {
-    int                 n;
-    ngx_event_t        *ev;
-    ngx_event_aio_t    *aio;
-    static ngx_uint_t   enosys = 0;
+    int               n;
+    ngx_event_t      *ev;
+    ngx_event_aio_t  *aio;
 
-    if (enosys) {
+    if (!ngx_file_aio) {
         return ngx_read_file(file, buf, size, offset);
     }
 
@@ -116,7 +115,7 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
                       "aio_read(\"%V\") failed", &file->name);
 
         if (n == NGX_ENOSYS) {
-            enosys = 1;
+            ngx_file_aio = 0;
             return ngx_read_file(file, buf, size, offset);
         }
 

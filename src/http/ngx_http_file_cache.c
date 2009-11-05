@@ -12,6 +12,8 @@
 
 static ngx_int_t ngx_http_file_cache_read(ngx_http_request_t *r,
     ngx_http_cache_t *c);
+static ssize_t ngx_http_file_cache_aio_read(ngx_http_request_t *r,
+    ngx_http_cache_t *c);
 #if (NGX_HAVE_FILE_AIO)
 static void ngx_http_cache_aio_event_handler(ngx_event_t *ev);
 #endif
@@ -330,36 +332,9 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     c = r->cache;
 
-#if (NGX_HAVE_FILE_AIO)
-    {
-    ngx_http_core_loc_conf_t      *clcf;
+    n = ngx_http_file_cache_aio_read(r, c);
 
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-    if (clcf->aio) {
-        n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
-
-        if (n == NGX_AGAIN) {
-            c->file.aio->data = r;
-            c->file.aio->handler = ngx_http_cache_aio_event_handler;
-
-            r->main->blocked++;
-            r->aio = 1;
-
-            return NGX_AGAIN;
-        }
-
-    } else {
-        n = ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
-    }
-    }
-#else
-
-    n = ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
-
-#endif
-
-    if (n == NGX_ERROR) {
+    if (n < 0) {
         return n;
     }
 
@@ -432,8 +407,46 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 }
 
 
+static ssize_t
+ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
+{
 #if (NGX_HAVE_FILE_AIO)
+    ssize_t                    n;
+    ngx_http_core_loc_conf_t  *clcf;
 
+    if (!ngx_file_aio) {
+        goto noaio;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (!clcf->aio) {
+        goto noaio;
+    }
+
+    n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
+
+    if (n != NGX_AGAIN) {
+        return n;
+    }
+
+    c->file.aio->data = r;
+    c->file.aio->handler = ngx_http_cache_aio_event_handler;
+
+    r->main->blocked++;
+    r->aio = 1;
+
+    return NGX_AGAIN;
+
+noaio:
+
+#endif
+
+    return ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
+}
+
+
+#if (NGX_HAVE_FILE_AIO)
 
 static void
 ngx_http_cache_aio_event_handler(ngx_event_t *ev)

@@ -8,6 +8,13 @@
 #include <ngx_core.h>
 
 
+#if (NGX_HAVE_FILE_AIO)
+
+ngx_uint_t  ngx_file_aio = 1;
+
+#endif
+
+
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
