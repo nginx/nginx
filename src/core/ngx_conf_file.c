@@ -261,7 +261,7 @@ done:
         if (ngx_close_file(fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
                           ngx_close_file_n " %s failed",
-                          cf->conf_file->file.name.data);
+                          filename->data);
             return NGX_CONF_ERROR;
         }
 
