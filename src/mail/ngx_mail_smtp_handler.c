@@ -124,19 +124,6 @@ ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx)
         return;
     }
 
-    if (ctx->name.len == 0) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "%V has been resolved to zero name", &c->addr_text);
-
-        s->host = smtp_unavailable;
-
-        ngx_resolve_addr_done(ctx);
-
-        ngx_mail_smtp_greeting(s, s->connection);
-
-        return;
-    }
-
     c->log->action = "in resolving client hostname";
 
     s->host.data = ngx_pstrdup(c->pool, &ctx->name);
@@ -204,7 +191,7 @@ ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx)
 
     if (ctx->state) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "%V could not be resolved (%i: %s)",
+                      "\"%V\" could not be resolved (%i: %s)",
                       &ctx->name, ctx->state,
                       ngx_resolver_strerror(ctx->state));
 
