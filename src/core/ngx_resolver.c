@@ -1902,6 +1902,12 @@ done:
         return NGX_OK;
     }
 
+    if (len == -1) {
+        name->len = 0;
+        name->data = NULL;
+        return NGX_OK;
+    }
+
     dst = ngx_resolver_alloc(r, len);
     if (dst == NULL) {
         return NGX_ERROR;
