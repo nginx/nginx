@@ -464,6 +464,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
             ctx->next = rn->waiting;
             rn->waiting = ctx;
+            ctx->state = NGX_AGAIN;
 
             return NGX_AGAIN;
         }
@@ -625,6 +626,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ctx->next = rn->waiting;
             rn->waiting = ctx;
+            ctx->state = NGX_AGAIN;
 
             /* unlock addr mutex */
 
