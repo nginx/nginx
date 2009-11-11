@@ -26,7 +26,7 @@ typedef struct {
     ngx_uint_t         hash;
     ngx_str_t          header;
 #if (NGX_HAVE_UNIX_DOMAIN)
-    ngx_uint_t         unixsock; /* unsigned  unixsock:1; */
+    ngx_uint_t         unixsock; /* unsigned  unixsock:2; */
 #endif
 } ngx_http_realip_loc_conf_t;
 
@@ -411,10 +411,12 @@ ngx_http_realip_create_loc_conf(ngx_conf_t *cf)
      *     conf->from = NULL;
      *     conf->hash = 0;
      *     conf->header = { 0, NULL };
-     *     conf->unixsock = 0;
      */
 
     conf->type = NGX_CONF_UNSET_UINT;
+#if (NGX_HAVE_UNIX_DOMAIN)
+    conf->unixsock = 2;
+#endif
 
     return conf;
 }
@@ -428,10 +430,13 @@ ngx_http_realip_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->from == NULL) {
         conf->from = prev->from;
-#if (NGX_HAVE_UNIX_DOMAIN)
-        conf->unixsock = prev->unixsock;
-#endif
     }
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    if (conf->unixsock == 2) {
+        conf->unixsock = (prev->unixsock == 2) ? 0 : prev->unixsock;
+    }
+#endif
 
     ngx_conf_merge_uint_value(conf->type, prev->type, NGX_HTTP_REALIP_XREALIP);
 
