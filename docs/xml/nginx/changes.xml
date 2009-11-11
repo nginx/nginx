@@ -9,6 +9,62 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.23" date="11.11.2009">
+
+<change type="security">
+<para lang="ru">
+теперь SSL/TLS renegotiation запрещено.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now SSL/TLS renegotiation is disabled.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+listen unix domain сокет не наследовались во время обновления без перерыва.
+</para>
+<para lang="en">
+listen unix domain socket did not inherit while online upgrade.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр "unix:" в директиве set_real_ip_from не работал без ещё
+одной директивы с любым IP-адресом.
+</para>
+<para lang="en">
+the "unix:" parameter of the "set_real_ip_from" directive did not without
+yet another directive with any IP address.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+segmentation fault и зацикливания в resolver'е.
+</para>
+<para lang="en">
+segmentation fault and infinite looping in resolver.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в resolver'е.<br/>
+Спасибо Артёму Бохану.
+</para>
+<para lang="en">
+in resolver.<br/>
+Thanks to Artem Bokhan.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.22" date="03.11.2009">
 
 <change type="feature">
