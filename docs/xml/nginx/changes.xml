@@ -9,11 +9,58 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.24" date="11.11.2009">
+
+<change type="bugfix">
+<para lang="ru">
+nginx всегда добавлял строку "Content-Encoding: gzip" в заголовок
+304-ых ответов модуля ngx_http_gzip_static_module.
+</para>
+<para lang="en">
+nginx always added "Content-Encoding: gzip" response header line
+in 304 responses sent by ngx_http_gzip_static_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без параметра --with-debug;
+ошибка появилась в 0.8.23.
+</para>
+<para lang="en">
+nginx could not be built without the --with-debug option;
+the bug had appeared in 0.8.23.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр "unix:" в директиве set_real_ip_from неправильно наследовался
+с предыдущего уровня.
+</para>
+<para lang="en">
+the "unix:" parameter of the "set_real_ip_from" directive inherited
+incorrectly from previous level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в resolver'е при определении пустого имени.
+</para>
+<para lang="en">
+in resolving empty name.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.23" date="11.11.2009">
 
 <change type="security">
 <para lang="ru">
-теперь SSL/TLS renegotiation запрещено.<br/>
+теперь SSL/TLS renegotiation запрещён.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
