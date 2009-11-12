@@ -812,7 +812,11 @@ ngx_http_handler(ngx_http_request_t *r)
     }
 
     r->valid_location = 1;
-    r->gzip = 0;
+#if (NGX_HTTP_GZIP)
+    r->gzip_tested = 0;
+    r->gzip_ok = 0;
+    r->gzip_vary = 0;
+#endif
 
     r->write_event_handler = ngx_http_core_run_phases;
     ngx_http_core_run_phases(r);
@@ -1891,15 +1895,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
     ngx_table_elt_t           *e, *d;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r->gzip == 1) {
-        return NGX_OK;
-    }
-
-    if (r->gzip == 2) {
-        return NGX_DECLINED;
-    }
-
-    r->gzip = 2;
+    r->gzip_tested = 1;
 
     if (r != r->main
         || r->headers_in.accept_encoding == NULL
@@ -2034,7 +2030,7 @@ ok:
 
 #endif
 
-    r->gzip = 1;
+    r->gzip_ok = 1;
 
     return NGX_OK;
 }
