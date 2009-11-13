@@ -2633,14 +2633,14 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
 static char *
 ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     char        *rv;
     ngx_conf_t   save;
 
-    if (lcf->types == NULL) {
-        lcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
-        if (lcf->types == NULL) {
+    if (clcf->types == NULL) {
+        clcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
+        if (clcf->types == NULL) {
             return NGX_CONF_ERROR;
         }
     }
@@ -2660,7 +2660,7 @@ ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t       *value, *content_type, *old, file;
     ngx_uint_t       i, n, hash;
@@ -2691,8 +2691,8 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
         hash = ngx_hash_strlow(value[i].data, value[i].data, value[i].len);
 
-        type = lcf->types->elts;
-        for (n = 0; n < lcf->types->nelts; n++) {
+        type = clcf->types->elts;
+        for (n = 0; n < clcf->types->nelts; n++) {
             if (ngx_strcmp(value[i].data, type[n].key.data) == 0) {
                 old = type[n].value;
                 type[n].value = content_type;
@@ -2707,7 +2707,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         }
 
 
-        type = ngx_array_push(lcf->types);
+        type = ngx_array_push(clcf->types);
         if (type == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2912,89 +2912,89 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 static void *
 ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 {
-    ngx_http_core_loc_conf_t  *lcf;
+    ngx_http_core_loc_conf_t  *clcf;
 
-    lcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_loc_conf_t));
-    if (lcf == NULL) {
+    clcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_loc_conf_t));
+    if (clcf == NULL) {
         return NULL;
     }
 
     /*
      * set by ngx_pcalloc():
      *
-     *     lcf->root = { 0, NULL };
-     *     lcf->limit_except = 0;
-     *     lcf->post_action = { 0, NULL };
-     *     lcf->types = NULL;
-     *     lcf->default_type = { 0, NULL };
-     *     lcf->error_log = NULL;
-     *     lcf->error_pages = NULL;
-     *     lcf->try_files = NULL;
-     *     lcf->client_body_path = NULL;
-     *     lcf->regex = NULL;
-     *     lcf->exact_match = 0;
-     *     lcf->auto_redirect = 0;
-     *     lcf->alias = 0;
-     *     lcf->gzip_proxied = 0;
+     *     clcf->root = { 0, NULL };
+     *     clcf->limit_except = 0;
+     *     clcf->post_action = { 0, NULL };
+     *     clcf->types = NULL;
+     *     clcf->default_type = { 0, NULL };
+     *     clcf->error_log = NULL;
+     *     clcf->error_pages = NULL;
+     *     clcf->try_files = NULL;
+     *     clcf->client_body_path = NULL;
+     *     clcf->regex = NULL;
+     *     clcf->exact_match = 0;
+     *     clcf->auto_redirect = 0;
+     *     clcf->alias = 0;
+     *     clcf->gzip_proxied = 0;
      */
 
-    lcf->client_max_body_size = NGX_CONF_UNSET;
-    lcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
-    lcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->satisfy = NGX_CONF_UNSET_UINT;
-    lcf->if_modified_since = NGX_CONF_UNSET_UINT;
-    lcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
-    lcf->client_body_in_single_buffer = NGX_CONF_UNSET;
-    lcf->internal = NGX_CONF_UNSET;
-    lcf->sendfile = NGX_CONF_UNSET;
-    lcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
+    clcf->client_max_body_size = NGX_CONF_UNSET;
+    clcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
+    clcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->satisfy = NGX_CONF_UNSET_UINT;
+    clcf->if_modified_since = NGX_CONF_UNSET_UINT;
+    clcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
+    clcf->client_body_in_single_buffer = NGX_CONF_UNSET;
+    clcf->internal = NGX_CONF_UNSET;
+    clcf->sendfile = NGX_CONF_UNSET;
+    clcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
 #if (NGX_HAVE_FILE_AIO)
-    lcf->aio = NGX_CONF_UNSET;
+    clcf->aio = NGX_CONF_UNSET;
 #endif
-    lcf->read_ahead = NGX_CONF_UNSET_SIZE;
-    lcf->directio = NGX_CONF_UNSET;
-    lcf->directio_alignment = NGX_CONF_UNSET;
-    lcf->tcp_nopush = NGX_CONF_UNSET;
-    lcf->tcp_nodelay = NGX_CONF_UNSET;
-    lcf->send_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->send_lowat = NGX_CONF_UNSET_SIZE;
-    lcf->postpone_output = NGX_CONF_UNSET_SIZE;
-    lcf->limit_rate = NGX_CONF_UNSET_SIZE;
-    lcf->limit_rate_after = NGX_CONF_UNSET_SIZE;
-    lcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->keepalive_header = NGX_CONF_UNSET;
-    lcf->keepalive_requests = NGX_CONF_UNSET_UINT;
-    lcf->lingering_time = NGX_CONF_UNSET_MSEC;
-    lcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
-    lcf->reset_timedout_connection = NGX_CONF_UNSET;
-    lcf->server_name_in_redirect = NGX_CONF_UNSET;
-    lcf->port_in_redirect = NGX_CONF_UNSET;
-    lcf->msie_padding = NGX_CONF_UNSET;
-    lcf->msie_refresh = NGX_CONF_UNSET;
-    lcf->log_not_found = NGX_CONF_UNSET;
-    lcf->log_subrequest = NGX_CONF_UNSET;
-    lcf->recursive_error_pages = NGX_CONF_UNSET;
-    lcf->server_tokens = NGX_CONF_UNSET;
-    lcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
-    lcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
+    clcf->read_ahead = NGX_CONF_UNSET_SIZE;
+    clcf->directio = NGX_CONF_UNSET;
+    clcf->directio_alignment = NGX_CONF_UNSET;
+    clcf->tcp_nopush = NGX_CONF_UNSET;
+    clcf->tcp_nodelay = NGX_CONF_UNSET;
+    clcf->send_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->send_lowat = NGX_CONF_UNSET_SIZE;
+    clcf->postpone_output = NGX_CONF_UNSET_SIZE;
+    clcf->limit_rate = NGX_CONF_UNSET_SIZE;
+    clcf->limit_rate_after = NGX_CONF_UNSET_SIZE;
+    clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->keepalive_header = NGX_CONF_UNSET;
+    clcf->keepalive_requests = NGX_CONF_UNSET_UINT;
+    clcf->lingering_time = NGX_CONF_UNSET_MSEC;
+    clcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->reset_timedout_connection = NGX_CONF_UNSET;
+    clcf->server_name_in_redirect = NGX_CONF_UNSET;
+    clcf->port_in_redirect = NGX_CONF_UNSET;
+    clcf->msie_padding = NGX_CONF_UNSET;
+    clcf->msie_refresh = NGX_CONF_UNSET;
+    clcf->log_not_found = NGX_CONF_UNSET;
+    clcf->log_subrequest = NGX_CONF_UNSET;
+    clcf->recursive_error_pages = NGX_CONF_UNSET;
+    clcf->server_tokens = NGX_CONF_UNSET;
+    clcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
+    clcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
-    lcf->open_file_cache = NGX_CONF_UNSET_PTR;
-    lcf->open_file_cache_valid = NGX_CONF_UNSET;
-    lcf->open_file_cache_min_uses = NGX_CONF_UNSET_UINT;
-    lcf->open_file_cache_errors = NGX_CONF_UNSET;
-    lcf->open_file_cache_events = NGX_CONF_UNSET;
+    clcf->open_file_cache = NGX_CONF_UNSET_PTR;
+    clcf->open_file_cache_valid = NGX_CONF_UNSET;
+    clcf->open_file_cache_min_uses = NGX_CONF_UNSET_UINT;
+    clcf->open_file_cache_errors = NGX_CONF_UNSET;
+    clcf->open_file_cache_events = NGX_CONF_UNSET;
 
 #if (NGX_HTTP_GZIP)
-    lcf->gzip_vary = NGX_CONF_UNSET;
-    lcf->gzip_http_version = NGX_CONF_UNSET_UINT;
+    clcf->gzip_vary = NGX_CONF_UNSET;
+    clcf->gzip_http_version = NGX_CONF_UNSET_UINT;
 #if (NGX_PCRE)
-    lcf->gzip_disable = NGX_CONF_UNSET_PTR;
-    lcf->gzip_disable_msie6 = 3;
+    clcf->gzip_disable = NGX_CONF_UNSET_PTR;
+    clcf->gzip_disable_msie6 = 3;
 #endif
 #endif
 
-    return lcf;
+    return clcf;
 }
 
 
@@ -3576,7 +3576,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t                  *value;
     ngx_uint_t                  alias, n;
@@ -3584,11 +3584,11 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     alias = (cmd->name.len == sizeof("alias") - 1) ? 1 : 0;
 
-    if (lcf->root.data) {
+    if (clcf->root.data) {
 
         /* the (ngx_uint_t) cast is required by gcc 2.7.2.3 */
 
-        if ((ngx_uint_t) lcf->alias == alias) {
+        if ((ngx_uint_t) clcf->alias == alias) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" directive is duplicate",
                                &cmd->name);
@@ -3596,13 +3596,13 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" directive is duplicate, "
                                "\"%s\" directive is specified before",
-                               &cmd->name, lcf->alias ? "alias" : "root");
+                               &cmd->name, clcf->alias ? "alias" : "root");
         }
 
         return NGX_CONF_ERROR;
     }
 
-    if (lcf->named && alias) {
+    if (clcf->named && alias) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the \"alias\" directive may not be used "
                            "inside named location");
@@ -3634,28 +3634,28 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    lcf->alias = alias;
-    lcf->root = value[1];
+    clcf->alias = alias;
+    clcf->root = value[1];
 
-    if (!alias && lcf->root.data[lcf->root.len - 1] == '/') {
-        lcf->root.len--;
+    if (!alias && clcf->root.data[clcf->root.len - 1] == '/') {
+        clcf->root.len--;
     }
 
-    if (lcf->root.data[0] != '$') {
-        if (ngx_conf_full_name(cf->cycle, &lcf->root, 0) != NGX_OK) {
+    if (clcf->root.data[0] != '$') {
+        if (ngx_conf_full_name(cf->cycle, &clcf->root, 0) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }
 
-    n = ngx_http_script_variables_count(&lcf->root);
+    n = ngx_http_script_variables_count(&clcf->root);
 
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
     if (n) {
         sc.cf = cf;
-        sc.source = &lcf->root;
-        sc.lengths = &lcf->root_lengths;
-        sc.values = &lcf->root_values;
+        sc.source = &clcf->root;
+        sc.lengths = &clcf->root_lengths;
+        sc.values = &clcf->root_values;
         sc.variables = n;
         sc.complete_lengths = 1;
         sc.complete_values = 1;
@@ -3667,8 +3667,8 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
 
-    if (alias && lcf->regex
-        && (ngx_regex_capture_count(lcf->regex) <= 0 || sc.ncaptures == 0))
+    if (alias && clcf->regex
+        && (ngx_regex_capture_count(clcf->regex) <= 0 || sc.ncaptures == 0))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the \"alias\" directive must use captures "
@@ -3830,7 +3830,7 @@ ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     u_char                            *p;
     ngx_int_t                          overwrite;
@@ -3840,10 +3840,10 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_complex_value_t           cv;
     ngx_http_compile_complex_value_t   ccv;
 
-    if (lcf->error_pages == NULL) {
-        lcf->error_pages = ngx_array_create(cf->pool, 4,
-                                            sizeof(ngx_http_err_page_t));
-        if (lcf->error_pages == NULL) {
+    if (clcf->error_pages == NULL) {
+        clcf->error_pages = ngx_array_create(cf->pool, 4,
+                                             sizeof(ngx_http_err_page_t));
+        if (clcf->error_pages == NULL) {
             return NGX_CONF_ERROR;
         }
     }
@@ -3907,7 +3907,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     for (i = 1; i < cf->args->nelts - n; i++) {
-        err = ngx_array_push(lcf->error_pages);
+        err = ngx_array_push(clcf->error_pages);
         if (err == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -4035,14 +4035,14 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     time_t       inactive;
     ngx_str_t   *value, s;
     ngx_int_t    max;
     ngx_uint_t   i;
 
-    if (lcf->open_file_cache != NGX_CONF_UNSET_PTR) {
+    if (clcf->open_file_cache != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
     }
 
@@ -4078,7 +4078,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[i].data, "off") == 0) {
 
-            lcf->open_file_cache = NULL;
+            clcf->open_file_cache = NULL;
 
             continue;
         }
@@ -4091,7 +4091,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (lcf->open_file_cache == NULL) {
+    if (clcf->open_file_cache == NULL) {
         return NGX_CONF_OK;
     }
 
@@ -4101,8 +4101,8 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    lcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
-    if (lcf->open_file_cache) {
+    clcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
+    if (clcf->open_file_cache) {
         return NGX_CONF_OK;
     }
 
@@ -4113,50 +4113,50 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t  *value;
 
-    if (lcf->error_log) {
+    if (clcf->error_log) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    lcf->error_log = ngx_log_create(cf->cycle, &value[1]);
-    if (lcf->error_log == NULL) {
+    clcf->error_log = ngx_log_create(cf->cycle, &value[1]);
+    if (clcf->error_log == NULL) {
         return NGX_CONF_ERROR;
     }
 
     if (cf->args->nelts == 2) {
-        lcf->error_log->log_level = NGX_LOG_ERR;
+        clcf->error_log->log_level = NGX_LOG_ERR;
         return NGX_CONF_OK;
     }
 
-    return ngx_log_set_levels(cf, lcf->error_log);
+    return ngx_log_set_levels(cf, clcf->error_log);
 }
 
 
 static char *
 ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
     ngx_str_t  *value;
 
-    if (lcf->keepalive_timeout != NGX_CONF_UNSET_MSEC) {
+    if (clcf->keepalive_timeout != NGX_CONF_UNSET_MSEC) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    lcf->keepalive_timeout = ngx_parse_time(&value[1], 0);
+    clcf->keepalive_timeout = ngx_parse_time(&value[1], 0);
 
-    if (lcf->keepalive_timeout == (ngx_msec_t) NGX_ERROR) {
+    if (clcf->keepalive_timeout == (ngx_msec_t) NGX_ERROR) {
         return "invalid value";
     }
 
-    if (lcf->keepalive_timeout == (ngx_msec_t) NGX_PARSE_LARGE_TIME) {
+    if (clcf->keepalive_timeout == (ngx_msec_t) NGX_PARSE_LARGE_TIME) {
         return "value must be less than 597 hours";
     }
 
@@ -4164,13 +4164,13 @@ ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    lcf->keepalive_header = ngx_parse_time(&value[2], 1);
+    clcf->keepalive_header = ngx_parse_time(&value[2], 1);
 
-    if (lcf->keepalive_header == NGX_ERROR) {
+    if (clcf->keepalive_header == NGX_ERROR) {
         return "invalid value";
     }
 
-    if (lcf->keepalive_header == NGX_PARSE_LARGE_TIME) {
+    if (clcf->keepalive_header == NGX_PARSE_LARGE_TIME) {
         return "value must be less than 68 years";
     }
 
@@ -4181,13 +4181,13 @@ ngx_http_core_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_core_loc_conf_t *lcf = conf;
+    ngx_http_core_loc_conf_t *clcf = conf;
 
-    if (lcf->internal != NGX_CONF_UNSET) {
+    if (clcf->internal != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
-    lcf->internal = 1;
+    clcf->internal = 1;
 
     return NGX_CONF_OK;
 }
