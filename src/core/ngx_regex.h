@@ -14,7 +14,7 @@
 #include <pcre.h>
 
 
-#define NGX_REGEX_NO_MATCHED  -1000
+#define NGX_REGEX_NO_MATCHED  PCRE_ERROR_NOMATCH   /* -1 */
 
 #define NGX_REGEX_CASELESS    PCRE_CASELESS
 
@@ -30,8 +30,11 @@ void ngx_regex_init(void);
 ngx_regex_t *ngx_regex_compile(ngx_str_t *pattern, ngx_int_t options,
     ngx_pool_t *pool, ngx_str_t *err);
 ngx_int_t ngx_regex_capture_count(ngx_regex_t *re);
-ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures,
-    ngx_int_t size);
+
+#define ngx_regex_exec(re, s, captures, size)                                \
+    pcre_exec(re, NULL, (const char *) (s)->data, (s)->len, 0, 0,            \
+              captures, size)
+
 ngx_int_t ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log);
 
 

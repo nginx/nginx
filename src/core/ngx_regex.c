@@ -99,22 +99,6 @@ ngx_regex_capture_count(ngx_regex_t *re)
 
 
 ngx_int_t
-ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_int_t size)
-{
-    int  rc;
-
-    rc = pcre_exec(re, NULL, (const char *) s->data, s->len, 0, 0,
-                   captures, size);
-
-    if (rc == -1) {
-        return NGX_REGEX_NO_MATCHED;
-    }
-
-    return rc;
-}
-
-
-ngx_int_t
 ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log)
 {
     ngx_int_t         n;

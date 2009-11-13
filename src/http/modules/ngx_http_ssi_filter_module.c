@@ -2468,7 +2468,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         rc = ngx_regex_exec(regex, &left, NULL, 0);
 
-        if (rc != NGX_REGEX_NO_MATCHED && rc < 0) {
+        if (rc < NGX_REGEX_NO_MATCHED) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           ngx_regex_exec_n " failed: %d on \"%V\" using \"%V\"",
                           rc, &left, &right);
