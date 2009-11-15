@@ -724,17 +724,22 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
         return NGX_ERROR;
     }
 
-    if (url.uri.len && url.uri.data[0] == '?') {
-        p = ngx_pnalloc(r->pool, url.uri.len + 1);
-        if (p == NULL) {
-            return NGX_ERROR;
+    if (url.uri.len) {
+        if (url.uri.data[0] == '?') {
+            p = ngx_pnalloc(r->pool, url.uri.len + 1);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            *p++ = '/';
+            ngx_memcpy(p, url.uri.data, url.uri.len);
+
+            url.uri.len++;
+            url.uri.data = p - 1;
         }
 
-        *p++ = '/';
-        ngx_memcpy(p, url.uri.data, url.uri.len);
-
-        url.uri.len++;
-        url.uri.data = p - 1;
+    } else {
+        url.uri = r->unparsed_uri;
     }
 
     ctx->vars.key_start = u->schema;
