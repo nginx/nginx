@@ -51,11 +51,15 @@ void *
 ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 {
     void  *p;
+    int    err;
 
-    if (posix_memalign(&p, alignment, size) == -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+    err = posix_memalign(&p, alignment, size);
+
+    if (err) {
+        ngx_log_error(NGX_LOG_EMERG, log, err,
                       "posix_memalign() %uz bytes aligned to %uz failed",
                       size, alignment);
+        p = NULL;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0,
