@@ -264,7 +264,7 @@ ngx_err_t ngx_unlock_fd(ngx_fd_t fd);
 
 #define NGX_HAVE_READ_AHEAD      1
 
-#define ngx_read_ahead(fd, n)    posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL)
+ngx_int_t ngx_read_ahead(ngx_fd_t fd, size_t n);
 #define ngx_read_ahead_n         "posix_fadvise(POSIX_FADV_SEQUENTIAL)"
 
 #else

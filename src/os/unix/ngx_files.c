@@ -402,6 +402,26 @@ ngx_unlock_fd(ngx_fd_t fd)
 }
 
 
+#if (NGX_HAVE_POSIX_FADVISE)
+
+ngx_int_t
+ngx_read_ahead(ngx_fd_t fd, size_t n)
+{
+    int  err;
+
+    err = posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+
+    if (err == 0) {
+        return 0;
+    }
+
+    ngx_set_errno(err);
+    return NGX_FILE_ERROR;
+}
+
+#endif
+
+
 #if (NGX_HAVE_O_DIRECT)
 
 ngx_int_t
