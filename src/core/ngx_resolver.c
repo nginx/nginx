@@ -464,6 +464,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
             ctx->next = rn->waiting;
             rn->waiting = ctx;
+            ctx->state = NGX_AGAIN;
 
             return NGX_AGAIN;
         }
@@ -625,6 +626,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             ctx->next = rn->waiting;
             rn->waiting = ctx;
+            ctx->state = NGX_AGAIN;
 
             /* unlock addr mutex */
 
@@ -1149,6 +1151,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         goto failed;
     }
 
+    ngx_resolver_free(r, name.data);
+
     if (code == 0 && nan == 0) {
         code = 3; /* NXDOMAIN */
     }
@@ -1400,6 +1404,8 @@ failed:
 
     /* unlock name mutex */
 
+    ngx_resolver_free(r, name.data);
+
     return;
 }
 
@@ -1595,7 +1601,6 @@ static ngx_resolver_node_t *
 ngx_resolver_lookup_name(ngx_resolver_t *r, ngx_str_t *name, uint32_t hash)
 {
     ngx_int_t             rc;
-    size_t                len;
     ngx_rbtree_node_t    *node, *sentinel;
     ngx_resolver_node_t  *rn;
 
@@ -1619,9 +1624,7 @@ ngx_resolver_lookup_name(ngx_resolver_t *r, ngx_str_t *name, uint32_t hash)
         do {
             rn = (ngx_resolver_node_t *) node;
 
-            len = (name->len > (size_t) rn->nlen) ? rn->nlen : name->len;
-
-            rc = ngx_strncmp(name->data, rn->name, len);
+            rc = ngx_memn2cmp(name->data, rn->name, name->len, rn->nlen);
 
             if (rc == 0) {
                 return rn;
@@ -1675,7 +1678,6 @@ static void
 ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    size_t                 len;
     ngx_rbtree_node_t    **p;
     ngx_resolver_node_t   *rn, *rn_temp;
 
@@ -1694,10 +1696,8 @@ ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
             rn = (ngx_resolver_node_t *) node;
             rn_temp = (ngx_resolver_node_t *) temp;
 
-            len = (rn->nlen > rn_temp->nlen) ? rn_temp->nlen : rn->nlen;
-
-            p = (ngx_strncmp(rn->name, rn_temp->name, len) < 0)
-                    ? &temp->left : &temp->right;
+            p = (ngx_memn2cmp(rn->name, rn_temp->name, rn->nlen, rn_temp->nlen)
+                 < 0) ? &temp->left : &temp->right;
         }
 
         if (*p == sentinel) {
@@ -1719,15 +1719,16 @@ static ngx_int_t
 ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 {
     u_char                *p, *s;
-    size_t                 len;
+    size_t                 len, nlen;
     ngx_uint_t             ident;
     ngx_resolver_qs_t     *qs;
     ngx_resolver_query_t  *query;
 
-    len = sizeof(ngx_resolver_query_t)
-          + 1 + ctx->name.len + 1 + sizeof(ngx_resolver_qs_t);
+    nlen = ctx->name.len ? (1 + ctx->name.len + 1) : 1;
 
-    p = ngx_resolver_calloc(ctx->resolver, len);
+    len = sizeof(ngx_resolver_query_t) + nlen + sizeof(ngx_resolver_qs_t);
+
+    p = ngx_resolver_alloc(ctx->resolver, len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1754,7 +1755,7 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
     query->nns_hi = 0; query->nns_lo = 0;
     query->nar_hi = 0; query->nar_lo = 0;
 
-    p += sizeof(ngx_resolver_query_t) + 1 + ctx->name.len + 1;
+    p += sizeof(ngx_resolver_query_t) + nlen;
 
     qs = (ngx_resolver_qs_t *) p;
 
@@ -1808,7 +1809,7 @@ ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
           + sizeof(".255.255.255.255.in-addr.arpa.") - 1
           + sizeof(ngx_resolver_qs_t);
 
-    p = ngx_resolver_calloc(ctx->resolver, len);
+    p = ngx_resolver_alloc(ctx->resolver, len);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -1899,6 +1900,12 @@ invalid:
 done:
 
     if (name == NULL) {
+        return NGX_OK;
+    }
+
+    if (len == -1) {
+        name->len = 0;
+        name->data = NULL;
         return NGX_OK;
     }
 
