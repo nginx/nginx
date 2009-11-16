@@ -438,6 +438,10 @@ HTTP_SECURE_LINK_MODULE=ngx_http_secure_link_module
 HTTP_SECURE_LINK_SRCS=src/http/modules/ngx_http_secure_link_module.c
 
 
+HTTP_DEGRADATION_MODULE=ngx_http_degradation_module
+HTTP_DEGRADATION_SRCS=src/http/modules/ngx_http_degradation_module.c
+
+
 HTTP_FLV_MODULE=ngx_http_flv_module
 HTTP_FLV_SRCS=src/http/modules/ngx_http_flv_module.c
 
