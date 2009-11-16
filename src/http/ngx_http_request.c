@@ -1658,7 +1658,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
 #if (NGX_PCRE)
 
-    if (r->virtual_names->nregex) {
+    if (len && r->virtual_names->nregex) {
         size_t                   ncaptures;
         ngx_int_t                n;
         ngx_uint_t               i;

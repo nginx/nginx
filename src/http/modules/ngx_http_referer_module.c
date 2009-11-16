@@ -506,6 +506,11 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
     ngx_regex_elt_t  *re;
     u_char            errstr[NGX_MAX_CONF_ERRSTR];
 
+    if (name->len == 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "empty regex in \"%V\"", name);
+        return NGX_CONF_ERROR;
+    }
+
     if (rlcf->regex == NGX_CONF_UNSET_PTR) {
         rlcf->regex = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
         if (rlcf->regex == NULL) {
@@ -562,5 +567,5 @@ ngx_http_cmp_referer_wildcards(const void *one, const void *two)
     first = (ngx_hash_key_t *) one;
     second = (ngx_hash_key_t *) two;
 
-    return ngx_strcmp(first->key.data, second->key.data);
+    return ngx_dns_strcmp(first->key.data, second->key.data);
 }

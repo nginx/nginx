@@ -337,7 +337,7 @@ ngx_http_map_cmp_dns_wildcards(const void *one, const void *two)
     first = (ngx_hash_key_t *) one;
     second = (ngx_hash_key_t *) two;
 
-    return ngx_strcmp(first->key.data, second->key.data);
+    return ngx_dns_strcmp(first->key.data, second->key.data);
 }
 
 
