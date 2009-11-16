@@ -41,6 +41,7 @@ typedef struct {
     ngx_event_handler_pt        saved_write_handler;
 
     unsigned                    handshaked:1;
+    unsigned                    renegotiation:1;
     unsigned                    buffer:1;
     unsigned                    no_wait_shutdown:1;
     unsigned                    no_send_shutdown:1;

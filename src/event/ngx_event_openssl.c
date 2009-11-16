@@ -15,6 +15,8 @@ typedef struct {
 
 
 static int ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
+static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
+    int ret);
 static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
@@ -174,6 +176,8 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     }
 
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
+
+    SSL_CTX_set_info_callback(ssl->ctx, ngx_ssl_info_callback);
 
     return NGX_OK;
 }
@@ -347,6 +351,22 @@ ngx_http_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
 #endif
 
     return 1;
+}
+
+
+static void
+ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
+{
+    ngx_connection_t  *c;
+
+    if (where & SSL_CB_HANDSHAKE_START) {
+        c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+        if (c->ssl->handshaked) {
+            c->ssl->renegotiation = 1;
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL renegotiation");
+        }
+    }
 }
 
 
@@ -587,6 +607,11 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
 
+        /* initial handshake done, disable renegotiation (CVE-2009-3555) */
+        if (c->ssl->connection->s3) {
+            c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
+        }
+
         return NGX_OK;
     }
 
@@ -788,6 +813,21 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 {
     int        sslerr;
     ngx_err_t  err;
+
+    if (c->ssl->renegotiation) {
+        /*
+         * disable renegotiation (CVE-2009-3555):
+         * OpenSSL (at least up to 0.9.8l) does not handle disabled
+         * renegotiation gracefully, so drop connection here
+         */
+
+        ngx_log_error(NGX_LOG_NOTICE, c->log, 0, "SSL renegotiation disabled");
+
+        c->ssl->no_wait_shutdown = 1;
+        c->ssl->no_send_shutdown = 1;
+
+        return NGX_ERROR;
+    }
 
     if (n > 0) {
 
