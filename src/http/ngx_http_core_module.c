@@ -2759,6 +2759,10 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
     cmcf->variables_hash_bucket_size =
                ngx_align(cmcf->variables_hash_bucket_size, ngx_cacheline_size);
 
+    if (cmcf->ncaptures) {
+        cmcf->ncaptures = (cmcf->ncaptures + 1) * 3;
+    }
+
     return NGX_CONF_OK;
 }
 

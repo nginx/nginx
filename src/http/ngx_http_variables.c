@@ -1759,7 +1759,7 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
     if (re->ncaptures) {
-        len = (cmcf->ncaptures + 1) * 3;
+        len = cmcf->ncaptures;
 
         if (r->captures == NULL) {
             r->captures = ngx_palloc(r->pool, len * sizeof(int));
