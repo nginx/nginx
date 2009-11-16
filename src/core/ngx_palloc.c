@@ -219,7 +219,7 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
     ngx_uint_t         n;
     ngx_pool_large_t  *large;
 
-    p = ngx_memalign(ngx_pagesize, size, pool->log);
+    p = ngx_alloc(size, pool->log);
     if (p == NULL) {
         return NULL;
     }
