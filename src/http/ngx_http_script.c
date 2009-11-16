@@ -910,14 +910,14 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         e->buf.len = code->size;
 
         if (code->uri) {
-            if (rc && (r->quoted_uri || r->plus_in_uri)) {
+            if (r->ncaptures && (r->quoted_uri || r->plus_in_uri)) {
                 e->buf.len += 2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len,
                                                  NGX_ESCAPE_ARGS);
             }
         }
 
-        for (n = 1; n < (ngx_uint_t) rc; n++) {
-            e->buf.len += r->captures[2 * n + 1] - r->captures[2 * n];
+        for (n = 2; n < r->ncaptures; n += 2) {
+            e->buf.len += r->captures[n + 1] - r->captures[n];
         }
 
     } else {

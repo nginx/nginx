@@ -1810,7 +1810,7 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 #endif
     }
 
-    r->ncaptures = len;
+    r->ncaptures = rc * 2;
     r->captures_data = s->data;
 
     return NGX_OK;
