@@ -9,6 +9,83 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.25" date="16.11.2009">
+
+<change type="change">
+<para lang="ru">
+теперь в лог ошибок не пишется сообщение, если переменная не найдена
+с помощью метода $r->variable().
+</para>
+<para lang="en">
+now no message is written in an error log if a variable is not found by
+$r->variable() method.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_degradation_module.
+</para>
+<para lang="en">
+the ngx_http_degradation_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+именованные выделения в регулярных выражениях.
+</para>
+<para lang="en">
+regular expression named captures.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании переменных в директиве proxy_pass не требуется
+задавать URI.
+</para>
+<para lang="en">
+now URI part is not required a "proxy_pass" directive if variables are used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива msie_padding работает и для Chrome.
+</para>
+<para lang="en">
+now the "msie_padding" directive works for Chrome too.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе происходил segmentation fault при недостатке памяти;
+ошибка появилась в 0.8.18.
+</para>
+<para lang="en">
+a segmentation fault occurred in a worker process on low memory condition;
+the bug had appeared in 0.8.18.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx передавал сжатые ответы клиентам, не поддерживающим сжатие
+при настройках gzip_static on и gzip_vary off;
+ошибка появилась в 0.8.16.
+</para>
+<para lang="en">
+nginx sent gzipped responses to clients those do not support gzip,
+if "gzip_static on" and "gzip_vary off";
+the bug had appeared in 0.8.16.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.24" date="11.11.2009">
 
 <change type="bugfix">
