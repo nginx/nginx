@@ -41,6 +41,21 @@ struct ngx_http_variable_s {
 };
 
 
+typedef struct {
+    ngx_uint_t                    capture;
+    ngx_int_t                     index;
+} ngx_http_regex_variable_t;
+
+
+typedef struct {
+    ngx_regex_t                  *regex;
+    ngx_uint_t                    ncaptures;
+    ngx_http_regex_variable_t    *variables;
+    ngx_uint_t                    nvariables;
+    ngx_str_t                     name;
+} ngx_http_regex_t;
+
+
 ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name,
     ngx_uint_t flags);
 ngx_int_t ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name);
@@ -57,6 +72,12 @@ ngx_int_t ngx_http_variable_unknown_header(ngx_http_variable_value_t *v,
 
 
 #define ngx_http_clear_variable(r, index) r->variables0[index].text.data = NULL;
+
+
+ngx_http_regex_t *ngx_http_regex_compile(ngx_conf_t *cf,
+    ngx_regex_compile_t *rc);
+ngx_int_t ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re,
+    ngx_str_t *s);
 
 
 ngx_int_t ngx_http_variables_add_core_vars(ngx_conf_t *cf);

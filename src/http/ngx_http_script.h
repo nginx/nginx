@@ -114,10 +114,9 @@ typedef struct {
 
 typedef struct {
     ngx_http_script_code_pt     code;
-    ngx_regex_t                *regex;
+    ngx_http_regex_t           *regex;
     ngx_array_t                *lengths;
     uintptr_t                   size;
-    uintptr_t                   ncaptures;
     uintptr_t                   status;
     uintptr_t                   next;
 

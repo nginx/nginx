@@ -126,6 +126,7 @@ typedef struct {
     ngx_hash_t                 variables_hash;
 
     ngx_array_t                variables;       /* ngx_http_variable_t */
+    ngx_uint_t                 ncaptures;
 
     ngx_uint_t                 server_names_hash_max_size;
     ngx_uint_t                 server_names_hash_bucket_size;
@@ -238,7 +239,7 @@ typedef struct {
 
 struct ngx_http_server_name_s {
 #if (NGX_PCRE)
-    ngx_regex_t               *regex;
+    ngx_http_regex_t          *regex;
 #endif
     ngx_http_core_srv_conf_t  *server;   /* virtual name server conf */
     ngx_str_t                  name;
@@ -267,9 +268,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
 
 #if (NGX_PCRE)
-    ngx_regex_t  *regex;
-
-    unsigned      captures:1;
+    ngx_http_regex_t  *regex;
 #endif
 
     unsigned      noname:1;   /* "if () {}" block or limit_except */

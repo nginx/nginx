@@ -1666,6 +1666,157 @@ ngx_http_variable_pid(ngx_http_request_t *r,
 }
 
 
+static ngx_int_t
+ngx_http_variable_not_found(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
+{
+    v->not_found = 1;
+    return NGX_OK;
+}
+
+
+ngx_http_regex_t *
+ngx_http_regex_compile(ngx_conf_t *cf, ngx_regex_compile_t *rc)
+{
+    u_char                     *p;
+    size_t                      size;
+    ngx_str_t                   name;
+    ngx_uint_t                  i, n;
+    ngx_http_variable_t        *v;
+    ngx_http_regex_t           *re;
+    ngx_http_regex_variable_t  *rv;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    rc->pool = cf->pool;
+
+    if (ngx_regex_compile(rc) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc->err);
+        return NULL;
+    }
+
+    re = ngx_pcalloc(cf->pool, sizeof(ngx_http_regex_t));
+    if (re == NULL) {
+        return NULL;
+    }
+
+    re->regex = rc->regex;
+    re->ncaptures = rc->captures;
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+    cmcf->ncaptures = ngx_max(cmcf->ncaptures, re->ncaptures);
+
+    n = (ngx_uint_t) rc->named_captures;
+
+    if (n == 0) {
+        return re;
+    }
+
+    rv = ngx_palloc(rc->pool, n * sizeof(ngx_http_regex_variable_t));
+    if (rv == NULL) {
+        return NULL;
+    }
+
+    re->variables = rv;
+    re->nvariables = n;
+    re->name = rc->pattern;
+
+    size = rc->name_size;
+    p = rc->names;
+
+    for (i = 0; i < n; i++) {
+        rv[i].capture = 2 * ((p[0] << 8) + p[1]);
+
+        name.data = &p[2];
+        name.len = ngx_strlen(name.data);
+
+        v = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+        if (v == NULL) {
+            return NULL;
+        }
+
+        rv[i].index = ngx_http_get_variable_index(cf, &name);
+        if (rv[i].index == NGX_ERROR) {
+            return NULL;
+        }
+
+        v->get_handler = ngx_http_variable_not_found;
+
+        p += i + size;
+    }
+
+    return re;
+}
+
+
+ngx_int_t
+ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
+{
+    ngx_int_t                   rc, index;
+    ngx_uint_t                  i, n, len;
+    ngx_http_variable_value_t  *vv;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    if (re->ncaptures) {
+        len = (cmcf->ncaptures + 1) * 3;
+
+        if (r->captures == NULL) {
+            r->captures = ngx_palloc(r->pool, len * sizeof(int));
+            if (r->captures == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
+    } else {
+        len = 0;
+    }
+
+    rc = ngx_regex_exec(re->regex, s, r->captures, len);
+
+    if (rc == NGX_REGEX_NO_MATCHED) {
+        return NGX_DECLINED;
+    }
+
+    if (rc < 0) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      ngx_regex_exec_n " failed: %i on \"%V\" using \"%V\"",
+                      rc, s, &re->name);
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < re->nvariables; i++) {
+
+        n = re->variables[i].capture;
+        index = re->variables[i].index;
+        vv = &r->variables[index];
+
+        vv->len = r->captures[n + 1] - r->captures[n];
+        vv->valid = 1;
+        vv->no_cacheable = 0;
+        vv->not_found = 0;
+        vv->data = &s->data[r->captures[n]];
+
+#if (NGX_DEBUG)
+        {
+        ngx_http_variable_t  *v;
+
+        v = cmcf->variables.elts;
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http regex set $%V to \"%*s\"",
+                       &v[index].name, vv->len, vv->data);
+        }
+#endif
+    }
+
+    r->ncaptures = len;
+    r->captures_data = s->data;
+
+    return NGX_OK;
+}
+
+
 ngx_int_t
 ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 {

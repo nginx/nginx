@@ -1420,7 +1420,7 @@ ngx_http_core_find_location(ngx_http_request_t *r)
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *pclcf;
 #if (NGX_PCRE)
-    ngx_int_t                  n, len;
+    ngx_int_t                  n;
     ngx_uint_t                 noregex;
     ngx_http_core_loc_conf_t  *clcf, **clcfp;
 
@@ -1454,51 +1454,28 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 
     if (noregex == 0 && pclcf->regex_locations) {
 
-        len = 0;
-
         for (clcfp = pclcf->regex_locations; *clcfp; clcfp++) {
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "test location: ~ \"%V\"", &(*clcfp)->name);
 
-            if ((*clcfp)->captures) {
+            n = ngx_http_regex_exec(r, (*clcfp)->regex, &r->uri);
 
-                len = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
+            if (n == NGX_OK) {
+                r->loc_conf = (*clcfp)->loc_conf;
 
-                if (r->captures == NULL) {
-                    r->captures = ngx_palloc(r->pool, len * sizeof(int));
-                    if (r->captures == NULL) {
-                        return NGX_ERROR;
-                    }
-                }
+                /* look up nested locations */
+
+                rc = ngx_http_core_find_location(r);
+
+                return (rc == NGX_ERROR) ? rc : NGX_OK;
             }
 
-            n = ngx_regex_exec((*clcfp)->regex, &r->uri, r->captures, len);
-
-            if (n == NGX_REGEX_NO_MATCHED) {
+            if (n == NGX_DECLINED) {
                 continue;
             }
 
-            if (n < 0) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              ngx_regex_exec_n
-                              " failed: %d on \"%V\" using \"%V\"",
-                              n, &r->uri, &(*clcfp)->name);
-                return NGX_ERROR;
-            }
-
-            /* match */
-
-            r->loc_conf = (*clcfp)->loc_conf;
-
-            r->ncaptures = len;
-            r->captures_data = r->uri.data;
-
-            /* look up nested locations */
-
-            rc = ngx_http_core_find_location(r);
-
-            return (rc == NGX_ERROR) ? rc : NGX_OK;
+            return NGX_ERROR;
         }
     }
 #endif
@@ -1778,7 +1755,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 #if (NGX_PCRE)
         ngx_uint_t  captures;
 
-        captures = alias && clcf->captures;
+        captures = alias && clcf->regex;
         reserved += captures ? 1 : r->uri.len - alias + 1;
 #else
         reserved += r->uri.len - alias + 1;
@@ -2596,26 +2573,25 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
     ngx_str_t *regex, ngx_uint_t caseless)
 {
 #if (NGX_PCRE)
-    ngx_str_t  err;
-    u_char     errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_regex_compile_t  rc;
+    u_char               errstr[NGX_MAX_CONF_ERRSTR];
 
-    err.len = NGX_MAX_CONF_ERRSTR;
-    err.data = errstr;
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+
+    rc.pattern = *regex;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
 
 #if (NGX_HAVE_CASELESS_FILESYSTEM)
-    caseless = 1;
+    rc.options = NGX_REGEX_CASELESS;
 #endif
 
-    clcf->regex = ngx_regex_compile(regex, caseless ? NGX_REGEX_CASELESS: 0,
-                                    cf->pool, &err);
-
+    clcf->regex = ngx_http_regex_compile(cf, &rc);
     if (clcf->regex == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
         return NGX_ERROR;
     }
 
     clcf->name = *regex;
-    clcf->captures = (ngx_regex_capture_count(clcf->regex) > 0);
 
     return NGX_OK;
 
@@ -3535,8 +3511,8 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
         {
-        ngx_str_t  err;
-        u_char     errstr[NGX_MAX_CONF_ERRSTR];
+        ngx_regex_compile_t  rc;
+        u_char               errstr[NGX_MAX_CONF_ERRSTR];
 
         if (value[i].len == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3544,21 +3520,22 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        err.len = NGX_MAX_CONF_ERRSTR;
-        err.data = errstr;
-
         value[i].len--;
         value[i].data++;
 
-        sn->regex = ngx_regex_compile(&value[i], 0, cf->pool, &err);
+        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
+        rc.pattern = value[i];
+        rc.err.len = NGX_MAX_CONF_ERRSTR;
+        rc.err.data = errstr;
+
+        sn->regex = ngx_http_regex_compile(cf, &rc);
         if (sn->regex == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
             return NGX_CONF_ERROR;
         }
 
         sn->name = value[i];
-        cscf->captures = (ngx_regex_capture_count(sn->regex) > 0);
+        cscf->captures = (rc.captures > 0);
         }
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3664,20 +3641,6 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
     }
-
-#if (NGX_PCRE)
-
-    if (alias && clcf->regex
-        && (ngx_regex_capture_count(clcf->regex) <= 0 || sc.ncaptures == 0))
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the \"alias\" directive must use captures "
-                           "inside location given by regular expression");
-
-        return NGX_CONF_ERROR;
-    }
-
-#endif
 
     return NGX_CONF_OK;
 }
@@ -4235,10 +4198,11 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
 
-    ngx_str_t         err, *value;
-    ngx_uint_t        i;
-    ngx_regex_elt_t  *re;
-    u_char            errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_str_t            *value;
+    ngx_uint_t            i;
+    ngx_regex_elt_t      *re;
+    ngx_regex_compile_t   rc;
+    u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
     if (clcf->gzip_disable == NGX_CONF_UNSET_PTR) {
         clcf->gzip_disable = ngx_array_create(cf->pool, 2,
@@ -4250,8 +4214,11 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    err.len = NGX_MAX_CONF_ERRSTR;
-    err.data = errstr;
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+
+    rc.pool = cf->pool;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
 
     for (i = 1; i < cf->args->nelts; i++) {
 
@@ -4265,14 +4232,15 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        re->regex = ngx_regex_compile(&value[i], NGX_REGEX_CASELESS, cf->pool,
-                                      &err);
+        rc.pattern = value[1];
+        rc.options = NGX_REGEX_CASELESS;
 
-        if (re->regex == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+        if (ngx_regex_compile(&rc) != NGX_OK) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
             return NGX_CONF_ERROR;
         }
 
+        re->regex = rc.regex;
         re->name = value[i].data;
     }
 

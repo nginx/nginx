@@ -1700,7 +1700,6 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 #if (NGX_PCRE)
 
     if (len && r->virtual_names->nregex) {
-        size_t                   ncaptures;
         ngx_int_t                n;
         ngx_uint_t               i;
         ngx_str_t                name;
@@ -1709,44 +1708,22 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         name.len = len;
         name.data = host;
 
-        ncaptures = 0;
-
         sn = r->virtual_names->regex;
 
         for (i = 0; i < r->virtual_names->nregex; i++) {
 
-            if (sn[i].server->captures && r->captures == NULL) {
+            n = ngx_http_regex_exec(r, sn[i].regex, &name);
 
-                ncaptures = (NGX_HTTP_MAX_CAPTURES + 1) * 3;
-
-                r->captures = ngx_palloc(r->pool, ncaptures * sizeof(int));
-                if (r->captures == NULL) {
-                    return NGX_ERROR;
-                }
+            if (n == NGX_OK) {
+                cscf = sn[i].server;
+                goto found;
             }
 
-            n = ngx_regex_exec(sn[i].regex, &name, r->captures, ncaptures);
-
-            if (n == NGX_REGEX_NO_MATCHED) {
+            if (n == NGX_DECLINED) {
                 continue;
             }
 
-            if (n < 0) {
-                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                              ngx_regex_exec_n
-                              " failed: %d on \"%V\" using \"%V\"",
-                              n, &name, &sn[i].name);
-                return NGX_ERROR;
-            }
-
-            /* match */
-
-            cscf = sn[i].server;
-
-            r->ncaptures = ncaptures;
-            r->captures_data = host;
-
-            goto found;
+            return NGX_ERROR;
         }
     }
 

@@ -412,7 +412,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 if (sn[n].regex) {
 
                     if (ngx_http_add_regex_referer(cf, rlcf, &sn[n].name,
-                                                   sn[n].regex)
+                                                   sn[n].regex->regex)
                         != NGX_OK)
                     {
                         return NGX_CONF_ERROR;
@@ -502,9 +502,9 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
     ngx_str_t *name, ngx_regex_t *regex)
 {
 #if (NGX_PCRE)
-    ngx_str_t         err;
-    ngx_regex_elt_t  *re;
-    u_char            errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_regex_elt_t      *re;
+    ngx_regex_compile_t   rc;
+    u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
     if (name->len == 1) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "empty regex in \"%V\"", name);
@@ -530,19 +530,23 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
         return NGX_CONF_OK;
     }
 
-    err.len = NGX_MAX_CONF_ERRSTR;
-    err.data = errstr;
-
     name->len--;
     name->data++;
 
-    re->regex = ngx_regex_compile(name, NGX_REGEX_CASELESS, cf->pool, &err);
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
-    if (re->regex == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+    rc.pattern = *name;
+    rc.pool = cf->pool;
+    rc.options = NGX_REGEX_CASELESS;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
+
+    if (ngx_regex_compile(&rc) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
         return NGX_CONF_ERROR;
     }
 
+    re->regex = rc.regex;
     re->name = name->data;
 
     return NGX_CONF_OK;

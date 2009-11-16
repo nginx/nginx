@@ -10,7 +10,6 @@
 
 #define NGX_HTTP_MAX_URI_CHANGES           10
 #define NGX_HTTP_MAX_SUBREQUESTS           50
-#define NGX_HTTP_MAX_CAPTURES              9
 
 /* must be 2^n */
 #define NGX_HTTP_LC_HEADER_LEN             32

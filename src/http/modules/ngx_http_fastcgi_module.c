@@ -2407,27 +2407,25 @@ ngx_http_fastcgi_split(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
 
     n = ngx_regex_exec(flcf->split_regex, &r->uri, captures, (1 + 2) * 3);
 
+    if (n >= 0) { /* match */
+        f->script_name.len = captures[3] - captures[2];
+        f->script_name.data = r->uri.data;
+
+        f->path_info.len = captures[5] - captures[4];
+        f->path_info.data = r->uri.data + f->script_name.len;
+
+        return f;
+    }
+
     if (n == NGX_REGEX_NO_MATCHED) {
         f->script_name = r->uri;
         return f;
     }
 
-    if (n < 0) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      ngx_regex_exec_n " failed: %d on \"%V\" using \"%V\"",
-                      n, &r->uri, &flcf->split_name);
-        return NULL;
-    }
-
-    /* match */
-
-    f->script_name.len = captures[3] - captures[2];
-    f->script_name.data = r->uri.data;
-
-    f->path_info.len = captures[5] - captures[4];
-    f->path_info.data = r->uri.data + f->script_name.len;
-
-    return f;
+    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                  ngx_regex_exec_n " failed: %i on \"%V\" using \"%V\"",
+                  n, &r->uri, &flcf->split_name);
+    return NULL;
 
 #else
 
@@ -2518,38 +2516,33 @@ ngx_http_fastcgi_split_path_info(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_PCRE)
     ngx_http_fastcgi_loc_conf_t *flcf = conf;
 
-    ngx_int_t   n;
-    ngx_str_t  *value, err;
-    u_char      errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_str_t            *value;
+    ngx_regex_compile_t   rc;
+    u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
     value = cf->args->elts;
 
     flcf->split_name = value[1];
 
-    err.len = NGX_MAX_CONF_ERRSTR;
-    err.data = errstr;
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
-    flcf->split_regex = ngx_regex_compile(&value[1], 0, cf->pool, &err);
+    rc.pattern = value[1];
+    rc.pool = cf->pool;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
 
-    if (flcf->split_regex == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+    if (ngx_regex_compile(&rc) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
         return NGX_CONF_ERROR;
     }
 
-    n = ngx_regex_capture_count(flcf->split_regex);
-
-    if (n < 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           ngx_regex_capture_count_n " failed for "
-                           "pattern \"%V\"", &value[1]);
-        return NGX_CONF_ERROR;
-    }
-
-    if (n != 2) {
+    if (rc.captures != 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "pattern \"%V\" must have 2 captures", &value[1]);
         return NGX_CONF_ERROR;
     }
+
+    flcf->split_regex = rc.regex;
 
     return NGX_CONF_OK;
 
