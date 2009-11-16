@@ -62,7 +62,7 @@ ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0,
-                   "posix_memalign: %p:%uz", p, size);
+                   "posix_memalign: %p:%uz @%uz", p, size, alignment);
 
     return p;
 }
@@ -81,7 +81,7 @@ ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0,
-                   "memalign: %p:%uz", p, size);
+                   "memalign: %p:%uz @%uz", p, size, alignment);
 
     return p;
 }
