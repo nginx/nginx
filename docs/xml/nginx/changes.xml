@@ -9,6 +9,88 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.64" date="16.11.2009">
+
+<change type="security">
+<para lang="ru">
+теперь SSL/TLS renegotiation запрещён.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now SSL/TLS renegotiation is disabled.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx передавал сжатые ответы клиентам, не поддерживающим сжатие,
+при настройках gzip_static on и gzip_vary off;
+ошибка появилась в 0.7.63.
+</para>
+<para lang="en">
+nginx sent gzipped responses to clients those do not support gzip,
+if "gzip_static on" and "gzip_vary off";
+the bug had appeared in 0.7.63.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если были описаны имена .domain.tld, .sub.domain.tld и .domain-some.tld,
+то имя .sub.domain.tld попадало под маску .domain.tld.
+</para>
+<para lang="en">
+if names .domain.tld, .sub.domain.tld, and .domain-some.tld were defined,
+then the name .sub.domain.tld was matched by .domain.tld.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+segmentation fault и зацикливания в resolver'е.
+</para>
+<para lang="en">
+segmentation fault and infinite looping in resolver.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в resolver'е.<br/>
+Спасибо Артёму Бохану.
+</para>
+<para lang="en">
+in resolver.<br/>
+Thanks to Artem Bokhan.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+порчи кэша resolver'а.<br/>
+Спасибо Matthew Dempsky.
+</para>
+<para lang="en">
+resolver cache poisoning.<br/>
+Thanks to Matthew Dempsky.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в resolver'е.<br/>
+Спасибо Matthew Dempsky.
+</para>
+<para lang="en">
+memory leak in resolver.<br/>
+Thanks to Matthew Dempsky.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.63" date="26.10.2009">
 
 <change type="security">
