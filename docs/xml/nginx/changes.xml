@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.26" date="16.11.2009">
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании выделений в директиве rewrite;
+ошибка появилась в 0.8.25.
+</para>
+<para lang="en">
+in captures usage in "rewrite" directive;
+the bug had appeared in 0.8.25.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался без параметра --with-debug;
+ошибка появилась в 0.8.25.
+</para>
+<para lang="en">
+nginx could not be built without the --with-debug option;
+the bug had appeared in 0.8.25.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.25" date="16.11.2009">
 
 <change type="change">
@@ -72,7 +99,7 @@ the bug had appeared in 0.8.18.
 
 <change type="bugfix">
 <para lang="ru">
-nginx передавал сжатые ответы клиентам, не поддерживающим сжатие
+nginx передавал сжатые ответы клиентам, не поддерживающим сжатие,
 при настройках gzip_static on и gzip_vary off;
 ошибка появилась в 0.8.16.
 </para>
