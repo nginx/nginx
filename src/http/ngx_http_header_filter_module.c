@@ -176,10 +176,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     r->header_sent = 1;
 
-    if (r != r->main) {
-        return NGX_OK;
-    }
-
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
     }
