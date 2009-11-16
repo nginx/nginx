@@ -17,7 +17,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
 {
     ngx_pool_t  *p;
 
-    p = ngx_memalign(ngx_pagesize, size, log);
+    p = ngx_memalign(ngx_min(ngx_pagesize, size), size, log);
     if (p == NULL) {
         return NULL;
     }
@@ -181,7 +181,7 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
 
     psize = (size_t) (pool->d.end - (u_char *) pool);
 
-    m = ngx_memalign(ngx_pagesize, psize, pool->log);
+    m = ngx_memalign(ngx_min(ngx_pagesize, psize), psize, pool->log);
     if (m == NULL) {
         return NULL;
     }
