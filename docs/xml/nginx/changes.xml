@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.27" date="17.11.2009">
+
+<change type="bugfix">
+<para lang="ru">
+регулярные выражения не работали в nginx/Windows;
+ошибка появилась в 0.8.25.
+</para>
+<para lang="en">
+regular expressions did work in nginx/Windows;
+the bug had appeared in 0.8.25.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.26" date="16.11.2009">
 
 <change type="bugfix">
