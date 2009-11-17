@@ -599,7 +599,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
     HANDLE      mev, events[3];
     u_long      nev, ev;
     ngx_err_t   err;
-    ngx_tid_t   wtid, cmtid;
+    ngx_tid_t   wtid, cmtid, cltid;
     ngx_log_t  *log;
 
     log = cycle->log;
@@ -671,7 +671,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         goto failed;
     }
 
-    if (ngx_create_thread(&cmtid, ngx_cache_loader_thread, NULL, log) != 0) {
+    if (ngx_create_thread(&cltid, ngx_cache_loader_thread, NULL, log) != 0) {
         goto failed;
     }
 
