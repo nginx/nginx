@@ -35,11 +35,9 @@ ngx_regex_malloc_init(ngx_pool_t *pool)
         return;
     }
 
-#else
+#endif
 
     ngx_pcre_pool = pool;
-
-#endif
 }
 
 
@@ -55,11 +53,9 @@ ngx_regex_malloc_done(void)
         return;
     }
 
-#else
+#endif
 
     ngx_pcre_pool = NULL;
-
-#endif
 }
 
 
