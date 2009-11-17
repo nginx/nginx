@@ -1063,9 +1063,15 @@ ngx_http_perl_exit(ngx_cycle_t *cycle)
 {
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 
+    /*
+     * the master exit hook is run before global pool cleanup,
+     * therefore just set flag here
+     */
+
     ngx_perl_term = 1;
 
 #else
+
     if (nginx_stash) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "perl term");
 
