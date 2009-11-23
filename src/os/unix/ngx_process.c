@@ -388,6 +388,7 @@ ngx_signal_handler(int signo)
         break;
 
     case NGX_PROCESS_WORKER:
+    case NGX_PROCESS_HELPER:
         switch (signo) {
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):

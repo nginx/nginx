@@ -48,11 +48,6 @@ typedef struct {
 } ngx_exec_ctx_t;
 
 
-#define NGX_PROCESS_SINGLE  0
-#define NGX_PROCESS_MASTER  1
-#define NGX_PROCESS_WORKER  2
-
-
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn);
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 

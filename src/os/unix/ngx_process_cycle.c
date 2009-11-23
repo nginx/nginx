@@ -714,6 +714,8 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_uint_t         i;
     ngx_connection_t  *c;
 
+    ngx_process = NGX_PROCESS_WORKER;
+
     ngx_worker_process_init(cycle, 1);
 
     ngx_setproctitle("worker process");
@@ -828,8 +830,6 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     struct rlimit     rlmt;
     ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls;
-
-    ngx_process = NGX_PROCESS_WORKER;
 
     if (ngx_set_environment(cycle, NULL) == NULL) {
         /* fatal */
@@ -1288,6 +1288,8 @@ ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_event_t   ev;
 
     cycle->connection_n = 512;
+
+    ngx_process = NGX_PROCESS_HELPER;
 
     ngx_worker_process_init(cycle, 0);
 

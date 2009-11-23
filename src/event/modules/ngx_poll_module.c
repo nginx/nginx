@@ -72,7 +72,7 @@ ngx_poll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         nevents = 0;
     }
 
-    if (ngx_process == NGX_PROCESS_WORKER
+    if (ngx_process >= NGX_PROCESS_WORKER
         || cycle->old_cycle == NULL
         || cycle->old_cycle->connection_n < cycle->connection_n)
     {

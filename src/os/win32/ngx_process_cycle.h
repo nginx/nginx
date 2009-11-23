@@ -14,8 +14,8 @@
 
 #define NGX_PROCESS_SINGLE     0
 #define NGX_PROCESS_MASTER     1
-#define NGX_PROCESS_WORKER     2
-#define NGX_PROCESS_SIGNALLER  3
+#define NGX_PROCESS_SIGNALLER  2
+#define NGX_PROCESS_WORKER     3
 
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
