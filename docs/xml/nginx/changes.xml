@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.28" date="23.11.2009">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-pcre;
+ошибка появилась в 0.8.25.
+</para>
+<para lang="en">
+nginx could not be built with the --without-pcre parameter;
+the bug had appeared in 0.8.25.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.27" date="17.11.2009">
 
 <change type="bugfix">
@@ -17,7 +33,7 @@
 ошибка появилась в 0.8.25.
 </para>
 <para lang="en">
-regular expressions did work in nginx/Windows;
+regular expressions did not work in nginx/Windows;
 the bug had appeared in 0.8.25.
 </para>
 </change>
