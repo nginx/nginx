@@ -1312,6 +1312,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
+            || n == SSL_R_UNKNOWN_PROTOCOL                           /*  252 */
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
