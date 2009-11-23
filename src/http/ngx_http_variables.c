@@ -1666,6 +1666,8 @@ ngx_http_variable_pid(ngx_http_request_t *r,
 }
 
 
+#if (NGX_PCRE)
+
 static ngx_int_t
 ngx_http_variable_not_found(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
@@ -1815,6 +1817,8 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 
     return NGX_OK;
 }
+
+#endif
 
 
 ngx_int_t
