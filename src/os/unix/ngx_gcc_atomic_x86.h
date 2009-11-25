@@ -122,5 +122,5 @@ ngx_atomic_fetch_add(ngx_atomic_t *value, ngx_atomic_int_t add)
 
 #define ngx_memory_barrier()    __asm__ volatile ("" ::: "memory")
 
-/* old as does not support "pause" opcode */
+/* old "as" does not support "pause" opcode */
 #define ngx_cpu_pause()         __asm__ (".byte 0xf3, 0x90")
