@@ -105,7 +105,6 @@ fi
 
 CFLAGS="$CFLAGS $NGX_CC_OPT"
 
-
 if [ "$NGX_PLATFORM" != win32 ]; then
 
     if test -n "$NGX_LD_OPT"; then
@@ -124,6 +123,19 @@ if [ "$NGX_PLATFORM" != win32 ]; then
             exit 1
         fi
     fi
+
+
+    ngx_feature="gcc builtin atomic operations"
+    ngx_feature_name=NGX_HAVE_GCC_ATOMIC
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="long  n;
+                      __sync_bool_compare_and_swap(&n, 0, 1);
+                      __sync_fetch_and_add(&n, 1);"
+    . auto/feature
+
 
     ngx_feature="gcc variadic macros"
     ngx_feature_name="NGX_HAVE_GCC_VARIADIC_MACROS"

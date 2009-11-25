@@ -90,7 +90,6 @@ case $CPU in
         # build 32-bit UltraSparc binary
         CPU_OPT="-m32"
         CORE_LINK="$CORE_LINK -m32"
-        CC_AUX_FLAGS="$CC_AUX_FLAGS -m32"
         NGX_CPU_CACHE_LINE=64
     ;;
 
@@ -98,7 +97,6 @@ case $CPU in
         # build 64-bit UltraSparc binary
         CPU_OPT="-m64"
         CORE_LINK="$CORE_LINK -m64"
-        CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
         NGX_CPU_CACHE_LINE=64
     ;;
 
@@ -108,12 +106,12 @@ case $CPU in
         CPU_OPT="$CPU_OPT -falign-functions=32 -falign-labels=32"
         CPU_OPT="$CPU_OPT -falign-loops=32 -falign-jumps=32"
         CORE_LINK="$CORE_LINK -m64"
-        CC_AUX_FLAGS="$CC_AUX_FLAGS -m64"
         NGX_CPU_CACHE_LINE=128
     ;;
 
 esac
 
+CC_AUX_FLAGS="$CC_AUX_FLAGS $CPU_OPT"
 
 case "$NGX_GCC_VER" in
     2.7*)
