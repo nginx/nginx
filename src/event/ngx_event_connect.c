@@ -101,22 +101,17 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     pc->connection = c;
 
-    /*
-     * TODO: MT: - ngx_atomic_fetch_add()
-     *             or protection by critical section or mutex
-     *
-     * TODO: MP: - allocated in a shared memory
-     *           - ngx_atomic_fetch_add()
-     *             or protection by critical section or mutex
-     */
-
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
 #if (NGX_THREADS)
+
+    /* TODO: lock event when call completion handler */
+
     rev->lock = pc->lock;
     wev->lock = pc->lock;
     rev->own_lock = &c->lock;
     wev->own_lock = &c->lock;
+
 #endif
 
     if (ngx_add_conn) {
