@@ -22,6 +22,10 @@ if [ $ZLIB != NONE -a $ZLIB != NO -a $ZLIB != YES ]; then
     . auto/lib/zlib/make
 fi
 
+if [ $NGX_LIBATOMIC != NO -a $NGX_LIBATOMIC != YES ]; then
+    . auto/lib/libatomic/make
+fi
+
 if [ $USE_PERL = YES ]; then
     . auto/lib/perl/make
 fi

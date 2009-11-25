@@ -12,7 +12,31 @@
 #include <ngx_core.h>
 
 
-#if (NGX_DARWIN_ATOMIC)
+#if (NGX_HAVE_LIBATOMIC)
+
+#include <atomic_ops.h>
+
+#define NGX_HAVE_ATOMIC_OPS  1
+
+typedef long                        ngx_atomic_int_t;
+typedef AO_t                        ngx_atomic_uint_t;
+typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
+
+#if (NGX_PTR_SIZE == 8)
+#define NGX_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
+#else
+#define NGX_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
+#endif
+
+#define ngx_atomic_cmp_set(lock, old, new)                                    \
+    AO_compare_and_swap(lock, old, new)
+#define ngx_atomic_fetch_add(value, add)                                      \
+    AO_fetch_and_add(value, add)
+#define ngx_memory_barrier()        AO_nop()
+#define ngx_cpu_pause()
+
+
+#elif (NGX_DARWIN_ATOMIC)
 
 /*
  * use Darwin 8 atomic(3) and barrier(3) operations

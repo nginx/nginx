@@ -132,6 +132,8 @@ USE_LIBGD=NO
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
 
+NGX_LIBATOMIC=NO
+
 NGX_CPU_CACHE_LINE=
 
 opt=
@@ -266,6 +268,9 @@ do
         --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
         --with-zlib-asm=*)               ZLIB_ASM="$value"          ;;
 
+        --with-libatomic)                NGX_LIBATOMIC=YES          ;;
+        --with-libatomic=*)              NGX_LIBATOMIC="$value"     ;;
+
         --test-build-devpoll)            NGX_TEST_BUILD_DEVPOLL=YES ;;
         --test-build-eventport)          NGX_TEST_BUILD_EVENTPORT=YES ;;
         --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
@@ -399,6 +404,9 @@ cat << END
   --with-zlib-asm=CPU                use zlib assembler sources optimized
                                      for specified CPU, the valid values:
                                      pentium, pentiumpro
+
+  --with-libatomic                   force libatomic_ops library usage
+  --with-libatomic=DIR               set path to libatomic_ops library sources
 
   --with-openssl=DIR                 set path to OpenSSL library sources
   --with-openssl-opt=OPTIONS         set additional options for OpenSSL building
