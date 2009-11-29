@@ -3507,16 +3507,16 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sn->server = cscf;
         sn->name = value[i];
 
-        ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
-
         if (value[i].data[0] != '~') {
+            ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
             continue;
         }
 
 #if (NGX_PCRE)
         {
-        ngx_regex_compile_t  rc;
-        u_char               errstr[NGX_MAX_CONF_ERRSTR];
+        u_char               *p;
+        ngx_regex_compile_t   rc;
+        u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
         if (value[i].len == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3532,6 +3532,13 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         rc.pattern = value[i];
         rc.err.len = NGX_MAX_CONF_ERRSTR;
         rc.err.data = errstr;
+
+        for (p = value[i].data; p < value[i].data + value[i].len; p++) {
+            if (*p >= 'A' && *p <= 'Z') {
+                rc.options = NGX_REGEX_CASELESS;
+                break;
+            }
+        }
 
         sn->regex = ngx_http_regex_compile(cf, &rc);
         if (sn->regex == NULL) {
