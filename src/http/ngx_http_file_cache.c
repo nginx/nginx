@@ -338,7 +338,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         return n;
     }
 
-    if ((size_t) n <= c->header_start) {
+    if ((size_t) n < c->header_start) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" is too small", c->file.name.data);
         return NGX_ERROR;

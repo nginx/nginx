@@ -752,6 +752,11 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
     r->cached = 1;
     c = r->cache;
 
+    if (c->header_start == c->body_start) {
+        r->http_version = NGX_HTTP_VERSION_9;
+        return ngx_http_cache_send(r);
+    }
+
     /* TODO: cache stack */
 
     u->buffer = *c->buf;
