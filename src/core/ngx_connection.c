@@ -374,12 +374,23 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 
-            if (ngx_test_config && ls[i].sockaddr->sa_family == AF_UNIX) {
-                u_char *name = ls[i].addr_text.data + sizeof("unix:") - 1;
+            if (ls[i].sockaddr->sa_family == AF_UNIX) {
+                mode_t   mode;
+                u_char  *name;
 
-                if (ngx_delete_file(name) == -1) {
-                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
-                                  ngx_delete_file_n " %s failed", name);
+                name = ls[i].addr_text.data + sizeof("unix:") - 1;
+                mode = (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+
+                if (chmod((char *) name, mode) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                  "chmod() \"%s\" failed", name);
+                }
+
+                if (ngx_test_config) {
+                    if (ngx_delete_file(name) == -1) {
+                        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                                      ngx_delete_file_n " %s failed", name);
+                    }
                 }
             }
 #endif
