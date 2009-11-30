@@ -2773,8 +2773,8 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->min_file_chunk, prev->min_file_chunk, 1024);
     ngx_conf_merge_size_value(conf->value_len, prev->value_len, 256);
 
-    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
-                             prev->types_keys, &prev->types,
+    if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
+                             &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
         != NGX_OK)
     {

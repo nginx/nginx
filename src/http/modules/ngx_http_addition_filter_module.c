@@ -237,8 +237,8 @@ ngx_http_addition_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->before_body, prev->before_body, "");
     ngx_conf_merge_str_value(conf->after_body, prev->after_body, "");
 
-    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
-                             prev->types_keys, &prev->types,
+    if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
+                             &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
         != NGX_OK)
     {

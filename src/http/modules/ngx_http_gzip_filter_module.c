@@ -1123,8 +1123,8 @@ ngx_http_gzip_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                               MAX_MEM_LEVEL - 1);
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
 
-    if (ngx_http_merge_types(cf, conf->types_keys, &conf->types,
-                             prev->types_keys, &prev->types,
+    if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
+                             &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
         != NGX_OK)
     {

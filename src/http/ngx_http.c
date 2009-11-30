@@ -1854,6 +1854,10 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     types = (ngx_array_t **) (p + cmd->offset);
 
+    if (*types == (void *) -1) {
+        return NGX_CONF_OK;
+    }
+
     default_type = cmd->post;
 
     if (*types == NULL) {
@@ -1878,6 +1882,11 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     for (i = 1; i < cf->args->nelts; i++) {
+
+        if (value[i].len == 1 && value[i].data[0] == '*') {
+            *types = (void *) -1;
+            return NGX_CONF_OK;
+        }
 
         hash = ngx_hash_strlow(value[i].data, value[i].data, value[i].len);
         value[i].data[value[i].len] = '\0';
@@ -1907,13 +1916,17 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 char *
-ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
-    ngx_array_t *prev_keys, ngx_hash_t *prev_types_hash,
+ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t **keys, ngx_hash_t *types_hash,
+    ngx_array_t **prev_keys, ngx_hash_t *prev_types_hash,
     ngx_str_t *default_types)
 {
     ngx_hash_init_t  hash;
 
-    if (keys) {
+    if (*keys) {
+
+        if (*keys == (void *) -1) {
+            return NGX_CONF_OK;
+        }
 
         hash.hash = types_hash;
         hash.key = NULL;
@@ -1923,7 +1936,7 @@ ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
         hash.pool = cf->pool;
         hash.temp_pool = NULL;
 
-        if (ngx_hash_init(&hash, keys->elts, keys->nelts) != NGX_OK) {
+        if (ngx_hash_init(&hash, (*keys)->elts, (*keys)->nelts) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 
@@ -1932,13 +1945,17 @@ ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
 
     if (prev_types_hash->buckets == NULL) {
 
-        if (prev_keys == NULL) {
+        if (*prev_keys == NULL) {
 
-            if (ngx_http_set_default_types(cf, &prev_keys, default_types)
+            if (ngx_http_set_default_types(cf, prev_keys, default_types)
                 != NGX_OK)
             {
                 return NGX_CONF_ERROR;
             }
+
+        } else if (*prev_keys == (void *) -1) {
+            *keys = *prev_keys;
+            return NGX_CONF_OK;
         }
 
         hash.hash = prev_types_hash;
@@ -1949,7 +1966,9 @@ ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t *keys, ngx_hash_t *types_hash,
         hash.pool = cf->pool;
         hash.temp_pool = NULL;
 
-        if (ngx_hash_init(&hash, prev_keys->elts, prev_keys->nelts) != NGX_OK) {
+        if (ngx_hash_init(&hash, (*prev_keys)->elts, (*prev_keys)->nelts)
+            != NGX_OK)
+        {
             return NGX_CONF_ERROR;
         }
     }

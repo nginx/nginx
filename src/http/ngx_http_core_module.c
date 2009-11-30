@@ -1572,6 +1572,10 @@ ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash)
     size_t      len;
     ngx_uint_t  i, hash;
 
+    if (types_hash->size == 0) {
+        return (void *) 4;
+    }
+
     if (r->headers_out.content_type.len == 0) {
         return NULL;
     }
