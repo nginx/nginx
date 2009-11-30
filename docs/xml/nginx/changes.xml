@@ -9,6 +9,85 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.29" date="30.11.2009">
+
+<change type="change">
+<para lang="ru">
+теперь для проксируемых ответов HTTP/0.9 в лог пишется код ответа "009".
+</para>
+<para lang="en">
+now the "009" status code is written to an access log for proxied HTTP/0.9
+responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы addition_types, charset_types, gzip_types, ssi_types,
+sub_filter_types и xslt_types поддерживают параметр "*".
+</para>
+<para lang="en">
+the "addition_types", "charset_types", "gzip_types", "ssi_types",
+"sub_filter_types", and "xslt_types" directives support an "*" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+использование встроенных атомарных операций GCC 4.1+.<br/>
+Спасибо W-Mark Kubacki.
+</para>
+<para lang="en">
+GCC 4.1+ built-in atomic operations usage.<br/>
+Thanks to W-Mark Kubacki.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр --with-libatomic[=DIR] в configure.<br/>
+Спасибо W-Mark Kubacki.
+</para>
+<para lang="en">
+the --with-libatomic[=DIR] option in the configure.<br/>
+Thanks to W-Mark Kubacki.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+listen unix domain сокет имели ограниченные права доступа.
+</para>
+<para lang="en">
+listen unix domain socket had limited access rights.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закэшированные ответы ответов HTTP/0.9 неправильно обрабатывались.
+</para>
+<para lang="en">
+cached HTTP/0.9 responses were handled incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+именованные выделения в регулярных выражениях, заданные как "?P&lt;...&gt;",
+не работали в директиве server_name.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+regular expression named captures given by "?P&lt;...&gt;" did not work
+in a "server_name" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.28" date="23.11.2009">
 
 <change type="bugfix">
