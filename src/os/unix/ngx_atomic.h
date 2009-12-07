@@ -14,6 +14,7 @@
 
 #if (NGX_HAVE_LIBATOMIC)
 
+#define AO_REQUIRE_CAS
 #include <atomic_ops.h>
 
 #define NGX_HAVE_ATOMIC_OPS  1

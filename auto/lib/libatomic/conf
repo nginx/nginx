@@ -14,7 +14,8 @@ else
     ngx_feature="atomic_ops library"
     ngx_feature_name=NGX_HAVE_LIBATOMIC
     ngx_feature_run=yes
-    ngx_feature_incs="#include <atomic_ops.h>"
+    ngx_feature_incs="#define AO_REQUIRE_CAS
+                      #include <atomic_ops.h>"
     ngx_feature_path=
     ngx_feature_libs="-latomic_ops"
     ngx_feature_test="long  n = 0;
