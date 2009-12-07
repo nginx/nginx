@@ -750,7 +750,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
             ngx_free(p);
 
             if (h == NULL || h->h_addr_list[0] == NULL) {
-                ngx_free(p);
                 u->err = "host not found";
                 return NGX_ERROR;
             }
