@@ -71,6 +71,12 @@ case $ZLIB in
     *)     echo "  + using zlib library: $ZLIB" ;;
 esac
 
+case $NGX_LIBATOMIC in
+    YES)   echo "  + using system libatomic_ops library" ;;
+    NO)    ;; # not used
+    *)     echo "  + using libatomic_ops library: $NGX_LIBATOMIC" ;;
+esac
+
 echo
 
 
