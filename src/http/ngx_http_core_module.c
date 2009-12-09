@@ -2828,7 +2828,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->client_header_buffer_size, 1024);
     ngx_conf_merge_bufs_value(conf->large_client_header_buffers,
                               prev->large_client_header_buffers,
-                              4, ngx_pagesize);
+                              4, 8192);
 
     if (conf->large_client_header_buffers.size < conf->connection_pool_size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
