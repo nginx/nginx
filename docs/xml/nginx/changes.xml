@@ -9,6 +9,68 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.30" date="15.12.2009">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию размер буфера директивы large_client_header_buffers
+равен 8K.<br/>
+Спасибо Andrew Cholakian.
+</para>
+<para lang="en">
+now the default buffer size of the "large_client_header_buffers"
+directive is 8K.<br/>
+Thanks to Andrew Cholakian.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+файл conf/fastcgi.conf для простых конфигураций FastCGI.
+</para>
+<para lang="en">
+the conf/fastcgi.conf for simple FastCGI configurations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows пытался дважды переименовать временный файл
+при перезаписи уже существующего файла.
+</para>
+<para lang="en">
+nginx/Windows tried to rename a temporary file twice if the file
+should replace an already existent file.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки double free or corruption, возникающей, если имя хоста не было найдено;
+ошибка появилась в 0.8.22.<br/>
+Спасибо Константину Свисту.
+</para>
+<para lang="en">
+of "double free or corruption" error issued if host could not be resolved;
+the bug had appeared in 0.8.22.<br/>
+Thanks to Konstantin Svist.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в использовании libatomic на некоторых платформах.<br/>
+Спасибо W-Mark Kubacki.
+</para>
+<para lang="en">
+in libatomic usage on some platforms.<br/>
+Thanks to W-Mark Kubacki.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.29" date="30.11.2009">
 
 <change type="change">
