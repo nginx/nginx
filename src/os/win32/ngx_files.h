@@ -111,7 +111,7 @@ ssize_t ngx_write_console(ngx_fd_t fd, void *buf, size_t size);
 
 #define ngx_rename_file(o, n)       MoveFile((const char *) o, (const char *) n)
 #define ngx_rename_file_n           "MoveFile()"
-ngx_int_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log);
+ngx_err_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log);
 
 
 

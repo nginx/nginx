@@ -591,17 +591,7 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 #if (NGX_WIN32)
 
     if (err == NGX_EEXIST) {
-        if (ngx_win32_rename_file(src, to, ext->log) == NGX_OK) {
-
-            if (ngx_rename_file(src->data, to->data) != NGX_FILE_ERROR) {
-                return NGX_OK;
-            }
-
-            err = ngx_errno;
-
-        } else {
-            err = 0;
-        }
+        err = ngx_win32_rename_file(src, to, ext->log);
     }
 
 #endif

@@ -187,17 +187,17 @@ ngx_write_console(ngx_fd_t fd, void *buf, size_t size)
 }
 
 
-ngx_int_t
+ngx_err_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {
     u_char             *name;
-    ngx_int_t           rc;
+    ngx_err_t           err;
     ngx_uint_t          collision;
     ngx_atomic_uint_t   num;
 
     name = ngx_alloc(to->len + 1 + 10 + 1 + sizeof("DELETE"), log);
     if (name == NULL) {
-        return NGX_ERROR;
+        return NGX_ENOMEM;
     }
 
     ngx_memcpy(name, to->data, to->len);
@@ -222,10 +222,10 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
     }
 
     if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
-        rc = NGX_ERROR;
+        err = ngx_errno;
 
     } else {
-        rc = NGX_OK;
+        err = 0;
     }
 
     if (DeleteFile((const char *) name) == 0) {
@@ -233,17 +233,11 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
                       "DeleteFile() \"%s\" failed", name);
     }
 
-    if (rc == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                      "MoveFile() \"%s\" to \"%s\" failed",
-                      from->data, to->data);
-    }
-
     /* mutex_unlock() */
 
     ngx_free(name);
 
-    return rc;
+    return err;
 }
 
 
