@@ -198,9 +198,14 @@ ngx_http_degradation(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "invalid sbrk size \"%V\"", &value[1]);
             return NGX_CONF_ERROR;
         }
+
+        return NGX_CONF_OK;
     }
 
-    return NGX_CONF_OK;
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid parameter \"%V\"", &value[1]);
+
+    return NGX_CONF_ERROR;
 }
 
 
