@@ -4318,8 +4318,15 @@ ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
 
     if (*sp < NGX_MIN_POOL_SIZE) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "pool must be no less than %uz", NGX_MIN_POOL_SIZE);
+                           "the pool size must be no less than %uz",
+                           NGX_MIN_POOL_SIZE);
+        return NGX_CONF_ERROR;
+    }
 
+    if (*sp % NGX_POOL_ALIGNMENT) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the pool size must be a multiple of %uz",
+                           NGX_POOL_ALIGNMENT);
         return NGX_CONF_ERROR;
     }
 
