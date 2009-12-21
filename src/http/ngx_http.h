@@ -94,7 +94,7 @@ void ngx_http_empty_handler(ngx_event_t *wev);
 void ngx_http_request_empty_handler(ngx_http_request_t *r);
 
 
-#define ngx_http_ephemeral(r)  (ngx_http_ephemeral_t *) (&r->uri_start)
+#define ngx_http_ephemeral(r)  (void *) (&r->uri_start)
 
 
 #define NGX_HTTP_LAST   1
