@@ -617,7 +617,7 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             if (p[0] == 0xff && p[1] != 0xff) {
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "JPEG: %02xd %02xd", *p, *(p + 1));
+                               "JPEG: %02xd %02xd", p[0], p[1]);
 
                 p++;
 
