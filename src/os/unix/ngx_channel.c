@@ -36,7 +36,18 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
         cmsg.cm.cmsg_len = CMSG_LEN(sizeof(int));
         cmsg.cm.cmsg_level = SOL_SOCKET;
         cmsg.cm.cmsg_type = SCM_RIGHTS;
-        *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
+
+        /*
+         * We have to use ngx_memcpy() instead of simple
+         *   *(int *) CMSG_DATA(&cmsg.cm) = ch->fd;
+         * because some gcc 4.4 with -O2/3/s optimization issues the warning:
+         *   dereferencing type-punned pointer will break strict-aliasing rules
+         *
+         * Fortunately, gcc with -O1 compiles this ngx_memcpy()
+         * in the same simple assigment as in the code above
+         */
+
+        ngx_memcpy(CMSG_DATA(&cmsg.cm), &ch->fd, sizeof(int));
     }
 
     msg.msg_flags = 0;
@@ -153,7 +164,9 @@ ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
             return NGX_ERROR;
         }
 
-        ch->fd = *(int *) CMSG_DATA(&cmsg.cm);
+        /* ch->fd = *(int *) CMSG_DATA(&cmsg.cm); */
+
+        ngx_memcpy(&ch->fd, CMSG_DATA(&cmsg.cm), sizeof(int));
     }
 
     if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
