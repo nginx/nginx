@@ -1117,13 +1117,13 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
     }
 
-    sa = (struct sockaddr *) &lsopt->sockaddr;
+    sa = &lsopt->u.sockaddr;
 
     switch (sa->sa_family) {
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) sa;
+        sin6 = &lsopt->u.sockaddr_in6;
         p = sin6->sin6_port;
         break;
 #endif
@@ -1135,7 +1135,7 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 
     default: /* AF_INET */
-        sin = (struct sockaddr_in *) sa;
+        sin = &lsopt->u.sockaddr_in;
         p = sin->sin_port;
         break;
     }
@@ -1185,7 +1185,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
      * may fill some fields in inherited sockaddr struct's
      */
 
-    sa = (struct sockaddr *) &lsopt->sockaddr;
+    sa = &lsopt->u.sockaddr;
 
     switch (sa->sa_family) {
 
@@ -1209,13 +1209,13 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         break;
     }
 
-    p = lsopt->sockaddr + off;
+    p = lsopt->u.sockaddr_data + off;
 
     addr = port->addrs.elts;
 
     for (i = 0; i < port->addrs.nelts; i++) {
 
-        if (ngx_memcmp(p, (u_char *) addr[i].opt.sockaddr + off, len) != 0) {
+        if (ngx_memcmp(p, addr[i].opt.u.sockaddr_data + off, len) != 0) {
             continue;
         }
 
@@ -1674,7 +1674,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
-    ls = ngx_create_listening(cf, addr->opt.sockaddr, addr->opt.socklen);
+    ls = ngx_create_listening(cf, &addr->opt.u.sockaddr, addr->opt.socklen);
     if (ls == NULL) {
         return NULL;
     }
@@ -1743,7 +1743,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 
     for (i = 0; i < hport->naddrs; i++) {
 
-        sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
+        sin = &addr[i].opt.u.sockaddr_in;
         addrs[i].addr = sin->sin_addr.s_addr;
         addrs[i].conf.default_server = addr[i].default_server;
 #if (NGX_HTTP_SSL)
@@ -1804,7 +1804,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 
     for (i = 0; i < hport->naddrs; i++) {
 
-        sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
+        sin6 = &addr[i].opt.u.sockaddr_in6;
         addrs6[i].addr6 = sin6->sin6_addr;
         addrs6[i].conf.default_server = addr[i].default_server;
 #if (NGX_HTTP_SSL)
