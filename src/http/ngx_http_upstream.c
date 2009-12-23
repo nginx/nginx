@@ -4204,7 +4204,7 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 
 
 char *
-ngx_http_upsteam_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf)
 {
     char  *p = conf;
