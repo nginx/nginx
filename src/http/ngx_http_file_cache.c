@@ -783,7 +783,6 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 ngx_int_t
 ngx_http_cache_send(ngx_http_request_t *r)
 {
-    off_t              size;
     ngx_int_t          rc;
     ngx_buf_t         *b;
     ngx_chain_t        out;
@@ -806,21 +805,18 @@ ngx_http_cache_send(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->header_only = (c->length - c->body_start) == 0;
+
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
         return rc;
     }
 
-    size = c->length - c->body_start;
-    if (size == 0) {
-        return rc;
-    }
-
     b->file_pos = c->body_start;
     b->file_last = c->length;
 
-    b->in_file = size ? 1: 0;
+    b->in_file = 1;
     b->last_buf = (r == r->main) ? 1: 0;
     b->last_in_chain = 1;
 
