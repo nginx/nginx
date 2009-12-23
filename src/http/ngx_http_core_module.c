@@ -3900,9 +3900,9 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        if (err->status < 400 || err->status > 599) {
+        if (err->status < 300 || err->status > 599) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "value \"%V\" must be between 400 and 599",
+                               "value \"%V\" must be between 300 and 599",
                                &value[i]);
             return NGX_CONF_ERROR;
         }
