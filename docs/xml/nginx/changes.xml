@@ -9,6 +9,102 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.31" date="23.12.2009">
+
+<change type="feature">
+<para lang="ru">
+теперь директива error_page может перенаправлять ответы со статусом 301 и 302.
+</para>
+<para lang="en">
+now the "error_page" directive may redirect the 301 and 302 responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $geoip_city_continent_code, $geoip_latitude и $geoip_longitude.<br/>
+Спасибо Arvind Sundararajan.
+</para>
+<para lang="en">
+the $geoip_city_continent_code, $geoip_latitude, and $geoip_longitude
+variables.<br/>
+Thanks to Arvind Sundararajan.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_image_filter_module теперь всегда удаляет
+EXIF и другие данные, если они занимают больше 5% в JPEG-файле.
+</para>
+<para lang="en">
+now the ngx_http_image_filter_module deletes always EXIF and other
+application specific data if the data consume more than 5% of a JPEG file.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx закрывал соединение при запросе закэшированного
+ответа с пустым телом.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx closed a connection if a cached response had an empty body.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться gcc 4.x при использовании оптимизации -O2 и выше.<br/>
+Спасибо Максиму Дунину и Денису Латыпову.
+</para>
+<para lang="en">
+nginx might not be built by gcc 4.x if the -O2 or higher optimization option
+was used.<br/>
+Thanks to Maxim Dounin and Denis F. Latypoff.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+регулярные выражения в location всегда тестировались с учётом регистра;
+ошибка появилась в 0.8.25.
+</para>
+<para lang="en">
+regular expressions in location were always tested in case-sensitive mode;
+the bug had appeared in 0.8.25.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx кэшировал 304 ответ, если в заголовке проксируемого запроса
+была строка "If-None-Match".<br/>
+Спасибо Tim Dettrick и David Kostal.
+</para>
+<para lang="en">
+nginx cached a 304 response if there was the "If-None-Match" header line
+in a proxied request.<br/>
+Thanks to Tim Dettrick and David Kostal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows пытался дважды удалить временный файл
+при перезаписи уже существующего файла.
+</para>
+<para lang="en">
+nginx/Windows tried to delete a temporary file twice
+if the file should replace an already existent file.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.30" date="15.12.2009">
 
 <change type="change">
@@ -1300,7 +1396,7 @@ Thanks to Maxim Dounin.
 <change type="bugfix">
 <para lang="ru">
 в обработке строк "Last-Modified" и "Accept-Ranges" в заголовке ответа бэкенда;
-ошибка появилась в 0.7.44<br/>
+ошибка появилась в 0.7.44.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
