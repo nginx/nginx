@@ -291,7 +291,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 
     ngx_http_time(expires->value.data, expires_time);
 
-    if (conf->expires_time < 0) {
+    if (conf->expires_time < 0 || max_age < 0) {
         cc->value.len = sizeof("no-cache") - 1;
         cc->value.data = (u_char *) "no-cache";
 
