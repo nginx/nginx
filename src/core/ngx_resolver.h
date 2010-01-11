@@ -37,7 +37,7 @@ typedef struct {
     struct sockaddr          *sockaddr;
     socklen_t                 socklen;
     ngx_str_t                 server;
-    ngx_log_t                *log;
+    ngx_log_t                 log;
 } ngx_udp_connection_t;
 
 
