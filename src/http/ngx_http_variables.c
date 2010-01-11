@@ -1743,7 +1743,7 @@ ngx_http_regex_compile(ngx_conf_t *cf, ngx_regex_compile_t *rc)
 
         v->get_handler = ngx_http_variable_not_found;
 
-        p += i + size;
+        p += size;
     }
 
     return re;
