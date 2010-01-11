@@ -9,6 +9,71 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.32" date="11.01.2010">
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании кодировки UTF-8 в ngx_http_autoindex_module.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+UTF-8 encoding usage in the ngx_http_autoindex_module.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+именованные выделения в регулярных выражениях работали только для
+двух переменных.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+regular expression named captures worked for two names only. <br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь в строке заголовка запроса "Host" используется имя "localhost",
+если в директиве auth_http указан unix domain сокет.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now the "localhost" name is used in the "Host" request header line,
+if an unix domain socket is defined in the "auth_http" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал передачу chunk'ами для 201-ых ответов.<br/>
+Спасибо Julian Reich.
+</para>
+<para lang="en">
+nginx did nor support chunked transfer encoding for 201 responses.<br/>
+Thanks to Julian Reich.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если директива "expires modified" выставляла дату в прошлом, то в строке
+заголовка ответа "Cache-Control" выдавалось отрицательное число.<br/>
+Спасибо Алексею Капранову.
+</para>
+<para lang="en">
+if the "expires modified" set date in the past, the a negative number
+was set in the "Cache-Control" response header line.<br/>
+Thanks to Alex Kapranoff.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.31" date="23.12.2009">
 
 <change type="feature">
