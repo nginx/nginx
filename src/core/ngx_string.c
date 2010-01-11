@@ -1239,10 +1239,8 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
             break;
         }
 
-        len--;
-
         while (src < next) {
-            *++dst = *++src;
+            *dst++ = *src++;
             len--;
         }
     }
