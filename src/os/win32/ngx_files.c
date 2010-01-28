@@ -10,7 +10,7 @@
 
 #define NGX_UTF16_BUFLEN  256
 
-static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
+static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len);
 
 
 /* FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory */
@@ -18,26 +18,59 @@ static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
 ngx_fd_t
 ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 {
-    u_short    *u;
+    size_t      len;
+    u_long      n;
+    u_short    *u, *lu;
     ngx_fd_t    fd;
     ngx_err_t   err;
     u_short     utf16[NGX_UTF16_BUFLEN];
 
-    u = ngx_utf8_to_utf16(utf16, name, NGX_UTF16_BUFLEN);
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len);
 
     if (u == NULL) {
         return INVALID_HANDLE_VALUE;
+    }
+
+    fd = INVALID_HANDLE_VALUE;
+    lu = NULL;
+
+    if (create == NGX_FILE_OPEN) {
+
+        lu = malloc(len * 2);
+        if (lu == NULL) {
+            goto failed;
+        }
+
+        n = GetLongPathNameW(u, lu, len);
+
+        if (n == 0) {
+            goto failed;
+        }
+
+        if (n != len - 1 || ngx_memcmp(u, lu, n) != 0) {
+            ngx_set_errno(NGX_ENOENT);
+            goto failed;
+        }
     }
 
     fd = CreateFileW(u, mode,
                      FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
                      NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
-    if (u != utf16) {
-        err = ngx_errno;
-        ngx_free(u);
-        ngx_set_errno(err);
+failed:
+
+    err = ngx_errno;
+
+    if (lu) {
+        ngx_free(lu);
     }
+
+    if (u != utf16) {
+        ngx_free(u);
+    }
+
+    ngx_set_errno(err);
 
     return fd;
 }
@@ -244,13 +277,16 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 ngx_int_t
 ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
+    size_t                      len;
     long                        rc;
     u_short                    *u;
     ngx_err_t                   err;
     WIN32_FILE_ATTRIBUTE_DATA   fa;
     u_short                     utf16[NGX_UTF16_BUFLEN];
 
-    u = ngx_utf8_to_utf16(utf16, file, NGX_UTF16_BUFLEN);
+    len = NGX_UTF16_BUFLEN;
+
+    u = ngx_utf8_to_utf16(utf16, file, &len);
 
     if (u == NULL) {
         return NGX_FILE_ERROR;
@@ -511,7 +547,7 @@ ngx_fs_bsize(u_char *name)
 
 
 static u_short *
-ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
+ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len)
 {
     u_char    *p;
     u_short   *u, *last;
@@ -519,18 +555,18 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
 
     p = utf8;
     u = utf16;
-    last = utf16 + len;
+    last = utf16 + *len;
 
     while (u < last) {
 
         if (*p < 0x80) {
-            *u = (u_short) *p;
+            *u++ = (u_short) *p;
 
             if (*p == 0) {
+                *len = u - utf16;
                 return utf16;
             }
 
-            u++;
             p++;
 
             continue;
@@ -554,21 +590,21 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
         return NULL;
     }
 
-    ngx_memcpy(u, utf16, len * 2);
+    ngx_memcpy(u, utf16, *len * 2);
 
     utf16 = u;
-    u += len;
+    u += *len;
 
     for ( ;; ) {
 
         if (*p < 0x80) {
-            *u = (u_short) *p;
+            *u++ = (u_short) *p;
 
             if (*p == 0) {
+                *len = u - utf16;
                 return utf16;
             }
 
-            u++;
             p++;
 
             continue;
