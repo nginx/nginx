@@ -1997,6 +1997,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     r->done = 1;
+    r->write_event_handler = ngx_http_request_empty_handler;
 
     if (!r->post_action) {
         r->request_complete = 1;
