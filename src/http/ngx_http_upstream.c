@@ -364,6 +364,7 @@ ngx_http_upstream_create(ngx_http_request_t *r)
     if (u && u->cleanup) {
         ngx_http_upstream_cleanup(r);
         *u->cleanup = NULL;
+        u->cleanup = NULL;
     }
 
     u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
@@ -2834,6 +2835,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (u->cleanup) {
         *u->cleanup = NULL;
+        u->cleanup = NULL;
     }
 
     if (u->state && u->state->response_sec) {

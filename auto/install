@@ -101,6 +101,10 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 	cp conf/fastcgi_params \
 		'\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi_params.default'
 
+	test -f '\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi.conf' \
+		|| cp conf/fastcgi.conf '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/fastcgi.conf '\$(DESTDIR)$NGX_CONF_PREFIX/fastcgi.conf.default'
+
 	test -f '\$(DESTDIR)$NGX_CONF_PATH' \
 		|| cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PATH'
 	cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX/nginx.conf.default'
