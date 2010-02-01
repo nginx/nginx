@@ -10,7 +10,7 @@
 
 #define NGX_UTF16_BUFLEN  256
 
-static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
+static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len);
 
 
 /* FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory */
@@ -18,23 +18,59 @@ static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len);
 ngx_fd_t
 ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 {
-    u_short   *u;
-    ngx_fd_t   fd;
-    u_short    utf16[NGX_UTF16_BUFLEN];
+    size_t      len;
+    u_long      n;
+    u_short    *u, *lu;
+    ngx_fd_t    fd;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
 
-    u = ngx_utf8_to_utf16(utf16, name, NGX_UTF16_BUFLEN);
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len);
 
     if (u == NULL) {
         return INVALID_HANDLE_VALUE;
+    }
+
+    fd = INVALID_HANDLE_VALUE;
+    lu = NULL;
+
+    if (create == NGX_FILE_OPEN) {
+
+        lu = malloc(len * 2);
+        if (lu == NULL) {
+            goto failed;
+        }
+
+        n = GetLongPathNameW(u, lu, len);
+
+        if (n == 0) {
+            goto failed;
+        }
+
+        if (n != len - 1 || ngx_memcmp(u, lu, n) != 0) {
+            ngx_set_errno(NGX_ENOENT);
+            goto failed;
+        }
     }
 
     fd = CreateFileW(u, mode,
                      FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
                      NULL, create, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
+failed:
+
+    err = ngx_errno;
+
+    if (lu) {
+        ngx_free(lu);
+    }
+
     if (u != utf16) {
         ngx_free(u);
     }
+
+    ngx_set_errno(err);
 
     return fd;
 }
@@ -43,56 +79,17 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    long        high_offset;
     u_long      n;
     ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
-    if (ngx_win32_version < NGX_WIN_NT) {
+    ovlp.Internal = 0;
+    ovlp.InternalHigh = 0;
+    ovlp.Offset = (u_long) offset;
+    ovlp.OffsetHigh = (u_long) (offset >> 32);
+    ovlp.hEvent = NULL;
 
-        /*
-         * under Win9X the overlapped pointer must be NULL
-         * so we have to use SetFilePointer() to set the offset
-         */
-
-        if (file->offset != offset) {
-
-            /*
-             * the maximum file size on the FAT16 is 2G, but on the FAT32
-             * the size is 4G so we have to use the high_offset
-             * because a single offset is signed value
-             */
-
-            high_offset = (long) (offset >> 32);
-
-            if (SetFilePointer(file->fd, (long) offset, &high_offset,
-                               FILE_BEGIN) == INVALID_SET_FILE_POINTER)
-            {
-                /*
-                 * INVALID_SET_FILE_POINTER is 0xffffffff and it can be valid
-                 * value for large file so we need also to check GetLastError()
-                 */
-
-                err = ngx_errno;
-                if (err != NO_ERROR) {
-                    ngx_log_error(NGX_LOG_ERR, file->log, err,
-                                  "SeekFilePointer() failed");
-                    return NGX_ERROR;
-                }
-            }
-        }
-
-        povlp = NULL;
-
-    } else {
-        ovlp.Internal = 0;
-        ovlp.InternalHigh = 0;
-        ovlp.Offset = (u_long) offset;
-        ovlp.OffsetHigh = (u_long) (offset >> 32);
-        ovlp.hEvent = NULL;
-
-        povlp = &ovlp;
-    }
+    povlp = &ovlp;
 
     if (ReadFile(file->fd, buf, size, &n, povlp) == 0) {
         err = ngx_errno;
@@ -101,7 +98,8 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
             return 0;
         }
 
-        ngx_log_error(NGX_LOG_ERR, file->log, err, "ReadFile() failed");
+        ngx_log_error(NGX_LOG_ERR, file->log, err,
+                      "ReadFile() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
@@ -114,58 +112,27 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 ssize_t
 ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    long        high_offset;
     u_long      n;
-    ngx_err_t   err;
     OVERLAPPED  ovlp, *povlp;
 
-    if (ngx_win32_version < NGX_WIN_NT) {
+    ovlp.Internal = 0;
+    ovlp.InternalHigh = 0;
+    ovlp.Offset = (u_long) offset;
+    ovlp.OffsetHigh = (u_long) (offset >> 32);
+    ovlp.hEvent = NULL;
 
-        /*
-         * under Win9X the overlapped pointer must be NULL
-         * so we have to use SetFilePointer() to set the offset
-         */
-
-        if (file->offset != offset) {
-
-            /*
-             * the maximum file size on the FAT16 is 2G, but on the FAT32
-             * the size is 4G so we have to use high_offset
-             * because a single offset is signed value
-             */
-
-            high_offset = (long) (offset >> 32);
-            if (SetFilePointer(file->fd, (long) offset, &high_offset,
-                               FILE_BEGIN) == INVALID_SET_FILE_POINTER)
-            {
-                /*
-                 * INVALID_SET_FILE_POINTER is 0xffffffff and it can be valid
-                 * value for large file so we need also to check GetLastError()
-                 */
-
-                err = ngx_errno;
-                if (err != NO_ERROR) {
-                    ngx_log_error(NGX_LOG_ERR, file->log, err,
-                                  "SeekFilePointer() failed");
-                    return NGX_ERROR;
-                }
-            }
-        }
-
-        povlp = NULL;
-
-    } else {
-        ovlp.Internal = 0;
-        ovlp.InternalHigh = 0;
-        ovlp.Offset = (u_long) offset;
-        ovlp.OffsetHigh = (u_long) (offset >> 32);
-        ovlp.hEvent = NULL;
-
-        povlp = &ovlp;
-    }
+    povlp = &ovlp;
 
     if (WriteFile(file->fd, buf, size, &n, povlp) == 0) {
-        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno, "WriteFile() failed");
+        ngx_log_error(NGX_LOG_ERR, file->log, ngx_errno,
+                      "WriteFile() \"%s\" failed", file->name.data);
+        return NGX_ERROR;
+    }
+
+    if (n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
+                      "WriteFile() \"%s\" has written only %ul of %uz",
+                      file->name.data, n, size);
         return NGX_ERROR;
     }
 
@@ -253,17 +220,17 @@ ngx_write_console(ngx_fd_t fd, void *buf, size_t size)
 }
 
 
-ngx_int_t
+ngx_err_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {
     u_char             *name;
-    ngx_int_t           rc;
+    ngx_err_t           err;
     ngx_uint_t          collision;
     ngx_atomic_uint_t   num;
 
     name = ngx_alloc(to->len + 1 + 10 + 1 + sizeof("DELETE"), log);
     if (name == NULL) {
-        return NGX_ERROR;
+        return NGX_ENOMEM;
     }
 
     ngx_memcpy(name, to->data, to->len);
@@ -288,10 +255,10 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
     }
 
     if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
-        rc = NGX_ERROR;
+        err = ngx_errno;
 
     } else {
-        rc = NGX_OK;
+        err = 0;
     }
 
     if (DeleteFile((const char *) name) == 0) {
@@ -299,29 +266,38 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
                       "DeleteFile() \"%s\" failed", name);
     }
 
-    if (rc == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
-                      "MoveFile() \"%s\" to \"%s\" failed",
-                      from->data, to->data);
-    }
-
     /* mutex_unlock() */
 
     ngx_free(name);
 
-    return rc;
+    return err;
 }
 
 
 ngx_int_t
 ngx_file_info(u_char *file, ngx_file_info_t *sb)
 {
-    WIN32_FILE_ATTRIBUTE_DATA  fa;
+    size_t                      len;
+    long                        rc;
+    u_short                    *u;
+    ngx_err_t                   err;
+    WIN32_FILE_ATTRIBUTE_DATA   fa;
+    u_short                     utf16[NGX_UTF16_BUFLEN];
 
-    /* NT4 and Win98 */
+    len = NGX_UTF16_BUFLEN;
 
-    if (GetFileAttributesEx((char *) file, GetFileExInfoStandard, &fa) == 0) {
+    u = ngx_utf8_to_utf16(utf16, file, &len);
+
+    if (u == NULL) {
         return NGX_FILE_ERROR;
+    }
+
+    rc = GetFileAttributesExW(u, GetFileExInfoStandard, &fa);
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
     }
 
     sb->dwFileAttributes = fa.dwFileAttributes;
@@ -331,7 +307,7 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
     sb->nFileSizeHigh = fa.nFileSizeHigh;
     sb->nFileSizeLow = fa.nFileSizeLow;
 
-    return ~NGX_FILE_ERROR;
+    return rc;
 }
 
 
@@ -533,14 +509,14 @@ ngx_de_link_info(u_char *name, ngx_dir_t *dir)
 ngx_int_t
 ngx_directio_on(ngx_fd_t fd)
 {
-    return 0;
+    return ~NGX_FILE_ERROR;
 }
 
 
 ngx_int_t
 ngx_directio_off(ngx_fd_t fd)
 {
-    return 0;
+    return ~NGX_FILE_ERROR;
 }
 
 
@@ -564,7 +540,7 @@ ngx_fs_bsize(u_char *name)
 
 
 static u_short *
-ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
+ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len)
 {
     u_char    *p;
     u_short   *u, *last;
@@ -572,18 +548,18 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
 
     p = utf8;
     u = utf16;
-    last = utf16 + len;
+    last = utf16 + *len;
 
     while (u < last) {
 
         if (*p < 0x80) {
-            *u = (u_short) *p;
+            *u++ = (u_short) *p;
 
             if (*p == 0) {
+                *len = u - utf16;
                 return utf16;
             }
 
-            u++;
             p++;
 
             continue;
@@ -607,21 +583,21 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t len)
         return NULL;
     }
 
-    ngx_memcpy(u, utf16, len * 2);
+    ngx_memcpy(u, utf16, *len * 2);
 
     utf16 = u;
-    u += len;
+    u += *len;
 
     for ( ;; ) {
 
         if (*p < 0x80) {
-            *u = (u_short) *p;
+            *u++ = (u_short) *p;
 
             if (*p == 0) {
+                *len = u - utf16;
                 return utf16;
             }
 
-            u++;
             p++;
 
             continue;

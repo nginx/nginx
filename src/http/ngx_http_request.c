@@ -784,9 +784,11 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             p = r->uri.data + r->uri.len - 1;
 
-            if (*p == '.') {
+            if (*p == '.' || *p == ' ') {
 
-                while (--p > r->uri.data && *p == '.') { /* void */ }
+                while (--p > r->uri.data && (*p == '.' || *p == ' ')) {
+                    /* void */
+                }
 
                 r->uri.len = p + 1 - r->uri.data;
 

@@ -22,7 +22,7 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                      "pread() failed, file \"%s\"", file->name.data);
+                      "pread() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
@@ -30,7 +30,8 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "lseek() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
@@ -40,7 +41,8 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     n = read(file->fd, buf, size);
 
     if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "read() failed");
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "read() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
 
@@ -57,57 +59,66 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 ssize_t
 ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {
-    ssize_t  n;
+    ssize_t  n, written;
 
     ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
                    "write: %d, %p, %uz, %O", file->fd, buf, size, offset);
 
+    written = 0;
+
 #if (NGX_HAVE_PWRITE)
 
-    n = pwrite(file->fd, buf, size, offset);
+    for ( ;; ) {
+        n = pwrite(file->fd, buf, size, offset);
 
-    if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "pwrite() failed");
-        return NGX_ERROR;
-    }
+        if (n == -1) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "pwrite() \"%s\" failed", file->name.data);
+            return NGX_ERROR;
+        }
 
-    if ((size_t) n != size) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                      "pwrite() has written only %z of %uz", n, size);
-        return NGX_ERROR;
+        file->offset += n;
+        written += n;
+
+        if ((size_t) n == size) {
+            return written;
+        }
+
+        offset += n;
+        size -= n;
     }
 
 #else
 
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
-            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "lseek() failed");
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "lseek() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
         file->sys_offset = offset;
     }
 
-    n = write(file->fd, buf, size);
+    for ( ;; ) {
+        n = write(file->fd, buf, size);
 
-    if (n == -1) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno, "write() failed");
-        return NGX_ERROR;
+        if (n == -1) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                          "write() \"%s\" failed", file->name.data);
+            return NGX_ERROR;
+        }
+
+        file->offset += n;
+        written += n;
+
+        if ((size_t) n == size) {
+            return written;
+        }
+
+        size -= n;
     }
-
-    if ((size_t) n != size) {
-        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                      "write() has written only %z of %uz", n, size);
-        return NGX_ERROR;
-    }
-
-    file->sys_offset += n;
-
 #endif
-
-    file->offset += n;
-
-    return n;
 }
 
 
@@ -191,7 +202,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
         if (file->sys_offset != offset) {
             if (lseek(file->fd, offset, SEEK_SET) == -1) {
                 ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                              "lseek() failed");
+                              "lseek() \"%s\" failed", file->name.data);
                 return NGX_ERROR;
             }
 
@@ -202,13 +213,14 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
         if (n == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
-                          "writev() failed");
+                          "writev() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
 
         if ((size_t) n != size) {
             ngx_log_error(NGX_LOG_CRIT, file->log, 0,
-                          "writev() has written only %z of %uz", n, size);
+                          "writev() \"%s\" has written only %z of %uz",
+                          file->name.data, n, size);
             return NGX_ERROR;
         }
 
@@ -393,7 +405,7 @@ ngx_directio_on(ngx_fd_t fd)
     flags = fcntl(fd, F_GETFL);
 
     if (flags == -1) {
-        return -1;
+        return NGX_FILE_ERROR;
     }
 
     return fcntl(fd, F_SETFL, flags | O_DIRECT);
@@ -408,7 +420,7 @@ ngx_directio_off(ngx_fd_t fd)
     flags = fcntl(fd, F_GETFL);
 
     if (flags == -1) {
-        return -1;
+        return NGX_FILE_ERROR;
     }
 
     return fcntl(fd, F_SETFL, flags & ~O_DIRECT);

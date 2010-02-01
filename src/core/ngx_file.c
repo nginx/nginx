@@ -183,7 +183,15 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
     u_char     *p, ch;
     ngx_err_t   err;
 
-    for (p = dir + 1; *p; p++) {
+    err = 0;
+
+#if (NGX_WIN32)
+    p = dir + 3;
+#else
+    p = dir + 1;
+#endif
+
+    for ( /* void */ ; *p; p++) {
         ch = *p;
 
         if (ch != '/') {
@@ -194,7 +202,14 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
 
         if (ngx_create_dir(dir, access) == NGX_FILE_ERROR) {
             err = ngx_errno;
-            if (err != NGX_EEXIST) {
+
+            switch (err) {
+            case NGX_EEXIST:
+                err = 0;
+            case NGX_EACCES:
+                break;
+
+            default:
                 return err;
             }
         }
@@ -202,7 +217,7 @@ ngx_create_full_path(u_char *dir, ngx_uint_t access)
         *p = '/';
     }
 
-    return 0;
+    return err;
 }
 
 
@@ -576,16 +591,10 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 #if (NGX_WIN32)
 
     if (err == NGX_EEXIST) {
-        if (ngx_win32_rename_file(src, to, ext->log) == NGX_OK) {
+        err = ngx_win32_rename_file(src, to, ext->log);
 
-            if (ngx_rename_file(src->data, to->data) != NGX_FILE_ERROR) {
-                return NGX_OK;
-            }
-
-            err = ngx_errno;
-
-        } else {
-            err = 0;
+        if (err == 0) {
+            return NGX_OK;
         }
     }
 
