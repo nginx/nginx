@@ -86,7 +86,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     u_char            *p;
     size_t             size;
     ngx_int_t          i;
-    ngx_uint_t         n;
+    ngx_uint_t         n, sigio;
     sigset_t           set;
     struct itimerval   itv;
     ngx_uint_t         live;
@@ -139,11 +139,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_new_binary = 0;
     delay = 0;
+    sigio = 0;
     live = 1;
 
     for ( ;; ) {
         if (delay) {
             if (ngx_sigalrm) {
+                sigio = 0;
                 delay *= 2;
                 ngx_sigalrm = 0;
             }
@@ -168,7 +170,8 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         ngx_time_update(0, 0);
 
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "wake up");
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "wake up, sigio %i", sigio);
 
         if (ngx_reap) {
             ngx_reap = 0;
@@ -185,6 +188,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             if (delay == 0) {
                 delay = 50;
             }
+
+            if (sigio) {
+                sigio--;
+                continue;
+            }
+
+            sigio = ccf->worker_processes + 2 /* cache processes */;
 
             if (delay > 1000) {
                 ngx_signal_worker_processes(cycle, SIGKILL);
