@@ -376,7 +376,6 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
     }
 
     dir->valid_info = 1;
-    dir->valid_type = 1;
     dir->ready = 1;
 
     return NGX_OK;
@@ -392,6 +391,7 @@ ngx_read_dir(ngx_dir_t *dir)
     }
 
     if (FindNextFile(dir->dir, &dir->finddata) != 0) {
+        dir->type = 1;
         return NGX_OK;
     }
 
