@@ -917,12 +917,8 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
             level = NGX_LOG_INFO;
             break;
 
-        case NGX_ERROR_ERR:
-            level = NGX_LOG_ERR;
-            break;
-
         default:
-            level = NGX_LOG_ALERT;
+            level = NGX_LOG_ERR;
         }
 
     } else {

@@ -555,9 +555,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
             ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
                           ngx_read_file_n " read only %z of %O from \"%s\"",
                           n, size, src->file->name.data);
-            if (n == 0) {
-                return NGX_ERROR;
-            }
+            return NGX_ERROR;
         }
 
         dst->last += n;

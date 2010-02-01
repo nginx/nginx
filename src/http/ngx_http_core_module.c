@@ -1199,7 +1199,10 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
         {
-            if (of.err != NGX_ENOENT && of.err != NGX_ENOTDIR) {
+            if (of.err != NGX_ENOENT
+                && of.err != NGX_ENOTDIR
+                && of.err != NGX_ENAMETOOLONG)
+            {
                 ngx_log_error(NGX_LOG_CRIT, r->connection->log, of.err,
                               "%s \"%s\" failed", of.failed, path.data);
             }
