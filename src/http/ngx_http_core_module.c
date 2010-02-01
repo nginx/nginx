@@ -785,7 +785,7 @@ ngx_http_handler(ngx_http_request_t *r)
 
         if (r->keepalive) {
 
-            if (r->headers_in.msie) {
+            if (r->headers_in.msie6) {
                 if (r->method == NGX_HTTP_POST) {
 		    /*
 		     * MSIE may wait for some time if an response for
