@@ -220,6 +220,7 @@ typedef struct {
     unsigned                          opera:1;
     unsigned                          gecko:1;
     unsigned                          chrome:1;
+    unsigned                          safari:1;
     unsigned                          konqueror:1;
 } ngx_http_headers_in_t;
 
