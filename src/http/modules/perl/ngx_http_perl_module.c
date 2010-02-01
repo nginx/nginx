@@ -152,12 +152,13 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 #endif
 
 
-static ngx_str_t    ngx_null_name = ngx_null_string;
-
-static HV          *nginx_stash;
+static ngx_str_t         ngx_null_name = ngx_null_string;
+static HV               *nginx_stash;
 
 #if (NGX_HAVE_PERL_MULTIPLICITY)
-static ngx_uint_t   ngx_perl_term;
+static ngx_uint_t        ngx_perl_term;
+#else
+static PerlInterpreter  *perl;
 #endif
 
 
@@ -456,18 +457,16 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 static char *
 ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
 {
-    ngx_str_t               *m;
-    ngx_uint_t               i;
+    ngx_str_t           *m;
+    ngx_uint_t           i;
 #if (NGX_HAVE_PERL_MULTIPLICITY)
-    ngx_pool_cleanup_t      *cln;
+    ngx_pool_cleanup_t  *cln;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
         return NGX_CONF_ERROR;
     }
 
-#else
-    static PerlInterpreter  *perl;
 #endif
 
 #ifdef NGX_PERL_MODULES
@@ -1068,19 +1067,21 @@ ngx_http_perl_exit(ngx_cycle_t *cycle)
 {
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 
+    /*
+     * the master exit hook is run before global pool cleanup,
+     * therefore just set flag here
+     */
+
     ngx_perl_term = 1;
 
 #else
-    ngx_http_perl_main_conf_t  *pmcf;
 
-    pmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_perl_module);
-
-    if (pmcf && nginx_stash) {
+    if (nginx_stash) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "perl term");
 
-        (void) perl_destruct(pmcf->perl);
+        (void) perl_destruct(perl);
 
-        perl_free(pmcf->perl);
+        perl_free(perl);
 
         PERL_SYS_TERM();
     }
