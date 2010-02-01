@@ -837,7 +837,13 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strcmp(value[1].data, "off") == 0) {
         llcf->off = 1;
-        return NGX_CONF_OK;
+        if (cf->args->nelts == 2) {
+            return NGX_CONF_OK;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[2]);
+        return NGX_CONF_ERROR;
     }
 
     if (llcf->logs == NULL) {
