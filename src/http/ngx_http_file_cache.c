@@ -311,7 +311,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         return n;
     }
 
-    if ((size_t) n <= c->header_start) {
+    if ((size_t) n < c->header_start) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" is too small", c->file.name.data);
         return NGX_ERROR;
@@ -718,6 +718,8 @@ ngx_http_cache_send(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    r->header_only = (c->length - c->body_start) == 0;
+
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
@@ -727,7 +729,7 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->file_pos = c->body_start;
     b->file_last = c->length;
 
-    b->in_file = (c->length - c->body_start) ? 1: 0;
+    b->in_file = 1;
     b->last_buf = (r == r->main) ? 1: 0;
     b->last_in_chain = 1;
 

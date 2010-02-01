@@ -530,7 +530,7 @@ static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
     { ngx_string("Expect"), ngx_string("") },
     { ngx_string("If-Modified-Since"), ngx_string("") },
     { ngx_string("If-Unmodified-Since"), ngx_string("") },
-    { ngx_string("If-Match-None"), ngx_string("") },
+    { ngx_string("If-None-Match"), ngx_string("") },
     { ngx_string("If-Match"), ngx_string("") },
     { ngx_string("Range"), ngx_string("") },
     { ngx_string("If-Range"), ngx_string("") },
@@ -1223,7 +1223,6 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 
         if (r->cache) {
             r->http_version = NGX_HTTP_VERSION_9;
-            u->headers_in.status_n = NGX_HTTP_OK;
             return NGX_OK;
         }
 
@@ -1239,7 +1238,6 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 #endif
 
         r->http_version = NGX_HTTP_VERSION_9;
-        u->headers_in.status_n = NGX_HTTP_OK;
         u->state->status = NGX_HTTP_OK;
 
         return NGX_OK;

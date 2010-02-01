@@ -523,6 +523,23 @@ static ngx_str_t  ngx_http_fastcgi_hide_headers[] = {
 };
 
 
+#if (NGX_HTTP_CACHE)
+
+static ngx_str_t  ngx_http_fastcgi_hide_cache_headers[] = {
+    ngx_string("Status"),
+    ngx_string("X-Accel-Expires"),
+    ngx_string("X-Accel-Redirect"),
+    ngx_string("X-Accel-Limit-Rate"),
+    ngx_string("X-Accel-Buffering"),
+    ngx_string("X-Accel-Charset"),
+    ngx_string("Set-Cookie"),
+    ngx_string("P3P"),
+    ngx_null_string
+};
+
+#endif
+
+
 static ngx_path_init_t  ngx_http_fastcgi_temp_path = {
     ngx_string(NGX_HTTP_FASTCGI_TEMP_PATH), { 1, 2, 0 }
 };
@@ -1899,6 +1916,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     u_char                       *p;
     size_t                        size;
     uintptr_t                    *code;
+    ngx_str_t                    *h;
     ngx_uint_t                    i;
     ngx_keyval_t                 *src;
     ngx_hash_init_t               hash;
@@ -2119,10 +2137,18 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.bucket_size = ngx_align(64, ngx_cacheline_size);
     hash.name = "fastcgi_hide_headers_hash";
 
+#if (NGX_HTTP_CACHE)
+
+    h = conf->upstream.cache ? ngx_http_fastcgi_hide_cache_headers:
+                               ngx_http_fastcgi_hide_headers;
+#else
+
+    h = ngx_http_fastcgi_hide_headers;
+
+#endif
+
     if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream,
-                                            &prev->upstream,
-                                            ngx_http_fastcgi_hide_headers,
-                                            &hash)
+                                            &prev->upstream, h, &hash)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
