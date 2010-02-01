@@ -9,6 +9,83 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.33" date="01.02.2010">
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует пробелы в конце URI.<br/>
+Спасибо Dan Crowley, Core Security Technologies.
+</para>
+<para lang="en">
+now nginx/Windows ignores trailing spaces in URI.<br/>
+Thanks to Dan Crowley, Core Security Technologies.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует короткие имена файлов.<br/>
+Спасибо Dan Crowley, Core Security Technologies.
+</para>
+<para lang="en">
+now nginx/Windows ignores short files names.<br/>
+Thanks to Dan Crowley, Core Security Technologies.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь keepalive соединения после запросов POST не запрещаются для MSIE 7.0+.
+Спасибо Adam Lounds.
+</para>
+<para lang="en">
+now keepalive connections after POST requests are not disabled for MSIE 7.0+.
+Thanks to Adam Lounds.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+теперь keepalive соединения запрещены для Safari.
+Спасибо Joshua Sierles.
+</para>
+<para lang="en">
+now keepalive connections are disabled for Safari.
+Thanks to Joshua Sierles.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если проксированный или FastCGI запрос внутренне перенаправлялся
+в другой проксированный или FastCGI location, то переменная
+$upstream_response_time могла иметь ненормально большое значение;
+ошибка появилась в 0.8.7.
+</para>
+<para lang="en">
+if a proxied or FastCGI request was internally redirected
+to another proxied or FastCGI location,
+then $upstream_response_time variable may have abnormally large value;
+the bug had appeared in 0.8.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+при отбрасывания тела запроса;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+while discarding a request body;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.32" date="11.01.2010">
 
 <change type="bugfix">
@@ -53,7 +130,7 @@ nginx не поддерживал передачу chunk'ами для 201-ых ответов.<br/>
 Спасибо Julian Reich.
 </para>
 <para lang="en">
-nginx did nor support chunked transfer encoding for 201 responses.<br/>
+nginx did not support chunked transfer encoding for 201 responses.<br/>
 Thanks to Julian Reich.
 </para>
 </change>
@@ -65,7 +142,7 @@ Thanks to Julian Reich.
 Спасибо Алексею Капранову.
 </para>
 <para lang="en">
-if the "expires modified" set date in the past, the a negative number
+if the "expires modified" set date in the past, then a negative number
 was set in the "Cache-Control" response header line.<br/>
 Thanks to Alex Kapranoff.
 </para>
