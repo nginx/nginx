@@ -1313,6 +1313,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
+            || n == SSL_R_UNKNOWN_PROTOCOL                           /*  252 */
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
@@ -1628,7 +1629,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     hash = ngx_crc32_short(sess->session_id, sess->session_id_length);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "http ssl new session: %08XD:%d:%d",
+                   "ssl new session: %08XD:%d:%d",
                    hash, sess->session_id_length, len);
 
     sess_id->node.key = hash;
@@ -1691,7 +1692,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     *copy = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "http ssl get session: %08XD:%d", hash, len);
+                   "ssl get session: %08XD:%d", hash, len);
 
     shm_zone = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl_conn),
                                    ngx_ssl_session_cache_index);
@@ -1805,7 +1806,7 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
     hash = ngx_crc32_short(id, len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                   "http ssl remove session: %08XD:%uz", hash, len);
+                   "ssl remove session: %08XD:%uz", hash, len);
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
@@ -1964,6 +1965,40 @@ ngx_int_t
 ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     s->data = (u_char *) SSL_get_cipher_name(c->ssl->connection);
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    int           len;
+    u_char       *p, *buf;
+    SSL_SESSION  *sess;
+
+    sess = SSL_get0_session(c->ssl->connection);
+
+    len = i2d_SSL_SESSION(sess, NULL);
+
+    buf = ngx_alloc(len, c->log);
+    if (buf == NULL) {
+        return NGX_ERROR;
+    }
+
+    s->len = 2 * len;
+    s->data = ngx_pnalloc(pool, 2 * len);
+    if (s->data == NULL) {
+        ngx_free(buf);
+        return NGX_ERROR;
+    }
+
+    p = buf;
+    i2d_SSL_SESSION(sess, &p);
+
+    ngx_hex_dump(s->data, buf, len);
+
+    ngx_free(buf);
+
     return NGX_OK;
 }
 
