@@ -458,6 +458,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 
     if (size) {
         if (r->headers_in.content_length_n > size) {
+            r->header_in->pos += size;
             r->headers_in.content_length_n -= size;
 
         } else {
@@ -559,10 +560,14 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http read discarded body");
 
-    do {
+    for ( ;; ) {
         if (r->headers_in.content_length_n == 0) {
             r->read_event_handler = ngx_http_block_reading;
             return NGX_OK;
+        }
+
+        if (!r->connection->read->ready) {
+            return NGX_AGAIN;
         }
 
         size = (r->headers_in.content_length_n > NGX_HTTP_DISCARD_BUFFER_SIZE) ?
@@ -585,10 +590,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
         }
 
         r->headers_in.content_length_n -= n;
-
-    } while (r->connection->read->ready);
-
-    return NGX_AGAIN;
+    }
 }
 
 
