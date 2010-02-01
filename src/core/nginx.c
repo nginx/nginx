@@ -380,6 +380,13 @@ main(int argc, char *const *argv)
         }
     }
 
+    if (log->file->fd != ngx_stderr) {
+        if (ngx_close_file(log->file->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_close_file_n " built-in log failed");
+        }
+    }
+
     ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
