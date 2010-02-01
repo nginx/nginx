@@ -451,7 +451,12 @@ struct ngx_http_request_s {
 #if (NGX_HTTP_CACHE)
     unsigned                          cached:1;
 #endif
-    unsigned                          gzip:2;
+
+#if (NGX_HTTP_GZIP)
+    unsigned                          gzip_tested:1;
+    unsigned                          gzip_ok:1;
+    unsigned                          gzip_vary:1;
+#endif
 
     unsigned                          proxy:1;
     unsigned                          bypass_cache:1;

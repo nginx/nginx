@@ -144,7 +144,6 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
         case NGX_ENOTDIR:
         case NGX_ENAMETOOLONG:
 
-            r->gzip = 0;
             return NGX_DECLINED;
 
         case NGX_EACCES:
@@ -163,6 +162,8 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
         return NGX_DECLINED;
     }
+
+    r->gzip_vary = 1;
 
     if (rc != NGX_OK) {
         return NGX_DECLINED;

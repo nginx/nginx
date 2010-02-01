@@ -88,6 +88,11 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     ngx_http_clear_content_length(r);
     ngx_http_clear_accept_ranges(r);
 
+    if (r->headers_out.content_encoding) {
+        r->headers_out.content_encoding->hash = 0;
+        r->headers_out.content_encoding = NULL;
+    }
+
     return ngx_http_next_header_filter(r);
 }
 
