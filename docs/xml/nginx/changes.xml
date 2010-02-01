@@ -9,6 +9,353 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.65" date="01.02.2010">
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует пробелы в конце URI. <br/>
+Спасибо Dan Crowley, Core Security Technologies.
+</para>
+<para lang="en">
+now nginx/Windows ignores trailing spaces in URI.<br/>
+Thanks to Dan Crowley, Core Security Technologies.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует короткие имена файлов. <br/>
+Спасибо Dan Crowley, Core Security Technologies.
+</para>
+<para lang="en">
+now nginx/Windows ignores short files names.<br/>
+Thanks to Dan Crowley, Core Security Technologies.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь для проксируемых ответов HTTP/0.9 в лог пишется код ответа "009".
+</para>
+<para lang="en">
+now the "009" status code is written to an access log for proxied HTTP/0.9
+responses.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию размер буфера директивы large_client_header_buffers
+равен 8K.<br/>
+Спасибо Andrew Cholakian.
+</para>
+<para lang="en">
+now the default buffer size of the "large_client_header_buffers"
+directive is 8K.<br/>
+Thanks to Andrew Cholakian.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию используются следующие шифры SSL: "HIGH:!ADH:!MD5".
+</para>
+<para lang="en">
+now default SSL ciphers are "HIGH:!ADH:!MD5".
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь протокол SSLv2 по умолчанию запрещён.
+</para>
+<para lang="en">
+now SSLv2 protocol is disabled by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь значение переменной $host всегда в нижнем регистре.
+</para>
+<para lang="en">
+now $host variable value is always low case.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+файл conf/fastcgi.conf для простых конфигураций FastCGI.
+</para>
+<para lang="en">
+the conf/fastcgi.conf for simple FastCGI configurations.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании переменных в директиве proxy_pass не требуется
+задавать URI.
+</para>
+<para lang="en">
+now URI part is not required a "proxy_pass" directive if variables are used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_session_id.
+</para>
+<para lang="en">
+the $ssl_session_id variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если проксированный или FastCGI запрос внутренне перенаправлялся
+в другой проксированный или FastCGI location, то переменная
+$upstream_response_time могла иметь ненормально большое значение;
+ошибка появилась в 0.7.63.
+</para>
+<para lang="en">
+if a proxied or FastCGI request was internally redirected
+to another proxied or FastCGI location,
+then $upstream_response_time variable may have abnormally large value;
+the bug had appeared in 0.7.63.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если директива "expires modified" выставляла дату в прошлом, то в строке
+заголовка ответа "Cache-Control" выдавалось отрицательное число.<br/>
+Спасибо Алексею Капранову.
+</para>
+<para lang="en">
+if the "expires modified" set date in the past, then a negative number
+was set in the "Cache-Control" response header line.<br/>
+Thanks to Alex Kapranoff.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx закрывал соединение при запросе закэшированного
+ответа с пустым телом.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx closed a connection if a cached response had an empty body.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx кэшировал 304 ответ, если в заголовке проксируемого запроса
+была строка "If-None-Match".<br/>
+Спасибо Tim Dettrick и David Kostal.
+</para>
+<para lang="en">
+nginx cached a 304 response if there was the "If-None-Match" header line
+in a proxied request.<br/>
+Thanks to Tim Dettrick and David Kostal.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx не считал запятую разделителем в строке "Cache-Control" в строке
+заголовка бэкенда.
+</para>
+<para lang="en">
+nginx did not treat a comma as separator in the "Cache-Control" backend response
+header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закэшированные ответы ответов HTTP/0.9 неправильно обрабатывались.
+</para>
+<para lang="en">
+cached HTTP/0.9 responses were handled incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx передавал сжатые ответы клиентам, не поддерживающим сжатие,
+при настройках gzip_static on и gzip_vary off;
+ошибка появилась в 0.8.16.
+</para>
+<para lang="en">
+nginx sent gzipped responses to clients those do not support gzip,
+if "gzip_static on" and "gzip_vary off";
+the bug had appeared in 0.8.16.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx всегда добавлял строку "Content-Encoding: gzip" в заголовок
+304-ых ответов модуля ngx_http_gzip_static_module.
+</para>
+<para lang="en">
+nginx always added "Content-Encoding: gzip" response header line
+in 304 responses sent by ngx_http_gzip_static_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+оператор "!-x" не работал.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "!-x" operator did not work.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+при использовании limit_rate в HTTPS сервере.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if limit_rate was used in HTTPS server.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при записи в лог переменной $limit_rate
+в рабочем процессе происходил segmentation fault.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+while $limit_rate logging.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал даты в 2038 году на 32-битных платформах;
+</para>
+<para lang="en">
+nginx did not support dates in 2038 year on 32-bit platforms;
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows пытался дважды удалить временный файл
+при перезаписи уже существующего файла.
+</para>
+<para lang="en">
+nginx/Windows tried to delete a temporary file twice
+if the file should replace an already existent file.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows пытался дважды переименовать временный файл
+при перезаписи уже существующего файла.
+</para>
+<para lang="en">
+nginx/Windows tried to rename a temporary file twice if the file
+should replace an already existent file.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx/Windows мог не создать временный файл, файл в кэше или файл
+с помощью директив proxy/fastcgi_store, если рабочий процесс не имел
+достаточно прав для работы с каталогами верхнего уровня.
+</para>
+<para lang="en">
+nginx/Windows might not create temporary file, a cache file, or
+"proxy/fastcgi_store"d file if a worker had no enough access rights
+for top level directories.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в поддержке кодировки UTF-8 директивой try_files в nginx/Windows.
+</para>
+<para lang="en">
+in UTF-8 encoding support by "try_files" directive in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки при использовании кодировки UTF-8 в ngx_http_autoindex_module.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+UTF-8 encoding usage in the ngx_http_autoindex_module.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+модуль ngx_http_autoindex_module не показывал последний слэш для линков
+на каталоги;
+ошибка появилась в 0.7.15.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module did not show the trailing slash in links to
+a directory;
+the bug had appeared in 0.7.15.
+</para>
+</change>
+
+<change type="bugfix"> 
+<para lang="ru">
+nginx не закрывал лог, заданный параметром конфигурации --error-log-path;
+ошибка появилась в 0.7.53.
+</para>
+<para lang="en">
+nginx did not close a log file set by the --error-log-path configuration option;
+the bug had appeared in 0.7.53.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "addition_types" была неверно названа "addtion_types".
+</para>
+<para lang="en">
+"addition_types" directive was incorrectly named "addtion_types".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неверная строка запроса в переменной $request записывалась в access_log
+только при использовании error_log на уровне info или debug.
+</para>
+<para lang="en">
+invalid request line in $request variable was written in access_log
+only if error_log was set to "info" or "debug" level.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.64" date="16.11.2009">
 
 <change type="security">
@@ -309,7 +656,7 @@ Thanks to Maxim Dounin.
 <change type="bugfix">
 <para lang="ru">
 в обработке строк "Last-Modified" и "Accept-Ranges" в заголовке ответа бэкенда;
-ошибка появилась в 0.7.44<br/>
+ошибка появилась в 0.7.44.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
