@@ -30,12 +30,6 @@ typedef struct {
 } ngx_http_perl_variable_t;
 
 
-typedef struct {
-    SV                *sv;
-    PerlInterpreter   *perl;
-} ngx_http_perl_cleanup_t;
-
-
 #if (NGX_HTTP_SSI)
 static ngx_int_t ngx_http_perl_ssi(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ssi_ctx, ngx_str_t **params);
