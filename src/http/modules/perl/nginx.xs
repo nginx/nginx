@@ -944,6 +944,7 @@ sleep(r, sleep, next)
     ngx_add_timer(r->connection->write, sleep);
 
     r->write_event_handler = ngx_http_perl_sleep_handler;
+    r->main->count++;
 
 
 void
