@@ -188,7 +188,6 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
 
             default:
                 rc = NGX_MAIL_PARSE_INVALID_COMMAND;
-                s->mail_state = ngx_pop3_start;
                 break;
             }
 
@@ -215,7 +214,6 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
 
             default:
                 rc = NGX_MAIL_PARSE_INVALID_COMMAND;
-                s->mail_state = ngx_pop3_start;
                 break;
             }
 
