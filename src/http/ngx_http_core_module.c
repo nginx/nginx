@@ -787,11 +787,11 @@ ngx_http_handler(ngx_http_request_t *r)
 
             if (r->headers_in.msie6) {
                 if (r->method == NGX_HTTP_POST) {
-		    /*
-		     * MSIE may wait for some time if an response for
-		     * a POST request was sent over a keepalive connection
-		     */
-		    r->keepalive = 0;
+                    /*
+                     * MSIE may wait for some time if an response for
+                     * a POST request was sent over a keepalive connection
+                     */
+                    r->keepalive = 0;
                 }
 
             } else if (r->headers_in.safari) {
