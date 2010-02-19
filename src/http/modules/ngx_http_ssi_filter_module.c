@@ -2615,8 +2615,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        v->len = ngx_sprintf(v->data, "%T", tp->sec + (gmt ? 0 : tp->gmtoff))
-                 - v->data;
+        v->len = ngx_sprintf(v->data, "%T", tp->sec) - v->data;
 
         return NGX_OK;
     }
