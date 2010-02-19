@@ -2061,9 +2061,9 @@ ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
     out = data;
 
     if (!r->header_sent) {
-        if (ngx_http_set_content_type(r) != NGX_OK) {
-            return NGX_ERROR;
-        }
+        r->headers_out.content_type_len =
+                                      r->parent->headers_out.content_type_len;
+        r->headers_out.content_type = r->parent->headers_out.content_type;
 
         if (ngx_http_send_header(r) == NGX_ERROR) {
             return NGX_ERROR;
