@@ -1428,6 +1428,8 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
         return NGX_OK;
     }
 
+    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
+
     if (builtin_session_cache == NGX_SSL_NONE_SCACHE) {
 
         /*
@@ -1458,8 +1460,6 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
     }
 
     SSL_CTX_set_session_cache_mode(ssl->ctx, cache_mode);
-
-    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
 
     if (builtin_session_cache != NGX_SSL_NO_BUILTIN_SCACHE) {
 
