@@ -106,6 +106,8 @@ ngx_ssl_init(ngx_log_t *log)
 
     ENGINE_load_builtin_engines();
 
+    OpenSSL_add_all_algorithms();
+
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
     if (ngx_ssl_connection_index == -1) {
@@ -2315,5 +2317,6 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static void
 ngx_openssl_exit(ngx_cycle_t *cycle)
 {
+    EVP_cleanup();
     ENGINE_cleanup();
 }
