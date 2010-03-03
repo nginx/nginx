@@ -132,10 +132,6 @@ static ngx_str_t ngx_http_status_lines[] = {
 ngx_http_header_out_t  ngx_http_headers_out[] = {
     { ngx_string("Server"), offsetof(ngx_http_headers_out_t, server) },
     { ngx_string("Date"), offsetof(ngx_http_headers_out_t, date) },
-#if 0
-    { ngx_string("Content-Type"),
-                 offsetof(ngx_http_headers_out_t, content_type) },
-#endif
     { ngx_string("Content-Length"),
                  offsetof(ngx_http_headers_out_t, content_length) },
     { ngx_string("Content-Encoding"),
