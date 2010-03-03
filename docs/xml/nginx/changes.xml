@@ -9,11 +9,122 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.34" date="03.03.2010">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал все шифры, используемые в клиентских сертификатах.<br/>
+Спасибо Иннокентию Еникееву.
+</para>
+<para lang="en">
+nginx did not support all ciphers and digests used in client certificates.<br/>
+Thanks to Innocenty Enikeew.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неправильно кэшировал FastCGI-ответы, если перед ответом было
+много вывода в stderr.
+</para>
+<para lang="en">
+nginx cached incorrectly FastCGI responses if there was large stderr output
+before response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал HTTPS-рефереры.
+</para>
+<para lang="en">
+nginx did not support HTTPS referrers.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows мог не находить файлы, если путь в конфигурации был задан
+в другом регистре;
+ошибка появилась в 0.8.34.
+</para>
+<para lang="en">
+nginx/Windows might not find file if path in configuration was given
+in other character case;
+the bug had appeared in 0.8.34.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $date_local выдавала неверное время,
+если использовался формат "%s".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the $date_local variable has an incorrect value,
+if the "%s" format was used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ssl_session_cache не был установлен или установлен в none,
+то при проверке клиентского сертификаты могла происходить
+ошибка "session id context uninitialized";
+ошибка появилась в 0.7.1.
+</para>
+<para lang="en">
+if ssl_session_cache was not set or was set to "none",
+then during client certificate verify
+the error "session id context uninitialized" might occur;
+the bug had appeared in 0.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+geo-диапазон возвращал значение по умолчанию, если диапазон включал
+в себя одну и более сетей размером /16 и не начинался на границе сети
+размером /16.
+</para>
+<para lang="en">
+a geo range returned default value if the range included two or more
+/16 networks and did not begin at /16 network boundary.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+блок, используемый в параметре stub в SSI-директиве include, 
+выводился с MIME-типом "text/plain".
+</para>
+<para lang="en">
+a block used in a "stub" parameter of an "include" SSI directive
+was output with "text/plain" MIME type.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+$r->sleep() не работал;
+ошибка появилась в 0.8.11.
+</para>
+<para lang="en">
+$r->sleep() did not work;
+the bug had appeared in 0.8.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.33" date="01.02.2010">
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует пробелы в конце URI.<br/>
+теперь nginx/Windows игнорирует пробелы в конце URI. <br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
@@ -24,7 +135,7 @@ Thanks to Dan Crowley, Core Security Technologies.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует короткие имена файлов.<br/>
+теперь nginx/Windows игнорирует короткие имена файлов. <br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
@@ -35,22 +146,24 @@ Thanks to Dan Crowley, Core Security Technologies.
 
 <change type="change">
 <para lang="ru">
-теперь keepalive соединения после запросов POST не запрещаются для MSIE 7.0+.
+теперь keepalive соединения после запросов POST не запрещаются для
+MSIE 7.0+.<br/>
 Спасибо Adam Lounds.
 </para>
 <para lang="en">
-now keepalive connections after POST requests are not disabled for MSIE 7.0+.
+now keepalive connections after POST requests are not disabled for
+MSIE 7.0+.<br/>
 Thanks to Adam Lounds.
 </para>
 </change>
 
 <change type="workaround">
 <para lang="ru">
-теперь keepalive соединения запрещены для Safari.
+теперь keepalive соединения запрещены для Safari.<br/>
 Спасибо Joshua Sierles.
 </para>
 <para lang="en">
-now keepalive connections are disabled for Safari.
+now keepalive connections are disabled for Safari.<br/>
 Thanks to Joshua Sierles.
 </para>
 </change>
@@ -143,7 +256,7 @@ Thanks to Julian Reich.
 </para>
 <para lang="en">
 if the "expires modified" set date in the past, then a negative number
-was set in the "Cache-Control" response header line.<br/>
+was set in the "Cache-Control" response header line. <br/>
 Thanks to Alex Kapranoff.
 </para>
 </change>
