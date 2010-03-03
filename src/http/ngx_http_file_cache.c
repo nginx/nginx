@@ -346,7 +346,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     h = (ngx_http_file_cache_header_t *) c->buf->pos;
 
-    if (h->crc32 != c->crc32 || (size_t) h->header_start != c->header_start) {
+    if (h->crc32 != c->crc32) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" has md5 collision", c->file.name.data);
         return NGX_DECLINED;
@@ -358,6 +358,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     c->last_modified = h->last_modified;
     c->date = h->date;
     c->valid_msec = h->valid_msec;
+    c->header_start = h->header_start;
     c->body_start = h->body_start;
 
     r->cached = 1;

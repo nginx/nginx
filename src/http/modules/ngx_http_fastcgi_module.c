@@ -62,7 +62,8 @@ typedef struct {
     size_t                         length;
     size_t                         padding;
 
-    ngx_uint_t                     fastcgi_stdout; /* unsigned :1 */
+    unsigned                       fastcgi_stdout:1;
+    unsigned                       large_stderr:1;
 
     ngx_array_t                   *split_parts;
 
@@ -1081,6 +1082,7 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
 
     f->state = ngx_http_fastcgi_st_version;
     f->fastcgi_stdout = 0;
+    f->large_stderr = 0;
 
     return NGX_OK;
 }
@@ -1099,6 +1101,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     ngx_table_elt_t                *h;
     ngx_http_upstream_t            *u;
     ngx_http_fastcgi_ctx_t         *f;
+    ngx_http_fastcgi_header_t      *fh;
     ngx_http_upstream_header_t     *hh;
     ngx_http_fastcgi_loc_conf_t    *flcf;
     ngx_http_fastcgi_split_part_t  *part;
@@ -1223,8 +1226,17 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                          * of the PHP warnings to not allocate memory
                          */
 
-                        u->buffer.pos = u->buffer.start;
-                        u->buffer.last = u->buffer.start;
+#if (NGX_HTTP_CACHE)
+                        if (r->cache) {
+                            u->buffer.pos = u->buffer.start
+                                                     + r->cache->header_start;
+                        } else {
+                            u->buffer.pos = u->buffer.start;
+                        }
+#endif
+
+                        u->buffer.last = u->buffer.pos;
+                        f->large_stderr = 1;
                     }
 
                     return NGX_AGAIN;
@@ -1239,6 +1251,45 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
 
         /* f->type == NGX_HTTP_FASTCGI_STDOUT */
+
+#if (NGX_HTTP_CACHE)
+
+        if (f->large_stderr) {
+            u_char   *start;
+            ssize_t   len;
+
+            start = u->buffer.start + r->cache->header_start;
+
+            len = u->buffer.pos - start - 2 * sizeof(ngx_http_fastcgi_header_t);
+
+            /*
+             * A tail of large stderr output before HTTP header is placed
+             * in a cache file without a FastCGI record header.
+             * To workaround it we put a dummy FastCGI record header at the
+             * start of the stderr output or update r->cache_header_start,
+             * if there is no enough place for the record header.
+             */
+
+            if (len >= 0) {
+                fh = (ngx_http_fastcgi_header_t *) start;
+                fh->version = 1;
+                fh->type = NGX_HTTP_FASTCGI_STDERR;
+                fh->request_id_hi = 0;
+                fh->request_id_lo = 1;
+                fh->content_length_hi = (u_char) ((len >> 8) & 0xff);
+                fh->content_length_lo = (u_char) (len & 0xff);
+                fh->padding_length = 0;
+                fh->reserved = 0;
+
+            } else {
+                r->cache->header_start += u->buffer.pos - start
+                                           - sizeof(ngx_http_fastcgi_header_t);
+            }
+
+            f->large_stderr = 0;
+        }
+
+#endif
 
         f->fastcgi_stdout = 1;
 
