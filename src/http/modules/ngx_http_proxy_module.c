@@ -2754,6 +2754,13 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (ngx_strcmp(value[1].data, "default") == 0) {
+        if (plcf->proxy_lengths) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"proxy_redirect default\" may not be used "
+                               "with \"proxy_pass\" directive with variables");
+            return NGX_CONF_ERROR;
+        }
+
         if (plcf->url.data == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_redirect default\" must go "
