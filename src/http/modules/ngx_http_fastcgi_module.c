@@ -1254,7 +1254,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
 #if (NGX_HTTP_CACHE)
 
-        if (f->large_stderr) {
+        if (f->large_stderr && r->cache) {
             u_char   *start;
             ssize_t   len;
 
