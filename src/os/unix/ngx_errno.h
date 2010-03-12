@@ -64,8 +64,20 @@ u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
 
 /* Solaris and Tru64 UNIX have thread-safe strerror() */
 
-#define ngx_strerror_r(err, errstr, size)  \
+#define ngx_strerror_r(err, errstr, size)                                    \
     ngx_cpystrn(errstr, (u_char *) strerror(err), size)
+
+#endif
+
+
+#if (NGX_HAVE_SYS_ERRLIST)
+
+#define ngx_sigsafe_strerror(err)                                            \
+    (err > 0 && err < sys_nerr) ? sys_errlist[err] : "Unknown error"
+
+#else
+
+#define ngx_sigsafe_strerror(err)  ""
 
 #endif
 
