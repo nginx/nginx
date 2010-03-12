@@ -262,7 +262,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
     err = (ready == -1) ? ngx_errno : 0;
 
-    if (flags & NGX_UPDATE_TIME) {
+    if (flags & NGX_UPDATE_TIME || ngx_event_timer_alarm) {
         ngx_time_update(0, 0);
     }
 

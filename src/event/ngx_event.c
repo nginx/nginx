@@ -562,8 +562,6 @@ ngx_timer_signal_handler(int signo)
 {
     ngx_event_timer_alarm = 1;
 
-    ngx_time_update(0, 0);
-
 #if 1
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0, "timer signal");
 #endif
