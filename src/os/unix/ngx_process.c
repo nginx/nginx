@@ -317,7 +317,7 @@ ngx_signal_handler(int signo)
         }
     }
 
-    ngx_time_update(0, 0);
+    ngx_time_update(1);
 
     action = "";
 

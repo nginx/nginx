@@ -140,7 +140,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         ev = WaitForMultipleObjects(nev, events, 0, timeout);
 
         err = ngx_errno;
-        ngx_time_update(0, 0);
+        ngx_time_update(0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "master WaitForMultipleObjects: %ul", ev);
@@ -679,7 +679,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         ev = WaitForMultipleObjects(3, events, 0, INFINITE);
 
         err = ngx_errno;
-        ngx_time_update(0, 0);
+        ngx_time_update(0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0,
                        "worker WaitForMultipleObjects: %ul", ev);
@@ -738,7 +738,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         ev = WaitForMultipleObjects(nev, events, 0, INFINITE);
 
         err = ngx_errno;
-        ngx_time_update(0, 0);
+        ngx_time_update(0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, log, 0,
                        "worker exit WaitForMultipleObjects: %ul", ev);
@@ -907,7 +907,7 @@ ngx_cache_manager_thread(void *data)
         ev = WaitForMultipleObjects(2, events, 0, INFINITE);
 
         err = ngx_errno;
-        ngx_time_update(0, 0);
+        ngx_time_update(0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "cache manager WaitForMultipleObjects: %ul", ev);
@@ -968,7 +968,7 @@ ngx_cache_manager_process_handler(void)
 
             next = (n <= next) ? n : next;
 
-            ngx_time_update(0, 0);
+            ngx_time_update(0);
         }
     }
 
@@ -980,7 +980,7 @@ ngx_cache_manager_process_handler(void)
 
     if (ev != WAIT_TIMEOUT) {
 
-        ngx_time_update(0, 0);
+        ngx_time_update(0);
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
                        "cache manager WaitForSingleObject: %ul", ev);
@@ -1008,7 +1008,7 @@ ngx_cache_loader_thread(void *data)
 
         if (path[i]->loader) {
             path[i]->loader(path[i]->data);
-            ngx_time_update(0, 0);
+            ngx_time_update(0);
         }
     }
 
