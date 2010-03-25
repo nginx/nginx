@@ -20,7 +20,8 @@ typedef struct {
 
 
 void ngx_time_init(void);
-void ngx_time_update(ngx_uint_t use_cached_gmtoff);
+void ngx_time_update(void);
+void ngx_time_sigsafe_update(void);
 u_char *ngx_http_time(u_char *buf, time_t t);
 u_char *ngx_http_cookie_time(u_char *buf, time_t t);
 void ngx_gmtime(time_t t, ngx_tm_t *tp);

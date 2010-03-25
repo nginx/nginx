@@ -28,11 +28,11 @@ volatile ngx_str_t       ngx_cached_err_log_time;
 volatile ngx_str_t       ngx_cached_http_time;
 volatile ngx_str_t       ngx_cached_http_log_time;
 
-#if !(NGX_HAVE_GETTIMEZONE)
+#if !(NGX_WIN32)
 
 /*
  * locatime() and localtime_r() are not Async-Signal-Safe functions, therefore,
- * if ngx_time_update() is called by signal handler, it uses the cached
+ * they must not be called by a signal handler, so we use the cached
  * GMT offset value. Fortunately the value is changed only two times a year.
  */
 
@@ -61,12 +61,12 @@ ngx_time_init(void)
 
     ngx_cached_time = &cached_time[0];
 
-    ngx_time_update(0);
+    ngx_time_update();
 }
 
 
 void
-ngx_time_update(ngx_uint_t use_cached_gmtoff)
+ngx_time_update(void)
 {
     u_char          *p0, *p1, *p2;
     ngx_tm_t         tm, gmt;
@@ -120,22 +120,16 @@ ngx_time_update(ngx_uint_t use_cached_gmtoff)
     tp->gmtoff = ngx_gettimezone();
     ngx_gmtime(sec + tp->gmtoff * 60, &tm);
 
+#elif (NGX_HAVE_GMTOFF)
+
+    ngx_localtime(sec, &tm);
+    cached_gmtoff = (ngx_int_t) (tm.ngx_tm_gmtoff / 60);
+    tp->gmtoff = cached_gmtoff;
+
 #else
 
-    if (use_cached_gmtoff) {
-        ngx_gmtime(sec + cached_gmtoff * 60, &tm);
-
-    } else {
-        ngx_localtime(sec, &tm);
-
-#if (NGX_HAVE_GMTOFF)
-        cached_gmtoff = (ngx_int_t) (tm.ngx_tm_gmtoff / 60);
-#else
-        cached_gmtoff = ngx_timezone(tm.ngx_tm_isdst);
-#endif
-
-    }
-
+    ngx_localtime(sec, &tm);
+    cached_gmtoff = ngx_timezone(tm.ngx_tm_isdst);
     tp->gmtoff = cached_gmtoff;
 
 #endif
@@ -168,6 +162,59 @@ ngx_time_update(ngx_uint_t use_cached_gmtoff)
 
     ngx_unlock(&ngx_time_lock);
 }
+
+
+#if !(NGX_WIN32)
+
+void
+ngx_time_sigsafe_update(void)
+{
+    u_char          *p;
+    ngx_tm_t         tm;
+    time_t           sec;
+    ngx_uint_t       msec;
+    ngx_time_t      *tp;
+    struct timeval   tv;
+
+    if (!ngx_trylock(&ngx_time_lock)) {
+        return;
+    }
+
+    ngx_gettimeofday(&tv);
+
+    sec = tv.tv_sec;
+    msec = tv.tv_usec / 1000;
+
+    tp = &cached_time[slot];
+
+    if (tp->sec == sec) {
+        ngx_unlock(&ngx_time_lock);
+        return;
+    }
+
+    if (slot == NGX_TIME_SLOTS - 1) {
+        slot = 0;
+    } else {
+        slot++;
+    }
+
+    ngx_gmtime(sec + cached_gmtoff * 60, &tm);
+
+    p = &cached_err_log_time[slot][0];
+
+    (void) ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
+                       tm.ngx_tm_year, tm.ngx_tm_mon,
+                       tm.ngx_tm_mday, tm.ngx_tm_hour,
+                       tm.ngx_tm_min, tm.ngx_tm_sec);
+
+    ngx_memory_barrier();
+
+    ngx_cached_err_log_time.data = p;
+
+    ngx_unlock(&ngx_time_lock);
+}
+
+#endif
 
 
 u_char *

@@ -85,7 +85,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
 
     rc = WaitForMultipleObjects(2, events, 0, 5000);
 
-    ngx_time_update(0);
+    ngx_time_update();
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                    "WaitForMultipleObjects: %ul", rc);
