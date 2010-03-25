@@ -637,6 +637,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_proxy_process_status_line;
     u->abort_request = ngx_http_proxy_abort_request;
     u->finalize_request = ngx_http_proxy_finalize_request;
+    r->state = 0;
 
     if (plcf->redirects) {
         u->rewrite_redirect = ngx_http_proxy_rewrite_redirect;
@@ -1198,6 +1199,7 @@ ngx_http_proxy_reinit_request(ngx_http_request_t *r)
     ctx->status_end = NULL;
 
     r->upstream->process_header = ngx_http_proxy_process_status_line;
+    r->state = 0;
 
     return NGX_OK;
 }
