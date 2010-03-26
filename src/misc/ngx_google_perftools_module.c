@@ -73,7 +73,7 @@ ngx_google_perftools_create_conf(ngx_cycle_t *cycle)
     }
 
     /*
-     * set by pcalloc()
+     * set by ngx_pcalloc()
      *
      *     gptcf->profiles = { 0, NULL };
      */

@@ -919,7 +919,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     }
 
     /*
-     * set by pcalloc()
+     * set by ngx_pcalloc()
      *
      *     ccf->pid = NULL;
      *     ccf->oldpid = NULL;
