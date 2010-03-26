@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 /*
- * declare Profiler here interface because
+ * declare Profiler interface here because
  * <google/profiler.h> is C++ header file
  */
 
@@ -101,7 +101,6 @@ ngx_google_perftools_worker(ngx_cycle_t *cycle)
     }
 
     if (getenv("CPUPROFILE")) {
-
         /* disable inherited Profiler enabled in master process */
         ProfilerStop();
     }
@@ -109,7 +108,6 @@ ngx_google_perftools_worker(ngx_cycle_t *cycle)
     ngx_sprintf(profile, "%V.%d%Z", &gptcf->profiles, ngx_pid);
 
     if (ProfilerStart(profile)) {
-
         /* start ITIMER_PROF timer */
         ProfilerRegisterThread();
 
