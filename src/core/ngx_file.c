@@ -762,10 +762,12 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
         size -= n;
     }
 
-    if (ngx_set_file_time(to, nfd, cf->time) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
-                      ngx_set_file_time_n " \"%s\" failed", to);
-        goto failed;
+    if (cf->time != -1) {
+        if (ngx_set_file_time(to, nfd, cf->time) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                          ngx_set_file_time_n " \"%s\" failed", to);
+            goto failed;
+        }
     }
 
     rc = NGX_OK;
