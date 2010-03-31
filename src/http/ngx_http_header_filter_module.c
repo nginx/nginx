@@ -338,6 +338,11 @@ ngx_http_header_filter(ngx_http_request_t *r)
             port = ntohs(sin6->sin6_port);
             break;
 #endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            port = 0;
+            break;
+#endif
         default: /* AF_INET */
             sin = (struct sockaddr_in *) c->local_sockaddr;
             port = ntohs(sin->sin_port);
