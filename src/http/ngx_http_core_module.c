@@ -599,6 +599,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, if_modified_since),
       &ngx_http_core_if_modified_since },
 
+    { ngx_string("chunked_transfer_encoding"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, chunked_transfer_encoding),
+      NULL },
+
     { ngx_string("error_page"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_2MORE,
@@ -2972,6 +2979,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->log_subrequest = NGX_CONF_UNSET;
     clcf->recursive_error_pages = NGX_CONF_UNSET;
     clcf->server_tokens = NGX_CONF_UNSET;
+    clcf->chunked_transfer_encoding = NGX_CONF_UNSET;
     clcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     clcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
@@ -3215,6 +3223,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->recursive_error_pages,
                               prev->recursive_error_pages, 0);
     ngx_conf_merge_value(conf->server_tokens, prev->server_tokens, 1);
+    ngx_conf_merge_value(conf->chunked_transfer_encoding,
+                              prev->chunked_transfer_encoding, 1);
 
     ngx_conf_merge_ptr_value(conf->open_file_cache,
                               prev->open_file_cache, NULL);
