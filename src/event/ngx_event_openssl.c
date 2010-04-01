@@ -561,6 +561,9 @@ ngx_ssl_handshake(ngx_connection_t *c)
 #if (NGX_DEBUG)
         {
         char         buf[129], *s, *d;
+#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+        const
+#endif
         SSL_CIPHER  *cipher;
 
         cipher = SSL_get_current_cipher(c->ssl->connection);
