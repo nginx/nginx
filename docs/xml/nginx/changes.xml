@@ -9,6 +9,106 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.35" date="29.03.2010">
+
+<change type="change">
+<para lang="ru">
+теперь charset-фильтр работает до SSI-фильтра.
+</para>
+<para lang="en">
+now the charset filter runs before the SSI filter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива chunked_transfer_encoding.
+</para>
+<para lang="en">
+the "chunked_transfer_encoding" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+символ "&amp;" при копировании в аргументы в правилах rewrite не экранировался.
+</para>
+<para lang="en">
+an "&amp;" character was not escaped when it was copied in arguments part
+in a rewrite rule.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог завершаться аварийно во время обработки сигнала или
+при использовании директивы timer_resolution на платформах,
+не поддерживающих методы kqueue или eventport.<br/>
+Спасибо George Xie и Максиму Дунину.
+</para>
+<para lang="en">
+nginx might be terminated abnormally
+while a signal processing or if the directive "timer_resolution" was used
+on platforms which do not support kqueue or eventport notification methods.<br/>
+Thanks to George Xie and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если временные файлы и постоянное место хранения располагались на разных
+файловых системах, то у постоянных файлов время изменения было неверным.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+if temporary files and permanent storage area resided at different
+file systems, then permanent file modification times were incorrect.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_memcached_module мог выдавать ошибку "memcached sent invalid
+trailer".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+ngx_http_memcached_module might issue the error message "memcached sent invalid
+trailer".<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не мог собрать библиотеку zlib-1.2.4 из исходных текстов.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+nginx could not built zlib-1.2.4 library using the library sources.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе происходил segmentation fault,
+если перед ответом FastCGI-сервера было много вывода в stderr;
+ошибка появилась в 0.8.34.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault occurred in a worker process,
+if there was large stderr output before FastCGI response;
+the bug had appeared in 0.8.34.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.34" date="03.03.2010">
 
 <change type="bugfix">
@@ -46,12 +146,12 @@ nginx did not support HTTPS referrers.
 <para lang="ru">
 nginx/Windows мог не находить файлы, если путь в конфигурации был задан
 в другом регистре;
-ошибка появилась в 0.8.34.
+ошибка появилась в 0.8.33.
 </para>
 <para lang="en">
 nginx/Windows might not find file if path in configuration was given
 in other character case;
-the bug had appeared in 0.8.34.
+the bug had appeared in 0.8.33.
 </para>
 </change>
 
@@ -6282,7 +6382,7 @@ Thanks to Andrei Nigmatulin.
 
 <change type="bugfix">
 <para lang="ru">
-ngx_http_memcached_module не устанавливал upstream_response_time.<br/>
+ngx_http_memcached_module не устанавливал $upstream_response_time.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
