@@ -1101,7 +1101,6 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
     ngx_table_elt_t                *h;
     ngx_http_upstream_t            *u;
     ngx_http_fastcgi_ctx_t         *f;
-    ngx_http_fastcgi_header_t      *fh;
     ngx_http_upstream_header_t     *hh;
     ngx_http_fastcgi_loc_conf_t    *flcf;
     ngx_http_fastcgi_split_part_t  *part;
@@ -1255,8 +1254,9 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 #if (NGX_HTTP_CACHE)
 
         if (f->large_stderr && r->cache) {
-            u_char   *start;
-            ssize_t   len;
+            u_char                     *start;
+            ssize_t                     len;
+            ngx_http_fastcgi_header_t  *fh;
 
             start = u->buffer.start + r->cache->header_start;
 
