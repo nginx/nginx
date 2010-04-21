@@ -2161,10 +2161,9 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         }
     }
 
-    switch (ctx->encoding) {
+    p = value->data;
 
-    case NGX_HTTP_SSI_NO_ENCODING:
-        break;
+    switch (ctx->encoding) {
 
     case NGX_HTTP_SSI_URL_ENCODING:
         len = 2 * ngx_escape_uri(NULL, value->data, value->len,
@@ -2177,11 +2176,9 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             }
 
             (void) ngx_escape_uri(p, value->data, value->len, NGX_ESCAPE_HTML);
-
-            value->len += len;
-            value->data = p;
         }
 
+        len += value->len;
         break;
 
     case NGX_HTTP_SSI_ENTITY_ENCODING:
@@ -2194,11 +2191,13 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             }
 
             (void) ngx_escape_html(p, value->data, value->len);
-
-            value->len += len;
-            value->data = p;
         }
 
+        len += value->len;
+        break;
+
+    default: /* NGX_HTTP_SSI_NO_ENCODING */
+        len = value->len;
         break;
     }
 
@@ -2213,8 +2212,8 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     b->memory = 1;
-    b->pos = value->data;
-    b->last = value->data + value->len;
+    b->pos = p;
+    b->last = p + len;
 
     cl->buf = b;
     cl->next = NULL;
