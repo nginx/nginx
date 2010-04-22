@@ -441,8 +441,7 @@ ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
 
 
 ngx_http_variable_value_t *
-ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
-    ngx_uint_t nowarn)
+ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
 {
     ngx_http_variable_t        *v;
     ngx_http_variable_value_t  *vv;
@@ -454,7 +453,7 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
 
     if (v) {
         if (v->flags & NGX_HTTP_VAR_INDEXED) {
-            return ngx_http_get_indexed_variable(r, v->index);
+            return ngx_http_get_flushed_variable(r, v->index);
 
         } else {
 
@@ -525,11 +524,6 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
     }
 
     vv->not_found = 1;
-
-    if (nowarn == 0) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "unknown \"%V\" variable", name);
-    }
 
     return vv;
 }
