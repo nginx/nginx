@@ -139,6 +139,9 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_fd_info(fd, sb)      fstat(fd, sb)
 #define ngx_fd_info_n            "fstat()"
 
+#define ngx_link_info(file, sb)  lstat((const char *) file, sb)
+#define ngx_link_info_n          "lstat()"
+
 #define ngx_is_dir(sb)           (S_ISDIR((sb)->st_mode))
 #define ngx_is_file(sb)          (S_ISREG((sb)->st_mode))
 #define ngx_is_link(sb)          (S_ISLNK((sb)->st_mode))
