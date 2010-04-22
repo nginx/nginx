@@ -9,7 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
-<changes ver="0.8.35" date="29.03.2010">
+<changes ver="0.8.36" date="22.04.2010">
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module неправильно обрабатывал методы DELETE, COPY и MOVE
+для симлинков.
+</para>
+<para lang="en">
+the ngx_http_dav_module handled incorrectly the DELETE, COPY, and MOVE methods
+for symlinks.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль SSI в подзапросах использовал закэшированные в основном запросе
+значения переменных $query_string, $arg_... и им подобных.
+</para>
+<para lang="en">
+values of the $query_string, $arg_..., etc. variables cached in main
+request were used by the SSI module in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение переменной повторно экранировалось после каждого вывода
+SSI-команды echo;
+ошибка появилась в 0.6.14.
+</para>
+<para lang="en">
+a variable value was repeatedly encoded after each
+an "echo" SSI-command output;
+the bug had appeared in 0.6.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс зависал при запросе файла FIFO.<br/>
+Спасибо Vicente Aguilar и Максиму Дунину.
+</para>
+<para lang="en">
+a worker process hung if a FIFO file was requested.<br/>
+Thanks to Vicente Aguilar and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с OpenSSL-1.0.0 на 64-битном Linux.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+OpenSSL-1.0.0 compatibility on 64-bit Linux.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http-cache;
+ошибка появилась в 0.8.35.
+</para>
+<para lang="en">
+nginx could not be built --without-http-cache;
+the bug had appeared in 0.8.35.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="0.8.35" date="01.04.2010">
 
 <change type="change">
 <para lang="ru">
