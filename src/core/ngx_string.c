@@ -75,7 +75,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %[0][width][u][x|X]D      int32_t/uint32_t
  *    %[0][width][u][x|X]L      int64_t/uint64_t
  *    %[0][width|m][u][x|X]A    ngx_atomic_int_t/ngx_atomic_uint_t
- *    %[0][width][.width]f      float
+ *    %[0][width][.width]f      double, max valid number fits to %18.15f
  *    %P                        ngx_pid_t
  *    %M                        ngx_msec_t
  *    %r                        rlim_t
@@ -143,7 +143,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 {
     u_char                *p, zero;
     int                    d;
-    float                  f, scale;
+    double                 f, scale;
     size_t                 len, slen;
     int64_t                i64;
     uint64_t               ui64;
@@ -359,7 +359,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
                 break;
 
             case 'f':
-                f = (float) va_arg(args, double);
+                f = va_arg(args, double);
 
                 if (f < 0) {
                     *buf++ = '-';
