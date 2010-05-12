@@ -1144,7 +1144,6 @@ found:
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
-
     }
 
     return NGX_CONF_OK;
