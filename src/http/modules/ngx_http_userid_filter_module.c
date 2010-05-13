@@ -780,4 +780,3 @@ ngx_http_userid_init_worker(ngx_cycle_t *cycle)
 
     return NGX_OK;
 }
-
