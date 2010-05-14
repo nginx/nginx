@@ -877,6 +877,56 @@ ngx_atoi(u_char *line, size_t n)
 }
 
 
+/* parse a fixed point number, e.g., ngx_atofp("10.5", 4, 2) returns 1050 */
+
+ngx_int_t
+ngx_atofp(u_char *line, size_t n, size_t point)
+{
+    ngx_int_t   value;
+    ngx_uint_t  dot;
+
+    if (n == 0) {
+        return NGX_ERROR;
+    }
+
+    dot = 0;
+
+    for (value = 0; n--; line++) {
+
+        if (point == 0) {
+            return NGX_ERROR;
+        }
+
+        if (*line == '.') {
+            if (dot) {
+                return NGX_ERROR;
+            }
+
+            dot = 1;
+            continue;
+        }
+
+        if (*line < '0' || *line > '9') {
+            return NGX_ERROR;
+        }
+
+        value = value * 10 + (*line - '0');
+        point -= dot;
+    }
+
+    while (point--) {
+        value = value * 10;
+    }
+
+    if (value < 0) {
+        return NGX_ERROR;
+
+    } else {
+        return value;
+    }
+}
+
+
 ssize_t
 ngx_atosz(u_char *line, size_t n)
 {
