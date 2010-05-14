@@ -387,6 +387,10 @@ HTTP_MAP_MODULE=ngx_http_map_module
 HTTP_MAP_SRCS=src/http/modules/ngx_http_map_module.c
 
 
+HTTP_SPLIT_CLIENTS_MODULE=ngx_http_split_clients_module
+HTTP_SPLIT_CLIENTS_SRCS=src/http/modules/ngx_http_split_clients_module.c
+
+
 HTTP_REFERER_MODULE=ngx_http_referer_module
 HTTP_REFERER_SRCS=src/http/modules/ngx_http_referer_module.c
 

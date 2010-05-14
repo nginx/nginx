@@ -74,6 +74,7 @@ HTTP_STATUS=NO
 HTTP_GEO=YES
 HTTP_GEOIP=NO
 HTTP_MAP=YES
+HTTP_SPLIT_CLIENTS=YES
 HTTP_REFERER=YES
 HTTP_REWRITE=YES
 HTTP_PROXY=YES
@@ -209,6 +210,7 @@ do
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
         --without-http_map_module)       HTTP_MAP=NO                ;;
+        --without-http_split_clients_module) HTTP_SPLIT_CLIENTS=NO  ;;
         --without-http_referer_module)   HTTP_REFERER=NO            ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
         --without-http_proxy_module)     HTTP_PROXY=NO              ;;
@@ -341,6 +343,7 @@ cat << END
   --without-http_autoindex_module    disable ngx_http_autoindex_module
   --without-http_geo_module          disable ngx_http_geo_module
   --without-http_map_module          disable ngx_http_map_module
+  --without-http_split_clients_module disable ngx_http_split_clients_module
   --without-http_referer_module      disable ngx_http_referer_module
   --without-http_rewrite_module      disable ngx_http_rewrite_module
   --without-http_proxy_module        disable ngx_http_proxy_module
