@@ -3023,16 +3023,18 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    last = h->value.data + h->value.len;
+    p = h->value.data;
+    last = p + h->value.len;
 
-    if (ngx_strlcasestrn(h->value.data, last, (u_char *) "no-cache", 8 - 1)
-        != NULL)
+    if (ngx_strlcasestrn(p, last, (u_char *) "no-cache", 8 - 1) != NULL
+        || ngx_strlcasestrn(p, last, (u_char *) "no-store", 8 - 1) != NULL
+        || ngx_strlcasestrn(p, last, (u_char *) "private", 7 - 1) != NULL)
     {
         u->cacheable = 0;
         return NGX_OK;
     }
 
-    p = ngx_strlcasestrn(h->value.data, last, (u_char *) "max-age=", 8 - 1);
+    p = ngx_strlcasestrn(p, last, (u_char *) "max-age=", 8 - 1);
 
     if (p == NULL) {
         return NGX_OK;
