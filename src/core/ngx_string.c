@@ -229,9 +229,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'V':
                 v = va_arg(args, ngx_str_t *);
 
-                len = v->len;
-                len = (buf + len < last) ? len : (size_t) (last - buf);
-
+                len = ngx_min(((size_t) (last - buf)), v->len);
                 buf = ngx_cpymem(buf, v->data, len);
                 fmt++;
 
@@ -240,9 +238,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'v':
                 vv = va_arg(args, ngx_variable_value_t *);
 
-                len = vv->len;
-                len = (buf + len < last) ? len : (size_t) (last - buf);
-
+                len = ngx_min(((size_t) (last - buf)), vv->len);
                 buf = ngx_cpymem(buf, vv->data, len);
                 fmt++;
 
@@ -257,8 +253,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
                     }
 
                 } else {
-                    len = (buf + slen < last) ? slen : (size_t) (last - buf);
-
+                    len = ngx_min(((size_t) (last - buf)), slen);
                     buf = ngx_cpymem(buf, p, len);
                 }
 
