@@ -218,8 +218,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
             if (status == NGX_HTTP_NO_CONTENT) {
                 r->header_only = 1;
-                r->headers_out.content_type.len = 0;
-                r->headers_out.content_type.data = NULL;
+                ngx_str_null(&r->headers_out.content_type);
                 r->headers_out.last_modified_time = -1;
                 r->headers_out.last_modified = NULL;
                 r->headers_out.content_length = NULL;
@@ -371,8 +370,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         }
 
     } else {
-        host.len = 0;
-        host.data = NULL;
+        ngx_str_null(&host);
         port = 0;
     }
 
@@ -539,8 +537,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
         r->headers_out.location->value.len = b->last - p;
         r->headers_out.location->value.data = p;
-        r->headers_out.location->key.len = sizeof("Location") - 1;
-        r->headers_out.location->key.data = (u_char *) "Location";
+        ngx_str_set(&r->headers_out.location->key, "Location");
 
         *b->last++ = CR; *b->last++ = LF;
     }

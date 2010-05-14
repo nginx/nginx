@@ -123,8 +123,7 @@ ngx_http_empty_gif_handler(ngx_http_request_t *r)
     }
 
     r->headers_out.content_type_len = sizeof("image/gif") - 1;
-    r->headers_out.content_type.len = sizeof("image/gif") - 1;
-    r->headers_out.content_type.data = (u_char *) "image/gif";
+    ngx_str_set(&r->headers_out.content_type, "image/gif");
 
     if (r->method == NGX_HTTP_HEAD) {
         r->headers_out.status = NGX_HTTP_OK;

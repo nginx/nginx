@@ -1685,8 +1685,7 @@ ngx_http_set_exten(ngx_http_request_t *r)
 {
     ngx_int_t  i;
 
-    r->exten.len = 0;
-    r->exten.data = NULL;
+    ngx_str_null(&r->exten);
 
     for (i = r->uri.len - 1; i > 1; i--) {
         if (r->uri.data[i] == '.' && r->uri.data[i - 1] != '/') {
@@ -2187,8 +2186,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
         r->args = *args;
 
     } else {
-        r->args.len = 0;
-        r->args.data = NULL;
+        ngx_str_null(&r->args);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -3032,8 +3030,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->root_values = prev->root_values;
 
         if (prev->root.data == NULL) {
-            conf->root.len = sizeof("html") - 1;
-            conf->root.data = (u_char *) "html";
+            ngx_str_set(&conf->root, "html");
 
             if (ngx_conf_full_name(cf->cycle, &conf->root, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
@@ -3891,8 +3888,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    args.len = 0;
-    args.data = NULL;
+    ngx_str_null(&args);
 
     if (cv.lengths == NULL && uri.data[0] == '/') {
         p = (u_char *) ngx_strchr(uri.data, '?');

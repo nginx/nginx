@@ -825,8 +825,7 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
     ngx_str_t   file, buf;
     ngx_dir_t   dir;
 
-    buf.len = 0;
-    buf.data = NULL;
+    ngx_str_null(&buf);
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, ctx->log, 0,
                    "walk tree \"%V\"", tree);

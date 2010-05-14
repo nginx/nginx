@@ -304,8 +304,7 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
 
     default:
 #if (NGX_SUPPRESS_WARN)
-        line.len = 0;
-        line.data = NULL;
+        ngx_str_null(&line);
 #endif
         break;
     }
@@ -439,8 +438,7 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
 
     default:
 #if (NGX_SUPPRESS_WARN)
-        line.len = 0;
-        line.data = NULL;
+        ngx_str_null(&line);
 #endif
         break;
     }
@@ -664,8 +662,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
 
     default:
 #if (NGX_SUPPRESS_WARN)
-        line.len = 0;
-        line.data = NULL;
+        ngx_str_null(&line);
 #endif
         break;
     }

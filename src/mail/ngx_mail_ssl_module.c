@@ -163,8 +163,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
      *     scf->certificate = { 0, NULL };
      *     scf->certificate_key = { 0, NULL };
      *     scf->dhparam = { 0, NULL };
-     *     scf->ciphers.len = 0;
-     *     scf->ciphers.data = NULL;
+     *     scf->ciphers = { 0, NULL };
      *     scf->shm_zone = NULL;
      */
 

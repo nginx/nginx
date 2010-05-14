@@ -553,8 +553,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
     r->err_status = NGX_HTTP_MOVED_TEMPORARILY;
 
     location->hash = 1;
-    location->key.len = sizeof("Location") - 1;
-    location->key.data = (u_char *) "Location";
+    ngx_str_set(&location->key, "Location");
     location->value = uri;
 
     r->headers_out.location = location;
@@ -608,8 +607,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
             }
 
             r->headers_out.content_type_len = sizeof("text/html") - 1;
-            r->headers_out.content_type.len = sizeof("text/html") - 1;
-            r->headers_out.content_type.data = (u_char *) "text/html";
+            ngx_str_set(&r->headers_out.content_type, "text/html");
             r->headers_out.content_type_lowcase = NULL;
 
         } else {
@@ -711,8 +709,7 @@ ngx_http_send_refresh(ngx_http_request_t *r)
     r->err_status = NGX_HTTP_OK;
 
     r->headers_out.content_type_len = sizeof("text/html") - 1;
-    r->headers_out.content_type.len = sizeof("text/html") - 1;
-    r->headers_out.content_type.data = (u_char *) "text/html";
+    ngx_str_set(&r->headers_out.content_type, "text/html");
     r->headers_out.content_type_lowcase = NULL;
 
     r->headers_out.location->hash = 0;

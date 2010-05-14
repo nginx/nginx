@@ -589,9 +589,7 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    u->schema.len = sizeof("fastcgi://") - 1;
-    u->schema.data = (u_char *) "fastcgi://";
-
+    ngx_str_set(&u->schema, "fastcgi://");
     u->output.tag = (ngx_buf_tag_t) &ngx_http_fastcgi_module;
 
     u->conf = &flcf->upstream;
@@ -1449,15 +1447,12 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                 } else if (u->headers_in.location) {
                     u->headers_in.status_n = 302;
-                    u->headers_in.status_line.len =
-                                           sizeof("302 Moved Temporarily") - 1;
-                    u->headers_in.status_line.data =
-                                           (u_char *) "302 Moved Temporarily";
+                    ngx_str_set(&u->headers_in.status_line,
+                                "302 Moved Temporarily");
 
                 } else {
                     u->headers_in.status_n = 200;
-                    u->headers_in.status_line.len = sizeof("200 OK") - 1;
-                    u->headers_in.status_line.data = (u_char *) "200 OK";
+                    ngx_str_set(&u->headers_in.status_line, "200 OK");
                 }
 
                 if (u->state) {
@@ -1922,8 +1917,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.store_lengths = NULL;
      *     conf->upstream.store_values = NULL;
      *
-     *     conf->index.len = 0;
-     *     conf->index.data = NULL;
+     *     conf->index.len = { 0, NULL };
      */
 
     conf->upstream.store = NGX_CONF_UNSET;

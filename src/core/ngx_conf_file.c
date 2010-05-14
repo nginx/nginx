@@ -903,8 +903,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     ngx_open_file_t  *file;
 
 #if (NGX_SUPPRESS_WARN)
-    full.len = 0;
-    full.data = NULL;
+    ngx_str_null(&full);
 #endif
 
     if (name->len) {

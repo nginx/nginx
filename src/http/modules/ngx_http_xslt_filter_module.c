@@ -837,8 +837,7 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
     } else if (doc_type == XML_HTML_DOCUMENT_NODE) {
 
         r->headers_out.content_type_len = sizeof("text/html") - 1;
-        r->headers_out.content_type.len = sizeof("text/html") - 1;
-        r->headers_out.content_type.data = (u_char *) "text/html";
+        ngx_str_set(&r->headers_out.content_type, "text/html");
     }
 
     r->headers_out.content_type_lowcase = NULL;

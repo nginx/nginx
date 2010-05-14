@@ -859,14 +859,11 @@ ngx_process_options(ngx_cycle_t *cycle)
 #else
 
 #ifdef NGX_CONF_PREFIX
-        cycle->conf_prefix.len = sizeof(NGX_CONF_PREFIX) - 1;
-        cycle->conf_prefix.data = (u_char *) NGX_CONF_PREFIX;
+        ngx_str_set(&cycle->conf_prefix, NGX_CONF_PREFIX);
 #else
-        cycle->conf_prefix.len = sizeof(NGX_PREFIX) - 1;
-        cycle->conf_prefix.data = (u_char *) NGX_PREFIX;
+        ngx_str_set(&cycle->conf_prefix, NGX_PREFIX);
 #endif
-        cycle->prefix.len = sizeof(NGX_PREFIX) - 1;
-        cycle->prefix.data = (u_char *) NGX_PREFIX;
+        ngx_str_set(&cycle->prefix, NGX_PREFIX);
 
 #endif
     }
@@ -876,8 +873,7 @@ ngx_process_options(ngx_cycle_t *cycle)
         cycle->conf_file.data = ngx_conf_file;
 
     } else {
-        cycle->conf_file.len = sizeof(NGX_CONF_PATH) - 1;
-        cycle->conf_file.data = (u_char *) NGX_CONF_PATH;
+        ngx_str_set(&cycle->conf_file, NGX_CONF_PATH);
     }
 
     if (ngx_conf_full_name(cycle, &cycle->conf_file, 0) != NGX_OK) {
@@ -993,8 +989,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 
     if (ccf->pid.len == 0) {
-        ccf->pid.len = sizeof(NGX_PID_PATH) - 1;
-        ccf->pid.data = (u_char *) NGX_PID_PATH;
+        ngx_str_set(&ccf->pid, NGX_PID_PATH);
     }
 
     if (ngx_conf_full_name(cycle, &ccf->pid, 0) != NGX_OK) {
@@ -1042,8 +1037,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 
     if (ccf->lock_file.len == 0) {
-        ccf->lock_file.len = sizeof(NGX_LOCK_PATH) - 1;
-        ccf->lock_file.data = (u_char *) NGX_LOCK_PATH;
+        ngx_str_set(&ccf->lock_file, NGX_LOCK_PATH);
     }
 
     if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) != NGX_OK) {

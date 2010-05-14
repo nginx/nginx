@@ -285,11 +285,8 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
     }
 
     h->hash = 1;
-    h->key.len = sizeof("Content-Encoding") - 1;
-    h->key.data = (u_char *) "Content-Encoding";
-    h->value.len = sizeof("gzip") - 1;
-    h->value.data = (u_char *) "gzip";
-
+    ngx_str_set(&h->key, "Content-Encoding");
+    ngx_str_set(&h->value, "gzip");
     r->headers_out.content_encoding = h;
 
     r->main_filter_need_in_memory = 1;

@@ -481,8 +481,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
             return NGX_CONF_ERROR;
         }
 
-        m->len = sizeof(NGX_PERL_MODULES) - 1;
-        m->data = NGX_PERL_MODULES;
+        ngx_str_set(m, NGX_PERL_MODULES);
     }
 #endif
 

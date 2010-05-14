@@ -493,8 +493,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     }
 
     set_cookie->hash = 1;
-    set_cookie->key.len = sizeof("Set-Cookie") - 1;
-    set_cookie->key.data = (u_char *) "Set-Cookie";
+    ngx_str_set(&set_cookie->key, "Set-Cookie");
     set_cookie->value.len = p - cookie;
     set_cookie->value.data = cookie;
 
@@ -511,8 +510,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     }
 
     p3p->hash = 1;
-    p3p->key.len = sizeof("P3P") - 1;
-    p3p->key.data = (u_char *) "P3P";
+    ngx_str_set(&p3p->key, "P3P");
     p3p->value = conf->p3p;
 
     return NGX_OK;
@@ -576,14 +574,10 @@ ngx_http_userid_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->name.len = 0;
-     *     conf->name.date = NULL;
-     *     conf->domain.len = 0;
-     *     conf->domain.date = NULL;
-     *     conf->path.len = 0;
-     *     conf->path.date = NULL;
-     *     conf->p3p.len = 0;
-     *     conf->p3p.date = NULL;
+     *     conf->name = { 0, NULL };
+     *     conf->domain = { 0, NULL };
+     *     conf->path = { 0, NULL };
+     *     conf->p3p = { 0, NULL };
      */
 
     conf->enable = NGX_CONF_UNSET_UINT;
@@ -642,9 +636,7 @@ ngx_http_userid_domain(ngx_conf_t *cf, void *post, void *data)
     u_char  *p, *new;
 
     if (ngx_strcmp(domain->data, "none") == 0) {
-        domain->len = 0;
-        domain->data = (u_char *) "";
-
+        ngx_str_set(domain, "");
         return NGX_CONF_OK;
     }
 
@@ -727,8 +719,7 @@ ngx_http_userid_p3p(ngx_conf_t *cf, void *post, void *data)
     ngx_str_t  *p3p = data;
 
     if (ngx_strcmp(p3p->data, "none") == 0) {
-        p3p->len = 0;
-        p3p->data = (u_char *) "";
+        ngx_str_set(p3p, "");
     }
 
     return NGX_CONF_OK;

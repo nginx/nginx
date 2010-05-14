@@ -59,8 +59,7 @@ ngx_mail_pop3_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
         s->out.len = p - s->out.data;
 
     } else {
-        s->out.len = sizeof(pop3_greeting) - 1;
-        s->out.data = pop3_greeting;
+        ngx_str_set(&s->out, pop3_greeting);
     }
 
     c->read->handler = ngx_mail_pop3_init_protocol;
@@ -149,8 +148,7 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
         return;
     }
 
-    s->out.len = sizeof(pop3_ok) - 1;
-    s->out.data = pop3_ok;
+    ngx_str_set(&s->out, pop3_ok);
 
     if (rc == NGX_OK) {
         switch (s->mail_state) {
@@ -226,8 +224,7 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
         case ngx_pop3_auth_login_username:
             rc = ngx_mail_auth_login_username(s, c, 0);
 
-            s->out.len = sizeof(pop3_password) - 1;
-            s->out.data = pop3_password;
+            ngx_str_set(&s->out, pop3_password);
             s->mail_state = ngx_pop3_auth_login_password;
             break;
 
@@ -259,8 +256,7 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
         s->mail_state = ngx_pop3_start;
         s->state = 0;
 
-        s->out.len = sizeof(pop3_invalid_command) - 1;
-        s->out.data = pop3_invalid_command;
+        ngx_str_set(&s->out, pop3_invalid_command);
 
         /* fall through */
 
@@ -466,24 +462,21 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_LOGIN:
 
-        s->out.len = sizeof(pop3_username) - 1;
-        s->out.data = pop3_username;
+        ngx_str_set(&s->out, pop3_username);
         s->mail_state = ngx_pop3_auth_login_username;
 
         return NGX_OK;
 
     case NGX_MAIL_AUTH_LOGIN_USERNAME:
 
-        s->out.len = sizeof(pop3_password) - 1;
-        s->out.data = pop3_password;
+        ngx_str_set(&s->out, pop3_password);
         s->mail_state = ngx_pop3_auth_login_password;
 
         return ngx_mail_auth_login_username(s, c, 1);
 
     case NGX_MAIL_AUTH_PLAIN:
 
-        s->out.len = sizeof(pop3_next) - 1;
-        s->out.data = pop3_next;
+        ngx_str_set(&s->out, pop3_next);
         s->mail_state = ngx_pop3_auth_plain;
 
         return NGX_OK;

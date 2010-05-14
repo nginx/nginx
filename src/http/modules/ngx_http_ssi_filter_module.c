@@ -346,13 +346,9 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
     ctx->params.pool = r->pool;
 
-    ctx->timefmt.len = sizeof("%A, %d-%b-%Y %H:%M:%S %Z") - 1;
-    ctx->timefmt.data = (u_char *) "%A, %d-%b-%Y %H:%M:%S %Z";
-
-    ctx->errmsg.len =
-              sizeof("[an error occurred while processing the directive]") - 1;
-    ctx->errmsg.data = (u_char *)
-                     "[an error occurred while processing the directive]";
+    ngx_str_set(&ctx->timefmt, "%A, %d-%b-%Y %H:%M:%S %Z");
+    ngx_str_set(&ctx->errmsg,
+                "[an error occurred while processing the directive]");
 
     r->filter_need_in_memory = 1;
 
@@ -1904,8 +1900,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi include: \"%V\"", uri);
 
-    args.len = 0;
-    args.data = NULL;
+    ngx_str_null(&args);
     flags = NGX_HTTP_LOG_UNSAFE;
 
     if (ngx_http_parse_unsafe_uri(r, uri, &args, &flags) != NGX_OK) {

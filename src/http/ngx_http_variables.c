@@ -1390,8 +1390,7 @@ ngx_http_variable_sent_location(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    name.len = sizeof("sent_http_location") - 1;
-    name.data = (u_char *) "sent_http_location";
+    ngx_str_set(&name, "sent_http_location");
 
     return ngx_http_variable_unknown_header(v, &name,
                                             &r->headers_out.headers.part,

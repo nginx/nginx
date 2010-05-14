@@ -1008,8 +1008,7 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
         }
 
         r->headers_out.location->hash = 1;
-        r->headers_out.location->key.len = sizeof("Location") - 1;
-        r->headers_out.location->key.data = (u_char *) "Location";
+        ngx_str_set(&r->headers_out.location->key, "Location");
         r->headers_out.location->value = e->buf;
 
         e->ip += sizeof(ngx_http_script_regex_end_code_t);

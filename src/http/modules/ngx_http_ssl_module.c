@@ -314,8 +314,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->dhparam = { 0, NULL };
      *     sscf->client_certificate = { 0, NULL };
      *     sscf->crl = { 0, NULL };
-     *     sscf->ciphers.len = 0;
-     *     sscf->ciphers.data = NULL;
+     *     sscf->ciphers = { 0, NULL };
      *     sscf->shm_zone = NULL;
      */
 

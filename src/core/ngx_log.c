@@ -429,8 +429,7 @@ ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "stderr") == 0) {
-        name.len = 0;
-        name.data = NULL;
+        ngx_str_null(&name);
 
     } else {
         name = value[1];

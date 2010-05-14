@@ -196,8 +196,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         r->headers_out.expires = expires;
 
         expires->hash = 1;
-        expires->key.len = sizeof("Expires") - 1;
-        expires->key.data = (u_char *) "Expires";
+        ngx_str_set(&expires->key, "Expires");
     }
 
     len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT");
@@ -225,9 +224,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         }
 
         cc->hash = 1;
-        cc->key.len = sizeof("Cache-Control") - 1;
-        cc->key.data = (u_char *) "Cache-Control";
-
+        ngx_str_set(&cc->key, "Cache-Control");
         *ccp = cc;
 
     } else {
@@ -240,20 +237,14 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 
     if (conf->expires == NGX_HTTP_EXPIRES_EPOCH) {
         expires->value.data = (u_char *) "Thu, 01 Jan 1970 00:00:01 GMT";
-
-        cc->value.len = sizeof("no-cache") - 1;
-        cc->value.data = (u_char *) "no-cache";
-
+        ngx_str_set(&cc->value, "no-cache");
         return NGX_OK;
     }
 
     if (conf->expires == NGX_HTTP_EXPIRES_MAX) {
         expires->value.data = (u_char *) "Thu, 31 Dec 2037 23:55:55 GMT";
-
         /* 10 years */
-        cc->value.len = sizeof("max-age=315360000") - 1;
-        cc->value.data = (u_char *) "max-age=315360000";
-
+        ngx_str_set(&cc->value, "max-age=315360000");
         return NGX_OK;
     }
 
@@ -265,10 +256,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
     if (conf->expires_time == 0) {
         ngx_memcpy(expires->value.data, ngx_cached_http_time.data,
                    ngx_cached_http_time.len + 1);
-
-        cc->value.len = sizeof("max-age=0") - 1;
-        cc->value.data = (u_char *) "max-age=0";
-
+        ngx_str_set(&cc->value, "max-age=0");
         return NGX_OK;
     }
 
@@ -292,9 +280,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
     ngx_http_time(expires->value.data, expires_time);
 
     if (conf->expires_time < 0 || max_age < 0) {
-        cc->value.len = sizeof("no-cache") - 1;
-        cc->value.data = (u_char *) "no-cache";
-
+        ngx_str_set(&cc->value, "no-cache");
         return NGX_OK;
     }
 
@@ -361,8 +347,7 @@ ngx_http_add_cache_control(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     }
 
     cc->hash = 1;
-    cc->key.len = sizeof("Cache-Control") - 1;
-    cc->key.data = (u_char *) "Cache-Control";
+    ngx_str_set(&cc->key, "Cache-Control");
     cc->value = *value;
 
     *ccp = cc;

@@ -189,9 +189,7 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    u->schema.len = sizeof("memcached://") - 1;
-    u->schema.data = (u_char *) "memcached://";
-
+    ngx_str_set(&u->schema, "memcached://");
     u->output.tag = (ngx_buf_tag_t) &ngx_http_memcached_module;
 
     mlcf = ngx_http_get_module_loc_conf(r, ngx_http_memcached_module);

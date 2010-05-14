@@ -1568,10 +1568,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
                                     ngx_hash('s', 'e'), 'r'), 'v'), 'e'), 'r');
 
-                h->key.len = sizeof("Server") - 1;
-                h->key.data = (u_char *) "Server";
-                h->value.len = 0;
-                h->value.data = NULL;
+                ngx_str_set(&h->key, "Server");
+                ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "server";
             }
 
@@ -1583,10 +1581,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
                 h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
 
-                h->key.len = sizeof("Date") - 1;
-                h->key.data = (u_char *) "Date";
-                h->value.len = 0;
-                h->value.data = NULL;
+                ngx_str_set(&h->key, "Date");
+                ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "date";
             }
 
@@ -2222,8 +2218,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                 pr->replacement.text = conf->location;
 
             } else {
-                pr->replacement.text.len = 0;
-                pr->replacement.text.data = NULL;
+                ngx_str_null(&pr->replacement.text);
             }
         }
     }
@@ -2311,10 +2306,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
-        s->key.len = sizeof("Content-Length") - 1;
-        s->key.data = (u_char *) "Content-Length";
-        s->value.len = sizeof("$proxy_internal_body_length") - 1;
-        s->value.data = (u_char *) "$proxy_internal_body_length";
+        ngx_str_set(&s->key, "Content-Length");
+        ngx_str_set(&s->value, "$proxy_internal_body_length");
     }
 
     if (ngx_http_proxy_merge_headers(cf, conf, prev) != NGX_OK) {
@@ -2777,8 +2770,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             pr->replacement.text = plcf->location;
 
         } else {
-            pr->replacement.text.len = 0;
-            pr->replacement.text.data = NULL;
+            ngx_str_null(&pr->replacement.text);
         }
 
         return NGX_CONF_OK;
@@ -3038,12 +3030,10 @@ ngx_http_proxy_set_vars(ngx_url_t *u, ngx_http_proxy_vars_t *v)
             v->host_header = u->host;
 
             if (u->default_port == 80) {
-                v->port.len = sizeof("80") - 1;
-                v->port.data = (u_char *) "80";
+                ngx_str_set(&v->port, "80");
 
             } else {
-                v->port.len = sizeof("443") - 1;
-                v->port.data = (u_char *) "443";
+                ngx_str_set(&v->port, "443");
             }
 
         } else {
@@ -3055,10 +3045,8 @@ ngx_http_proxy_set_vars(ngx_url_t *u, ngx_http_proxy_vars_t *v)
         v->key_start.len += v->host_header.len;
 
     } else {
-        v->host_header.len = sizeof("localhost") - 1;
-        v->host_header.data = (u_char *) "localhost";
-        v->port.len = 0;
-        v->port.data = (u_char *) "";
+        ngx_str_set(&v->host_header, "localhost");
+        ngx_str_null(&v->port);
         v->key_start.len += sizeof("unix:") - 1 + u->host.len + 1;
     }
 

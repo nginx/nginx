@@ -39,8 +39,7 @@ ngx_mail_imap_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    s->out.len = sizeof(imap_greeting) - 1;
-    s->out.data = imap_greeting;
+    ngx_str_set(&s->out, imap_greeting);
 
     c->read->handler = ngx_mail_imap_init_protocol;
 
@@ -136,8 +135,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
     tag = 1;
     s->text.len = 0;
-    s->out.len = sizeof(imap_ok) - 1;
-    s->out.data = imap_ok;
+    ngx_str_set(&s->out, imap_ok);
 
     if (rc == NGX_OK) {
 
@@ -186,8 +184,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
             case NGX_IMAP_LOGOUT:
                 s->quit = 1;
-                s->text.len = sizeof(imap_bye) - 1;
-                s->text.data = imap_bye;
+                ngx_str_set(&s->text, imap_bye);
                 break;
 
             case NGX_IMAP_NOOP:
@@ -208,8 +205,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
             rc = ngx_mail_auth_login_username(s, c, 0);
 
             tag = 0;
-            s->out.len = sizeof(imap_password) - 1;
-            s->out.data = imap_password;
+            ngx_str_set(&s->out, imap_password);
             s->mail_state = ngx_imap_auth_login_password;
 
             break;
@@ -229,8 +225,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
     } else if (rc == NGX_IMAP_NEXT) {
         tag = 0;
-        s->out.len = sizeof(imap_next) - 1;
-        s->out.data = imap_next;
+        ngx_str_set(&s->out, imap_next);
     }
 
     switch (rc) {
@@ -245,16 +240,14 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
     case NGX_MAIL_PARSE_INVALID_COMMAND:
         s->state = 0;
-        s->out.len = sizeof(imap_invalid_command) - 1;
-        s->out.data = imap_invalid_command;
+        ngx_str_set(&s->out, imap_invalid_command);
         s->mail_state = ngx_imap_start;
         break;
     }
 
     if (tag) {
         if (s->tag.len == 0) {
-            s->tag.len = sizeof(imap_star) - 1;
-            s->tag.data = (u_char *) imap_star;
+            ngx_str_set(&s->tag, imap_star);
         }
 
         if (s->tagged_line.len < s->tag.len + s->text.len + s->out.len) {
@@ -364,24 +357,21 @@ ngx_mail_imap_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_LOGIN:
 
-        s->out.len = sizeof(imap_username) - 1;
-        s->out.data = imap_username;
+        ngx_str_set(&s->out, imap_username);
         s->mail_state = ngx_imap_auth_login_username;
 
         return NGX_OK;
 
     case NGX_MAIL_AUTH_LOGIN_USERNAME:
 
-        s->out.len = sizeof(imap_password) - 1;
-        s->out.data = imap_password;
+        ngx_str_set(&s->out, imap_password);
         s->mail_state = ngx_imap_auth_login_password;
 
         return ngx_mail_auth_login_username(s, c, 1);
 
     case NGX_MAIL_AUTH_PLAIN:
 
-        s->out.len = sizeof(imap_plain_next) - 1;
-        s->out.data = imap_plain_next;
+        ngx_str_set(&s->out, imap_plain_next);
         s->mail_state = ngx_imap_auth_plain;
 
         return NGX_OK;

@@ -363,8 +363,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_server_name_t    *sn;
     ngx_http_core_srv_conf_t  *cscf;
 
-    name.len = sizeof("invalid_referer") - 1;
-    name.data = (u_char *) "invalid_referer";
+    ngx_str_set(&name, "invalid_referer");
 
     var = ngx_http_add_variable(cf, &name,
                                 NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOHASH);
@@ -407,8 +406,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        uri.len = 0;
-        uri.data = NULL;
+        ngx_str_null(&uri);
 
         if (ngx_strcmp(value[i].data, "server_names") == 0) {
 
