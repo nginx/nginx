@@ -9,6 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.37" date="17.05.2010">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_split_clients_module.
+</para>
+<para lang="en">
+the ngx_http_split_clients_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает ключи больше 255 символов.
+</para>
+<para lang="en">
+the "map" directive supports keys more than 255 characters.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx игнорировал значения "private" и "no-store" в строке "Cache-Control"
+в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+nginx ignored the "private" and "no-store" values
+in the "Cache-Control" backend response header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр stub в SSI-директиве include не использовался,
+если пустой ответ имел код 200.
+</para>
+<para lang="en">
+a "stub" parameter of an "include" SSI directive was not used,
+if empty response has 200 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если проксированный или FastCGI запрос внутренне перенаправлялся
+в другой проксированный или FastCGI location,
+то в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.8.33.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+if a proxied or FastCGI request was internally redirected
+to another proxied or FastCGI location,
+then a segmentation fault might occur in a worker process;
+the bug had appeared in 0.8.33.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения IMAP к серверу Zimbra могло зависнуть до таймаута.<br/>
+Спасибо Alan Batie.
+</para>
+<para lang="en">
+IMAP connections may hang until they timed out
+while talking to Zimbra server.<br/>
+Thanks to Alan Batie.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.36" date="22.04.2010">
 
 <change type="bugfix">
@@ -270,7 +344,7 @@ a geo range returned default value if the range included two or more
 
 <change type="bugfix">
 <para lang="ru">
-блок, используемый в параметре stub в SSI-директиве include, 
+блок, используемый в параметре stub в SSI-директиве include,
 выводился с MIME-типом "text/plain".
 </para>
 <para lang="en">
@@ -1096,7 +1170,7 @@ now default SSL ciphers are "HIGH:!ADH:!MD5".
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 модуль ngx_http_autoindex_module не показывал последний слэш для линков
 на каталоги;
@@ -1109,7 +1183,7 @@ the bug had appeared in 0.7.15.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 nginx не закрывал лог, заданный параметром конфигурации --error-log-path;
 ошибка появилась в 0.7.53.
@@ -1120,10 +1194,10 @@ the bug had appeared in 0.7.53.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
-nginx не считал запятую разделителем в строке "Cache-Control" в строке
-заголовка бэкенда.
+nginx не считал запятую разделителем в строке "Cache-Control" в
+заголовке ответа бэкенда.
 </para>
 <para lang="en">
 nginx did not treat a comma as separator in the "Cache-Control" backend response
@@ -1131,7 +1205,7 @@ header line.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 nginx/Windows мог не создать временный файл, файл в кэше или файл
 с помощью директив proxy/fastcgi_store, если рабочий процесс не имел
@@ -3274,7 +3348,7 @@ the "server_name" directive supports captures in regular expressions.
 </para>
 </change>
 
-<change type="workaround"> 
+<change type="workaround">
 <para lang="ru">
 модуль ngx_http_autoindex_module не показывал последний слэш для каталогов
 на файловой системе XFS;
@@ -4030,7 +4104,7 @@ Thanks to Zyb.
 Изменения в модуле ngx_http_limit_req_module.
 </para>
 <para lang="en">
-Changes in the ngx_http_limit_req_module. 
+Changes in the ngx_http_limit_req_module.
 </para>
 </change>
 
@@ -4086,7 +4160,7 @@ Changes in the ngx_http_gzip_filter_module.
 модуль ngx_http_limit_req_module.
 </para>
 <para lang="en">
-the ngx_http_limit_req_module. 
+the ngx_http_limit_req_module.
 </para>
 </change>
 
