@@ -162,11 +162,6 @@ static char *ngx_http_fastcgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post,
     void *data);
 
-static char *ngx_http_fastcgi_upstream_max_fails_unsupported(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf);
-static char *ngx_http_fastcgi_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf);
-
 
 static ngx_conf_post_t  ngx_http_fastcgi_lowat_post =
     { ngx_http_fastcgi_lowat_check };
@@ -398,20 +393,6 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.next_upstream),
       &ngx_http_fastcgi_next_upstream_masks },
-
-    { ngx_string("fastcgi_upstream_max_fails"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_fastcgi_upstream_max_fails_unsupported,
-      0,
-      0,
-      NULL },
-
-    { ngx_string("fastcgi_upstream_fail_timeout"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_fastcgi_upstream_fail_timeout_unsupported,
-      0,
-      0,
-      NULL },
 
     { ngx_string("fastcgi_param"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
@@ -2748,30 +2729,4 @@ ngx_http_fastcgi_lowat_check(ngx_conf_t *cf, void *post, void *data)
 #endif
 
     return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_fastcgi_upstream_max_fails_unsupported(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf)
-{
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-         "\"fastcgi_upstream_max_fails\" is not supported, "
-         "use the \"max_fails\" parameter of the \"server\" directive ",
-         "inside the \"upstream\" block");
-
-    return NGX_CONF_ERROR;
-}
-
-
-static char *
-ngx_http_fastcgi_upstream_fail_timeout_unsupported(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf)
-{
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-         "\"fastcgi_upstream_fail_timeout\" is not supported, "
-         "use the \"fail_timeout\" parameter of the \"server\" directive ",
-         "inside the \"upstream\" block");
-
-    return NGX_CONF_ERROR;
 }
