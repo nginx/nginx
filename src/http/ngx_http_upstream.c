@@ -621,6 +621,13 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (c == NULL) {
 
+        if (u->conf->no_cache) {
+            rc = ngx_http_cache(r, u->conf->no_cache);
+            if (rc != NGX_OK) {
+                return rc;
+            }
+        }
+
         if (!(r->method & u->conf->cache_methods)) {
             return NGX_DECLINED;
         }
