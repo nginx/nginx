@@ -229,7 +229,8 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         r->read_event_handler = ngx_http_test_reading;
         r->write_event_handler = ngx_http_limit_req_delay;
-        ngx_add_timer(r->connection->write, (ngx_msec_t) excess);
+        ngx_add_timer(r->connection->write,
+                      (ngx_msec_t) excess * 1000 / ctx->rate);
 
         return NGX_AGAIN;
     }
