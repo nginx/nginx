@@ -438,8 +438,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->plus_in_uri = 1;
                 break;
             case '\0':
-                r->zero_in_uri = 1;
-                break;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             default:
                 state = sw_check_uri;
                 break;
@@ -496,8 +495,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->plus_in_uri = 1;
                 break;
             case '\0':
-                r->zero_in_uri = 1;
-                break;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
@@ -526,8 +524,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->complex_uri = 1;
                 break;
             case '\0':
-                r->zero_in_uri = 1;
-                break;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
@@ -1202,7 +1199,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                     ch = *p++;
 
                 } else if (ch == '\0') {
-                    r->zero_in_uri = 1;
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
 
                 state = quoted_state;
@@ -1304,8 +1301,7 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
         }
 
         if (ch == '\0') {
-            *flags |= NGX_HTTP_ZERO_IN_URI;
-            continue;
+            goto unsafe;
         }
 
         if (ngx_path_separator(ch) && len > 2) {
@@ -1449,34 +1445,19 @@ ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len, ngx_str_t *value)
 void
 ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 {
-    u_char  ch, *p, *last;
+    u_char  *p, *last;
 
-    p = uri->data;
+    last = uri->data + uri->len;
 
-    last = p + uri->len;
+    p = ngx_strlchr(uri->data, last, '?');
 
-    args->len = 0;
+    if (p) {
+        uri->len = p - uri->data;
+        p++;
+        args->len = last - p;
+        args->data = p;
 
-    while (p < last) {
-
-        ch = *p++;
-
-        if (ch == '?') {
-            args->len = last - p;
-            args->data = p;
-
-            uri->len = p - 1 - uri->data;
-
-            if (ngx_strlchr(p, last, '\0') != NULL) {
-                r->zero_in_uri = 1;
-            }
-
-            return;
-        }
-
-        if (ch == '\0') {
-            r->zero_in_uri = 1;
-            continue;
-        }
+    } else {
+        args->len = 0;
     }
 }

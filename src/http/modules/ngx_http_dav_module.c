@@ -146,10 +146,6 @@ ngx_http_dav_handler(ngx_http_request_t *r)
     ngx_int_t                 rc;
     ngx_http_dav_loc_conf_t  *dlcf;
 
-    if (r->zero_in_uri) {
-        return NGX_DECLINED;
-    }
-
     dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
 
     if (!(r->method & dlcf->methods)) {

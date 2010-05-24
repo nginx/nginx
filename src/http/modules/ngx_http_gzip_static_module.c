@@ -89,10 +89,6 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (r->zero_in_uri) {
-        return NGX_DECLINED;
-    }
-
     gzcf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_static_module);
 
     if (!gzcf->enable) {

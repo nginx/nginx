@@ -56,7 +56,7 @@
 #define NGX_HTTP_PARSE_INVALID_HEADER      13
 
 
-#define NGX_HTTP_ZERO_IN_URI               1
+/* unused                                  1 */
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
 #define NGX_HTTP_SUBREQUEST_WAITED         4
 #define NGX_HTTP_LOG_UNSAFE                8
@@ -434,9 +434,6 @@ struct ngx_http_request_s {
 
     /* URI with "+" */
     unsigned                          plus_in_uri:1;
-
-    /* URI with "\0" or "%00" */
-    unsigned                          zero_in_uri:1;
 
     unsigned                          invalid_header:1;
 

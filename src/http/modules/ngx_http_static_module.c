@@ -66,10 +66,6 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (r->zero_in_uri) {
-        return NGX_DECLINED;
-    }
-
     log = r->connection->log;
 
     /*

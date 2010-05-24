@@ -86,10 +86,6 @@ ngx_http_random_index_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (r->zero_in_uri) {
-        return NGX_DECLINED;
-    }
-
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD|NGX_HTTP_POST))) {
         return NGX_DECLINED;
     }
