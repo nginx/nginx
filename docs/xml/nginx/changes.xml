@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.38" date="24.05.2010">
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_no_cache и fastcgi_no_cache.
+</para>
+<para lang="en">
+the "proxy_no_cache" and "fastcgi_no_cache" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании переменной $scheme в директиве rewrite
+автоматически делается редирект.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+now the "rewrite" directive does a redirect automatically
+if the $scheme variable is used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь задержки в директиве limit_req соответствует описанному алгоритму.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now "limit_req" delay directive conforms to the described algorithm.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменную $uid_got нельзя было использовать в SSI и перловом модулях.
+</para>
+<para lang="en">
+the $uid_got variable might not be used in the SSI and perl modules.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.37" date="17.05.2010">
 
 <change type="feature">
@@ -1309,7 +1356,7 @@ the "limit_req_log_level" and "limit_conn_log_level" directives.
 
 <change type="bugfix">
 <para lang="ru">
-Теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
+теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
