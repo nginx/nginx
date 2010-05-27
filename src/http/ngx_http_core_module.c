@@ -1282,6 +1282,12 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         if (!alias) {
             r->uri = path;
 
+#if (NGX_PCRE)
+        } else if (clcf->regex) {
+            if (!test_dir) {
+                r->uri = path;
+            }
+#endif
         } else {
             r->uri.len = alias + path.len;
             r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
