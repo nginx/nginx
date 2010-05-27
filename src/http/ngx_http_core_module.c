@@ -1286,6 +1286,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         } else if (clcf->regex) {
             if (!test_dir) {
                 r->uri = path;
+                r->add_uri_to_alias = 1;
             }
 #endif
         } else {
@@ -1783,7 +1784,9 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         ngx_uint_t  captures;
 
         captures = alias && clcf->regex;
-        reserved += captures ? 1 : r->uri.len - alias + 1;
+
+        reserved += captures ? r->add_uri_to_alias ? r->uri.len + 1 : 1
+                             : r->uri.len - alias + 1;
 #else
         reserved += r->uri.len - alias + 1;
 #endif
@@ -1804,8 +1807,12 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
 #if (NGX_PCRE)
         if (captures) {
-            *last = '\0';
-            return last;
+            if (!r->add_uri_to_alias) {
+                *last = '\0';
+                return last;
+            }
+
+            alias = 0;
         }
 #endif
     }
@@ -2213,6 +2220,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
 #endif
 
     r->internal = 1;
+    r->add_uri_to_alias = 0;
     r->main->count++;
 
     ngx_http_handler(r);
