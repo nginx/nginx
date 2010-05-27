@@ -1223,7 +1223,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         tf++;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "try to use file: \"%s\" \"%s\"", name, path.data);
+                       "try to use %s: \"%s\" \"%s\"",
+                       test_dir ? "dir" : "file", name, path.data);
 
         if (tf->lengths == NULL && tf->name.len == 0) {
 
