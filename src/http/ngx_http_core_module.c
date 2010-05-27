@@ -1222,7 +1222,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
         tf++;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "try to use %s: \"%s\" \"%s\"",
                        test_dir ? "dir" : "file", name, path.data);
 
