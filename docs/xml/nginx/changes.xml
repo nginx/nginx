@@ -9,6 +9,41 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.39" date="31.05.2010">
+
+<change type="bugfix">
+<para lang="ru">
+наследуемая директива alias неправильно работала во вложенном location'е.
+</para>
+<para lang="en">
+an inherited "alias" directive worked incorrectly in inclusive location.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в комбинации директив alias с переменными и try_files;
+</para>
+<para lang="en">
+in "alias" with variables and "try_files" directives combination.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+listen unix domain и IPv6 сокеты не наследовались во время обновления
+без перерыва.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+listen unix domain and IPv6 sockets did not inherit while online upgrade.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.38" date="24.05.2010">
 
 <change type="feature">
@@ -993,7 +1028,7 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-listen unix domain сокет не наследовались во время обновления без перерыва.
+listen unix domain сокет не наследовался во время обновления без перерыва.
 </para>
 <para lang="en">
 listen unix domain socket did not inherit while online upgrade.
