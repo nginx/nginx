@@ -289,7 +289,6 @@ struct ngx_http_core_loc_conf_s {
     unsigned      noregex:1;
 
     unsigned      auto_redirect:1;
-    unsigned      alias:1;
 #if (NGX_HTTP_GZIP)
     unsigned      gzip_disable_msie6:2;
 #endif
@@ -307,6 +306,8 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_http_handler_pt  handler;
 
+    /* location name length for inclusive location with inherited alias */
+    size_t        alias;
     ngx_str_t     root;                    /* root, alias */
     ngx_str_t     post_action;
 
