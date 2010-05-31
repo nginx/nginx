@@ -172,7 +172,6 @@ ngx_time_sigsafe_update(void)
     u_char          *p;
     ngx_tm_t         tm;
     time_t           sec;
-    ngx_uint_t       msec;
     ngx_time_t      *tp;
     struct timeval   tv;
 
@@ -183,7 +182,6 @@ ngx_time_sigsafe_update(void)
     ngx_gettimeofday(&tv);
 
     sec = tv.tv_sec;
-    msec = tv.tv_usec / 1000;
 
     tp = &cached_time[slot];
 
