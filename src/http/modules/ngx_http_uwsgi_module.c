@@ -28,6 +28,7 @@ typedef struct {
     ngx_uint_t                 modifier2;
 } ngx_http_uwsgi_loc_conf_t;
 
+
 typedef struct {
     ngx_uint_t                 status;
     ngx_uint_t                 status_count;
