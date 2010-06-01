@@ -63,16 +63,6 @@ typedef struct {
 #define NGX_HTTP_UWSGI_PARSE_NO_HEADER  20
 
 
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-static uint16_t
-uwsgi_swap16(uint16_t x)
-{
-    return (uint16_t) ((x & 0xff) << 8 | (x & 0xff00) >> 8);
-}
-#endif
-
-
-
 static ngx_int_t ngx_http_uwsgi_eval(ngx_http_request_t *r,
     ngx_http_uwsgi_loc_conf_t *uwcf);
 static ngx_int_t ngx_http_uwsgi_create_request(ngx_http_request_t *r);
@@ -462,8 +452,7 @@ static ngx_int_t
 ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 {
     u_char                        ch, *pos, tmp[2];
-    size_t                        key_len, val_len;
-    uint16_t                      uwsgi_pkt_size, uwsgi_strlen;
+    size_t                        key_len, val_len, len;
     ngx_uint_t                    i, n;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
@@ -474,7 +463,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
     ngx_http_uwsgi_loc_conf_t    *uwcf;
     ngx_http_script_len_code_pt   lcode;
 
-    uwsgi_pkt_size = 0;
+    len = 0;
 
     uwcf = ngx_http_get_module_loc_conf(r, ngx_http_uwsgi_module);
 
@@ -497,8 +486,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             }
             le.ip += sizeof(uintptr_t);
 
-            uwsgi_pkt_size = (uint16_t)
-                                  (uwsgi_pkt_size + 2 + key_len + 2 + val_len);
+            len += 2 + key_len + 2 + val_len;
         }
     }
 
@@ -519,25 +507,24 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            uwsgi_pkt_size = (uint16_t) (uwsgi_pkt_size
-                        + 2 + 5 + header[i].key.len + 2 + header[i].value.len);
+            len += 2 + 5 + header[i].key.len + 2 + header[i].value.len;
         }
     }
 
     if (uwcf->uwsgi_string.data && uwcf->uwsgi_string.len) {
-        uwsgi_pkt_size = (uint16_t) (uwsgi_pkt_size + uwcf->uwsgi_string.len);
+        len += uwcf->uwsgi_string.len;
     }
 
 #if 0
     /* allow custom uwsgi packet */
-    if (uwsgi_pkt_size > 0 && uwsgi_pkt_size < 2) {
+    if (len > 0 && len < 2) {
         ngx_log_error (NGX_LOG_ALERT, r->connection->log, 0,
-                       "uwsgi request is too little: %uz", uwsgi_pkt_size);
+                       "uwsgi request is too little: %uz", len);
         return NGX_ERROR;
     }
 #endif
 
-    b = ngx_create_temp_buf(r->pool, uwsgi_pkt_size + 4);
+    b = ngx_create_temp_buf(r->pool, len + 4);
     if (b == NULL) {
         return NGX_ERROR;
     }
@@ -549,13 +536,10 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
     cl->buf = b;
 
-    *b->pos = uwcf->modifier1;
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-    uwsgi_pkt_size = uwsgi_swap16(uwsgi_pkt_size);
-#endif
-    b->last = ngx_cpymem(b->pos + 1, &uwsgi_pkt_size, 2);
-    *(b->pos + 3) = uwcf->modifier2;
-    b->last++;
+    *b->last++ = uwcf->modifier1;
+    *b->last++ = (u_char) (len & 0xff);
+    *b->last++ = (u_char) ((len >> 8) & 0xff);
+    *b->last++ = uwcf->modifier2;
 
     if (uwcf->params_len) {
         ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
@@ -577,12 +561,8 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             }
             le.ip += sizeof(uintptr_t);
 
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-            uwsgi_strlen = uwsgi_swap16(key_len);
-#else
-            uwsgi_strlen = (uint16_t) key_len;
-#endif
-            e.pos = ngx_cpymem(e.pos, &uwsgi_strlen, 2);
+            *e.pos++ = (u_char) (key_len & 0xff);
+            *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
@@ -599,12 +579,8 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
             e.pos = pos;
 
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-            uwsgi_strlen = uwsgi_swap16(val_len);
-#else
-            uwsgi_strlen = (uint16_t) val_len;
-#endif
-            e.pos = ngx_cpymem(e.pos, &uwsgi_strlen, 2);
+            *e.pos++ = (u_char) (val_len & 0xff);
+            *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
             e.pos += val_len;
 
             e.ip += sizeof(uintptr_t);
@@ -630,12 +606,10 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-            uwsgi_strlen = uwsgi_swap16(5 + header[i].key.len);
-#else
-            uwsgi_strlen = (uint16_t) (5 + header[i].key.len);
-#endif
-            b->last = ngx_cpymem(b->last, &uwsgi_strlen, 2);
+            key_len = 5 + header[i].key.len;
+            *b->last++ = (u_char) (key_len & 0xff);
+            *b->last++ = (u_char) ((key_len >> 8) & 0xff);
+
             b->last = ngx_cpymem(b->last, "HTTP_", 5);
             for (n = 0; n < header[i].key.len; n++) {
                 ch = header[i].key.data[n];
@@ -649,14 +623,11 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
                 *b->last++ = ch;
             }
-#ifndef NGX_HAVE_LITTLE_ENDIAN
-            uwsgi_strlen = uwsgi_swap16 (header[i].value.len);
-#else
-            uwsgi_strlen = (uint16_t) header[i].value.len;
-#endif
-            b->last = ngx_cpymem(b->last, &uwsgi_strlen, 2);
-            b->last =
-                ngx_copy(b->last, header[i].value.data, header[i].value.len);
+
+            val_len = header[i].value.len;
+            *b->last++ = (u_char) (val_len & 0xff);
+            *b->last++ = (u_char) ((val_len >> 8) & 0xff);
+            b->last = ngx_copy(b->last, header[i].value.data, val_len);
         }
     }
 
