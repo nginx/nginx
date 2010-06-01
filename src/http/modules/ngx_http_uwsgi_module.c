@@ -476,9 +476,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         }
     }
 
-    if (uwcf->uwsgi_string.data && uwcf->uwsgi_string.len) {
-        len += uwcf->uwsgi_string.len;
-    }
+    len += uwcf->uwsgi_string.len;
 
 #if 0
     /* allow custom uwsgi packet */
@@ -588,10 +586,8 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         }
     }
 
-    if (uwcf->uwsgi_string.data && uwcf->uwsgi_string.len) {
-        b->last = ngx_copy(b->last, uwcf->uwsgi_string.data,
-                           uwcf->uwsgi_string.len);
-    }
+    b->last = ngx_copy(b->last, uwcf->uwsgi_string.data,
+                       uwcf->uwsgi_string.len);
 
     if (uwcf->upstream.pass_request_body) {
         body = r->upstream->request_bufs;
