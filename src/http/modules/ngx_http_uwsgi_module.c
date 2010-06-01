@@ -43,7 +43,7 @@ typedef struct {
     ngx_array_t               *uwsgi_lengths;
     ngx_array_t               *uwsgi_values;
 
-    ngx_str_t                  uwsgi_string ;
+    ngx_str_t                  uwsgi_string;
 
     u_char                     modifier1;
     u_char                     modifier2;
