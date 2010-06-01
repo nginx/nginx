@@ -375,9 +375,7 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    u->schema.len = sizeof ("uwsgi://") - 1;
-    u->schema.data = (u_char *) "uwsgi://";
-
+    ngx_str_set(&u->schema, "uwsgi://");
     u->output.tag = (ngx_buf_tag_t) &ngx_http_uwsgi_module;
 
     u->conf = &uwcf->upstream;
@@ -1072,10 +1070,8 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
                 h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
                                    ngx_hash ('s', 'e'), 'r'), 'v'), 'e'), 'r');
 
-                h->key.len = sizeof("Server") - 1;
-                h->key.data = (u_char *) "Server";
-                h->value.len = 0;
-                h->value.data = NULL;
+                ngx_str_set(&h->key, "Server");
+                ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "server";
             }
 
@@ -1087,10 +1083,8 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
 
                 h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
 
-                h->key.len = sizeof("Date") - 1;
-                h->key.data = (u_char *) "Date";
-                h->value.len = 0;
-                h->value.data = NULL;
+                ngx_str_set(&h->key, "Date");
+                ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "date";
             }
 
