@@ -52,7 +52,6 @@ static void ngx_http_uwsgi_abort_request(ngx_http_request_t *r);
 static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
 
-static ngx_int_t ngx_http_uwsgi_add_variables(ngx_conf_t *cf);
 static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -252,7 +251,7 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
 
 
 static ngx_http_module_t ngx_http_uwsgi_module_ctx = {
-    ngx_http_uwsgi_add_variables,          /* preconfiguration */
+    NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -279,12 +278,6 @@ ngx_module_t ngx_http_uwsgi_module = {
     NULL,                                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
-};
-
-
-static ngx_http_variable_t ngx_http_uwsgi_vars[] = {
-
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
 
@@ -1060,25 +1053,6 @@ ngx_http_uwsgi_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                    "finalize http uwsgi request");
 
     return;
-}
-
-
-static ngx_int_t
-ngx_http_uwsgi_add_variables(ngx_conf_t *cf)
-{
-    ngx_http_variable_t  *var, *v;
-
-    for (v = ngx_http_uwsgi_vars; v->name.len; v++) {
-        var = ngx_http_add_variable(cf, &v->name, v->flags);
-        if (var == NULL) {
-            return NGX_ERROR;
-        }
-
-        var->get_handler = v->get_handler;
-        var->data = v->data;
-    }
-
-    return NGX_OK;
 }
 
 
