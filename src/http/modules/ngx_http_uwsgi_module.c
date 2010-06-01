@@ -1,7 +1,8 @@
 
 /*
  * Copyright (C) Unbit S.a.s. 2009-2010
- *
+ * Copyright (C) 2008 Manlio Perillo (manlio.perillo@gmail.com)
+ * Copyright (C) Igor Sysoev
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +24,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- *
- *
- * heavily based on Manlio's mod_scgi, mod_fastcgi and mod_proxy of nginx 0.7.x
  */
 
 
