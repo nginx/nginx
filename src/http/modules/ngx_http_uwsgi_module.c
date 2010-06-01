@@ -24,8 +24,8 @@ typedef struct {
 
     ngx_str_t                  uwsgi_string;
 
-    u_char                     modifier1;
-    u_char                     modifier2;
+    ngx_uint_t                 modifier1;
+    ngx_uint_t                 modifier2;
 } ngx_http_uwsgi_loc_conf_t;
 
 typedef struct {
@@ -52,12 +52,6 @@ static void ngx_http_uwsgi_abort_request(ngx_http_request_t *r);
 static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
 
-static char *ngx_http_uwsgi_modifier1(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
-
-static char *ngx_http_uwsgi_modifier2(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
-
 static ngx_int_t ngx_http_uwsgi_add_variables(ngx_conf_t *cf);
 static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
@@ -65,6 +59,11 @@ static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
 
 static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+
+static ngx_conf_num_bounds_t  ngx_http_uwsgi_modifier_bounds = {
+    ngx_conf_check_num_bounds, 0, 255
+};
 
 
 static ngx_conf_bitmask_t ngx_http_uwsgi_next_upstream_masks[] = {
@@ -103,17 +102,17 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
 
     { ngx_string("uwsgi_modifier1"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_uwsgi_modifier1,
+      ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
+      offsetof(ngx_http_uwsgi_loc_conf_t, modifier1),
+      &ngx_http_uwsgi_modifier_bounds },
 
     { ngx_string("uwsgi_modifier2"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_uwsgi_modifier2,
+      ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
+      offsetof(ngx_http_uwsgi_loc_conf_t, modifier2),
+      &ngx_http_uwsgi_modifier_bounds },
 
     { ngx_string("uwsgi_ignore_client_abort"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -512,10 +511,10 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
     cl->buf = b;
 
-    *b->last++ = uwcf->modifier1;
+    *b->last++ = (u_char) uwcf->modifier1;
     *b->last++ = (u_char) (len & 0xff);
     *b->last++ = (u_char) ((len >> 8) & 0xff);
-    *b->last++ = uwcf->modifier2;
+    *b->last++ = (u_char) uwcf->modifier2;
 
     if (uwcf->params_len) {
         ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
@@ -1093,6 +1092,9 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    conf->modifier1 = NGX_CONF_UNSET_UINT;
+    conf->modifier2 = NGX_CONF_UNSET_UINT;
+
     conf->upstream.store = NGX_CONF_UNSET;
     conf->upstream.store_access = NGX_CONF_UNSET_UINT;
     conf->upstream.buffering = NGX_CONF_UNSET;
@@ -1320,13 +1322,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->uwsgi_values = prev->uwsgi_values;
     }
 
-    if (conf->modifier1 == 0) {
-        conf->modifier1 = prev->modifier1;
-    }
-
-    if (conf->modifier2 == 0) {
-        conf->modifier2 = prev->modifier2;
-    }
+    ngx_conf_merge_uint_value(conf->modifier1, prev->modifier1, 0);
+    ngx_conf_merge_uint_value(conf->modifier2, prev->modifier2, 0);
 
     if (conf->params_source == NULL) {
         conf->flushes = prev->flushes;
@@ -1473,35 +1470,6 @@ ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
     }
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_uwsgi_modifier1(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_uwsgi_loc_conf_t *uwcf = conf;
-    ngx_str_t  *value;
-
-    value = cf->args->elts;
-
-    uwcf->modifier1 = (u_char) ngx_atoi(value[1].data, value[1].len);
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_uwsgi_modifier2(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_uwsgi_loc_conf_t *uwcf = conf;
-
-    ngx_str_t  *value;
-
-    value = cf->args->elts;
-
-    uwcf->modifier2 = (u_char) ngx_atoi(value[1].data, value[1].len);
 
     return NGX_CONF_OK;
 }
