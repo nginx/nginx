@@ -451,7 +451,7 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
 static ngx_int_t
 ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 {
-    u_char                        ch, *pos, tmp[2];
+    u_char                        ch;
     size_t                        key_len, val_len, len;
     ngx_uint_t                    i, n;
     ngx_buf_t                    *b;
@@ -564,24 +564,16 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             *e.pos++ = (u_char) (key_len & 0xff);
             *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
 
+            code = *(ngx_http_script_code_pt *) e.ip;
+            code((ngx_http_script_engine_t *) & e);
+
+            *e.pos++ = (u_char) (val_len & 0xff);
+            *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
+
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) & e);
             }
-
-            pos = e.pos - val_len;
-            /* move memory */
-            for (i = 0; i < val_len; i += 2) {
-                e.pos = ngx_cpymem(tmp, pos + i + 2, 2);
-                e.pos = ngx_cpymem(pos + i + 2, pos, 2);
-                e.pos = ngx_cpymem(pos, tmp, 2);
-            }
-
-            e.pos = pos;
-
-            *e.pos++ = (u_char) (val_len & 0xff);
-            *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
-            e.pos += val_len;
 
             e.ip += sizeof(uintptr_t);
         }
