@@ -87,9 +87,6 @@ static ngx_conf_bitmask_t ngx_http_uwsgi_ignore_headers_masks[] = {
 };
 
 
-ngx_module_t ngx_http_uwsgi_module;
-
-
 static ngx_command_t ngx_http_uwsgi_commands[] = {
 
     { ngx_string("uwsgi_pass"),
