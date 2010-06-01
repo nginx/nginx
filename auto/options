@@ -52,6 +52,7 @@ NGX_HTTP_LOG_PATH=
 NGX_HTTP_CLIENT_TEMP_PATH=
 NGX_HTTP_PROXY_TEMP_PATH=
 NGX_HTTP_FASTCGI_TEMP_PATH=
+NGX_HTTP_UWSGI_TEMP_PATH=
 
 HTTP_CACHE=YES
 HTTP_CHARSET=YES
@@ -186,6 +187,7 @@ do
         --http-client-body-temp-path=*)  NGX_HTTP_CLIENT_TEMP_PATH="$value" ;;
         --http-proxy-temp-path=*)        NGX_HTTP_PROXY_TEMP_PATH="$value" ;;
         --http-fastcgi-temp-path=*)      NGX_HTTP_FASTCGI_TEMP_PATH="$value" ;;
+        --http-uwsgi-temp-path=*)        NGX_HTTP_UWSGI_TEMP_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
@@ -369,6 +371,7 @@ cat << END
   --http-proxy-temp-path=PATH        set path to the http proxy temporary files
   --http-fastcgi-temp-path=PATH      set path to the http fastcgi temporary
                                      files
+  --http-uwsgi-temp-path=PATH        set path to the http uwsgi temporary files
 
   --without-http                     disable HTTP server
   --without-http-cache               disable HTTP cache
@@ -458,6 +461,7 @@ NGX_HTTP_LOG_PATH=${NGX_HTTP_LOG_PATH:-logs/access.log}
 NGX_HTTP_CLIENT_TEMP_PATH=${NGX_HTTP_CLIENT_TEMP_PATH:-client_body_temp}
 NGX_HTTP_PROXY_TEMP_PATH=${NGX_HTTP_PROXY_TEMP_PATH:-proxy_temp}
 NGX_HTTP_FASTCGI_TEMP_PATH=${NGX_HTTP_FASTCGI_TEMP_PATH:-fastcgi_temp}
+NGX_HTTP_UWSGI_TEMP_PATH=${NGX_HTTP_UWSGI_TEMP_PATH:-uwsgi_temp}
 
 case ".$NGX_PERL_MODULES" in
     ./*)

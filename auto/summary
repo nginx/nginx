@@ -99,5 +99,6 @@ cat << END
   nginx http client request body temporary files: "$NGX_HTTP_CLIENT_TEMP_PATH"
   nginx http proxy temporary files: "$NGX_HTTP_PROXY_TEMP_PATH"
   nginx http fastcgi temporary files: "$NGX_HTTP_FASTCGI_TEMP_PATH"
+  nginx http uwsgi temporary files: "$NGX_HTTP_UWSGI_TEMP_PATH"
 
 END
