@@ -2238,86 +2238,42 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     src = conf->params_source->elts;
     for (i = 0; i < conf->params_source->nelts; i++) {
 
-        if (ngx_http_script_variables_count(&src[i].value) == 0) {
-            copy = ngx_array_push_n(conf->params_len,
-                                    sizeof(ngx_http_script_copy_code_t));
-            if (copy == NULL) {
-                return NGX_CONF_ERROR;
-            }
+        copy = ngx_array_push_n(conf->params_len,
+                                sizeof(ngx_http_script_copy_code_t));
+        if (copy == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
-            copy->code = (ngx_http_script_code_pt)
-                                                  ngx_http_script_copy_len_code;
-            copy->len = src[i].key.len;
+        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
+        copy->len = src[i].key.len;
 
 
-            copy = ngx_array_push_n(conf->params_len,
-                                    sizeof(ngx_http_script_copy_code_t));
-            if (copy == NULL) {
-                return NGX_CONF_ERROR;
-            }
+        size = (sizeof(ngx_http_script_copy_code_t)
+                + src[i].key.len + sizeof(uintptr_t) - 1)
+                & ~(sizeof(uintptr_t) - 1);
 
-            copy->code = (ngx_http_script_code_pt)
-                                                 ngx_http_script_copy_len_code;
-            copy->len = src[i].value.len;
+        copy = ngx_array_push_n(conf->params, size);
+        if (copy == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
+        copy->code = ngx_http_script_copy_code;
+        copy->len = src[i].key.len;
 
-            size = (sizeof(ngx_http_script_copy_code_t)
-                       + src[i].key.len + src[i].value.len
-                       + sizeof(uintptr_t) - 1)
-                    & ~(sizeof(uintptr_t) - 1);
-
-            copy = ngx_array_push_n(conf->params, size);
-            if (copy == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            copy->code = ngx_http_script_copy_code;
-            copy->len = src[i].key.len + src[i].value.len;
-
-            p = (u_char *) copy + sizeof(ngx_http_script_copy_code_t);
-
-            p = ngx_cpymem(p, src[i].key.data, src[i].key.len);
-            ngx_memcpy(p, src[i].value.data, src[i].value.len);
-
-        } else {
-            copy = ngx_array_push_n(conf->params_len,
-                                    sizeof(ngx_http_script_copy_code_t));
-            if (copy == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            copy->code = (ngx_http_script_code_pt)
-                                                 ngx_http_script_copy_len_code;
-            copy->len = src[i].key.len;
+        p = (u_char *) copy + sizeof(ngx_http_script_copy_code_t);
+        ngx_memcpy(p, src[i].key.data, src[i].key.len);
 
 
-            size = (sizeof(ngx_http_script_copy_code_t)
-                    + src[i].key.len + sizeof(uintptr_t) - 1)
-                    & ~(sizeof(uintptr_t) - 1);
+        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
-            copy = ngx_array_push_n(conf->params, size);
-            if (copy == NULL) {
-                return NGX_CONF_ERROR;
-            }
+        sc.cf = cf;
+        sc.source = &src[i].value;
+        sc.flushes = &conf->flushes;
+        sc.lengths = &conf->params_len;
+        sc.values = &conf->params;
 
-            copy->code = ngx_http_script_copy_code;
-            copy->len = src[i].key.len;
-
-            p = (u_char *) copy + sizeof(ngx_http_script_copy_code_t);
-            ngx_memcpy(p, src[i].key.data, src[i].key.len);
-
-
-            ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
-
-            sc.cf = cf;
-            sc.source = &src[i].value;
-            sc.flushes = &conf->flushes;
-            sc.lengths = &conf->params_len;
-            sc.values = &conf->params;
-
-            if (ngx_http_script_compile(&sc) != NGX_OK) {
-                return NGX_CONF_ERROR;
-            }
+        if (ngx_http_script_compile(&sc) != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
 
         code = ngx_array_push_n(conf->params_len, sizeof(uintptr_t));
