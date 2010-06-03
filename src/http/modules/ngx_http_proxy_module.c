@@ -51,7 +51,6 @@ typedef struct {
     ngx_hash_t                     headers_set_hash;
 
     ngx_array_t                   *headers_source;
-    ngx_array_t                   *headers_names;
 
     ngx_array_t                   *proxy_lengths;
     ngx_array_t                   *proxy_values;
@@ -2318,6 +2317,7 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     size_t                        size;
     uintptr_t                    *code;
     ngx_uint_t                    i;
+    ngx_array_t                   headers_names;
     ngx_keyval_t                 *src, *s, *h;
     ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
@@ -2342,8 +2342,9 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
 
-    conf->headers_names = ngx_array_create(cf->pool, 4, sizeof(ngx_hash_key_t));
-    if (conf->headers_names == NULL) {
+    if (ngx_array_init(&headers_names, cf->temp_pool, 4, sizeof(ngx_hash_key_t))
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
@@ -2404,7 +2405,7 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     src = conf->headers_source->elts;
     for (i = 0; i < conf->headers_source->nelts; i++) {
 
-        hk = ngx_array_push(conf->headers_names);
+        hk = ngx_array_push(&headers_names);
         if (hk == NULL) {
             return NGX_ERROR;
         }
@@ -2552,14 +2553,7 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
 
-    if (ngx_hash_init(&hash, conf->headers_names->elts,
-                      conf->headers_names->nelts)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
+    return ngx_hash_init(&hash, headers_names.elts, headers_names.nelts);
 }
 
 
