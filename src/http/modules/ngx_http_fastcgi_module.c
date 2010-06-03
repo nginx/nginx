@@ -871,26 +871,26 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            len = sizeof("HTTP_") - 1 + header[i].key.len;
-            if (len > 127) {
-                *b->last++ = (u_char) (((len >> 24) & 0x7f) | 0x80);
-                *b->last++ = (u_char) ((len >> 16) & 0xff);
-                *b->last++ = (u_char) ((len >> 8) & 0xff);
-                *b->last++ = (u_char) (len & 0xff);
+            key_len = sizeof("HTTP_") - 1 + header[i].key.len;
+            if (key_len > 127) {
+                *b->last++ = (u_char) (((key_len >> 24) & 0x7f) | 0x80);
+                *b->last++ = (u_char) ((key_len >> 16) & 0xff);
+                *b->last++ = (u_char) ((key_len >> 8) & 0xff);
+                *b->last++ = (u_char) (key_len & 0xff);
 
             } else {
-                *b->last++ = (u_char) len;
+                *b->last++ = (u_char) key_len;
             }
 
-            len = header[i].value.len;
-            if (len > 127) {
-                *b->last++ = (u_char) (((len >> 24) & 0x7f) | 0x80);
-                *b->last++ = (u_char) ((len >> 16) & 0xff);
-                *b->last++ = (u_char) ((len >> 8) & 0xff);
-                *b->last++ = (u_char) (len & 0xff);
+            val_len = header[i].value.len;
+            if (val_len > 127) {
+                *b->last++ = (u_char) (((val_len >> 24) & 0x7f) | 0x80);
+                *b->last++ = (u_char) ((val_len >> 16) & 0xff);
+                *b->last++ = (u_char) ((val_len >> 8) & 0xff);
+                *b->last++ = (u_char) (val_len & 0xff);
 
             } else {
-                *b->last++ = (u_char) len;
+                *b->last++ = (u_char) val_len;
             }
 
             b->last = ngx_cpymem(b->last, "HTTP_", sizeof("HTTP_") - 1);
@@ -908,8 +908,12 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 *b->last++ = ch;
             }
 
-            b->last = ngx_copy(b->last, header[i].value.data,
-                               header[i].value.len);
+            b->last = ngx_copy(b->last, header[i].value.data, val_len);
+
+            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "fastcgi param: \"%*s: %*s\"",
+                           key_len, b->last - (key_len + val_len),
+                           val_len, b->last - val_len);
         }
     }
 
