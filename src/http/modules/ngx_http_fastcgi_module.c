@@ -2021,7 +2021,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     u_char                       *p;
     size_t                        size;
     uintptr_t                    *code;
-    ngx_str_t                    *h;
+    ngx_str_t                    *hide;
     ngx_uint_t                    i;
     ngx_array_t                   headers_names;
     ngx_keyval_t                 *src;
@@ -2249,16 +2249,16 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #if (NGX_HTTP_CACHE)
 
-    h = conf->upstream.cache ? ngx_http_fastcgi_hide_cache_headers:
-                               ngx_http_fastcgi_hide_headers;
+    hide = conf->upstream.cache ? ngx_http_fastcgi_hide_cache_headers:
+                                  ngx_http_fastcgi_hide_headers;
 #else
 
-    h = ngx_http_fastcgi_hide_headers;
+    hide = ngx_http_fastcgi_hide_headers;
 
 #endif
 
     if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream,
-                                            &prev->upstream, h, &hash)
+                                            &prev->upstream, hide, &hash)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
