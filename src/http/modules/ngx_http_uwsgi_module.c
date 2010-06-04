@@ -59,6 +59,8 @@ static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
 
 static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_conf_num_bounds_t  ngx_http_uwsgi_modifier_bounds = {
@@ -110,6 +112,20 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_uwsgi_loc_conf_t, modifier2),
       &ngx_http_uwsgi_modifier_bounds },
+
+    { ngx_string("uwsgi_store"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_uwsgi_store,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("uwsgi_store_access"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+      ngx_conf_set_access_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.store_access),
+      NULL },
 
     { ngx_string("uwsgi_ignore_client_abort"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -1447,6 +1463,52 @@ ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
         clcf->auto_redirect = 1;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_uwsgi_loc_conf_t *uwcf = conf;
+
+    ngx_str_t                  *value;
+    ngx_http_script_compile_t   sc;
+
+    if (uwcf->upstream.store != NGX_CONF_UNSET || uwcf->upstream.store_lengths)
+    {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        uwcf->upstream.store = 1;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        uwcf->upstream.store = 0;
+        return NGX_CONF_OK;
+    }
+
+    /* include the terminating '\0' into script */
+    value[1].len++;
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[1];
+    sc.lengths = &uwcf->upstream.store_lengths;
+    sc.values = &uwcf->upstream.store_values;
+    sc.variables = ngx_http_script_variables_count(&value[1]);;
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
