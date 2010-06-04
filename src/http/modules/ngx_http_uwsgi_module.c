@@ -540,6 +540,11 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             }
 
             e.ip += sizeof(uintptr_t);
+
+            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "uwsgi param: \"%*s: %*s\"",
+                           key_len, e.pos - (key_len + 2 + val_len),
+                           val_len, e.pos - val_len);
         }
 
         b->last = e.pos;
@@ -584,6 +589,11 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             *b->last++ = (u_char) (val_len & 0xff);
             *b->last++ = (u_char) ((val_len >> 8) & 0xff);
             b->last = ngx_copy(b->last, header[i].value.data, val_len);
+
+            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "uwsgi param: \"%*s: %*s\"",
+                           key_len, b->last - (key_len + 2 + val_len),
+                           val_len, b->last - val_len);
         }
     }
 
