@@ -536,6 +536,17 @@ static ngx_str_t  ngx_http_fastcgi_hide_cache_headers[] = {
     ngx_null_string
 };
 
+
+static ngx_keyval_t  ngx_http_fastcgi_cache_headers[] = {
+    { ngx_string("HTTP_IF_MODIFIED_SINCE"), ngx_string("") },
+    { ngx_string("HTTP_IF_UNMODIFIED_SINCE"), ngx_string("") },
+    { ngx_string("HTTP_IF_NONE_MATCH"), ngx_string("") },
+    { ngx_string("HTTP_IF_MATCH"), ngx_string("") },
+    { ngx_string("HTTP_RANGE"), ngx_string("") },
+    { ngx_string("HTTP_IF_RANGE"), ngx_string("") },
+    { ngx_null_string, ngx_null_string }
+};
+
 #endif
 
 
@@ -2287,9 +2298,30 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->params_source = prev->params_source;
         conf->headers_hash = prev->headers_hash;
 
+#if (NGX_HTTP_CACHE)
+
+        if (conf->params_source == NULL) {
+
+            if ((conf->upstream.cache == NULL)
+                == (prev->upstream.cache == NULL))
+            {
+                return NGX_CONF_OK;
+            }
+
+            /* 6 is a number of ngx_http_fastcgi_cache_headers entries */
+            conf->params_source = ngx_array_create(cf->pool, 6,
+                                                   sizeof(ngx_keyval_t));
+            if (conf->params_source == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
+#else
+
         if (conf->params_source == NULL) {
             return NGX_CONF_OK;
         }
+
+#endif
     }
 
     conf->params_len = ngx_array_create(cf->pool, 64, 1);
@@ -2309,6 +2341,37 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     src = conf->params_source->elts;
+
+#if (NGX_HTTP_CACHE)
+
+    if (conf->upstream.cache) {
+        ngx_keyval_t  *h, *s;
+
+        for (h = ngx_http_fastcgi_cache_headers; h->key.len; h++) {
+
+            for (i = 0; i < conf->params_source->nelts; i++) {
+                if (ngx_strcasecmp(h->key.data, src[i].key.data) == 0) {
+                    goto next;
+                }
+            }
+
+            s = ngx_array_push(conf->params_source);
+            if (s == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *s = *h;
+
+            src = conf->params_source->elts;
+
+        next:
+
+            h++;
+        }
+    }
+
+#endif
+
     for (i = 0; i < conf->params_source->nelts; i++) {
 
         if (src[i].key.len > sizeof("HTTP_") - 1
