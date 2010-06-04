@@ -744,14 +744,24 @@ ngx_http_handler(ngx_http_request_t *r)
             break;
         }
 
-        if (r->keepalive && r->headers_in.msie && r->method == NGX_HTTP_POST) {
+        if (r->keepalive) {
 
-            /*
-             * MSIE may wait for some time if an response for
-             * a POST request was sent over a keepalive connection
-             */
+            if (r->headers_in.msie6) {
+                if (r->method == NGX_HTTP_POST) {
+                    /*
+                     * MSIE may wait for some time if an response for
+                     * a POST request was sent over a keepalive connection
+                     */
+                    r->keepalive = 0;
+                }
 
-            r->keepalive = 0;
+            } else if (r->headers_in.safari) {
+                /*
+                 * Safari may send a POST request to a closed keepalive
+                 * connection and stalls for some time
+                 */
+                r->keepalive = 0;
+            }
         }
 
         if (r->headers_in.content_length_n > 0) {

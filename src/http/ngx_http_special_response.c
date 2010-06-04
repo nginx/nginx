@@ -31,13 +31,13 @@ static u_char ngx_http_error_tail[] =
 ;
 
 
-static u_char ngx_http_msie_stub[] =
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
-"<!-- The padding to disable MSIE's friendly error page -->" CRLF
+static u_char ngx_http_msie_padding[] =
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
+"<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
 ;
 
 
@@ -598,12 +598,12 @@ ngx_http_send_special_response(ngx_http_request_t *r,
             r->headers_out.content_length_n = ngx_http_error_pages[err].len
                                               + len;
             if (clcf->msie_padding
-                && r->headers_in.msie
+                && (r->headers_in.msie || r->headers_in.chrome)
                 && r->http_version >= NGX_HTTP_VERSION_10
                 && err >= NGX_HTTP_LEVEL_300)
             {
                 r->headers_out.content_length_n +=
-                                                sizeof(ngx_http_msie_stub) - 1;
+                                             sizeof(ngx_http_msie_padding) - 1;
                 msie_padding = 1;
             }
 
@@ -671,8 +671,8 @@ ngx_http_send_special_response(ngx_http_request_t *r,
         }
 
         b->memory = 1;
-        b->pos = ngx_http_msie_stub;
-        b->last = ngx_http_msie_stub + sizeof(ngx_http_msie_stub) - 1;
+        b->pos = ngx_http_msie_padding;
+        b->last = ngx_http_msie_padding + sizeof(ngx_http_msie_padding) - 1;
 
         out[1].next = &out[2];
         out[2].buf = b;
