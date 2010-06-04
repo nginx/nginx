@@ -1187,16 +1187,11 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             if (ch >= '0' && ch <= '9') {
                 ch = (u_char) ((decoded << 4) + ch - '0');
 
-                if (ch == '%') {
+                if (ch == '%' || ch == '#') {
                     state = sw_usual;
                     *u++ = ch;
                     ch = *p++;
                     break;
-                }
-
-                if (ch == '#') {
-                    *u++ = ch;
-                    ch = *p++;
 
                 } else if (ch == '\0') {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
@@ -1211,8 +1206,10 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 ch = (u_char) ((decoded << 4) + c - 'a' + 10);
 
                 if (ch == '?') {
+                    state = sw_usual;
                     *u++ = ch;
                     ch = *p++;
+                    break;
 
                 } else if (ch == '+') {
                     r->plus_in_uri = 1;
