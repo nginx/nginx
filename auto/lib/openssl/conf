@@ -19,6 +19,8 @@ if [ $OPENSSL != NONE ]; then
 
             # libeay32.lib requires gdi32.lib
             CORE_LIBS="$CORE_LIBS gdi32.lib"
+            # OpenSSL 1.0.0 requires crypt32.lib
+            CORE_LIBS="$CORE_LIBS crypt32.lib"
         ;;
 
         *)

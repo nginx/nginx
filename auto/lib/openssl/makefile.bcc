@@ -5,8 +5,7 @@
 all:
 	cd $(OPENSSL)
 
-	perl Configure BC-32 no-shared --prefix=openssl -DNO_SYS_TYPES_H \
-		$(OPENSSL_OPT)
+	perl Configure BC-32 no-shared --prefix=openssl $(OPENSSL_OPT)
 
 	ms\do_nasm
 
