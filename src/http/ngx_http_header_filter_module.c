@@ -53,7 +53,7 @@ static ngx_str_t ngx_http_status_lines[] = {
 
     ngx_string("200 OK"),
     ngx_string("201 Created"),
-    ngx_null_string,  /* "202 Accepted" */
+    ngx_string("202 Accepted"),
     ngx_null_string,  /* "203 Non-Authoritative Information" */
     ngx_string("204 No Content"),
     ngx_null_string,  /* "205 Reset Content" */

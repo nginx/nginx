@@ -64,6 +64,7 @@
 
 #define NGX_HTTP_OK                        200
 #define NGX_HTTP_CREATED                   201
+#define NGX_HTTP_ACCEPTED                  202
 #define NGX_HTTP_NO_CONTENT                204
 #define NGX_HTTP_PARTIAL_CONTENT           206
 
