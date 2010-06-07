@@ -124,18 +124,27 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     len = r->headers_in.referer->value.len;
     ref = r->headers_in.referer->value.data;
 
-    if (len < sizeof("http://i.ru") - 1
-        || (ngx_strncasecmp(ref, (u_char *) "http://", 7) != 0))
-    {
-        if (rlcf->blocked_referer) {
-            goto valid;
-        }
+    if (len >= sizeof("http://i.ru") - 1) {
+        last = ref + len;
 
-        goto invalid;
+        if (ngx_strncasecmp(ref, (u_char *) "http://", 7) == 0) {
+            ref += 7;
+            goto valid_scheme;
+
+        } else if (ngx_strncasecmp(ref, (u_char *) "https://", 8) == 0) {
+            ref += 8;
+            goto valid_scheme;
+        }
     }
 
-    last = ref + len;
-    ref += 7;
+    if (rlcf->blocked_referer) {
+        goto valid;
+    }
+
+    goto invalid;
+
+valid_scheme:
+
     i = 0;
     key = 0;
 
