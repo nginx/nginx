@@ -101,8 +101,8 @@ fi
 #     ngx_http_range_header_filter
 #     ngx_http_gzip_filter
 #     ngx_http_postpone_filter
-#     ngx_http_charset_filter
 #     ngx_http_ssi_filter
+#     ngx_http_charset_filter
 #         ngx_http_xslt_filter
 #         ngx_http_image_filter_filter
 #         ngx_http_sub_filter
@@ -130,17 +130,17 @@ if [ $HTTP_POSTPONE = YES ]; then
     HTTP_SRCS="$HTTP_SRCS $HTTP_POSTPONE_FILTER_SRCS"
 fi
 
-if [ $HTTP_CHARSET = YES ]; then
-    have=NGX_HTTP_CHARSET . auto/have
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_CHARSET_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_CHARSET_SRCS"
-fi
-
 if [ $HTTP_SSI = YES ]; then
     have=NGX_HTTP_SSI . auto/have
     HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSI_FILTER_MODULE"
     HTTP_DEPS="$HTTP_DEPS $HTTP_SSI_DEPS"
     HTTP_SRCS="$HTTP_SRCS $HTTP_SSI_SRCS"
+fi
+
+if [ $HTTP_CHARSET = YES ]; then
+    have=NGX_HTTP_CHARSET . auto/have
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_CHARSET_FILTER_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_CHARSET_SRCS"
 fi
 
 if [ $HTTP_XSLT = YES ]; then

@@ -545,7 +545,7 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
 {
     ngx_http_variable_t  *var;
 
-    var = ngx_http_add_variable(cf, &ngx_http_userid_got, NGX_HTTP_VAR_NOHASH);
+    var = ngx_http_add_variable(cf, &ngx_http_userid_got, 0);
     if (var == NULL) {
         return NGX_ERROR;
     }
