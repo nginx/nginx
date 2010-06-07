@@ -273,7 +273,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     }
 
     if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+        ngx_time_update();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

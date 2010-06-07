@@ -323,7 +323,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                        "rtsig signo:%d", signo);
 
         if (flags & NGX_UPDATE_TIME) {
-            ngx_time_update(0, 0);
+            ngx_time_update();
         }
 
         if (err == NGX_EAGAIN) {
@@ -349,7 +349,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                    signo, si.si_fd, si.si_band);
 
     if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+        ngx_time_update();
     }
 
     rtscf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_rtsig_module);
@@ -419,7 +419,7 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
     } else if (signo == SIGALRM) {
 
-        ngx_time_update(0, 0);
+        ngx_time_update();
 
         return NGX_OK;
 
@@ -671,7 +671,7 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle, ngx_msec_t timer,
     }
 
     if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+        ngx_time_update();
     }
 
     ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,

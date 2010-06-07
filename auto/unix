@@ -133,6 +133,16 @@ ngx_feature_test="char buf[1024]; long n; n = strerror_r(1, buf, 1024);
 . auto/feature
 
 
+ngx_feature="sys_errlist[]"
+ngx_feature_name="NGX_HAVE_SYS_ERRLIST"
+ngx_feature_run=yes
+ngx_feature_incs="#include <stdio.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="int n = sys_nerr; const char *p = sys_errlist[1];"
+. auto/feature
+
+
 ngx_feature="localtime_r()"
 ngx_feature_name="NGX_HAVE_LOCALTIME_R"
 ngx_feature_run=no

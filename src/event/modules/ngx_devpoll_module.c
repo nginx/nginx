@@ -375,8 +375,8 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         err = 0;
     }
 
-    if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+    if (flags & NGX_UPDATE_TIME || ngx_event_timer_alarm) {
+        ngx_time_update();
     }
 
     if (err) {

@@ -63,7 +63,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     tp = ngx_timeofday();
     tp->sec = 0;
 
-    ngx_time_update(0, 0);
+    ngx_time_update();
 
 
     log = old_cycle->log;

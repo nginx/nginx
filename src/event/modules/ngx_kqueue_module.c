@@ -543,8 +543,8 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         err = 0;
     }
 
-    if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+    if (flags & NGX_UPDATE_TIME || ngx_event_timer_alarm) {
+        ngx_time_update();
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -595,7 +595,7 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 #if (NGX_HAVE_TIMER_EVENT)
 
         if (event_list[i].filter == EVFILT_TIMER) {
-            ngx_time_update(0, 0);
+            ngx_time_update();
             continue;
         }
 

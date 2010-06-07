@@ -168,7 +168,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         sigsuspend(&set);
 
-        ngx_time_update(0, 0);
+        ngx_time_update();
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "wake up, sigio %i", sigio);
@@ -1337,7 +1337,7 @@ ngx_cache_manager_process_handler(ngx_event_t *ev)
 
             next = (n <= next) ? n : next;
 
-            ngx_time_update(0, 0);
+            ngx_time_update();
         }
     }
 
@@ -1367,7 +1367,7 @@ ngx_cache_loader_process_handler(ngx_event_t *ev)
 
         if (path[i]->loader) {
             path[i]->loader(path[i]->data);
-            ngx_time_update(0, 0);
+            ngx_time_update();
         }
     }
 

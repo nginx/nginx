@@ -405,7 +405,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     err = ngx_errno;
 
     if (flags & NGX_UPDATE_TIME) {
-        ngx_time_update(0, 0);
+        ngx_time_update();
     }
 
     if (n == -1) {
@@ -439,7 +439,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     for (i = 0; i < events; i++) {
 
         if (event_list[i].portev_source == PORT_SOURCE_TIMER) {
-            ngx_time_update(0, 0);
+            ngx_time_update();
             continue;
         }
 

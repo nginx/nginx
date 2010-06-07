@@ -1128,7 +1128,7 @@ ngx_http_file_cache_manager_sleep(ngx_http_file_cache_t *cache)
 
     if (cache->files++ > 100) {
 
-        ngx_time_update(0, 0);
+        ngx_time_update();
 
         elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
 
@@ -1145,7 +1145,7 @@ ngx_http_file_cache_manager_sleep(ngx_http_file_cache_t *cache)
 
             ngx_msleep(200);
 
-            ngx_time_update(0, 0);
+            ngx_time_update();
         }
 
         cache->last = ngx_current_msec;
