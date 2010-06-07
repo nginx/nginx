@@ -538,8 +538,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
         r->headers_out.location->value.len = b->last - p;
         r->headers_out.location->value.data = p;
-        r->headers_out.location->key.len = sizeof("Location: ") - 1;
-        r->headers_out.location->key.data = (u_char *) "Location: ";
+        r->headers_out.location->key.len = sizeof("Location") - 1;
+        r->headers_out.location->key.data = (u_char *) "Location";
 
         *b->last++ = CR; *b->last++ = LF;
     }

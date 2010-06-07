@@ -494,7 +494,7 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key,
         return NULL;
     }
 
-    if (ngx_strncmp(name->data, "upstream_http_", 10) == 0) {
+    if (ngx_strncmp(name->data, "upstream_http_", 14) == 0) {
 
         if (ngx_http_upstream_header_variable(r, vv, (uintptr_t) name)
             == NGX_OK)
