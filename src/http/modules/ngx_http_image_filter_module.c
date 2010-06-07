@@ -63,6 +63,7 @@ typedef struct {
 
     ngx_uint_t                   phase;
     ngx_uint_t                   type;
+    ngx_uint_t                   force;
 } ngx_http_image_filter_ctx_t;
 
 
@@ -501,7 +502,8 @@ ngx_http_image_process(ngx_http_request_t *r)
 
     if (rc == NGX_OK
         && ctx->width <= ctx->max_width
-        && ctx->height <= ctx->max_height)
+        && ctx->height <= ctx->max_height
+        && !ctx->force)
     {
         return ngx_http_image_asis(r, ctx);
     }
@@ -601,6 +603,7 @@ static ngx_int_t
 ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
     u_char      *p, *last;
+    size_t       len, app;
     ngx_uint_t   width, height;
 
     p = ctx->image;
@@ -611,26 +614,38 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 
         p += 2;
         last = ctx->image + ctx->length - 10;
+        width = 0;
+        height = 0;
+        app = 0;
 
         while (p < last) {
 
             if (p[0] == 0xff && p[1] != 0xff) {
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "JPEG: %02xd %02xd", *p, *(p + 1));
+                               "JPEG: %02xd %02xd", p[0], p[1]);
 
                 p++;
 
-                if (*p == 0xc0 || *p == 0xc1 || *p == 0xc2 || *p == 0xc3
-                    || *p == 0xc9 || *p == 0xca || *p == 0xcb)
+                if ((*p == 0xc0 || *p == 0xc1 || *p == 0xc2 || *p == 0xc3
+                     || *p == 0xc9 || *p == 0xca || *p == 0xcb)
+                    && (width == 0 || height == 0))
                 {
-                    goto found;
+                    width = p[6] * 256 + p[7];
+                    height = p[4] * 256 + p[5];
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "JPEG: %02xd %02xd", p[1], p[2]);
 
-                p += p[1] * 256 + p[2];
+                len = p[1] * 256 + p[2];
+
+                if (*p >= 0xe1 && *p <= 0xef) {
+                    /* application data, e.g., EXIF, Adobe XMP, etc. */
+                    app += len;
+                }
+
+                p += len;
 
                 continue;
             }
@@ -638,12 +653,16 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             p++;
         }
 
-        return NGX_DECLINED;
+        if (width == 0 || height == 0) {
+            return NGX_DECLINED;
+        }
 
-    found:
-
-        width = p[6] * 256 + p[7];
-        height = p[4] * 256 + p[5];
+        if (ctx->length / 20 < app) {
+            /* force conversion if application data consume more than 5% */
+            ctx->force = 1;
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "app data size: %uz", app);
+        }
 
         break;
 
@@ -708,7 +727,8 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
 
-    if ((ngx_uint_t) sx <= ctx->max_width
+    if (!ctx->force
+        && (ngx_uint_t) sx <= ctx->max_width
         && (ngx_uint_t) sy <= ctx->max_height)
     {
         gdImageDestroy(src);
