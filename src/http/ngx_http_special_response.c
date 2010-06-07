@@ -517,8 +517,6 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     r->err_status = overwrite;
 
-    r->zero_in_uri = 0;
-
     if (ngx_http_complex_value(r, &err_page->value, &uri) != NGX_OK) {
         return NGX_ERROR;
     }

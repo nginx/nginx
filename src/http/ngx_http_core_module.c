@@ -1305,7 +1305,7 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
 
     /* no content handler was found */
 
-    if (r->uri.data[r->uri.len - 1] == '/' && !r->zero_in_uri) {
+    if (r->uri.data[r->uri.len - 1] == '/') {
 
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) != NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -2093,7 +2093,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http subrequest \"%V?%V\"", uri, &sr->args);
 
-    sr->zero_in_uri = (flags & NGX_HTTP_ZERO_IN_URI) != 0;
     sr->subrequest_in_memory = (flags & NGX_HTTP_SUBREQUEST_IN_MEMORY) != 0;
     sr->waited = (flags & NGX_HTTP_SUBREQUEST_WAITED) != 0;
 

@@ -168,10 +168,6 @@ ngx_http_perl_xs_init(pTHX)
 static ngx_int_t
 ngx_http_perl_handler(ngx_http_request_t *r)
 {
-    if (r->zero_in_uri) {
-        return NGX_HTTP_NOT_FOUND;
-    }
-
     ngx_http_perl_handle_request(r);
 
     return NGX_DONE;

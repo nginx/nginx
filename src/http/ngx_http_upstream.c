@@ -1780,10 +1780,6 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_DONE;
         }
 
-        if (flags & NGX_HTTP_ZERO_IN_URI) {
-            r->zero_in_uri = 1;
-        }
-
         if (r->method != NGX_HTTP_HEAD) {
             r->method = NGX_HTTP_GET;
         }
