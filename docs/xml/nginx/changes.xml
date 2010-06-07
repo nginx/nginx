@@ -9,6 +9,66 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.40" date="07.06.2010">
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует имя потока файла по умолчанию.<br/>
+Спасибо Jose Antonio Vazquez Gonzalez.
+</para>
+<para lang="en">
+now nginx/Windows ignores default file stream name.<br/>
+Thanks to Jose Antonio Vazquez Gonzalez.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_uwsgi_module.<br/>
+Спасибо Roberto De Ioris.
+</para>
+<para lang="en">
+the ngx_http_uwsgi_module.<br/>
+Thanks to Roberto De Ioris.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_param со значением, начинающимся со строки "HTTP_",
+изменяет строку заголовка в запросе клиента.
+</para>
+<para lang="en">
+a "fastcgi_param" directive with value starting with "HTTP_" overrides
+a client request header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "If-Modified-Since", "If-Range" и им подобные в заголовке запроса
+клиента передавались FastCGI-серверу при кэшировании.
+</para>
+<para lang="en">
+the "If-Modified-Since", "If-Range", etc. client request header lines
+were passed to FastCGI-server while caching.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+listen unix domain сокет нельзя было изменить во время переконфигурации.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+listen unix domain socket could not be changed during reconfiguration.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.39" date="31.05.2010">
 
 <change type="bugfix">
