@@ -340,13 +340,10 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     last = 0;
 
-    if (ngx_strncmp(value[2].data, "http://", sizeof("http://") - 1) == 0) {
-        regex->status = NGX_HTTP_MOVED_TEMPORARILY;
-        regex->redirect = 1;
-        last = 1;
-    }
-
-    if (ngx_strncmp(value[2].data, "https://", sizeof("https://") - 1) == 0) {
+    if (ngx_strncmp(value[2].data, "http://", sizeof("http://") - 1) == 0
+        || ngx_strncmp(value[2].data, "https://", sizeof("https://") - 1) == 0
+        || ngx_strncmp(value[2].data, "$scheme", sizeof("$scheme") - 1) == 0)
+    {
         regex->status = NGX_HTTP_MOVED_TEMPORARILY;
         regex->redirect = 1;
         last = 1;
