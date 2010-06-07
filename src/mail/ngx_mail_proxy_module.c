@@ -726,7 +726,7 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
 
     b->last += n;
 
-    if (b->last - b->pos < 5) {
+    if (b->last - b->pos < 4) {
         return NGX_AGAIN;
     }
 
