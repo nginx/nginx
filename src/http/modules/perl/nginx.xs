@@ -901,9 +901,6 @@ variable(r, name, value = NULL)
             XSRETURN_UNDEF;
         }
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "variable \"%V\" not found", &var);
-
         XSRETURN_UNDEF;
     }
 
