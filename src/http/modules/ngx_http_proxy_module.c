@@ -1772,9 +1772,7 @@ ngx_http_proxy_rewrite_redirect_text(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    p = data;
-
-    p = ngx_copy(p, h->value.data, prefix);
+    p = ngx_copy(data, h->value.data, prefix);
 
     if (pr->replacement.text.len) {
         p = ngx_copy(p, pr->replacement.text.data, pr->replacement.text.len);
@@ -1824,9 +1822,7 @@ ngx_http_proxy_rewrite_redirect_vars(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    p = data;
-
-    p = ngx_copy(p, h->value.data, prefix);
+    p = ngx_copy(data, h->value.data, prefix);
 
     e.ip = pr->replacement.vars.values;
     e.pos = p;
