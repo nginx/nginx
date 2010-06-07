@@ -50,9 +50,10 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t
 ngx_http_chunked_header_filter(ngx_http_request_t *r)
 {
+    ngx_http_core_loc_conf_t  *clcf;
+
     if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED
         || r->headers_out.status == NGX_HTTP_NO_CONTENT
-        || r->headers_out.status == NGX_HTTP_CREATED
         || r != r->main
         || (r->method & NGX_HTTP_HEAD))
     {
@@ -64,7 +65,14 @@ ngx_http_chunked_header_filter(ngx_http_request_t *r)
             r->keepalive = 0;
 
         } else {
-            r->chunked = 1;
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+            if (clcf->chunked_transfer_encoding) {
+                r->chunked = 1;
+
+            } else {
+                r->keepalive = 0;
+            }
         }
     }
 
