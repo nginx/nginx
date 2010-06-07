@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <locale.h>
 
 #ifdef __WATCOMC__
 #define _TIME_T_DEFINED

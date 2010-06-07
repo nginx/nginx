@@ -48,7 +48,7 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
             goto failed;
         }
 
-        if (n != len - 1 || ngx_memcmp(u, lu, n) != 0) {
+        if (n != len - 1 || _wcsicmp(u, lu) != 0) {
             ngx_set_errno(NGX_ENOENT);
             goto failed;
         }

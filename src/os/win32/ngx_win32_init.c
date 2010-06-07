@@ -114,6 +114,9 @@ ngx_os_init(ngx_log_t *log)
 
     for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
+    /* delete default "C" locale for _wcsicmp() */
+    setlocale(LC_ALL, "");
+
 
     /* init Winsock */
 
