@@ -1765,7 +1765,7 @@ ngx_http_proxy_rewrite_redirect_text(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_DECLINED;
     }
 
-    len = prefix + pr->replacement.text.len + h->value.len - pr->redirect.len;
+    len = pr->replacement.text.len + h->value.len - pr->redirect.len;
 
     data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
@@ -1812,7 +1812,7 @@ ngx_http_proxy_rewrite_redirect_vars(ngx_http_request_t *r, ngx_table_elt_t *h,
     e.ip = pr->replacement.vars.lengths;
     e.request = r;
 
-    len = prefix + h->value.len - pr->redirect.len;
+    len = h->value.len - pr->redirect.len;
 
     while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
