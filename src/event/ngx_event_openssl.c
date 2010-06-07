@@ -106,6 +106,8 @@ ngx_ssl_init(ngx_log_t *log)
 
     ENGINE_load_builtin_engines();
 
+    OpenSSL_add_all_algorithms();
+
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
     if (ngx_ssl_connection_index == -1) {
@@ -1308,10 +1310,14 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 
             /* handshake failures */
         if (n == SSL_R_DIGEST_CHECK_FAILED                           /*  149 */
+            || n == SSL_R_LENGTH_MISMATCH                            /*  159 */
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
+            || n == SSL_R_NO_CIPHERS_SPECIFIED                       /*  183 */
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
+            || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
+            || n == SSL_R_UNKNOWN_ALERT_TYPE                         /*  246 */
             || n == SSL_R_UNKNOWN_PROTOCOL                           /*  252 */
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
@@ -1424,6 +1430,8 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
         return NGX_OK;
     }
 
+    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
+
     if (builtin_session_cache == NGX_SSL_NONE_SCACHE) {
 
         /*
@@ -1454,8 +1462,6 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
     }
 
     SSL_CTX_set_session_cache_mode(ssl->ctx, cache_mode);
-
-    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
 
     if (builtin_session_cache != NGX_SSL_NO_BUILTIN_SCACHE) {
 
@@ -2311,5 +2317,6 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static void
 ngx_openssl_exit(ngx_cycle_t *cycle)
 {
+    EVP_cleanup();
     ENGINE_cleanup();
 }
