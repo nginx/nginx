@@ -64,6 +64,7 @@ typedef struct {
 #define NGX_FILE_OPEN            0
 #define NGX_FILE_TRUNCATE        O_CREAT|O_TRUNC
 #define NGX_FILE_APPEND          O_WRONLY|O_APPEND
+#define NGX_FILE_NONBLOCK        O_NONBLOCK
 
 #define NGX_FILE_DEFAULT_ACCESS  0644
 #define NGX_FILE_OWNER_ACCESS    0600

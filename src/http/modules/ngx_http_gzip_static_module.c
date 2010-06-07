@@ -179,7 +179,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 #if !(NGX_WIN32) /* the not regular files are probably Unix specific */
 
     if (!of.is_file) {
-        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
+        ngx_log_error(NGX_LOG_CRIT, log, 0,
                       "\"%s\" is not a regular file", path.data);
 
         return NGX_HTTP_NOT_FOUND;

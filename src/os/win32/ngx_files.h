@@ -64,6 +64,7 @@ ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 #define NGX_FILE_WRONLY             GENERIC_WRITE
 #define NGX_FILE_RDWR               GENERIC_READ|GENERIC_WRITE
 #define NGX_FILE_APPEND             FILE_APPEND_DATA|SYNCHRONIZE
+#define NGX_FILE_NONBLOCK           0
 
 #define NGX_FILE_CREATE_OR_OPEN     OPEN_ALWAYS
 #define NGX_FILE_OPEN               OPEN_EXISTING
