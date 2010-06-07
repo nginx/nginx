@@ -53,7 +53,7 @@ END
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
-	&& \$(MAKE) clean \\
+	&& \$(MAKE) distclean \\
 	&& cp contrib/asm586/match.S . \\
 	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
 		./configure \\
@@ -70,7 +70,7 @@ END
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
-	&& \$(MAKE) clean \\
+	&& \$(MAKE) distclean \\
 	&& cp contrib/asm686/match.S . \\
 	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
 		./configure \\
@@ -103,7 +103,7 @@ if [ $done = NO ]; then
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
-	&& \$(MAKE) clean \\
+	&& \$(MAKE) distclean \\
 	&& CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
 		./configure \\
 	&& \$(MAKE) libz.a
