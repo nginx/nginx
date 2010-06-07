@@ -160,6 +160,7 @@ typedef struct {
     ngx_uint_t                       cache_methods;
 
     ngx_array_t                     *cache_valid;
+    ngx_array_t                     *no_cache; /* ngx_http_complex_value_t */
 #endif
 
     ngx_array_t                     *store_lengths;

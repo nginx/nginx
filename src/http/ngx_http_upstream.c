@@ -585,6 +585,13 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_int_t          rc;
     ngx_http_cache_t  *c;
 
+    if (u->conf->no_cache) {
+        rc = ngx_http_cache(r, u->conf->no_cache);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+    }
+
     if (!(r->method & u->conf->cache_methods)) {
         return NGX_DECLINED;
     }
@@ -3002,16 +3009,18 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    last = h->value.data + h->value.len;
+    p = h->value.data;
+    last = p + h->value.len;
 
-    if (ngx_strlcasestrn(h->value.data, last, (u_char *) "no-cache", 8 - 1)
-        != NULL)
+    if (ngx_strlcasestrn(p, last, (u_char *) "no-cache", 8 - 1) != NULL
+        || ngx_strlcasestrn(p, last, (u_char *) "no-store", 8 - 1) != NULL
+        || ngx_strlcasestrn(p, last, (u_char *) "private", 7 - 1) != NULL)
     {
         u->cacheable = 0;
         return NGX_OK;
     }
 
-    p = ngx_strlcasestrn(h->value.data, last, (u_char *) "max-age=", 8 - 1);
+    p = ngx_strlcasestrn(p, last, (u_char *) "max-age=", 8 - 1);
 
     if (p == NULL) {
         return NGX_OK;

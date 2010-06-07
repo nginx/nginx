@@ -133,6 +133,11 @@ char *ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 char *ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
+ngx_int_t ngx_http_cache(ngx_http_request_t *r, ngx_array_t *no_cache);
+char *ngx_http_no_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
+
 extern ngx_str_t  ngx_http_cache_status[];
 
 
