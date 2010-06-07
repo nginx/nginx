@@ -128,6 +128,10 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 #define ngx_fd_info_n               "GetFileInformationByHandle()"
 
 
+#define ngx_link_info(name, fi)     ngx_file_info(name, fi)
+#define ngx_link_info_n             "GetFileAttributesEx()"
+
+
 #define ngx_is_dir(fi)                                                       \
     (((fi)->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 #define ngx_is_file(fi)                                                      \

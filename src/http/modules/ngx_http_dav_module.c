@@ -325,13 +325,13 @@ ok:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http delete filename: \"%s\"", path.data);
 
-    if (ngx_file_info(path.data, &fi) == NGX_FILE_ERROR) {
+    if (ngx_link_info(path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
         rc = (err == NGX_ENOTDIR) ? NGX_HTTP_CONFLICT : NGX_HTTP_NOT_FOUND;
 
         return ngx_http_dav_error(r->connection->log, err,
-                                  rc, ngx_file_info_n, path.data);
+                                  rc, ngx_link_info_n, path.data);
     }
 
     if (ngx_is_dir(&fi)) {
@@ -358,7 +358,7 @@ ok:
 
         /*
          * we do not need to test (r->uri.data[r->uri.len - 1] == '/')
-         * because ngx_file_info("/file/") returned NGX_ENOTDIR above
+         * because ngx_link_info("/file/") returned NGX_ENOTDIR above
          */
 
         depth = ngx_http_dav_depth(r, 0);
@@ -685,12 +685,12 @@ overwrite_done:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http copy to: \"%s\"", copy.path.data);
 
-    if (ngx_file_info(copy.path.data, &fi) == NGX_FILE_ERROR) {
+    if (ngx_link_info(copy.path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
         if (err != NGX_ENOENT) {
             return ngx_http_dav_error(r->connection->log, err,
-                                      NGX_HTTP_NOT_FOUND, ngx_file_info_n,
+                                      NGX_HTTP_NOT_FOUND, ngx_link_info_n,
                                       copy.path.data);
         }
 
@@ -719,9 +719,9 @@ overwrite_done:
         dir = ngx_is_dir(&fi);
     }
 
-    if (ngx_file_info(path.data, &fi) == NGX_FILE_ERROR) {
+    if (ngx_link_info(path.data, &fi) == NGX_FILE_ERROR) {
         return ngx_http_dav_error(r->connection->log, ngx_errno,
-                                  NGX_HTTP_NOT_FOUND, ngx_file_info_n,
+                                  NGX_HTTP_NOT_FOUND, ngx_link_info_n,
                                   path.data);
     }
 
