@@ -51,8 +51,6 @@ esac
 #NGX_GCC_OPT="-Os"
 NGX_GCC_OPT="-O"
 
-CFLAGS="$CFLAGS $NGX_GCC_OPT"
-
 #CFLAGS="$CFLAGS -fomit-frame-pointer"
 
 case $CPU in

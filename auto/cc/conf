@@ -104,6 +104,7 @@ else
 fi
 
 CFLAGS="$CFLAGS $NGX_CC_OPT"
+NGX_TEST_LD_OPT="$NGX_LD_OPT"
 
 
 if [ "$NGX_PLATFORM" != win32 ]; then
