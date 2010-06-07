@@ -9,6 +9,392 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.66" date="07.06.2010">
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует имя потока файла по умолчанию.<br/>
+Спасибо Jose Antonio Vazquez Gonzalez.
+</para>
+<para lang="en">
+now nginx/Windows ignores default file stream name.<br/>
+Thanks to Jose Antonio Vazquez Gonzalez.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь charset-фильтр работает до SSI-фильтра.
+</para>
+<para lang="en">
+now the charset filter runs before the SSI filter.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь в лог ошибок не пишется сообщение, если переменная не найдена
+с помощью метода $r->variable().
+</para>
+<para lang="en">
+now no message is written in an error log if a variable is not found by
+$r->variable() method.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь keepalive соединения после запросов POST не запрещаются для
+MSIE 7.0+.<br/>
+Спасибо Adam Lounds.
+</para>
+<para lang="en">
+now keepalive connections after POST requests are not disabled for
+MSIE 7.0+.<br/>
+Thanks to Adam Lounds.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_no_cache и fastcgi_no_cache.
+</para>
+<para lang="en">
+the "proxy_no_cache" and "fastcgi_no_cache" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании переменной $scheme в директиве rewrite
+автоматически делается редирект.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+now the "rewrite" directive does a redirect automatically
+if the $scheme variable is used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива chunked_transfer_encoding.
+</para>
+<para lang="en">
+the "chunked_transfer_encoding" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $geoip_city_continent_code, $geoip_latitude и $geoip_longitude.<br/>
+Спасибо Arvind Sundararajan.
+</para>
+<para lang="en">
+the $geoip_city_continent_code, $geoip_latitude, and $geoip_longitude
+variables.<br/>
+Thanks to Arvind Sundararajan.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_image_filter_module теперь всегда удаляет
+EXIF и другие данные, если они занимают больше 5% в JPEG-файле.
+</para>
+<para lang="en">
+now the ngx_http_image_filter_module deletes always EXIF and other
+application specific data if the data consume more than 5% of a JPEG file.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива msie_padding работает и для Chrome.
+</para>
+<para lang="en">
+now the "msie_padding" directive works for Chrome too.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+теперь keepalive соединения запрещены для Safari.<br/>
+Спасибо Joshua Sierles.
+</para>
+<para lang="en">
+now keepalive connections are disabled for Safari.<br/>
+Thanks to Joshua Sierles.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx игнорировал значения "private" и "no-store" в строке "Cache-Control"
+в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+nginx ignored the "private" and "no-store" values
+in the "Cache-Control" backend response header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+символ "&amp;" при копировании в аргументы в правилах rewrite не экранировался.
+</para>
+<para lang="en">
+an "&amp;" character was not escaped when it was copied in arguments part
+in a rewrite rule.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог завершаться аварийно во время обработки сигнала или
+при использовании директивы timer_resolution на платформах,
+не поддерживающих методы kqueue или eventport.<br/>
+Спасибо George Xie и Максиму Дунину.
+</para>
+<para lang="en">
+nginx might be terminated abnormally
+while a signal processing or if the directive "timer_resolution" was used
+on platforms which do not support kqueue or eventport notification methods.<br/>
+Thanks to George Xie and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если временные файлы и постоянное место хранения располагались на разных
+файловых системах, то у постоянных файлов время изменения было неверным.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+if temporary files and permanent storage area resided at different
+file systems, then permanent file modification times were incorrect.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_memcached_module мог выдавать ошибку "memcached sent invalid
+trailer".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+ngx_http_memcached_module might issue the error message "memcached sent invalid
+trailer".<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не мог собрать библиотеку zlib-1.2.4 из исходных текстов.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+nginx could not built zlib-1.2.4 library using the library sources.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль SSI в подзапросах использовал закэшированные в основном запросе
+значения переменных $query_string, $arg_... и им подобных.
+</para>
+<para lang="en">
+values of the $query_string, $arg_..., etc. variables cached in main
+request were used by the SSI module in subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал HTTPS-рефереры.
+</para>
+<para lang="en">
+nginx did not support HTTPS referrers.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows мог не находить файлы, если путь в конфигурации был задан
+в другом регистре;
+ошибка появилась в 0.7.65.
+</para>
+<para lang="en">
+nginx/Windows might not find file if path in configuration was given
+in other character case;
+the bug had appeared in 0.7.65.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $date_local выдавала неверное время,
+если использовался формат "%s".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the $date_local variable has an incorrect value,
+if the "%s" format was used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал все шифры, используемые в клиентских сертификатах.<br/>
+Спасибо Иннокентию Еникееву.
+</para>
+<para lang="en">
+nginx did not support all ciphers and digests used in client certificates.<br/>
+Thanks to Innocenty Enikeew.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если ssl_session_cache не был установлен или установлен в none,
+то при проверке клиентского сертификаты могла происходить
+ошибка "session id context uninitialized";
+ошибка появилась в 0.7.1.
+</para>
+<para lang="en">
+if ssl_session_cache was not set or was set to "none",
+then during client certificate verify
+the error "session id context uninitialized" might occur;
+the bug had appeared in 0.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с OpenSSL-1.0.0 на 64-битном Linux.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+OpenSSL-1.0.0 compatibility on 64-bit Linux.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+geo-диапазон возвращал значение по умолчанию, если диапазон включал
+в себя одну и более сетей размером /16 и не начинался на границе сети
+размером /16.
+</para>
+<para lang="en">
+a geo range returned default value if the range included two or more
+/16 networks and did not begin at /16 network boundary.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменную $uid_got нельзя было использовать в SSI и перловом модулях.
+</para>
+<para lang="en">
+the $uid_got variable might not be used in the SSI and perl modules.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+рабочий процесс зависал при запросе файла FIFO.<br/>
+Спасибо Vicente Aguilar и Максиму Дунину.
+</para>
+<para lang="en">
+a worker process hung if a FIFO file was requested.<br/>
+Thanks to Vicente Aguilar and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение переменной повторно экранировалось после каждого вывода
+SSI-команды echo;
+ошибка появилась в 0.6.14.
+</para>
+<para lang="en">
+a variable value was repeatedly encoded after each
+an "echo" SSI-command output;
+the bug had appeared in 0.6.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр stub в SSI-директиве include не использовался,
+если пустой ответ имел код 200.
+</para>
+<para lang="en">
+a "stub" parameter of an "include" SSI directive was not used,
+if empty response has 200 status code.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+блок, используемый в параметре stub в SSI-директиве include,
+выводился с MIME-типом "text/plain".
+</para>
+<para lang="en">
+a block used in a "stub" parameter of an "include" SSI directive
+was output with "text/plain" MIME type.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если проксированный или FastCGI запрос внутренне перенаправлялся
+в другой проксированный или FastCGI location,
+то в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.7.65.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+if a proxied or FastCGI request was internally redirected
+to another proxied or FastCGI location,
+then a segmentation fault might occur in a worker process;
+the bug had appeared in 0.7.65.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения IMAP к серверу Zimbra могло зависнуть до таймаута.<br/>
+Спасибо Alan Batie.
+</para>
+<para lang="en">
+IMAP connections may hang until they timed out
+while talking to Zimbra server.<br/>
+Thanks to Alan Batie.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал передачу chunk'ами для 201-ых ответов.<br/>
+Спасибо Julian Reich.
+</para>
+<para lang="en">
+nginx did not support chunked transfer encoding for 201 responses.<br/>
+Thanks to Julian Reich.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.65" date="01.02.2010">
 
 <change type="security">
@@ -164,7 +550,7 @@ Thanks to Tim Dettrick and David Kostal.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 nginx не считал запятую разделителем в строке "Cache-Control" в строке
 заголовка бэкенда.
@@ -276,7 +662,7 @@ should replace an already existent file.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 nginx/Windows мог не создать временный файл, файл в кэше или файл
 с помощью директив proxy/fastcgi_store, если рабочий процесс не имел
@@ -309,7 +695,7 @@ Thanks to Maxim Dounin.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 модуль ngx_http_autoindex_module не показывал последний слэш для линков
 на каталоги;
@@ -322,7 +708,7 @@ the bug had appeared in 0.7.15.
 </para>
 </change>
 
-<change type="bugfix"> 
+<change type="bugfix">
 <para lang="ru">
 nginx не закрывал лог, заданный параметром конфигурации --error-log-path;
 ошибка появилась в 0.7.53.
@@ -609,7 +995,7 @@ the "limit_req_log_level" and "limit_conn_log_level" directives.
 
 <change type="bugfix">
 <para lang="ru">
-Теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
+теперь директива limit_req соответствует алгоритму leaky bucket.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
@@ -2137,7 +2523,7 @@ the "server_name" directive supports captures in regular expressions.
 </para>
 </change>
 
-<change type="workaround"> 
+<change type="workaround">
 <para lang="ru">
 модуль ngx_http_autoindex_module не показывал последний слэш для каталогов
 на файловой системе XFS;
@@ -2893,7 +3279,7 @@ Thanks to Zyb.
 Изменения в модуле ngx_http_limit_req_module.
 </para>
 <para lang="en">
-Changes in the ngx_http_limit_req_module. 
+Changes in the ngx_http_limit_req_module.
 </para>
 </change>
 
@@ -2949,7 +3335,7 @@ Changes in the ngx_http_gzip_filter_module.
 модуль ngx_http_limit_req_module.
 </para>
 <para lang="en">
-the ngx_http_limit_req_module. 
+the ngx_http_limit_req_module.
 </para>
 </change>
 
@@ -5318,7 +5704,7 @@ Thanks to Andrei Nigmatulin.
 
 <change type="bugfix">
 <para lang="ru">
-ngx_http_memcached_module не устанавливал upstream_response_time.<br/>
+ngx_http_memcached_module не устанавливал $upstream_response_time.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
