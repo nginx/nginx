@@ -847,7 +847,7 @@ variable(r, name, value = NULL)
 
     #endif
 
-    vv = ngx_http_get_variable(r, &var, hash, 1);
+    vv = ngx_http_get_variable(r, &var, hash);
     if (vv == NULL) {
         XSRETURN_UNDEF;
     }
