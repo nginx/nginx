@@ -628,49 +628,51 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
 {
-    ngx_url_t  u;
+    ngx_url_t             url;
+    ngx_http_upstream_t  *u;
 
-    ngx_memzero(&u, sizeof(ngx_url_t));
+    ngx_memzero(&url, sizeof(ngx_url_t));
 
-    if (ngx_http_script_run(r, &u.url, flcf->fastcgi_lengths->elts, 0,
+    if (ngx_http_script_run(r, &url.url, flcf->fastcgi_lengths->elts, 0,
                             flcf->fastcgi_values->elts)
         == NULL)
     {
         return NGX_ERROR;
     }
 
-    u.no_resolve = 1;
+    url.no_resolve = 1;
 
-    if (ngx_parse_url(r->pool, &u) != NGX_OK) {
-         if (u.err) {
+    if (ngx_parse_url(r->pool, &url) != NGX_OK) {
+         if (url.err) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "%s in upstream \"%V\"", u.err, &u.url);
+                          "%s in upstream \"%V\"", url.err, &url.url);
         }
 
         return NGX_ERROR;
     }
 
-    if (u.no_port) {
+    if (url.no_port) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "no port in upstream \"%V\"", &u.url);
+                      "no port in upstream \"%V\"", &url.url);
         return NGX_ERROR;
     }
 
-    r->upstream->resolved = ngx_pcalloc(r->pool,
-                                        sizeof(ngx_http_upstream_resolved_t));
-    if (r->upstream->resolved == NULL) {
+    u = r->upstream;
+
+    u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
+    if (u->resolved == NULL) {
         return NGX_ERROR;
     }
 
-    if (u.addrs && u.addrs[0].sockaddr) {
-        r->upstream->resolved->sockaddr = u.addrs[0].sockaddr;
-        r->upstream->resolved->socklen = u.addrs[0].socklen;
-        r->upstream->resolved->naddrs = 1;
-        r->upstream->resolved->host = u.addrs[0].name;
+    if (url.addrs && url.addrs[0].sockaddr) {
+        u->resolved->sockaddr = url.addrs[0].sockaddr;
+        u->resolved->socklen = url.addrs[0].socklen;
+        u->resolved->naddrs = 1;
+        u->resolved->host = url.addrs[0].name;
 
     } else {
-        r->upstream->resolved->host = u.host;
-        r->upstream->resolved->port = u.port;
+        u->resolved->host = url.host;
+        u->resolved->port = url.port;
     }
 
     return NGX_OK;
