@@ -163,6 +163,10 @@ ngx_conf_split_clients_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *cf = save;
 
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
     sum = 0;
     last = 0;
     part = ctx->parts.elts;
