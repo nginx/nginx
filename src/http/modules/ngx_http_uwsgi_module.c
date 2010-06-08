@@ -1199,38 +1199,6 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http uwsgi header done");
 
-            /*
-             * if no "Server" and "Date" in header line,
-             * then add the special empty headers
-             */
-
-            if (r->upstream->headers_in.server == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
-                }
-
-                h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
-                                   ngx_hash ('s', 'e'), 'r'), 'v'), 'e'), 'r');
-
-                ngx_str_set(&h->key, "Server");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "server";
-            }
-
-            if (r->upstream->headers_in.date == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
-                }
-
-                h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
-
-                ngx_str_set(&h->key, "Date");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "date";
-            }
-
             return NGX_OK;
         }
 
