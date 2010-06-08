@@ -831,8 +831,6 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             body = body->next;
         }
 
-        b->flush = 1;
-
     } else {
         r->upstream->request_bufs = cl;
     }
