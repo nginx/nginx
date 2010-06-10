@@ -535,6 +535,13 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
         return NGX_HTTP_BAD_REQUEST;
     }
 
+    p = dest->value.data;
+    /* there is always '\0' even after empty header value */
+    if (p[0] == '/') {
+        last = p + dest->value.len;
+        goto destination_done;
+    }
+
     len = r->headers_in.server.len;
 
     if (len == 0) {
