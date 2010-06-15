@@ -857,8 +857,8 @@ ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
 {
     size_t                 len;
     ngx_int_t              rc;
-    ngx_http_upstream_t   *u;
     ngx_http_status_t     *status;
+    ngx_http_upstream_t   *u;
 
     status = ngx_http_get_module_ctx(r, ngx_http_uwsgi_module);
 
