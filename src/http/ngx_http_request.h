@@ -437,6 +437,9 @@ struct ngx_http_request_s {
     /* URI with "+" */
     unsigned                          plus_in_uri:1;
 
+    /* URI with " " */
+    unsigned                          space_in_uri:1;
+
     unsigned                          invalid_header:1;
 
     unsigned                          add_uri_to_alias:1;
