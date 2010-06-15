@@ -51,6 +51,14 @@ struct ngx_http_log_ctx_s {
 };
 
 
+typedef struct {
+    ngx_uint_t           code;
+    ngx_uint_t           count;
+    u_char              *start;
+    u_char              *end;
+} ngx_http_status_t;
+
+
 #define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]
 #define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
 
@@ -70,6 +78,8 @@ int ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r,
     ngx_uint_t merge_slashes);
+ngx_int_t ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
+    ngx_http_status_t *status);
 ngx_int_t ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args, ngx_uint_t *flags);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
