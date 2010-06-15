@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.67" date="15.06.2010">
+
+<change type="security">
+<para lang="ru">
+рабочий процесс nginx/Windows мог завершаться аварийно при запросе файла
+с неверной кодировкой UTF-8.
+</para>
+<para lang="en">
+nginx/Windows worker might be terminated abnormally if a requested file name
+has invalid UTF-8 encoding.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.66" date="07.06.2010">
 
 <change type="security">
