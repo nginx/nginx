@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.41" date="15.06.2010">
+
+<change type="security">
+<para lang="ru">
+рабочий процесс nginx/Windows мог завершаться аварийно при запросе файла
+с неверной кодировкой UTF-8.
+</para>
+<para lang="en">
+nginx/Windows worker might be terminated abnormally if a requested file name
+has invalid UTF-8 encoding.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx разрешает использовать пробелы в строке запроса.
+</para>
+<para lang="en">
+now nginx allows to use spaces in a request line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_redirect неправильно изменяла строку "Refresh" в заголовке
+ответа бэкенда.<br/>
+Спасибо Андрею Андрееву и Максиму Согину.
+</para>
+<para lang="en">
+the "proxy_redirect" directive changed incorrectly a backend "Refresh"
+response header line.<br/>
+Thanks to Andrey Andreew and Max Sogin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал путь без имени хоста в
+строке "Destination" в заголовке запроса.
+</para>
+<para lang="en">
+nginx did not support path without host name
+in "Destination" request header line.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.40" date="07.06.2010">
 
 <change type="security">
