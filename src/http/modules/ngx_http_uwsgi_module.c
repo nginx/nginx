@@ -1095,10 +1095,6 @@ ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
     u = r->upstream;
 
     if (rc == NGX_HTTP_UWSGI_PARSE_NO_HEADER) {
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "upstream sent no valid HTTP/1.0 header");
-
         r->http_version = NGX_HTTP_VERSION_9;
 
         u->process_header = ngx_http_uwsgi_process_header;
