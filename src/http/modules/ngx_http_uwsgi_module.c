@@ -866,6 +866,7 @@ ngx_http_uwsgi_reinit_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
 {
+    size_t                 len;
     ngx_int_t              rc;
     ngx_http_upstream_t   *u;
     ngx_http_status_t     *status;
@@ -898,15 +899,15 @@ ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
 
     u->headers_in.status_n = status->code;
 
-    u->headers_in.status_line.len = status->end - status->start;
-    u->headers_in.status_line.data = ngx_pnalloc(r->pool,
-                                                 u->headers_in.status_line.len);
+    len = status->end - status->start;
+    u->headers_in.status_line.len = len;
+
+    u->headers_in.status_line.data = ngx_pnalloc(r->pool, len);
     if (u->headers_in.status_line.data == NULL) {
         return NGX_ERROR;
     }
 
-    ngx_memcpy(u->headers_in.status_line.data, status->start,
-               u->headers_in.status_line.len);
+    ngx_memcpy(u->headers_in.status_line.data, status->start, len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http uwsgi status %ui \"%V\"",
