@@ -83,9 +83,6 @@ typedef struct {
 } ngx_http_proxy_ctx_t;
 
 
-#define NGX_HTTP_PROXY_PARSE_NO_HEADER  20
-
-
 static ngx_int_t ngx_http_proxy_eval(ngx_http_request_t *r,
     ngx_http_proxy_ctx_t *ctx, ngx_http_proxy_loc_conf_t *plcf);
 #if (NGX_HTTP_CACHE)

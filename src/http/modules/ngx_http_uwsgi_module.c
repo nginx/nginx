@@ -36,17 +36,6 @@ typedef struct {
 } ngx_http_uwsgi_loc_conf_t;
 
 
-typedef struct {
-    ngx_uint_t                 status;
-    ngx_uint_t                 status_count;
-    u_char                    *status_start;
-    u_char                    *status_end;
-} ngx_http_uwsgi_ctx_t;
-
-
-#define NGX_HTTP_UWSGI_PARSE_NO_HEADER  20
-
-
 static ngx_int_t ngx_http_uwsgi_eval(ngx_http_request_t *r,
     ngx_http_uwsgi_loc_conf_t *uwcf);
 static ngx_int_t ngx_http_uwsgi_create_request(ngx_http_request_t *r);
@@ -424,8 +413,8 @@ static ngx_int_t
 ngx_http_uwsgi_handler(ngx_http_request_t *r)
 {
     ngx_int_t                   rc;
+    ngx_http_status_t          *status;
     ngx_http_upstream_t        *u;
-    ngx_http_uwsgi_ctx_t       *ctx;
     ngx_http_uwsgi_loc_conf_t  *uwcf;
 
     if (r->subrequest_in_memory) {
@@ -439,12 +428,12 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_uwsgi_ctx_t));
-    if (ctx == NULL) {
+    status = ngx_pcalloc(r->pool, sizeof(ngx_http_status_t));
+    if (status == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ngx_http_set_ctx(r, ctx, ngx_http_uwsgi_module);
+    ngx_http_set_ctx(r, status, ngx_http_uwsgi_module);
 
     uwcf = ngx_http_get_module_loc_conf(r, ngx_http_uwsgi_module);
 
@@ -844,18 +833,18 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_uwsgi_reinit_request(ngx_http_request_t *r)
 {
-    ngx_http_uwsgi_ctx_t  *ctx;
+    ngx_http_status_t  *status;
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_uwsgi_module);
+    status = ngx_http_get_module_ctx(r, ngx_http_uwsgi_module);
 
-    if (ctx == NULL) {
+    if (status == NULL) {
         return NGX_OK;
     }
 
-    ctx->status = 0;
-    ctx->status_count = 0;
-    ctx->status_start = NULL;
-    ctx->status_end = NULL;
+    status->code = 0;
+    status->count = 0;
+    status->start = NULL;
+    status->end = NULL;
 
     r->upstream->process_header = ngx_http_uwsgi_process_status_line;
 
