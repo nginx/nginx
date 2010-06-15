@@ -77,13 +77,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_uint_t                     status;
-    ngx_uint_t                     status_count;
-    u_char                        *status_start;
-    u_char                        *status_end;
-
+    ngx_http_status_t              status;
     ngx_http_proxy_vars_t          vars;
-
     size_t                         internal_body_length;
 } ngx_http_proxy_ctx_t;
 
@@ -99,8 +94,6 @@ static ngx_int_t ngx_http_proxy_create_key(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_process_status_line(ngx_http_request_t *r);
-static ngx_int_t ngx_http_proxy_parse_status_line(ngx_http_request_t *r,
-    ngx_http_proxy_ctx_t *ctx);
 static ngx_int_t ngx_http_proxy_process_header(ngx_http_request_t *r);
 static void ngx_http_proxy_abort_request(ngx_http_request_t *r);
 static void ngx_http_proxy_finalize_request(ngx_http_request_t *r,
@@ -1180,10 +1173,10 @@ ngx_http_proxy_reinit_request(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    ctx->status = 0;
-    ctx->status_count = 0;
-    ctx->status_start = NULL;
-    ctx->status_end = NULL;
+    ctx->status.code = 0;
+    ctx->status.count = 0;
+    ctx->status.start = NULL;
+    ctx->status.end = NULL;
 
     r->upstream->process_header = ngx_http_proxy_process_status_line;
     r->state = 0;
@@ -1205,15 +1198,15 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    rc = ngx_http_proxy_parse_status_line(r, ctx);
+    u = r->upstream;
+
+    rc = ngx_http_parse_status_line(r, &u->buffer, &ctx->status);
 
     if (rc == NGX_AGAIN) {
         return rc;
     }
 
-    u = r->upstream;
-
-    if (rc == NGX_HTTP_PROXY_PARSE_NO_HEADER) {
+    if (rc == NGX_ERROR) {
 
 #if (NGX_HTTP_CACHE)
 
@@ -1240,19 +1233,19 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     }
 
     if (u->state) {
-        u->state->status = ctx->status;
+        u->state->status = ctx->status.code;
     }
 
-    u->headers_in.status_n = ctx->status;
+    u->headers_in.status_n = ctx->status.code;
 
-    u->headers_in.status_line.len = ctx->status_end - ctx->status_start;
+    u->headers_in.status_line.len = ctx->status.end - ctx->status.start;
     u->headers_in.status_line.data = ngx_pnalloc(r->pool,
                                                  u->headers_in.status_line.len);
     if (u->headers_in.status_line.data == NULL) {
         return NGX_ERROR;
     }
 
-    ngx_memcpy(u->headers_in.status_line.data, ctx->status_start,
+    ngx_memcpy(u->headers_in.status_line.data, ctx->status.start,
                u->headers_in.status_line.len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1262,214 +1255,6 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     u->process_header = ngx_http_proxy_process_header;
 
     return ngx_http_proxy_process_header(r);
-}
-
-
-static ngx_int_t
-ngx_http_proxy_parse_status_line(ngx_http_request_t *r,
-    ngx_http_proxy_ctx_t *ctx)
-{
-    u_char                ch;
-    u_char               *p;
-    ngx_http_upstream_t  *u;
-    enum  {
-        sw_start = 0,
-        sw_H,
-        sw_HT,
-        sw_HTT,
-        sw_HTTP,
-        sw_first_major_digit,
-        sw_major_digit,
-        sw_first_minor_digit,
-        sw_minor_digit,
-        sw_status,
-        sw_space_after_status,
-        sw_status_text,
-        sw_almost_done
-    } state;
-
-    u = r->upstream;
-
-    state = r->state;
-
-    for (p = u->buffer.pos; p < u->buffer.last; p++) {
-        ch = *p;
-
-        switch (state) {
-
-        /* "HTTP/" */
-        case sw_start:
-            switch (ch) {
-            case 'H':
-                state = sw_H;
-                break;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        case sw_H:
-            switch (ch) {
-            case 'T':
-                state = sw_HT;
-                break;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        case sw_HT:
-            switch (ch) {
-            case 'T':
-                state = sw_HTT;
-                break;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        case sw_HTT:
-            switch (ch) {
-            case 'P':
-                state = sw_HTTP;
-                break;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        case sw_HTTP:
-            switch (ch) {
-            case '/':
-                state = sw_first_major_digit;
-                break;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        /* the first digit of major HTTP version */
-        case sw_first_major_digit:
-            if (ch < '1' || ch > '9') {
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-
-            state = sw_major_digit;
-            break;
-
-        /* the major HTTP version or dot */
-        case sw_major_digit:
-            if (ch == '.') {
-                state = sw_first_minor_digit;
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-
-            break;
-
-        /* the first digit of minor HTTP version */
-        case sw_first_minor_digit:
-            if (ch < '0' || ch > '9') {
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-
-            state = sw_minor_digit;
-            break;
-
-        /* the minor HTTP version or the end of the request line */
-        case sw_minor_digit:
-            if (ch == ' ') {
-                state = sw_status;
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-
-            break;
-
-        /* HTTP status code */
-        case sw_status:
-            if (ch == ' ') {
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-
-            ctx->status = ctx->status * 10 + ch - '0';
-
-            if (++ctx->status_count == 3) {
-                state = sw_space_after_status;
-                ctx->status_start = p - 2;
-            }
-
-            break;
-
-         /* space or end of line */
-         case sw_space_after_status:
-            switch (ch) {
-            case ' ':
-                state = sw_status_text;
-                break;
-            case '.':                    /* IIS may send 403.1, 403.2, etc */
-                state = sw_status_text;
-                break;
-            case CR:
-                state = sw_almost_done;
-                break;
-            case LF:
-                goto done;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-            break;
-
-        /* any text until end of line */
-        case sw_status_text:
-            switch (ch) {
-            case CR:
-                state = sw_almost_done;
-
-                break;
-            case LF:
-                goto done;
-            }
-            break;
-
-        /* end of status line */
-        case sw_almost_done:
-            ctx->status_end = p - 1;
-            switch (ch) {
-            case LF:
-                goto done;
-            default:
-                return NGX_HTTP_PROXY_PARSE_NO_HEADER;
-            }
-        }
-    }
-
-    u->buffer.pos = p;
-    r->state = state;
-
-    return NGX_AGAIN;
-
-done:
-
-    u->buffer.pos = p + 1;
-
-    if (ctx->status_end == NULL) {
-        ctx->status_end = p;
-    }
-
-    r->state = sw_start;
-
-    return NGX_OK;
 }
 
 
