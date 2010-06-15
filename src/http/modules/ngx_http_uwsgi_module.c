@@ -864,6 +864,7 @@ ngx_http_uwsgi_reinit_request(ngx_http_request_t *r)
     return NGX_OK;
 }
 
+
 static ngx_int_t
 ngx_http_uwsgi_parse_status_line(ngx_http_request_t *r,
     ngx_http_uwsgi_ctx_t *ctx)
@@ -1075,7 +1076,7 @@ done:
 static ngx_int_t
 ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
 {
-    ngx_int_t             rc;
+    ngx_int_t              rc;
     ngx_http_upstream_t   *u;
     ngx_http_uwsgi_ctx_t  *ctx;
 
