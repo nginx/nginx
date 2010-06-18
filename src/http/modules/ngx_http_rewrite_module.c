@@ -52,7 +52,7 @@ static ngx_command_t  ngx_http_rewrite_commands[] = {
 
     { ngx_string("return"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                       |NGX_CONF_TAKE1,
+                       |NGX_CONF_TAKE12,
       ngx_http_rewrite_return,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -433,8 +433,10 @@ ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_rewrite_loc_conf_t  *lcf = conf;
 
-    ngx_str_t                      *value;
-    ngx_http_script_return_code_t  *ret;
+    u_char                            *p;
+    ngx_str_t                         *value, *v;
+    ngx_http_script_return_code_t     *ret;
+    ngx_http_compile_complex_value_t   ccv;
 
     ret = ngx_http_script_start_code(cf->pool, &lcf->codes,
                                      sizeof(ngx_http_script_return_code_t));
@@ -444,12 +446,46 @@ ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    ret->code = ngx_http_script_return_code;
-    ret->null = (uintptr_t) NULL;
+    ngx_memzero(ret, sizeof(ngx_http_script_return_code_t));
 
-    ret->status = ngx_atoi(value[1].data, value[1].len);
+    ret->code = ngx_http_script_return_code;
+
+    p = value[1].data;
+
+    ret->status = ngx_atoi(p, value[1].len);
 
     if (ret->status == (uintptr_t) NGX_ERROR) {
+
+        if (cf->args->nelts == 2
+            && (ngx_strncmp(p, "http://", sizeof("http://") - 1) == 0
+                || ngx_strncmp(p, "https://", sizeof("https://") - 1) == 0
+                || ngx_strncmp(p, "$scheme", sizeof("$scheme") - 1) == 0))
+        {
+            ret->status = NGX_HTTP_MOVED_TEMPORARILY;
+            v = &value[1];
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid return code \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+
+        if (cf->args->nelts == 2) {
+            return NGX_CONF_OK;
+        }
+
+        v = &value[2];
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = v;
+    ccv.complex_value = &ret->text;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

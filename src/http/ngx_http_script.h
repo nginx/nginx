@@ -159,7 +159,7 @@ typedef struct {
 typedef struct {
     ngx_http_script_code_pt     code;
     uintptr_t                   status;
-    uintptr_t                   null;
+    ngx_http_complex_value_t    text;
 } ngx_http_script_return_code_t;
 
 

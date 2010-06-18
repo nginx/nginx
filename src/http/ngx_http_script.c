@@ -1254,14 +1254,17 @@ ngx_http_script_return_code(ngx_http_script_engine_t *e)
 
     code = (ngx_http_script_return_code_t *) e->ip;
 
-    e->status = code->status;
-
-    if (code->status == NGX_HTTP_NO_CONTENT) {
-        e->request->header_only = 1;
-        e->request->zero_body = 1;
+    if (code->status < NGX_HTTP_BAD_REQUEST
+        || code->text.value.len
+        || code->text.lengths)
+    {
+        e->status = ngx_http_send_response(e->request, code->status, NULL,
+                                           &code->text);
+    } else {
+        e->status = code->status;
     }
 
-    e->ip += sizeof(ngx_http_script_return_code_t) - sizeof(uintptr_t);
+    e->ip = ngx_http_script_exit;
 }
 
 
