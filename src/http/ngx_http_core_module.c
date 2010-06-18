@@ -1709,6 +1709,79 @@ ngx_http_set_exten(ngx_http_request_t *r)
 
 
 ngx_int_t
+ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
+    ngx_str_t *ct, ngx_http_complex_value_t *cv)
+{
+    ngx_int_t     rc;
+    ngx_str_t     val;
+    ngx_buf_t    *b;
+    ngx_chain_t   out;
+
+    r->headers_out.status = status;
+
+    if (status == NGX_HTTP_NO_CONTENT) {
+        return ngx_http_send_header(r);
+    }
+
+    if (ngx_http_complex_value(r, cv, &val) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (status >= NGX_HTTP_MOVED_PERMANENTLY && status <= NGX_HTTP_SEE_OTHER) {
+
+        r->headers_out.location = ngx_list_push(&r->headers_out.headers);
+        if (r->headers_out.location == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        r->headers_out.location->hash = 1;
+        ngx_str_set(&r->headers_out.location->key, "Location");
+        r->headers_out.location->value = val;
+
+        return status;
+    }
+
+    r->headers_out.content_length_n = val.len;
+
+    if (ct) {
+        r->headers_out.content_type_len = ct->len;
+        r->headers_out.content_type = *ct;
+
+    } else {
+        if (ngx_http_set_content_type(r) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    if (r->method == NGX_HTTP_HEAD || (r != r->main && val.len == 0)) {
+        return ngx_http_send_header(r);
+    }
+
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    if (b == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    b->pos = val.data;
+    b->last = val.data + val.len;
+    b->memory = val.len ? 1 : 0;
+    b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
+
+    out.buf = b;
+    out.next = NULL;
+
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    return ngx_http_output_filter(r, &out);
+}
+
+
+ngx_int_t
 ngx_http_send_header(ngx_http_request_t *r)
 {
     if (r->err_status) {
