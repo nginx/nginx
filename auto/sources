@@ -416,6 +416,10 @@ HTTP_UWSGI_MODULE=ngx_http_uwsgi_module
 HTTP_UWSGI_SRCS=src/http/modules/ngx_http_uwsgi_module.c
 
 
+HTTP_SCGI_MODULE=ngx_http_scgi_module
+HTTP_SCGI_SRCS=src/http/modules/ngx_http_scgi_module.c
+
+
 HTTP_PERL_MODULE=ngx_http_perl_module
 HTTP_PERL_INCS=src/http/modules/perl
 HTTP_PERL_DEPS=src/http/modules/perl/ngx_http_perl_module.h

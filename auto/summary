@@ -111,3 +111,6 @@ if [ $HTTP_UWSGI = YES ]; then
     echo "  nginx http uwsgi temporary files: \"$NGX_HTTP_UWSGI_TEMP_PATH\""
 fi
 
+if [ $HTTP_SCGI = YES ]; then
+    echo "  nginx http scgi temporary files: \"$NGX_HTTP_SCGI_TEMP_PATH\""
+fi

@@ -110,6 +110,11 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 	cp conf/uwsgi_params \
 		'\$(DESTDIR)$NGX_CONF_PREFIX/uwsgi_params.default'
 
+	test -f '\$(DESTDIR)$NGX_CONF_PREFIX/scgi_params' \
+		|| cp conf/scgi_params '\$(DESTDIR)$NGX_CONF_PREFIX'
+	cp conf/scgi_params \
+		'\$(DESTDIR)$NGX_CONF_PREFIX/scgi_params.default'
+
 	test -f '\$(DESTDIR)$NGX_CONF_PATH' \
 		|| cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PATH'
 	cp conf/nginx.conf '\$(DESTDIR)$NGX_CONF_PREFIX/nginx.conf.default'
