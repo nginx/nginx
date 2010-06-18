@@ -72,6 +72,7 @@
 #define NGX_HTTP_SPECIAL_RESPONSE          300
 #define NGX_HTTP_MOVED_PERMANENTLY         301
 #define NGX_HTTP_MOVED_TEMPORARILY         302
+#define NGX_HTTP_SEE_OTHER                 303
 #define NGX_HTTP_NOT_MODIFIED              304
 
 #define NGX_HTTP_BAD_REQUEST               400

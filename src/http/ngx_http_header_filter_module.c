@@ -68,7 +68,7 @@ static ngx_str_t ngx_http_status_lines[] = {
 
     ngx_string("301 Moved Permanently"),
     ngx_string("302 Moved Temporarily"),
-    ngx_null_string,  /* "303 See Other" */
+    ngx_string("303 See Other"),
     ngx_string("304 Not Modified"),
 
     /* ngx_null_string, */  /* "305 Use Proxy" */
