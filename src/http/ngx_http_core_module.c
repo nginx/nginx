@@ -865,7 +865,7 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     /*
      * generic phase checker,
-     * used by the post read, server rewrite, rewrite, and pre-access phases
+     * used by the post read and pre-access phases
      */
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -888,6 +888,29 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     }
 
     /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
+
+    ngx_http_finalize_request(r, rc);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
+{
+    ngx_int_t  rc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "rewrite phase: %ui", r->phase_handler);
+
+    rc = ph->handler(r);
+
+    if (rc == NGX_DECLINED) {
+        r->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    /* rc == NGX_OK || rc == NGX_ERROR || rc == NGX_HTTP_...  */
 
     ngx_http_finalize_request(r, rc);
 
