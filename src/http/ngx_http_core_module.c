@@ -1590,9 +1590,14 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
 
         if (len == (size_t) node->len) {
 
-            r->loc_conf = (node->exact) ? node->exact->loc_conf:
-                                          node->inclusive->loc_conf;
-            return NGX_OK;
+            if (node->exact) {
+                r->loc_conf = node->exact->loc_conf;
+                return NGX_OK;
+
+            } else {
+                r->loc_conf = node->inclusive->loc_conf;
+                return NGX_AGAIN;
+            }
         }
 
         /* len < node->len */
