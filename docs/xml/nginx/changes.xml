@@ -9,6 +9,44 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.42" date="21.06.2010">
+
+<change type="change">
+<para lang="ru">
+теперь nginx проверяет location'ы, заданные регулярными выражениями,
+если запрос полностью совпал с location'ом, заданным строкой префикса.
+Предыдущее поведение появилось в 0.7.1.
+</para>
+<para lang="en">
+now nginx tests locations given by regular expressions,
+if request was matched exactly by a location given by a prefix string.
+The previous behavior has been introduced in 0.7.1.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_scgi_module.<br/>
+Спасибо Manlio Perillo.
+</para>
+<para lang="en">
+the ngx_http_scgi_module.<br/>
+Thanks to Manlio Perillo.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в директиве return можно добавлять текст ответа.
+</para>
+<para lang="en">
+a text answer may be added to a "return" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.41" date="15.06.2010">
 
 <change type="security">
