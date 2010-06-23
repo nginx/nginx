@@ -29,6 +29,12 @@ typedef struct {
 
 
 typedef struct {
+    ngx_str_node_t                   sn;
+    ngx_http_variable_value_t       *value;
+} ngx_http_geo_variable_value_node_t;
+
+
+typedef struct {
     ngx_http_variable_value_t       *value;
     ngx_str_t                       *net;
     ngx_http_geo_high_ranges_t      *high;
@@ -307,8 +313,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_rbtree_init(&ctx.rbtree, &ctx.sentinel,
-                    ngx_http_variable_value_rbtree_insert);
+    ngx_rbtree_init(&ctx.rbtree, &ctx.sentinel, ngx_str_rbtree_insert_value);
 
     ctx.high = NULL;
     ctx.tree = NULL;
@@ -929,16 +934,17 @@ static ngx_http_variable_value_t *
 ngx_http_geo_value(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value)
 {
-    uint32_t                         hash;
-    ngx_http_variable_value_t       *val;
-    ngx_http_variable_value_node_t  *vvn;
+    uint32_t                             hash;
+    ngx_http_variable_value_t           *val;
+    ngx_http_geo_variable_value_node_t  *gvvn;
 
     hash = ngx_crc32_long(value->data, value->len);
 
-    val = ngx_http_variable_value_lookup(&ctx->rbtree, value, hash);
+    gvvn = (ngx_http_geo_variable_value_node_t *)
+               ngx_str_rbtree_lookup(&ctx->rbtree, value, hash);
 
-    if (val) {
-        return val;
+    if (gvvn) {
+        return gvvn->value;
     }
 
     val = ngx_palloc(ctx->pool, sizeof(ngx_http_variable_value_t));
@@ -956,16 +962,18 @@ ngx_http_geo_value(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     val->no_cacheable = 0;
     val->not_found = 0;
 
-    vvn = ngx_palloc(ctx->temp_pool, sizeof(ngx_http_variable_value_node_t));
-    if (vvn == NULL) {
+    gvvn = ngx_palloc(ctx->temp_pool,
+                      sizeof(ngx_http_geo_variable_value_node_t));
+    if (gvvn == NULL) {
         return NULL;
     }
 
-    vvn->node.key = hash;
-    vvn->len = val->len;
-    vvn->value = val;
+    gvvn->sn.node.key = hash;
+    gvvn->sn.str.len = val->len;
+    gvvn->sn.str.data = val->data;
+    gvvn->value = val;
 
-    ngx_rbtree_insert(&ctx->rbtree, &vvn->node);
+    ngx_rbtree_insert(&ctx->rbtree, &gvvn->sn.node);
 
     return val;
 }

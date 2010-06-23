@@ -1638,6 +1638,89 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 }
 
 
+void
+ngx_str_rbtree_insert_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
+{
+    ngx_str_node_t      *n, *t;
+    ngx_rbtree_node_t  **p;
+
+    for ( ;; ) {
+
+        n = (ngx_str_node_t *) node;
+        t = (ngx_str_node_t *) temp;
+
+        if (node->key != temp->key) {
+
+            p = (node->key < temp->key) ? &temp->left : &temp->right;
+
+        } else if (n->str.len != t->str.len) {
+
+            p = (n->str.len < t->str.len) ? &temp->left : &temp->right;
+
+        } else {
+            p = (ngx_memcmp(n->str.data, t->str.data, n->str.len) < 0)
+                 ? &temp->left : &temp->right;
+        }
+
+        if (*p == sentinel) {
+            break;
+        }
+
+        temp = *p;
+    }
+
+    *p = node;
+    node->parent = temp;
+    node->left = sentinel;
+    node->right = sentinel;
+    ngx_rbt_red(node);
+}
+
+
+ngx_str_node_t *
+ngx_str_rbtree_lookup(ngx_rbtree_t *rbtree, ngx_str_t *val, uint32_t hash)
+{
+    ngx_int_t           rc;
+    ngx_str_node_t     *n;
+    ngx_rbtree_node_t  *node, *sentinel;
+
+    node = rbtree->root;
+    sentinel = rbtree->sentinel;
+
+    while (node != sentinel) {
+
+        n = (ngx_str_node_t *) node;
+
+        if (hash != node->key) {
+            node = (hash < node->key) ? node->left : node->right;
+            continue;
+        }
+
+        if (val->len != n->str.len) {
+            node = (val->len < n->str.len) ? node->left : node->right;
+            continue;
+        }
+
+        rc = ngx_memcmp(val->data, n->str.data, val->len);
+
+        if (rc < 0) {
+            node = node->left;
+            continue;
+        }
+
+        if (rc > 0) {
+            node = node->right;
+            continue;
+        }
+
+        return n;
+    }
+
+    return NULL;
+}
+
+
 /* ngx_sort() is implemented as insertion sort because we need stable sort */
 
 void
