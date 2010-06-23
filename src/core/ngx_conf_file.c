@@ -671,7 +671,8 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 }
 
             } else if (ch == ' ' || ch == '\t' || ch == CR || ch == LF
-                       || ch == ';' || ch == '{') {
+                       || ch == ';' || ch == '{')
+            {
                 last_space = 1;
                 found = 1;
             }

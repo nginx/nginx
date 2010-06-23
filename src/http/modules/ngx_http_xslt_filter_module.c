@@ -268,7 +268,7 @@ ngx_http_xslt_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (ngx_http_xslt_add_chunk(r, ctx, cl->buf) != NGX_OK) {
 
-            if (ctx->ctxt->myDoc){
+            if (ctx->ctxt->myDoc) {
 
 #if (NGX_HTTP_XSLT_REUSE_DTD)
                 ctx->ctxt->myDoc->extSubset = NULL;

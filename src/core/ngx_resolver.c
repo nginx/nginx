@@ -1836,7 +1836,7 @@ ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 
     p += sizeof(ngx_resolver_query_t);
 
-    for (n = 0; n < 32; n += 8){
+    for (n = 0; n < 32; n += 8) {
         d = ngx_sprintf(&p[1], "%ud", (ctx->addr >> n) & 0xff);
         *p = (u_char) (d - &p[1]);
         p = d;

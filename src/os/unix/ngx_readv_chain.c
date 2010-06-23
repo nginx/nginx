@@ -158,7 +158,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     rev->ready = 0;
 
-    if (n == NGX_ERROR){
+    if (n == NGX_ERROR) {
         c->read->error = 1;
     }
 
@@ -247,7 +247,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 
     rev->ready = 0;
 
-    if (n == NGX_ERROR){
+    if (n == NGX_ERROR) {
         c->read->error = 1;
     }
 

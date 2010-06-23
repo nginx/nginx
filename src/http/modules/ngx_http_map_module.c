@@ -374,7 +374,7 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     if (ngx_strcmp(value[0].data, "include") == 0) {
         file = value[1];
 
-        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK){
+        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 

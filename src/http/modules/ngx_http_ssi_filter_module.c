@@ -431,7 +431,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     while (ctx->in || ctx->buf) {
 
-        if (ctx->buf == NULL ){
+        if (ctx->buf == NULL) {
             ctx->buf = ctx->in->buf;
             ctx->in = ctx->in->next;
             ctx->pos = ctx->buf->pos;

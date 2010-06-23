@@ -346,7 +346,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             len = a->nelts * sizeof(ngx_http_geo_range_t);
 
             ctx.high->low[i].ranges = ngx_palloc(cf->pool, len);
-            if (ctx.high->low[i].ranges == NULL ){
+            if (ctx.high->low[i].ranges == NULL) {
                 return NGX_CONF_ERROR;
             }
 
@@ -447,7 +447,7 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
             goto failed;
         }
 
-        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK){
+        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
             goto failed;
         }
 
