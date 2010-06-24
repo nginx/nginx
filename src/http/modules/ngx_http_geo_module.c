@@ -10,20 +10,14 @@
 
 
 typedef struct {
+    ngx_http_variable_value_t       *value;
     u_short                          start;
     u_short                          end;
-    ngx_http_variable_value_t       *value;
 } ngx_http_geo_range_t;
 
 
 typedef struct {
-    ngx_http_geo_range_t            *ranges;
-    ngx_uint_t                       n;
-} ngx_http_geo_low_ranges_t;
-
-
-typedef struct {
-    ngx_http_geo_low_ranges_t        low[0x10000];
+    ngx_http_geo_range_t            *low[0x10000];
     ngx_http_variable_value_t       *default_value;
 } ngx_http_geo_high_ranges_t;
 
@@ -154,23 +148,24 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_geo_ctx_t *ctx = (ngx_http_geo_ctx_t *) data;
 
     in_addr_t              addr;
-    ngx_uint_t             i, n;
+    ngx_uint_t             n;
     ngx_http_geo_range_t  *range;
 
     *v = *ctx->u.high->default_value;
 
     addr = ngx_http_geo_addr(r, ctx);
 
-    range = ctx->u.high->low[addr >> 16].ranges;
+    range = ctx->u.high->low[addr >> 16];
 
-    n = addr & 0xffff;
-
-    for (i = 0; i < ctx->u.high->low[addr >> 16].n; i++) {
-        if (n >= (ngx_uint_t) range[i].start && n <= (ngx_uint_t) range[i].end)
-        {
-            *v = *range[i].value;
-            break;
-        }
+    if (range) {
+        n = addr & 0xffff;
+        do {
+            if (n >= (ngx_uint_t) range->start && n <= (ngx_uint_t) range->end)
+            {
+                *v = *range->value;
+                break;
+            }
+        } while ((++range)->value);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -262,6 +257,7 @@ static char *
 ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                     *rv;
+    void                    **p;
     size_t                    len;
     ngx_str_t                *value, name;
     ngx_uint_t                i;
@@ -335,22 +331,21 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ctx.high) {
 
         for (i = 0; i < 0x10000; i++) {
-            a = (ngx_array_t *) ctx.high->low[i].ranges;
+            a = (ngx_array_t *) ctx.high->low[i];
 
             if (a == NULL || a->nelts == 0) {
                 continue;
             }
 
-            ctx.high->low[i].n = a->nelts;
-
             len = a->nelts * sizeof(ngx_http_geo_range_t);
 
-            ctx.high->low[i].ranges = ngx_palloc(cf->pool, len);
-            if (ctx.high->low[i].ranges == NULL) {
+            ctx.high->low[i] = ngx_palloc(cf->pool, len + sizeof(void *));
+            if (ctx.high->low[i] == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            ngx_memcpy(ctx.high->low[i].ranges, a->elts, len);
+            p = (void **) ngx_cpymem(ctx.high->low[i], a->elts, len);
+            *p = NULL;
         }
 
         geo->u.high = ctx.high;
@@ -611,7 +606,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             e = 0xffff;
         }
 
-        a = (ngx_array_t *) ctx->high->low[h].ranges;
+        a = (ngx_array_t *) ctx->high->low[h];
 
         if (a == NULL) {
             a = ngx_array_create(ctx->temp_pool, 64,
@@ -620,7 +615,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 return NGX_CONF_ERROR;
             }
 
-            ctx->high->low[h].ranges = (ngx_http_geo_range_t *) a;
+            ctx->high->low[h] = (ngx_http_geo_range_t *) a;
         }
 
         i = a->nelts;
@@ -808,7 +803,7 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             e = 0xffff;
         }
 
-        a = (ngx_array_t *) ctx->high->low[h].ranges;
+        a = (ngx_array_t *) ctx->high->low[h];
 
         if (a == NULL) {
             warn = 1;
