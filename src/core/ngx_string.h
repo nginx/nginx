@@ -89,7 +89,7 @@ ngx_strlchr(u_char *p, u_char *last, u_char c)
 #if (NGX_MEMCPY_LIMIT)
 
 void *ngx_memcpy(void *dst, void *src, size_t n);
-#define ngx_cpymem(dst, src, n)   ((u_char *) ngx_memcpy(dst, src, n)) + (n)
+#define ngx_cpymem(dst, src, n)   (((u_char *) ngx_memcpy(dst, src, n)) + (n))
 
 #else
 
@@ -99,7 +99,7 @@ void *ngx_memcpy(void *dst, void *src, size_t n);
  * icc8 compile memcpy(d, s, 4) to the inline "mov"es or XMM moves.
  */
 #define ngx_memcpy(dst, src, n)   (void) memcpy(dst, src, n)
-#define ngx_cpymem(dst, src, n)   ((u_char *) memcpy(dst, src, n)) + (n)
+#define ngx_cpymem(dst, src, n)   (((u_char *) memcpy(dst, src, n)) + (n))
 
 #endif
 
