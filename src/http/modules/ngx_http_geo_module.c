@@ -166,10 +166,10 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     n = addr & 0xffff;
 
     for (i = 0; i < ctx->u.high->low[addr >> 16].n; i++) {
-        if (n >= (ngx_uint_t) range[i].start
-            && n <= (ngx_uint_t) range[i].end)
+        if (n >= (ngx_uint_t) range[i].start && n <= (ngx_uint_t) range[i].end)
         {
             *v = *range[i].value;
+            break;
         }
     }
 
