@@ -224,8 +224,6 @@ ngx_http_userid_filter(ngx_http_request_t *r)
         }
     }
 
-    /* ctx->status == NGX_DECLINED */
-
     if (ngx_http_userid_set_uid(r, ctx, conf) == NGX_OK) {
         return ngx_http_next_header_filter(r);
     }
@@ -257,8 +255,6 @@ ngx_http_userid_got_variable(ngx_http_request_t *r,
     if (ctx->uid_got[3] != 0) {
         return ngx_http_userid_variable(r, v, &conf->name, ctx->uid_got);
     }
-
-    /* ctx->status == NGX_DECLINED */
 
     v->not_found = 1;
 
