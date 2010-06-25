@@ -476,10 +476,10 @@ static ngx_int_t
 ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    u_char               *p;
     ngx_connection_t     *c;
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
+    u_char               *p;
     struct sockaddr_in6  *sin6;
 #endif
 
