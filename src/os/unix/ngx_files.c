@@ -259,6 +259,58 @@ ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
 
 
 ngx_int_t
+ngx_create_file_mapping(ngx_file_mapping_t *fm)
+{
+    fm->fd = ngx_open_file(fm->name, NGX_FILE_RDWR, NGX_FILE_TRUNCATE,
+                           NGX_FILE_DEFAULT_ACCESS);
+    if (fm->fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", fm->name);
+        return NGX_ERROR;
+    }
+
+    if (ftruncate(fm->fd, fm->size) == -1) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      "ftruncate() \"%s\" failed", fm->name);
+        goto failed;
+    }
+
+    fm->addr = mmap(NULL, fm->size, PROT_READ|PROT_WRITE, MAP_SHARED,
+                    fm->fd, 0);
+    if (fm->addr != MAP_FAILED) {
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                  "mmap(%uz) \"%s\" failed", fm->size, fm->name);
+
+failed:
+
+    if (ngx_close_file(fm->fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", fm->name);
+    }
+
+    return NGX_ERROR;
+}
+
+
+void
+ngx_close_file_mapping(ngx_file_mapping_t *fm)
+{
+    if (munmap(fm->addr, fm->size) == -1) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      "munmap(%uz) \"%s\" failed", fm->size, fm->name);
+    }
+
+    if (ngx_close_file(fm->fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", fm->name);
+    }
+}
+
+
+ngx_int_t
 ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
     dir->dir = opendir((const char *) name->data);

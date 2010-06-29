@@ -16,6 +16,17 @@ typedef HANDLE                      ngx_fd_t;
 typedef BY_HANDLE_FILE_INFORMATION  ngx_file_info_t;
 typedef uint64_t                    ngx_file_uniq_t;
 
+
+typedef struct {
+    u_char                         *name;
+    size_t                          size;
+    void                           *addr;
+    ngx_fd_t                        fd;
+    HANDLE                          handle;
+    ngx_log_t                      *log;
+} ngx_file_mapping_t;
+
+
 typedef struct {
     HANDLE                          dir;
     WIN32_FIND_DATA                 finddata;
@@ -153,6 +164,10 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
  (time_t) (((((unsigned __int64) (fi)->ftLastWriteTime.dwHighDateTime << 32) \
                                | (fi)->ftLastWriteTime.dwLowDateTime)        \
                                           - 116444736000000000) / 10000000)
+
+ngx_int_t ngx_create_file_mapping(ngx_file_mapping_t *fm);
+void ngx_close_file_mapping(ngx_file_mapping_t *fm);
+
 
 #define NGX_HAVE_CASELESS_FILESYSTEM  1
 

@@ -332,6 +332,98 @@ ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
 }
 
 
+ngx_int_t
+ngx_create_file_mapping(ngx_file_mapping_t *fm)
+{
+    LARGE_INTEGER  size;
+
+    fm->fd = ngx_open_file(fm->name, NGX_FILE_RDWR, NGX_FILE_TRUNCATE,
+                           NGX_FILE_DEFAULT_ACCESS);
+    if (fm->fd == NGX_INVALID_FILE) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", fm->name);
+        return NGX_ERROR;
+    }
+
+    fm->handle = NULL;
+
+    size.QuadPart = fm->size;
+
+    if (SetFilePointerEx(fm->fd, size, NULL, FILE_BEGIN) == 0) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      "SetFilePointerEx(\"%s\", %uz) failed",
+                      fm->name, fm->size);
+        goto failed;
+    }
+
+    if (SetEndOfFile(fm->fd) == 0) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      "SetEndOfFile() \"%s\" failed", fm->name);
+        goto failed;
+    }
+
+    fm->handle = CreateFileMapping(fm->fd, NULL, PAGE_READWRITE,
+                                   (u_long) ((off_t) fm->size >> 32),
+                                   (u_long) ((off_t) fm->size & 0xffffffff),
+                                   NULL);
+    if (fm->handle == NULL) {
+        ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                      "CreateFileMapping(%s, %uz) failed",
+                      fm->name, fm->size);
+        goto failed;
+    }
+
+    fm->addr = MapViewOfFile(fm->handle, FILE_MAP_WRITE, 0, 0, 0);
+
+    if (fm->addr != NULL) {
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
+                  "MapViewOfFile(%uz) of file mapping \"%s\" failed",
+                  fm->size, fm->name);
+
+failed:
+
+    if (fm->handle) {
+        if (CloseHandle(fm->handle) == 0) {
+            ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                          "CloseHandle() of file mapping \"%s\" failed",
+                          fm->name);
+        }
+    }
+
+    if (ngx_close_file(fm->fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", fm->name);
+    }
+
+    return NGX_ERROR;
+}
+
+
+void
+ngx_close_file_mapping(ngx_file_mapping_t *fm)
+{
+    if (UnmapViewOfFile(fm->addr) == 0) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      "UnmapViewOfFile(%p) of file mapping \"%s\" failed",
+                      fm->addr, &fm->name);
+    }
+
+    if (CloseHandle(fm->handle) == 0) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      "CloseHandle() of file mapping \"%s\" failed",
+                      &fm->name);
+    }
+
+    if (ngx_close_file(fm->fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, fm->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", fm->name);
+    }
+}
+
+
 char *
 ngx_realpath(u_char *path, u_char *resolved)
 {

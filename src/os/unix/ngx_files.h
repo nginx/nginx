@@ -18,6 +18,15 @@ typedef ino_t                    ngx_file_uniq_t;
 
 
 typedef struct {
+    u_char                      *name;
+    size_t                       size;
+    void                        *addr;
+    ngx_fd_t                     fd;
+    ngx_log_t                   *log;
+} ngx_file_mapping_t;
+
+
+typedef struct {
     DIR                         *dir;
     struct dirent               *de;
     struct stat                  info;
@@ -150,6 +159,10 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_file_size(sb)        (sb)->st_size
 #define ngx_file_mtime(sb)       (sb)->st_mtime
 #define ngx_file_uniq(sb)        (sb)->st_ino
+
+
+ngx_int_t ngx_create_file_mapping(ngx_file_mapping_t *fm);
+void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 
 
 #if (NGX_HAVE_CASELESS_FILESYSTEM)
