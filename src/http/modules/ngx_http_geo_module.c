@@ -488,25 +488,22 @@ static char *
 ngx_http_geo_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value)
 {
-    u_char                     *p, *last;
-    in_addr_t                   start, end;
-    ngx_str_t                  *net;
-    ngx_uint_t                  del;
-    ngx_http_variable_value_t  *old;
+    u_char      *p, *last;
+    in_addr_t    start, end;
+    ngx_str_t   *net;
+    ngx_uint_t   del;
 
     if (ngx_strcmp(value[0].data, "default") == 0) {
 
-        old = ctx->high->default_value;
+        if (ctx->high->default_value) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                "duplicate default geo range value: \"%V\", old value: \"%v\"",
+                &value[1], ctx->high->default_value);
+        }
 
         ctx->high->default_value = ngx_http_geo_value(cf, ctx, &value[1]);
         if (ctx->high->default_value == NULL) {
             return NGX_CONF_ERROR;
-        }
-
-        if (old) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                    "duplicate range \"%V\", value: \"%v\", old value: \"%v\"",
-                    &value[0], ctx->high->default_value, old);
         }
 
         return NGX_CONF_OK;
