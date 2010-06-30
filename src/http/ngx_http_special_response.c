@@ -598,31 +598,24 @@ ngx_http_send_special_response(ngx_http_request_t *r,
 
     msie_padding = 0;
 
-    if (!r->zero_body) {
-        if (ngx_http_error_pages[err].len) {
-            r->headers_out.content_length_n = ngx_http_error_pages[err].len
-                                              + len;
-            if (clcf->msie_padding
-                && (r->headers_in.msie || r->headers_in.chrome)
-                && r->http_version >= NGX_HTTP_VERSION_10
-                && err >= NGX_HTTP_LEVEL_300)
-            {
-                r->headers_out.content_length_n +=
-                                             sizeof(ngx_http_msie_padding) - 1;
-                msie_padding = 1;
-            }
-
-            r->headers_out.content_type_len = sizeof("text/html") - 1;
-            ngx_str_set(&r->headers_out.content_type, "text/html");
-            r->headers_out.content_type_lowcase = NULL;
-
-        } else {
-            r->headers_out.content_length_n = -1;
+    if (ngx_http_error_pages[err].len) {
+        r->headers_out.content_length_n = ngx_http_error_pages[err].len + len;
+        if (clcf->msie_padding
+            && (r->headers_in.msie || r->headers_in.chrome)
+            && r->http_version >= NGX_HTTP_VERSION_10
+            && err >= NGX_HTTP_LEVEL_300)
+        {
+            r->headers_out.content_length_n +=
+                                         sizeof(ngx_http_msie_padding) - 1;
+            msie_padding = 1;
         }
 
+        r->headers_out.content_type_len = sizeof("text/html") - 1;
+        ngx_str_set(&r->headers_out.content_type, "text/html");
+        r->headers_out.content_type_lowcase = NULL;
+
     } else {
-        r->headers_out.content_length_n = 0;
-        err = 0;
+        r->headers_out.content_length_n = -1;
     }
 
     if (r->headers_out.content_length) {
