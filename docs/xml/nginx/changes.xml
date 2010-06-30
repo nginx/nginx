@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.43" date="30.06.2010">
+
+<change type="feature">
+<para lang="ru">
+ускорение загрузки больших баз geo-диапазонов.
+</para>
+<para lang="en">
+large geo ranges base loading speed-up.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+перенаправление ошибки в "location /zero { return 204; }" без изменения
+кода ответа оставляло тело ошибки;
+ошибка появилась в 0.8.42.
+</para>
+<para lang="en">
+an error_page redirection to "location /zero { return 204; }" without
+changing status code kept the error body;
+the bug had appeared in 0.8.42.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог закрывать IPv6 listen сокет во время переконфигурации.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+nginx might close IPv6 listen socket during reconfiguration.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменную $uid_set можно использовать на любой стадии обработки запроса.
+</para>
+<para lang="en">
+the $uid_set variable may be used at any request processing stage.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.42" date="21.06.2010">
 
 <change type="change">
