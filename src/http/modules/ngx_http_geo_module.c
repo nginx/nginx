@@ -1138,7 +1138,8 @@ static ngx_int_t
 ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *name)
 {
-    u_char                     *base;
+    u_char                     *base, ch;
+    time_t                      mtime;
     size_t                      size, len;
     ssize_t                     n;
     uint32_t                    crc32;
@@ -1180,6 +1181,24 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     }
 
     size = (size_t) ngx_file_size(&fi);
+    mtime = ngx_file_mtime(&fi);
+
+    ch = name->data[name->len - 4];
+    name->data[name->len - 4] = '\0';
+
+    if (ngx_file_info(name->data, &fi) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_file_info_n " \"%s\" failed", name->data);
+        goto failed;
+    }
+
+    name->data[name->len - 4] = ch;
+
+    if (mtime < ngx_file_mtime(&fi)) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "stale binary geo range base \"%s\"", name->data);
+        goto failed;
+    }
 
     base = ngx_palloc(ctx->pool, size);
     if (base == NULL) {
