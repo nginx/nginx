@@ -76,7 +76,7 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 #if (NGX_HAVE_PWRITE)
 
     for ( ;; ) {
-        n = pwrite(file->fd, buf, size, offset);
+        n = pwrite(file->fd, buf + written, size, offset);
 
         if (n == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
@@ -108,7 +108,7 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     }
 
     for ( ;; ) {
-        n = write(file->fd, buf, size);
+        n = write(file->fd, buf + written, size);
 
         if (n == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
