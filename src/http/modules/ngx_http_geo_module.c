@@ -1104,16 +1104,16 @@ ngx_http_geo_include(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     }
 
     if (ctx->ranges) {
-	ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
-	switch (ngx_http_geo_include_binary_base(cf, ctx, &file)) {
-	case NGX_OK:
-	    return NGX_CONF_OK;
-	case NGX_ERROR:
-	    return NGX_CONF_ERROR;
-	default:
-	    break;
-	}
+        switch (ngx_http_geo_include_binary_base(cf, ctx, &file)) {
+        case NGX_OK:
+            return NGX_CONF_OK;
+        case NGX_ERROR:
+            return NGX_CONF_ERROR;
+        default:
+            break;
+        }
     }
 
     file.len -= 4;
