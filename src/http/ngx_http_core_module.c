@@ -1748,6 +1748,7 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
     r->headers_out.status = status;
 
     if (status == NGX_HTTP_NO_CONTENT) {
+        r->header_only = 1;
         return ngx_http_send_header(r);
     }
 
