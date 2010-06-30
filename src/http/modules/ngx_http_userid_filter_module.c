@@ -248,14 +248,14 @@ ngx_http_userid_got_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    ctx = ngx_http_userid_get_uid(r, conf);
+    ctx = ngx_http_userid_get_uid(r->main, conf);
 
     if (ctx == NULL) {
         return NGX_ERROR;
     }
 
     if (ctx->uid_got[3] != 0) {
-        return ngx_http_userid_variable(r, v, &conf->name, ctx->uid_got);
+        return ngx_http_userid_variable(r->main, v, &conf->name, ctx->uid_got);
     }
 
     v->not_found = 1;
@@ -271,14 +271,14 @@ ngx_http_userid_set_variable(ngx_http_request_t *r,
     ngx_http_userid_ctx_t   *ctx;
     ngx_http_userid_conf_t  *conf;
 
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_userid_filter_module);
+    conf = ngx_http_get_module_loc_conf(r->main, ngx_http_userid_filter_module);
 
     if (conf->enable < NGX_HTTP_USERID_V1) {
         v->not_found = 1;
         return NGX_OK;
     }
 
-    ctx = ngx_http_userid_get_uid(r, conf);
+    ctx = ngx_http_userid_get_uid(r->main, conf);
 
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -291,12 +291,12 @@ ngx_http_userid_set_variable(ngx_http_request_t *r,
             return NGX_OK;
         }
 
-        if (ngx_http_userid_create_uid(r, ctx, conf) != NGX_OK) {
+        if (ngx_http_userid_create_uid(r->main, ctx, conf) != NGX_OK) {
             return NGX_ERROR;
         }
     }
 
-    return ngx_http_userid_variable(r, v, &conf->name, ctx->uid_set);
+    return ngx_http_userid_variable(r->main, v, &conf->name, ctx->uid_set);
 }
 
 
