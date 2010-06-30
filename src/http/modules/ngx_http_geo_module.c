@@ -1232,7 +1232,7 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     header = (ngx_http_geo_header_t *) base;
 
-    if (ngx_memcmp(&ngx_http_geo_header, header, 12) != 0) {
+    if (size < 16 || ngx_memcmp(&ngx_http_geo_header, header, 12) != 0) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
              "incompatible binary geo range base \"%s\"", name->data);
         goto failed;
