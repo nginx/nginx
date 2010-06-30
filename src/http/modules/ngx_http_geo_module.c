@@ -1176,6 +1176,14 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         goto done;
     }
 
+    if (ctx->binary_include) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            "second binary geo range base \"%s\" may not be mixed with \"%s\"",
+            name->data, ctx->include_name.data);
+        rc = NGX_ERROR;
+        goto done;
+    }
+
     if (ngx_fd_info(file.fd, &fi) == NGX_FILE_ERROR) {
         ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
                            ngx_fd_info_n " \"%s\" failed", name->data);
