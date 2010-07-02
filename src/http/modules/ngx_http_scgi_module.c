@@ -70,15 +70,6 @@ static ngx_conf_bitmask_t ngx_http_scgi_next_upstream_masks[] = {
 };
 
 
-static ngx_conf_bitmask_t ngx_http_scgi_ignore_headers_masks[] = {
-    { ngx_string("X-Accel-Redirect"), NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT },
-    { ngx_string("X-Accel-Expires"), NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES },
-    { ngx_string("Expires"), NGX_HTTP_UPSTREAM_IGN_EXPIRES },
-    { ngx_string("Cache-Control"), NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL },
-    { ngx_null_string, 0 }
-};
-
-
 ngx_module_t  ngx_http_scgi_module;
 
 
