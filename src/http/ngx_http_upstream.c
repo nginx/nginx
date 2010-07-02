@@ -355,6 +355,15 @@ ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
 };
 
 
+ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
+    { ngx_string("X-Accel-Redirect"), NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT },
+    { ngx_string("X-Accel-Expires"), NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES },
+    { ngx_string("Expires"), NGX_HTTP_UPSTREAM_IGN_EXPIRES },
+    { ngx_string("Cache-Control"), NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL },
+    { ngx_null_string, 0 }
+};
+
+
 ngx_int_t
 ngx_http_upstream_create(ngx_http_request_t *r)
 {

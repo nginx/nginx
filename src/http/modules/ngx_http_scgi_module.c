@@ -296,7 +296,7 @@ static ngx_command_t ngx_http_scgi_commands[] = {
       ngx_conf_set_bitmask_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.ignore_headers),
-      &ngx_http_scgi_ignore_headers_masks },
+      &ngx_http_upstream_ignore_headers_masks },
 
       ngx_null_command
 };

@@ -337,6 +337,7 @@ ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
 
 extern ngx_module_t        ngx_http_upstream_module;
 extern ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[];
+extern ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[];
 
 
 #endif /* _NGX_HTTP_UPSTREAM_H_INCLUDED_ */

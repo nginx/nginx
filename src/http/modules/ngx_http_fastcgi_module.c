@@ -183,15 +183,6 @@ static ngx_conf_bitmask_t  ngx_http_fastcgi_next_upstream_masks[] = {
 };
 
 
-static ngx_conf_bitmask_t  ngx_http_fastcgi_ignore_headers_masks[] = {
-    { ngx_string("X-Accel-Redirect"), NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT },
-    { ngx_string("X-Accel-Expires"), NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES },
-    { ngx_string("Expires"), NGX_HTTP_UPSTREAM_IGN_EXPIRES },
-    { ngx_string("Cache-Control"), NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL },
-    { ngx_null_string, 0 }
-};
-
-
 ngx_module_t  ngx_http_fastcgi_module;
 
 
@@ -430,7 +421,7 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       ngx_conf_set_bitmask_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.ignore_headers),
-      &ngx_http_fastcgi_ignore_headers_masks },
+      &ngx_http_upstream_ignore_headers_masks },
 
     { ngx_string("fastcgi_catch_stderr"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
