@@ -30,7 +30,6 @@ typedef int               ngx_err_t;
 #define NGX_EINVAL        EINVAL
 #define NGX_ENOSPC        ENOSPC
 #define NGX_EPIPE         EPIPE
-#define NGX_EAGAIN        EAGAIN
 #define NGX_EINPROGRESS   EINPROGRESS
 #define NGX_EADDRINUSE    EADDRINUSE
 #define NGX_ECONNABORTED  ECONNABORTED
@@ -48,6 +47,11 @@ typedef int               ngx_err_t;
 #define NGX_EILSEQ        EILSEQ
 #define NGX_ENOMOREFILES  0
 
+#if (__hpux__)
+#define NGX_EAGAIN        EWOULDBLOCK
+#else
+#define NGX_EAGAIN        EAGAIN
+#endif
 
 
 #define ngx_errno                  errno
