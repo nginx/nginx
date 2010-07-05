@@ -68,23 +68,7 @@ struct ngx_log_s {
 
 /*********************************/
 
-#if (NGX_HAVE_GCC_VARIADIC_MACROS)
-
-#define NGX_HAVE_VARIADIC_MACROS  1
-
-#define ngx_log_error(level, log, args...)                                    \
-    if ((log)->log_level >= level) ngx_log_error_core(level, log, args)
-
-void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
-    const char *fmt, ...);
-
-#define ngx_log_debug(level, log, args...)                                    \
-    if ((log)->log_level & level)                                             \
-        ngx_log_error_core(NGX_LOG_DEBUG, log, args)
-
-/*********************************/
-
-#elif (NGX_HAVE_C99_VARIADIC_MACROS)
+#if (NGX_HAVE_C99_VARIADIC_MACROS)
 
 #define NGX_HAVE_VARIADIC_MACROS  1
 
@@ -97,6 +81,22 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #define ngx_log_debug(level, log, ...)                                        \
     if ((log)->log_level & level)                                             \
         ngx_log_error_core(NGX_LOG_DEBUG, log, __VA_ARGS__)
+
+/*********************************/
+
+#elif (NGX_HAVE_GCC_VARIADIC_MACROS)
+
+#define NGX_HAVE_VARIADIC_MACROS  1
+
+#define ngx_log_error(level, log, args...)                                    \
+    if ((log)->log_level >= level) ngx_log_error_core(level, log, args)
+
+void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
+    const char *fmt, ...);
+
+#define ngx_log_debug(level, log, args...)                                    \
+    if ((log)->log_level & level)                                             \
+        ngx_log_error_core(NGX_LOG_DEBUG, log, args)
 
 /*********************************/
 
