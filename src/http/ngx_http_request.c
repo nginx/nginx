@@ -555,7 +555,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     }
 
     if (n == 1) {
-        if (buf[0] == 0x80 /* SSLv2 */ || buf[0] == 0x16 /* SSLv3/TLSv1 */) {
+        if (buf[0] & 0x80 /* SSLv2 */ || buf[0] == 0x16 /* SSLv3/TLSv1 */) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                            "https ssl handshake: 0x%02Xd", buf[0]);
 
