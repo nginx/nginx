@@ -69,6 +69,9 @@ struct ngx_listening_s {
     char               *accept_filter;
 #endif
 #endif
+#if (NGX_HAVE_SETFIB)
+    int                 setfib;
+#endif
 
 };
 

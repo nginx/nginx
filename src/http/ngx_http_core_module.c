@@ -2992,6 +2992,9 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         lsopt.backlog = NGX_LISTEN_BACKLOG;
         lsopt.rcvbuf = -1;
         lsopt.sndbuf = -1;
+#if (NGX_HAVE_SETFIB)
+        lsopt.setfib = -1;
+#endif
         lsopt.wildcard = 1;
 
         (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.addr,
@@ -3410,6 +3413,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lsopt.backlog = NGX_LISTEN_BACKLOG;
     lsopt.rcvbuf = -1;
     lsopt.sndbuf = -1;
+#if (NGX_HAVE_SETFIB)
+    lsopt.setfib = -1;
+#endif
     lsopt.wildcard = u.wildcard;
 
     (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.addr,
@@ -3430,6 +3436,19 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+#if (NGX_HAVE_SETFIB)
+        if (ngx_strncmp(value[n].data, "setfib=", 7) == 0) {
+            lsopt.setfib = ngx_atoi(value[n].data + 7, value[n].len - 7);
+
+            if (lsopt.setfib == NGX_ERROR || lsopt.setfib == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid setfib \"%V\"", &value[n]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+#endif
         if (ngx_strncmp(value[n].data, "backlog=", 8) == 0) {
             lsopt.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
             lsopt.set = 1;

@@ -74,6 +74,10 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
     ls->rcvbuf = -1;
     ls->sndbuf = -1;
 
+#if (NGX_HAVE_SETFIB)
+    ls->setfib = -1;
+#endif
+
     return ls;
 }
 
@@ -178,6 +182,25 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
             ls[i].sndbuf = -1;
         }
+
+#if 0
+        /* SO_SETFIB is currently a set only option */
+
+#if (NGX_HAVE_SETFIB)
+
+        if (getsockopt(ls[i].setfib, SOL_SOCKET, SO_SETFIB,
+                       (void *) &ls[i].setfib, &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "getsockopt(SO_SETFIB) %V failed, ignored",
+                          &ls[i].addr_text);
+
+            ls[i].setfib = -1;
+        }
+
+#endif
+#endif
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 
@@ -472,6 +495,19 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                               ls[i].sndbuf, &ls[i].addr_text);
             }
         }
+
+#if (NGX_HAVE_SETFIB)
+        if (ls[i].setfib != -1) {
+            if (setsockopt(ls[i].fd, SOL_SOCKET, SO_SETFIB,
+                           (const void *) &ls[i].setfib, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "setsockopt(SO_SETFIB, %d) %V failed, ignored",
+                              ls[i].setfib, &ls[i].addr_text);
+            }
+        }
+#endif
 
 #if 0
         if (1) {

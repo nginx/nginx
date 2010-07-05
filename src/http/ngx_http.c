@@ -1720,6 +1720,10 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->ipv6only = addr->opt.ipv6only;
 #endif
 
+#if (NGX_HAVE_SETFIB)
+    ls->setfib = addr->opt.setfib;
+#endif
+
     return ls;
 }
 
