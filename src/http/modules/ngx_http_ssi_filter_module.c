@@ -70,6 +70,8 @@ typedef enum {
 
 static ngx_int_t ngx_http_ssi_output(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
+static void ngx_http_ssi_buffered(ngx_http_request_t *r,
+    ngx_http_ssi_ctx_t *ctx);
 static ngx_int_t ngx_http_ssi_parse(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
 static ngx_str_t *ngx_http_ssi_get_variable(ngx_http_request_t *r,
@@ -793,6 +795,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 if (rc == NGX_DONE || rc == NGX_AGAIN || rc == NGX_ERROR) {
+                    ngx_http_ssi_buffered(r, ctx);
                     return rc;
                 }
             }
@@ -945,14 +948,21 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         }
     }
 
+    ngx_http_ssi_buffered(r, ctx);
+
+    return rc;
+}
+
+
+static void
+ngx_http_ssi_buffered(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
+{
     if (ctx->in || ctx->buf) {
         r->buffered |= NGX_HTTP_SSI_BUFFERED;
 
     } else {
         r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
     }
-
-    return rc;
 }
 
 
