@@ -44,7 +44,7 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
          *   dereferencing type-punned pointer will break strict-aliasing rules
          *
          * Fortunately, gcc with -O1 compiles this ngx_memcpy()
-         * in the same simple assigment as in the code above
+         * in the same simple assignment as in the code above
          */
 
         ngx_memcpy(CMSG_DATA(&cmsg.cm), &ch->fd, sizeof(int));
