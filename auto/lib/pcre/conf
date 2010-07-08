@@ -161,8 +161,10 @@ else
             CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
-        else
+        fi
+    fi
 
+    if [ $PCRE != YES ]; then
 cat << END
 
 $0: error: the HTTP rewrite module requires the PCRE library.
@@ -171,9 +173,7 @@ option, or install the PCRE library into the system, or build the PCRE library
 statically from the source with nginx by using --with-pcre=<path> option.
 
 END
-            exit 1
-
-        fi
-
+        exit 1
     fi
+
 fi
