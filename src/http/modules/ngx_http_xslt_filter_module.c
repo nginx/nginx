@@ -54,7 +54,6 @@ typedef struct {
 typedef struct {
     xmlDocPtr            doc;
     xmlParserCtxtPtr     ctxt;
-    xmlSAXHandler       *sax;
     ngx_http_request_t  *request;
     ngx_array_t          params;
 
@@ -68,49 +67,8 @@ static ngx_int_t ngx_http_xslt_add_chunk(ngx_http_request_t *r,
     ngx_http_xslt_filter_ctx_t *ctx, ngx_buf_t *b);
 
 
-static void ngx_http_xslt_sax_start_document(void *data);
-static void ngx_http_xslt_sax_end_document(void *data);
-static void ngx_http_xslt_sax_internal_subset(void *data, const xmlChar *name,
-    const xmlChar *externalId, const xmlChar *systemId);
 static void ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
     const xmlChar *externalId, const xmlChar *systemId);
-static void ngx_http_xslt_sax_entity_decl(void *data, const xmlChar *name,
-    int type, const xmlChar *publicId, const xmlChar *systemId,
-    xmlChar *content);
-static void ngx_http_xslt_sax_attribute_decl(void *data, const xmlChar *elem,
-    const xmlChar *fullname, int type, int def, const xmlChar *defaultValue,
-    xmlEnumerationPtr tree);
-static void ngx_http_xslt_sax_element_decl(void *data, const xmlChar * name,
-    int type, xmlElementContentPtr content);
-static void ngx_http_xslt_sax_notation_decl(void *data, const xmlChar *name,
-    const xmlChar *publicId, const xmlChar *systemId);
-static void ngx_http_xslt_sax_unparsed_entity_decl(void *data,
-    const xmlChar *name, const xmlChar *publicId, const xmlChar *systemId,
-    const xmlChar *notationName);
-static void ngx_http_xslt_sax_start_element(void *data,
-    const xmlChar *localname, const xmlChar *prefix, const xmlChar *URI,
-    int nb_namespaces, const xmlChar **namespaces, int nb_attributes,
-    int nb_defaulted, const xmlChar **attributes);
-static void ngx_http_xslt_sax_end_element(void *data,
-    const xmlChar * localname ATTRIBUTE_UNUSED,
-    const xmlChar * prefix ATTRIBUTE_UNUSED,
-    const xmlChar * URI ATTRIBUTE_UNUSED);
-static void ngx_http_xslt_sax_characters(void *data, const xmlChar *p, int len);
-static void ngx_http_xslt_sax_cdata_block(void *data, const xmlChar *p,
-    int len);
-static xmlEntityPtr ngx_http_xslt_sax_get_entity(void *data,
-    const xmlChar *name);
-static xmlEntityPtr ngx_http_xslt_sax_get_parameter_entity(void *data,
-    const xmlChar *name);
-static xmlParserInputPtr ngx_http_xslt_sax_resolve_entity(void *data,
-    const xmlChar *publicId, const xmlChar *systemId);
-static void ngx_http_xslt_sax_reference(void *data, const xmlChar *name);
-static void ngx_http_xslt_sax_comment(void *data, const xmlChar *value);
-static void ngx_http_xslt_sax_processing_instruction(void *data,
-    const xmlChar *target, const xmlChar *pidata);
-static int ngx_http_xslt_sax_is_standalone(void *data);
-static int ngx_http_xslt_sax_has_internal_subset(void *data);
-static int ngx_http_xslt_sax_has_external_subset(void *data);
 static void ngx_cdecl ngx_http_xslt_sax_error(void *data, const char *msg, ...);
 
 
@@ -366,9 +324,8 @@ static ngx_int_t
 ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     ngx_buf_t *b)
 {
-    int                err;
-    xmlSAXHandler     *sax;
-    xmlParserCtxtPtr   ctxt;
+    int               err;
+    xmlParserCtxtPtr  ctxt;
 
     if (ctx->ctxt == NULL) {
 
@@ -379,50 +336,12 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
             return NGX_ERROR;
         }
 
-        ctx->sax = ngx_palloc(r->pool, sizeof(xmlSAXHandler));
-        if (ctx->sax == NULL) {
-            return NGX_ERROR;
-        }
-
-        sax = ctxt->sax;
-
-        ngx_memcpy(ctx->sax, sax, sizeof(xmlSAXHandler));
-
-        sax->startDocument = ngx_http_xslt_sax_start_document;
-        sax->endDocument = ngx_http_xslt_sax_end_document;
-
-        sax->internalSubset = ngx_http_xslt_sax_internal_subset;
-        sax->externalSubset = ngx_http_xslt_sax_external_subset;
-        sax->entityDecl = ngx_http_xslt_sax_entity_decl;
-        sax->attributeDecl = ngx_http_xslt_sax_attribute_decl;
-        sax->elementDecl = ngx_http_xslt_sax_element_decl;
-        sax->notationDecl = ngx_http_xslt_sax_notation_decl;
-        sax->unparsedEntityDecl = ngx_http_xslt_sax_unparsed_entity_decl;
-        sax->setDocumentLocator = NULL;
-
-        sax->startElementNs = ngx_http_xslt_sax_start_element;
-        sax->endElementNs = ngx_http_xslt_sax_end_element;
-
-        sax->characters = ngx_http_xslt_sax_characters;
-        sax->ignorableWhitespace = ngx_http_xslt_sax_characters;
-        sax->cdataBlock = ngx_http_xslt_sax_cdata_block;
-        sax->getEntity = ngx_http_xslt_sax_get_entity;
-        sax->resolveEntity = ngx_http_xslt_sax_resolve_entity;
-        sax->getParameterEntity = ngx_http_xslt_sax_get_parameter_entity;
-        sax->reference = ngx_http_xslt_sax_reference;
-        sax->comment = ngx_http_xslt_sax_comment;
-        sax->processingInstruction = ngx_http_xslt_sax_processing_instruction;
-
-        sax->isStandalone = ngx_http_xslt_sax_is_standalone;
-        sax->hasInternalSubset = ngx_http_xslt_sax_has_internal_subset;
-        sax->hasExternalSubset = ngx_http_xslt_sax_has_external_subset;
-
-        sax->warning = NULL;
-        sax->error = ngx_http_xslt_sax_error;
-        sax->fatalError = ngx_http_xslt_sax_error;
-
-        ctxt->userData = ctx;
-
+        ctxt->sax->externalSubset = ngx_http_xslt_sax_external_subset;
+        ctxt->sax->setDocumentLocator = NULL;
+        ctxt->sax->warning = NULL;
+        ctxt->sax->error = ngx_http_xslt_sax_error;
+        ctxt->sax->fatalError = ngx_http_xslt_sax_error;
+        ctxt->sax->_private = ctx;
         ctxt->replaceEntities = 1;
         ctxt->loadsubset = 1;
 
@@ -446,44 +365,18 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
 
 
 static void
-ngx_http_xslt_sax_start_document(void *data)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->startDocument(ctx->ctxt);
-}
-
-
-static void
-ngx_http_xslt_sax_end_document(void *data)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->endDocument(ctx->ctxt);
-}
-
-
-static void
-ngx_http_xslt_sax_internal_subset(void *data, const xmlChar *name,
-    const xmlChar *externalId, const xmlChar *systemId)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->internalSubset(ctx->ctxt, name, externalId, systemId);
-}
-
-
-static void
 ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
     const xmlChar *externalId, const xmlChar *systemId)
 {
-    ngx_http_xslt_filter_ctx_t *ctx = data;
+    xmlParserCtxtPtr ctxt = data;
 
     xmlDocPtr                         doc;
     xmlDtdPtr                         dtd;
     ngx_http_request_t               *r;
+    ngx_http_xslt_filter_ctx_t       *ctx;
     ngx_http_xslt_filter_loc_conf_t  *conf;
 
+    ctx = ctxt->sax->_private;
     r = ctx->request;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_xslt_filter_module);
@@ -494,7 +387,7 @@ ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
                    externalId ? externalId : (xmlChar *) "",
                    systemId ? systemId : (xmlChar *) "");
 
-    doc = ctx->ctxt->myDoc;
+    doc = ctxt->myDoc;
 
 #if (NGX_HTTP_XSLT_REUSE_DTD)
 
@@ -522,194 +415,17 @@ ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
 }
 
 
-static void
-ngx_http_xslt_sax_entity_decl(void *data, const xmlChar *name, int type,
-    const xmlChar *publicId, const xmlChar *systemId, xmlChar *content)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->entityDecl(ctx->ctxt, name, type, publicId, systemId, content);
-}
-
-
-static void
-ngx_http_xslt_sax_attribute_decl(void *data, const xmlChar *elem,
-    const xmlChar *fullname, int type, int def, const xmlChar *defaultValue,
-    xmlEnumerationPtr tree)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->attributeDecl(ctx->ctxt, elem, fullname, type, def, defaultValue,
-                            tree);
-}
-
-
-static void
-ngx_http_xslt_sax_element_decl(void *data, const xmlChar * name, int type,
-    xmlElementContentPtr content)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->elementDecl(ctx->ctxt, name, type, content);
-}
-
-
-static void
-ngx_http_xslt_sax_notation_decl(void *data, const xmlChar *name,
-    const xmlChar *publicId, const xmlChar *systemId)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->notationDecl(ctx->ctxt, name, publicId, systemId);
-}
-
-
-static void
-ngx_http_xslt_sax_unparsed_entity_decl(void *data, const xmlChar *name,
-    const xmlChar *publicId, const xmlChar *systemId,
-    const xmlChar *notationName)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->unparsedEntityDecl(ctx->ctxt, name, publicId, systemId,
-                                 notationName);
-}
-
-
-static void
-ngx_http_xslt_sax_start_element(void *data, const xmlChar *localname,
-    const xmlChar *prefix, const xmlChar *URI, int nb_namespaces,
-    const xmlChar **namespaces, int nb_attributes, int nb_defaulted,
-    const xmlChar **attributes)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->startElementNs(ctx->ctxt, localname, prefix, URI, nb_namespaces,
-        namespaces, nb_attributes, nb_defaulted, attributes);
-}
-
-
-static void
-ngx_http_xslt_sax_end_element(void *data,
-    const xmlChar * localname ATTRIBUTE_UNUSED,
-    const xmlChar * prefix ATTRIBUTE_UNUSED,
-    const xmlChar * URI ATTRIBUTE_UNUSED)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->endElementNs(ctx->ctxt, localname, prefix, URI);
-}
-
-
-static void
-ngx_http_xslt_sax_characters(void *data, const xmlChar *p, int len)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->characters(ctx->ctxt, p, len);
-}
-
-
-static void
-ngx_http_xslt_sax_cdata_block(void *data, const xmlChar *p, int len)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->cdataBlock(ctx->ctxt, p, len);
-}
-
-
-static xmlEntityPtr
-ngx_http_xslt_sax_get_entity(void *data, const xmlChar *name)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->getEntity(ctx->ctxt, name);
-}
-
-
-static xmlEntityPtr
-ngx_http_xslt_sax_get_parameter_entity(void *data, const xmlChar *name)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->getParameterEntity(ctx->ctxt, name);
-}
-
-
-static xmlParserInputPtr
-ngx_http_xslt_sax_resolve_entity(void *data, const xmlChar *publicId,
-    const xmlChar *systemId)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->resolveEntity(ctx->ctxt, publicId, systemId);
-}
-
-
-static void
-ngx_http_xslt_sax_reference(void *data, const xmlChar *name)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->reference(ctx->ctxt, name);
-}
-
-
-static void
-ngx_http_xslt_sax_comment(void *data, const xmlChar *value)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->comment(ctx->ctxt, value);
-}
-
-
-static void
-ngx_http_xslt_sax_processing_instruction(void *data, const xmlChar *target,
-    const xmlChar *pidata)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    ctx->sax->processingInstruction(ctx->ctxt, target, pidata);
-}
-
-
-static int
-ngx_http_xslt_sax_is_standalone(void *data)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->isStandalone(ctx->ctxt);
-}
-
-
-static int
-ngx_http_xslt_sax_has_internal_subset(void *data)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->hasInternalSubset(ctx->ctxt);
-}
-
-
-static int
-ngx_http_xslt_sax_has_external_subset(void *data)
-{
-    ngx_http_xslt_filter_ctx_t *ctx = data;
-
-    return ctx->sax->hasExternalSubset(ctx->ctxt);
-}
-
-
 static void ngx_cdecl
 ngx_http_xslt_sax_error(void *data, const char *msg, ...)
 {
-    ngx_http_xslt_filter_ctx_t *ctx = data;
+    xmlParserCtxtPtr ctxt = data;
 
-    size_t    n;
-    va_list   args;
-    u_char    buf[NGX_MAX_ERROR_STR];
+    size_t                       n;
+    va_list                      args;
+    ngx_http_xslt_filter_ctx_t  *ctx;
+    u_char                       buf[NGX_MAX_ERROR_STR];
+
+    ctx = ctxt->sax->_private;
 
     buf[0] = '\0';
 
