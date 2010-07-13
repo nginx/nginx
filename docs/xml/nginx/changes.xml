@@ -9,6 +9,45 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.45" date="13.07.2010">
+
+<change type="feature">
+<para lang="ru">
+улучшения в модуле ngx_http_xslt_filter.<br/>
+Спасибо Laurence Rowe.
+</para>
+<para lang="en">
+ngx_http_xslt_filter improvements.<br/>
+Thanks to Laurence Rowe.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ SSI модуля мог передаваться не полностью после команды include
+с параметром wait="yes";
+ошибка появилась в 0.7.25. <br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+SSI response might be truncated after include with wait="yes";
+the bug had appeared in 0.7.25.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива listen не поддерживала параметр setfib=0.
+</para>
+<para lang="en">
+the "listen" directive did not support the "setfib=0" parameter.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.44" date="05.07.2010">
 
 <change type="change">
@@ -28,8 +67,7 @@ if they have a "Set-Cookie" header line.
 Спасибо Андрею Филонову.
 </para>
 <para lang="en">
-the "listen" directive supports the "setfib" parameter.
-<br/>
+the "listen" directive supports the "setfib" parameter.<br/>
 Thanks to Andrew Filonov.
 </para>
 </change>
@@ -67,7 +105,7 @@ nginx считал большие пакеты SSLv2 как обычные текстовые запросы.<br/>
 Спасибо Miroslaw Jaworski.
 </para>
 <para lang="en">
-nginx treated a large SSLv2 packets as plain requests.<br/>
+nginx treated large SSLv2 packets as plain requests.<br/>
 Thanks to Miroslaw Jaworski.
 </para>
 </change>
