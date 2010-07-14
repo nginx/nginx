@@ -208,6 +208,11 @@ ngx_int_t ngx_http_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val, ngx_str_t *value);
 ngx_int_t ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv);
 
+ngx_int_t ngx_http_test_predicates(ngx_http_request_t *r,
+    ngx_array_t *predicates);
+char *ngx_http_set_predicate_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
 ngx_uint_t ngx_http_script_variables_count(ngx_str_t *value);
 ngx_int_t ngx_http_script_compile(ngx_http_script_compile_t *sc);
 u_char *ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,

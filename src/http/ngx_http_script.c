@@ -211,6 +211,76 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
 }
 
 
+ngx_int_t
+ngx_http_test_predicates(ngx_http_request_t *r, ngx_array_t *predicates)
+{
+    ngx_str_t                  val;
+    ngx_uint_t                 i;
+    ngx_http_complex_value_t  *cv;
+
+    if (predicates == NULL) {
+        return NGX_OK;
+    }
+
+    cv = predicates->elts;
+
+    for (i = 0; i < predicates->nelts; i++) {
+        if (ngx_http_complex_value(r, &cv[i], &val) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (val.len && val.data[0] != '0') {
+            return NGX_DECLINED;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+char *
+ngx_http_set_predicate_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t                          *value;
+    ngx_uint_t                          i;
+    ngx_array_t                       **a;
+    ngx_http_complex_value_t           *cv;
+    ngx_http_compile_complex_value_t    ccv;
+
+    a = (ngx_array_t **) (p + cmd->offset);
+
+    if (*a == NGX_CONF_UNSET_PTR) {
+        *a = ngx_array_create(cf->pool, 1, sizeof(ngx_http_complex_value_t));
+        if (*a == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        cv = ngx_array_push(*a);
+        if (cv == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &value[i];
+        ccv.complex_value = cv;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 ngx_uint_t
 ngx_http_script_variables_count(ngx_str_t *value)
 {
