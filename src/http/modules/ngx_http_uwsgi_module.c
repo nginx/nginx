@@ -1068,6 +1068,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 #if (NGX_HTTP_CACHE)
     conf->upstream.cache = NGX_CONF_UNSET_PTR;
     conf->upstream.cache_min_uses = NGX_CONF_UNSET_UINT;
+    conf->upstream.no_cache = NGX_CONF_UNSET_PTR;
     conf->upstream.cache_valid = NGX_CONF_UNSET_PTR;
 #endif
 
