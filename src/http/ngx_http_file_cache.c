@@ -835,8 +835,9 @@ ngx_http_cache_send(ngx_http_request_t *r)
 void
 ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
 {
-    ngx_http_cache_t       *c;
-    ngx_http_file_cache_t  *cache;
+    ngx_http_cache_t            *c;
+    ngx_http_file_cache_t       *cache;
+    ngx_http_file_cache_node_t  *fcn;
 
     c = r->cache;
 
@@ -853,15 +854,21 @@ ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
-    c->node->count--;
+    fcn = c->node;
+    fcn->count--;
+    fcn->updating = 0;
 
     if (c->error) {
-        c->node->valid_sec = c->valid_sec;
-        c->node->valid_msec = c->valid_msec;
-        c->node->error = c->error;
-    }
+        fcn->valid_sec = c->valid_sec;
+        fcn->valid_msec = c->valid_msec;
+        fcn->error = c->error;
 
-    c->node->updating = 0;
+    } else if (fcn->valid_msec == 0 && fcn->count == 0) {
+        ngx_queue_remove(&fcn->queue);
+        ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
+        ngx_slab_free_locked(cache->shpool, fcn);
+        c->node = NULL;
+    }
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
