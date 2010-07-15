@@ -19,6 +19,8 @@ static void ngx_http_cache_aio_event_handler(ngx_event_t *ev);
 #endif
 static ngx_int_t ngx_http_file_cache_exists(ngx_http_file_cache_t *cache,
     ngx_http_cache_t *c);
+static ngx_int_t ngx_http_file_cache_name(ngx_http_request_t *r,
+    ngx_path_t *path);
 static ngx_http_file_cache_node_t *
     ngx_http_file_cache_lookup(ngx_http_file_cache_t *cache, u_char *key);
 static void ngx_http_file_cache_rbtree_insert_value(ngx_rbtree_node_t *temp,
@@ -180,10 +182,8 @@ ngx_http_file_cache_create_key(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_file_cache_open(ngx_http_request_t *r)
 {
-    u_char                    *p;
     ngx_int_t                  rc, rv;
     ngx_uint_t                 cold, test;
-    ngx_path_t                *path;
     ngx_http_cache_t          *c;
     ngx_pool_cleanup_t        *cln;
     ngx_open_file_info_t       of;
@@ -249,26 +249,9 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         }
     }
 
-    path = cache->path;
-
-    c->file.name.len = path->name.len + 1 + path->len
-                       + 2 * NGX_HTTP_CACHE_KEY_LEN;
-
-    c->file.name.data = ngx_pnalloc(r->pool, c->file.name.len + 1);
-    if (c->file.name.data == NULL) {
+    if (ngx_http_file_cache_name(r, cache->path) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    ngx_memcpy(c->file.name.data, path->name.data, path->name.len);
-
-    p = c->file.name.data + path->name.len + 1 + path->len;
-    p = ngx_hex_dump(p, c->key, NGX_HTTP_CACHE_KEY_LEN);
-    *p = '\0';
-
-    ngx_create_hashed_filename(path, c->file.name.data, c->file.name.len);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                   "cache file: \"%s\"", c->file.name.data);
 
     if (!test) {
         return NGX_DECLINED;
@@ -571,6 +554,37 @@ failed:
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_file_cache_name(ngx_http_request_t *r, ngx_path_t *path)
+{
+    u_char            *p;
+    ngx_http_cache_t  *c;
+
+    c = r->cache;
+
+    c->file.name.len = path->name.len + 1 + path->len
+                       + 2 * NGX_HTTP_CACHE_KEY_LEN;
+
+    c->file.name.data = ngx_pnalloc(r->pool, c->file.name.len + 1);
+    if (c->file.name.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(c->file.name.data, path->name.data, path->name.len);
+
+    p = c->file.name.data + path->name.len + 1 + path->len;
+    p = ngx_hex_dump(p, c->key, NGX_HTTP_CACHE_KEY_LEN);
+    *p = '\0';
+
+    ngx_create_hashed_filename(path, c->file.name.data, c->file.name.len);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "cache file: \"%s\"", c->file.name.data);
+
+    return NGX_OK;
 }
 
 
