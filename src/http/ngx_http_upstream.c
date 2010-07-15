@@ -646,17 +646,9 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             u->method = ngx_http_core_get_method;
         }
 
-        c = ngx_pcalloc(r->pool, sizeof(ngx_http_cache_t));
-        if (c == NULL) {
+        if (ngx_http_file_cache_create(r) != NGX_OK) {
             return NGX_ERROR;
         }
-
-        if (ngx_array_init(&c->keys, r->pool, 4, sizeof(ngx_str_t)) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        r->cache = c;
-        c->file.log = r->connection->log;
 
         if (u->create_key(r) != NGX_OK) {
             return NGX_ERROR;
@@ -667,6 +659,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_http_file_cache_create_key(r);
 
         u->cacheable = 1;
+
+        c = r->cache;
 
         c->min_uses = u->conf->cache_min_uses;
         c->body_start = u->conf->buffer_size;

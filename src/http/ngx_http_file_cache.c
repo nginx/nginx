@@ -144,6 +144,27 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 }
 
 
+ngx_int_t
+ngx_http_file_cache_create(ngx_http_request_t *r)
+{
+    ngx_http_cache_t  *c;
+
+    c = ngx_pcalloc(r->pool, sizeof(ngx_http_cache_t));
+    if (c == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&c->keys, r->pool, 4, sizeof(ngx_str_t)) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    r->cache = c;
+    c->file.log = r->connection->log;
+
+    return NGX_OK;
+}
+
+
 void
 ngx_http_file_cache_create_key(ngx_http_request_t *r)
 {
