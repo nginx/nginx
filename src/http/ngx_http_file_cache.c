@@ -1111,9 +1111,7 @@ ngx_http_file_cache_delete(ngx_http_file_cache_t *cache, ngx_queue_t *q,
     *p = '\0';
 
     ngx_queue_remove(q);
-
     ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
-
     ngx_slab_free_locked(cache->shpool, fcn);
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
