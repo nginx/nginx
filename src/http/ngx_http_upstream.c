@@ -646,7 +646,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             u->method = ngx_http_core_get_method;
         }
 
-        if (ngx_http_file_cache_create(r) != NGX_OK) {
+        if (ngx_http_file_cache_new(r) != NGX_OK) {
             return NGX_ERROR;
         }
 

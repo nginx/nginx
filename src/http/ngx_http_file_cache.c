@@ -145,7 +145,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
 
 ngx_int_t
-ngx_http_file_cache_create(ngx_http_request_t *r)
+ngx_http_file_cache_new(ngx_http_request_t *r)
 {
     ngx_http_cache_t  *c;
 
