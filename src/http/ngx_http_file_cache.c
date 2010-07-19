@@ -161,6 +161,7 @@ ngx_http_file_cache_new(ngx_http_request_t *r)
 
     r->cache = c;
     c->file.log = r->connection->log;
+    c->file.fd = NGX_INVALID_FILE;
 
     return NGX_OK;
 }
