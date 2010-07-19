@@ -2975,8 +2975,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         time_t  valid;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http upstream cache fd: %d",
-                       r->cache->file.fd);
+                       "http upstream cache fd: %d", r->cache->file.fd);
 
         if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
 
