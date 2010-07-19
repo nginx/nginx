@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.46" date="19.07.2010">
+
+<change type="change">
+<para lang="ru">
+директивы proxy_no_cache, fastcgi_no_cache, uwsgi_no_cache
+и sсgi_no_cache теперь влияют только на сохранение закэшированного ответа.
+</para>
+<para lang="en">
+now the "proxy_no_cache", "fastcgi_no_cache", "uwsgi_no_cache", and
+"sсgi_no_cache" directives affect on a cached response saving only.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache_bypass, fastcgi_cache_bypass, uwsgi_cache_bypass
+и sсgi_cache_bypass.
+</para>
+<para lang="en">
+the "proxy_cache_bypass", "fastcgi_cache_bypass", "uwsgi_cache_bypass",
+and "sсgi_cache_bypass" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не освобождал память в keys_zone кэшей в случае ошибки работы с
+бэкендом: память освобождалась только по истечении времени неактивности
+или при недостатке памяти.
+</para>
+<para lang="en">
+nginx did not free memory in cache keys zones if there was an error
+during working with backend: the memory was freed only after inactivity
+time or on memory low condition.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.45" date="13.07.2010">
 
 <change type="feature">
