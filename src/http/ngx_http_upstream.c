@@ -1951,7 +1951,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
 
         if (size == 0) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "upstream buffer is too small to read repsonse");
+                          "upstream buffer is too small to read response");
             ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
