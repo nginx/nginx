@@ -932,7 +932,7 @@ ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
         fcn->valid_msec = c->valid_msec;
         fcn->error = c->error;
 
-    } else if (fcn->valid_sec == 0 && fcn->count == 0) {
+    } else if (!fcn->exists && fcn->count == 0) {
         ngx_queue_remove(&fcn->queue);
         ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
         ngx_slab_free_locked(cache->shpool, fcn);
