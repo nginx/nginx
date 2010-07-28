@@ -9,27 +9,62 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.47" date="28.07.2010">
+
+<change type="bugfix">
+<para lang="ru">
+переменная $request_time имела неверные значения для подзапросов.
+</para>
+<para lang="en">
+$request_time variable had invalid values for subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки, перехваченные error_page, не кэшировались.
+</para>
+<para lang="en">
+errors intercepted by error_page could be cached.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если использовался параметр max_size, то cache manager мог зациклиться.
+ошибка появилась в 0.8.46.
+</para>
+<para lang="en">
+a cache manager process my got caught in an endless loop,
+if max_size parameter was used;
+the bug had appeared in 0.8.46.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.46" date="19.07.2010">
 
 <change type="change">
 <para lang="ru">
 директивы proxy_no_cache, fastcgi_no_cache, uwsgi_no_cache
-и sсgi_no_cache теперь влияют только на сохранение закэшированного ответа.
+и scgi_no_cache теперь влияют только на сохранение закэшированного ответа.
 </para>
 <para lang="en">
 now the "proxy_no_cache", "fastcgi_no_cache", "uwsgi_no_cache", and
-"sсgi_no_cache" directives affect on a cached response saving only.
+"scgi_no_cache" directives affect on a cached response saving only.
 </para>
 </change>
 
 <change type="feature">
 <para lang="ru">
 директивы proxy_cache_bypass, fastcgi_cache_bypass, uwsgi_cache_bypass
-и sсgi_cache_bypass.
+и scgi_cache_bypass.
 </para>
 <para lang="en">
 the "proxy_cache_bypass", "fastcgi_cache_bypass", "uwsgi_cache_bypass",
-and "sсgi_cache_bypass" directives.
+and "scgi_cache_bypass" directives.
 </para>
 </change>
 
