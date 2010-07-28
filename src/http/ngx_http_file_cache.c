@@ -915,8 +915,8 @@ ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
 
     cache = c->file_cache;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
-                   "http file cache free");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
+                   "http file cache free, fd: %d", c->file.fd);
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 

@@ -1725,9 +1725,6 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
             if (r->cache) {
                 time_t  valid;
 
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "http upstream cache fd: %d", r->cache->file.fd);
-
                 valid = ngx_http_file_cache_valid(u->conf->cache_valid, status);
 
                 if (valid) {
@@ -2991,9 +2988,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (u->cacheable && r->cache) {
         time_t  valid;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http upstream cache fd: %d", r->cache->file.fd);
 
         if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
 
