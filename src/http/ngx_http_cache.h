@@ -78,6 +78,7 @@ struct ngx_http_cache_s {
     ngx_http_file_cache_node_t      *node;
 
     unsigned                         updated:1;
+    unsigned                         updating:1;
     unsigned                         exists:1;
     unsigned                         temp_file:1;
 };
@@ -129,7 +130,7 @@ ngx_int_t ngx_http_file_cache_open(ngx_http_request_t *r);
 void ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf);
 void ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf);
 ngx_int_t ngx_http_cache_send(ngx_http_request_t *);
-void ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf);
+void ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf);
 time_t ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status);
 
 char *ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,

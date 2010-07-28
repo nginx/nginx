@@ -430,6 +430,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
         } else {
             c->node->updating = 1;
+            c->updating = 1;
             rc = NGX_HTTP_CACHE_STALE;
         }
 
@@ -793,6 +794,7 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
                    "http file cache update");
 
     c->updated = 1;
+    c->updating = 0;
 
     cache = c->file_cache;
 
@@ -902,30 +904,28 @@ ngx_http_cache_send(ngx_http_request_t *r)
 
 
 void
-ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
+ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
 {
-    ngx_http_cache_t            *c;
     ngx_http_file_cache_t       *cache;
     ngx_http_file_cache_node_t  *fcn;
-
-    c = r->cache;
 
     if (c->updated) {
         return;
     }
 
-    c->updated = 1;
-
     cache = c->file_cache;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
                    "http file cache free");
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
     fcn = c->node;
     fcn->count--;
-    fcn->updating = 0;
+
+    if (c->updating) {
+        fcn->updating = 0;
+    }
 
     if (c->error) {
         fcn->valid_sec = c->valid_sec;
@@ -941,14 +941,17 @@ ngx_http_file_cache_free(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
+    c->updated = 1;
+    c->updating = 0;
+
     if (c->temp_file) {
         if (tf && tf->file.fd != NGX_INVALID_FILE) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
                            "http file cache incomplete: \"%s\"",
                            tf->file.name.data);
 
             if (ngx_delete_file(tf->file.name.data) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                ngx_log_error(NGX_LOG_CRIT, c->file.log, ngx_errno,
                               ngx_delete_file_n " \"%s\" failed",
                               tf->file.name.data);
             }
@@ -962,28 +965,19 @@ ngx_http_file_cache_cleanup(void *data)
 {
     ngx_http_cache_t  *c = data;
 
-    ngx_http_file_cache_t  *cache;
-
     if (c->updated) {
         return;
     }
 
-    c->updated = 1;
-
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
                    "http file cache cleanup");
 
-    if (c->error) {
-        return;
+    if (c->updating) {
+        ngx_log_error(NGX_LOG_ALERT, c->file.log, 0,
+                      "stalled cache updating, error:%ui", c->error);
     }
 
-    cache = c->file_cache;
-
-    ngx_shmtx_lock(&cache->shpool->mutex);
-
-    c->node->count--;
-
-    ngx_shmtx_unlock(&cache->shpool->mutex);
+    ngx_http_file_cache_free(c, NULL);
 }
 
 

@@ -1735,7 +1735,7 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
                     r->cache->error = status;
                 }
 
-                ngx_http_file_cache_free(r, u->pipe->temp_file);
+                ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
             }
 #endif
             ngx_http_upstream_finalize_request(r, u, status);
@@ -2189,7 +2189,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                    "http cacheable: %d", u->cacheable);
 
     if (u->cacheable == 0 && r->cache) {
-        ngx_http_file_cache_free(r, u->pipe->temp_file);
+        ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
     }
 
 #endif
@@ -2664,7 +2664,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                 ngx_http_file_cache_update(r, u->pipe->temp_file);
 
             } else if (p->upstream_error) {
-                ngx_http_file_cache_free(r, u->pipe->temp_file);
+                ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
             }
         }
 
@@ -3005,7 +3005,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
             }
         }
 
-        ngx_http_file_cache_free(r, u->pipe->temp_file);
+        ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
     }
 
 #endif
