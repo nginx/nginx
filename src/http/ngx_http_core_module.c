@@ -2152,6 +2152,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
     ngx_http_post_subrequest_t *ps, ngx_uint_t flags)
 {
+    ngx_time_t                    *tp;
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
@@ -2263,6 +2264,10 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
     sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
+
+    tp = ngx_timeofday();
+    r->start_sec = tp->sec;
+    r->start_msec = tp->msec;
 
     r->main->subrequests++;
     r->main->count++;
