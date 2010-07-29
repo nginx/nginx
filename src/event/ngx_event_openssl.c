@@ -1312,7 +1312,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
         n = ERR_GET_REASON(ERR_peek_error());
 
             /* handshake failures */
-        if (n == SSL_R_DIGEST_CHECK_FAILED                           /*  149 */
+        if (n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                     /*  129 */
+            || n == SSL_R_DIGEST_CHECK_FAILED                        /*  149 */
             || n == SSL_R_LENGTH_MISMATCH                            /*  159 */
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
             || n == SSL_R_NO_CIPHERS_SPECIFIED                       /*  183 */
