@@ -3609,23 +3609,16 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ch = value[1].data[0];
 
     if (cscf->server_name.data == NULL) {
-        if (value[1].len) {
-            name = value[1];
+        name = value[1];
 
-            if (ch == '.') {
-                name.len--;
-                name.data++;
-            }
+        if (ch == '.') {
+            name.len--;
+            name.data++;
+        }
 
-            cscf->server_name.len = name.len;
-            cscf->server_name.data = ngx_pstrdup(cf->pool, &name);
-            if (cscf->server_name.data == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the first server name must not be empty");
+        cscf->server_name.len = name.len;
+        cscf->server_name.data = ngx_pstrdup(cf->pool, &name);
+        if (cscf->server_name.data == NULL) {
             return NGX_CONF_ERROR;
         }
     }
