@@ -5,7 +5,7 @@ NGINX =		nginx-$(VER)
 TEMP =		tmp
 
 OBJS =		objs.msvc8
-OPENSSL =	openssl-0.9.8n
+OPENSSL =	openssl-0.9.8o
 ZLIB =		zlib-1.2.3
 PCRE =		pcre-7.9
 
