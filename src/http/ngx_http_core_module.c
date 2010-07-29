@@ -3330,7 +3330,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
     ngx_conf_merge_value(conf->server_name_in_redirect,
-                              prev->server_name_in_redirect, 1);
+                              prev->server_name_in_redirect, 0);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
     ngx_conf_merge_value(conf->msie_padding, prev->msie_padding, 1);
     ngx_conf_merge_value(conf->msie_refresh, prev->msie_refresh, 0);
