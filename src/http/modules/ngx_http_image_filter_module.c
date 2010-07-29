@@ -228,7 +228,7 @@ ngx_http_image_header_filter(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "image filter: too big response: %O", len);
 
-        return NGX_ERROR;
+        return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
 
     if (len == -1) {
