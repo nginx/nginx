@@ -3011,7 +3011,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->server_name.data == NULL) {
-        conf->server_name = cf->cycle->hostname;
+        ngx_str_set(&conf->server_name, "");
 
         sn = ngx_array_push(&conf->server_names);
         if (sn == NULL) {
@@ -3022,8 +3022,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         sn->regex = NULL;
 #endif
         sn->server = conf;
-        sn->name.len = conf->server_name.len;
-        sn->name.data = conf->server_name.data;
+        ngx_str_set(&sn->name, "");
     }
 
     return NGX_CONF_OK;
