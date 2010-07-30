@@ -519,6 +519,9 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
     if (fcn) {
         ngx_queue_remove(&fcn->queue);
 
+        fcn->uses++;
+        fcn->count++;
+
         if (fcn->error) {
 
             if (fcn->valid_sec < ngx_time()) {
@@ -529,9 +532,6 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
             goto done;
         }
-
-        fcn->uses++;
-        fcn->count++;
 
         if (fcn->exists) {
 
@@ -581,12 +581,13 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
     ngx_rbtree_insert(&cache->sh->rbtree, &fcn->node);
 
+    fcn->uses = 1;
+    fcn->count = 1;
+
 renew:
 
     rc = NGX_DECLINED;
 
-    fcn->uses = 1;
-    fcn->count = 1;
     fcn->valid_msec = 0;
     fcn->error = 0;
     fcn->exists = 0;
