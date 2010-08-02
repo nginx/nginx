@@ -1007,7 +1007,7 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
     ngx_memcpy(name, path->name.data, path->name.len);
 
     wait = 10;
-    tries = 0;
+    tries = 20;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
@@ -1026,7 +1026,7 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
             ngx_http_file_cache_delete(cache, q, name);
 
         } else {
-            if (tries++ < 20) {
+            if (--tries) {
                 continue;
             }
 
