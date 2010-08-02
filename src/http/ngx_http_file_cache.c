@@ -1033,15 +1033,6 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
             break;
         }
 
-        if (!fcn->exists) {
-
-            ngx_queue_remove(q);
-            ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
-            ngx_slab_free_locked(cache->shpool, fcn);
-
-            break;
-        }
-
         ngx_http_file_cache_delete(cache, q, name);
 
         break;
@@ -1131,15 +1122,6 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
             continue;
         }
 
-        if (!fcn->exists) {
-
-            ngx_queue_remove(q);
-            ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
-            ngx_slab_free_locked(cache->shpool, fcn);
-
-            continue;
-        }
-
         ngx_http_file_cache_delete(cache, q, name);
     }
 
@@ -1162,37 +1144,40 @@ ngx_http_file_cache_delete(ngx_http_file_cache_t *cache, ngx_queue_t *q,
 
     fcn = ngx_queue_data(q, ngx_http_file_cache_node_t, queue);
 
-    cache->sh->size -= (fcn->length + cache->bsize - 1) / cache->bsize;
+    if (fcn->exists) {
+        cache->sh->size -= (fcn->length + cache->bsize - 1) / cache->bsize;
 
-    path = cache->path;
+        path = cache->path;
+        p = name + path->name.len + 1 + path->len;
+        p = ngx_hex_dump(p, (u_char *) &fcn->node.key,
+                         sizeof(ngx_rbtree_key_t));
+        len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
+        p = ngx_hex_dump(p, fcn->key, len);
+        *p = '\0';
 
-    p = name + path->name.len + 1 + path->len;
+        fcn->count++;
+        ngx_shmtx_unlock(&cache->shpool->mutex);
 
-    p = ngx_hex_dump(p, (u_char *) &fcn->node.key, sizeof(ngx_rbtree_key_t));
+        len = path->name.len + 1 + path->len + 2 * NGX_HTTP_CACHE_KEY_LEN;
+        ngx_create_hashed_filename(path, name, len);
 
-    len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
-    p = ngx_hex_dump(p, fcn->key, len);
-    *p = '\0';
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "http file cache expire: \"%s\"", name);
 
-    ngx_queue_remove(q);
-    ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
-    ngx_slab_free_locked(cache->shpool, fcn);
+        if (ngx_delete_file(name) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_CRIT, ngx_cycle->log, ngx_errno,
+                          ngx_delete_file_n " \"%s\" failed", name);
+        }
 
-    ngx_shmtx_unlock(&cache->shpool->mutex);
-
-    len = path->name.len + 1 + path->len + 2 * NGX_HTTP_CACHE_KEY_LEN;
-
-    ngx_create_hashed_filename(path, name, len);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                   "http file cache expire: \"%s\"", name);
-
-    if (ngx_delete_file(name) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, ngx_cycle->log, ngx_errno,
-                      ngx_delete_file_n " \"%s\" failed", name);
+        ngx_shmtx_lock(&cache->shpool->mutex);
+        fcn->count--;
     }
 
-    ngx_shmtx_lock(&cache->shpool->mutex);
+    if (fcn->count == 0) {
+        ngx_queue_remove(q);
+        ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
+        ngx_slab_free_locked(cache->shpool, fcn);
+    }
 }
 
 
