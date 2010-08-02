@@ -1022,18 +1022,16 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
                   fcn->count, fcn->exists,
                   fcn->key[0], fcn->key[1], fcn->key[2], fcn->key[3]);
 
-        if (fcn->count) {
+        if (fcn->count == 0) {
+            ngx_http_file_cache_delete(cache, q, name);
 
+        } else {
             if (tries++ < 20) {
                 continue;
             }
 
             wait = 1;
-
-            break;
         }
-
-        ngx_http_file_cache_delete(cache, q, name);
 
         break;
     }
@@ -1097,32 +1095,29 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
                        fcn->count, fcn->exists,
                        fcn->key[0], fcn->key[1], fcn->key[2], fcn->key[3]);
 
-        if (fcn->count) {
-
-            p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
-                             sizeof(ngx_rbtree_key_t));
-
-            len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
-            (void) ngx_hex_dump(p, fcn->key, len);
-
-            /*
-             * abnormally exited workers may leave locked cache entries,
-             * and although it may be safe to remove them completely,
-             * we prefer to remove them from inactive queue and rbtree
-             * only, and to allow other leaks
-             */
-
-            ngx_queue_remove(q);
-            ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
-
-            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                       "ignore long locked inactive cache entry %*s, count:%d",
-                       2 * NGX_HTTP_CACHE_KEY_LEN, key, fcn->count);
-
+        if (fcn->count == 0) {
+            ngx_http_file_cache_delete(cache, q, name);
             continue;
         }
 
-        ngx_http_file_cache_delete(cache, q, name);
+        p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
+                         sizeof(ngx_rbtree_key_t));
+        len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
+        (void) ngx_hex_dump(p, fcn->key, len);
+
+        /*
+         * abnormally exited workers may leave locked cache entries,
+         * and although it may be safe to remove them completely,
+         * we prefer to remove them from inactive queue and rbtree
+         * only, and to allow other leaks
+         */
+
+        ngx_queue_remove(q);
+        ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
+
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      "ignore long locked inactive cache entry %*s, count:%d",
+                      2 * NGX_HTTP_CACHE_KEY_LEN, key, fcn->count);
     }
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
