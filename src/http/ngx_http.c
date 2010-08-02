@@ -26,6 +26,9 @@ static ngx_int_t ngx_http_add_address(ngx_conf_t *cf,
 static ngx_int_t ngx_http_add_server(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_conf_addr_t *addr);
 
+static char *ngx_http_merge_servers(ngx_conf_t *cf,
+    ngx_http_core_main_conf_t *cmcf, ngx_http_module_t *module,
+    ngx_uint_t ctx_index);
 static char *ngx_http_merge_locations(ngx_conf_t *cf,
     ngx_queue_t *locations, void **loc_conf, ngx_http_module_t *module,
     ngx_uint_t ctx_index);
@@ -263,39 +266,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
-        for (s = 0; s < cmcf->servers.nelts; s++) {
-
-            /* merge the server{}s' srv_conf's */
-
-            if (module->merge_srv_conf) {
-                rv = module->merge_srv_conf(cf, ctx->srv_conf[mi],
-                                            cscfp[s]->ctx->srv_conf[mi]);
-                if (rv != NGX_CONF_OK) {
-                    goto failed;
-                }
-            }
-
-            if (module->merge_loc_conf) {
-
-                /* merge the server{}'s loc_conf */
-
-                rv = module->merge_loc_conf(cf, ctx->loc_conf[mi],
-                                            cscfp[s]->ctx->loc_conf[mi]);
-                if (rv != NGX_CONF_OK) {
-                    goto failed;
-                }
-
-                /* merge the locations{}' loc_conf's */
-
-                clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
-
-                rv = ngx_http_merge_locations(cf, clcf->locations,
-                                              cscfp[s]->ctx->loc_conf,
-                                              module, mi);
-                if (rv != NGX_CONF_OK) {
-                    goto failed;
-                }
-            }
+        rv = ngx_http_merge_servers(cf, cmcf, module, mi);
+        if (rv != NGX_CONF_OK) {
+            goto failed;
         }
     }
 
@@ -586,17 +559,83 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 
 
 static char *
+ngx_http_merge_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
+    ngx_http_module_t *module, ngx_uint_t ctx_index)
+{
+    char                        *rv;
+    ngx_uint_t                   s;
+    ngx_http_conf_ctx_t         *ctx, saved;
+    ngx_http_core_loc_conf_t    *clcf;
+    ngx_http_core_srv_conf_t   **cscfp;
+
+    cscfp = cmcf->servers.elts;
+    ctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    saved = *ctx;
+    rv = NGX_CONF_OK;
+
+    for (s = 0; s < cmcf->servers.nelts; s++) {
+
+        /* merge the server{}s' srv_conf's */
+
+        ctx->srv_conf = cscfp[s]->ctx->srv_conf;
+
+        if (module->merge_srv_conf) {
+            rv = module->merge_srv_conf(cf, saved.srv_conf[ctx_index],
+                                        cscfp[s]->ctx->srv_conf[ctx_index]);
+            if (rv != NGX_CONF_OK) {
+                goto failed;
+            }
+        }
+
+        if (module->merge_loc_conf) {
+
+            /* merge the server{}'s loc_conf */
+
+            ctx->loc_conf = cscfp[s]->ctx->loc_conf;
+
+            rv = module->merge_loc_conf(cf, saved.loc_conf[ctx_index],
+                                        cscfp[s]->ctx->loc_conf[ctx_index]);
+            if (rv != NGX_CONF_OK) {
+                goto failed;
+            }
+
+            /* merge the locations{}' loc_conf's */
+
+            clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
+
+            rv = ngx_http_merge_locations(cf, clcf->locations,
+                                          cscfp[s]->ctx->loc_conf,
+                                          module, ctx_index);
+            if (rv != NGX_CONF_OK) {
+                goto failed;
+            }
+        }
+    }
+
+failed:
+
+    *ctx = saved;
+
+    return rv;
+}
+
+
+static char *
 ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
     void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
 {
     char                       *rv;
     ngx_queue_t                *q;
+    ngx_http_conf_ctx_t        *ctx, saved;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_location_queue_t  *lq;
 
     if (locations == NULL) {
         return NGX_CONF_OK;
     }
+
+    ctx = (ngx_http_conf_ctx_t *) cf->ctx;
+    saved = *ctx;
 
     for (q = ngx_queue_head(locations);
          q != ngx_queue_sentinel(locations);
@@ -605,6 +644,7 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
         lq = (ngx_http_location_queue_t *) q;
 
         clcf = lq->exact ? lq->exact : lq->inclusive;
+        ctx->loc_conf = clcf->loc_conf;
 
         rv = module->merge_loc_conf(cf, loc_conf[ctx_index],
                                     clcf->loc_conf[ctx_index]);
@@ -618,6 +658,8 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
             return rv;
         }
     }
+
+    *ctx = saved;
 
     return NGX_CONF_OK;
 }
