@@ -368,8 +368,6 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     ngx_http_file_cache_t         *cache;
     ngx_http_file_cache_header_t  *h;
 
-    c = r->cache;
-
     n = ngx_http_file_cache_aio_read(r, c);
 
     if (n < 0) {
