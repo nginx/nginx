@@ -1986,12 +1986,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    /* STUB */
-    if (prev->proxy_lengths) {
-        conf->proxy_lengths = prev->proxy_lengths;
-        conf->proxy_values = prev->proxy_values;
-    }
-
 #if (NGX_HTTP_SSL)
     if (conf->upstream.ssl == NULL) {
         conf->upstream.ssl = prev->upstream.ssl;
@@ -2021,6 +2015,11 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->upstream.upstream == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->vars = prev->vars;
+    }
+
+    if (conf->proxy_lengths == NULL) {
+        conf->proxy_lengths = prev->proxy_lengths;
+        conf->proxy_values = prev->proxy_values;
     }
 
     if (conf->upstream.upstream || conf->proxy_lengths) {
