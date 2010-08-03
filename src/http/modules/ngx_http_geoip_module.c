@@ -274,6 +274,9 @@ ngx_http_geoip_region_name_variable(ngx_http_request_t *r,
     }
 
     val = GeoIP_region_name_by_code(gr->country_code, gr->region);
+    if (val == NULL) {
+        goto no_value;
+    }
 
     len = ngx_strlen(val);
     v->data = ngx_pnalloc(r->pool, len);
@@ -293,6 +296,10 @@ ngx_http_geoip_region_name_variable(ngx_http_request_t *r,
     GeoIPRecord_delete(gr);
 
     return NGX_OK;
+
+no_value:
+
+    GeoIPRecord_delete(gr);
 
 not_found:
 
