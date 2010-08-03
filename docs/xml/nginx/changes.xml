@@ -9,6 +9,103 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.48" date="03.08.2010">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию директива server_name имеет значение пустое имя "".<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+now the "server_name" directive default value is an empty name "".<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию директива server_name_in_redirect имеет значение off.
+</para>
+<para lang="en">
+now the "server_name_in_redirect" directive default value is "off".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $geoip_dma_code, $geoip_area_code и $geoip_region_name.<br/>
+Спасибо Christine McGonagle.
+</para>
+<para lang="en">
+the $geoip_dma_code, $geoip_area_code, and $geoip_region_name variables.<br/>
+Thanks to Christine McGonagle.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_pass, fastcgi_pass, uwsgi_pass и scgi_pass не наследовались
+в блоки limit_except.
+</para>
+<para lang="en">
+the "proxy_pass", "fastcgi_pass", "uwsgi_pass", and "scgi_pass" directives
+were not inherited inside "limit_except" blocks.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_cache_min_uses, fastcgi_cache_min_uses
+uwsgi_cache_min_uses и scgi_cache_min_uses не работали;
+ошибка появилась в 0.8.46.
+</para>
+<para lang="en">
+the "proxy_cache_min_uses", "fastcgi_cache_min_uses"
+"uwsgi_cache_min_uses", and "scgi_cache_min_uses" directives did not work;
+the bug had appeared in 0.8.46.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива fastcgi_split_path_info неверно использовала выделения,
+если в выделения попадала только часть URI.<br/>
+Спасибо Юрию Тарадаю и Frank Enderle.
+</para>
+<para lang="en">
+the "fastcgi_split_path_info" directive used incorrectly captures,
+if only parts of an URI were captured.<br/>
+Thanks to Yuriy Taraday and Frank Enderle.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива rewrite не экранировала символ ";" при копировании из URI
+в аргументы. <br/>
+Спасибо Daisuke Murase.
+</para>
+<para lang="en">
+the "rewrite" directive did not escape a ";" character during copying
+from URI to query string.<br/>
+Thanks to Daisuke Murase.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_image_filter_module закрывал соединение,
+если изображение было больше размера image_filter_buffer.
+</para>
+<para lang="en">
+the ngx_http_image_filter_module closed a connection,
+if an image was larger than "image_filter_buffer" size.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.47" date="28.07.2010">
 
 <change type="bugfix">
@@ -25,13 +122,13 @@ $request_time variable had invalid values for subrequests.
 ошибки, перехваченные error_page, не кэшировались.
 </para>
 <para lang="en">
-errors intercepted by error_page could be cached.
+errors intercepted by error_page could not be cached.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-если использовался параметр max_size, то cache manager мог зациклиться.
+если использовался параметр max_size, то cache manager мог зациклиться;
 ошибка появилась в 0.8.46.
 </para>
 <para lang="en">
@@ -6129,7 +6226,7 @@ Thanks to Joaquin Cuenca Abela.
 <change type="bugfix">
 <para lang="ru">
 nginx неверно определял длину строки кэша на <nobr>Pentium 4.</nobr><br/>
-Спасибо Gena Makhomed.
+Спасибо Геннадию Махомеду.
 </para>
 <para lang="en">
 nginx incorrectly detected cache line size on Pentium 4.<br/>
