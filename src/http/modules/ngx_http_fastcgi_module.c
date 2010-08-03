@@ -2566,10 +2566,10 @@ ngx_http_fastcgi_split(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
 
     if (n >= 0) { /* match */
         f->script_name.len = captures[3] - captures[2];
-        f->script_name.data = r->uri.data;
+        f->script_name.data = r->uri.data + captures[2];
 
         f->path_info.len = captures[5] - captures[4];
-        f->path_info.data = r->uri.data + f->script_name.len;
+        f->path_info.data = r->uri.data + captures[4];
 
         return f;
     }
