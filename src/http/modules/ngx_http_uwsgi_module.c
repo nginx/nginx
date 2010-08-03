@@ -1106,6 +1106,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_keyval_t                 *src;
     ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
+    ngx_http_core_loc_conf_t     *clcf;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
@@ -1338,6 +1339,13 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->uwsgi_lengths == NULL) {
         conf->uwsgi_lengths = prev->uwsgi_lengths;
         conf->uwsgi_values = prev->uwsgi_values;
+    }
+
+    if (conf->upstream.upstream || conf->uwsgi_lengths) {
+        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+        if (clcf->handler == NULL && clcf->lmt_excpt) {
+            clcf->handler = ngx_http_uwsgi_handler;
+        }
     }
 
     ngx_conf_merge_uint_value(conf->modifier1, prev->modifier1, 0);

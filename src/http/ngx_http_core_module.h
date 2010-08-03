@@ -286,6 +286,7 @@ struct ngx_http_core_loc_conf_s {
 #endif
 
     unsigned      noname:1;   /* "if () {}" block or limit_except */
+    unsigned      lmt_excpt:1;
     unsigned      named:1;
 
     unsigned      exact_match:1;

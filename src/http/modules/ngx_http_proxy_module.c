@@ -1720,6 +1720,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     size_t                      size;
     ngx_keyval_t               *s;
     ngx_hash_init_t             hash;
+    ngx_http_core_loc_conf_t   *clcf;
     ngx_http_proxy_redirect_t  *pr;
     ngx_http_script_compile_t   sc;
 
@@ -2022,6 +2023,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->vars = prev->vars;
     }
 
+    if (conf->upstream.upstream || conf->proxy_lengths) {
+        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+        if (clcf->handler == NULL && clcf->lmt_excpt) {
+            clcf->handler = ngx_http_proxy_handler;
+            conf->location = prev->location;
+        }
+    }
 
     if (conf->body_source.data == NULL) {
         conf->body_source = prev->body_source;
