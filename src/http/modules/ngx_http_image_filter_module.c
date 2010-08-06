@@ -38,12 +38,13 @@ typedef struct {
     ngx_uint_t                   filter;
     ngx_uint_t                   width;
     ngx_uint_t                   height;
-    ngx_int_t                    jpeg_quality;
+    ngx_uint_t                   jpeg_quality;
 
     ngx_flag_t                   transparency;
 
     ngx_http_complex_value_t    *wcv;
     ngx_http_complex_value_t    *hcv;
+    ngx_http_complex_value_t    *jqcv;
 
     size_t                       buffer_size;
 } ngx_http_image_filter_conf_t;
@@ -99,6 +100,8 @@ static char *ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_http_image_filter(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_image_filter_jpeg_quality(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_image_filter_init(ngx_conf_t *cf);
 
 
@@ -113,9 +116,9 @@ static ngx_command_t  ngx_http_image_filter_commands[] = {
 
     { ngx_string("image_filter_jpeg_quality"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
+      ngx_http_image_filter_jpeg_quality,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_image_filter_conf_t, jpeg_quality),
+      0,
       NULL },
 
     { ngx_string("image_filter_transparency"),
@@ -989,6 +992,7 @@ ngx_http_image_out(ngx_http_request_t *r, ngx_uint_t type, gdImagePtr img,
 {
     char                          *failed;
     u_char                        *out;
+    ngx_int_t                      jq;
     ngx_http_image_filter_conf_t  *conf;
 
     out = NULL;
@@ -997,7 +1001,13 @@ ngx_http_image_out(ngx_http_request_t *r, ngx_uint_t type, gdImagePtr img,
 
     case NGX_HTTP_IMAGE_JPEG:
         conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
-        out = gdImageJpegPtr(img, size, conf->jpeg_quality);
+
+        jq = ngx_http_image_filter_get_value(r, conf->jqcv, conf->jpeg_quality);
+        if (jq <= 0) {
+            return NULL;
+        }
+
+        out = gdImageJpegPtr(img, size, jq);
         failed = "gdImageJpegPtr() failed";
         break;
 
@@ -1079,7 +1089,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
     }
 
     conf->filter = NGX_CONF_UNSET_UINT;
-    conf->jpeg_quality = NGX_CONF_UNSET;
+    conf->jpeg_quality = NGX_CONF_UNSET_UINT;
     conf->transparency = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
 
@@ -1108,7 +1118,11 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     /* 75 is libjpeg default quality */
-    ngx_conf_merge_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+    ngx_conf_merge_uint_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+
+    if (conf->jqcv == NULL) {
+        conf->jqcv = prev->jqcv;
+    }
 
     ngx_conf_merge_value(conf->transparency, prev->transparency, 1);
 
@@ -1225,6 +1239,53 @@ failed:
                        &value[i]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_http_image_filter_jpeg_quality(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_http_image_filter_conf_t *imcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_int_t                          n;
+    ngx_http_complex_value_t           cv;
+    ngx_http_compile_complex_value_t   ccv;
+
+    value = cf->args->elts;
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cv.lengths == NULL) {
+        n = ngx_http_image_filter_value(&value[1]);
+
+        if (n <= 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        imcf->jpeg_quality = (ngx_uint_t) n;
+
+    } else {
+        imcf->jqcv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+        if (imcf->jqcv == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *imcf->jqcv = cv;
+    }
+
+    return NGX_CONF_OK;
 }
 
 
