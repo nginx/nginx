@@ -9,6 +9,44 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.49" date="09.08.2010">
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_jpeg_quality поддерживает переменные.
+</para>
+<para lang="en">
+the "image_filter_jpeg_quality" directive supports variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменной $geoip_region_name
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.8.48.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if the $geoip_region_name variables was used;
+the bug had appeared in 0.8.48.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки, перехваченные error_page, кэшировались только до следующего запроса;
+ошибка появилась в 0.8.48.
+</para>
+<para lang="en">
+errors intercepted by error_page were cached only for next request;
+the bug had appeared in 0.8.48.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.48" date="03.08.2010">
 
 <change type="change">
