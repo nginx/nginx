@@ -3788,13 +3788,19 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     n = ngx_http_script_variables_count(&clcf->root);
 
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+    sc.variables = n;
+
+#if (NGX_PCRE)
+    if (alias && clcf->regex) {
+        n = 1;
+    }
+#endif
 
     if (n) {
         sc.cf = cf;
         sc.source = &clcf->root;
         sc.lengths = &clcf->root_lengths;
         sc.values = &clcf->root_values;
-        sc.variables = n;
         sc.complete_lengths = 1;
         sc.complete_values = 1;
 
