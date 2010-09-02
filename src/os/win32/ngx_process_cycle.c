@@ -13,7 +13,7 @@
 static void ngx_process_init(ngx_cycle_t *cycle);
 static void ngx_console_init(ngx_cycle_t *cycle);
 static int __stdcall ngx_console_handler(u_long type);
-static ngx_int_t ngx_create_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_create_signal_events(ngx_cycle_t *cycle);
 static ngx_int_t ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t type);
 static void ngx_reopen_worker_processes(ngx_cycle_t *cycle);
 static void ngx_quit_worker_processes(ngx_cycle_t *cycle, ngx_uint_t old);
@@ -94,7 +94,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
-    if (ngx_create_events(cycle) != NGX_OK) {
+    if (ngx_create_signal_events(cycle) != NGX_OK) {
         exit(2);
     }
 
@@ -341,9 +341,10 @@ ngx_console_handler(u_long type)
 
 
 static ngx_int_t
-ngx_create_events(ngx_cycle_t *cycle)
+ngx_create_signal_events(ngx_cycle_t *cycle)
 {
-    ngx_sprintf((u_char *) ngx_stop_event_name, "ngx_stop_%s%Z", ngx_unique);
+    ngx_sprintf((u_char *) ngx_stop_event_name,
+                "Global\\ngx_stop_%s%Z", ngx_unique);
 
     ngx_stop_event = CreateEvent(NULL, 1, 0, ngx_stop_event_name);
     if (ngx_stop_event == NULL) {
@@ -353,7 +354,8 @@ ngx_create_events(ngx_cycle_t *cycle)
     }
 
 
-    ngx_sprintf((u_char *) ngx_quit_event_name, "ngx_quit_%s%Z", ngx_unique);
+    ngx_sprintf((u_char *) ngx_quit_event_name,
+                "Global\\ngx_quit_%s%Z", ngx_unique);
 
     ngx_quit_event = CreateEvent(NULL, 1, 0, ngx_quit_event_name);
     if (ngx_quit_event == NULL) {
@@ -364,7 +366,7 @@ ngx_create_events(ngx_cycle_t *cycle)
 
 
     ngx_sprintf((u_char *) ngx_reopen_event_name,
-                "ngx_reopen_%s%Z", ngx_unique);
+                "Global\\ngx_reopen_%s%Z", ngx_unique);
 
     ngx_reopen_event = CreateEvent(NULL, 1, 0, ngx_reopen_event_name);
     if (ngx_reopen_event == NULL) {
@@ -375,7 +377,7 @@ ngx_create_events(ngx_cycle_t *cycle)
 
 
     ngx_sprintf((u_char *) ngx_reload_event_name,
-                "ngx_reload_%s%Z", ngx_unique);
+                "Global\\ngx_reload_%s%Z", ngx_unique);
 
     ngx_reload_event = CreateEvent(NULL, 1, 0, ngx_reload_event_name);
     if (ngx_reload_event == NULL) {
@@ -1035,7 +1037,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
     ngx_console_init(cycle);
 
-    if (ngx_create_events(cycle) != NGX_OK) {
+    if (ngx_create_signal_events(cycle) != NGX_OK) {
         exit(2);
     }
 
@@ -1056,7 +1058,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_int_t pid)
     ngx_int_t  rc;
     char       evn[NGX_PROCESS_SYNC_NAME];
 
-    ngx_sprintf((u_char *) evn, "ngx_%s_%ul%Z", sig, pid);
+    ngx_sprintf((u_char *) evn, "Global\\ngx_%s_%ul%Z", sig, pid);
 
     ev = OpenEvent(EVENT_MODIFY_STATE, 0, evn);
     if (ev == NULL) {
