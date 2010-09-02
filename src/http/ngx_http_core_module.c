@@ -4400,7 +4400,7 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        rc.pattern = value[1];
+        rc.pattern = value[i];
         rc.options = NGX_REGEX_CASELESS;
 
         if (ngx_regex_compile(&rc) != NGX_OK) {
