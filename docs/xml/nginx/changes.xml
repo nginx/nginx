@@ -9,6 +9,68 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.50" date="02.09.2010">
+
+<change type="feature">
+<para lang="ru">
+директивы secure_link, secure_link_md5 и secure_link_expires
+модуля ngx_http_secure_link_module.
+</para>
+<para lang="en">
+the "secure_link", "secure_link_md5", and "secure_link_expires" directives of
+the ngx_http_secure_link_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -q.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+the -q switch.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования рабочие процессы и могли зациклиться
+во время переконфигурации;
+ошибка появилась в 0.8.48.
+</para>
+<para lang="en">
+worker processes may got caught in an endless loop during reconfiguration,
+if a caching was used;
+the bug had appeared in 0.8.48.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве gzip_disable.<br/>
+Спасибо Derrick Petzold.
+</para>
+<para lang="en">
+in the "gzip_disable" directive.<br/>
+Thanks to Derrick Petzold.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не мог посылать сигналы stop, quit, reopen, reload процессу,
+запущенному в другой сессии.
+</para>
+<para lang="en">
+nginx/Windows could not send stop, quit, reopen, and reload signals
+to a process run in other session.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.49" date="09.08.2010">
 
 <change type="feature">
@@ -170,7 +232,7 @@ errors intercepted by error_page could not be cached.
 ошибка появилась в 0.8.46.
 </para>
 <para lang="en">
-a cache manager process my got caught in an endless loop,
+a cache manager process may got caught in an endless loop,
 if max_size parameter was used;
 the bug had appeared in 0.8.46.
 </para>
