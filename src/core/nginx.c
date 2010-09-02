@@ -212,7 +212,7 @@ main(int argc, char *const *argv)
 
         if (ngx_show_help) {
             ngx_log_stderr(0,
-                "Usage: nginx [-?hvVt] [-s signal] [-c filename] "
+                "Usage: nginx [-?hvVtq] [-s signal] [-c filename] "
                              "[-p prefix] [-g directives]" CRLF CRLF
                 "Options:" CRLF
                 "  -?,-h         : this help" CRLF
@@ -220,6 +220,8 @@ main(int argc, char *const *argv)
                 "  -V            : show version and configure options then exit"
                                    CRLF
                 "  -t            : test configuration and exit" CRLF
+                "  -q            : suppress non-error messages "
+                                   "during configuration testing" CRLF
                 "  -s signal     : send signal to a master process: "
                                    "stop, quit, reopen, reload" CRLF
 #ifdef NGX_PREFIX
@@ -332,8 +334,11 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_test_config) {
-        ngx_log_stderr(0, "configuration file %s test is successful",
-                       cycle->conf_file.data);
+        if (!ngx_quiet_mode) {
+            ngx_log_stderr(0, "configuration file %s test is successful",
+                           cycle->conf_file.data);
+        }
+
         return 0;
     }
 
@@ -683,6 +688,10 @@ ngx_get_options(int argc, char *const *argv)
 
             case 't':
                 ngx_test_config = 1;
+                break;
+
+            case 'q':
+                ngx_quiet_mode = 1;
                 break;
 
             case 'p':
