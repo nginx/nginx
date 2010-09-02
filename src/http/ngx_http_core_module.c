@@ -3111,8 +3111,8 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->gzip_http_version = NGX_CONF_UNSET_UINT;
 #if (NGX_PCRE)
     clcf->gzip_disable = NGX_CONF_UNSET_PTR;
-    clcf->gzip_disable_msie6 = 3;
 #endif
+    clcf->gzip_disable_msie6 = 3;
 #endif
 
     return clcf;
