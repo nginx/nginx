@@ -582,6 +582,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
     fcn->uses = 1;
     fcn->count = 1;
     fcn->updating = 0;
+    fcn->deleting = 0;
 
 renew:
 
@@ -1102,6 +1103,10 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
             continue;
         }
 
+        if (fcn->deleting) {
+            continue;
+        }
+
         p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
                          sizeof(ngx_rbtree_key_t));
         len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
@@ -1153,6 +1158,7 @@ ngx_http_file_cache_delete(ngx_http_file_cache_t *cache, ngx_queue_t *q,
         *p = '\0';
 
         fcn->count++;
+        fcn->deleting = 1;
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
         len = path->name.len + 1 + path->len + 2 * NGX_HTTP_CACHE_KEY_LEN;
@@ -1168,6 +1174,7 @@ ngx_http_file_cache_delete(ngx_http_file_cache_t *cache, ngx_queue_t *q,
 
         ngx_shmtx_lock(&cache->shpool->mutex);
         fcn->count--;
+        fcn->deleting = 0;
     }
 
     if (fcn->count == 0) {
@@ -1431,6 +1438,7 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         fcn->error = 0;
         fcn->exists = 1;
         fcn->updating = 0;
+        fcn->deleting = 0;
         fcn->uniq = c->uniq;
         fcn->valid_sec = c->valid_sec;
         fcn->body_start = c->body_start;

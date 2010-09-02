@@ -43,7 +43,8 @@ typedef struct {
     unsigned                         error:10;
     unsigned                         exists:1;
     unsigned                         updating:1;
-                                     /* 12 unused bits */
+    unsigned                         deleting:1;
+                                     /* 11 unused bits */
 
     ngx_file_uniq_t                  uniq;
     time_t                           expire;
