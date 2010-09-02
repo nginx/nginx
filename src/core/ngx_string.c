@@ -10,6 +10,8 @@
 
 static u_char *ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64,
     u_char zero, ngx_uint_t hexadecimal, ngx_uint_t width);
+static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
+    const u_char *basis);
 
 
 void
@@ -1095,8 +1097,6 @@ ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 ngx_int_t
 ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
-    size_t          len;
-    u_char         *d, *s;
     static u_char   basis64[] = {
         77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
         77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
@@ -1117,12 +1117,49 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
         77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77
     };
 
+    return ngx_decode_base64_internal(dst, src, basis64);
+}
+
+
+ngx_int_t
+ngx_decode_base64url(ngx_str_t *dst, ngx_str_t *src)
+{
+    static u_char   basis64[] = {
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 62, 77, 77,
+        52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 77, 77, 77, 77, 77, 77,
+        77,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 77, 77, 77, 77, 63,
+        77, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+        41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 77, 77, 77, 77, 77,
+
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77,
+        77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77, 77
+    };
+
+    return ngx_decode_base64_internal(dst, src, basis64);
+}
+
+
+static ngx_int_t
+ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis)
+{
+    size_t          len;
+    u_char         *d, *s;
+
     for (len = 0; len < src->len; len++) {
         if (src->data[len] == '=') {
             break;
         }
 
-        if (basis64[src->data[len]] == 77) {
+        if (basis[src->data[len]] == 77) {
             return NGX_ERROR;
         }
     }
@@ -1135,20 +1172,20 @@ ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src)
     d = dst->data;
 
     while (len > 3) {
-        *d++ = (u_char) (basis64[s[0]] << 2 | basis64[s[1]] >> 4);
-        *d++ = (u_char) (basis64[s[1]] << 4 | basis64[s[2]] >> 2);
-        *d++ = (u_char) (basis64[s[2]] << 6 | basis64[s[3]]);
+        *d++ = (u_char) (basis[s[0]] << 2 | basis[s[1]] >> 4);
+        *d++ = (u_char) (basis[s[1]] << 4 | basis[s[2]] >> 2);
+        *d++ = (u_char) (basis[s[2]] << 6 | basis[s[3]]);
 
         s += 4;
         len -= 4;
     }
 
     if (len > 1) {
-        *d++ = (u_char) (basis64[s[0]] << 2 | basis64[s[1]] >> 4);
+        *d++ = (u_char) (basis[s[0]] << 2 | basis[s[1]] >> 4);
     }
 
     if (len > 2) {
-        *d++ = (u_char) (basis64[s[1]] << 4 | basis64[s[2]] >> 2);
+        *d++ = (u_char) (basis[s[1]] << 4 | basis[s[2]] >> 2);
     }
 
     dst->len = d - dst->data;

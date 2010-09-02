@@ -211,6 +211,42 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
 }
 
 
+char *
+ngx_http_set_comlex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t                          *value;
+    ngx_http_complex_value_t          **cv;
+    ngx_http_compile_complex_value_t    ccv;
+
+    cv = (ngx_http_complex_value_t **) (p + cmd->offset);
+
+    if (*cv != NULL) {
+        return "duplicate";
+    }
+
+    *cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+    if (*cv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = *cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 ngx_int_t
 ngx_http_test_predicates(ngx_http_request_t *r, ngx_array_t *predicates)
 {
