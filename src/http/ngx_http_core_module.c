@@ -4390,7 +4390,7 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        if (ngx_strcmp(value[1].data, "msie6") == 0) {
+        if (ngx_strcmp(value[i].data, "msie6") == 0) {
             clcf->gzip_disable_msie6 = 1;
             continue;
         }
