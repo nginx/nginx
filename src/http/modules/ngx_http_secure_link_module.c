@@ -14,7 +14,6 @@ typedef struct {
     ngx_http_complex_value_t  *variable;
     ngx_http_complex_value_t  *md5;
     ngx_str_t                  secret;
-    ngx_flag_t                 expires;
 } ngx_http_secure_link_conf_t;
 
 
@@ -48,13 +47,6 @@ static ngx_command_t  ngx_http_secure_link_commands[] = {
       ngx_http_set_comlex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_secure_link_conf_t, md5),
-      NULL },
-
-    { ngx_string("secure_link_expires"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_secure_link_conf_t, expires),
       NULL },
 
     { ngx_string("secure_link_secret"),
@@ -141,22 +133,20 @@ ngx_http_secure_link_variable(ngx_http_request_t *r,
     if (p) {
         val.len = p++ - val.data;
 
-        if (conf->expires) {
-            expires = ngx_atotm(p, last - p);
-            if (expires <= 0) {
-                goto not_found;
-            }
-
-            ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_secure_link_ctx_t));
-            if (ctx == NULL) {
-                return NGX_ERROR;
-            }
-
-            ngx_http_set_ctx(r, ctx, ngx_http_secure_link_module);
-
-            ctx->expires.len = last - p;
-            ctx->expires.data = p;
+        expires = ngx_atotm(p, last - p);
+        if (expires <= 0) {
+            goto not_found;
         }
+
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_secure_link_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_secure_link_module);
+
+        ctx->expires.len = last - p;
+        ctx->expires.data = p;
     }
 
     if (val.len > 24) {
@@ -317,8 +307,6 @@ ngx_http_secure_link_create_conf(ngx_conf_t *cf)
      *     conf->secret = { 0, NULL };
      */
 
-    conf->expires = NGX_CONF_UNSET;
-
     return conf;
 }
 
@@ -338,8 +326,6 @@ ngx_http_secure_link_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->md5 == NULL) {
         conf->md5 = prev->md5;
     }
-
-    ngx_conf_merge_value(conf->expires, prev->expires, 0);
 
     return NGX_CONF_OK;
 }
