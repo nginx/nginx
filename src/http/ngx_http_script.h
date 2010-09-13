@@ -207,7 +207,7 @@ void ngx_http_script_flush_complex_value(ngx_http_request_t *r,
 ngx_int_t ngx_http_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val, ngx_str_t *value);
 ngx_int_t ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv);
-char * ngx_http_set_comlex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+char *ngx_http_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 

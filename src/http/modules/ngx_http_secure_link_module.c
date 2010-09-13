@@ -37,14 +37,14 @@ static ngx_command_t  ngx_http_secure_link_commands[] = {
 
     { ngx_string("secure_link"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_set_comlex_value_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_secure_link_conf_t, variable),
       NULL },
 
     { ngx_string("secure_link_md5"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_set_comlex_value_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_secure_link_conf_t, md5),
       NULL },

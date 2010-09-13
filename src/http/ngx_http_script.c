@@ -212,7 +212,7 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
 
 
 char *
-ngx_http_set_comlex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
