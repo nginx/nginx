@@ -856,13 +856,13 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
         }
     }
 
-    if (ccf->rlimit_core != NGX_CONF_UNSET_SIZE) {
+    if (ccf->rlimit_core != NGX_CONF_UNSET) {
         rlmt.rlim_cur = (rlim_t) ccf->rlimit_core;
         rlmt.rlim_max = (rlim_t) ccf->rlimit_core;
 
         if (setrlimit(RLIMIT_CORE, &rlmt) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "setrlimit(RLIMIT_CORE, %i) failed",
+                          "setrlimit(RLIMIT_CORE, %O) failed",
                           ccf->rlimit_core);
         }
     }

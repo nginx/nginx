@@ -110,7 +110,7 @@ static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("worker_rlimit_core"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
+      ngx_conf_set_off_slot,
       0,
       offsetof(ngx_core_conf_t, rlimit_core),
       NULL },
@@ -941,7 +941,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->debug_points = NGX_CONF_UNSET;
 
     ccf->rlimit_nofile = NGX_CONF_UNSET;
-    ccf->rlimit_core = NGX_CONF_UNSET_SIZE;
+    ccf->rlimit_core = NGX_CONF_UNSET;
     ccf->rlimit_sigpending = NGX_CONF_UNSET;
 
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
