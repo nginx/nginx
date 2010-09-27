@@ -1221,6 +1221,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #if (NGX_HAVE_UNIX_DOMAIN)
     struct sockaddr_un    *saun;
 #endif
+#if (NGX_HTTP_SSL)
+    ngx_uint_t             ssl;
+#endif
 
     /*
      * we can not compare whole sockaddr struct's as kernel
@@ -1270,6 +1273,10 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         /* preserve default_server bit during listen options overwriting */
         default_server = addr[i].opt.default_server;
 
+#if (NGX_HTTP_SSL)
+        ssl = lsopt->ssl || addr[i].opt.set;
+#endif
+
         if (lsopt->set) {
 
             if (addr[i].opt.set) {
@@ -1296,6 +1303,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
 
         addr[i].opt.default_server = default_server;
+#if (NGX_HTTP_SSL)
+        addr[i].opt.ssl = ssl;
+#endif
 
         return NGX_OK;
     }
