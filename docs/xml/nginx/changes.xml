@@ -9,6 +9,38 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.51" date="27.09.2010">
+
+<change type="change">
+<para lang="ru">
+директива secure_link_expires упразднена.
+</para>
+<para lang="en">
+the "secure_link_expires" directive has been canceled.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок resolver'а понижен с уровня alert на error.
+</para>
+<para lang="en">
+a logging level of resolver errors has been lowered from "alert" to "error".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь параметр "ssl" listen-сокета можно устанавливать несколько раз.
+</para>
+<para lang="en">
+now a listen socket "ssl" parameter may be set several times.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.50" date="02.09.2010">
 
 <change type="feature">
