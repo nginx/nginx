@@ -138,7 +138,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_addr_t *addr)
     r->valid = 300;
 
     r->log = &cf->cycle->new_log;
-    r->log_level = NGX_LOG_ALERT;
+    r->log_level = NGX_LOG_ERR;
 
     if (addr) {
         uc = ngx_calloc(sizeof(ngx_udp_connection_t), cf->log);
