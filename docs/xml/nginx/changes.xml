@@ -9,6 +9,23 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.52" date="28.09.2010">
+
+<change type="bugfix">
+<para lang="ru">
+nginx использовал режим SSL для listen сокета, если для него был
+установлен любой listen-параметр;
+ошибка появилась в 0.8.51.
+</para>
+<para lang="en">
+nginx used SSL mode for a listen socket if any listen option was set;
+the bug had appeared in 0.8.51.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.51" date="27.09.2010">
 
 <change type="change">
