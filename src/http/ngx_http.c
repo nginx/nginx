@@ -1274,7 +1274,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         default_server = addr[i].opt.default_server;
 
 #if (NGX_HTTP_SSL)
-        ssl = lsopt->ssl || addr[i].opt.set;
+        ssl = lsopt->ssl || addr[i].opt.ssl;
 #endif
 
         if (lsopt->set) {
