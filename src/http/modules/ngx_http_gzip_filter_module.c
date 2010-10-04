@@ -258,6 +258,18 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
     r->gzip_vary = 1;
 
+#if (NGX_HTTP_DEGRADATION)
+    {
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->gzip_disable_degradation && ngx_http_degraded(r)) {
+        return ngx_http_next_header_filter(r);
+    }
+    }
+#endif
+
     if (!r->gzip_tested) {
         if (ngx_http_gzip_ok(r) != NGX_OK) {
             return ngx_http_next_header_filter(r);
