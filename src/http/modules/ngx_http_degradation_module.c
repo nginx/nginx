@@ -86,25 +86,38 @@ ngx_module_t  ngx_http_degradation_module = {
 };
 
 
+static ngx_uint_t  ngx_degraded;
+
+
 static ngx_int_t
 ngx_http_degradation_handler(ngx_http_request_t *r)
 {
-    time_t                             now;
-    static size_t                      sbrk_size;
-    static time_t                      sbrk_time;
-    ngx_http_degradation_loc_conf_t   *dlcf;
-    ngx_http_degradation_main_conf_t  *dmcf;
+    ngx_http_degradation_loc_conf_t  *dlcf;
 
     dlcf = ngx_http_get_module_loc_conf(r, ngx_http_degradation_module);
 
-    if (dlcf->degrade == 0) {
-        return NGX_DECLINED;
+    if (dlcf->degrade && ngx_http_degraded(r)) {
+        return dlcf->degrade;
     }
+
+    return NGX_DECLINED;
+}
+
+
+ngx_uint_t
+ngx_http_degraded(ngx_http_request_t *r)
+{
+    time_t                             now;
+    ngx_uint_t                         log;
+    static size_t                      sbrk_size;
+    static time_t                      sbrk_time;
+    ngx_http_degradation_main_conf_t  *dmcf;
 
     dmcf = ngx_http_get_module_main_conf(r, ngx_http_degradation_module);
 
     if (dmcf->sbrk_size) {
 
+        log = 0;
         now = ngx_time();
 
         /* lock mutex */
@@ -120,19 +133,27 @@ ngx_http_degradation_handler(ngx_http_request_t *r)
 
             sbrk_size = (size_t) sbrk(0) - ((uintptr_t) ngx_palloc & ~0x3FFFFF);
             sbrk_time = now;
+            log = 1;
         }
 
         /* unlock mutex */
 
         if (sbrk_size >= dmcf->sbrk_size) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "degradation sbrk: %uz", sbrk_size);
+            ngx_degraded = 1;
 
-            return dlcf->degrade;
+            if (log) {
+                ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                              "degradation sbrk:%uzM",
+                              sbrk_size / (1024 * 1024));
+            }
+
+            return 1;
         }
     }
 
-    return NGX_DECLINED;
+    ngx_degraded = 0;
+
+    return 0;
 }
 
 
