@@ -3005,8 +3005,8 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.addr,
                              NGX_SOCKADDR_STRLEN, 1);
 
-        if (ngx_http_add_listen(cf, conf, &lsopt) == NGX_OK) {
-            return NGX_CONF_OK;
+        if (ngx_http_add_listen(cf, conf, &lsopt) != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
     }
 
