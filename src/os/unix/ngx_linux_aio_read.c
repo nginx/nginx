@@ -95,6 +95,10 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     n = io_submit(ngx_aio_ctx, 1, piocb);
 
     if (n == 1) {
+        ev->active = 1;
+        ev->ready = 0;
+        ev->complete = 0;
+
         return NGX_AGAIN;
     }
 
