@@ -211,6 +211,7 @@ ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx, ngx_file_t *file)
 
     r->main->blocked++;
     r->aio = 1;
+    ctx->aio = 1;
 }
 
 
