@@ -51,7 +51,7 @@ typedef struct {
 
 static void ngx_http_limit_req_delay(ngx_http_request_t *r);
 static ngx_int_t ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf,
-    ngx_uint_t hash, u_char *data, size_t len, ngx_http_limit_req_node_t **lrp);
+    ngx_uint_t hash, u_char *data, size_t len, ngx_uint_t *ep);
 static void ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx,
     ngx_uint_t n);
 
@@ -186,18 +186,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     ngx_http_limit_req_expire(ctx, 1);
 
-    rc = ngx_http_limit_req_lookup(lrcf, hash, vv->data, len, &lr);
-
-    if (lr) {
-        ngx_queue_remove(&lr->queue);
-
-        ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
-
-        excess = lr->excess;
-
-    } else {
-        excess = 0;
-    }
+    rc = ngx_http_limit_req_lookup(lrcf, hash, vv->data, len, &excess);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "limit_req: %i %ui.%03ui", rc, excess / 1000, excess % 1000);
@@ -356,7 +345,7 @@ ngx_http_limit_req_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
 static ngx_int_t
 ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
-    u_char *data, size_t len, ngx_http_limit_req_node_t **lrp)
+    u_char *data, size_t len, ngx_uint_t *ep)
 {
     ngx_int_t                   rc, excess;
     ngx_time_t                 *tp;
@@ -391,6 +380,8 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
             rc = ngx_memn2cmp(data, lr->data, len, (size_t) lr->len);
 
             if (rc == 0) {
+                ngx_queue_remove(&lr->queue);
+                ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
                 tp = ngx_timeofday();
 
@@ -403,15 +394,14 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
                     excess = 0;
                 }
 
+                *ep = excess;
+
                 if ((ngx_uint_t) excess > lrcf->burst) {
-                    *lrp = lr;
                     return NGX_BUSY;
                 }
 
                 lr->excess = excess;
                 lr->last = now;
-
-                *lrp = lr;
 
                 if (excess) {
                     return NGX_AGAIN;
@@ -427,7 +417,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
         break;
     }
 
-    *lrp = NULL;
+    *ep = 0;
 
     return NGX_DECLINED;
 }
