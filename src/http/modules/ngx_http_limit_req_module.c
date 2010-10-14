@@ -191,9 +191,51 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "limit_req: %i %ui.%03ui", rc, excess / 1000, excess % 1000);
 
-    if (rc == NGX_BUSY) {
+    if (rc == NGX_DECLINED) {
+
+        n = offsetof(ngx_rbtree_node_t, color)
+            + offsetof(ngx_http_limit_req_node_t, data)
+            + len;
+
+        node = ngx_slab_alloc_locked(ctx->shpool, n);
+        if (node == NULL) {
+
+            ngx_http_limit_req_expire(ctx, 0);
+
+            node = ngx_slab_alloc_locked(ctx->shpool, n);
+            if (node == NULL) {
+                ngx_shmtx_unlock(&ctx->shpool->mutex);
+                return NGX_HTTP_SERVICE_UNAVAILABLE;
+            }
+        }
+
+        lr = (ngx_http_limit_req_node_t *) &node->color;
+
+        node->key = hash;
+        lr->len = (u_char) len;
+
+        tp = ngx_timeofday();
+        lr->last = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
+
+        lr->excess = 0;
+        ngx_memcpy(lr->data, vv->data, len);
+
+        ngx_rbtree_insert(&ctx->sh->rbtree, node);
+
+        ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
+
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
+        return NGX_DECLINED;
+    }
+
+    ngx_shmtx_unlock(&ctx->shpool->mutex);
+
+    if (rc == NGX_OK) {
+        return NGX_DECLINED;
+    }
+
+    if (rc == NGX_BUSY) {
         ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
                       "limiting requests, excess: %ui.%03ui by zone \"%V\"",
                       excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
@@ -201,71 +243,26 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
 
-    if (rc == NGX_AGAIN) {
-        ngx_shmtx_unlock(&ctx->shpool->mutex);
+    /* rc == NGX_AGAIN */
 
-        if (lrcf->nodelay) {
-            return NGX_DECLINED;
-        }
-
-        ngx_log_error(lrcf->delay_log_level, r->connection->log, 0,
-                      "delaying request, excess: %ui.%03ui, by zone \"%V\"",
-                      excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
-
-        if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        r->read_event_handler = ngx_http_test_reading;
-        r->write_event_handler = ngx_http_limit_req_delay;
-        ngx_add_timer(r->connection->write,
-                      (ngx_msec_t) excess * 1000 / ctx->rate);
-
-        return NGX_AGAIN;
+    if (lrcf->nodelay) {
+        return NGX_DECLINED;
     }
 
-    if (rc == NGX_OK) {
-        goto done;
+    ngx_log_error(lrcf->delay_log_level, r->connection->log, 0,
+                  "delaying request, excess: %ui.%03ui, by zone \"%V\"",
+                  excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
+
+    if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    /* rc == NGX_DECLINED */
+    r->read_event_handler = ngx_http_test_reading;
+    r->write_event_handler = ngx_http_limit_req_delay;
+    ngx_add_timer(r->connection->write,
+                  (ngx_msec_t) excess * 1000 / ctx->rate);
 
-    n = offsetof(ngx_rbtree_node_t, color)
-        + offsetof(ngx_http_limit_req_node_t, data)
-        + len;
-
-    node = ngx_slab_alloc_locked(ctx->shpool, n);
-    if (node == NULL) {
-
-        ngx_http_limit_req_expire(ctx, 0);
-
-        node = ngx_slab_alloc_locked(ctx->shpool, n);
-        if (node == NULL) {
-            ngx_shmtx_unlock(&ctx->shpool->mutex);
-            return NGX_HTTP_SERVICE_UNAVAILABLE;
-        }
-    }
-
-    lr = (ngx_http_limit_req_node_t *) &node->color;
-
-    node->key = hash;
-    lr->len = (u_char) len;
-
-    tp = ngx_timeofday();
-    lr->last = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
-
-    lr->excess = 0;
-    ngx_memcpy(lr->data, vv->data, len);
-
-    ngx_rbtree_insert(&ctx->sh->rbtree, node);
-
-    ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
-
-done:
-
-    ngx_shmtx_unlock(&ctx->shpool->mutex);
-
-    return NGX_DECLINED;
+    return NGX_AGAIN;
 }
 
 
