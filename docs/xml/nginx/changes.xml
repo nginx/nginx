@@ -9,6 +9,55 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.53" date="18.10.2010">
+
+<change type="feature">
+<para lang="ru">
+теперь директива error_page позволяет менять код статуса у редиректа.
+</para>
+<para lang="en">
+now the "error_page" directive allows to change a status code in a redirect.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива gzip_disable поддерживает специальную маску degradation.
+</para>
+<para lang="en">
+the "gzip_disable" directive supports special "degradation" mask.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании файлового AIO, могла происходить утечка сокетов.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a socket leak might occurred if file AIO was used.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в первом сервере не была описана директива listen и нигде явно
+не описан сервер по умолчанию, то сервером по умолчанию становился
+следующий сервер с директивой listen;
+ошибка появилась в 0.8.21.
+</para>
+<para lang="en">
+if the first server had no "listen" directive and there was no explicit
+default server, then a next server with a "listen" directive became
+the default server;
+the bug had appeared in 0.8.21.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.52" date="28.09.2010">
 
 <change type="bugfix">
@@ -413,10 +462,10 @@ compatibility with HP/UX.
 
 <change type="bugfix">
 <para lang="ru">
-совместимость с компилятором AIX xcl_r.
+совместимость с компилятором AIX xlC_r.
 </para>
 <para lang="en">
-compatibility with AIX xcl_r compiler.
+compatibility with AIX xlC_r compiler.
 </para>
 </change>
 
