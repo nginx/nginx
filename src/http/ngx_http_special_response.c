@@ -523,7 +523,9 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         r->expect_tested = 1;
     }
 
-    r->err_status = overwrite;
+    if (overwrite >= 0) {
+        r->err_status = overwrite;
+    }
 
     if (ngx_http_complex_value(r, &err_page->value, &uri) != NGX_OK) {
         return NGX_ERROR;
@@ -556,7 +558,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return NGX_ERROR;
     }
 
-    r->err_status = NGX_HTTP_MOVED_TEMPORARILY;
+    r->err_status = overwrite > 0 ? overwrite : NGX_HTTP_MOVED_TEMPORARILY;
 
     location->hash = 1;
     ngx_str_set(&location->key, "Location");
@@ -570,7 +572,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return ngx_http_send_refresh(r);
     }
 
-    return ngx_http_send_special_response(r, clcf, NGX_HTTP_MOVED_TEMPORARILY
+    return ngx_http_send_special_response(r, clcf, r->err_status
                                                    - NGX_HTTP_MOVED_PERMANENTLY
                                                    + NGX_HTTP_LEVEL_200);
 }
