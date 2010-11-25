@@ -9,7 +9,7 @@
 
 
 u_char *
-ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
+ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
 {
     u_int          len;
     static u_long  lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
@@ -49,4 +49,11 @@ ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size)
     }
 
     return &errstr[++len];
+}
+
+
+ngx_uint_t
+ngx_strerror_init(void)
+{
+    return NGX_OK;
 }

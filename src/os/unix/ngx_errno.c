@@ -8,54 +8,79 @@
 #include <ngx_core.h>
 
 
-#if (NGX_HAVE_STRERROR_R)
+/*
+ * The strerror() messages are copied because:
+ *
+ * 1) strerror() and strerror_r() functions are not Async-Signal-Safe,
+ *    therefore, they can not be used in signal handlers;
+ *
+ * 2) a direct sys_errlist[] array may be used instead of these functions,
+ *    but Linux linker warns about its usage:
+ *
+ * warning: `sys_errlist' is deprecated; use `strerror' or `strerror_r' instead
+ * warning: `sys_nerr' is deprecated; use `strerror' or `strerror_r' instead
+ *
+ *    causing false bug reports.
+ */
+
+
+static ngx_str_t  *ngx_sys_errlist;
+static ngx_str_t   ngx_unknown_error = ngx_string("Unknown error");
+
 
 u_char *
-ngx_strerror_r(int err, u_char *errstr, size_t size)
+ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
 {
-    if (size == 0) {
-        return errstr;
-    }
+    ngx_str_t  *msg;
 
-    errstr[0] = '\0';
+    msg = ((ngx_uint_t) err < NGX_SYS_NERR) ? &ngx_sys_errlist[err]:
+                                              &ngx_unknown_error;
+    size = ngx_min(size, msg->len);
 
-    strerror_r(err, (char *) errstr, size);
-
-    while (*errstr && size) {
-        errstr++;
-        size--;
-    }
-
-    return errstr;
+    return ngx_cpymem(errstr, msg->data, size);
 }
 
-#elif (NGX_HAVE_GNU_STRERROR_R)
 
-/* Linux strerror_r() */
-
-u_char *
-ngx_strerror_r(int err, u_char *errstr, size_t size)
+ngx_uint_t
+ngx_strerror_init(void)
 {
-    char  *str;
+    char       *msg;
+    u_char     *p;
+    size_t      len;
+    ngx_err_t   err;
 
-    if (size == 0) {
-        return errstr;
+    /*
+     * ngx_strerror() is not ready to work at this stage, therefore,
+     * malloc() is used and possible errors are logged using strerror().
+     */
+
+    len = NGX_SYS_NERR * sizeof(ngx_str_t);
+
+    ngx_sys_errlist = malloc(len);
+    if (ngx_sys_errlist == NULL) {
+        goto failed;
     }
 
-    errstr[0] = '\0';
+    for (err = 0; err < NGX_SYS_NERR; err++) {
+        msg = strerror(err);
+        len = ngx_strlen(msg);
 
-    str = strerror_r(err, (char *) errstr, size);
+        p = malloc(len);
+        if (p == NULL) {
+            goto failed;
+        }
 
-    if (str != (char *) errstr) {
-        return ngx_cpystrn(errstr, (u_char *) str, size);
+        ngx_memcpy(p, msg, len);
+        ngx_sys_errlist[err].len = len;
+        ngx_sys_errlist[err].data = p;
     }
 
-    while (*errstr && size) {
-        errstr++;
-        size--;
-    }
+    return NGX_OK;
 
-    return errstr;
+failed:
+
+    err = errno;
+    ngx_log_stderr(0, "malloc(%uz) failed (%d: %s)", len, err, strerror(err));
+
+    return NGX_ERROR;
 }
-
-#endif

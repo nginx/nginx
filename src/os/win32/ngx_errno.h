@@ -54,7 +54,9 @@ typedef DWORD                      ngx_err_t;
 #define NGX_EALREADY               WSAEALREADY
 #define NGX_EINVAL                 WSAEINVAL
 
-u_char *ngx_strerror_r(ngx_err_t err, u_char *errstr, size_t size);
+
+u_char *ngx_strerror(ngx_err_t err, u_char *errstr, size_t size);
+ngx_uint_t ngx_strerror_init(void);
 
 
 #endif /* _NGX_ERRNO_H_INCLUDED_ */

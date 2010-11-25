@@ -248,7 +248,7 @@ ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err)
     buf = ngx_slprintf(buf, last, " (%d: ", err);
 #endif
 
-    buf = ngx_strerror_r(err, buf, last - buf);
+    buf = ngx_strerror(err, buf, last - buf);
 
     if (buf < last) {
         *buf++ = ')';

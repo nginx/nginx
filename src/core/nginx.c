@@ -270,6 +270,10 @@ main(int argc, char *const *argv)
 
     ngx_pid = ngx_getpid();
 
+    if (ngx_strerror_init() != NGX_OK) {
+        return 1;
+    }
+
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
         return 1;

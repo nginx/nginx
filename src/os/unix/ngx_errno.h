@@ -60,30 +60,8 @@ typedef int               ngx_err_t;
 #define ngx_set_socket_errno(err)  errno = err
 
 
-#if (NGX_HAVE_STRERROR_R || NGX_HAVE_GNU_STRERROR_R)
-
-u_char *ngx_strerror_r(int err, u_char *errstr, size_t size);
-
-#else
-
-/* Solaris and Tru64 UNIX have thread-safe strerror() */
-
-#define ngx_strerror_r(err, errstr, size)                                    \
-    ngx_cpystrn(errstr, (u_char *) strerror(err), size)
-
-#endif
-
-
-#if (NGX_HAVE_SYS_ERRLIST)
-
-#define ngx_sigsafe_strerror(err)                                            \
-    (err > 0 && err < sys_nerr) ? sys_errlist[err] : "Unknown error"
-
-#else
-
-#define ngx_sigsafe_strerror(err)  ""
-
-#endif
+u_char *ngx_strerror(ngx_err_t err, u_char *errstr, size_t size);
+ngx_uint_t ngx_strerror_init(void);
 
 
 #endif /* _NGX_ERRNO_H_INCLUDED_ */
