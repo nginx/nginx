@@ -122,11 +122,6 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         len--;
     }
 
-    if (len == 0) {
-        *v = *map->default_value;
-        return NGX_OK;
-    }
-
     key = ngx_hash_strlow(val.data, val.data, len);
 
     value = ngx_hash_find_combined(&map->hash, key, val.data, len);
@@ -356,11 +351,6 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     } else if (cf->args->nelts != 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid number of the map parameters");
-        return NGX_CONF_ERROR;
-
-    } else if (value[0].len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid first parameter");
         return NGX_CONF_ERROR;
     }
 
