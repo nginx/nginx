@@ -46,7 +46,11 @@ ngx_event_accept(ngx_event_t *ev)
     do {
         socklen = NGX_SOCKADDRLEN;
 
+#if (NGX_HAVE_ACCEPT4)
+        s = accept4(lc->fd, (struct sockaddr *) sa, &socklen, SOCK_NONBLOCK);
+#else
         s = accept(lc->fd, (struct sockaddr *) sa, &socklen);
+#endif
 
         if (s == -1) {
             err = ngx_socket_errno;
