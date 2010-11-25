@@ -434,7 +434,7 @@ found:
         return NGX_CONF_OK;
     }
 
-    if (value[0].len && value[0].data[0] == '!') {
+    if (value[0].len && value[0].data[0] == '\\') {
         value[0].len--;
         value[0].data++;
     }
