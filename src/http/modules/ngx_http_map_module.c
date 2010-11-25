@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
     ngx_hash_combined_t         hash;
-    ngx_int_t                   index;
+    ngx_http_complex_value_t    value;
     ngx_http_variable_value_t  *default_value;
     ngx_uint_t                  hostnames;      /* unsigned  hostnames:1 */
 } ngx_http_map_ctx_t;
@@ -105,23 +105,20 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     ngx_http_map_ctx_t  *map = (ngx_http_map_ctx_t *) data;
 
     size_t                      len;
-    u_char                     *name;
+    ngx_str_t                   val;
     ngx_uint_t                  key;
-    ngx_http_variable_value_t  *vv, *value;
+    ngx_http_variable_value_t  *value;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http map started");
 
-    vv = ngx_http_get_flushed_variable(r, map->index);
-
-    if (vv == NULL || vv->not_found) {
-        *v = *map->default_value;
-        return NGX_OK;
+    if (ngx_http_complex_value(r, &map->value, &val) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    len = vv->len;
+    len = val.len;
 
-    if (len && map->hostnames && vv->data[len - 1] == '.') {
+    if (len && map->hostnames && val.data[len - 1] == '.') {
         len--;
     }
 
@@ -130,14 +127,9 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         return NGX_OK;
     }
 
-    name = ngx_pnalloc(r->pool, len);
-    if (name == NULL) {
-        return NGX_ERROR;
-    }
+    key = ngx_hash_strlow(val.data, val.data, len);
 
-    key = ngx_hash_strlow(name, vv->data, len);
-
-    value = ngx_hash_find_combined(&map->hash, key, name, len);
+    value = ngx_hash_find_combined(&map->hash, key, val.data, len);
 
     if (value) {
         *v = *value;
@@ -147,7 +139,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http map: \"%v\" \"%v\"", vv, v);
+                   "http map: \"%v\" \"%v\"", &val, v);
 
     return NGX_OK;
 }
@@ -175,14 +167,15 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_map_conf_t  *mcf = conf;
 
-    char                      *rv;
-    ngx_str_t                 *value, name;
-    ngx_conf_t                 save;
-    ngx_pool_t                *pool;
-    ngx_hash_init_t            hash;
-    ngx_http_map_ctx_t        *map;
-    ngx_http_variable_t       *var;
-    ngx_http_map_conf_ctx_t    ctx;
+    char                              *rv;
+    ngx_str_t                         *value, name;
+    ngx_conf_t                         save;
+    ngx_pool_t                        *pool;
+    ngx_hash_init_t                    hash;
+    ngx_http_map_ctx_t                *map;
+    ngx_http_variable_t               *var;
+    ngx_http_map_conf_ctx_t            ctx;
+    ngx_http_compile_complex_value_t   ccv;
 
     if (mcf->hash_max_size == NGX_CONF_UNSET_UINT) {
         mcf->hash_max_size = 2048;
@@ -203,13 +196,13 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    name = value[1];
-    name.len--;
-    name.data++;
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-    map->index = ngx_http_get_variable_index(cf, &name);
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &map->value;
 
-    if (map->index == NGX_ERROR) {
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
