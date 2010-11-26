@@ -86,9 +86,6 @@ ngx_module_t  ngx_http_degradation_module = {
 };
 
 
-static ngx_uint_t  ngx_degraded;
-
-
 static ngx_int_t
 ngx_http_degradation_handler(ngx_http_request_t *r)
 {
@@ -139,8 +136,6 @@ ngx_http_degraded(ngx_http_request_t *r)
         /* unlock mutex */
 
         if (sbrk_size >= dmcf->sbrk_size) {
-            ngx_degraded = 1;
-
             if (log) {
                 ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                               "degradation sbrk:%uzM",
@@ -150,8 +145,6 @@ ngx_http_degraded(ngx_http_request_t *r)
             return 1;
         }
     }
-
-    ngx_degraded = 0;
 
     return 0;
 }
