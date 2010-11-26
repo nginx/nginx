@@ -133,6 +133,14 @@ static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_http_core_keepalive_disable[] = {
+    { ngx_string("none"), NGX_HTTP_KEEPALIVE_DISABLE_NONE },
+    { ngx_string("msie6"), NGX_HTTP_KEEPALIVE_DISABLE_MSIE6 },
+    { ngx_string("safari"), NGX_HTTP_KEEPALIVE_DISABLE_SAFARI },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_path_init_t  ngx_http_client_temp_path = {
     ngx_string(NGX_HTTP_CLIENT_TEMP_PATH), { 0, 0, 0 }
 };
@@ -494,6 +502,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, keepalive_requests),
       NULL },
 
+    { ngx_string("keepalive_disable"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_disable),
+      &ngx_http_core_keepalive_disable },
+
     { ngx_string("satisfy"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
@@ -788,26 +803,6 @@ ngx_http_handler(ngx_http_request_t *r)
         case NGX_HTTP_CONNECTION_KEEP_ALIVE:
             r->keepalive = 1;
             break;
-        }
-
-        if (r->keepalive) {
-
-            if (r->headers_in.msie6) {
-                if (r->method == NGX_HTTP_POST) {
-                    /*
-                     * MSIE may wait for some time if an response for
-                     * a POST request was sent over a keepalive connection
-                     */
-                    r->keepalive = 0;
-                }
-
-            } else if (r->headers_in.safari) {
-                /*
-                 * Safari may send a POST request to a closed keepalive
-                 * connection and stalls for some time
-                 */
-                r->keepalive = 0;
-            }
         }
 
         if (r->headers_in.content_length_n > 0) {
@@ -1431,6 +1426,28 @@ ngx_http_update_location_config(ngx_http_request_t *r)
             r->keepalive = 0;
 
         } else if (r->connection->requests >= clcf->keepalive_requests) {
+            r->keepalive = 0;
+
+        } else if (r->headers_in.msie6
+                   && r->method == NGX_HTTP_POST
+                   && (clcf->keepalive_disable
+                       & NGX_HTTP_KEEPALIVE_DISABLE_MSIE6))
+        {
+            /*
+             * MSIE may wait for some time if an response for
+             * a POST request was sent over a keepalive connection
+             */
+            r->keepalive = 0;
+
+        } else if (r->headers_in.safari
+                   && (clcf->keepalive_disable
+                       & NGX_HTTP_KEEPALIVE_DISABLE_SAFARI))
+        {
+            /*
+             * Safari may send a POST request to a closed keepalive
+             * connection and may stall for some time, see
+             *     https://bugs.webkit.org/show_bug.cgi?id=5760
+             */
             r->keepalive = 0;
         }
     }
@@ -3061,6 +3078,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->client_max_body_size = NGX_CONF_UNSET;
     clcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     clcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->keepalive_disable = NGX_CONF_UNSET_UINT;
     clcf->satisfy = NGX_CONF_UNSET_UINT;
     clcf->if_modified_since = NGX_CONF_UNSET_UINT;
     clcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
@@ -3261,6 +3279,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
 
+    ngx_conf_merge_uint_value(conf->keepalive_disable, prev->keepalive_disable,
+                              NGX_HTTP_KEEPALIVE_DISABLE_MSIE6
+                              |NGX_HTTP_KEEPALIVE_DISABLE_SAFARI);
     ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
                               NGX_HTTP_SATISFY_ALL);
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,

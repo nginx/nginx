@@ -38,6 +38,11 @@
 #define NGX_HTTP_IMS_BEFORE             2
 
 
+#define NGX_HTTP_KEEPALIVE_DISABLE_NONE    0x0002
+#define NGX_HTTP_KEEPALIVE_DISABLE_MSIE6   0x0004
+#define NGX_HTTP_KEEPALIVE_DISABLE_SAFARI  0x0008
+
+
 typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
@@ -349,6 +354,7 @@ struct ngx_http_core_loc_conf_s {
     time_t        keepalive_header;        /* keepalive_timeout */
 
     ngx_uint_t    keepalive_requests;      /* keepalive_requests */
+    ngx_uint_t    keepalive_disable;       /* keepalive_disable */
     ngx_uint_t    satisfy;                 /* satisfy */
     ngx_uint_t    if_modified_since;       /* if_modified_since */
     ngx_uint_t    client_body_in_file_only; /* client_body_in_file_only */
