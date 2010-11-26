@@ -19,8 +19,10 @@ typedef struct {
     ngx_hash_keys_arrays_t      keys;
 
     ngx_array_t                *values_hash;
+    ngx_array_t                 var_values;
 
     ngx_http_variable_value_t  *default_value;
+    ngx_conf_t                 *cf;
     ngx_uint_t                  hostnames;      /* unsigned  hostnames:1 */
 } ngx_http_map_conf_ctx_t;
 
@@ -126,12 +128,19 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     value = ngx_hash_find_combined(&map->hash, key, val.data, len);
 
-    if (value) {
-        *v = *value;
-
-    } else {
-        *v = *map->default_value;
+    if (value == NULL) {
+        value = map->default_value;
     }
+
+    if (!value->valid) {
+        value = ngx_http_get_flushed_variable(r, (ngx_uint_t) value->data);
+
+        if (value == NULL || value->not_found) {
+            value = &ngx_http_variable_null_value;
+        }
+    }
+
+    *v = *value;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http map: \"%v\" \"%v\"", &val, v);
@@ -232,7 +241,16 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_array_init(&ctx.var_values, cf->pool, 2,
+                       sizeof(ngx_http_variable_value_t))
+        != NGX_OK)
+    {
+        ngx_destroy_pool(pool);
+        return NGX_CONF_ERROR;
+    }
+
     ctx.default_value = NULL;
+    ctx.cf = &save;
     ctx.hostnames = 0;
 
     save = *cf;
@@ -332,8 +350,8 @@ ngx_http_map_cmp_dns_wildcards(const void *one, const void *two)
 static char *
 ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_int_t                   rc;
-    ngx_str_t                  *value, file;
+    ngx_int_t                   rc, index;
+    ngx_str_t                  *value, file, name;
     ngx_uint_t                  i, key;
     ngx_http_map_conf_ctx_t    *ctx;
     ngx_http_variable_value_t  *var, **vp;
@@ -364,6 +382,45 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
         return ngx_conf_parse(cf, &file);
+    }
+
+    if (value[1].data[0] == '$') {
+        name = value[1];
+        name.len--;
+        name.data++;
+
+        index = ngx_http_get_variable_index(ctx->cf, &name);
+        if (index == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        var = ctx->var_values.elts;
+
+        for (i = 0; i < ctx->var_values.nelts; i++) {
+            if (index == (ngx_int_t) var[i].data) {
+                goto found;
+            }
+        }
+
+        var = ngx_palloc(ctx->keys.pool, sizeof(ngx_http_variable_value_t));
+        if (var == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        var->valid = 0;
+        var->no_cacheable = 0;
+        var->not_found = 0;
+        var->len = 0;
+        var->data = (u_char *) index;
+
+        vp = ngx_array_push(&ctx->var_values);
+        if (vp == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *vp = var;
+
+        goto found;
     }
 
     key = 0;
