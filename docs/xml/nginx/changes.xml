@@ -9,6 +9,105 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.0" date="29.11.2010">
+
+<change type="feature">
+<para lang="ru">
+директива keepalive_disable.
+</para>
+<para lang="en">
+the "keepalive_disable" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает переменные в качестве значения определяемой
+переменной.
+</para>
+<para lang="en">
+the "map" directive supports variables as value of a defined variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает пустые строки в качестве значения первого параметра.
+</para>
+<para lang="en">
+the "map" directive supports empty strings as value of the first parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает выражения в первом параметре.
+</para>
+<para lang="en">
+the "map" directive supports expressions as the first parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+страница руководства nginx(8).<br/>
+Спасибо Сергею Осокину.
+</para>
+<para lang="en">
+nginx(8) manual page.<br/>
+Thanks to Sergey Osokin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка accept4() в Linux.<br/>
+Спасибо Simon Liu.
+</para>
+<para lang="en">
+Linux accept4() support.<br/>
+Thanks to Simon Liu.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+устранение предупреждения линкера о "sys_errlist" и "sys_nerr" под Linux;
+предупреждение появилось в 0.8.35.
+</para>
+<para lang="en">
+elimination of Linux linker warning about "sys_errlist" and "sys_nerr";
+the warning had appeared in 0.8.35.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_basic
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Михаилу Лалетину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if the "auth_basic" directive was used.<br/>
+Thanks to Michail Laletin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с модулем ngx_http_eval_module;
+ошибка появилась в 0.8.42.
+</para>
+<para lang="en">
+compatibility with ngx_http_eval_module;
+the bug had appeared in 0.8.42.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.8.53" date="18.10.2010">
 
 <change type="feature">
@@ -31,7 +130,7 @@ the "gzip_disable" directive supports special "degradation" mask.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании файлового AIO, могла происходить утечка сокетов.<br/>
+при использовании файлового AIO могла происходить утечка сокетов.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
@@ -5059,7 +5158,7 @@ the "http_503" parameter of the "proxy_next_upstream" or
 nginx мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
 </para>
 <para lang="en">
-nginx might send a "Transfer-Encoding: chunked" heaer line for HEAD requests.
+nginx might send a "Transfer-Encoding: chunked" header line for HEAD requests.
 </para>
 </change>
 
