@@ -203,6 +203,10 @@ main(int argc, char *const *argv)
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
 
+    if (ngx_strerror_init() != NGX_OK) {
+        return 1;
+    }
+
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
@@ -269,10 +273,6 @@ main(int argc, char *const *argv)
 #endif
 
     ngx_pid = ngx_getpid();
-
-    if (ngx_strerror_init() != NGX_OK) {
-        return 1;
-    }
 
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
