@@ -148,9 +148,9 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
         return;
     }
 
-    msg -= (err_levels[level].len + 4);
+    msg -= (7 + err_levels[level].len + 4);
 
-    (void) ngx_sprintf(msg, "[%V]: ", &err_levels[level]);
+    (void) ngx_sprintf(msg, "nginx: [%V]: ", &err_levels[level]);
 
     (void) ngx_write_console(ngx_stderr, msg, p - msg);
 }
@@ -209,9 +209,12 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
     u_char    errstr[NGX_MAX_ERROR_STR];
 
     last = errstr + NGX_MAX_ERROR_STR;
+    p = errstr + 7;
+
+    ngx_memcpy(errstr, "nginx: ", 7);
 
     va_start(args, fmt);
-    p = ngx_vslprintf(errstr, last, fmt, args);
+    p = ngx_vslprintf(p, last, fmt, args);
     va_end(args);
 
     if (err) {
