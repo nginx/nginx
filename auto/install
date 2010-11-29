@@ -74,12 +74,12 @@ esac
 
 cat << END                                                    >> $NGX_MAKEFILE
 
-man:
+manpage:
 	sed -e "s|%%PREFIX%%|$NGX_PREFIX|" \\
 		-e "s|%%PID_PATH%%|$NGX_PID_PATH|" \\
 		-e "s|%%CONF_PATH%%|$NGX_CONF_PATH|" \\
 		-e "s|%%ERROR_LOG_PATH%%|$NGX_ERROR_LOG_PATH|" \\
-		< docs/man/nginx.8 > $NGX_OBJS/nginx.8
+		< man/nginx.8 > $NGX_OBJS/nginx.8
 
 install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 		$NGX_INSTALL_PERL_MODULES
@@ -153,7 +153,7 @@ cat << END >> Makefile
 
 build:
 	\$(MAKE) -f $NGX_MAKEFILE
-	\$(MAKE) -f $NGX_MAKEFILE man
+	\$(MAKE) -f $NGX_MAKEFILE manpage
 
 install:
 	\$(MAKE) -f $NGX_MAKEFILE install
