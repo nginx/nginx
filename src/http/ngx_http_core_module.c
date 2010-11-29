@@ -900,11 +900,6 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     rc = ph->handler(r);
 
-    if (rc == NGX_OK) {
-        r->phase_handler = ph->next;
-        return NGX_AGAIN;
-    }
-
     if (rc == NGX_DECLINED) {
         r->phase_handler++;
         return NGX_AGAIN;
