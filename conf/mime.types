@@ -61,6 +61,7 @@ types {
 
     audio/midi                            mid midi kar;
     audio/mpeg                            mp3;
+    audio/ogg                             ogg;
     audio/x-realaudio                     ra;
 
     video/3gpp                            3gpp 3gp;
