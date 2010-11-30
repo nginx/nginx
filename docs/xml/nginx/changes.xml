@@ -9,6 +9,22 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.1" date="30.11.2010">
+
+<change type="bugfix">
+<para lang="ru">
+директивы вида "return CODE message" не работали;
+ошибка появилась в 0.9.0.
+</para>
+<para lang="en">
+"return CODE message" directrives did not work;
+the bug had appeared in 0.9.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.0" date="29.11.2010">
 
 <change type="feature">
