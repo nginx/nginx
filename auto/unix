@@ -119,6 +119,18 @@ ngx_feature_test='printf("%d", sys_nerr);'
 . auto/feature
 
 
+# Cygiwn defines _sys_nerr
+ngx_feature="_sys_nerr"
+ngx_feature_name="NGX_SYS_NERR"
+ngx_feature_run=value
+ngx_feature_incs='#include <errno.h>
+                  #include <stdio.h>'
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test='printf("%d", _sys_nerr);'
+. auto/feature
+
+
 ngx_feature="localtime_r()"
 ngx_feature_name="NGX_HAVE_LOCALTIME_R"
 ngx_feature_run=no
