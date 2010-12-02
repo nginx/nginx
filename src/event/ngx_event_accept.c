@@ -69,12 +69,10 @@ ngx_event_accept(ngx_event_t *ev)
                 return;
             }
 
+#if (NGX_HAVE_ACCEPT4)
             ngx_log_error((ngx_uint_t) ((err == NGX_ECONNABORTED) ?
                                              NGX_LOG_ERR : NGX_LOG_ALERT),
                           ev->log, err,
-#if !(NGX_HAVE_ACCEPT4)
-                          "accept() failed");
-#else
                           use_accept4 ? "accept4() failed" : "accept() failed");
 
             if (use_accept4 && err == NGX_ENOSYS) {
@@ -82,6 +80,10 @@ ngx_event_accept(ngx_event_t *ev)
                 ngx_inherited_nonblocking = 0;
                 continue;
             }
+#else
+            ngx_log_error((ngx_uint_t) ((err == NGX_ECONNABORTED) ?
+                                             NGX_LOG_ERR : NGX_LOG_ALERT),
+                          ev->log, err, "accept() failed");
 #endif
 
             if (err == NGX_ECONNABORTED) {
