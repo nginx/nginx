@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.2" date="06.12.2010">
+
+<change type="feature">
+<para lang="ru">
+поддержка строки "If-Unmodified-Since" в заголовке запросе клиента.
+</para>
+<para lang="en">
+the "If-Unmodified-Since" client request header line support.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+использование accept(), если accept4() не реализован;
+ошибка появилась в 0.9.0.
+</para>
+<para lang="en">
+fallback to accept() syscall if accept4() was not implemented;
+the issue had appeared in 0.9.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под Cygwin;
+ошибка появилась в 0.9.0.
+</para>
+<para lang="en">
+nginx could not be built on Cygwin;
+the issue had appeared in 0.9.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уязвимости в OpenSSL CVE-2010-4180.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+for OpenSSL vulnerability CVE-2010-4180.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.1" date="30.11.2010">
 
 <change type="bugfix">
@@ -17,7 +64,7 @@
 ошибка появилась в 0.9.0.
 </para>
 <para lang="en">
-"return CODE message" directrives did not work;
+"return CODE message" directives did not work;
 the bug had appeared in 0.9.0.
 </para>
 </change>
