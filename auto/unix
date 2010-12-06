@@ -120,6 +120,7 @@ ngx_feature_test='printf("%d", sys_nerr);'
 
 
 if [ $ngx_found = no ]; then
+
     # Cygiwn defines _sys_nerr
     ngx_feature="_sys_nerr"
     ngx_feature_name="NGX_SYS_NERR"
