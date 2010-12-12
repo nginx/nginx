@@ -1502,7 +1502,7 @@ ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
             }
 
             if (rc == NGX_BUSY) {
-            ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                ngx_log_error(NGX_LOG_WARN, cf->log, 0,
                               "conflicting server name \"%V\" on %s, ignored",
                               &name[n].name, addr->opt.addr);
             }
