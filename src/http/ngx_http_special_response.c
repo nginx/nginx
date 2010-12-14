@@ -429,13 +429,13 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_200
                                            + NGX_HTTP_LEVEL_300;
 
-    } else if (error >= NGX_HTTP_OWN_CODES
+    } else if (error >= NGX_HTTP_NGINX_CODES
                && error < NGX_HTTP_LAST_LEVEL_500)
     {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_OWN_CODES + NGX_HTTP_LEVEL_200
-                                         + NGX_HTTP_LEVEL_300
-                                         + NGX_HTTP_LEVEL_400;
+        err = error - NGX_HTTP_NGINX_CODES + NGX_HTTP_LEVEL_200
+                                           + NGX_HTTP_LEVEL_300
+                                           + NGX_HTTP_LEVEL_400;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:
             case NGX_HTTPS_CERT_ERROR:
