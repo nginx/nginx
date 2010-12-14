@@ -9,6 +9,80 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.68" date="14.12.2010">
+
+<change type="bugfix">
+<para lang="ru">
+если для пары IPv6-адрес:порт описан только один сервер, то выделения
+в регулярных выражениях в директиве server_name не работали.
+</para>
+<para lang="en">
+if there was a single server for given IPv6 address:port pair,
+then captures in regular expressions in a "server_name" directive did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_basic
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Михаилу Лалетину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if the "auth_basic" directive was used.<br/>
+Thanks to Michail Laletin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ SSI модуля мог передаваться не полностью после команды include
+с параметром wait="yes";
+ошибка появилась в 0.7.25. <br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+SSI response might be truncated after include with wait="yes";
+the bug had appeared in 0.7.25.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива sub_filter могла изменять регистр букв при частичном совпадении.
+</para>
+<para lang="en">
+the "sub_filter" directive might change character case on partial match.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx считал большие пакеты SSLv2 как обычные текстовые запросы.<br/>
+Спасибо Miroslaw Jaworski.
+</para>
+<para lang="en">
+nginx treated large SSLv2 packets as plain requests.<br/>
+Thanks to Miroslaw Jaworski.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог закрывать IPv6 listen сокет во время переконфигурации.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+nginx might close IPv6 listen socket during reconfiguration.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.67" date="15.06.2010">
 
 <change type="security">
@@ -2365,7 +2439,7 @@ the "try_files" directive might test incorrectly directories.
 в регулярных выражениях в директиве server_name не работали.
 </para>
 <para lang="en">
-if there is the single server for given address:port pair,
+if there was a single server for given address:port pair,
 then captures in regular expressions in a "server_name" directive did not work.
 </para>
 </change>
@@ -3500,7 +3574,7 @@ the "http_503" parameter of the "proxy_next_upstream" or
 nginx мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
 </para>
 <para lang="en">
-nginx might send a "Transfer-Encoding: chunked" heaer line for HEAD requests.
+nginx might send a "Transfer-Encoding: chunked" header line for HEAD requests.
 </para>
 </change>
 
@@ -4865,7 +4939,7 @@ Thanks to Joaquin Cuenca Abela.
 <change type="bugfix">
 <para lang="ru">
 nginx неверно определял длину строки кэша на <nobr>Pentium 4.</nobr><br/>
-Спасибо Gena Makhomed.
+Спасибо Геннадию Махомеду.
 </para>
 <para lang="en">
 nginx incorrectly detected cache line size on Pentium 4.<br/>
