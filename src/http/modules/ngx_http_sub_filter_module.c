@@ -29,6 +29,8 @@ typedef enum {
 
 typedef struct {
     ngx_str_t                  match;
+    ngx_str_t                  saved;
+    ngx_str_t                  looked;
 
     ngx_uint_t                 once;   /* unsigned  once:1 */
 
@@ -47,8 +49,6 @@ typedef struct {
     ngx_str_t                  sub;
 
     ngx_uint_t                 state;
-    size_t                     saved;
-    size_t                     looked;
 } ngx_http_sub_ctx_t;
 
 
@@ -147,6 +147,16 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    ctx->saved.data = ngx_pnalloc(r->pool, slcf->match.len);
+    if (ctx->saved.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ctx->looked.data = ngx_pnalloc(r->pool, slcf->match.len);
+    if (ctx->looked.data == NULL) {
+        return NGX_ERROR;
+    }
+
     ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
 
     ctx->match = slcf->match;
@@ -226,13 +236,13 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         while (ctx->pos < ctx->buf->last) {
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "saved: %d state: %d", ctx->saved, ctx->state);
+                           "saved: \"%V\" state: %d", &ctx->saved, ctx->state);
 
             rc = ngx_http_sub_parse(r, ctx);
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "parse: %d, looked: %d %p-%p",
-                           rc, ctx->looked, ctx->copy_start, ctx->copy_end);
+                           "parse: %d, looked: \"%V\" %p-%p",
+                           rc, &ctx->looked, ctx->copy_start, ctx->copy_end);
 
             if (rc == NGX_ERROR) {
                 return rc;
@@ -241,9 +251,9 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             if (ctx->copy_start != ctx->copy_end) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                               "saved: %d", ctx->saved);
+                               "saved: \"%V\"", &ctx->saved);
 
-                if (ctx->saved) {
+                if (ctx->saved.len) {
 
                     if (ctx->free) {
                         cl = ctx->free;
@@ -265,14 +275,19 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                         cl->buf = b;
                     }
 
+                    b->pos = ngx_pnalloc(r->pool, ctx->saved.len);
+                    if (b->pos == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                    ngx_memcpy(b->pos, ctx->saved.data, ctx->saved.len);
+                    b->last = b->pos + ctx->saved.len;
                     b->memory = 1;
-                    b->pos = ctx->match.data;
-                    b->last = ctx->match.data + ctx->saved;
 
                     *ctx->last_out = cl;
                     ctx->last_out = &cl->next;
 
-                    ctx->saved = 0;
+                    ctx->saved.len = 0;
                 }
 
                 if (ctx->free) {
@@ -405,7 +420,8 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ctx->buf = NULL;
 
-        ctx->saved = ctx->looked;
+        ctx->saved.len = ctx->looked.len;
+        ngx_memcpy(ctx->saved.data, ctx->looked.data, ctx->looked.len);
     }
 
     if (ctx->out == NULL && ctx->busy == NULL) {
@@ -496,7 +512,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
         ctx->copy_start = ctx->pos;
         ctx->copy_end = ctx->buf->last;
         ctx->pos = ctx->buf->last;
-        ctx->looked = 0;
+        ctx->looked.len = 0;
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "once");
 
@@ -504,7 +520,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
     }
 
     state = ctx->state;
-    looked = ctx->looked;
+    looked = ctx->looked.len;
     last = ctx->buf->last;
     copy_end = ctx->copy_end;
 
@@ -522,6 +538,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
             for ( ;; ) {
                 if (ch == match) {
                     copy_end = p;
+                    ctx->looked.data[0] = *p;
                     looked = 1;
                     state = sub_match_state;
 
@@ -538,7 +555,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
             ctx->state = state;
             ctx->pos = p;
-            ctx->looked = looked;
+            ctx->looked.len = looked;
             ctx->copy_end = p;
 
             if (ctx->copy_start == NULL) {
@@ -555,16 +572,17 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
         /* state == sub_match_state */
 
         if (ch == ctx->match.data[looked]) {
+            ctx->looked.data[looked] = *p;
             looked++;
 
             if (looked == ctx->match.len) {
                 if ((size_t) (p - ctx->pos) < looked) {
-                    ctx->saved = 0;
+                    ctx->saved.len = 0;
                 }
 
                 ctx->state = sub_start_state;
                 ctx->pos = p + 1;
-                ctx->looked = 0;
+                ctx->looked.len = 0;
                 ctx->copy_end = copy_end;
 
                 if (ctx->copy_start == NULL && copy_end) {
@@ -576,6 +594,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
         } else if (ch == ctx->match.data[0]) {
             copy_end = p;
+            ctx->looked.data[0] = *p;
             looked = 1;
 
         } else {
@@ -587,7 +606,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
     ctx->state = state;
     ctx->pos = p;
-    ctx->looked = looked;
+    ctx->looked.len = looked;
 
     ctx->copy_end = (state == sub_start_state) ? p : copy_end;
 
