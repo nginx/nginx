@@ -785,10 +785,6 @@ ngx_http_handler(ngx_http_request_t *r)
         r->phase_handler = cmcf->phase_engine.server_rewrite_index;
     }
 
-    if (r->unparsed_uri.len) {
-        r->valid_unparsed_uri = 1;
-    }
-
     r->valid_location = 1;
 #if (NGX_HTTP_GZIP)
     r->gzip_tested = 0;
