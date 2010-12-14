@@ -9,6 +9,47 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.8.54" date="14.12.2010">
+
+<change type="bugfix">
+<para lang="ru">
+если для пары IPv6-адрес:порт описан только один сервер, то выделения
+в регулярных выражениях в директиве server_name не работали.
+</para>
+<para lang="en">
+if there was a single server for given IPv6 address:port pair,
+then captures in regular expressions in a "server_name" directive did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_basic
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Михаилу Лалетину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if the "auth_basic" directive was used.<br/>
+Thanks to Michail Laletin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с модулем ngx_http_eval_module;
+ошибка появилась в 0.8.42.
+</para>
+<para lang="en">
+compatibility with ngx_http_eval_module;
+the bug had appeared in 0.8.42.
+</para>
+</change>
+
+</changes>
+
+
+<!-- 0.9.x branch -->
 <changes ver="0.8.53" date="18.10.2010">
 
 <change type="feature">
@@ -31,7 +72,7 @@ the "gzip_disable" directive supports special "degradation" mask.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании файлового AIO, могла происходить утечка сокетов.<br/>
+при использовании файлового AIO могла происходить утечка сокетов.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
@@ -3924,7 +3965,7 @@ the "try_files" directive might test incorrectly directories.
 в регулярных выражениях в директиве server_name не работали.
 </para>
 <para lang="en">
-if there is the single server for given address:port pair,
+if there was a single server for given address:port pair,
 then captures in regular expressions in a "server_name" directive did not work.
 </para>
 </change>
@@ -5059,7 +5100,7 @@ the "http_503" parameter of the "proxy_next_upstream" or
 nginx мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
 </para>
 <para lang="en">
-nginx might send a "Transfer-Encoding: chunked" heaer line for HEAD requests.
+nginx might send a "Transfer-Encoding: chunked" header line for HEAD requests.
 </para>
 </change>
 
