@@ -3682,7 +3682,13 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sn->regex = NULL;
 #endif
         sn->server = cscf;
-        sn->name = value[i];
+
+        if (ngx_strcasecmp(value[i].data, (u_char *) "$hostname") == 0) {
+            sn->name = cf->cycle->hostname;
+
+        } else {
+            sn->name = value[i];
+        }
 
         if (value[i].data[0] != '~') {
             ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
