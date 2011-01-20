@@ -2990,6 +2990,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_core_srv_conf_t *prev = parent;
     ngx_http_core_srv_conf_t *conf = child;
 
+    ngx_str_t                name;
     ngx_http_server_name_t  *sn;
 
     /* TODO: it does not merge, it inits only */
@@ -3021,19 +3022,35 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->underscores_in_headers,
                               prev->underscores_in_headers, 0);
 
-    if (conf->server_name.data == NULL) {
-        ngx_str_set(&conf->server_name, "");
-
+    if (conf->server_names.nelts == 0) {
+        /* the array has 4 empty preallocated elements, so push can not fail */
         sn = ngx_array_push(&conf->server_names);
-        if (sn == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
 #if (NGX_PCRE)
         sn->regex = NULL;
 #endif
         sn->server = conf;
         ngx_str_set(&sn->name, "");
+    }
+
+    sn = conf->server_names.elts;
+    name = sn[0].name;
+
+#if (NGX_PCRE)
+    if (sn->regex) {
+        name.len++;
+        name.data--;
+    } else
+#endif
+
+    if (name.data[0] == '.') {
+        name.len--;
+        name.data++;
+    }
+
+    conf->server_name.len = name.len;
+    conf->server_name.data = ngx_pstrdup(cf->pool, &name);
+    if (conf->server_name.data == NULL) {
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
@@ -3625,28 +3642,11 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_srv_conf_t *cscf = conf;
 
     u_char                   ch;
-    ngx_str_t               *value, name;
+    ngx_str_t               *value;
     ngx_uint_t               i;
     ngx_http_server_name_t  *sn;
 
     value = cf->args->elts;
-
-    ch = value[1].data[0];
-
-    if (cscf->server_name.data == NULL) {
-        name = value[1];
-
-        if (ch == '.') {
-            name.len--;
-            name.data++;
-        }
-
-        cscf->server_name.len = name.len;
-        cscf->server_name.data = ngx_pstrdup(cf->pool, &name);
-        if (cscf->server_name.data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
 
     for (i = 1; i < cf->args->nelts; i++) {
 
