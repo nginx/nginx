@@ -978,10 +978,13 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 if (rv == NGX_DECLINED) {
                     p = r->header_name_start;
 
+                    r->lingering_close = 1;
+
                     if (p == NULL) {
                         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                       "client sent too large request");
-                        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                        ngx_http_finalize_request(r,
+                                            NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
                         return;
                     }
 
@@ -995,7 +998,9 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent too long header line: \"%*s\"",
                                   len, r->header_name_start);
-                    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+
+                    ngx_http_finalize_request(r,
+                                            NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
                     return;
                 }
             }

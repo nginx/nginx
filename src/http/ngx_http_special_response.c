@@ -201,6 +201,16 @@ static char ngx_http_error_416_page[] =
 ;
 
 
+static char ngx_http_error_494_page[] =
+"<html>" CRLF
+"<head><title>400 Request Header Or Cookie Too Large</title></head>"
+CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>400 Bad Request</h1></center>" CRLF
+"<center>Request Header Or Cookie Too Large</center>" CRLF
+;
+
+
 static char ngx_http_error_495_page[] =
 "<html>" CRLF
 "<head><title>400 The SSL certificate error</title></head>"
@@ -315,6 +325,7 @@ static ngx_str_t ngx_http_error_pages[] = {
 #define NGX_HTTP_LAST_LEVEL_400  417
 #define NGX_HTTP_LEVEL_400       (NGX_HTTP_LAST_LEVEL_400 - 400)
 
+    ngx_string(ngx_http_error_494_page), /* 494, request header too large */
     ngx_string(ngx_http_error_495_page), /* 495, https certificate error */
     ngx_string(ngx_http_error_496_page), /* 496, https no certificate */
     ngx_string(ngx_http_error_497_page), /* 497, http to https */
@@ -440,6 +451,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             case NGX_HTTP_TO_HTTPS:
             case NGX_HTTPS_CERT_ERROR:
             case NGX_HTTPS_NO_CERT:
+            case NGX_HTTP_REQUEST_HEADER_TOO_LARGE:
                 r->err_status = NGX_HTTP_BAD_REQUEST;
                 break;
         }

@@ -95,7 +95,9 @@
 /* The special code to close connection without any response */
 #define NGX_HTTP_CLOSE                     444
 
-#define NGX_HTTP_NGINX_CODES               495
+#define NGX_HTTP_NGINX_CODES               494
+
+#define NGX_HTTP_REQUEST_HEADER_TOO_LARGE  494
 
 #define NGX_HTTPS_CERT_ERROR               495
 #define NGX_HTTPS_NO_CERT                  496
