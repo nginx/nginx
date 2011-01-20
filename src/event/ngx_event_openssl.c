@@ -560,7 +560,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 #if (NGX_DEBUG)
         {
         char         buf[129], *s, *d;
-#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
         const
 #endif
         SSL_CIPHER  *cipher;
