@@ -57,11 +57,11 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     {
         return ngx_http_next_header_filter(r);
     }
- 
+
     if (r->headers_in.if_unmodified_since) {
         return ngx_http_test_precondition(r);
     }
- 
+
     if (r->headers_in.if_modified_since) {
         return ngx_http_test_not_modified(r);
     }
