@@ -52,7 +52,7 @@ ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn);
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 
 #define ngx_debug_point()
-#define ngx_sched_yield()   Sleep(0)
+#define ngx_sched_yield()   SwitchToThread()
 
 
 #define NGX_MAX_PROCESSES         (MAXIMUM_WAIT_OBJECTS - 4)
