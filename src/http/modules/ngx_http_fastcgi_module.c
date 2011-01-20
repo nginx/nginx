@@ -1280,8 +1280,9 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                         } else {
                             u->buffer.pos = u->buffer.start;
                         }
+#else
+                        u->buffer.pos = u->buffer.start;
 #endif
-
                         u->buffer.last = u->buffer.pos;
                         f->large_stderr = 1;
                     }
