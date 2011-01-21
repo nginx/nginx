@@ -9,11 +9,34 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.4" date="21.01.2011">
+
+<change type="feature">
+<para lang="ru">
+директива server_name поддерживает переменную $hostname.
+</para>
+<para lang="en">
+the "server_name" directive supports the $hostname variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+494 код для ошибки "Request Header Too Large".
+</para>
+<para lang="en">
+494 code for "Request Header Too Large" error.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.3" date="13.12.2010">
 
 <change type="bugfix">
 <para lang="ru">
-если для пары адрес:порт описан только один сервер, то выделения
+если для пары IPv6-адрес:порт описан только один сервер, то выделения
 в регулярных выражениях в директиве server_name не работали.
 </para>
 <para lang="en">
@@ -16293,7 +16316,7 @@ the double slashes in "://" in the URI were converted to ":/".
 </para>
 <para lang="en">
 if the request without arguments contains "//", "/./", "/../" or "%XX"
-then the lost character in the request line was lost;
+then the last character in the request line was lost;
 the bug had appeared in 0.1.9.
 </para>
 </change>
