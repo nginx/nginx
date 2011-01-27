@@ -50,14 +50,14 @@ static void ngx_http_geoip_cleanup(void *data);
 static ngx_command_t  ngx_http_geoip_commands[] = {
 
     { ngx_string("geoip_country"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
       ngx_http_geoip_country,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("geoip_city"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
       ngx_http_geoip_city,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
@@ -446,6 +446,17 @@ ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "utf8") == 0) {
+            GeoIP_set_charset (gcf->country, GEOIP_CHARSET_UTF8);
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
     switch (gcf->country->databaseType) {
 
     case GEOIP_COUNTRY_EDITION:
@@ -483,6 +494,17 @@ ngx_http_geoip_city(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            "GeoIO_open(\"%V\") failed", &value[1]);
 
         return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "utf8") == 0) {
+            GeoIP_set_charset (gcf->city, GEOIP_CHARSET_UTF8);
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
 
     switch (gcf->city->databaseType) {
