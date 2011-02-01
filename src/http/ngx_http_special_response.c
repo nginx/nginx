@@ -570,7 +570,14 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return NGX_ERROR;
     }
 
-    r->err_status = overwrite > 0 ? overwrite : NGX_HTTP_MOVED_TEMPORARILY;
+    if (overwrite >= NGX_HTTP_MOVED_PERMANENTLY
+        && overwrite <= NGX_HTTP_SEE_OTHER)
+    {
+        r->err_status = overwrite;
+
+    } else {
+        r->err_status = NGX_HTTP_MOVED_TEMPORARILY;
+    }
 
     location->hash = 1;
     ngx_str_set(&location->key, "Location");
