@@ -245,7 +245,7 @@ ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s)
 {
     struct timeval  tv[2];
 
-    tv[0].tv_sec = s;
+    tv[0].tv_sec = ngx_time();
     tv[0].tv_usec = 0;
     tv[1].tv_sec = s;
     tv[1].tv_usec = 0;
