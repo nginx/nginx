@@ -1717,6 +1717,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_proxy_loc_conf_t *prev = parent;
     ngx_http_proxy_loc_conf_t *conf = child;
 
+    u_char                     *p;
     size_t                      size;
     ngx_keyval_t               *s;
     ngx_hash_init_t             hash;
@@ -1975,13 +1976,25 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             }
 
             pr->handler = ngx_http_proxy_rewrite_redirect_text;
-            pr->redirect = conf->url;
 
             if (conf->vars.uri.len) {
+                pr->redirect = conf->url;
                 pr->replacement.text = conf->location;
 
             } else {
-                ngx_str_null(&pr->replacement.text);
+                pr->redirect.len = conf->url.len + sizeof("/") - 1;
+
+                p = ngx_pnalloc(cf->pool, pr->redirect.len);
+                if (p == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+
+                pr->redirect.data = p;
+
+                p = ngx_cpymem(p, conf->url.data, conf->url.len);
+                *p = '/';
+
+                ngx_str_set(&pr->replacement.text, "/");
             }
         }
     }
@@ -2456,6 +2469,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_proxy_loc_conf_t *plcf = conf;
 
+    u_char                     *p;
     ngx_str_t                  *value;
     ngx_array_t                *vars_lengths, *vars_values;
     ngx_http_script_compile_t   sc;
@@ -2518,13 +2532,25 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         pr->handler = ngx_http_proxy_rewrite_redirect_text;
-        pr->redirect = plcf->url;
 
         if (plcf->vars.uri.len) {
+            pr->redirect = plcf->url;
             pr->replacement.text = plcf->location;
 
         } else {
-            ngx_str_null(&pr->replacement.text);
+            pr->redirect.len = plcf->url.len + sizeof("/") - 1;
+
+            p = ngx_pnalloc(cf->pool, pr->redirect.len);
+            if (p == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            pr->redirect.data = p;
+
+            p = ngx_cpymem(p, plcf->url.data, plcf->url.len);
+            *p = '/';
+
+            ngx_str_set(&pr->replacement.text, "/");
         }
 
         return NGX_CONF_OK;
