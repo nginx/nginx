@@ -943,7 +943,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
         u->naddrs = i;
 
-        for (i = 0; h->h_addr_list[i] != NULL; i++) {
+        for (i = 0; i < u->naddrs; i++) {
 
             sin = ngx_pcalloc(pool, sizeof(struct sockaddr_in));
             if (sin == NULL) {
