@@ -9,6 +9,60 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.5" date="21.02.2011">
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию nginx использует значение -1 для listen backlog
+на Linux.<br/>
+Спасибо Андрею Нигматулину.
+</para>
+<para lang="en">
+now nginx uses a default listen backlog value -1 on Linux.<br/>
+Thanks to Andrei Nigmatulin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр utf8 в директивах geoip_country и geoip_city.<br/>
+Спасибо Денису Латыпову.
+</para>
+<para lang="en">
+the "utf8" parameter of "geoip_country" and "geoip_city" directives.<br/>
+Thanks to Denis F. Latypoff.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+исправление в умолчательной директиве proxy_redirect, если в директиве
+proxy_pass не был описан URI.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in a default "proxy_redirect" directive if "proxy_pass" directive has no
+URI part.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива error_page не работала с нестандартными кодами ошибок;
+ошибка появилась в 0.8.53.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+an "error_page" directive did not work with nonstandard error codes;
+the bug had appeared in 0.8.53.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.4" date="21.01.2011">
 
 <change type="feature">
