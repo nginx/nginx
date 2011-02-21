@@ -32,7 +32,6 @@ types {
     application/vnd.ms-excel              xls;
     application/vnd.ms-powerpoint         ppt;
     application/vnd.wap.wmlc              wmlc;
-    application/vnd.wap.xhtml+xml         xhtml;
     application/vnd.google-earth.kml+xml  kml;
     application/vnd.google-earth.kmz      kmz;
     application/x-7z-compressed           7z;
@@ -50,6 +49,7 @@ types {
     application/x-tcl                     tcl tk;
     application/x-x509-ca-cert            der pem crt;
     application/x-xpinstall               xpi;
+    application/xhtml+xml                 xhtml;
     application/zip                       zip;
 
     application/octet-stream              bin exe dll;
