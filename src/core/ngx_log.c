@@ -328,7 +328,7 @@ ngx_log_init(u_char *prefix)
 
     if (ngx_log_file.fd == NGX_INVALID_FILE) {
         ngx_log_stderr(ngx_errno,
-                       "[alert]: could not open error log file: "
+                       "[alert] could not open error log file: "
                        ngx_open_file_n " \"%s\" failed", name);
 #if (NGX_WIN32)
         ngx_event_log(ngx_errno,
