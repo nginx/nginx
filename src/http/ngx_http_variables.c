@@ -1660,6 +1660,50 @@ ngx_http_variable_pid(ngx_http_request_t *r,
 }
 
 
+void *
+ngx_http_map_find(ngx_http_request_t *r, ngx_http_map_t *map, ngx_uint_t key,
+    u_char *text, size_t len, ngx_str_t *match)
+{
+    void  *p;
+
+    p = ngx_hash_find_combined(&map->hash, key, text, len);
+    if (p) {
+        return p;
+    }
+
+#if (NGX_PCRE)
+
+    if (len && map->nregex) {
+        ngx_int_t              n;
+        ngx_uint_t             i;
+        ngx_http_map_regex_t  *reg;
+
+        reg = map->regex;
+
+        for (i = 0; i < map->nregex; i++) {
+
+            n = ngx_http_regex_exec(r, reg[i].regex, match);
+
+            if (n == NGX_OK) {
+                return reg[i].value;
+            }
+
+            if (n == NGX_DECLINED) {
+                continue;
+            }
+
+            /* NGX_ERROR */
+
+            return NULL;
+        }
+    }
+
+#endif
+
+    return NULL;
+}
+
+
 #if (NGX_PCRE)
 
 static ngx_int_t

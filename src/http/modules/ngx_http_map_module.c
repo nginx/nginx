@@ -20,6 +20,9 @@ typedef struct {
 
     ngx_array_t                *values_hash;
     ngx_array_t                 var_values;
+#if (NGX_PCRE)
+    ngx_array_t                 regexes;
+#endif
 
     ngx_http_variable_value_t  *default_value;
     ngx_conf_t                 *cf;
@@ -28,7 +31,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_hash_combined_t         hash;
+    ngx_http_map_t              map;
     ngx_http_complex_value_t    value;
     ngx_http_variable_value_t  *default_value;
     ngx_uint_t                  hostnames;      /* unsigned  hostnames:1 */
@@ -126,7 +129,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     key = ngx_hash_strlow(val.data, val.data, len);
 
-    value = ngx_hash_find_combined(&map->hash, key, val.data, len);
+    value = ngx_http_map_find(r, &map->map, key, val.data, len, &val);
 
     if (value == NULL) {
         value = map->default_value;
@@ -249,6 +252,15 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+#if (NGX_PCRE)
+    if (ngx_array_init(&ctx.regexes, cf->pool, 2, sizeof(ngx_http_map_regex_t))
+        != NGX_OK)
+    {
+        ngx_destroy_pool(pool);
+        return NGX_CONF_ERROR;
+    }
+#endif
+
     ctx.default_value = NULL;
     ctx.cf = &save;
     ctx.hostnames = 0;
@@ -278,7 +290,7 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     hash.pool = cf->pool;
 
     if (ctx.keys.keys.nelts) {
-        hash.hash = &map->hash.hash;
+        hash.hash = &map->map.hash.hash;
         hash.temp_pool = NULL;
 
         if (ngx_hash_init(&hash, ctx.keys.keys.elts, ctx.keys.keys.nelts)
@@ -306,7 +318,7 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        map->hash.wc_head = (ngx_hash_wildcard_t *) hash.hash;
+        map->map.hash.wc_head = (ngx_hash_wildcard_t *) hash.hash;
     }
 
     if (ctx.keys.dns_wc_tail.nelts) {
@@ -326,8 +338,17 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        map->hash.wc_tail = (ngx_hash_wildcard_t *) hash.hash;
+        map->map.hash.wc_tail = (ngx_hash_wildcard_t *) hash.hash;
     }
+
+#if (NGX_PCRE)
+
+    if (ctx.regexes.nelts) {
+        map->map.regex = ctx.regexes.elts;
+        map->map.nregex = ctx.regexes.nelts;
+    }
+
+#endif
 
     ngx_destroy_pool(pool);
 
@@ -490,6 +511,45 @@ found:
 
         return NGX_CONF_OK;
     }
+
+#if (NGX_PCRE)
+
+    if (value[0].len && value[0].data[0] == '~') {
+        ngx_regex_compile_t    rc;
+        ngx_http_map_regex_t  *regex;
+        u_char                 errstr[NGX_MAX_CONF_ERRSTR];
+
+        regex = ngx_array_push(&ctx->regexes);
+        if (regex == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        value[0].len--;
+        value[0].data++;
+
+        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+
+        if (value[0].data[0] == '*') {
+            value[0].len--;
+            value[0].data++;
+            rc.options = NGX_REGEX_CASELESS;
+        }
+
+        rc.pattern = value[0];
+        rc.err.len = NGX_MAX_CONF_ERRSTR;
+        rc.err.data = errstr;
+
+        regex->regex = ngx_http_regex_compile(ctx->cf, &rc);
+        if (regex->regex == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        regex->value = var;
+
+        return NGX_CONF_OK;
+    }
+
+#endif
 
     if (value[0].len && value[0].data[0] == '\\') {
         value[0].len--;

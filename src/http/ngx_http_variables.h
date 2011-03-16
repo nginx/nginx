@@ -76,12 +76,31 @@ typedef struct {
 } ngx_http_regex_t;
 
 
+typedef struct {
+    ngx_http_regex_t             *regex;
+    void                         *value;
+} ngx_http_map_regex_t;
+
+
 ngx_http_regex_t *ngx_http_regex_compile(ngx_conf_t *cf,
     ngx_regex_compile_t *rc);
 ngx_int_t ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re,
     ngx_str_t *s);
 
 #endif
+
+
+typedef struct {
+    ngx_hash_combined_t           hash;
+#if (NGX_PCRE)
+    ngx_http_map_regex_t         *regex;
+    ngx_uint_t                    nregex;
+#endif
+} ngx_http_map_t;
+
+
+void *ngx_http_map_find(ngx_http_request_t *r, ngx_http_map_t *map,
+    ngx_uint_t key, u_char *text, size_t len, ngx_str_t *match);
 
 
 ngx_int_t ngx_http_variables_add_core_vars(ngx_conf_t *cf);
