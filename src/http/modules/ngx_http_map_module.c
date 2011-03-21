@@ -529,12 +529,6 @@ found:
 
         ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
-        if (value[0].data[0] == '*') {
-            value[0].len--;
-            value[0].data++;
-            rc.options = NGX_REGEX_CASELESS;
-        }
-
         rc.pattern = value[0];
         rc.err.len = NGX_MAX_CONF_ERRSTR;
         rc.err.data = errstr;
