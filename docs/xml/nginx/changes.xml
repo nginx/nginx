@@ -9,6 +9,33 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.6" date="21.03.2011">
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает регулярные выражения в качестве значения
+первого параметра.
+</para>
+<para lang="en">
+the "map" directive supports regular expressions as value of the first
+parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $time_iso8601 для access_log.<br/>
+Спасибо Michael Lustfield.
+</para>
+<para lang="en">
+$time_iso8601 access_log variable.<br/>
+Thanks to Michael Lustfield.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.5" date="21.02.2011">
 
 <change type="change">
