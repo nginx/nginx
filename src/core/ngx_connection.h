@@ -135,6 +135,8 @@ struct ngx_connection_s {
 
     ngx_buf_t          *buffer;
 
+    ngx_queue_t         queue;
+
     ngx_atomic_uint_t   number;
 
     ngx_uint_t          requests;
@@ -150,6 +152,7 @@ struct ngx_connection_s {
     unsigned            destroyed:1;
 
     unsigned            idle:1;
+    unsigned            reusable:1;
     unsigned            close:1;
 
     unsigned            sendfile:1;
@@ -186,5 +189,6 @@ ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);
 ngx_connection_t *ngx_get_connection(ngx_socket_t s, ngx_log_t *log);
 void ngx_free_connection(ngx_connection_t *c);
 
+void ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable);
 
 #endif /* _NGX_CONNECTION_H_INCLUDED_ */

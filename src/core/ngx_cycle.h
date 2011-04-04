@@ -44,6 +44,8 @@ struct ngx_cycle_s {
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;
 
+    ngx_queue_t               reusable_connections_queue;
+
     ngx_array_t               listening;
     ngx_array_t               pathes;
     ngx_list_t                open_files;

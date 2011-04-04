@@ -2594,6 +2594,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 #endif
 
     c->idle = 1;
+    ngx_reusable_connection(c, 1);
 
     if (rev->ready) {
         ngx_post_event(rev, &ngx_posted_events);
@@ -2703,6 +2704,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     c->log->action = "reading client request line";
 
     c->idle = 0;
+    ngx_reusable_connection(c, 0);
 
     ngx_http_init_request(rev);
 }

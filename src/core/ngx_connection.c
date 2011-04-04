@@ -12,6 +12,9 @@
 ngx_os_io_t  ngx_io;
 
 
+static void ngx_drain_connections(void);
+
+
 ngx_listening_t *
 ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
 {
@@ -719,6 +722,11 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     c = ngx_cycle->free_connections;
 
     if (c == NULL) {
+        ngx_drain_connections();
+        c = ngx_cycle->free_connections;
+    }
+
+    if (c == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "%ui worker_connections are not enough",
                       ngx_cycle->connection_n);
@@ -861,6 +869,8 @@ ngx_close_connection(ngx_connection_t *c)
 
 #endif
 
+    ngx_reusable_connection(c, 0);
+
     log_error = c->log_error;
 
     ngx_free_connection(c);
@@ -896,6 +906,51 @@ ngx_close_connection(ngx_connection_t *c)
 
         ngx_log_error(level, ngx_cycle->log, err,
                       ngx_close_socket_n " %d failed", fd);
+    }
+}
+
+
+void
+ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
+{
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
+                   "reusable connection: %ui", reusable);
+
+    if (c->reusable) {
+        ngx_queue_remove(&c->queue);
+    }
+
+    c->reusable = reusable;
+
+    if (reusable) {
+        /* need cast as ngx_cycle is volatile */
+
+        ngx_queue_insert_head(
+            (ngx_queue_t *) &ngx_cycle->reusable_connections_queue, &c->queue);
+    }
+}
+
+
+static void
+ngx_drain_connections(void)
+{
+    ngx_int_t          i;
+    ngx_queue_t       *q;
+    ngx_connection_t  *c;
+
+    for (i = 0; i < 32; i++) {
+        if (ngx_queue_empty(&ngx_cycle->reusable_connections_queue)) {
+            break;
+        }
+
+        q = ngx_queue_last(&ngx_cycle->reusable_connections_queue);
+        c = ngx_queue_data(q, ngx_connection_t, queue);
+
+        ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0,
+                       "reusing connection");
+
+        c->close = 1;
+        c->read->handler(c->read);
     }
 }
 
