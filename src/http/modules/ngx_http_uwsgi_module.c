@@ -491,12 +491,6 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
         return NGX_ERROR;
     }
 
-    if (url.no_port) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "no port in upstream \"%V\"", &url.url);
-        return NGX_ERROR;
-    }
-
     u = r->upstream;
 
     u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
@@ -513,6 +507,7 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
     } else {
         u->resolved->host = url.host;
         u->resolved->port = url.port;
+        u->resolved->no_port = url.no_port;
     }
 
     return NGX_OK;
