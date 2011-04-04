@@ -16,6 +16,7 @@
 #define NGX_HTTP_IMAGE_SIZE      2
 #define NGX_HTTP_IMAGE_RESIZE    3
 #define NGX_HTTP_IMAGE_CROP      4
+#define NGX_HTTP_IMAGE_ROTATE    5
 
 
 #define NGX_HTTP_IMAGE_START     0
@@ -38,12 +39,14 @@ typedef struct {
     ngx_uint_t                   filter;
     ngx_uint_t                   width;
     ngx_uint_t                   height;
+    ngx_uint_t                   angle;
     ngx_uint_t                   jpeg_quality;
 
     ngx_flag_t                   transparency;
 
     ngx_http_complex_value_t    *wcv;
     ngx_http_complex_value_t    *hcv;
+    ngx_http_complex_value_t    *acv;
     ngx_http_complex_value_t    *jqcv;
 
     size_t                       buffer_size;
@@ -58,9 +61,9 @@ typedef struct {
 
     ngx_uint_t                   width;
     ngx_uint_t                   height;
-
     ngx_uint_t                   max_width;
     ngx_uint_t                   max_height;
+    ngx_uint_t                   angle;
 
     ngx_uint_t                   phase;
     ngx_uint_t                   type;
@@ -108,7 +111,7 @@ static ngx_int_t ngx_http_image_filter_init(ngx_conf_t *cf);
 static ngx_command_t  ngx_http_image_filter_commands[] = {
 
     { ngx_string("image_filter"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE13,
+      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE13|NGX_CONF_TAKE2,
       ngx_http_image_filter,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -492,6 +495,17 @@ ngx_http_image_process(ngx_http_request_t *r)
         return ngx_http_image_json(r, rc == NGX_OK ? ctx : NULL);
     }
 
+    ctx->angle = ngx_http_image_filter_get_value(r, conf->acv, conf->angle);
+
+    if (conf->filter == NGX_HTTP_IMAGE_ROTATE) {
+
+        if (ctx->angle != 90 && ctx->angle != 180 && ctx->angle != 270) {
+            return NULL;
+        }
+
+        return ngx_http_image_resize(r, ctx);
+    }
+
     ctx->max_width = ngx_http_image_filter_get_value(r, conf->wcv, conf->width);
     if (ctx->max_width == 0) {
         return NULL;
@@ -506,6 +520,7 @@ ngx_http_image_process(ngx_http_request_t *r)
     if (rc == NGX_OK
         && ctx->width <= ctx->max_width
         && ctx->height <= ctx->max_height
+        && ctx->angle == 0
         && !ctx->force)
     {
         return ngx_http_image_asis(r, ctx);
@@ -710,7 +725,7 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
     int                            sx, sy, dx, dy, ox, oy, size,
                                    colors, palette, transparent,
-                                   red, green, blue;
+                                   red, green, blue, t;
     u_char                        *out;
     ngx_buf_t                     *b;
     ngx_uint_t                     resize;
@@ -730,6 +745,7 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
 
     if (!ctx->force
+        && ctx->angle == 0
         && (ngx_uint_t) sx <= ctx->max_width
         && (ngx_uint_t) sy <= ctx->max_height)
     {
@@ -781,6 +797,10 @@ transparent:
 
         resize = 1;
 
+    } else if (conf->filter == NGX_HTTP_IMAGE_ROTATE) {
+
+        resize = 0;
+
     } else { /* NGX_HTTP_IMAGE_CROP */
 
         resize = 0;
@@ -827,6 +847,38 @@ transparent:
 
     } else {
         dst = src;
+    }
+
+    if (ctx->angle) {
+        src = dst;
+
+        switch (ctx->angle) {
+
+        case 90:
+        case 270:
+            dst = ngx_http_image_new(r, dy, dx, palette);
+            if (dst == NULL) {
+                gdImageDestroy(src);
+                return NULL;
+            }
+            gdImageCopyRotated(dst, src, dy/2, dx/2, 0, 0, dx, dy, ctx->angle);
+            gdImageDestroy(src);
+            break;
+
+        case 180:
+            dst = ngx_http_image_new(r, dx, dy, palette);
+            if (dst == NULL) {
+                gdImageDestroy(src);
+                return NULL;
+            }
+            gdImageCopyRotated(dst, src, dx/2, dy/2, 0, 0, dx, dy, ctx->angle);
+            gdImageDestroy(src);
+            break;
+        }
+
+        t = dx;
+        dx = dy;
+        dy = t;
     }
 
     if (conf->filter == NGX_HTTP_IMAGE_CROP) {
@@ -1090,6 +1142,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
 
     conf->filter = NGX_CONF_UNSET_UINT;
     conf->jpeg_quality = NGX_CONF_UNSET_UINT;
+    conf->angle = NGX_CONF_UNSET_UINT;
     conf->transparency = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
 
@@ -1122,6 +1175,11 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->jqcv == NULL) {
         conf->jqcv = prev->jqcv;
+    }
+
+    ngx_conf_merge_uint_value(conf->angle, prev->angle, 0);
+    if (conf->acv == NULL) {
+        conf->acv = prev->acv;
     }
 
     ngx_conf_merge_value(conf->transparency, prev->transparency, 1);
@@ -1163,6 +1221,46 @@ ngx_http_image_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         return NGX_CONF_OK;
+
+    } else if (cf->args->nelts == 3) {
+
+        if (ngx_strcmp(value[i].data, "rotate") == 0) {
+            imcf->filter = NGX_HTTP_IMAGE_ROTATE;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            ccv.cf = cf;
+            ccv.value = &value[++i];
+            ccv.complex_value = &cv;
+
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+            if (cv.lengths == NULL) {
+                n = ngx_http_image_filter_value(&value[i]);
+
+                if (n != 90 && n != 180 && n != 270) {
+                    goto failed;
+                }
+
+                imcf->angle = (ngx_uint_t) n;
+
+            } else {
+                imcf->acv = ngx_palloc(cf->pool,
+                                       sizeof(ngx_http_complex_value_t));
+                if (imcf->acv == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+
+                *imcf->acv = cv;
+            }
+
+            return NGX_CONF_OK;
+
+        } else {
+            goto failed;
+        }
     }
 
     if (ngx_strcmp(value[i].data, "resize") == 0) {
