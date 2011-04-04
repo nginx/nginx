@@ -9,6 +9,46 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.9.7" date="04.04.2011">
+
+<change type="feature">
+<para lang="ru">
+теперь соединения в состоянии keepalive могут быть закрыты преждевременно,
+если у воркера нет свободных соединений.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now keepalive connections may be closed premature,
+if there are no free worker connections.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр rotate директивы image_filter.<br/>
+Спасибо Adam Bocim.
+</para>
+<para lang="en">
+the "rotate" parameter of the "image_filter" directive.<br/>
+Thanks to Adam Bocim.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ситуации, когда бэкенд в директивах fastcgi_pass, scgi_pass или uwsgi_pass
+задан выражением и ссылается на описанный upstream.
+</para>
+<para lang="en">
+a case when a backend in "fastcgi_pass", "scgi_pass", or "uwsgi_pass"
+directives is given by expression and refers to a defined upstream.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.6" date="21.03.2011">
 
 <change type="feature">
