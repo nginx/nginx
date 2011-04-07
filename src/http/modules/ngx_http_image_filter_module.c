@@ -863,6 +863,10 @@ transparent:
             }
             gdImageCopyRotated(dst, src, dy/2, dx/2, 0, 0, dx, dy, ctx->angle);
             gdImageDestroy(src);
+
+            t = dx;
+            dx = dy;
+            dy = t;
             break;
 
         case 180:
@@ -875,10 +879,6 @@ transparent:
             gdImageDestroy(src);
             break;
         }
-
-        t = dx;
-        dx = dy;
-        dy = t;
     }
 
     if (conf->filter == NGX_HTTP_IMAGE_CROP) {
