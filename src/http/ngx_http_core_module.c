@@ -1108,17 +1108,21 @@ ngx_int_t
 ngx_http_core_post_access_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
 {
+    ngx_int_t  access_code;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "post access phase: %ui", r->phase_handler);
 
-    if (r->access_code) {
+    access_code = r->access_code;
 
-        if (r->access_code == NGX_HTTP_FORBIDDEN) {
+    if (access_code) {
+        if (access_code == NGX_HTTP_FORBIDDEN) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "access forbidden by rule");
         }
 
-        ngx_http_finalize_request(r, r->access_code);
+        r->access_code = 0;
+        ngx_http_finalize_request(r, access_code);
         return NGX_OK;
     }
 
