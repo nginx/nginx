@@ -1225,7 +1225,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             *e.pos = '\0';
 
             if (alias && ngx_strncmp(name, clcf->name.data, alias) == 0) {
-                ngx_memcpy(name, name + alias, len - alias);
+                ngx_memmove(name, name + alias, len - alias);
                 path.len -= alias;
             }
         }

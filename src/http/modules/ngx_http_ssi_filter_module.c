@@ -1902,7 +1902,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     len = (uri->data + uri->len) - src;
     if (len) {
-        dst = ngx_copy(dst, src, len);
+        dst = ngx_movemem(dst, src, len);
     }
 
     uri->len = dst - uri->data;

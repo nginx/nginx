@@ -507,7 +507,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
             }
 
             if (len) {
-                ngx_memcpy(b->start, start, len);
+                ngx_memmove(b->start, start, len);
             }
 
             size = (ssize_t) (file_size - cf->conf_file->file.offset);
