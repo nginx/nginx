@@ -9,6 +9,43 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.0" date="12.04.2011">
+
+<change type="bugfix">
+<para lang="ru">
+cache manager мог нагружать процессор после переконфигурации.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a cache manager might hog CPU after reload.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "image_filter crop" неправильно работала в сочетании с
+"image_filter rotate 180".
+</para>
+<para lang="en">
+an "image_filter crop" directive worked incorrectly coupled with
+an "image_filter rotate 180" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "satisfy any" запрещала выдачу пользовательской страницы
+для 401 кода.
+</para>
+<para lang="en">
+a "satisfy any" directive disabled custom 401 error page.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.9.7" date="04.04.2011">
 
 <change type="feature">
