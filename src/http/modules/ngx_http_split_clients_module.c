@@ -87,7 +87,7 @@ ngx_http_split_clients_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    hash = ngx_crc32_short(val.data, val.len);
+    hash = ngx_murmur_hash2(val.data, val.len);
 
     part = ctx->parts.elts;
 
