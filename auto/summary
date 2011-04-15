@@ -51,6 +51,7 @@ esac
 case $MD5 in
     YES)   echo "  + md5: using $MD5_LIB library" ;;
     NONE)  echo "  + md5 library is not used" ;;
+    NO)    echo "  + using builtin md5 code" ;;
     *)     echo "  + using md5 library: $MD5" ;;
 esac
 

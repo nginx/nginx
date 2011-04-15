@@ -12,6 +12,8 @@
 #include <ngx_core.h>
 
 
+#if (NGX_HAVE_MD5)
+
 #if (NGX_HAVE_OPENSSL_MD5_H)
 #include <openssl/md5.h>
 #else
@@ -36,5 +38,22 @@ typedef MD5_CTX  ngx_md5_t;
 
 #endif
 
+
+#else /* !NGX_HAVE_MD5 */
+
+
+typedef struct {
+    uint64_t  bytes;
+    uint32_t  a, b, c, d;
+    u_char    buffer[64];
+} ngx_md5_t;
+
+
+void ngx_md5_init(ngx_md5_t *ctx);
+void ngx_md5_update(ngx_md5_t *ctx, const u_char *data, size_t size);
+void ngx_md5_final(u_char result[16], ngx_md5_t *ctx);
+
+
+#endif
 
 #endif /* _NGX_MD5_H_INCLUDED_ */
