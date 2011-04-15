@@ -110,7 +110,7 @@ ngx_inet6_addr(u_char *p, size_t len, u_char *addr)
         }
 
         if (c == '.' && nibbles) {
-            if (n < 2) {
+            if (n < 2 || digit == NULL) {
                 return NGX_ERROR;
             }
 
