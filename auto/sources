@@ -22,6 +22,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_file.h \
            src/core/ngx_crc.h \
            src/core/ngx_crc32.h \
+           src/core/ngx_murmurhash.h \
            src/core/ngx_md5.h \
            src/core/ngx_sha1.h \
            src/core/ngx_rbtree.h \
@@ -50,6 +51,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_inet.c \
            src/core/ngx_file.c \
            src/core/ngx_crc32.c \
+           src/core/ngx_murmurhash.c \
            src/core/ngx_rbtree.c \
            src/core/ngx_radix_tree.c \
            src/core/ngx_slab.c \
