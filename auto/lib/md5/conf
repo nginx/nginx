@@ -88,6 +88,7 @@ else
 
             if [ $ngx_found = yes ]; then
                 have=NGX_HAVE_OPENSSL_MD5_H . auto/have
+                have=NGX_HAVE_MD5 . auto/have
             fi
         fi
 
