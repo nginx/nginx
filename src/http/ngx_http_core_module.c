@@ -2281,8 +2281,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
 
     tp = ngx_timeofday();
-    r->start_sec = tp->sec;
-    r->start_msec = tp->msec;
+    sr->start_sec = tp->sec;
+    sr->start_msec = tp->msec;
 
     r->main->subrequests++;
     r->main->count++;
