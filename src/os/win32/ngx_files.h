@@ -154,6 +154,7 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
 
 #define ngx_file_size(fi)                                                    \
     (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
+#define ngx_file_fs_size(fi)        ngx_file_size(fi)
 
 #define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &(fi)->nFileIndexHigh)
 

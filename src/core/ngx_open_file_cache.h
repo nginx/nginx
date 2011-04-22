@@ -20,6 +20,7 @@ typedef struct {
     ngx_file_uniq_t          uniq;
     time_t                   mtime;
     off_t                    size;
+    off_t                    fs_size;
     off_t                    directio;
     size_t                   read_ahead;
 

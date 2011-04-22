@@ -155,6 +155,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
             of->uniq = ngx_file_uniq(&fi);
             of->mtime = ngx_file_mtime(&fi);
             of->size = ngx_file_size(&fi);
+            of->fs_size = ngx_file_fs_size(&fi);
             of->is_dir = ngx_is_dir(&fi);
             of->is_file = ngx_is_file(&fi);
             of->is_link = ngx_is_link(&fi);
@@ -557,6 +558,7 @@ done:
     of->uniq = ngx_file_uniq(&fi);
     of->mtime = ngx_file_mtime(&fi);
     of->size = ngx_file_size(&fi);
+    of->fs_size = ngx_file_fs_size(&fi);
     of->is_dir = ngx_is_dir(&fi);
     of->is_file = ngx_is_file(&fi);
     of->is_link = ngx_is_link(&fi);
