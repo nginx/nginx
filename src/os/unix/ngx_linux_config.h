@@ -88,7 +88,7 @@ typedef struct iocb  ngx_aiocb_t;
 #endif
 
 
-#define NGX_LISTEN_BACKLOG        -1
+#define NGX_LISTEN_BACKLOG        511
 
 
 #if defined TCP_DEFER_ACCEPT && !defined NGX_HAVE_DEFERRED_ACCEPT
