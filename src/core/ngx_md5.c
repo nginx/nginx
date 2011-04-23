@@ -26,7 +26,7 @@ ngx_md5_init(ngx_md5_t *ctx)
     ctx->b = 0xefcdab89;
     ctx->c = 0x98badcfe;
     ctx->d = 0x10325476;
- 
+
     ctx->bytes = 0;
 }
 
@@ -35,29 +35,29 @@ void
 ngx_md5_update(ngx_md5_t *ctx, const u_char *data, size_t size)
 {
     size_t  used, free;
- 
+
     used = ctx->bytes & 0x3f;
     ctx->bytes += size;
- 
+
     if (used) {
         free = 64 - used;
- 
+
         if (size < free) {
             ngx_memcpy(&ctx->buffer[used], data, size);
             return;
         }
- 
+
         ngx_memcpy(&ctx->buffer[used], data, free);
         data = (u_char *)data + free;
         size -= free;
         (void) ngx_md5_body(ctx, ctx->buffer, 64);
     }
- 
+
     if (size >= 64) {
         data = ngx_md5_body(ctx, data, size & ~(size_t) 0x3f);
         size &= 0x3f;
     }
- 
+
     ngx_memcpy(ctx->buffer, data, size);
 }
 
@@ -66,22 +66,22 @@ void
 ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
 {
     size_t  used, free;
- 
+
     used = ctx->bytes & 0x3f;
- 
+
     ctx->buffer[used++] = 0x80;
- 
+
     free = 64 - used;
- 
+
     if (free < 8) {
         ngx_memzero(&ctx->buffer[used], free);
         (void) ngx_md5_body(ctx, ctx->buffer, 64);
         used = 0;
         free = 64;
     }
- 
+
     ngx_memzero(&ctx->buffer[used], free - 8);
- 
+
     ctx->bytes <<= 3;
     ctx->buffer[56] = ctx->bytes;
     ctx->buffer[57] = ctx->bytes >> 8;
@@ -91,9 +91,9 @@ ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
     ctx->buffer[61] = ctx->bytes >> 40;
     ctx->buffer[62] = ctx->bytes >> 48;
     ctx->buffer[63] = ctx->bytes >> 56;
- 
+
     (void) ngx_md5_body(ctx, ctx->buffer, 64);
- 
+
     result[0] = ctx->a;
     result[1] = ctx->a >> 8;
     result[2] = ctx->a >> 16;
@@ -110,7 +110,7 @@ ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
     result[13] = ctx->d >> 8;
     result[14] = ctx->d >> 16;
     result[15] = ctx->d >> 24;
- 
+
     ngx_memzero(ctx, sizeof(*ctx));
 }
 
@@ -127,7 +127,7 @@ ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
 #define G(x, y, z)  ((y) ^ ((z) & ((x) ^ (y))))
 #define H(x, y, z)  ((x) ^ (y) ^ (z))
 #define I(x, y, z)  ((y) ^ ((x) | ~(z)))
- 
+
 /*
  * The MD5 transformation for all four rounds.
  */
@@ -136,7 +136,7 @@ ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
     (a) += f((b), (c), (d)) + (x) + (t);                                      \
     (a) = (((a) << (s)) | (((a) & 0xffffffff) >> (32 - (s))));                \
     (a) += (b)
- 
+
 /*
  * SET() reads 4 input bytes in little-endian byte order and stores them
  * in a properly aligned word in host byte order.
@@ -179,20 +179,20 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
 #if !(NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED)
     uint32_t       block[16];
 #endif
- 
+
     p = data;
- 
+
     a = ctx->a;
     b = ctx->b;
     c = ctx->c;
     d = ctx->d;
- 
+
     do {
         saved_a = a;
         saved_b = b;
         saved_c = c;
         saved_d = d;
- 
+
         /* Round 1 */
 
         STEP(F, a, b, c, d, SET(0),  0xd76aa478, 7);
@@ -211,7 +211,7 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
         STEP(F, d, a, b, c, SET(13), 0xfd987193, 12);
         STEP(F, c, d, a, b, SET(14), 0xa679438e, 17);
         STEP(F, b, c, d, a, SET(15), 0x49b40821, 22);
- 
+
         /* Round 2 */
 
         STEP(G, a, b, c, d, GET(1),  0xf61e2562, 5);
@@ -230,7 +230,7 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
         STEP(G, d, a, b, c, GET(2),  0xfcefa3f8, 9);
         STEP(G, c, d, a, b, GET(7),  0x676f02d9, 14);
         STEP(G, b, c, d, a, GET(12), 0x8d2a4c8a, 20);
- 
+
         /* Round 3 */
 
         STEP(H, a, b, c, d, GET(5),  0xfffa3942, 4);
@@ -249,7 +249,7 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
         STEP(H, d, a, b, c, GET(12), 0xe6db99e5, 11);
         STEP(H, c, d, a, b, GET(15), 0x1fa27cf8, 16);
         STEP(H, b, c, d, a, GET(2),  0xc4ac5665, 23);
- 
+
         /* Round 4 */
 
         STEP(I, a, b, c, d, GET(0),  0xf4292244, 6);
@@ -268,21 +268,21 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
         STEP(I, d, a, b, c, GET(11), 0xbd3af235, 10);
         STEP(I, c, d, a, b, GET(2),  0x2ad7d2bb, 15);
         STEP(I, b, c, d, a, GET(9),  0xeb86d391, 21);
- 
+
         a += saved_a;
         b += saved_b;
         c += saved_c;
         d += saved_d;
- 
+
         p += 64;
 
     } while (size -= 64);
- 
+
     ctx->a = a;
     ctx->b = b;
     ctx->c = c;
     ctx->d = d;
- 
+
     return p;
 }
 
