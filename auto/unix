@@ -141,7 +141,7 @@ if [ $ngx_found = no ]; then
     ngx_feature_name=NGX_SYS_NERR
     ngx_feature_run=value
     ngx_feature_incs='#include <errno.h>
-                      #include <string.h>'
+                      #include <string.h>
                       #include <stdio.h>'
     ngx_feature_path=
     ngx_feature_libs=
