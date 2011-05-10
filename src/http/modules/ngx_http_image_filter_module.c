@@ -723,7 +723,7 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 static ngx_buf_t *
 ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
-    int                            sx, sy, dx, dy, ox, oy, size,
+    int                            sx, sy, dx, dy, ox, oy, ax, ay, size,
                                    colors, palette, transparent,
                                    red, green, blue, t;
     u_char                        *out;
@@ -852,6 +852,9 @@ transparent:
     if (ctx->angle) {
         src = dst;
 
+        ax = (dx % 2 == 0) ? 1 : 0;
+        ay = (dy % 2 == 0) ? 1 : 0;
+
         switch (ctx->angle) {
 
         case 90:
@@ -861,7 +864,17 @@ transparent:
                 gdImageDestroy(src);
                 return NULL;
             }
-            gdImageCopyRotated(dst, src, dy/2, dx/2, 0, 0, dx, dy, ctx->angle);
+            if (ctx->angle == 90) {
+                ox = dy / 2 + ay;
+                oy = dx / 2 - ax;
+
+            } else {
+                ox = dy / 2 - ay;
+                oy = dx / 2 + ax;
+            }
+
+            gdImageCopyRotated(dst, src, ox, oy, 0, 0,
+                               dx + ax, dy + ay, ctx->angle);
             gdImageDestroy(src);
 
             t = dx;
@@ -875,7 +888,8 @@ transparent:
                 gdImageDestroy(src);
                 return NULL;
             }
-            gdImageCopyRotated(dst, src, dx/2, dy/2, 0, 0, dx, dy, ctx->angle);
+            gdImageCopyRotated(dst, src, dx / 2 - ax, dy / 2 - ay, 0, 0,
+                               dx + ax, dy + ay, ctx->angle);
             gdImageDestroy(src);
             break;
         }
