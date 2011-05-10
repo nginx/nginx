@@ -9,6 +9,42 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.2" date="10.05.2011">
+
+<change type="feature">
+<para lang="ru">
+теперь разделяемые зоны и кэши используют семафоры POSIX.
+</para>
+<para lang="en">
+now shared zones and caches use POSIX semaphores.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в работе параметра rotate директивы image_filter.<br/>
+Спасибо Adam Bocim.
+</para>
+<para lang="en">
+in the "rotate" parameter of the "image_filter" directive. <br/>
+Thanks to Adam Bocim.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris;
+ошибка появилась в 1.0.1.
+</para>
+<para lang="en">
+nginx could not be built on Solaris;
+the bug had appeared in 1.0.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.1" date="03.05.2011">
 
 <change type="change">
@@ -230,7 +266,7 @@ Thanks to Michael Lustfield.
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-now nginx uses a default listen backlog value -1 on Linux.<br/>
+now nginx uses a default listen backlog value -1 on Linux. <br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
