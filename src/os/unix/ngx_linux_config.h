@@ -58,6 +58,11 @@
 #include <ngx_auto_config.h>
 
 
+#if (NGX_HAVE_POSIX_SEM)
+#include <semaphore.h>
+#endif
+
+
 #if (NGX_HAVE_SYS_PRCTL_H)
 #include <sys/prctl.h>
 #endif

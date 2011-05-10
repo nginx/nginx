@@ -234,6 +234,18 @@ ngx_feature_test="int  id;
 . auto/feature
 
 
+ngx_feature="POSIX semaphores"
+ngx_feature_name="NGX_HAVE_POSIX_SEM"
+ngx_feature_run=yes
+ngx_feature_incs="#include <semaphore.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="sem_t  sem;
+                  if (sem_init(&sem, 1, 0) == -1) return 1;
+                  sem_destroy(&sem);"
+. auto/feature
+
+
 ngx_feature="struct msghdr.msg_control"
 ngx_feature_name="NGX_HAVE_MSGHDR_MSG_CONTROL"
 ngx_feature_run=no
