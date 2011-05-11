@@ -14,6 +14,7 @@
 
 typedef struct {
     GeoIP      *country;
+    GeoIP      *org;
     GeoIP      *city;
 } ngx_http_geoip_conf_t;
 
@@ -27,6 +28,8 @@ typedef struct {
 typedef const char *(*ngx_http_geoip_variable_handler_pt)(GeoIP *, u_long addr);
 
 static ngx_int_t ngx_http_geoip_country_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_geoip_org_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_geoip_city_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -42,6 +45,8 @@ static ngx_int_t ngx_http_geoip_add_variables(ngx_conf_t *cf);
 static void *ngx_http_geoip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_geoip_org(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_geoip_city(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void ngx_http_geoip_cleanup(void *data);
@@ -52,6 +57,13 @@ static ngx_command_t  ngx_http_geoip_commands[] = {
     { ngx_string("geoip_country"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
       ngx_http_geoip_country,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("geoip_org"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
+      ngx_http_geoip_org,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
@@ -111,6 +123,10 @@ static ngx_http_variable_t  ngx_http_geoip_vars[] = {
     { ngx_string("geoip_country_name"), NULL,
       ngx_http_geoip_country_variable,
       (uintptr_t) GeoIP_country_name_by_ipnum, 0, 0 },
+
+    { ngx_string("geoip_org"), NULL,
+      ngx_http_geoip_org_variable,
+      (uintptr_t) GeoIP_name_by_ipnum, 0, 0 },
 
     { ngx_string("geoip_city_continent_code"), NULL,
       ngx_http_geoip_city_variable,
@@ -190,6 +206,53 @@ ngx_http_geoip_country_variable(ngx_http_request_t *r,
     addr = ntohl(sin->sin_addr.s_addr);
 
     val = handler(gcf->country, addr);
+
+    if (val == NULL) {
+        goto not_found;
+    }
+
+    v->len = ngx_strlen(val);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) val;
+
+    return NGX_OK;
+
+not_found:
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_geoip_org_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_http_geoip_variable_handler_pt  handler =
+        (ngx_http_geoip_variable_handler_pt) data;
+
+    u_long                  addr;
+    const char             *val;
+    struct sockaddr_in     *sin;
+    ngx_http_geoip_conf_t  *gcf;
+
+    gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
+
+    if (gcf->org == NULL) {
+        goto not_found;
+    }
+
+    if (r->connection->sockaddr->sa_family != AF_INET) {
+        goto not_found;
+    }
+
+    sin = (struct sockaddr_in *) r->connection->sockaddr;
+    addr = ntohl(sin->sin_addr.s_addr);
+
+    val = handler(gcf->org, addr);
 
     if (val == NULL) {
         goto not_found;
@@ -475,6 +538,57 @@ ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
+ngx_http_geoip_org(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_geoip_conf_t  *gcf = conf;
+
+    ngx_str_t  *value;
+
+    if (gcf->org) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    gcf->org = GeoIP_open((char *) value[1].data, GEOIP_MEMORY_CACHE);
+
+    if (gcf->org == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "GeoIP_open(\"%V\") failed", &value[1]);
+
+        return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "utf8") == 0) {
+            GeoIP_set_charset (gcf->org, GEOIP_CHARSET_UTF8);
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    switch (gcf->org->databaseType) {
+
+    case GEOIP_ISP_EDITION:
+    case GEOIP_ORG_EDITION:
+    case GEOIP_DOMAIN_EDITION:
+    case GEOIP_ASNUM_EDITION:
+
+        return NGX_CONF_OK;
+
+    default:
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid GeoIP database \"%V\" type:%d",
+                           &value[1], gcf->org->databaseType);
+        return NGX_CONF_ERROR;
+    }
+}
+
+
+static char *
 ngx_http_geoip_city(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_geoip_conf_t  *gcf = conf;
@@ -530,6 +644,10 @@ ngx_http_geoip_cleanup(void *data)
 
     if (gcf->country) {
         GeoIP_delete(gcf->country);
+    }
+
+    if (gcf->org) {
+        GeoIP_delete(gcf->org);
     }
 
     if (gcf->city) {
