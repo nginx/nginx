@@ -52,7 +52,7 @@ if [ -x $NGX_AUTOTEST ]; then
 
         yes)
             # /bin/sh is used to intercept "Killed" or "Abort trap" messages
-            if /bin/sh -c $NGX_AUTOTEST >/dev/null 2>&1; then
+            if /bin/sh -c $NGX_AUTOTEST >> $NGX_AUTOCONF_ERR 2>&1; then
                 echo " found"
                 ngx_found=yes
 
@@ -67,7 +67,7 @@ if [ -x $NGX_AUTOTEST ]; then
 
         value)
             # /bin/sh is used to intercept "Killed" or "Abort trap" messages
-            if /bin/sh -c $NGX_AUTOTEST >/dev/null 2>&1; then
+            if /bin/sh -c $NGX_AUTOTEST >> $NGX_AUTOCONF_ERR 2>&1; then
                 echo " found"
                 ngx_found=yes
 
@@ -85,7 +85,7 @@ END
 
         bug)
             # /bin/sh is used to intercept "Killed" or "Abort trap" messages
-            if /bin/sh -c $NGX_AUTOTEST >/dev/null 2>&1; then
+            if /bin/sh -c $NGX_AUTOTEST >> $NGX_AUTOCONF_ERR 2>&1; then
                 echo " not found"
 
             else
