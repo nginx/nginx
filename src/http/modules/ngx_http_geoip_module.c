@@ -441,7 +441,7 @@ ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (gcf->country == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "GeoIO_open(\"%V\") failed", &value[1]);
+                           "GeoIP_open(\"%V\") failed", &value[1]);
 
         return NGX_CONF_ERROR;
     }
@@ -491,7 +491,7 @@ ngx_http_geoip_city(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (gcf->city == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "GeoIO_open(\"%V\") failed", &value[1]);
+                           "GeoIP_open(\"%V\") failed", &value[1]);
 
         return NGX_CONF_ERROR;
     }
