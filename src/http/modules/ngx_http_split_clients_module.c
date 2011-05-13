@@ -94,7 +94,7 @@ ngx_http_split_clients_variable(ngx_http_request_t *r,
     for (i = 0; i < ctx->parts.nelts; i++) {
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "%D %D", hash, part[i].percent);
+                       "http split: %uD %uD", hash, part[i].percent);
 
         if (hash < part[i].percent) {
             *v = part[i].value;
