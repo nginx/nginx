@@ -174,8 +174,6 @@ ngx_http_file_cache_create(ngx_http_request_t *r)
     ngx_pool_cleanup_t     *cln;
     ngx_http_file_cache_t  *cache;
 
-    ngx_http_file_cache_create_key(r);
-
     c = r->cache;
     cache = c->file_cache;
 
@@ -906,7 +904,7 @@ ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
     ngx_http_file_cache_t       *cache;
     ngx_http_file_cache_node_t  *fcn;
 
-    if (c->updated) {
+    if (c->updated || c->node == NULL) {
         return;
     }
 
