@@ -4,6 +4,7 @@
 
 if [ $SHA1 != NONE ]; then
 
+    have=NGX_HAVE_SHA1 . auto/have
     CORE_INCS="$CORE_INCS $SHA1"
 
     case "$NGX_CC_NAME" in
@@ -41,7 +42,7 @@ else
         # FreeBSD
 
         ngx_feature="sha1 in system md library"
-        ngx_feature_name=
+        ngx_feature_name=NGX_HAVE_SHA1
         ngx_feature_run=no
         ngx_feature_incs="#include <sha.h>"
         ngx_feature_path=

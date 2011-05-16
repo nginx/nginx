@@ -23,7 +23,7 @@
 #if (NGX_HAVE_GNU_CRYPT_R)
 
 ngx_int_t
-ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
+ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
     char               *value;
     size_t              len;
@@ -58,7 +58,7 @@ ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 #else
 
 ngx_int_t
-ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
+ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
     char       *value;
     size_t      len;

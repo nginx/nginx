@@ -43,6 +43,7 @@ if [ $USE_SHA1 = YES ]; then
 
     if [ $USE_OPENSSL = YES ]; then
         have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
+        have=NGX_HAVE_SHA1 . auto/have
         SHA1=YES
         SHA1_LIB=OpenSSL
 

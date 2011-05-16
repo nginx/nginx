@@ -10,7 +10,7 @@
 #if (NGX_CRYPT)
 
 ngx_int_t
-ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
+ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
     /* STUB: a plain text password */
 

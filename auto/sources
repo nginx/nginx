@@ -34,7 +34,8 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_cycle.h \
            src/core/ngx_conf_file.h \
            src/core/ngx_resolver.h \
-           src/core/ngx_open_file_cache.h"
+           src/core/ngx_open_file_cache.h \
+           src/core/ngx_crypt.h"
 
 
 CORE_SRCS="src/core/nginx.c \
@@ -64,7 +65,8 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_cpuinfo.c \
            src/core/ngx_conf_file.c \
            src/core/ngx_resolver.c \
-           src/core/ngx_open_file_cache.c"
+           src/core/ngx_open_file_cache.c \
+           src/core/ngx_crypt.c"
 
 
 REGEX_DEPS=src/core/ngx_regex.h
