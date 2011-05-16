@@ -180,6 +180,44 @@ static ngx_http_variable_t  ngx_http_geoip_vars[] = {
 };
 
 
+static u_long
+ngx_http_geoip_addr(ngx_http_request_t *r)
+{
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    u_char               *p;
+    u_long                addr;
+    struct sockaddr_in6  *sin6;
+#endif
+
+    switch (r->connection->sockaddr->sa_family) {
+
+    case AF_INET:
+        sin = (struct sockaddr_in *) r->connection->sockaddr;
+        return ntohl(sin->sin_addr.s_addr);
+
+#if (NGX_HAVE_INET6)
+
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
+
+        if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
+            p = sin6->sin6_addr.s6_addr;
+            addr = p[12] << 24;
+            addr += p[13] << 16;
+            addr += p[14] << 8;
+            addr += p[15];
+
+            return addr;
+        }
+
+#endif
+    }
+
+    return INADDR_NONE;
+}
+
+
 static ngx_int_t
 ngx_http_geoip_country_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -187,9 +225,7 @@ ngx_http_geoip_country_variable(ngx_http_request_t *r,
     ngx_http_geoip_variable_handler_pt  handler =
         (ngx_http_geoip_variable_handler_pt) data;
 
-    u_long                  addr;
     const char             *val;
-    struct sockaddr_in     *sin;
     ngx_http_geoip_conf_t  *gcf;
 
     gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
@@ -198,14 +234,7 @@ ngx_http_geoip_country_variable(ngx_http_request_t *r,
         goto not_found;
     }
 
-    if (r->connection->sockaddr->sa_family != AF_INET) {
-        goto not_found;
-    }
-
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
-    addr = ntohl(sin->sin_addr.s_addr);
-
-    val = handler(gcf->country, addr);
+    val = handler(gcf->country, ngx_http_geoip_addr(r));
 
     if (val == NULL) {
         goto not_found;
@@ -234,9 +263,7 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
     ngx_http_geoip_variable_handler_pt  handler =
         (ngx_http_geoip_variable_handler_pt) data;
 
-    u_long                  addr;
     const char             *val;
-    struct sockaddr_in     *sin;
     ngx_http_geoip_conf_t  *gcf;
 
     gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
@@ -245,14 +272,7 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
         goto not_found;
     }
 
-    if (r->connection->sockaddr->sa_family != AF_INET) {
-        goto not_found;
-    }
-
-    sin = (struct sockaddr_in *) r->connection->sockaddr;
-    addr = ntohl(sin->sin_addr.s_addr);
-
-    val = handler(gcf->org, addr);
+    val = handler(gcf->org, ngx_http_geoip_addr(r));
 
     if (val == NULL) {
         goto not_found;
@@ -427,18 +447,12 @@ ngx_http_geoip_city_int_variable(ngx_http_request_t *r,
 static GeoIPRecord *
 ngx_http_geoip_get_city_record(ngx_http_request_t *r)
 {
-    u_long                  addr;
-    struct sockaddr_in     *sin;
     ngx_http_geoip_conf_t  *gcf;
 
     gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
 
-    if (gcf->city && r->connection->sockaddr->sa_family == AF_INET) {
-
-        sin = (struct sockaddr_in *) r->connection->sockaddr;
-        addr = ntohl(sin->sin_addr.s_addr);
-
-        return GeoIP_record_by_ipnum(gcf->city, addr);
+    if (gcf->city) {
+        return GeoIP_record_by_ipnum(gcf->city, ngx_http_geoip_addr(r));
     }
 
     return NULL;
