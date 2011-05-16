@@ -257,17 +257,41 @@ ngx_http_geo_real_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx)
 {
     struct sockaddr_in         *sin;
     ngx_http_variable_value_t  *v;
+#if (NGX_HAVE_INET6)
+    u_char                     *p;
+    in_addr_t                   addr;
+    struct sockaddr_in6        *sin6;
+#endif
 
     if (ctx->index == -1) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http geo started: %V", &r->connection->addr_text);
 
-        if (r->connection->sockaddr->sa_family != AF_INET) {
-            return 0;
+        switch (r->connection->sockaddr->sa_family) {
+
+        case AF_INET:
+            sin = (struct sockaddr_in *) r->connection->sockaddr;
+            return ntohl(sin->sin_addr.s_addr);
+
+#if (NGX_HAVE_INET6)
+
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
+
+            if (IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
+                p = sin6->sin6_addr.s6_addr;
+                addr = p[12] << 24;
+                addr += p[13] << 16;
+                addr += p[14] << 8;
+                addr += p[15];
+
+                return addr;
+            }
+
+#endif
         }
 
-        sin = (struct sockaddr_in *) r->connection->sockaddr;
-        return ntohl(sin->sin_addr.s_addr);
+        return INADDR_NONE;
     }
 
     v = ngx_http_get_flushed_variable(r, ctx->index);
