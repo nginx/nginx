@@ -9,6 +9,75 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.3" date="25.05.2011">
+
+<change type="feature">
+<para lang="ru">
+директива auth_basic_user_file поддерживает шифрование пароля
+методами "$apr1", "{PLAIN}" и "{SSHA}".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "auth_basic_user_file" directive supports "$apr1", "{PLAIN}",
+and "{SSHA}" password encryption methods.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива geoip_org и переменная $geoip_org.<br/>
+Спасибо Александру Ускову, Arnaud Granal и Денису Латыпову.
+</para>
+<para lang="en">
+the "geoip_org" directive and $geoip_org variable.<br/>
+Thanks to Alexander Uskov, Arnaud Granal, and Denis F. Latypoff.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модули ngx_http_geo_module и ngx_http_geoip_module поддерживают
+адреса IPv4, отображённые на IPv6 адреса.
+</para>
+<para lang="en">
+ngx_http_geo_module and ngx_http_geoip_module support IPv4 addresses
+mapped to IPv6 addresses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проверке адреса IPv4, отображённого на адрес IPv6,
+в рабочем процессе происходил segmentation fault,
+если директивы access или deny были определены только для адресов IPv6;
+ошибка появилась в 0.8.22.
+</para>
+<para lang="en">
+a segmentation fault occurred in a worker process
+during testing IPv4 address mapped to IPv6 address,
+if access or deny rules were defined only for IPv6;
+the bug had appeared in 0.8.22.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закэшированный ответ мог быть испорчен, если значения директив
+proxy/fastcgi/scgi/uwsgi_cache_bypass и proxy/fastcgi/scgi/ uwsgi_no_cache
+были разными;
+ошибка появилась в 0.8.46.
+</para>
+<para lang="en">
+a cached reponse may be broken if proxy/fastcgi/scgi/ uwsgi_cache_bypass
+and proxy/fastcgi/scgi/uwsgi_no_cache directive values were different;
+the bug had appeared in 0.8.46.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.2" date="10.05.2011">
 
 <change type="feature">
