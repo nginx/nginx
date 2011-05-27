@@ -75,7 +75,7 @@ ngx_crypt_apr1(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
     ngx_md5_init(&md5);
     ngx_md5_update(&md5, key, keylen);
-    ngx_md5_update(&md5, "$apr1$", sizeof("$apr1$") - 1);
+    ngx_md5_update(&md5, (u_char *) "$apr1$", sizeof("$apr1$") - 1);
     ngx_md5_update(&md5, salt, saltlen);
 
     ngx_md5_init(&ctx1);
