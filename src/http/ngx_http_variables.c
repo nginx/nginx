@@ -1661,14 +1661,30 @@ ngx_http_variable_pid(ngx_http_request_t *r,
 
 
 void *
-ngx_http_map_find(ngx_http_request_t *r, ngx_http_map_t *map, ngx_uint_t key,
-    u_char *text, size_t len, ngx_str_t *match)
+ngx_http_map_find(ngx_http_request_t *r, ngx_http_map_t *map, ngx_str_t *match)
 {
-    void  *p;
+    void        *value;
+    u_char      *low;
+    size_t       len;
+    ngx_uint_t   key;
 
-    p = ngx_hash_find_combined(&map->hash, key, text, len);
-    if (p) {
-        return p;
+    len = match->len;
+
+    if (len) {
+        low = ngx_pnalloc(r->pool, len);
+        if (low == NULL) {
+            return NULL;
+        }
+
+    } else {
+        low = NULL;
+    }
+
+    key = ngx_hash_strlow(low, match->data, len);
+
+    value = ngx_hash_find_combined(&map->hash, key, low, len);
+    if (value) {
+        return value;
     }
 
 #if (NGX_PCRE)

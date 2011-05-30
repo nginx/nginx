@@ -111,7 +111,6 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     size_t                      len;
     ngx_str_t                   val;
-    ngx_uint_t                  key;
     ngx_http_variable_value_t  *value;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -127,9 +126,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         len--;
     }
 
-    key = ngx_hash_strlow(val.data, val.data, len);
-
-    value = ngx_http_map_find(r, &map->map, key, val.data, len, &val);
+    value = ngx_http_map_find(r, &map->map, &val);
 
     if (value == NULL) {
         value = map->default_value;
