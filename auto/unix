@@ -246,6 +246,19 @@ ngx_feature_test="sem_t  sem;
 . auto/feature
 
 
+if [ $ngx_found = no ]; then
+
+    # Linux has POSIX semaphores in libpthread
+    ngx_feature="POSIX semaphores in libpthread"
+    ngx_feature_libs=-lpthread
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -lpthread"
+    fi
+fi
+
+
 ngx_feature="struct msghdr.msg_control"
 ngx_feature_name="NGX_HAVE_MSGHDR_MSG_CONTROL"
 ngx_feature_run=no

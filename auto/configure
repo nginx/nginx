@@ -53,6 +53,7 @@ fi
 if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/os/features
     . auto/threads
+    . auto/unix
 fi
 
 . auto/modules
@@ -98,10 +99,6 @@ have=NGX_HTTP_SCGI_TEMP_PATH value="\"$NGX_HTTP_SCGI_TEMP_PATH\""
 . auto/make
 . auto/lib/make
 . auto/install
-
-if [ "$NGX_PLATFORM" != win32 ]; then
-    . auto/unix
-fi
 
 # STUB
 . auto/stubs
