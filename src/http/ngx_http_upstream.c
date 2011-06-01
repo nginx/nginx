@@ -2031,6 +2031,15 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             c->error = 1;
 
         } else {
+
+#if (NGX_HTTP_CACHE)
+
+            if (r->cache) {
+                ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
+            }
+
+#endif
+
             ngx_http_upstream_finalize_request(r, u, rc);
             return;
         }
