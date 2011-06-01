@@ -9,6 +9,53 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.4" date="01.06.2011">
+
+<change type="change">
+<para lang="ru">
+теперь в регулярных выражениях в директиве map можно задать
+чувствительность к регистру с помощью префиксов "~" и "~*".
+</para>
+<para lang="en">
+now regular expressions case sensitivity in the "map" directive
+is given by prefixes "~" or "~*".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь разделяемые зоны и кэши используют семафоры POSIX на Linux.<br/>
+Спасибо Денису Латыпову.
+</para>
+<para lang="en">
+now shared zones and caches use POSIX semaphores on Linux. <br/>
+Thanks to Denis F. Latypoff.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения "stalled cache updating".
+</para>
+<para lang="en">
+"stalled" cache updating" alert.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --without-http_auth_basic_module;
+ошибка появилась в 1.0.3.
+</para>
+<para lang="en">
+nginx could not be built --without-http_auth_basic_module;
+the bug had appeared in 1.0.3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.3" date="25.05.2011">
 
 <change type="feature">
@@ -69,7 +116,7 @@ proxy/fastcgi/scgi/uwsgi_cache_bypass и proxy/fastcgi/scgi/ uwsgi_no_cache
 ошибка появилась в 0.8.46.
 </para>
 <para lang="en">
-a cached reponse may be broken if proxy/fastcgi/scgi/ uwsgi_cache_bypass
+a cached response may be broken if proxy/fastcgi/scgi/ uwsgi_cache_bypass
 and proxy/fastcgi/scgi/uwsgi_no_cache directive values were different;
 the bug had appeared in 0.8.46.
 </para>
