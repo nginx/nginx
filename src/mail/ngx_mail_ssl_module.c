@@ -9,7 +9,7 @@
 #include <ngx_mail.h>
 
 
-#define NGX_DEFAULT_CIPHERS  "HIGH:!ADH:!MD5"
+#define NGX_DEFAULT_CIPHERS  "HIGH:!aNULL:!MD5"
 
 
 static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);

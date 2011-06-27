@@ -13,7 +13,7 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
 
 
-#define NGX_DEFAULT_CIPHERS  "HIGH:!ADH:!MD5"
+#define NGX_DEFAULT_CIPHERS  "HIGH:!aNULL:!MD5"
 
 
 static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
