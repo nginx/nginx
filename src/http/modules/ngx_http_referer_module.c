@@ -29,6 +29,9 @@ typedef struct {
     ngx_flag_t               blocked_referer;
 
     ngx_hash_keys_arrays_t  *keys;
+
+    ngx_uint_t               referer_hash_max_size;
+    ngx_uint_t               referer_hash_bucket_size;
 } ngx_http_referer_conf_t;
 
 
@@ -52,6 +55,20 @@ static ngx_command_t  ngx_http_referer_commands[] = {
       ngx_http_valid_referers,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("referer_hash_max_size"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_referer_conf_t, referer_hash_max_size),
+      NULL },
+
+    { ngx_string("referer_hash_bucket_size"),
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_referer_conf_t, referer_hash_bucket_size),
       NULL },
 
       ngx_null_command
@@ -239,6 +256,8 @@ ngx_http_referer_create_conf(ngx_conf_t *cf)
 
     conf->no_referer = NGX_CONF_UNSET;
     conf->blocked_referer = NGX_CONF_UNSET;
+    conf->referer_hash_max_size = NGX_CONF_UNSET_UINT;
+    conf->referer_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -260,6 +279,10 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
         ngx_conf_merge_value(conf->no_referer, prev->no_referer, 0);
         ngx_conf_merge_value(conf->blocked_referer, prev->blocked_referer, 0);
+        ngx_conf_merge_uint_value(conf->referer_hash_max_size,
+                                  prev->referer_hash_max_size, 2048);
+        ngx_conf_merge_uint_value(conf->referer_hash_bucket_size,
+                                  prev->referer_hash_bucket_size, 64);
 
         return NGX_CONF_OK;
     }
@@ -276,9 +299,16 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    ngx_conf_merge_uint_value(conf->referer_hash_max_size,
+                              prev->referer_hash_max_size, 2048);
+    ngx_conf_merge_uint_value(conf->referer_hash_bucket_size,
+                              prev->referer_hash_bucket_size, 64);
+    conf->referer_hash_bucket_size = ngx_align(conf->referer_hash_bucket_size,
+                                               ngx_cacheline_size);
+
     hash.key = ngx_hash_key_lc;
-    hash.max_size = 2048; /* TODO: referer_hash_max_size; */
-    hash.bucket_size = 64; /* TODO: referer_hash_bucket_size; */
+    hash.max_size = conf->referer_hash_max_size;
+    hash.bucket_size = conf->referer_hash_bucket_size;
     hash.name = "referers_hash";
     hash.pool = cf->pool;
 
