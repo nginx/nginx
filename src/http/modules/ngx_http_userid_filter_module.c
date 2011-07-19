@@ -38,6 +38,7 @@ typedef struct {
     uint32_t    uid_got[4];
     uint32_t    uid_set[4];
     ngx_str_t   cookie;
+    ngx_uint_t  reset;
 } ngx_http_userid_ctx_t;
 
 
@@ -185,8 +186,10 @@ ngx_module_t  ngx_http_userid_filter_module = {
 };
 
 
-static ngx_str_t  ngx_http_userid_got = ngx_string("uid_got");
-static ngx_str_t  ngx_http_userid_set = ngx_string("uid_set");
+static ngx_str_t   ngx_http_userid_got = ngx_string("uid_got");
+static ngx_str_t   ngx_http_userid_set = ngx_string("uid_set");
+static ngx_str_t   ngx_http_userid_reset = ngx_string("uid_reset");
+static ngx_uint_t  ngx_http_userid_reset_index;
 
 
 static ngx_int_t
@@ -387,7 +390,7 @@ ngx_http_userid_set_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     p = ngx_copy(cookie, conf->name.data, conf->name.len);
     *p++ = '=';
 
-    if (ctx->uid_got[3] == 0) {
+    if (ctx->uid_got[3] == 0 || ctx->reset) {
         src.len = 16;
         src.data = (u_char *) ctx->uid_set;
         dst.data = p;
@@ -452,11 +455,12 @@ static ngx_int_t
 ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    ngx_connection_t     *c;
-    struct sockaddr_in   *sin;
+    ngx_connection_t           *c;
+    struct sockaddr_in         *sin;
+    ngx_http_variable_value_t  *vv;
 #if (NGX_HAVE_INET6)
-    u_char               *p;
-    struct sockaddr_in6  *sin6;
+    u_char                     *p;
+    struct sockaddr_in6        *sin6;
 #endif
 
     if (ctx->uid_set[3] != 0) {
@@ -465,20 +469,35 @@ ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 
     if (ctx->uid_got[3] != 0) {
 
-        if (conf->mark == '\0'
-            || (ctx->cookie.len > 23
-                && ctx->cookie.data[22] == conf->mark
-                && ctx->cookie.data[23] == '='))
-        {
+        vv = ngx_http_get_indexed_variable(r, ngx_http_userid_reset_index);
+
+        if (vv->len == 0 || (vv->len == 1 && vv->data[0] == '0')) {
+
+            if (conf->mark == '\0'
+                || (ctx->cookie.len > 23
+                    && ctx->cookie.data[22] == conf->mark
+                    && ctx->cookie.data[23] == '='))
+            {
+                return NGX_OK;
+            }
+
+            ctx->uid_set[0] = ctx->uid_got[0];
+            ctx->uid_set[1] = ctx->uid_got[1];
+            ctx->uid_set[2] = ctx->uid_got[2];
+            ctx->uid_set[3] = ctx->uid_got[3];
+
             return NGX_OK;
+
+        } else {
+            ctx->reset = 1;
+
+            if (vv->len == 3 && ngx_strncmp(vv->data, "log", 3) == 0) {
+                ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                        "userid cookie \"%V=%08XD%08XD%08XD%08XD\" was reset",
+                        &conf->name, ctx->uid_got[0], ctx->uid_got[1],
+                        ctx->uid_got[2], ctx->uid_got[3]);
+            }
         }
-
-        ctx->uid_set[0] = ctx->uid_got[0];
-        ctx->uid_set[1] = ctx->uid_got[1];
-        ctx->uid_set[2] = ctx->uid_got[2];
-        ctx->uid_set[3] = ctx->uid_got[3];
-
-        return NGX_OK;
     }
 
     /*
@@ -566,8 +585,19 @@ ngx_http_userid_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
 
 static ngx_int_t
+ngx_http_userid_reset_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    *v = ngx_http_variable_null_value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_userid_add_variables(ngx_conf_t *cf)
 {
+    ngx_int_t             n;
     ngx_http_variable_t  *var;
 
     var = ngx_http_add_variable(cf, &ngx_http_userid_got, 0);
@@ -583,6 +613,21 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
     }
 
     var->get_handler = ngx_http_userid_set_variable;
+
+    var = ngx_http_add_variable(cf, &ngx_http_userid_reset,
+                                NGX_HTTP_VAR_CHANGEABLE);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+
+    var->get_handler = ngx_http_userid_reset_variable;
+
+    n = ngx_http_get_variable_index(cf, &ngx_http_userid_reset);
+    if (n == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_userid_reset_index = n;
 
     return NGX_OK;
 }
