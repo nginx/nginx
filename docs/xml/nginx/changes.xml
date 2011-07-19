@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="0.7.69" date="19.07.2011">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования
+в рабочем процессе мог произойти segmentation fault.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process,
+if a caching was used.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="0.7.68" date="14.12.2010">
 
 <change type="bugfix">
@@ -14619,7 +14637,7 @@ the double slashes in "://" in the URI were converted to ":/".
 </para>
 <para lang="en">
 if the request without arguments contains "//", "/./", "/../" or "%XX"
-then the lost character in the request line was lost;
+then the last character in the request line was lost;
 the bug had appeared in 0.1.9.
 </para>
 </change>
