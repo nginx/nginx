@@ -1099,7 +1099,8 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
         }
 
         if (fcn->deleting) {
-            continue;
+            wait = 1;
+            break;
         }
 
         p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
