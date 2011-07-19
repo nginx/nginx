@@ -620,6 +620,15 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     ngx_http_file_cache_create_key(r);
 
+    if (c->header_start >= u->conf->buffer_size) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "cache key too large, increase upstream buffer size %uz",
+                      u->conf->buffer_size);
+
+        r->cache = NULL;
+        return NGX_DECLINED;
+    }
+
     u->cacheable = 1;
 
     c->min_uses = u->conf->cache_min_uses;
