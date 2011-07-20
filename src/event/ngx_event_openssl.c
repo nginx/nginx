@@ -371,28 +371,18 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 }
 
 
-ngx_int_t
-ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl)
+RSA *
+ngx_ssl_rsa512_key_callback(SSL *ssl, int is_export, int key_length)
 {
-    RSA  *key;
+    static RSA  *key;
 
-    if (SSL_CTX_need_tmp_RSA(ssl->ctx) == 0) {
-        return NGX_OK;
+    if (key_length == 512) {
+        if (key == NULL) {
+            key = RSA_generate_key(512, RSA_F4, NULL, NULL);
+        }
     }
 
-    key = RSA_generate_key(512, RSA_F4, NULL, NULL);
-
-    if (key) {
-        SSL_CTX_set_tmp_rsa(ssl->ctx, key);
-
-        RSA_free(key);
-
-        return NGX_OK;
-    }
-
-    ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "RSA_generate_key(512) failed");
-
-    return NGX_ERROR;
+    return key;
 }
 
 
