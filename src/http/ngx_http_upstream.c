@@ -2317,7 +2317,7 @@ ngx_http_upstream_process_non_buffered_downstream(ngx_http_request_t *r)
     if (wev->timedout) {
         c->timedout = 1;
         ngx_connection_error(c, NGX_ETIMEDOUT, "client timed out");
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_REQUEST_TIME_OUT);
         return;
     }
 
@@ -3013,6 +3013,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 #endif
 
     if (u->header_sent
+        && rc != NGX_HTTP_REQUEST_TIME_OUT
         && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
     {
         rc = 0;
