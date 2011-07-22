@@ -14,6 +14,15 @@ static ngx_int_t ngx_http_upstream_cmp_servers(const void *one,
 static ngx_uint_t
 ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers);
 
+#if (NGX_HTTP_SSL)
+
+static ngx_int_t ngx_http_upstream_empty_set_session(ngx_peer_connection_t *pc,
+    void *data);
+static void ngx_http_upstream_empty_save_session(ngx_peer_connection_t *pc,
+    void *data);
+
+#endif
+
 
 ngx_int_t
 ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
@@ -343,10 +352,8 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
     r->upstream->peer.free = ngx_http_upstream_free_round_robin_peer;
     r->upstream->peer.tries = rrp->peers->number;
 #if (NGX_HTTP_SSL)
-    r->upstream->peer.set_session =
-                               ngx_http_upstream_set_round_robin_peer_session;
-    r->upstream->peer.save_session =
-                               ngx_http_upstream_save_round_robin_peer_session;
+    r->upstream->peer.set_session = ngx_http_upstream_empty_set_session;
+    r->upstream->peer.save_session = ngx_http_upstream_empty_save_session;
 #endif
 
     return NGX_OK;
@@ -755,6 +762,20 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         ngx_ssl_free_session(old_ssl_session);
     }
+}
+
+
+static ngx_int_t
+ngx_http_upstream_empty_set_session(ngx_peer_connection_t *pc, void *data)
+{
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_upstream_empty_save_session(ngx_peer_connection_t *pc, void *data)
+{
+    return;
 }
 
 #endif
