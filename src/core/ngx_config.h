@@ -127,5 +127,7 @@ typedef intptr_t        ngx_flag_t;
 #define NGX_MAX_UINT32_VALUE  (uint32_t) 0xffffffff
 #endif
 
+#define NGX_MAX_INT32_VALUE   (uint32_t) 0x7fffffff
+
 
 #endif /* _NGX_CONFIG_H_INCLUDED_ */
