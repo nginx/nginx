@@ -1716,20 +1716,24 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     ngx_int_t                 rc;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
-    ngx_connection_t         *c;
     ngx_rbtree_node_t        *node, *sentinel;
     ngx_ssl_session_t        *sess;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
-
-    c = ngx_ssl_get_connection(ssl_conn);
+#if (NGX_DEBUG)
+    ngx_connection_t         *c;
+#endif
 
     hash = ngx_crc32_short(id, (size_t) len);
     *copy = 0;
 
+#if (NGX_DEBUG)
+    c = ngx_ssl_get_connection(ssl_conn);
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ssl get session: %08XD:%d", hash, len);
+#endif
 
     shm_zone = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl_conn),
                                    ngx_ssl_session_cache_index);
