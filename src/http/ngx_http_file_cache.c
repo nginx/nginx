@@ -530,7 +530,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
             goto done;
         }
 
-        if (fcn->exists) {
+        if (fcn->exists || fcn->uses >= c->min_uses) {
 
             c->exists = fcn->exists;
             c->body_start = fcn->body_start;
@@ -540,16 +540,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
             goto done;
         }
 
-        if (fcn->uses >= c->min_uses) {
-
-            c->exists = fcn->exists;
-            c->body_start = fcn->body_start;
-
-            rc = NGX_OK;
-
-        } else {
-            rc = NGX_AGAIN;
-        }
+        rc = NGX_AGAIN;
 
         goto done;
     }
