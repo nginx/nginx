@@ -253,6 +253,7 @@ ngx_de_info(u_char *name, ngx_dir_t *dir)
 
 #define ngx_de_access(dir)       (((dir)->info.st_mode) & 0777)
 #define ngx_de_size(dir)         (dir)->info.st_size
+#define ngx_de_fs_size(dir)      ((dir)->info.st_blocks * 512)
 #define ngx_de_mtime(dir)        (dir)->info.st_mtime
 
 

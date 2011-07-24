@@ -1320,60 +1320,27 @@ ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 static ngx_int_t
 ngx_http_file_cache_add_file(ngx_tree_ctx_t *ctx, ngx_str_t *name)
 {
-    u_char                        *p;
-    ngx_fd_t                       fd;
-    ngx_int_t                      n;
-    ngx_uint_t                     i;
-    ngx_file_info_t                fi;
-    ngx_http_cache_t               c;
-    ngx_http_file_cache_t         *cache;
-    ngx_http_file_cache_header_t   h;
+    u_char                 *p;
+    ngx_int_t               n;
+    ngx_uint_t              i;
+    ngx_http_cache_t        c;
+    ngx_http_file_cache_t  *cache;
 
     if (name->len < 2 * NGX_HTTP_CACHE_KEY_LEN) {
         return NGX_ERROR;
     }
 
-    ngx_memzero(&c, sizeof(ngx_http_cache_t));
-
-    fd = ngx_open_file(name->data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
-
-    if (fd == NGX_INVALID_FILE) {
-        ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
-                      ngx_open_file_n " \"%s\" failed", name->data);
-        return NGX_ERROR;
-    }
-
-    c.file.fd = fd;
-    c.file.name = *name;
-    c.file.log = ctx->log;
-
-    n = ngx_read_file(&c.file, (u_char *) &h,
-                      sizeof(ngx_http_file_cache_header_t), 0);
-    if (n == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
-    if ((size_t) n < sizeof(ngx_http_file_cache_header_t)) {
+    if (ctx->size < (off_t) sizeof(ngx_http_file_cache_header_t)) {
         ngx_log_error(NGX_LOG_CRIT, ctx->log, 0,
                       "cache file \"%s\" is too small", name->data);
         return NGX_ERROR;
     }
 
+    ngx_memzero(&c, sizeof(ngx_http_cache_t));
     cache = ctx->data;
 
-    if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_CRIT, ctx->log, ngx_errno,
-                      ngx_fd_info_n " \"%s\" failed", name->data);
-
-    } else {
-        c.length = ngx_file_size(&fi);
-        c.fs_size = (ngx_file_fs_size(&fi) + cache->bsize - 1) / cache->bsize;
-    }
-
-    if (ngx_close_file(fd) == NGX_FILE_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, ctx->log, ngx_errno,
-                      ngx_close_file_n " \"%s\" failed", name->data);
-    }
+    c.length = ctx->size;
+    c.fs_size = (ctx->fs_size + cache->bsize - 1) / cache->bsize;
 
     p = &name->data[name->len - 2 * NGX_HTTP_CACHE_KEY_LEN];
 
