@@ -1366,7 +1366,6 @@ ngx_http_file_cache_add_file(ngx_tree_ctx_t *ctx, ngx_str_t *name)
                       ngx_fd_info_n " \"%s\" failed", name->data);
 
     } else {
-        c.uniq = ngx_file_uniq(&fi);
         c.length = ngx_file_size(&fi);
         c.fs_size = (ngx_file_fs_size(&fi) + cache->bsize - 1) / cache->bsize;
     }
@@ -1426,7 +1425,7 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         fcn->exists = 1;
         fcn->updating = 0;
         fcn->deleting = 0;
-        fcn->uniq = c->uniq;
+        fcn->uniq = 0;
         fcn->valid_sec = 0;
         fcn->body_start = 0;
         fcn->fs_size = c->fs_size;
