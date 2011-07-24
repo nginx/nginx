@@ -533,7 +533,9 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         if (fcn->exists || fcn->uses >= c->min_uses) {
 
             c->exists = fcn->exists;
-            c->body_start = fcn->body_start;
+            if (c->body_start) {
+                c->body_start = fcn->body_start;
+            }
 
             rc = NGX_OK;
 
@@ -1365,9 +1367,6 @@ ngx_http_file_cache_add_file(ngx_tree_ctx_t *ctx, ngx_str_t *name)
 
     } else {
         c.uniq = ngx_file_uniq(&fi);
-        c.valid_sec = h.valid_sec;
-        c.valid_msec = h.valid_msec;
-        c.body_start = h.body_start;
         c.length = ngx_file_size(&fi);
         c.fs_size = (ngx_file_fs_size(&fi) + cache->bsize - 1) / cache->bsize;
     }
@@ -1375,10 +1374,6 @@ ngx_http_file_cache_add_file(ngx_tree_ctx_t *ctx, ngx_str_t *name)
     if (ngx_close_file(fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, ctx->log, ngx_errno,
                       ngx_close_file_n " \"%s\" failed", name->data);
-    }
-
-    if (c.body_start == 0) {
-        return NGX_ERROR;
     }
 
     p = &name->data[name->len - 2 * NGX_HTTP_CACHE_KEY_LEN];
@@ -1426,14 +1421,14 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
         fcn->uses = 1;
         fcn->count = 0;
-        fcn->valid_msec = c->valid_msec;
+        fcn->valid_msec = 0;
         fcn->error = 0;
         fcn->exists = 1;
         fcn->updating = 0;
         fcn->deleting = 0;
         fcn->uniq = c->uniq;
-        fcn->valid_sec = c->valid_sec;
-        fcn->body_start = c->body_start;
+        fcn->valid_sec = 0;
+        fcn->body_start = 0;
         fcn->fs_size = c->fs_size;
 
         cache->sh->size += c->fs_size;
