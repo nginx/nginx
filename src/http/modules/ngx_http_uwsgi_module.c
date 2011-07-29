@@ -1083,6 +1083,8 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
     /* "uwsgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
 
+    ngx_str_set(&conf->upstream.module, "uwsgi");
+
     return conf;
 }
 

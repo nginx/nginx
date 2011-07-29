@@ -661,10 +661,12 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         ngx_http_file_cache_create_key(r);
 
-        if (r->cache->header_start >= u->conf->buffer_size) {
+        if (r->cache->header_start + 256 >= u->conf->buffer_size) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                "cache key too large, increase upstream buffer size %uz",
-                u->conf->buffer_size);
+                          "%V_buffer_size %uz is not enough for cache key, "
+                          "it should increased at least to %uz",
+                          &u->conf->module, u->conf->buffer_size,
+                          ngx_align(r->cache->header_start + 256, 1024));
 
             r->cache = NULL;
             return NGX_DECLINED;

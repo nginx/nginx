@@ -1707,6 +1707,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->headers_hash_max_size = NGX_CONF_UNSET_UINT;
     conf->headers_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
+    ngx_str_set(&conf->upstream.module, "proxy");
+
     return conf;
 }
 
