@@ -118,8 +118,11 @@ struct ngx_http_file_cache_s {
 
     time_t                           inactive;
 
-    ngx_msec_t                       last;
     ngx_uint_t                       files;
+    ngx_uint_t                       loader_files;
+    ngx_msec_t                       last;
+    ngx_msec_t                       loader_sleep;
+    ngx_msec_t                       loader_threshold;
 
     ngx_shm_zone_t                  *shm_zone;
 };

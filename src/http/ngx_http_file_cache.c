@@ -1265,27 +1265,34 @@ ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache)
 {
     ngx_msec_t  elapsed;
 
-    if (cache->files++ > 100) {
+    if (++cache->files >= cache->loader_files) {
 
         ngx_time_update();
 
         elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "http file cache manager time: %M", elapsed);
+                       "http file cache loader time elapsed: %M", elapsed);
 
-        if (elapsed > 200) {
+        if (elapsed >= cache->loader_threshold) {
 
-            /*
-             * if processing 100 files takes more than 200ms,
-             * it seems that many operations require disk i/o,
-             * therefore sleep 200ms
-             */
+            if (cache->loader_files > 1) {
+                cache->loader_files /= 2;
+                ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
+                              "cache %V loader_files decreased to %ui",
+                              &cache->path->name, cache->loader_files);
 
-            ngx_msleep(200);
-
-            ngx_time_update();
+            } else {
+                cache->loader_sleep *= 2;
+                ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
+                              "cache %V loader_sleep increased to %Mms",
+                              &cache->path->name, cache->loader_sleep);
+            }
         }
+
+        ngx_msleep(cache->loader_sleep);
+
+        ngx_time_update();
 
         cache->last = ngx_current_msec;
         cache->files = 0;
@@ -1462,6 +1469,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                  inactive;
     ssize_t                 size;
     ngx_str_t               s, name, *value;
+    ngx_int_t               loader_files, loader_sleep, loader_threshold;
     ngx_uint_t              i, n;
     ngx_http_file_cache_t  *cache;
 
@@ -1476,6 +1484,9 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     inactive = 600;
+    loader_files = 100;
+    loader_sleep = 50;
+    loader_threshold = 200;
 
     name.len = 0;
     size = 0;
@@ -1589,6 +1600,48 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[i].data, "loader_files=", 13) == 0) {
+
+            loader_files = ngx_atoi(value[i].data + 13, value[i].len - 13);
+            if (loader_files == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid loader_files value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "loader_sleep=", 13) == 0) {
+
+            s.len = value[i].len - 13;
+            s.data = value[i].data + 13;
+
+            loader_sleep = ngx_parse_time(&s, 0);
+            if (loader_sleep < 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid loader_sleep value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "loader_threshold=", 17) == 0) {
+
+            s.len = value[i].len - 17;
+            s.data = value[i].data + 17;
+
+            loader_threshold = ngx_parse_time(&s, 0);
+            if (loader_threshold < 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid loader_threshold value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[i]);
         return NGX_CONF_ERROR;
@@ -1606,6 +1659,9 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cache->path->data = cache;
     cache->path->conf_file = cf->conf_file->file.name.data;
     cache->path->line = cf->conf_file->line;
+    cache->loader_files = loader_files;
+    cache->loader_sleep = (ngx_msec_t) loader_sleep;
+    cache->loader_threshold = (ngx_msec_t) loader_threshold;
 
     if (ngx_add_path(cf, &cache->path) != NGX_OK) {
         return NGX_CONF_ERROR;
