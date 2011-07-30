@@ -2025,15 +2025,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
         || r->headers_in.accept_encoding == NULL
         || ngx_strcasestrn(r->headers_in.accept_encoding->value.data,
                            "gzip", 4 - 1)
-           == NULL
-
-        /*
-         * if the URL (without the "http://" prefix) is longer than 253 bytes,
-         * then MSIE 4.x can not handle the compressed stream - it waits
-         * too long, hangs up or crashes
-         */
-
-        || (r->headers_in.msie4 && r->unparsed_uri.len > 200))
+           == NULL)
     {
         return NGX_DECLINED;
     }

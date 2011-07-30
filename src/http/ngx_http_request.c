@@ -1439,8 +1439,6 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 
             switch (msie[5]) {
             case '4':
-                r->headers_in.msie4 = 1;
-                /* fall through */
             case '5':
                 r->headers_in.msie6 = 1;
                 break;
@@ -1463,7 +1461,6 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
     if (ngx_strstrn(user_agent, "Opera", 5 - 1)) {
         r->headers_in.opera = 1;
         r->headers_in.msie = 0;
-        r->headers_in.msie4 = 0;
         r->headers_in.msie6 = 0;
     }
 
