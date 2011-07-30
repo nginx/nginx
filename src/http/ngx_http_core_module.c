@@ -2013,22 +2013,42 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_gzip_ok(ngx_http_request_t *r)
 {
+    u_char                    *g;
     time_t                     date, expires;
     ngx_uint_t                 p;
     ngx_array_t               *cc;
-    ngx_table_elt_t           *e, *d;
+    ngx_table_elt_t           *e, *d, *ae;
     ngx_http_core_loc_conf_t  *clcf;
 
     r->gzip_tested = 1;
 
-    if (r != r->main
-        || r->headers_in.accept_encoding == NULL
-        || ngx_strcasestrn(r->headers_in.accept_encoding->value.data,
-                           "gzip", 4 - 1)
-           == NULL)
-    {
+    if (r != r->main) {
         return NGX_DECLINED;
     }
+
+    ae = r->headers_in.accept_encoding;
+    if (ae == NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (ngx_strncmp(ae->value.data, "gzip,", 5) == 0) {
+        /*
+         * test for the most common case "gzip,...":
+         *   MSIE:    "gzip, deflate"
+         *   Firefox: "gzip,deflate"
+         *   Chrome:  "gzip,deflate,sdch"
+         *   Safari:  "gzip, deflate"
+         *   Opera:   "gzip, deflate"
+         */
+        goto found;
+    }
+
+    g = ngx_strcasestrn(ae->value.data, "gzip", 4 - 1);
+    if (g == NULL) {
+        return NGX_DECLINED;
+    }
+
+found:
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
