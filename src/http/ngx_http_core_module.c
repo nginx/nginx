@@ -2031,7 +2031,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (ae->value.len < 5) {
+    if (ae->value.len < sizeof("gzip") - 1) {
         return NGX_DECLINED;
     }
 
