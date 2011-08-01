@@ -33,6 +33,11 @@
 #define NGX_HTTP_SATISFY_ANY            1
 
 
+#define NGX_HTTP_LINGERING_OFF          0
+#define NGX_HTTP_LINGERING_ON           1
+#define NGX_HTTP_LINGERING_ALWAYS       2
+
+
 #define NGX_HTTP_IMS_OFF                0
 #define NGX_HTTP_IMS_EXACT              1
 #define NGX_HTTP_IMS_BEFORE             2
@@ -356,6 +361,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    keepalive_requests;      /* keepalive_requests */
     ngx_uint_t    keepalive_disable;       /* keepalive_disable */
     ngx_uint_t    satisfy;                 /* satisfy */
+    ngx_uint_t    lingering_close;         /* lingering_close */
     ngx_uint_t    if_modified_since;       /* if_modified_since */
     ngx_uint_t    client_body_in_file_only; /* client_body_in_file_only */
 
