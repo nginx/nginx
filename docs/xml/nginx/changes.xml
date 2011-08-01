@@ -9,6 +9,139 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.0" date="01.08.2011">
+
+<change type="feature">
+<para lang="ru">
+уменьшение времени работы загрузчика кэша.
+</para>
+<para lang="en">
+cache loader run time decrease.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры loader_files, loader_sleep и loader_threshold
+директив proxy/fastcgi/scgi/uwsgi_cache_path.
+</para>
+<para lang="en">
+"loader_files", "loader_sleep", and "loader_threshold" options
+of the "proxy/fastcgi/scgi/uwsgi_cache_path" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+уменьшение времени загрузки конфигураций с большим количеством HTTPS серверов.
+</para>
+<para lang="en">
+loading time decrease of configuration with large number of HTTPS sites.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx поддерживает шифры с обменом ECDHE-ключами. <br/>
+Спасибо Adrian Kotelba.
+</para>
+<para lang="en">
+now nginx supports ECDHE key exchange ciphers.<br/>
+Thanks to Adrian Kotelba.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива lingering_close.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "lingering_close" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закрытия соединения для pipelined-запросов.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in closing connection for pipelined requests.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запрещал сжатие при получении значения "gzip;q=0"
+в строке "Accept-Encoding" в заголовке запроса клиента.
+</para>
+<para lang="en">
+nginx did not disable gzipping if client sent "gzip;q=0" in
+"Accept-Encoding" request header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+таймаута при небуферизированном проксировании.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+in timeout in unbuffered proxied mode.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании переменных в директиве proxy_pass
+при работе с бэкендом по HTTPS.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+memory leaks when a "proxy_pass" directive contains variables and proxies
+to an HTTPS backend.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в проверке параметра директивы proxy_pass, заданного переменными.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+in parameter validaiton of a "proxy_pass" directive with variables.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL не работал на QNX.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+SSL did not work on QNX.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL модули не собирались gcc 4.6 без параметра --with-debug.
+</para>
+<para lang="en">
+SSL modules could not be built by gcc 4.6 without --with-debug option.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.5" date="19.07.2011">
 
 <change type="change">
@@ -192,8 +325,8 @@ proxy/fastcgi/scgi/uwsgi_cache_bypass и proxy/fastcgi/scgi/ uwsgi_no_cache
 ошибка появилась в 0.8.46.
 </para>
 <para lang="en">
-a cached response may be broken if proxy/fastcgi/scgi/ uwsgi_cache_bypass
-and proxy/fastcgi/scgi/uwsgi_no_cache directive values were different;
+a cached response may be broken if "proxy/fastcgi/scgi/ uwsgi_cache_bypass"
+and "proxy/fastcgi/scgi/uwsgi_no_cache" directive values were different;
 the bug had appeared in 0.8.46.
 </para>
 </change>
