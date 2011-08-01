@@ -2143,7 +2143,11 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
         ngx_http_set_keepalive(r);
         return;
 
-    } else if (r->lingering_close && clcf->lingering_timeout > 0) {
+    } else if (clcf->lingering_timeout > 0
+               && (r->lingering_close
+                   || r->header_in->pos < r->header_in->last
+                   || r->connection->read->ready))
+    {
         ngx_http_set_lingering_close(r);
         return;
     }
