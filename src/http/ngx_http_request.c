@@ -2773,7 +2773,6 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
                    "http lingering close handler");
 
     if (rev->timedout) {
-        c->timedout = 1;
         ngx_http_close_request(r, 0);
         return;
     }
