@@ -2209,7 +2209,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
             return NGX_DECLINED;
         }
 
-        if (p > start && (*(p - 1) == ',' || *(p - 1) == ' ')) {
+        if (p == start || (*(p - 1) == ',' || *(p - 1) == ' ')) {
             break;
         }
 
