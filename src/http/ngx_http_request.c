@@ -2123,11 +2123,11 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 
         if (r->discard_body) {
             r->read_event_handler = ngx_http_discarded_request_body_handler;
+            ngx_add_timer(r->connection->read, clcf->lingering_timeout);
 
             if (r->lingering_time == 0) {
                 r->lingering_time = ngx_time()
                                       + (time_t) (clcf->lingering_time / 1000);
-                ngx_add_timer(r->connection->read, clcf->lingering_timeout);
             }
         }
 
