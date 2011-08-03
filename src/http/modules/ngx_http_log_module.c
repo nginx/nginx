@@ -1055,25 +1055,6 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *flushes,
 
     for ( /* void */ ; s < args->nelts; s++) {
 
-        for (i = 0; i < value[s].len; i++) {
-            if (value[s].data[i] != '%') {
-                continue;
-            }
-
-            ch = value[s].data[i + 1];
-
-            if ((ch >= 'A' && ch <= 'Z')
-                 || (ch >= 'a' && ch <= 'z')
-                 || ch == '{')
-            {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                     "the parameters in the \"%%name\" form are not supported, "
-                     "use the \"$variable\" instead");
-
-                return NGX_CONF_ERROR;
-            }
-        }
-
         i = 0;
 
         while (i < value[s].len) {
