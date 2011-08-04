@@ -26,8 +26,7 @@ static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
 static void ngx_ssl_clear_error(ngx_log_t *log);
 
-static ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone,
-    void *data);
+ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
 static ngx_ssl_session_t *ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
@@ -1505,8 +1504,6 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
     SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
 
     if (shm_zone) {
-        shm_zone->init = ngx_ssl_session_cache_init;
-
         SSL_CTX_sess_set_new_cb(ssl->ctx, ngx_ssl_new_session);
         SSL_CTX_sess_set_get_cb(ssl->ctx, ngx_ssl_get_cached_session);
         SSL_CTX_sess_set_remove_cb(ssl->ctx, ngx_ssl_remove_session);
@@ -1524,7 +1521,7 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 {
     size_t                    len;
