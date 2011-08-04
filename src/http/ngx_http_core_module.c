@@ -71,6 +71,7 @@ static char *ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #if (NGX_HTTP_GZIP)
 static ngx_int_t ngx_http_gzip_accept_encoding(ngx_str_t *ae);
+static ngx_uint_t ngx_http_gzip_quantity(u_char *p, u_char *last);
 static char *ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #endif
@@ -2189,7 +2190,7 @@ ok:
 
 /*
  * gzip is enabled for the following quantities:
- *     "gzip; q=0.001" ... "gzip; q=0.999", "gzip; q=1"
+ *     "gzip; q=0.001" ... "gzip; q=1.000"
  * gzip is disabled for the following quantities:
  *     "gzip; q=0" ... "gzip; q=0.000", and for any invalid cases
  */
@@ -2197,8 +2198,7 @@ ok:
 static ngx_int_t
 ngx_http_gzip_accept_encoding(ngx_str_t *ae)
 {
-    u_char      c, *p, *start, *last;
-    ngx_uint_t  n, q;
+    u_char  *p, *start, *last;
 
     start = ae->data;
     last = start + ae->len;
@@ -2255,56 +2255,65 @@ equal:
         return NGX_DECLINED;
     }
 
+    if (ngx_http_gzip_quantity(p, last) == 0) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_uint_t
+ngx_http_gzip_quantity(u_char *p, u_char *last)
+{
+    u_char      c;
+    ngx_uint_t  n, q;
+
     c = *p++;
 
-    if (c == '1') {
-        if (p == last || *p == ',' || *p == ' ') {
-            return NGX_OK;
-        }
-        return NGX_DECLINED;
+    if (c != '0' && c != '1') {
+        return 0;
     }
 
-    if (c != '0') {
-        return NGX_DECLINED;
-    }
+    q = (c - '0') * 100;
 
     if (p == last) {
-        return NGX_DECLINED;
+        return q;
     }
 
-    if (*p++ != '.') {
-        return NGX_DECLINED;
+    c = *p++;
+
+    if (c == ',' || c == ' ') {
+        return q;
+    }
+
+    if (c != '.') {
+        return 0;
     }
 
     n = 0;
-    q = 0;
 
     while (p < last) {
         c = *p++;
 
-        if (c == ',') {
+        if (c == ',' || c == ' ') {
             break;
         }
 
-        if (c >= '1' && c <= '9') {
-            n++;
-            q++;
-            continue;
-        }
-
-        if (c == '0') {
+        if (c >= '0' && c <= '9') {
+            q += c - '0';
             n++;
             continue;
         }
 
-        return NGX_DECLINED;
+        return 0;
     }
 
-    if (n < 4 && q != 0) {
-        return NGX_OK;
+    if (q > 100 || n == 0 || n > 3) {
+        return 0;
     }
 
-    return NGX_DECLINED;
+    return q;
 }
 
 #endif
