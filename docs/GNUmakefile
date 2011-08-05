@@ -10,7 +10,7 @@ define  XSLScript
 		com.pault.StyleSheet					\
 		-x com.pault.XX -y com.pault.XX				\
 		$(1) docs/xsls/dump.xsls				\
-	| perl -e 'undef $$/; $$_ = <>; s/(\n\n)+/\n/gs; print' > $(2)
+	| sed 's/ *$$//;/^ *$$/N;/\n *$$/D' > $(2)
 
 	if [ ! -s $(2) ]; then rm $(2); fi; test -s $(2)
 endef
