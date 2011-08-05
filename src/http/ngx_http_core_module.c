@@ -2309,7 +2309,7 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
         return 0;
     }
 
-    if (q > 100 || n == 0 || n > 3) {
+    if (q > 100 || n > 3) {
         return 0;
     }
 
