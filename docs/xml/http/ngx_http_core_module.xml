@@ -1,0 +1,41 @@
+<!DOCTYPE module SYSTEM "../../dtd/module.dtd">
+
+<module title="ngx_http_core_module"
+        link="/en/docs/http/ngx_http_core_module.html"
+        lang="en">
+
+<section title="Directives">
+
+<directive name="client_body_buffer_size">
+
+<syntax>client_body_buffer_size <value>size</value></syntax>
+<default>client_body_buffer_size 8k/16k</default>
+<context>http, server, location</context>
+
+<para>
+Directive sets client request body buffer size.
+If the request body is larger than the buffer,
+then the whole body or some its part is written to temporary file.
+By default buffer size is equal to 2 memory page sizes.
+This is 8K on x86, other 32-bit platforms, and x86-64.
+It is usually 16K on other 64-bit platforms.
+</para>
+
+</directive>
+
+
+<directive name="sendfile">
+
+<syntax>sendfile <value>[on|off]</value></syntax>
+<default>sendfile off</default>
+<context>http, server, location</context>
+
+<para>
+Directive enables or disables sendfile() usage.
+</para>
+
+</directive>
+
+</section>
+
+</module>

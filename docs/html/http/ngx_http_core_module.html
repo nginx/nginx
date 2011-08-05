@@ -1,0 +1,10 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>ngx_http_core_module</title></head><body><center><h4>Directives</h4></center><a name="client_body_buffer_size"></a><center><h4>client_body_buffer_size</h4></center>syntax: client_body_buffer_size <i>size</i><br>default: client_body_buffer_size 8k/16k<br>context: http, server, location<br><p>
+Directive sets client request body buffer size.
+If the request body is larger than the buffer,
+then the whole body or some its part is written to temporary file.
+By default buffer size is equal to 2 memory page sizes.
+This is 8K on x86, other 32-bit platforms, and x86-64.
+It is usually 16K on other 64-bit platforms.
+</p><a name="sendfile"></a><center><h4>sendfile</h4></center>syntax: sendfile <i>[on|off]</i><br>default: sendfile off<br>context: http, server, location<br><p>
+Directive enables or disables sendfile() usage.
+</p></body></html>

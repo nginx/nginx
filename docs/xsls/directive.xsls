@@ -1,0 +1,15 @@
+X:stylesheet {
+
+X:template = "directive" {
+    <a name="{@name}" /> <center><h4> !{@name} </h4></center>
+    !! "syntax";
+    !! "default";
+    !! "context";
+    !! "para";
+}
+
+X:template = "syntax" { X:text {syntax: } !!; <br/> }
+X:template = "default" { X:text {default: } !!; <br/> }
+X:template = "context" { X:text {context: } !!; <br/> }
+
+}

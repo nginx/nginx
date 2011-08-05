@@ -52,3 +52,19 @@ docs/xslt/changes.xslt:		docs/xsls/changes.xsls
 
 	$(call XSLScript, docs/xsls/changes.xsls, $@)
 
+html:									\
+	docs/html/http/ngx_http_core_module.html
+
+docs/html/http/ngx_http_core_module.html:				\
+		docs/xml/http/ngx_http_core_module.xml			\
+		docs/xslt/module.xslt					\
+		docs/dtd/module.dtd
+	$(call XSLT, docs/xslt/module.xslt, $<, $@)
+
+docs/xslt/module.xslt:		docs/xsls/module.xsls			\
+		docs/xslt/directive.xslt				\
+		docs/xslt/content.xslt
+	$(call XSLScript, $<, $@)
+
+docs/xslt/%.xslt:		docs/xsls/%.xsls
+	$(call XSLScript, $<, $@)

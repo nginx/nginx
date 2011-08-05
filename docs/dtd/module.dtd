@@ -1,0 +1,24 @@
+
+<!ELEMENT module       (section+) >
+<!ATTLIST module       title      CDATA #REQUIRED
+                       link       CDATA #REQUIRED
+                       lang       (en)  #REQUIRED
+>
+
+<!ELEMENT section      (directive+ | para+) >
+<!ATTLIST section      title      CDATA #REQUIRED
+                       name       CDATA #IMPLIED
+>
+
+<!ELEMENT directive    (syntax, default, context, para+) >
+<!ATTLIST directive    name       CDATA #REQUIRED >
+
+<!ELEMENT syntax       (#PCDATA | value)* >
+<!ELEMENT default      (#PCDATA)* >
+<!ELEMENT context      (#PCDATA)* >
+
+<!ELEMENT para         (#PCDATA | value)* >
+<!ELEMENT value        (#PCDATA)* >
+
+<!ENTITY  nbsp         "&#xA0;" >
+<!ENTITY  mdash        "&#xA0;- " >

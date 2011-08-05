@@ -1,0 +1,19 @@
+X:stylesheet {
+
+X:template = "section[@name and @title]" {
+    <a name="{@name}" /> <center><h4> !{@title} </h4></center>
+    !!;
+}
+
+X:template = "section[not(@name) and @title]" {
+    <center><h4> !{@title} </h4></center>
+    !!;
+}
+
+X:template = "section[not(@name) and not(@title)]" { !!; }
+
+X:template = "para" { <p> !!; </p> }
+
+X:template = "value" { <i> !!; </i> }
+
+}
