@@ -6,20 +6,21 @@ TEMP=	tmp
 CP=	$(HOME)/java
 
 define  XSLScript
-	javavm -cp $(CP)/xsls/saxon.jar:$(CP)/xsls/xsls.jar		\
+	java -cp $(CP)/xsls/saxon.jar:$(CP)/xsls/xsls.jar		\
 		com.pault.StyleSheet					\
 		-x com.pault.XX -y com.pault.XX				\
-	$(1) docs/xsls/dump.xsls					\
-	| awk 'BEGIN{e=0}/^\n*$$/{e=1;next}{if(e){print"";e=0};print}' > $(2)
+		$(1) docs/xsls/dump.xsls				\
+	| perl -e 'undef $$/; $$_ = <>; s/(\n\n)+/\n/gs; print' > $(2)
 
 	if [ ! -s $(2) ]; then rm $(2); fi; test -s $(2)
 endef
 
 define  XSLT
-	xsltproc $(shell echo $4					\
+	xmllint --noout --valid $2;					\
+	xsltproc -o $3							\
+		$(shell echo $4						\\
 		| sed -e "s/\([^= ]*\)=\([^= ]*\)/--param \1 \"'\2'\"/g") \
-		$3 $1							\
-	> $(HTML)/$(strip $(2))
+		$1 $2
 endef
 
 
