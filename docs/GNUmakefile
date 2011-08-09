@@ -16,7 +16,7 @@ define  XSLScript
 endef
 
 define  XSLT
-	xmllint --noout --valid $2;					\
+	xmllint --noout --valid $2
 	xsltproc -o $3							\
 		$(shell echo $4						\\
 		| sed -e "s/\([^= ]*\)=\([^= ]*\)/--param \1 \"'\2'\"/g") \
