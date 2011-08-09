@@ -10,25 +10,27 @@
    <xsl:variable select="/module/@link" name="LINK"/>
 
    <xsl:include href="directive.xslt"/>
+
    <xsl:include href="content.xslt"/>
-   
+
    <xsl:template match="/module">
-    
+
       <html>
          <head>
-    
+
             <title>
-               <xsl:value-of select="@title"/> 
+               <xsl:value-of select="@title"/>
             </title>
-    
+
          </head>
-    
+
          <body>
 
             <xsl:apply-templates/>
-    
+
          </body>
-    
+
       </html>
    </xsl:template>
+
 </xsl:stylesheet>
