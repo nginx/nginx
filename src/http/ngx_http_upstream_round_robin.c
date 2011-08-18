@@ -585,7 +585,7 @@ failed:
 static ngx_uint_t
 ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers)
 {
-    ngx_uint_t                    i, n;
+    ngx_uint_t                    i, n, reset = 0;
     ngx_http_upstream_rr_peer_t  *peer;
 
     peer = &peers->peer[0];
@@ -622,6 +622,10 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peers_t *peers)
             }
 
             return n;
+        }
+
+        if (reset++) {
+            return 0;
         }
 
         for (i = 0; i < peers->number; i++) {
