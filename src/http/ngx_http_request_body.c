@@ -372,7 +372,9 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
     }
 
-    if (r->request_body_in_file_only && rb->bufs->next) {
+    if (rb->bufs->next
+        && (r->request_body_in_file_only || r->request_body_in_single_buf))
+    {
         rb->bufs = rb->bufs->next;
     }
 
