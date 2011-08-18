@@ -74,7 +74,9 @@ esac
 
 cat << END                                                    >> $NGX_MAKEFILE
 
-manpage:
+manpage:	$NGX_OBJS/nginx.8
+
+$NGX_OBJS/nginx.8:	man/nginx.8 $NGX_AUTO_CONFIG_H
 	sed -e "s|%%PREFIX%%|$NGX_PREFIX|" \\
 		-e "s|%%PID_PATH%%|$NGX_PID_PATH|" \\
 		-e "s|%%CONF_PATH%%|$NGX_CONF_PATH|" \\
