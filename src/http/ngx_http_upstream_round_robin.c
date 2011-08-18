@@ -228,13 +228,18 @@ ngx_http_upstream_init_round_robin_peer(ngx_http_request_t *r,
     rrp->peers = us->peer.data;
     rrp->current = 0;
 
-    if (rrp->peers->number <= 8 * sizeof(uintptr_t)) {
+    n = rrp->peers->number;
+
+    if (rrp->peers->next && rrp->peers->next->number > n) {
+        n = rrp->peers->next->number;
+    }
+
+    if (n <= 8 * sizeof(uintptr_t)) {
         rrp->tried = &rrp->data;
         rrp->data = 0;
 
     } else {
-        n = (rrp->peers->number + (8 * sizeof(uintptr_t) - 1))
-                / (8 * sizeof(uintptr_t));
+        n = (n + (8 * sizeof(uintptr_t) - 1)) / (8 * sizeof(uintptr_t));
 
         rrp->tried = ngx_pcalloc(r->pool, n * sizeof(uintptr_t));
         if (rrp->tried == NULL) {
