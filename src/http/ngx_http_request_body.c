@@ -143,6 +143,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             r->header_in->pos += (size_t) r->headers_in.content_length_n;
             r->request_length += r->headers_in.content_length_n;
+            b->last = r->header_in->pos;
 
             if (r->request_body_in_file_only) {
                 if (ngx_http_write_request_body(r, rb->bufs) != NGX_OK) {
