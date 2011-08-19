@@ -29,21 +29,23 @@ changes:	$(TEMP)/$(NGINX)/CHANGES.ru				\
 
 
 $(TEMP)/$(NGINX)/CHANGES.ru:	docs/xml/nginx/changes.xml		\
+				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	test -d $(TEMP)/$(NGINX) || mkdir -p $(TEMP)/$(NGINX)
 
-	xsltproc --param lang "'ru'"					\
+	xsltproc --stringparam lang ru					\
 		-o $(TEMP)/$(NGINX)/CHANGES.ru				\
 		docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 
 
 $(TEMP)/$(NGINX)/CHANGES:	docs/xml/nginx/changes.xml		\
+				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	test -d $(TEMP)/$(NGINX) || mkdir -p $(TEMP)/$(NGINX)
 
-	xsltproc --param lang "'en'"					\
+	xsltproc --stringparam lang en					\
 		-o $(TEMP)/$(NGINX)/CHANGES				\
 		docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 
@@ -55,16 +57,15 @@ docs/xslt/changes.xslt:		docs/xsls/changes.xsls
 html:									\
 	docs/html/http/ngx_http_core_module.html
 
-docs/html/http/ngx_http_core_module.html:				\
-		docs/xml/http/ngx_http_core_module.xml			\
+docs/html/http/%.html:							\
+		docs/xml/http/%.xml					\
 		docs/xslt/module.xslt					\
 		docs/dtd/module.dtd
 	$(call XSLT, docs/xslt/module.xslt, $<, $@)
 
-docs/xslt/module.xslt:		docs/xsls/module.xsls			\
+docs/xslt/module.xslt:							\
 		docs/xslt/directive.xslt				\
 		docs/xslt/content.xslt
-	$(call XSLScript, $<, $@)
 
 docs/xslt/%.xslt:		docs/xsls/%.xsls
 	$(call XSLScript, $<, $@)
