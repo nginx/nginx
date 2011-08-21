@@ -580,7 +580,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setsockopt(SO_ACCEPTFILTER, \"%s\") "
-                              " for %V failed, ignored",
+                              "for %V failed, ignored",
                               ls[i].accept_filter, &ls[i].addr_text);
                 continue;
             }

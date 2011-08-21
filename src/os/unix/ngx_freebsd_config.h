@@ -92,11 +92,6 @@ typedef struct aiocb  ngx_aiocb_t;
 #define NGX_LISTEN_BACKLOG        -1
 
 
-#if (defined SO_ACCEPTFILTER && !defined NGX_HAVE_DEFERRED_ACCEPT)
-#define NGX_HAVE_DEFERRED_ACCEPT  1
-#endif
-
-
 #if (__FreeBSD_version < 430000 || __FreeBSD_version < 500012)
 
 pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
