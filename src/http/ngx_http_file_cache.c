@@ -30,8 +30,7 @@ static time_t ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache);
 static time_t ngx_http_file_cache_expire(ngx_http_file_cache_t *cache);
 static void ngx_http_file_cache_delete(ngx_http_file_cache_t *cache,
     ngx_queue_t *q, u_char *name);
-static ngx_int_t
-    ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache);
+static void ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache);
 static ngx_int_t ngx_http_file_cache_noop(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 static ngx_int_t ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx,
@@ -1261,48 +1260,6 @@ ngx_http_file_cache_loader(void *data)
 
 
 static ngx_int_t
-ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache)
-{
-    ngx_msec_t  elapsed;
-
-    if (++cache->files >= cache->loader_files) {
-
-        ngx_time_update();
-
-        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "http file cache loader time elapsed: %M", elapsed);
-
-        if (elapsed >= cache->loader_threshold) {
-
-            if (cache->loader_files > 1) {
-                cache->loader_files /= 2;
-                ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
-                              "cache %V loader_files decreased to %ui",
-                              &cache->path->name, cache->loader_files);
-
-            } else {
-                cache->loader_sleep *= 2;
-                ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
-                              "cache %V loader_sleep increased to %Mms",
-                              &cache->path->name, cache->loader_sleep);
-            }
-        }
-
-        ngx_msleep(cache->loader_sleep);
-
-        ngx_time_update();
-
-        cache->last = ngx_current_msec;
-        cache->files = 0;
-    }
-
-    return (ngx_quit || ngx_terminate) ? NGX_ABORT : NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_file_cache_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
     return NGX_OK;
@@ -1312,6 +1269,7 @@ ngx_http_file_cache_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 static ngx_int_t
 ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
+    ngx_msec_t              elapsed;
     ngx_http_file_cache_t  *cache;
 
     cache = ctx->data;
@@ -1320,7 +1278,35 @@ ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         (void) ngx_http_file_cache_delete_file(ctx, path);
     }
 
-    return ngx_http_file_cache_loader_sleep(cache);
+    if (++cache->files >= cache->loader_files) {
+        ngx_http_file_cache_loader_sleep(cache);
+
+    } else {
+        ngx_time_update();
+
+        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "http file cache loader time elapsed: %M", elapsed);
+
+        if (elapsed >= cache->loader_threshold) {
+            ngx_http_file_cache_loader_sleep(cache);
+        }
+    }
+
+    return (ngx_quit || ngx_terminate) ? NGX_ABORT : NGX_OK;
+}
+
+
+static void
+ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache)
+{
+    ngx_msleep(cache->loader_sleep);
+
+    ngx_time_update();
+
+    cache->last = ngx_current_msec;
+    cache->files = 0;
 }
 
 
