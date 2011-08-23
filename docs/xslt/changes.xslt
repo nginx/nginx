@@ -126,7 +126,7 @@
 
          <xsl:value-of select="$prefix"/>
 
-         <xsl:value-of select="translate(substring($text, $offset, $length), ' ', ' ')"/>
+         <xsl:value-of select="normalize-space(translate(substring($text, $offset, $length),                                     ' ', ' '))"/>
 
          <xsl:text>
 </xsl:text>
