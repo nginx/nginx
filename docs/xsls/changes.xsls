@@ -85,7 +85,8 @@ X:template wrap(text, prefix) {
 
         !{$prefix}
 
-        !{translate(substring($text, $offset, $length), '&#xA0;', ' ')}
+        !{normalize-space(translate(substring($text, $offset, $length),
+                                    '&#xA0;', ' '))}
 
         X:text {&#10;}
 
