@@ -102,15 +102,16 @@
       <xsl:if test="$text">
 
          <xsl:variable name="offset">
+
             <xsl:choose>
-
                <xsl:when test="starts-with($text, concat($br, ' '))">
-
                   <xsl:value-of select="string-length($br) + 2"/>
                </xsl:when>
-
+               <xsl:when test="starts-with($text, $br)">
+                  <xsl:value-of select="string-length($br) + 1"/>
+               </xsl:when>
                <xsl:otherwise>
-                1</xsl:otherwise>
+                    1</xsl:otherwise>
             </xsl:choose>
          </xsl:variable>
 
@@ -142,19 +143,23 @@
       <xsl:param name="prefix"/>
       <xsl:param name="length"/>
 
-      <xsl:variable select="substring-before(substring($text, 1, $length - $prefix),                                     $br)" name="break"/>
+      <xsl:variable select="substring-before(substring($text, 1,                                     $length - $prefix + string-length($br)),                                     $br)" name="break"/>
 
       <xsl:choose>
          <xsl:when test="$break">
             <xsl:value-of select="string-length($break)"/>
          </xsl:when>
          <xsl:when test="$length = 0">
-            <xsl:value-of select="$max"/>
+            <xsl:value-of select="$max - $prefix"/>
          </xsl:when>
-         <xsl:when test="string-length($text) + $prefix &lt;= $length                 or substring($text, $length - $prefix, 1) = ' '">
+         <xsl:when test="string-length($text) + $prefix &lt;= $length">
             <xsl:value-of select="$length - $prefix"/>
          </xsl:when>
+         <xsl:when test="substring($text, $length - $prefix + 1, 1) = ' '">
+            <xsl:value-of select="$length - $prefix + 1"/>
+         </xsl:when>
          <xsl:otherwise>
+
             <xsl:call-template name="length">
                <xsl:with-param select="$text" name="text"/>
                <xsl:with-param select="$prefix" name="prefix"/>
