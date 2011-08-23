@@ -115,7 +115,7 @@ nginx hogged CPU if all servers in an upstream were marked as "down".
 <change type="bugfix">
 <para lang="ru">
 при переконфигурации мог произойти segmentation fault,
-если в предыдущей конфигурации был определён, но использовался
+если в предыдущей конфигурации был определён, но не использовался
 ssl_session_cache.
 </para>
 <para lang="en">
