@@ -19,7 +19,7 @@
 </para>
 <para lang="en">
 now cache loader processes either as many files as specified by "loader_files"
-parameter or works no longer than time specified by "loader_threshold"
+parameter or works no longer than time specified by the "loader_threshold"
 parameter during each iteration.
 </para>
 </change>
@@ -75,10 +75,10 @@ the bug had appeared in 1.1.0.
 
 <change type="bugfix">
 <para lang="ru">
-обработка тела запроса могло быть неверной, если клиент использовал pipelining.
+обработка тела запроса могла быть неверной, если клиент использовал pipelining.
 </para>
 <para lang="en">
-request body might be incorrectly processed if client used pipelining.
+request body might be processed incorrectly if client used pipelining.
 </para>
 </change>
 
@@ -94,7 +94,7 @@ in the "request_body_in_single_buf" directive.
 <change type="bugfix">
 <para lang="ru">
 в директивах proxy_set_body и proxy_pass_request_body
-при использовании SSL соединения с бэкендом.
+при использовании SSL-соединения с бэкендом.
 </para>
 <para lang="en">
 in "proxy_set_body" and "proxy_pass_request_body" directives
@@ -104,7 +104,7 @@ if SSL connection to backend was used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx нагружал процессор, если все сервера в upstream'е были помечены
+nginx нагружал процессор, если все серверы в upstream'е были помечены
 флагом down.
 </para>
 <para lang="en">
@@ -115,8 +115,8 @@ nginx hogged CPU if all servers in an upstream were marked as "down".
 <change type="bugfix">
 <para lang="ru">
 при переконфигурации мог произойти segmentation fault,
-если ssl_session_cache был определён, но не использовался в предыдущей
-конфигурации.
+если в предыдущей конфигурации был определён, но использовался
+ssl_session_cache.
 </para>
 <para lang="en">
 a segmentation fault might occur during reconfiguration
@@ -138,7 +138,7 @@ if many backup servers were used in an upstream.
 <change type="bugfix">
 <para lang="ru">
 при использовании директив fastcgi/scgi/uwsgi_param
-со значением, начинающимся со строки "HTTP_",
+со значениями, начинающимися со строки "HTTP_",
 в рабочем процессе мог произойти segmentation fault;
 ошибка появилась в 0.8.40.
 </para>
