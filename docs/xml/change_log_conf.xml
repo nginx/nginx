@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="KOI8-R" ?>
+<?xml version="1.0" ?>
 <!DOCTYPE configuration SYSTEM "../dtd/change_log_conf.dtd" >
 
 <configuration>
@@ -9,14 +9,14 @@
 <indent>       </indent>
 
 <changes lang="ru">
-    <title>Изменения в </title>
+    <title>п≤п╥п╪п╣п╫п╣п╫п╦я▐ п╡ </title>
     <length>66</length>
 
-    <bugfix>Исправление</bugfix>
-    <feature>Добавление</feature>
-    <change>Изменение</change>
-    <security>Безопасность</security>
-    <workaround>Изменение</workaround>
+    <bugfix>п≤я│п©я─п╟п╡п╩п╣п╫п╦п╣</bugfix>
+    <feature>п■п╬п╠п╟п╡п╩п╣п╫п╦п╣</feature>
+    <change>п≤п╥п╪п╣п╫п╣п╫п╦п╣</change>
+    <security>п▒п╣п╥п╬п©п╟я│п╫п╬я│я┌я▄</security>
+    <workaround>п≤п╥п╪п╣п╫п╣п╫п╦п╣</workaround>
 </changes>
 
 <changes lang="en">

@@ -1,6 +1,6 @@
 X:stylesheet {
 
-X:output method="text" encoding="koi8-r";
+X:output method="text";
 
 X:param lang="'en'";
 X:param configuration="'../xml/change_log_conf.xml'";
