@@ -13,13 +13,13 @@
 
 <change type="change">
 <para lang="ru">
-теперь загрузчик кэша за каждую итерацию обрабатывает число файлов,
-указанное в параметре load_files, или же работает не больше времени,
-указанное в параметре loader_threshold.
+теперь загрузчик кэша за каждую итерацию либо обрабатывает число файлов,
+указанное в параметре load_files, либо работает не дольше времени,
+указанного в параметре loader_threshold.
 </para>
 <para lang="en">
 now cache loader processes either as many files as specified by "loader_files"
-parameter or works no more than time specified by "loader_threshold"
+parameter or works no longer than time specified by "loader_threshold"
 parameter during each iteration.
 </para>
 </change>
@@ -29,7 +29,7 @@ parameter during each iteration.
 SIGWINCH сигнал теперь работает только в режиме демона.
 </para>
 <para lang="en">
-now SIGWINCH signal works only in deamon mode.
+now SIGWINCH signal works only in daemon mode.
 </para>
 </change>
 
@@ -46,7 +46,7 @@ Thanks to Den Ivanov.
 
 <change type="feature">
 <para lang="ru">
-поддержка accept фильтров на NetBSD.
+теперь на NetBSD поддерживаются accept фильтры.
 </para>
 <para lang="en">
 accept filters are now supported on NetBSD.
@@ -58,7 +58,7 @@ accept filters are now supported on NetBSD.
 nginx не собирался на Linux 3.0.
 </para>
 <para lang="en">
-nginx could not be build on Linux 3.0.
+nginx could not be built on Linux 3.0.
 </para>
 </change>
 
@@ -104,7 +104,7 @@ if SSL connection to backend was used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx нагружал процессор, если все сервера в upstream'е были отмечены
+nginx нагружал процессор, если все сервера в upstream'е были помечены
 флагом down.
 </para>
 <para lang="en">
@@ -120,7 +120,7 @@ nginx hogged CPU if all servers in an upstream were marked as "down".
 </para>
 <para lang="en">
 a segmentation fault might occur during reconfiguration
-if ssl_session_cache was defined but not used in a previous configuration.
+if ssl_session_cache was defined but not used in previous configuration.
 </para>
 </change>
 
