@@ -64,10 +64,16 @@ X:template para(prefix) = "para" {
 X:template wrap(text, prefix) {
     X:if "$text" {
         X:var offset = {
-            X:if "starts-with($text, concat($br, ' '))" {
-                !{string-length($br) + 2}
-            } else {
-                1
+            X:choose {
+                X:when "starts-with($text, concat($br, ' '))" {
+                    !{string-length($br) + 2}
+                }
+                X:when "starts-with($text, $br)" {
+                    !{string-length($br) + 1}
+                }
+                X:otherwise {
+                    1
+                }
             }
         }
 
@@ -89,18 +95,21 @@ X:template wrap(text, prefix) {
 
 
 X:template length(text, prefix, length) {
-    X:var break = "substring-before(substring($text, 1, $length - $prefix),
+    X:var break = "substring-before(substring($text, 1,
+                                    $length - $prefix + string-length($br)),
                                     $br)"
 
     X:choose {
         X:when "$break" { !{string-length($break)} }
 
-        X:when "$length = 0" { !{$max} }
+        X:when "$length = 0" { !{$max - $prefix} }
 
-        X:when "string-length($text) + $prefix &lt;= $length
-                or substring($text, $length - $prefix, 1) = ' '"
-        {
+        X:when "string-length($text) + $prefix &lt;= $length" {
             !{$length - $prefix}
+        }
+
+        X:when "substring($text, $length - $prefix + 1, 1) = ' '" {
+            !{$length - $prefix + 1}
         }
 
         X:otherwise {
