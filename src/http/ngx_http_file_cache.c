@@ -408,6 +408,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
             c->node->body_start = c->body_start;
             c->node->exists = 1;
             c->node->uniq = c->uniq;
+            c->node->fs_size = c->fs_size;
 
             cache->sh->size += c->fs_size;
         }
