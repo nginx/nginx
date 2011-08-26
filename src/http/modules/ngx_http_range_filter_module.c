@@ -146,7 +146,6 @@ static ngx_int_t
 ngx_http_range_header_filter(ngx_http_request_t *r)
 {
     time_t                        if_range;
-    ngx_int_t                     rc;
     ngx_http_range_filter_ctx_t  *ctx;
 
     if (r->http_version < NGX_HTTP_VERSION_10
@@ -192,10 +191,9 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    rc = ngx_http_range_parse(r, ctx);
+    switch (ngx_http_range_parse(r, ctx)) {
 
-    if (rc == NGX_OK) {
-
+    case NGX_OK:
         ngx_http_set_ctx(r, ctx, ngx_http_range_body_filter_module);
 
         r->headers_out.status = NGX_HTTP_PARTIAL_CONTENT;
@@ -206,15 +204,16 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         }
 
         return ngx_http_range_multipart_header(r, ctx);
-    }
 
-    if (rc == NGX_HTTP_RANGE_NOT_SATISFIABLE) {
+    case NGX_HTTP_RANGE_NOT_SATISFIABLE:
         return ngx_http_range_not_satisfiable(r);
+
+    case NGX_ERROR:
+        return NGX_ERROR;
+
+    default: /* NGX_DECLINED */
+        break;
     }
-
-    /* rc == NGX_ERROR */
-
-    return rc;
 
 next_filter:
 
@@ -235,11 +234,12 @@ ngx_int_t
 ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 {
     u_char            *p;
-    off_t              start, end;
+    off_t              start, end, size;
     ngx_uint_t         suffix;
     ngx_http_range_t  *range;
 
     p = r->headers_in.range->value.data + 6;
+    size = 0;
 
     for ( ;; ) {
         start = 0;
@@ -277,9 +277,10 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 
                 range->start = start;
                 range->end = r->headers_out.content_length_n;
+                size += range->end - start;
 
                 if (*p++ != ',') {
-                    return NGX_OK;
+                    break;
                 }
 
                 continue;
@@ -331,10 +332,18 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             range->end = end + 1;
         }
 
+        size += range->end - start;
+
         if (*p++ != ',') {
-            return NGX_OK;
+            break;
         }
     }
+
+    if (size > r->headers_out.content_length_n) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
