@@ -561,7 +561,15 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
         lowcase_key = NULL;
 
         if (scf->header_params) {
-            ignored = ngx_palloc(r->pool, scf->header_params * sizeof(void *));
+            n = 0;
+            part = &r->headers_in.headers.part;
+
+            while (part) {
+                n += part->nelts;
+                part = part->next;
+            }
+
+            ignored = ngx_palloc(r->pool, n * sizeof(void *));
             if (ignored == NULL) {
                 return NGX_ERROR;
             }
