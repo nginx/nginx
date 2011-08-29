@@ -620,6 +620,19 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # Solaris has POSIX semaphores in librt
+    ngx_feature="POSIX semaphores in librt"
+    ngx_feature_libs=-lrt
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -lrt"
+    fi
+fi
+
+
 ngx_feature="struct msghdr.msg_control"
 ngx_feature_name="NGX_HAVE_MSGHDR_MSG_CONTROL"
 ngx_feature_run=no
