@@ -104,7 +104,7 @@ is given by prefixes "~" or "~*".
 Спасибо Денису Латыпову.
 </para>
 <para lang="en">
-now shared zones and caches use POSIX semaphores on Linux. <br/>
+now shared zones and caches use POSIX semaphores on Linux.<br/>
 Thanks to Denis F. Latypoff.
 </para>
 </change>
@@ -218,7 +218,7 @@ now shared zones and caches use POSIX semaphores.
 Спасибо Adam Bocim.
 </para>
 <para lang="en">
-in the "rotate" parameter of the "image_filter" directive. <br/>
+in the "rotate" parameter of the "image_filter" directive.<br/>
 Thanks to Adam Bocim.
 </para>
 </change>
@@ -458,7 +458,7 @@ Thanks to Michael Lustfield.
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-now nginx uses a default listen backlog value -1 on Linux. <br/>
+now nginx uses a default listen backlog value -1 on Linux.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -986,7 +986,7 @@ Thanks to Yuriy Taraday and Frank Enderle.
 <change type="bugfix">
 <para lang="ru">
 директива rewrite не экранировала символ ";" при копировании из URI
-в аргументы. <br/>
+в аргументы.<br/>
 Спасибо Daisuke Murase.
 </para>
 <para lang="en">
@@ -1102,7 +1102,7 @@ Thanks to Laurence Rowe.
 <para lang="ru">
 ответ SSI модуля мог передаваться не полностью после команды include
 с параметром wait="yes";
-ошибка появилась в 0.7.25. <br/>
+ошибка появилась в 0.7.25.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
@@ -1827,7 +1827,7 @@ the bug had appeared in 0.8.11.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует пробелы в конце URI. <br/>
+теперь nginx/Windows игнорирует пробелы в конце URI.<br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
@@ -1838,7 +1838,7 @@ Thanks to Dan Crowley, Core Security Technologies.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует короткие имена файлов. <br/>
+теперь nginx/Windows игнорирует короткие имена файлов.<br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
@@ -1922,7 +1922,7 @@ Thanks to Maxim Dounin.
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-regular expression named captures worked for two names only. <br/>
+regular expression named captures worked for two names only.<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -1959,7 +1959,7 @@ Thanks to Julian Reich.
 </para>
 <para lang="en">
 if the "expires modified" set date in the past, then a negative number
-was set in the "Cache-Control" response header line. <br/>
+was set in the "Cache-Control" response header line.<br/>
 Thanks to Alex Kapranoff.
 </para>
 </change>
