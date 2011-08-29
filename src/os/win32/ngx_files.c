@@ -228,7 +228,8 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
     ngx_uint_t          collision;
     ngx_atomic_uint_t   num;
 
-    name = ngx_alloc(to->len + 1 + 10 + 1 + sizeof("DELETE"), log);
+    name = ngx_alloc(to->len + 1 + NGX_ATOMIC_T_LEN + 1 + sizeof("DELETE"),
+                     log);
     if (name == NULL) {
         return NGX_ENOMEM;
     }
