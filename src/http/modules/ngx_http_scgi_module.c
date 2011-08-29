@@ -1030,6 +1030,8 @@ ngx_http_scgi_create_loc_conf(ngx_conf_t *cf)
     /* "scgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
 
+    ngx_str_set(&conf->upstream.module, "scgi");
+
     return conf;
 }
 

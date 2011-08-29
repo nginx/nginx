@@ -642,15 +642,17 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
         return NGX_ERROR;
     }
 
-    if (ngx_strncasecmp(proxy.data, (u_char *) "http://", 7) == 0) {
-
+    if (proxy.len > 7
+        && ngx_strncasecmp(proxy.data, (u_char *) "http://", 7) == 0)
+    {
         add = 7;
         port = 80;
 
 #if (NGX_HTTP_SSL)
 
-    } else if (ngx_strncasecmp(proxy.data, (u_char *) "https://", 8) == 0) {
-
+    } else if (proxy.len > 8
+               && ngx_strncasecmp(proxy.data, (u_char *) "https://", 8) == 0)
+    {
         add = 8;
         port = 443;
         r->upstream->ssl = 1;
@@ -1706,6 +1708,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->headers_hash_max_size = NGX_CONF_UNSET_UINT;
     conf->headers_hash_bucket_size = NGX_CONF_UNSET_UINT;
+
+    ngx_str_set(&conf->upstream.module, "proxy");
 
     return conf;
 }

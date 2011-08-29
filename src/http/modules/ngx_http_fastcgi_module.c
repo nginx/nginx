@@ -2003,6 +2003,8 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->catch_stderr = NGX_CONF_UNSET_PTR;
 
+    ngx_str_set(&conf->upstream.module, "fastcgi");
+
     return conf;
 }
 
