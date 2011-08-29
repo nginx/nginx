@@ -9,6 +9,153 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.6" date="29.07.2011">
+
+<change type="feature">
+<para lang="ru">
+уменьшение времени работы загрузчика кэша.
+</para>
+<para lang="en">
+cache loader run time decrease.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+уменьшение времени загрузки конфигураций с большим количеством HTTPS серверов.
+</para>
+<para lang="en">
+loading time decrease of configuration with large number of HTTPS sites.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx поддерживает шифры с обменом ECDHE-ключами.<br/>
+Спасибо Adrian Kotelba.
+</para>
+<para lang="en">
+now nginx supports ECDHE key exchange ciphers.<br/>
+Thanks to Adrian Kotelba.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива lingering_close.
+</para>
+<para lang="en">
+the "lingering_close" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь разделяемые зоны и кэши используют семафоры POSIX на Solaris.<br/>
+Спасибо Денису Иванову.
+</para>
+<para lang="en">
+now shared zones and caches use POSIX semaphores on Solaris.<br/>
+Thanks to Den Ivanov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Linux 3.0.
+</para>
+<para lang="en">
+nginx could not be built on Linux 3.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив fastcgi/scgi/uwsgi_param
+со значениями, начинающимися со строки "HTTP_",
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 0.8.40.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if "fastcgi/scgi/uwsgi_param" directives were used
+with values starting with "HTTP_";
+the bug had appeared in 0.8.40.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закрытия соединения для pipelined-запросов.
+</para>
+<para lang="en">
+in closing connection for pipelined requests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не запрещал сжатие при получении значения "gzip;q=0"
+в строке "Accept-Encoding" в заголовке запроса клиента.
+</para>
+<para lang="en">
+nginx did not disable gzipping if client sent "gzip;q=0" in
+"Accept-Encoding" request header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+таймаута при небуферизированном проксировании.
+</para>
+<para lang="en">
+in timeout in unbuffered proxied mode.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании переменных в директиве proxy_pass
+при работе с бэкендом по HTTPS.
+</para>
+<para lang="en">
+memory leaks when a "proxy_pass" directive contains variables and proxies
+to an HTTPS backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в проверке параметра директивы proxy_pass, заданного переменными.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+in parameter validaiton of a "proxy_pass" directive with variables.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL не работал на QNX.
+</para>
+<para lang="en">
+SSL did not work on QNX.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL модули не собирались gcc 4.6 без параметра --with-debug.
+</para>
+<para lang="en">
+SSL modules could not be built by gcc 4.6 without --with-debug option.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.5" date="19.07.2011">
 
 <change type="change">
