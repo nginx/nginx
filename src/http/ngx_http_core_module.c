@@ -70,6 +70,8 @@ static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #if (NGX_HTTP_GZIP)
+static ngx_int_t ngx_http_gzip_accept_encoding(ngx_str_t *ae);
+static ngx_uint_t ngx_http_gzip_quantity(u_char *p, u_char *last);
 static char *ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #endif
@@ -2016,24 +2018,35 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
     time_t                     date, expires;
     ngx_uint_t                 p;
     ngx_array_t               *cc;
-    ngx_table_elt_t           *e, *d;
+    ngx_table_elt_t           *e, *d, *ae;
     ngx_http_core_loc_conf_t  *clcf;
 
     r->gzip_tested = 1;
 
-    if (r != r->main
-        || r->headers_in.accept_encoding == NULL
-        || ngx_strcasestrn(r->headers_in.accept_encoding->value.data,
-                           "gzip", 4 - 1)
-           == NULL
+    if (r != r->main) {
+        return NGX_DECLINED;
+    }
 
-        /*
-         * if the URL (without the "http://" prefix) is longer than 253 bytes,
-         * then MSIE 4.x can not handle the compressed stream - it waits
-         * too long, hangs up or crashes
-         */
+    ae = r->headers_in.accept_encoding;
+    if (ae == NULL) {
+        return NGX_DECLINED;
+    }
 
-        || (r->headers_in.msie4 && r->unparsed_uri.len > 200))
+    if (ae->value.len < sizeof("gzip") - 1) {
+        return NGX_DECLINED;
+    }
+
+    /*
+     * test first for the most common case "gzip,...":
+     *   MSIE:    "gzip, deflate"
+     *   Firefox: "gzip,deflate"
+     *   Chrome:  "gzip,deflate,sdch"
+     *   Safari:  "gzip, deflate"
+     *   Opera:   "gzip, deflate"
+     */
+
+    if (ngx_memcmp(ae->value.data, "gzip,", 5) != 0
+        && ngx_http_gzip_accept_encoding(&ae->value) != NGX_OK)
     {
         return NGX_DECLINED;
     }
@@ -2157,6 +2170,135 @@ ok:
     r->gzip_ok = 1;
 
     return NGX_OK;
+}
+
+
+/*
+ * gzip is enabled for the following quantities:
+ *     "gzip; q=0.001" ... "gzip; q=1.000"
+ * gzip is disabled for the following quantities:
+ *     "gzip; q=0" ... "gzip; q=0.000", and for any invalid cases
+ */
+
+static ngx_int_t
+ngx_http_gzip_accept_encoding(ngx_str_t *ae)
+{
+    u_char  *p, *start, *last;
+
+    start = ae->data;
+    last = start + ae->len;
+
+    for ( ;; ) {
+        p = ngx_strcasestrn(start, "gzip", 4 - 1);
+        if (p == NULL) {
+            return NGX_DECLINED;
+        }
+
+        if (p == start || (*(p - 1) == ',' || *(p - 1) == ' ')) {
+            break;
+        }
+
+        start = p + 4;
+    }
+
+    p += 4;
+
+    while (p < last) {
+        switch(*p++) {
+        case ',':
+            return NGX_OK;
+        case ';':
+            goto quantity;
+        case ' ':
+            continue;
+        default:
+            return NGX_DECLINED;
+        }
+    }
+
+    return NGX_OK;
+
+quantity:
+
+    while (p < last) {
+        switch(*p++) {
+        case 'q':
+        case 'Q':
+            goto equal;
+        case ' ':
+            continue;
+        default:
+            return NGX_DECLINED;
+        }
+    }
+
+    return NGX_OK;
+
+equal:
+
+    if (p + 2 > last || *p++ != '=') {
+        return NGX_DECLINED;
+    }
+
+    if (ngx_http_gzip_quantity(p, last) == 0) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_uint_t
+ngx_http_gzip_quantity(u_char *p, u_char *last)
+{
+    u_char      c;
+    ngx_uint_t  n, q;
+
+    c = *p++;
+
+    if (c != '0' && c != '1') {
+        return 0;
+    }
+
+    q = (c - '0') * 100;
+
+    if (p == last) {
+        return q;
+    }
+
+    c = *p++;
+
+    if (c == ',' || c == ' ') {
+        return q;
+    }
+
+    if (c != '.') {
+        return 0;
+    }
+
+    n = 0;
+
+    while (p < last) {
+        c = *p++;
+
+        if (c == ',' || c == ' ') {
+            break;
+        }
+
+        if (c >= '0' && c <= '9') {
+            q += c - '0';
+            n++;
+            continue;
+        }
+
+        return 0;
+    }
+
+    if (q > 100 || n > 3) {
+        return 0;
+    }
+
+    return q;
 }
 
 #endif

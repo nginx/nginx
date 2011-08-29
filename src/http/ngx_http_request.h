@@ -221,7 +221,6 @@ typedef struct {
 
     unsigned                          connection_type:2;
     unsigned                          msie:1;
-    unsigned                          msie4:1;
     unsigned                          msie6:1;
     unsigned                          opera:1;
     unsigned                          gecko:1;
