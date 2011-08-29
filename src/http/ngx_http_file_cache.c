@@ -31,7 +31,7 @@ static time_t ngx_http_file_cache_expire(ngx_http_file_cache_t *cache);
 static void ngx_http_file_cache_delete(ngx_http_file_cache_t *cache,
     ngx_queue_t *q, u_char *name);
 static ngx_int_t
-    ngx_http_file_cache_manager_sleep(ngx_http_file_cache_t *cache);
+    ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache);
 static ngx_int_t ngx_http_file_cache_noop(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 static ngx_int_t ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx,
@@ -376,7 +376,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     if ((size_t) n < c->header_start) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" is too small", c->file.name.data);
-        return NGX_ERROR;
+        return NGX_DECLINED;
     }
 
     h = (ngx_http_file_cache_header_t *) c->buf->pos;
@@ -1208,7 +1208,7 @@ ngx_http_file_cache_manager(void *data)
             return wait;
         }
 
-        if (ngx_http_file_cache_manager_sleep(cache) != NGX_OK) {
+        if (ngx_quit || ngx_terminate) {
             return next;
         }
     }
@@ -1262,7 +1262,7 @@ ngx_http_file_cache_loader(void *data)
 
 
 static ngx_int_t
-ngx_http_file_cache_manager_sleep(ngx_http_file_cache_t *cache)
+ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache)
 {
     ngx_msec_t  elapsed;
 
@@ -1314,7 +1314,7 @@ ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         (void) ngx_http_file_cache_delete_file(ctx, path);
     }
 
-    return ngx_http_file_cache_manager_sleep(cache);
+    return ngx_http_file_cache_loader_sleep(cache);
 }
 
 
@@ -1605,6 +1605,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cache->path->manager = ngx_http_file_cache_manager;
     cache->path->loader = ngx_http_file_cache_loader;
     cache->path->data = cache;
+    cache->path->conf_file = cf->conf_file->file.name.data;
+    cache->path->line = cf->conf_file->line;
 
     if (ngx_add_path(cf, &cache->path) != NGX_OK) {
         return NGX_CONF_ERROR;
