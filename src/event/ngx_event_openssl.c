@@ -371,28 +371,18 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 }
 
 
-ngx_int_t
-ngx_ssl_generate_rsa512_key(ngx_ssl_t *ssl)
+RSA *
+ngx_ssl_rsa512_key_callback(SSL *ssl, int is_export, int key_length)
 {
-    RSA  *key;
+    static RSA  *key;
 
-    if (SSL_CTX_need_tmp_RSA(ssl->ctx) == 0) {
-        return NGX_OK;
+    if (key_length == 512) {
+        if (key == NULL) {
+            key = RSA_generate_key(512, RSA_F4, NULL, NULL);
+        }
     }
 
-    key = RSA_generate_key(512, RSA_F4, NULL, NULL);
-
-    if (key) {
-        SSL_CTX_set_tmp_rsa(ssl->ctx, key);
-
-        RSA_free(key);
-
-        return NGX_OK;
-    }
-
-    ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "RSA_generate_key(512) failed");
-
-    return NGX_ERROR;
+    return key;
 }
 
 
@@ -478,6 +468,45 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     return NGX_OK;
 }
 
+ngx_int_t
+ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+    int      nid;
+    EC_KEY  *ecdh;
+
+    /*
+     * Elliptic-Curve Diffie-Hellman parameters are either "named curves"
+     * from RFC 4492 section 5.1.1, or explicitely described curves over
+     * binary fields. OpenSSL only supports the "named curves", which provide
+     * maximum interoperability.
+     */
+
+    nid = OBJ_sn2nid((const char *) name->data);
+    if (nid == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "Unknown curve name \"%s\"", name->data);
+        return NGX_ERROR;
+    }
+
+    ecdh = EC_KEY_new_by_curve_name(nid);
+    if (ecdh == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "Unable to create curve \"%s\"", name->data);
+        return NGX_ERROR;
+    }
+
+    SSL_CTX_set_tmp_ecdh(ssl->ctx, ecdh);
+
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_ECDH_USE);
+
+    EC_KEY_free(ecdh);
+#endif
+#endif
+
+    return NGX_OK;
+}
 
 ngx_int_t
 ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
@@ -957,10 +986,10 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
 
-    /* the maximum limit size is the maximum uint32_t value - the page size */
+    /* the maximum limit size is the maximum int32_t value - the page size */
 
-    if (limit == 0 || limit > (off_t) (NGX_MAX_UINT32_VALUE - ngx_pagesize)) {
-        limit = NGX_MAX_UINT32_VALUE - ngx_pagesize;
+    if (limit == 0 || limit > (off_t) (NGX_MAX_INT32_VALUE - ngx_pagesize)) {
+        limit = NGX_MAX_INT32_VALUE - ngx_pagesize;
     }
 
     buf = c->ssl->buf;
@@ -1687,20 +1716,24 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     ngx_int_t                 rc;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
-    ngx_connection_t         *c;
     ngx_rbtree_node_t        *node, *sentinel;
     ngx_ssl_session_t        *sess;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
-
-    c = ngx_ssl_get_connection(ssl_conn);
+#if (NGX_DEBUG)
+    ngx_connection_t         *c;
+#endif
 
     hash = ngx_crc32_short(id, (size_t) len);
     *copy = 0;
 
+#if (NGX_DEBUG)
+    c = ngx_ssl_get_connection(ssl_conn);
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ssl get session: %08XD:%d", hash, len);
+#endif
 
     shm_zone = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl_conn),
                                    ngx_ssl_session_cache_index);
