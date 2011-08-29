@@ -127,6 +127,14 @@ static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_http_core_lingering_close[] = {
+    { ngx_string("off"), NGX_HTTP_LINGERING_OFF },
+    { ngx_string("on"), NGX_HTTP_LINGERING_ON },
+    { ngx_string("always"), NGX_HTTP_LINGERING_ALWAYS },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
     { ngx_string("off"), NGX_HTTP_IMS_OFF },
     { ngx_string("exact"), NGX_HTTP_IMS_EXACT },
@@ -531,6 +539,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("lingering_close"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, lingering_close),
+      &ngx_http_core_lingering_close },
 
     { ngx_string("lingering_time"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -3259,6 +3274,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
     clcf->keepalive_requests = NGX_CONF_UNSET_UINT;
+    clcf->lingering_close = NGX_CONF_UNSET_UINT;
     clcf->lingering_time = NGX_CONF_UNSET_MSEC;
     clcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     clcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
@@ -3475,6 +3491,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->keepalive_header, 0);
     ngx_conf_merge_uint_value(conf->keepalive_requests,
                               prev->keepalive_requests, 100);
+    ngx_conf_merge_uint_value(conf->lingering_close,
+                              prev->lingering_close, NGX_HTTP_LINGERING_ON);
     ngx_conf_merge_msec_value(conf->lingering_time,
                               prev->lingering_time, 30000);
     ngx_conf_merge_msec_value(conf->lingering_timeout,
