@@ -926,6 +926,7 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
                            "tree file \"%s\"", file.data);
 
             ctx->size = ngx_de_size(&dir);
+            ctx->fs_size = ngx_de_fs_size(&dir);
             ctx->access = ngx_de_access(&dir);
             ctx->mtime = ngx_de_mtime(&dir);
 

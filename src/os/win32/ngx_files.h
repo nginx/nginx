@@ -227,6 +227,7 @@ ngx_int_t ngx_de_link_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_access(dir)          0
 #define ngx_de_size(dir)                                                     \
   (((off_t) (dir)->finddata.nFileSizeHigh << 32) | (dir)->finddata.nFileSizeLow)
+#define ngx_de_fs_size(dir)         ngx_de_size(dir)
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
 

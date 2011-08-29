@@ -104,6 +104,7 @@ typedef ngx_int_t (*ngx_tree_handler_pt) (ngx_tree_ctx_t *ctx, ngx_str_t *name);
 
 struct ngx_tree_ctx_s {
     off_t                      size;
+    off_t                      fs_size;
     ngx_uint_t                 access;
     time_t                     mtime;
 
