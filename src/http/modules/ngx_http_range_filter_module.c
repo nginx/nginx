@@ -264,7 +264,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             }
 
             if (start >= r->headers_out.content_length_n) {
-                return NGX_HTTP_RANGE_NOT_SATISFIABLE;
+                goto skip;
             }
 
             while (*p == ' ') { p++; }
@@ -299,14 +299,10 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
         }
 
         if (start > end) {
-            return NGX_HTTP_RANGE_NOT_SATISFIABLE;
+            goto skip;
         }
 
         if (end >= r->headers_out.content_length_n) {
-            /*
-             * Download Accelerator sends the last byte position
-             * that equals to the file length
-             */
             end = r->headers_out.content_length_n;
 
         } else {
@@ -325,9 +321,15 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 
         size += end - start;
 
+    skip:
+
         if (*p++ != ',') {
             break;
         }
+    }
+
+    if (ctx->ranges.nelts == 0) {
+        return NGX_HTTP_RANGE_NOT_SATISFIABLE;
     }
 
     if (size > r->headers_out.content_length_n) {
