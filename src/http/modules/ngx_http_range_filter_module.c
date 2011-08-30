@@ -234,12 +234,13 @@ ngx_int_t
 ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 {
     u_char            *p;
-    off_t              start, end, size;
+    off_t              start, end, size, content_length;
     ngx_uint_t         suffix;
     ngx_http_range_t  *range;
 
     p = r->headers_in.range->value.data + 6;
     size = 0;
+    content_length = r->headers_out.content_length_n;
 
     for ( ;; ) {
         start = 0;
@@ -263,14 +264,14 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
                 return NGX_HTTP_RANGE_NOT_SATISFIABLE;
             }
 
-            if (start >= r->headers_out.content_length_n) {
+            if (start >= content_length) {
                 goto skip;
             }
 
             while (*p == ' ') { p++; }
 
             if (*p == ',' || *p == '\0') {
-                end = r->headers_out.content_length_n;
+                end = content_length;
                 goto found;
             }
 
@@ -294,16 +295,16 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
         }
 
         if (suffix) {
-            start = r->headers_out.content_length_n - end;
-            end = r->headers_out.content_length_n - 1;
+            start = content_length - end;
+            end = content_length - 1;
         }
 
         if (start > end) {
             goto skip;
         }
 
-        if (end >= r->headers_out.content_length_n) {
-            end = r->headers_out.content_length_n;
+        if (end >= content_length) {
+            end = content_length;
 
         } else {
             end++;
@@ -332,7 +333,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
         return NGX_HTTP_RANGE_NOT_SATISFIABLE;
     }
 
-    if (size > r->headers_out.content_length_n) {
+    if (size > content_length) {
         return NGX_DECLINED;
     }
 
