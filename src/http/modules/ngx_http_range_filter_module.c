@@ -58,7 +58,7 @@ typedef struct {
 } ngx_http_range_filter_ctx_t;
 
 
-ngx_int_t ngx_http_range_parse(ngx_http_request_t *r,
+static ngx_int_t ngx_http_range_parse(ngx_http_request_t *r,
     ngx_http_range_filter_ctx_t *ctx);
 static ngx_int_t ngx_http_range_singlepart_header(ngx_http_request_t *r,
     ngx_http_range_filter_ctx_t *ctx);
@@ -230,7 +230,7 @@ next_filter:
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 {
     u_char            *p;
