@@ -270,20 +270,8 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             while (*p == ' ') { p++; }
 
             if (*p == ',' || *p == '\0') {
-                range = ngx_array_push(&ctx->ranges);
-                if (range == NULL) {
-                    return NGX_ERROR;
-                }
-
-                range->start = start;
-                range->end = r->headers_out.content_length_n;
-                size += range->end - start;
-
-                if (*p++ != ',') {
-                    break;
-                }
-
-                continue;
+                end = r->headers_out.content_length_n;
+                goto found;
             }
 
         } else {
@@ -314,25 +302,28 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             return NGX_HTTP_RANGE_NOT_SATISFIABLE;
         }
 
+        if (end >= r->headers_out.content_length_n) {
+            /*
+             * Download Accelerator sends the last byte position
+             * that equals to the file length
+             */
+            end = r->headers_out.content_length_n;
+
+        } else {
+            end++;
+        }
+
+    found:
+
         range = ngx_array_push(&ctx->ranges);
         if (range == NULL) {
             return NGX_ERROR;
         }
 
         range->start = start;
+        range->end = end;
 
-        if (end >= r->headers_out.content_length_n) {
-            /*
-             * Download Accelerator sends the last byte position
-             * that equals to the file length
-             */
-            range->end = r->headers_out.content_length_n;
-
-        } else {
-            range->end = end + 1;
-        }
-
-        size += range->end - start;
+        size += end - start;
 
         if (*p++ != ',') {
             break;
