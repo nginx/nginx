@@ -306,8 +306,8 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
         }
 
         if (suffix) {
-           start = r->headers_out.content_length_n - end;
-           end = r->headers_out.content_length_n - 1;
+            start = r->headers_out.content_length_n - end;
+            end = r->headers_out.content_length_n - 1;
         }
 
         if (start > end) {
