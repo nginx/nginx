@@ -295,10 +295,6 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             end = content_length - 1;
         }
 
-        if (start >= content_length || start > end) {
-            goto skip;
-        }
-
         if (end >= content_length) {
             end = content_length;
 
@@ -308,17 +304,17 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
 
     found:
 
-        range = ngx_array_push(&ctx->ranges);
-        if (range == NULL) {
-            return NGX_ERROR;
+        if (start < end) {
+	    range = ngx_array_push(&ctx->ranges);
+	    if (range == NULL) {
+		return NGX_ERROR;
+	    }
+
+	    range->start = start;
+	    range->end = end;
+
+	    size += end - start;
         }
-
-        range->start = start;
-        range->end = end;
-
-        size += end - start;
-
-    skip:
 
         if (*p++ != ',') {
             break;
