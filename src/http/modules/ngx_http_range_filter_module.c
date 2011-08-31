@@ -59,7 +59,7 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_range_parse(ngx_http_request_t *r,
-    ngx_http_range_filter_ctx_t *ctx);
+    ngx_http_range_filter_ctx_t *ctx, ngx_uint_t ranges);
 static ngx_int_t ngx_http_range_singlepart_header(ngx_http_request_t *r,
     ngx_http_range_filter_ctx_t *ctx);
 static ngx_int_t ngx_http_range_multipart_header(ngx_http_request_t *r,
@@ -146,6 +146,7 @@ static ngx_int_t
 ngx_http_range_header_filter(ngx_http_request_t *r)
 {
     time_t                        if_range;
+    ngx_http_core_loc_conf_t     *clcf;
     ngx_http_range_filter_ctx_t  *ctx;
 
     if (r->http_version < NGX_HTTP_VERSION_10
@@ -154,6 +155,12 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         || r->headers_out.content_length_n == -1
         || !r->allow_ranges)
     {
+        return ngx_http_next_header_filter(r);
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->max_ranges == 0) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -191,7 +198,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    switch (ngx_http_range_parse(r, ctx)) {
+    switch (ngx_http_range_parse(r, ctx, clcf->max_ranges)) {
 
     case NGX_OK:
         ngx_http_set_ctx(r, ctx, ngx_http_range_body_filter_module);
@@ -231,7 +238,8 @@ next_filter:
 
 
 static ngx_int_t
-ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
+ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
+    ngx_uint_t ranges)
 {
     u_char            *p;
     off_t              start, end, size, content_length;
@@ -314,6 +322,10 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
             range->end = end;
 
             size += end - start;
+
+            if (--ranges == 0) {
+                break;
+            }
         }
 
         if (*p++ != ',') {
