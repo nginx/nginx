@@ -305,15 +305,15 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx)
     found:
 
         if (start < end) {
-	    range = ngx_array_push(&ctx->ranges);
-	    if (range == NULL) {
-		return NGX_ERROR;
-	    }
+            range = ngx_array_push(&ctx->ranges);
+            if (range == NULL) {
+                return NGX_ERROR;
+            }
 
-	    range->start = start;
-	    range->end = end;
+            range->start = start;
+            range->end = end;
 
-	    size += end - start;
+            size += end - start;
         }
 
         if (*p++ != ',') {
