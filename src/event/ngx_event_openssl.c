@@ -1205,6 +1205,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     if (c->timedout) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
+        SSL_set_quiet_shutdown(c->ssl->connection, 1);
 
     } else {
         mode = SSL_get_shutdown(c->ssl->connection);
@@ -1215,6 +1216,10 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         if (c->ssl->no_send_shutdown) {
             mode |= SSL_SENT_SHUTDOWN;
+        }
+
+        if (c->ssl->no_wait_shutdown && c->ssl->no_send_shutdown) {
+            SSL_set_quiet_shutdown(c->ssl->connection, 1);
         }
     }
 
