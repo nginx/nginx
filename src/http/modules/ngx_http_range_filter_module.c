@@ -323,8 +323,8 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
 
             size += end - start;
 
-            if (--ranges == 0) {
-                break;
+            if (ranges-- == 0) {
+                return NGX_DECLINED;
             }
         }
 
