@@ -149,7 +149,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 && p->upstream->read->pending_eof)
             {
                 p->upstream->read->ready = 0;
-                p->upstream->read->eof = 0;
+                p->upstream->read->eof = 1;
                 p->upstream_eof = 1;
                 p->read = 1;
 
