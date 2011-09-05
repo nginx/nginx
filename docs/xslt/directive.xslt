@@ -3,12 +3,10 @@
 
    <xsl:template match="directive">
 
-      <a name="{@name}"/> 
-      <center>
-         <h4>
-            <xsl:value-of select="@name"/>
-         </h4>
-      </center>
+      <hr/>
+
+      <a name="{@name}"/>
+        <!-- <center><h4><xsl:value-of select="@name"/> </h4></center> -->
 
       <xsl:apply-templates select="syntax"/>
 
@@ -16,25 +14,89 @@
 
       <xsl:apply-templates select="context"/>
 
+      <xsl:if test="(@appeared-in)">
+
+         <strong>appeared in version</strong>:
+         <xsl:value-of select="@appeared-in"/>
+      </xsl:if>
+
       <xsl:apply-templates select="para"/>
    </xsl:template>
 
    <xsl:template match="syntax">
-      <xsl:text>syntax: </xsl:text>
-      <xsl:apply-templates/>
+      <xsl:choose>
+
+         <xsl:when test="position() = 1">
+
+            <strong>syntax</strong>:
+         </xsl:when>
+
+         <xsl:otherwise>
+
+            <code>       </code>
+         </xsl:otherwise>
+      </xsl:choose>
+	
+      <code>
+
+         <xsl:apply-templates/> 
+      </code>
       <br/>
    </xsl:template>
 
    <xsl:template match="default">
-      <xsl:text>default: </xsl:text>
-      <xsl:apply-templates/>
+
+      <strong>default</strong>:
+      <xsl:choose>
+
+         <xsl:when test="count(text()) = 0">
+
+            <strong>none</strong>
+         </xsl:when>
+
+         <xsl:otherwise>
+
+            <code>
+               <xsl:apply-templates/>
+            </code>
+         </xsl:otherwise>
+      </xsl:choose>
+
       <br/>
    </xsl:template>
 
    <xsl:template match="context">
-      <xsl:text>context: </xsl:text>
-      <xsl:apply-templates/>
-      <br/>
+
+      <xsl:if test="position() = 1">
+
+         <strong>context</strong>:
+      </xsl:if>
+      <xsl:choose>
+
+         <xsl:when test="count(text()) = 0">
+
+            <strong>any</strong>
+         </xsl:when>
+
+         <xsl:otherwise>
+
+            <code>
+               <xsl:apply-templates/>
+            </code>
+         </xsl:otherwise>
+      </xsl:choose>
+      <xsl:choose>
+
+         <xsl:when test="position() != last()">
+
+            <xsl:text>, </xsl:text>
+         </xsl:when>
+
+         <xsl:otherwise>
+
+            <br/>
+         </xsl:otherwise>
+      </xsl:choose>
    </xsl:template>
 
 </xsl:stylesheet>

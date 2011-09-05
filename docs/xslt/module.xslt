@@ -7,7 +7,7 @@
 
    <xsl:param select="'../xml'" name="XML"/>
 
-   <xsl:variable select="/module/@link" name="LINK"/>
+   <xsl:variable select="/module/@id" name="ID"/>
 
    <xsl:include href="directive.xslt"/>
 
@@ -19,7 +19,7 @@
          <head>
 
             <title>
-               <xsl:value-of select="@title"/>
+               <xsl:value-of select="@name"/>
             </title>
 
          </head>
