@@ -9,6 +9,51 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.2" date="05.09.2011">
+
+<change type="change">
+<para lang="ru">
+теперь, если суммарный размер всех диапазонов больше размера исходного ответа,
+то nginx возвращает только исходный ответ, не обрабатывая диапазоны.
+</para>
+<para lang="en">
+now if total size of all ranges is greater than source response size,
+then nginx disables ranges and returns just the source response.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива max_ranges.
+</para>
+<para lang="en">
+the "max_ranges" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы ssl_verify_client, ssl_verify_depth и ssl_prefer_server_cipher
+могли работать некорректно, если использовался SNI.
+</para>
+<para lang="en">
+the "ssl_verify_client", "ssl_verify_depth", and "ssl_prefer_server_ciphers"
+directives might work incorrectly if SNI was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy/fastcgi/scgi/ uwsgi_ignore_client_abort.
+</para>
+<para lang="en">
+in the "proxy/fastcgi/scgi/uwsgi_ignore_client_abort" directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.1" date="22.08.2011">
 
 <change type="change">
