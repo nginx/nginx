@@ -1,0 +1,293 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE module SYSTEM "../dtd/module.dtd">
+
+<module name="Core Module" id="core_module">
+
+<section name="Example Configuration" id="example">
+
+<para>
+<example>
+user               www  www;
+worker_processes   2;
+
+error_log   /var/log/nginx-error.log  info;
+
+events {
+    use    kqueue;
+    worker_connections   2048;
+}
+
+...
+</example>
+</para>
+
+</section>
+
+
+<section name="Directives" id="directives">
+
+<directive name="daemon">
+<syntax>daemon <value>on</value> | <value>off</value></syntax>
+<default>daemon on</default>
+<context>main</context>
+
+<para>
+Determines whether nginx should become a daemon.
+Mainly used during development.
+</para>
+
+</directive>
+
+
+<directive name="env">
+<syntax>env <argument>VAR</argument>[=<argument>VALUE</argument>]</syntax>
+<default>env TZ</default>
+<context>main</context>
+
+<para>
+Allows to limit a set of environment variables, change their values,
+or create new environment variables, for the following cases:
+<list type="bullet">
+
+<listitem>
+variable inheritance during a
+<link doc="control.xml" id="upgrade">live upgrade</link>
+of an executable file;
+</listitem>
+
+<listitem>
+use of variables by the
+<link doc="http/ngx_http_perl_module.xml">http_perl</link>
+module;
+</listitem>
+
+<listitem>
+use of variables by worker processes.
+Please bear in mind that controlling system libraries in this way
+isn't always possible as it's not uncommon for libraries to check
+variables only during initialization, well before they can be set
+using this directive.
+An exception from this is an above mentioned
+<link doc="control.xml" id="upgrade">live upgrade</link>
+of an executable file.
+</listitem>
+
+</list>
+</para>
+
+<para>
+The TZ variable is always inherited and made available to the
+<link doc="http/ngx_http_perl_module.xml">http_perl</link>
+module, unless configured explicitly.
+</para>
+
+<para>
+Usage example:
+<example>
+env  MALLOC_OPTIONS;
+env  PERL5LIB=/data/site/modules;
+env  OPENSSL_ALLOW_PROXY_CERTS=1;
+</example>
+</para>
+
+</directive>
+
+<directive name="include">
+<syntax>include <argument>file</argument> | <argument>mask</argument></syntax>
+<default/>
+<context/>
+
+<para>
+Includes another <argument>file</argument>, or files matching the
+specified <argument>mask</argument>, into configuration.
+Included files should consist of
+syntactically correct directives and blocks.
+</para>
+
+<para>
+Usage example:
+<example>
+include  mime.types;
+include  vhosts/*.conf;
+</example>
+</para>
+
+</directive>
+
+
+<directive name="master_process">
+<syntax>master_process <value>on</value> | <value>off</value></syntax>
+<default>master_process on</default>
+<context>main</context>
+
+<para>
+Determines whether worker processes are started.
+This directive is intended for nginx developers.
+</para>
+
+</directive>
+
+
+<directive name="pid">
+<syntax>pid <argument>file</argument></syntax>
+<default>pid nginx.pid</default>
+<context>main</context>
+
+<para>
+Defines a <argument>file</argument> which will store the process ID of the main process.
+</para>
+
+</directive>
+
+
+<directive name="ssl_engine">
+<syntax>ssl_engine <argument>device</argument></syntax>
+<default/>
+<context>main</context>
+
+<para>
+Defines the name of the hardware SSL accelerator.
+</para>
+
+</directive>
+
+
+<directive name="user">
+<syntax>user <argument>user</argument> [<argument>group</argument>]</syntax>
+<default>user nobody nobody</default>
+<context>main</context>
+
+<para>
+Defines <argument>user</argument> and <argument>group</argument>
+credentials used by worker processes.
+If <argument>group</argument> is omitted, a group whose name equals
+that of <argument>user</argument> is used.
+</para>
+
+</directive>
+
+
+<directive name="timer_resolution">
+<syntax>timer_resolution <argument>interval</argument></syntax>
+<default/>
+<context>main</context>
+
+<para>
+Reduces timer resolution in worker processes, thus reducing the
+number of <c-func>gettimeofday</c-func> system calls made.
+By default, <c-func>gettimeofday</c-func> is called each time
+on receiving a kernel event.
+With reduced resolution, <c-func>gettimeofday</c-func> is only
+called once per specified <argument>interval</argument>.
+</para>
+
+<para>
+Example:
+<example>
+timer_resolution   100ms;
+</example>
+</para>
+
+<para>
+An internal implementation of interval depends on the method used:
+<list type="bullet">
+
+<listitem>
+an <c-def>EVFILT_TIMER</c-def> filter if <code>kqueue</code> is used;
+</listitem>
+
+<listitem>
+<c-func>timer_create</c-func> if <code>eventport</code> is used;
+</listitem>
+
+<listitem>
+<c-func>setitimer</c-func> otherwise.
+</listitem>
+
+</list>
+</para>
+
+</directive>
+
+
+<directive name="worker_rlimit_core">
+<syntax>worker_rlimit_core <argument>size</argument></syntax>
+<default/>
+<context>main</context>
+
+<para>
+Changes the limit on the largest size of a core file
+(<c-def>RLIMIT_CORE</c-def>) for worker processes.
+Used to increase the limit without restarting the main process.
+</para>
+
+</directive>
+
+
+<directive name="worker_rlimit_nofile">
+<syntax>worker_rlimit_nofile <argument>number</argument></syntax>
+<default/>
+<context>main</context>
+
+<para>
+Changes the limit on the maximum number of open files
+(<c-def>RLIMIT_NOFILE</c-def>) for worker processes.
+Used to increase the limit without restarting the main process.
+</para>
+
+</directive>
+
+
+<directive name="worker_priority">
+<syntax>worker_priority <argument>number</argument></syntax>
+<default>worker_priority 0</default>
+<context>main</context>
+
+<para>
+Defines a scheduling priority for worker processes like is
+done by the <command>nice</command>: a negative
+<argument>number</argument>
+means higher priority.
+Allowed range normally varies from -20 to 20.
+</para>
+
+<para>
+Example:
+<example>
+worker_priority  -10;
+</example>
+</para>
+
+</directive>
+
+
+<directive name="worker_processes">
+<syntax>worker_processes <argument>number</argument></syntax>
+<default>worker_processes 1</default>
+<context>main</context>
+
+<para>
+Defines the number of worker processes.
+</para>
+
+</directive>
+
+
+<directive name="working_directory">
+<syntax>working_directory <argument>directory</argument></syntax>
+<default/>
+<context>main</context>
+
+<para>
+Defines a current working directory for a worker process.
+It's primarily used for writing a core-file, in which case
+a working process should have write permission for the
+specified directory.
+</para>
+
+</directive>
+
+</section>
+
+</module>
