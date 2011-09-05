@@ -1,15 +1,51 @@
 X:stylesheet {
-
-X:template = "directive" {
-    <a name="{@name}" /> <center><h4> !{@name} </h4></center>
-    !! "syntax";
-    !! "default";
-    !! "context";
-    !! "para";
-}
-
-X:template = "syntax" { X:text {syntax: } !!; <br/> }
-X:template = "default" { X:text {default: } !!; <br/> }
-X:template = "context" { X:text {context: } !!; <br/> }
-
+    
+    X:template = "directive" {
+        <hr/>
+        <a name="{@name}"/>
+        <!-- <center><h4> !{@name} </h4></center> -->
+        !! "syntax";
+        !! "default";
+        !! "context";
+        X:if "(@appeared-in)" {
+            <strong>appeared in version</strong>: !{@appeared-in}
+        }
+        !! "para";
+    }
+    
+    X:template = "syntax" {
+        X:if "position() = 1" {
+            <strong>syntax</strong>:
+        } else {
+            <code>&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;&#xA0;</code>
+	}
+	<code> !!; </code> <br/>
+    }
+    
+    X:template = "default" {
+        <strong>default</strong>:
+        X:if "count(text()) = 0" {
+            <strong>none</strong>
+        } else {
+            <code> !!; </code>
+        }
+        <br/>
+    }
+    
+    X:template = "context" {
+        X:if "position() = 1" {
+            <strong>context</strong>:
+        }
+        X:if "count(text()) = 0" {
+            <strong>any</strong>
+        } else {
+            <code> !!; </code>
+        }
+        X:if "position() != last()" {
+            X:text{, }
+        } else {
+            <br/>
+        }
+    }
+    
 }

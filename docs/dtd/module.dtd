@@ -1,24 +1,72 @@
 
-<!ELEMENT module       (section+) >
-<!ATTLIST module       title      CDATA #REQUIRED
-                       link       CDATA #REQUIRED
-                       lang       (en)  #REQUIRED
+<!ELEMENT   module      (section+) >
+<!ATTLIST   module
+            name        CDATA #REQUIRED
+            id          ID #REQUIRED
 >
 
-<!ELEMENT section      (directive+ | para+) >
-<!ATTLIST section      title      CDATA #REQUIRED
-                       name       CDATA #IMPLIED
+<!ELEMENT   section     (directive+ | para+) >
+<!ATTLIST   section
+            name        CDATA #REQUIRED
+            id          ID #IMPLIED
 >
 
-<!ELEMENT directive    (syntax, default, context, para+) >
-<!ATTLIST directive    name       CDATA #REQUIRED >
+<!ELEMENT   directive   (syntax+, default, context+, para+) >
+<!ATTLIST   directive
+            name        ID #REQUIRED
+            appeared-in CDATA #IMPLIED
+>
 
-<!ELEMENT syntax       (#PCDATA | value)* >
-<!ELEMENT default      (#PCDATA)* >
-<!ELEMENT context      (#PCDATA)* >
+<!ELEMENT   syntax      (#PCDATA | argument | code | parameter | value)* >
 
-<!ELEMENT para         (#PCDATA | value)* >
-<!ELEMENT value        (#PCDATA)* >
+<!ELEMENT   default     (#PCDATA | code)* >
 
-<!ENTITY  nbsp         "&#xA0;" >
-<!ENTITY  mdash        "&#xA0;- " >
+<!ELEMENT   context     (#PCDATA)* >
+
+<!ELEMENT   para        (#PCDATA | argument | c-def | c-func | code | command | emphasis | example | header | http-error | link | list | note | parameter | value | var)* >
+
+<!ELEMENT   argument    (#PCDATA)* >
+
+<!ELEMENT   c-def       (#PCDATA)* >
+
+<!ELEMENT   c-func      (#PCDATA)* >
+
+<!ELEMENT   code        (#PCDATA | value)* >
+
+<!ELEMENT   command     (#PCDATA)* >
+
+<!ELEMENT   emphasis    (#PCDATA)* >
+
+<!ELEMENT   example     (#PCDATA)* >
+
+<!ELEMENT   header      (#PCDATA)* >
+
+<!ELEMENT   http-error  EMPTY >
+<!ATTLIST   http-error
+            code        CDATA #REQUIRED
+            text        CDATA #IMPLIED
+>
+
+<!ELEMENT   link        (#PCDATA)* >
+<!ATTLIST   link
+            doc         CDATA #IMPLIED
+            id          CDATA #IMPLIED
+>
+
+<!ELEMENT   list        (listitem+) >
+<!ATTLIST   list
+            type        (bullet | enum) #REQUIRED
+>
+
+<!ELEMENT   listitem    ANY >
+
+<!ELEMENT   note        ANY >
+
+<!ELEMENT   parameter   (#PCDATA)* >
+
+<!ELEMENT   value       (#PCDATA)* >
+
+<!ELEMENT   var         (#PCDATA)* >
+
+<!ENTITY    nbsp        "&#xA0;" >
+<!ENTITY    mdash       "&#xA0;- " >

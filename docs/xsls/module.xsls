@@ -10,7 +10,7 @@ X:strip-space elements = "*";
   -->
 X:param XML = "'../xml'";
 
-X:var LINK = "/module/@link";
+X:var ID = "/module/@id";
 
 X:include href = "directive.xslt";
 X:include href = "content.xslt";
@@ -19,7 +19,7 @@ X:include href = "content.xslt";
 X:template = "/module" {
     <html><head>
 
-    <title> !{@title} </title>
+    <title> !{@name} </title>
 
     </head>
     <body>
