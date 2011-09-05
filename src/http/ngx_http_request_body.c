@@ -378,6 +378,8 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         rb->bufs = rb->bufs->next;
     }
 
+    r->read_event_handler = ngx_http_block_reading;
+
     rb->post_handler(r);
 
     return NGX_OK;
