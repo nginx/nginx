@@ -1885,6 +1885,58 @@ location @wordpress {
 
 </directive>
 
+
+<directive name="types">
+<syntax>types { ... }</syntax>
+<default>see below</default>
+<context>http</context>
+<context>server</context>
+<context>location</context>
+
+<para>
+Maps file name extensions to MIME types of responses.
+Several extensions can map to one type.
+The following mappings are configured by default:
+<example>
+types {
+    text/html    html;
+    image/gif    gif;
+    image/jpeg   jpg;
+}
+</example>
+</para>
+
+<para>
+A sufficiently full mapping table is distributed with nginx in the
+<code>conf/mime.types</code> file.
+</para>
+
+<para>
+To make a particular location emit the "<code>application/octet-stream</code>"
+MIME type for all requests, try the following:
+<example>
+location /download/ {
+    types         { }
+    default_type  application/octet-stream;
+}
+</example>
+</para>
+
+</directive>
+
+
+<directive name="underscores_in_headers">
+<syntax>underscores_in_headers <value>on</value> | <value>off</value></syntax>
+<default>underscores_in_headers off</default>
+<context>http</context>
+<context>server</context>
+
+<para>
+Enables or disables the use of underscores in client request header strings.
+</para>
+
+</directive>
+
 </section>
 
 </module>
