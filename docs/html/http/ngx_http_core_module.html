@@ -1,10 +1,1151 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>ngx_http_core_module</title></head><body><center><h4>Directives</h4></center><a name="client_body_buffer_size"></a><center><h4>client_body_buffer_size</h4></center>syntax: client_body_buffer_size <i>size</i><br>default: client_body_buffer_size 8k/16k<br>context: http, server, location<br><p>
-Directive sets client request body buffer size.
-If the request body is larger than the buffer,
-then the whole body or some its part is written to temporary file.
-By default buffer size is equal to 2 memory page sizes.
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>HTTP Core Module</title></head><body><a name="directives"></a><center><h4>Directives</h4></center><hr><a name="aio"></a><strong>syntax</strong>:
+         <code>aio
+        <code>on</code> |
+        <code>off</code> |
+        <code>sendfile</code></code><br><strong>default</strong>:
+      <code>aio off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><strong>appeared in version</strong>:
+         0.8.11<p>
+Enables or disables the use of asynchronous file I/O (AIO)
+on FreeBSD and Linux.
+</p><p>
+On FreeBSD, AIO is usable used starting from FreeBSD 4.3.
+AIO can either be linked statically into a kernel:
+<blockquote><pre>
+options VFS_AIO
+</pre></blockquote>
+or loaded dynamically as a kernel loadable module:
+<blockquote><pre>
+kldload aio
+</pre></blockquote></p><p>
+In FreeBSD versions 5 and 6, enabling AIO statically, or dynamically
+when booting the kernel, will cause the entire networking subsystem
+to use the Giant lock that can impact overall performance negatively.
+This limitation has been removed in FreeBSD 6.4-STABLE in 2009, and in
+FreeBSD 7.
+However, starting from FreeBSD 5.3, it's possible to enable AIO
+without the penalty of running the networking subsystem under a
+Giant lock - for this to work, the AIO module needs to be loaded
+after the kernel has booted.
+In this case, the following message will appear in
+<code>/var/log/messages</code><blockquote><pre>
+WARNING: Network stack Giant-free, but aio requires Giant.
+Consider adding 'options NET_WITH_GIANT' or setting debug.mpsafenet=0
+</pre></blockquote>
+and can safely be ignored.
+
+The requirement to use the Giant lock with AIO is related to the
+fact that FreeBSD supports asynchronous calls
+<code>aio_read()</code>
+and
+<code>aio_write()</code>
+when working with sockets.
+However, since nginx only uses AIO for disk I/O, no problems should arise.
+</p><p>
+For AIO to work,
+<a href="#sendfile">sendfile</a>
+needs to be disabled:
+<blockquote><pre>
+location  /video/ {
+    sendfile        off;
+    aio             on;
+    output_buffers  1 64k;
+}
+</pre></blockquote></p><p>
+In addition, starting from FreeBSD 5.2.1 and nginx 0.8.12, AIO can
+also be used to pre-load data for <code>sendfile()</code>:
+<blockquote><pre>
+location  /video/ {
+    sendfile        on;
+    tcp_nopush      on;
+    aio             sendfile;
+}
+</pre></blockquote>
+In this configuration, <code>sendfile()</code> is called with
+the <code>SF_NODISKIO</code> flag which causes it not to
+block on disk I/O and instead report back when the data are not in
+memory; nginx then initiates an asynchronous data load by reading
+one byte. The FreeBSD kernel then loads the first 128K bytes
+of a file into memory, however next reads will only load data
+in 16K chunks. This can be tuned using the
+<a href="#read_ahead">read_ahead</a>
+directive.
+</p><p>
+On Linux, AIO is usable starting from kernel version 2.6.22;
+plus, it is also necessary to enable
+<a href="#directio">directio</a>,
+otherwise reading will be blocking:
+<blockquote><pre>
+location  /video/ {
+    aio             on;
+    directio        512;
+    output_buffers  1 128k;
+}
+</pre></blockquote></p><p>
+On Linux,
+<a href="#directio">directio</a>
+can only be used for reading blocks that are aligned on 512-byte
+boundaries (or 4K for XFS).
+Reading of unaligned file's tail is still made in blocking mode.
+The same holds true for byte range requests, and for FLV requests
+not from the beginning of a file: reading of unaligned data at the
+beginning and end of a file will be blocking.
+There is no need to turn off
+<a href="#sendfile">sendfile</a>
+explicitly as it is turned off automatically when
+<a href="#directio">directio</a>
+is used.
+</p><hr><a name="alias"></a><strong>syntax</strong>:
+         <code>alias <code><i>path</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>location</code><br><p>
+Defines a replacement for the specified location.
+For example, with the following configuration
+<blockquote><pre>
+location  /i/ {
+    alias  /data/w3/images/;
+}
+</pre></blockquote>
+the request of "/i/top.gif" will be responded
+with the file "/data/w3/images/top.gif".
+</p><p>
+The <code><i>path</i></code> value can contain variables.
+</p><p>
+If <code>alias</code> is used inside a location defined
+with a regular expression then such regular expression should
+contain captures and <code>alias</code> should refer to
+these captures (0.7.40), for example:
+<blockquote><pre>
+location ~ ^/users/(.+\.(?:gif|jpe?g|png))$ {
+    alias  /data/w3/images/$1;
+}
+</pre></blockquote></p><p>
+When location matches the last part of the directive's value:
+<blockquote><pre>
+location  /images/ {
+    alias  /data/w3/images/;
+}
+</pre></blockquote>
+it's better to use the
+<a href="#root">root</a>
+directive instead:
+<blockquote><pre>
+location  /images/ {
+    root   /data/w3;
+}
+</pre></blockquote></p><hr><a name="client_body_in_file_only"></a><strong>syntax</strong>:
+         <code>client_body_in_file_only
+        <code>on</code> |
+        <code>clean</code> |
+        <code>off</code></code><br><strong>default</strong>:
+      <code>client_body_in_file_only off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Determines whether nginx should save the entire client request body
+into a file.
+This directive can be used during debugging, or when using the
+<code>$request_body_file</code>
+variable, or the
+<u>$r-&gt;request_body_file</u>
+method of the
+<u>http_perl</u> module.
+</p><p>
+When set to the value <code>on</code>, temporary files are not
+removed after request processing.
+</p><p>
+The value <code>clean</code> will cause the temporary files
+left after request processing to be removed.
+</p><hr><a name="client_body_in_single_buffer"></a><strong>syntax</strong>:
+         <code>client_body_in_single_buffer <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>client_body_in_single_buffer off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Determines whether nginx should save the entire client request body
+in a single buffer.
+The directive is recommended when using the
+<code>$request_body</code>
+variable, to save the number of copy operations involved.
+</p><hr><a name="client_body_buffer_size"></a><strong>syntax</strong>:
+         <code>client_body_buffer_size <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>client_body_buffer_size 8k/16k</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets buffer size for reading client request body.
+In case request body is larger than the buffer,
+the whole body or only its part is written to a temporary file.
+
+By default, buffer size is equal to two memory pages.
 This is 8K on x86, other 32-bit platforms, and x86-64.
 It is usually 16K on other 64-bit platforms.
-</p><a name="sendfile"></a><center><h4>sendfile</h4></center>syntax: sendfile <i>[on|off]</i><br>default: sendfile off<br>context: http, server, location<br><p>
-Directive enables or disables sendfile() usage.
-</p></body></html>
+</p><hr><a name="client_body_temp_path"></a><strong>syntax</strong>:
+         <code>client_body_temp_path
+        <code><i>path</i></code>
+        [<code><i>level1</i></code>
+        [<code><i>level2</i></code>
+        [<code><i>level3</i></code>]]]
+</code><br><strong>default</strong>:
+      <code>client_body_temp_path client_body_temp</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Defines a directory for storing temporary files holding client request bodies.
+Up to three-level subdirectory hierarchy can be used underneath the specified
+directory.
+For example, in the following configuration
+<blockquote><pre>
+client_body_temp_path  /spool/nginx/client_temp 1 2;
+</pre></blockquote>
+a temporary file might look like this:
+<blockquote><pre>
+/spool/nginx/client_temp/7/45/00000123457
+</pre></blockquote></p><hr><a name="client_body_timeout"></a><strong>syntax</strong>:
+         <code>client_body_timeout <code><i>time</i></code></code><br><strong>default</strong>:
+      <code>client_body_timeout 60</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Defines a timeout for reading client request body.
+A timeout is only set between two successive read operations,
+not for the transmission of the whole request body.
+If a client does not transmit anything within this time,
+the error
+<i>"Request time out"</i> (408)
+is returned.
+</p><hr><a name="client_header_buffer_size"></a><strong>syntax</strong>:
+         <code>client_header_buffer_size <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>client_header_buffer_size 1k</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+Sets buffer size for reading client request header.
+For most requests, a buffer of 1K bytes is enough.
+However, if a request includes long cookies, or comes from a WAP client,
+it may not fit into 1K.
+If a request line, or a request header line do not fit entirely into
+this buffer then larger buffers are allocated, configured by the
+<a href="#large_client_header_buffers">large_client_header_buffers</a>
+directive.
+</p><hr><a name="client_header_timeout"></a><strong>syntax</strong>:
+         <code>client_header_timeout <code><i>time</i></code></code><br><strong>default</strong>:
+      <code>client_header_timeout 60</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+Defines a timeout for reading client request header.
+If a client does not transmit the entire header within this time,
+the error
+<i>"Request time out"</i> (408)
+is returned.
+</p><hr><a name="client_max_body_size"></a><strong>syntax</strong>:
+         <code>client_max_body_size <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>client_max_body_size 1m</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets the maximum allowed size of the client request body,
+specified in the
+<code>Content-Length</code>
+request header line.
+If <code><i>size</i></code> is greater than the configured value, the
+<i>"Request Entity Too Large"</i> (413)
+error is returned to a client.
+Please be aware that
+<u>browsers cannot correctly display
+this error</u>.
+</p><hr><a name="default_type"></a><strong>syntax</strong>:
+         <code>default_type <code><i>mime-type</i></code></code><br><strong>default</strong>:
+      <code>default_type text/plain</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Defines a default MIME-type of a response.
+</p><hr><a name="directio"></a><strong>syntax</strong>:
+         <code>directio <code><i>size</i></code> | <code>off</code></code><br><strong>default</strong>:
+      <code>directio off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><strong>appeared in version</strong>:
+         0.7.7<p>
+Enables the use of
+the <code>O_DIRECT</code> flag (FreeBSD, Linux),
+the <code>F_NOCACHE</code> flag (Mac OS X),
+or the <code>directio()</code> function (Solaris),
+when reading files that are larger than the specified <code><i>size</i></code>.
+It automatically disables (0.7.15) the use of
+<a href="#sendfile">sendfile</a>
+for a given request.
+It could be useful for serving large files:
+<blockquote><pre>
+directio  4m;
+</pre></blockquote>
+or when using <a href="#aio">aio</a> on Linux.
+</p><hr><a name="directio_alignment"></a><strong>syntax</strong>:
+         <code>directio_alignment <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>directio_alignment 512</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><strong>appeared in version</strong>:
+         0.8.11<p>
+Sets an alignment for
+<a href="#directio">directio</a>.
+In most cases, a 512-byte alignment is enough, however, when
+using XFS under Linux, it needs to be increased to 4K.
+</p><hr><a name="error_page"></a><strong>syntax</strong>:
+         <code>error_page
+        <code><i>code ...</i></code>
+        [<code>=</code>[<code><i>response</i></code>]]
+        <code><i>uri</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code>, <code>if in location</code><br><p>
+Defines the URI that will be shown for the specified errors.
+These directives are inherited from the previous level if and
+only if there are no <code>error_page</code> directives on
+the current level.
+A URI value can contain variables.
+</p><p>
+Example usage:
+<blockquote><pre>
+error_page   404          /404.html;
+error_page   502 503 504  /50x.html;
+error_page   403          http://example.com/forbidden.html;
+</pre></blockquote></p><p>
+Furthermore, it is possible to change the response code to another, for example:
+<blockquote><pre>
+error_page   404  =200  /empty.gif;
+</pre></blockquote></p><p>
+If an error response is processed by a proxied server, or a FastCGI-server,
+and the server may return different response codes (e.g., 200, 302, 401
+or 404), it is possible to respond with a returned code:
+<blockquote><pre>
+error_page   404  =  /404.php;
+</pre></blockquote></p><p>
+If there is no need to change URI during redirection it is possible to redirect
+error processing into a named location:
+<blockquote><pre>
+location / {
+    error_page   404  =  @fallback;
+}
+
+location @fallback {
+    proxy_pass   http://backend;
+}
+</pre></blockquote></p><hr><a name="if_modified_since"></a><strong>syntax</strong>:
+         <code>if_modified_since
+        <code>off</code> |
+        <code>exact</code> |
+        <code>before</code></code><br><strong>default</strong>:
+      <code>if_modified_since exact</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><strong>appeared in version</strong>:
+         0.7.24<p>
+Specifies how to compare modification time of a response
+with the time in the
+<code>If-Modified-Since</code>
+request header:
+
+<ul><li><code>off</code> - the
+<code>If-Modified-Since</code> request header is ignored (0.7.34);
+</li><li><code>exact</code> - exact match;
+</li><li><code>before</code> - modification time of a response is
+less than or equal to the time in the <code>If-Modified-Since</code>
+request header.
+</li></ul></p><hr><a name="internal"></a><strong>syntax</strong>:
+         <code>internal</code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>location</code><br><p>
+Specifies that a given location can only be used for internal requests.
+For external requests, the <i>"Not found"</i> (404)
+error is returned.
+Internal requests are the following:
+
+<ul><li>
+requests redirected by the <a href="#error_page">error_page</a> directive;
+</li><li>
+subrequests formed by the
+<code>include virtual</code>
+command of the
+<u>http_ssi</u> module;
+</li><li>
+requests changed by the
+<u>rewrite</u>
+directive of the
+<u>http_rewrite</u> module.
+</li></ul></p><p>
+Example usage:
+<blockquote><pre>
+error_page   404   /404.html;
+
+location  /404.html {
+    internal;
+}
+</pre></blockquote></p><hr><a name="keepalive_requests"></a><strong>syntax</strong>:
+         <code>keepalive_requests <code><i>number</i></code></code><br><strong>default</strong>:
+      <code>keepalive_requests 100</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><strong>appeared in version</strong>:
+         0.8.0<p>
+Sets the maximum number of requests that can be
+made through one keep-alive connection.
+</p><hr><a name="keepalive_timeout"></a><strong>syntax</strong>:
+         <code>keepalive_timeout
+        <code><i>time</i></code>
+        [<code><i>time</i></code>]
+</code><br><strong>default</strong>:
+      <code>keepalive_timeout 75</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+The first argument sets a timeout during which a keep-alive
+client connection will stay open on the server side.
+The optional second argument sets a value in the
+"<code>Keep-Alive: timeout=</code><code><i>time</i></code>"
+response header.
+Two arguments may differ.
+</p><p>
+The
+"<code>Keep-Alive: timeout=</code>"
+is understood by Mozilla and Konqueror.
+MSIE will close keep-alive connection in about 60 seconds.
+</p><hr><a name="large_client_header_buffers"></a><strong>syntax</strong>:
+         <code>large_client_header_buffers <code><i>number size</i></code></code><br><strong>default</strong>:
+      <code>large_client_header_buffers 4 4k/8k</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+Sets the maximum <code><i>number</i></code> and <code><i>size</i></code> of
+buffers used when reading large client request headers.
+A request line cannot exceed the size of one buffer, or the
+<i>"Request URI too large"</i> (414)
+error is returned.
+A request header line cannot exceed the size of one buffer as well, or the
+<i>"Bad request"</i> (400)
+error is returned.
+Buffers are allocated only on demand.
+By default, the buffer size is equal to one memory page size.
+It is either 4K or 8K, platform dependent.
+If after the end of request processing a connection is transitioned
+into the keep-alive state, these buffers are freed.
+</p><hr><a name="limit_except"></a><strong>syntax</strong>:
+         <code>limit_except <code><i>method</i></code> ... { ... }</code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>location</code><br><p>
+Limits allowed HTTP methods inside a location.
+The GET method also implies the HEAD method.
+Access to other methods can be limited using the
+<u>http_access</u>
+and
+<u>http_auth_basic</u>
+modules directives:
+<blockquote><pre>
+limit_except  GET {
+    allow  192.168.1.0/32;
+    deny   all;
+}
+</pre></blockquote>
+Please note that this will limit access to all methods
+<strong>except</strong> GET and HEAD.
+</p><hr><a name="limit_rate"></a><strong>syntax</strong>:
+         <code>limit_rate <code><i>rate</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code>, <code>if in location</code><br><p>
+Rate limits the transmission of a response to a client.
+The <code><i>rate</i></code> is specified in bytes per second.
+
+The limit is per connection, so if a single client opens 2 connections,
+an overall rate will be 2x more than specified.
+</p><p>
+This directive is not applicable if one wants to rate limit
+a group of clients on the
+<a href="#server">server</a>
+level.
+If that is the case, the desired limit can be specified in the
+<code>$limit_rate</code>
+variable:
+<blockquote><pre>
+server {
+
+    if ($slow) {
+        set $limit_rate  4k;
+    }
+
+    ...
+}
+</pre></blockquote></p><hr><a name="limit_rate_after"></a><strong>syntax</strong>:
+         <code>limit_rate_after <code><i>size</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code>, <code>if in location</code><br><strong>appeared in version</strong>:
+         0.8.0<p>
+Sets the initial amount after which the further transmission
+of a response to a client will be rate limited.
+</p><p>
+Example:
+<blockquote><pre>
+location /flv/ {
+    flv;
+    limit_rate_after  500k;
+    limit_rate        50k;
+}
+</pre></blockquote></p><hr><a name="listen"></a><strong>syntax</strong>:
+         <code>listen
+        <code><i>address</i></code>[:<code><i>port</i></code>]
+        [<code>default</code> | <code>default_server</code>
+        [<code>backlog</code>=<code><i>number</i></code>]
+        [<code>rcvbuf</code>=<code><i>size</i></code>]
+        [<code>sndbuf</code>=<code><i>size</i></code>]
+        [<code>accept_filter</code>=<code><i>filter</i></code>]
+        [<code>deferred</code>]
+        [<code>bind</code>]
+        [<code>ipv6only</code>=<code>on</code>|<code>off</code>]
+        [<code>ssl</code>]]
+</code><br><code>       </code><code>listen
+        <code><i>port</i></code>
+        [<code>default</code> | <code>default_server</code>
+        [<code>backlog</code>=<code><i>number</i></code>]
+        [<code>rcvbuf</code>=<code><i>size</i></code>]
+        [<code>sndbuf</code>=<code><i>size</i></code>]
+        [<code>accept_filter</code>=<code><i>filter</i></code>]
+        [<code>deferred</code>]
+        [<code>bind</code>]
+        [<code>ipv6only</code>=<code>on</code>|<code>off</code>]
+        [<code>ssl</code>]]
+</code><br><strong>default</strong>:
+      <code>listen *:80 | *:8000</code><br><strong>context</strong>:
+      <code>server</code><br><p>
+Sets an <code><i>address</i></code> and a <code><i>port</i></code>, on which
+the server will accept requests.
+Only one of <code><i>address</i></code> or <code><i>port</i></code> can be
+specified.
+An <code><i>address</i></code> may also be a hostname, for example:
+<blockquote><pre>
+listen  127.0.0.1:8000;
+listen  127.0.0.1;
+listen  8000;
+listen  *:8000;
+listen  localhost:8000;
+</pre></blockquote>
+IPv6 addresses (0.7.36) are specified in square brackets:
+<blockquote><pre>
+listen  [::]:8000;
+listen  [fe80::1];
+</pre></blockquote></p><p>
+If only <code><i>address</i></code> is given, the port 80 is used.
+</p><p>
+If directive is not present then either the <code>*:80</code> is used
+if nginx runs with superuser privileges, or <code>*:8000</code> otherwise.
+</p><p>
+The <code>default</code> parameter, if present,
+will cause the server to become the default server for the specified
+<code><i>address</i></code>:<code><i>port</i></code> pair.
+If none of the directives have the <code>default</code>
+parameter then the first server with the
+<code><i>address</i></code>:<code><i>port</i></code> pair will be
+the default server for this pair.
+Starting from version 0.8.21 it is possible to use the
+<code>default_server</code>
+parameter.
+</p><p>
+A <code>listen</code> directive which has the <code>default</code>
+parameter can have several additional parameters specific to system calls
+<code>listen()</code> and <code>bind()</code>.
+Starting from version 0.8.21, these parameters can be specified in any
+<code>listen</code> directive, but only once for the given
+<code><i>address</i></code>:<code><i>port</i></code> pair.
+<ul><li><code>backlog</code>=<code><i>number</i></code> - 
+sets the <code>backlog</code> parameter in the
+<code>listen()</code> call.
+By default, <code>backlog</code> equals -1 on FreeBSD
+and 511 on other platforms.
+</li><li><code>rcvbuf</code>=<code><i>size</i></code> - 
+sets the <code>SO_RCVBUF</code> parameter for the listening socket.
+</li><li><code>sndbuf</code>=<code><i>size</i></code> - 
+sets the <code>SO_SNDBUF</code> parameter for the listening socket.
+</li><li><code>accept_filter</code>=<code><i>filter</i></code> - 
+sets the name of the accept filter.
+This works only on FreeBSD, acceptable values are <code>dataready</code>
+and <code>httpready</code>.
+On receiving <code>SIGHUP</code> signal, an accept filter can only be
+changed in recent versions of FreeBSD, starting from 6.0, 5.4-STABLE
+and 4.11-STABLE.
+</li><li><code>deferred</code> - 
+instructs to use a deferred <code>accept()</code> on Linux
+using the <code>TCP_DEFER_ACCEPT</code> option.
+</li><li><code>bind</code> - 
+specifies to make a separate <code>bind()</code> call for a given
+<code><i>address</i></code>:<code><i>port</i></code> pair.
+This is because nginx will only <code>bind()</code> to
+<code>*</code>:<code><i>port</i></code>
+if there are several <code>listen</code> directives with
+the same port and different addresses, and one of the
+<code>listen</code> directives listens on all addresses
+for the given port (<code>*</code>:<code><i>port</i></code>).
+It should be noted that in this case a <code>getsockname()</code>
+system call will be made to determine an address that accepted a
+connection.
+If parameters <code>backlog</code>, <code>rcvbuf</code>,
+<code>sndbuf</code>, <code>accept_filter</code>, or
+<code>deferred</code> are used then for a given
+<code><i>address</i></code>:<code><i>port</i></code> pair
+a separate <code>bind()</code> call will always be made.
+</li><li><code>ipv6only</code>=<code>on</code>|<code>off</code> - 
+this parameter (0.7.42) sets the value of the <code>IPV6_V6ONLY</code>
+parameter for the listening socket.
+This parameter can only be set once on start.
+</li><li><code>ssl</code> - 
+this parameter (0.7.14) does not relate to system calls
+<code>listen()</code> and <code>bind()</code>, but allows to
+specify that all connections accepted on this port should work in
+the SSL mode.
+This allows for a more compact configuration for the server operating
+in both HTTP and HTTPS modes simultaneously.
+<blockquote><pre>
+listen  80;
+listen  443 default ssl;
+</pre></blockquote></li></ul></p><p>
+Example:
+<blockquote><pre>
+listen  127.0.0.1 default accept_filter=dataready backlog=1024;
+</pre></blockquote></p><hr><a name="location"></a><strong>syntax</strong>:
+         <code>location [
+        <code>=</code> |
+	<code>~</code> |
+	<code>~*</code> |
+	<code>^~</code> |
+	<code>@</code>
+	] <code><i>uri</i></code>
+{ ... }</code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>server</code><br><p>
+Sets a configuration based on a request URI.
+A location can either be defined by a prefix string, or by a regular expression.
+Regular expressions are specified by prepending them with the
+"<code>~*</code>" prefix (for case-insensitive matching), or with the
+"<code>~</code>" prefix (for case-sensitive matching).
+To find a location matching a given request, nginx first checks
+locations defined using the prefix strings (prefix locations).
+Amongst them, the most specific one is searched.
+Then regular expressions are checked, in the order of their appearance
+in a configuration file.
+A search terminates on the first match, and its corresponding
+configuration is used.
+If no match with a regular expression location is found then a
+configuration of the most specific prefix location is used.
+</p><p>
+For case-insensitive operating systems such as Mac OS X and Cygwin,
+the string matching ignores a case (0.7.7).
+However, comparison is limited to one-byte locales.
+</p><p>
+Regular expressions can contain captures (0.7.40) that can later
+be used in other directives.
+</p><p>
+If the most specific prefix location has the "<code>^~</code>" prefix
+then regular expressions are not checked.
+</p><p>
+Also, using the "<code>=</code>" prefix it's possible to define
+an exact match of URI and location.
+If an exact match is found, the search terminates.
+For example, if a "<code>/</code>" request happens frequently,
+defining "<code>location = /</code>" will speed up the processing
+of these requests, as search terminates right after the first
+comparison.
+</p><p>
+In versions from 0.7.1 to 0.8.41, if a request matched the prefix
+location without the "<code>=</code>" and "<code>^~</code>"
+prefixes, the search also terminated and regular expressions were
+not checked.
+</p><p>
+Let's illustrate the above by an example:
+<blockquote><pre>
+location  = / {
+    [ configuration A ]
+}
+
+location  / {
+    [ configuration B ]
+}
+
+location ^~ /images/ {
+    [ configuration C ]
+}
+
+location ~* \.(gif|jpg|jpeg)$ {
+    [ configuration D ]
+}
+</pre></blockquote>
+The "<code>/</code>" request will match configuration A,
+the "<code>/documents/document.html</code>" request - configuration B,
+the "<code>/images/1.gif</code>" request - configuration C, and
+the "<code>/documents/1.jpg</code>" request - configuration D.
+</p><p>
+The "<code>@</code>" prefix defines a named location.
+Such a location isn't used for a regular request processing, but instead
+used for request redirection.
+</p><hr><a name="log_not_found"></a><strong>syntax</strong>:
+         <code>log_not_found <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>log_not_found on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables logging of errors about not found files into the
+<u>error_log</u>.
+</p><hr><a name="log_subrequest"></a><strong>syntax</strong>:
+         <code>log_subrequest <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>log_subrequest off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables logging of subrequests into the
+<u>access_log</u>.
+</p><hr><a name="merge_slashes"></a><strong>syntax</strong>:
+         <code>merge_slashes <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>merge_slashes on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+Enables or disables compression of two or more adjacent slashes
+in a URI into a single slash.
+</p><p>
+Note that compression is essential for the correct prefix string
+and regular expressions location matching.
+Without it, the "<code>//scripts/one.php</code>" request would not match
+<blockquote><pre>
+location /scripts/ {
+    ...
+}
+</pre></blockquote>
+and might be processed as a static file,
+so it gets converted to "<code>/scripts/one.php</code>".
+</p><p>
+Turning the compression <code>off</code> can become necessary if a URI
+contains base64-encoded names, since base64 uses the "/" character internally.
+However, for security considerations, it's better to avoid turning off
+the compression.
+</p><p>
+If a directive is specified on the
+<a href="#server">server</a>
+level, which is also a default server, its value will cover
+all virtual servers listening on the same address and port.
+</p><hr><a name="msie_padding"></a><strong>syntax</strong>:
+         <code>msie_padding <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>msie_padding on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables adding of comments to responses with status
+greater than 400 for MSIE clients, to pad the response size to 512 bytes.
+</p><hr><a name="msie_refresh"></a><strong>syntax</strong>:
+         <code>msie_refresh <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>msie_refresh off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables issuing refreshes instead of redirects, for MSIE clients.
+</p><hr><a name="open_file_cache"></a><strong>syntax</strong>:
+         <code>open_file_cache
+<code>max</code>=<code><i>N</i></code>
+[<code>inactive</code>=<code><i>time</i></code>] |
+<code>off</code></code><br><strong>default</strong>:
+      <code>open_file_cache off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Configures a cache that can store:
+<ul><li>
+open file descriptors, their sizes and modification times;
+</li><li>
+directory lookups;
+</li><li>
+file lookup errors, such as "file not found", "no read permission",
+and so on.
+Caching of errors should be enabled separately by the
+<a href="#open_file_cache_errors">open_file_cache_errors</a>
+directive.
+</li></ul></p><p>
+The directive has the following parameters:
+<ul><li><code>max</code> - 
+sets the maximum number of elements in the cache;
+on cache overflow the least recently used (LRU) elements get removed;
+</li><li><code>inactive</code> - 
+defines a time, after which the element gets removed from the cache
+if there were no accesses to it during this time;
+by default, it is 60 seconds;
+</li><li><code>off</code> - disables the cache.
+</li></ul></p><p>
+Example:
+<blockquote><pre>
+open_file_cache          max=1000  inactive=20s;
+open_file_cache_valid    30s;
+open_file_cache_min_uses 2;
+open_file_cache_errors   on;</pre></blockquote></p><hr><a name="open_file_cache_errors"></a><strong>syntax</strong>:
+         <code>open_file_cache_errors <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>open_file_cache_errors off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables caching of file lookup errors by the
+<a href="#open_file_cache">open_file_cache</a>.
+</p><hr><a name="open_file_cache_min_uses"></a><strong>syntax</strong>:
+         <code>open_file_cache_min_uses <code><i>number</i></code></code><br><strong>default</strong>:
+      <code>open_file_cache_min_uses 1</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets the minimum <code><i>number</i></code> of file accesses during
+the period configured by the <code>inactive</code> parameter
+of the <a href="#open_file_cache">open_file_cache</a> directive,
+after which a file descriptor will remain open in the cache.
+</p><hr><a name="open_file_cache_valid"></a><strong>syntax</strong>:
+         <code>open_file_cache_valid <code><i>time</i></code></code><br><strong>default</strong>:
+      <code>open_file_cache_valid 60</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets a time after which
+<a href="#open_file_cache">open_file_cache</a>
+elements should be validated.
+</p><hr><a name="optimize_server_names"></a><strong>syntax</strong>:
+         <code>optimize_server_names <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>optimize_server_names on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+This directive is obsolete.
+</p><p>
+Enables or disables optimization of hostname checking in name-based
+virtual servers.
+In particular, the checking affects hostnames used in redirects.
+If optimization is enabled, and all name-based servers listening on
+the same address:port pair have identical configuration, then
+names are not checked during request processing, and the first
+server name is used in redirects.
+In case redirects should use hostnames sent by clients,
+optimization needs to be disabled.
+</p><hr><a name="port_in_redirect"></a><strong>syntax</strong>:
+         <code>port_in_redirect <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>port_in_redirect on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables specifying the port in redirects issued by nginx.
+</p><hr><a name="read_ahead"></a><strong>syntax</strong>:
+         <code>read_ahead <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>read_ahead  0</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets the amount of pre-reading when working with files, in the kernel.
+</p><p>
+On Linux, the
+<code>posix_fadvise(0, 0, 0, POSIX_FADV_SEQUENTIAL)</code>
+system call is used, so the <code><i>size</i></code> argument is ignored.
+</p><p>
+On FreeBSD, the
+<code>fcntl(O_READAHEAD,</code><code><i>size</i></code><code>)</code>
+system call is used, supported in FreeBSD 9.0-CURRENT.
+FreeBSD 7 needs to be
+<u>patched</u>.
+</p><hr><a name="recursive_error_pages"></a><strong>syntax</strong>:
+         <code>recursive_error_pages <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>recursive_error_pages off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables doing several redirects using the
+<a href="#error_page">error_page</a>
+directive.
+</p><hr><a name="reset_timedout_connection"></a><strong>syntax</strong>:
+         <code>reset_timedout_connection <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>reset_timedout_connection off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables resetting of timed out connections.
+The reset is performed as follows: before closing a socket, the
+<code>SO_LINGER</code>
+option is set on it with a timeout value of 0.
+When the socket is closed, a client is sent TCP RST, and all memory
+occupied by this socket is freed.
+This avoids keeping of an already closed socket with filled buffers
+for a long time, in a FIN_WAIT1 state.
+</p><p>
+It should be noted that timed out keep-alive connections are still
+closed normally.
+</p><hr><a name="resolver"></a><strong>syntax</strong>:
+         <code>resolver <code><i>address</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets the <code><i>address</i></code> of a name server, for example:
+<blockquote><pre>
+resolver  127.0.0.1;
+</pre></blockquote></p><hr><a name="resolver_timeout"></a><strong>syntax</strong>:
+         <code>resolver_timeout <code><i>time</i></code></code><br><strong>default</strong>:
+      <code>resolver_timeout 30s</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets a timeout for name resolution, for example:
+<blockquote><pre>
+resolver_timeout  5s;
+</pre></blockquote></p><hr><a name="root"></a><strong>syntax</strong>:
+         <code>root <code><i>path</i></code></code><br><strong>default</strong>:
+      <code>root html</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code>, <code>if in location</code><br><p>
+Sets the root directory for requests.
+For example, with the following configuration
+<blockquote><pre>
+location  /i/ {
+    root  /data/w3;
+}
+</pre></blockquote>
+the request of "/i/top.gif" will be responded
+with the file "/data/w3/images/top.gif".
+</p><p>
+The <code><i>path</i></code> value can contain variables.
+</p><p>
+A path to the file is constructed by merely adding a URI to the value
+of the <code>root</code> directive.
+If a URI need to be modified, the
+<a href="#alias">alias</a> directive should be used.
+</p><hr><a name="satisfy"></a><strong>syntax</strong>:
+         <code>satisfy <code>all</code> | <code>any</code></code><br><strong>default</strong>:
+      <code>satisfy all</code><br><strong>context</strong>:
+      <code>location</code><br><p>
+Allows access if any of the
+<u>http_access</u>
+or <u>http_auth_basic</u>
+modules grant access.
+<blockquote><pre>
+location / {
+    satisfy  any;
+
+    allow  192.168.1.0/32;
+    deny   all;
+
+    auth_basic            "closed site";
+    auth_basic_user_file  conf/htpasswd;
+}
+</pre></blockquote></p><hr><a name="satisfy_any"></a><strong>syntax</strong>:
+         <code>satisfy_any <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>satisfy_any off</code><br><strong>context</strong>:
+      <code>location</code><br><p>
+This directive was renamed to the <a href="#satisfy">satisfy</a> directive.
+</p><hr><a name="send_timeout"></a><strong>syntax</strong>:
+         <code>send_timeout <code><i>time</i></code></code><br><strong>default</strong>:
+      <code>send_timeout 60</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Sets a timeout for transmitting a response to the client.
+A timeout is only set between two successive write operations,
+not for the transmission of the whole response.
+If a client does not receive anything within this time,
+a connection is closed.
+</p><hr><a name="sendfile"></a><strong>syntax</strong>:
+         <code>sendfile <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>sendfile off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables the use of
+<code>sendfile()</code>.
+</p><hr><a name="server"></a><strong>syntax</strong>:
+         <code>server { ... }</code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>http</code><br><p>
+Sets a configuration for the virtual server.
+There is no clean separation between IP-based (based on the IP address)
+and name-based (based on the <code>Host</code> header string)
+virtual servers.
+Instead, the <a href="#listen">listen</a> directives describe all
+addresses and ports that should accept connections for a server, and the
+<a href="#server_name">server_name</a> directive lists all server names.
+An example configuration is provided in the
+<u>
+Setting Up Virtual Servers</u> document.
+</p><hr><a name="server_name"></a><strong>syntax</strong>:
+         <code>server_name <code><i>name ...</i></code></code><br><strong>default</strong>:
+      <code>server_name hostname</code><br><strong>context</strong>:
+      <code>server</code><br><p>
+Sets names of the virtual server, for example:
+<blockquote><pre>
+server {
+    server_name   example.com  www.example.com;
+}
+</pre></blockquote></p><p>
+The first name becomes a primary server name.
+By default, the machine's hostname is used.
+Server names can include an asterisk ("<code>*</code>")
+to replace the first or last part of a name:
+<blockquote><pre>
+server {
+    server_name   example.com  *.example.com  www.example.*;
+}
+</pre></blockquote></p><p>
+The first two of the above mentioned names can be combined:
+<blockquote><pre>
+server {
+    server_name   .example.com;
+}
+</pre></blockquote></p><p>
+It is also possible to use regular expressions in server names,
+prepending the name with a tilde ("<code>~</code>"):
+<blockquote><pre>
+server {
+    server_name   www.example.com   ~^www\d+\.example\.com$;
+}
+</pre></blockquote></p><p>
+Regular expressions can contain captures (0.7.40) that can later
+be used in other directives:
+<blockquote><pre>
+server {
+    server_name   ~^(www\.)?(.+)$;
+
+    location / {
+        root  /sites/$2;
+    }
+}
+
+server {
+    server_name   _;
+
+    location / {
+        root  /sites/default;
+    }
+}
+</pre></blockquote></p><p>
+Starting from version 0.8.25, named captures in regular expressions create
+variables that can later be used in other directives:
+<blockquote><pre>
+server {
+    server_name   ~^(www\.)?(?&lt;domain&gt;.+)$;
+
+    location / {
+        root  /sites/$domain;
+    }
+}
+
+server {
+    server_name   _;
+
+    location / {
+        root  /sites/default;
+    }
+}
+</pre></blockquote></p><p>
+Starting from version 0.7.11, it is possible to specify an empty name "":
+<blockquote><pre>
+server {
+    server_name   www.example.com   "";
+}
+</pre></blockquote>
+It allows this server to process requests without the <code>Host</code>
+header, instead of the default server for the given address:port pair.
+</p><p>
+The name checking order is as follows:
+<ol><li>
+full names
+</li><li>
+names with the prefix mask - *.example.com
+</li><li>
+names with the suffix mask - mail.*
+</li><li>
+regular expressions
+</li></ol></p><hr><a name="server_name_in_redirect"></a><strong>syntax</strong>:
+         <code>server_name_in_redirect <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>server_name_in_redirect on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables the use of the primary server name, specified by the
+<a href="#server_name">server_name</a>
+directive, in redirects issued by nginx.
+When disabled, the name from the <code>Host</code> request header string
+is used.
+If there's no such a string, an IP address of the server is used.
+</p><hr><a name="server_names_hash_max_size"></a><strong>syntax</strong>:
+         <code>server_names_hash_max_size <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>server_names_hash_max_size 512</code><br><strong>context</strong>:
+      <code>http</code><br><p>
+Sets the maximum <code><i>size</i></code> of the server names hash tables.
+For more information, please refer to
+<u>Setting Up Hashes</u>.
+</p><hr><a name="server_names_hash_bucket_size"></a><strong>syntax</strong>:
+         <code>server_names_hash_bucket_size <code><i>size</i></code></code><br><strong>default</strong>:
+      <code>server_names_hash_bucket_size 32/64/128</code><br><strong>context</strong>:
+      <code>http</code><br><p>
+Sets the bucket size for the server names hash tables.
+Default value depends on the size of the processor's cache line.
+For more information, please refer to
+<u>Setting Up Hashes</u>.
+</p><hr><a name="server_tokens"></a><strong>syntax</strong>:
+         <code>server_tokens <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>server_tokens on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables emitting of nginx version in error messages and in the
+<code>Server</code> response header string.
+</p><hr><a name="tcp_nodelay"></a><strong>syntax</strong>:
+         <code>tcp_nodelay <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>tcp_nodelay on</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables the use of the <code>TCP_NODELAY</code> option.
+The option is enabled only when a connection is transitioned into the
+keep-alive state.
+</p><hr><a name="tcp_nopush"></a><strong>syntax</strong>:
+         <code>tcp_nopush <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>tcp_nopush off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Enables or disables the use of
+the <code>TCP_NOPUSH</code> socket option on FreeBSD
+or the <code>TCP_CORK</code> socket option on Linux.
+Opitons are enables only when <a href="#sendfile">sendfile</a> is used.
+Enabling the option allows to
+<ul><li>
+send the response header and the beginning of a file in one packet,
+on Linux and FreeBSD 4.*;
+</li><li>
+send a file in full packets.
+</li></ul></p><hr><a name="try_files"></a><strong>syntax</strong>:
+         <code>try_files <code><i>file ... uri</i></code></code><br><code>       </code><code>try_files <code><i>file ...</i></code> =<code><i>code</i></code></code><br><strong>default</strong>:
+      <strong>none</strong><br><strong>context</strong>:
+      <code>location</code><br><p>
+Checks the existence of files in the specified order, and uses
+the first found file for request processing; the processing
+is performed in this location's context.
+It is possible to check the directory existence by specifying
+the slash at the end of a name, e.g. "<code>$uri/</code>".
+If none of the files were found, an internal redirect to the
+<code><i>uri</i></code> specified by the last argument is made.
+As of version 0.7.51, the last argument can also be a
+<code><i>code</i></code>:
+<blockquote><pre>
+location / {
+    try_files      $uri  $uri/index.html  $uri.html  =404;
+}
+</pre></blockquote></p><p>
+Example when proxying Mongrel:
+<blockquote><pre>
+location / {
+    try_files      /system/maintenance.html
+                   $uri  $uri/index.html  $uri.html
+                   @mongrel;
+}
+
+location @mongrel {
+    proxy_pass     http://mongrel;
+}
+</pre></blockquote></p><p>
+Example for Drupal/FastCGI:
+<blockquote><pre>
+location / {
+    try_files      $uri  $uri/  @drupal;
+}
+
+location ~ \.php$ {
+    try_files      $uri  @drupal;
+
+    fastcgi_pass   ...;
+
+    fastcgi_param  SCRIPT_FILENAME  /path/to$fastcgi_script_name;
+    fastcgi_param  SCRIPT_NAME      $fastcgi_script_name;
+    fastcgi_param  QUERY_STRING     $args;
+
+    ... other fastcgi_param's
+}
+
+location @drupal {
+    fastcgi_pass   ...;
+
+    fastcgi_param  SCRIPT_FILENAME  /path/to/index.php;
+    fastcgi_param  SCRIPT_NAME      /index.php;
+    fastcgi_param  QUERY_STRING     q=$uri&amp;$args;
+
+    ... other fastcgi_param's
+}
+</pre></blockquote>
+In the following example,
+<blockquote><pre>
+location / {
+    try_files      $uri  $uri/  @drupal;
+}
+</pre></blockquote>
+the <code>try_files</code> directive is equivalent to
+<blockquote><pre>
+location / {
+    error_page     404 = @drupal;
+    log_not_found  off;
+}
+</pre></blockquote>
+And here,
+<blockquote><pre>
+location ~ \.php$ {
+    try_files      $uri  @drupal;
+
+    fastcgi_pass   ...;
+
+    fastcgi_param  SCRIPT_FILENAME  /path/to$fastcgi_script_name;
+
+    ...
+}
+</pre></blockquote><code>try_files</code> checks the existence of the PHP file
+before passing the request to the FastCGI server.
+</p><p>
+Example for Wordpress and Joomla:
+<blockquote><pre>
+location / {
+    try_files      $uri  $uri/  @wordpress;
+}
+
+location ~ \.php$ {
+    try_files      $uri  @wordpress;
+
+    fastcgi_pass   ...;
+
+    fastcgi_param  SCRIPT_FILENAME  /path/to$fastcgi_script_name;
+    ... other fastcgi_param's
+}
+
+location @wordpress {
+    fastcgi_pass   ...;
+
+    fastcgi_param  SCRIPT_FILENAME  /path/to/index.php;
+    ... other fastcgi_param's
+}
+</pre></blockquote></p></body></html>
