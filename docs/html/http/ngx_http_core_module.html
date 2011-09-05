@@ -1148,4 +1148,33 @@ location @wordpress {
     fastcgi_param  SCRIPT_FILENAME  /path/to/index.php;
     ... other fastcgi_param's
 }
-</pre></blockquote></p></body></html>
+</pre></blockquote></p><hr><a name="types"></a><strong>syntax</strong>:
+         <code>types { ... }</code><br><strong>default</strong>:
+      <code>see below</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code>, <code>location</code><br><p>
+Maps file name extensions to MIME types of responses.
+Several extensions can map to one type.
+The following mappings are configured by default:
+<blockquote><pre>
+types {
+    text/html    html;
+    image/gif    gif;
+    image/jpeg   jpg;
+}
+</pre></blockquote></p><p>
+A sufficiently full mapping table is distributed with nginx in the
+<code>conf/mime.types</code> file.
+</p><p>
+To make a particular location emit the "<code>application/octet-stream</code>"
+MIME type for all requests, try the following:
+<blockquote><pre>
+location /download/ {
+    types         { }
+    default_type  application/octet-stream;
+}
+</pre></blockquote></p><hr><a name="underscores_in_headers"></a><strong>syntax</strong>:
+         <code>underscores_in_headers <code>on</code> | <code>off</code></code><br><strong>default</strong>:
+      <code>underscores_in_headers off</code><br><strong>context</strong>:
+      <code>http</code>, <code>server</code><br><p>
+Enables or disables the use of underscores in client request header strings.
+</p></body></html>
