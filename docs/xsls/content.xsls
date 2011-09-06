@@ -22,6 +22,12 @@ X:stylesheet {
 
     X:template = "command" { <code> !!; </code> }
 
+    X:template = "dq" {
+        X:text disable-output-escaping="yes" {&amp;ldquo;}
+        !!;
+        X:text disable-output-escaping="yes" {&amp;rdquo;}
+    }
+
     X:template = "example" { <blockquote><pre> !!; </pre></blockquote> }
 
     X:template = "emphasis" { <strong> !!; </strong> }
@@ -40,8 +46,15 @@ X:stylesheet {
     X:template = "list[@type='enum']" { <ol> !!; </ol> }
     X:template = "listitem" { <li> !!; </li> }
 
+    X:template = "list[@type='tag']" { <dl compact=""> !!; </dl> }
+    X:template = "tag-name" { <dt> !!; </dt> }
+    X:template = "tag-desc" { <dd> !!; </dd> }
+
+    X:template = "pathname" { <code> !!; </code> }
+
     X:template = "argument" { <code><i> !!; </i></code> }
     X:template = "parameter" { <code> !!; </code> }
+
     X:template = "value" { <code> !!; </code> }
 
     X:template = "var" { <code> !!; </code> }

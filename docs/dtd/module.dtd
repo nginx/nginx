@@ -5,7 +5,7 @@
             id          ID #REQUIRED
 >
 
-<!ELEMENT   section     (directive+ | para+) >
+<!ELEMENT   section     (directive | para)+ >
 <!ATTLIST   section
             name        CDATA #REQUIRED
             id          ID #IMPLIED
@@ -23,7 +23,9 @@
 
 <!ELEMENT   context     (#PCDATA)* >
 
-<!ELEMENT   para        (#PCDATA | argument | c-def | c-func | code | command | emphasis | example | header | http-error | link | list | note | parameter | value | var)* >
+<!ELEMENT   para        (#PCDATA | argument | c-def | c-func | code | command |
+                         dq | emphasis | example | header | http-error | link |
+                         list | note | parameter | pathname | value | var)* >
 
 <!ELEMENT   argument    (#PCDATA)* >
 
@@ -35,11 +37,13 @@
 
 <!ELEMENT   command     (#PCDATA)* >
 
+<!ELEMENT   dq          ANY >
+
 <!ELEMENT   emphasis    (#PCDATA)* >
 
 <!ELEMENT   example     (#PCDATA)* >
 
-<!ELEMENT   header      (#PCDATA)* >
+<!ELEMENT   header      (#PCDATA | argument)* >
 
 <!ELEMENT   http-error  EMPTY >
 <!ATTLIST   http-error
@@ -53,20 +57,24 @@
             id          CDATA #IMPLIED
 >
 
-<!ELEMENT   list        (listitem+) >
+<!ELEMENT   list        (listitem+ | (tag-name | tag-desc)+) >
 <!ATTLIST   list
-            type        (bullet | enum) #REQUIRED
+            type        (bullet | enum | tag) #REQUIRED
 >
 
 <!ELEMENT   listitem    ANY >
+<!ELEMENT   tag-name    ANY >
+<!ELEMENT   tag-desc    ANY >
 
 <!ELEMENT   note        ANY >
 
 <!ELEMENT   parameter   (#PCDATA)* >
+
+<!ELEMENT   pathname    (#PCDATA)* >
 
 <!ELEMENT   value       (#PCDATA)* >
 
 <!ELEMENT   var         (#PCDATA)* >
 
 <!ENTITY    nbsp        "&#xA0;" >
-<!ENTITY    mdash       "&#xA0;- " >
+<!ENTITY    mdash       "&nbsp;- " >
