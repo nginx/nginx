@@ -1,12 +1,12 @@
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>Core Module</title></head><body><a name="example"></a><center><h4>Example Configuration</h4></center><p><blockquote><pre>
-user               www  www;
-worker_processes   2;
+user www www;
+worker_processes 2;
 
-error_log   /var/log/nginx-error.log  info;
+error_log /var/log/nginx-error.log info;
 
 events {
-    use    kqueue;
-    worker_connections   2048;
+    use kqueue;
+    worker_connections 2048;
 }
 
 ...
@@ -33,7 +33,7 @@ module;
 </li><li>
 use of variables by worker processes.
 Please bear in mind that controlling system libraries in this way
-isn't always possible as it's not uncommon for libraries to check
+is not always possible as it is not uncommon for libraries to check
 variables only during initialization, well before they can be set
 using this directive.
 An exception from this is an above mentioned
@@ -46,9 +46,9 @@ module, unless configured explicitly.
 </p><p>
 Usage example:
 <blockquote><pre>
-env  MALLOC_OPTIONS;
-env  PERL5LIB=/data/site/modules;
-env  OPENSSL_ALLOW_PROXY_CERTS=1;
+env MALLOC_OPTIONS;
+env PERL5LIB=/data/site/modules;
+env OPENSSL_ALLOW_PROXY_CERTS=1;
 </pre></blockquote></p><hr><a name="include"></a><strong>syntax</strong>:
          <code>include <code><i>file</i></code> | <code><i>mask</i></code></code><br><strong>default</strong>:
       <strong>none</strong><br><strong>context</strong>:
@@ -60,8 +60,8 @@ syntactically correct directives and blocks.
 </p><p>
 Usage example:
 <blockquote><pre>
-include  mime.types;
-include  vhosts/*.conf;
+include mime.types;
+include vhosts/*.conf;
 </pre></blockquote></p><hr><a name="master_process"></a><strong>syntax</strong>:
          <code>master_process <code>on</code> | <code>off</code></code><br><strong>default</strong>:
       <code>master_process on</code><br><strong>context</strong>:
@@ -99,7 +99,7 @@ called once per specified <code><i>interval</i></code>.
 </p><p>
 Example:
 <blockquote><pre>
-timer_resolution   100ms;
+timer_resolution 100ms;
 </pre></blockquote></p><p>
 An internal implementation of interval depends on the method used:
 <ul><li>
@@ -132,7 +132,7 @@ Allowed range normally varies from -20 to 20.
 </p><p>
 Example:
 <blockquote><pre>
-worker_priority  -10;
+worker_priority -10;
 </pre></blockquote></p><hr><a name="worker_processes"></a><strong>syntax</strong>:
          <code>worker_processes <code><i>number</i></code></code><br><strong>default</strong>:
       <code>worker_processes 1</code><br><strong>context</strong>:
@@ -143,7 +143,7 @@ Defines the number of worker processes.
       <strong>none</strong><br><strong>context</strong>:
       <code>main</code><br><p>
 Defines a current working directory for a worker process.
-It's primarily used for writing a core-file, in which case
+It is primarily used when writing a core-file, in which case
 a working process should have write permission for the
 specified directory.
 </p></body></html>
