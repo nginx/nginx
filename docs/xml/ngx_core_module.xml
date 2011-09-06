@@ -8,14 +8,14 @@
 
 <para>
 <example>
-user               www  www;
-worker_processes   2;
+user www www;
+worker_processes 2;
 
-error_log   /var/log/nginx-error.log  info;
+error_log /var/log/nginx-error.log info;
 
 events {
-    use    kqueue;
-    worker_connections   2048;
+    use kqueue;
+    worker_connections 2048;
 }
 
 ...
@@ -65,7 +65,7 @@ module;
 <listitem>
 use of variables by worker processes.
 Please bear in mind that controlling system libraries in this way
-isn't always possible as it's not uncommon for libraries to check
+is not always possible as it is not uncommon for libraries to check
 variables only during initialization, well before they can be set
 using this directive.
 An exception from this is an above mentioned
@@ -85,9 +85,9 @@ module, unless configured explicitly.
 <para>
 Usage example:
 <example>
-env  MALLOC_OPTIONS;
-env  PERL5LIB=/data/site/modules;
-env  OPENSSL_ALLOW_PROXY_CERTS=1;
+env MALLOC_OPTIONS;
+env PERL5LIB=/data/site/modules;
+env OPENSSL_ALLOW_PROXY_CERTS=1;
 </example>
 </para>
 
@@ -108,8 +108,8 @@ syntactically correct directives and blocks.
 <para>
 Usage example:
 <example>
-include  mime.types;
-include  vhosts/*.conf;
+include mime.types;
+include vhosts/*.conf;
 </example>
 </para>
 
@@ -185,7 +185,7 @@ called once per specified <argument>interval</argument>.
 <para>
 Example:
 <example>
-timer_resolution   100ms;
+timer_resolution 100ms;
 </example>
 </para>
 
@@ -194,11 +194,11 @@ An internal implementation of interval depends on the method used:
 <list type="bullet">
 
 <listitem>
-an <c-def>EVFILT_TIMER</c-def> filter if <code>kqueue</code> is used;
+an <c-def>EVFILT_TIMER</c-def> filter if <value>kqueue</value> is used;
 </listitem>
 
 <listitem>
-<c-func>timer_create</c-func> if <code>eventport</code> is used;
+<c-func>timer_create</c-func> if <value>eventport</value> is used;
 </listitem>
 
 <listitem>
@@ -255,7 +255,7 @@ Allowed range normally varies from -20 to 20.
 <para>
 Example:
 <example>
-worker_priority  -10;
+worker_priority -10;
 </example>
 </para>
 
@@ -281,7 +281,7 @@ Defines the number of worker processes.
 
 <para>
 Defines a current working directory for a worker process.
-It's primarily used for writing a core-file, in which case
+It is primarily used when writing a core-file, in which case
 a working process should have write permission for the
 specified directory.
 </para>
