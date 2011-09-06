@@ -59,6 +59,15 @@
       </code>
    </xsl:template>
 
+   <xsl:template match="dq">
+
+      <xsl:text disable-output-escaping="yes">&amp;ldquo;</xsl:text>
+
+      <xsl:apply-templates/>
+
+      <xsl:text disable-output-escaping="yes">&amp;rdquo;</xsl:text>
+   </xsl:template>
+
    <xsl:template match="example"> 
       <blockquote>
          <pre>
@@ -120,6 +129,30 @@
       <li>
          <xsl:apply-templates/>
       </li>
+   </xsl:template>
+
+   <xsl:template match="list[@type='tag']"> 
+      <dl compact="">
+         <xsl:apply-templates/>
+      </dl>
+   </xsl:template>
+
+   <xsl:template match="tag-name"> 
+      <dt>
+         <xsl:apply-templates/>
+      </dt>
+   </xsl:template>
+
+   <xsl:template match="tag-desc"> 
+      <dd>
+         <xsl:apply-templates/>
+      </dd>
+   </xsl:template>
+
+   <xsl:template match="pathname"> 
+      <code>
+         <xsl:apply-templates/>
+      </code>
    </xsl:template>
 
    <xsl:template match="argument"> 
