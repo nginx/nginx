@@ -24,11 +24,11 @@ Allows to limit a set of environment variables, change their values,
 or create new environment variables, for the following cases:
 <ul><li>
 variable inheritance during a
-<u>live upgrade</u>
+<a href="control.html#upgrade">live upgrade</a>
 of an executable file;
 </li><li>
 use of variables by the
-<u>http_perl</u>
+<a href="http/ngx_http_perl_module.html">http_perl</a>
 module;
 </li><li>
 use of variables by worker processes.
@@ -37,11 +37,11 @@ is not always possible as it is not uncommon for libraries to check
 variables only during initialization, well before they can be set
 using this directive.
 An exception from this is an above mentioned
-<u>live upgrade</u>
+<a href="control.html#upgrade">live upgrade</a>
 of an executable file.
 </li></ul></p><p>
 The TZ variable is always inherited and made available to the
-<u>http_perl</u>
+<a href="http/ngx_http_perl_module.html">http_perl</a>
 module, unless configured explicitly.
 </p><p>
 Usage example:

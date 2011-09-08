@@ -147,9 +147,9 @@ into a file.
 This directive can be used during debugging, or when using the
 <code>$request_body_file</code>
 variable, or the
-<u>$r-&gt;request_body_file</u>
+<a href="ngx_http_perl_module.html#methods">$r-&gt;request_body_file</a>
 method of the
-<u>http_perl</u> module.
+<a href="ngx_http_perl_module.html">http_perl</a> module.
 </p><p>
 When set to the value <code>on</code>, temporary files are not
 removed after request processing.
@@ -239,8 +239,8 @@ If <code><i>size</i></code> is greater than the configured value, the
 <i>"Request Entity Too Large"</i> (413)
 error is returned to a client.
 Please be aware that
-<u>browsers cannot correctly display
-this error</u>.
+<a href="/web/upload.html">browsers cannot correctly display
+this error</a>.
 </p><hr><a name="default_type"></a><strong>syntax</strong>:
          <code>default_type <code><i>mime-type</i></code></code><br><strong>default</strong>:
       <code>default_type text/plain</code><br><strong>context</strong>:
@@ -283,7 +283,7 @@ using XFS under Linux, it needs to be increased to 4K.
 Defines the URI that will be shown for the specified errors.
 These directives are inherited from the previous level if and
 only if there are no
-<u>error_page</u>
+<code>error_page</code>
 directives on
 the current level.
 A URI value can contain variables.
@@ -351,12 +351,12 @@ requests redirected by the <a href="#error_page">error_page</a> directive;
 subrequests formed by the
 <code>include virtual</code>
 command of the
-<u>http_ssi</u> module;
+<a href="ngx_http_ssi_module.html">http_ssi</a> module;
 </li><li>
 requests changed by the
-<u>rewrite</u>
+<a href="ngx_http_rewrite_module.html#rewrite">rewrite</a>
 directive of the
-<u>http_rewrite</u> module.
+<a href="ngx_http_rewrite_module.html">http_rewrite</a> module.
 </li></ul></p><p>
 Example:
 <blockquote><pre>
@@ -414,9 +414,9 @@ into the keep-alive state, these buffers are freed.
 Limits allowed HTTP methods inside a location.
 The GET method also implies the HEAD method.
 Access to other methods can be limited using the
-<u>http_access</u>
+<a href="ngx_http_access_module.html">http_access</a>
 and
-<u>http_auth_basic</u>
+<a href="ngx_http_auth_basic_module.html">http_auth_basic</a>
 modules directives:
 <blockquote><pre>
 limit_except GET {
@@ -667,13 +667,13 @@ used for request redirection.
       <code>log_not_found on</code><br><strong>context</strong>:
       <code>http</code>, <code>server</code>, <code>location</code><br><p>
 Enables or disables logging of errors about not found files into the
-<u>error_log</u>.
+<a href="../ngx_core_module.html#error_log">error_log</a>.
 </p><hr><a name="log_subrequest"></a><strong>syntax</strong>:
          <code>log_subrequest <code>on</code> | <code>off</code></code><br><strong>default</strong>:
       <code>log_subrequest off</code><br><strong>context</strong>:
       <code>http</code>, <code>server</code>, <code>location</code><br><p>
 Enables or disables logging of subrequests into the
-<u>access_log</u>.
+<a href="ngx_http_log_module.html#access_log">access_log</a>.
 </p><hr><a name="merge_slashes"></a><strong>syntax</strong>:
          <code>merge_slashes <code>on</code> | <code>off</code></code><br><strong>default</strong>:
       <code>merge_slashes on</code><br><strong>context</strong>:
@@ -803,7 +803,7 @@ On FreeBSD, the
 <code>fcntl(O_READAHEAD,</code><code><i>size</i></code><code>)</code>
 system call is used, supported in FreeBSD 9.0-CURRENT.
 FreeBSD 7 needs to be
-<u>patched</u>.
+<a href="http://sysoev.ru/freebsd/patch.readahead.txt">patched</a>.
 </p><hr><a name="recursive_error_pages"></a><strong>syntax</strong>:
          <code>recursive_error_pages <code>on</code> | <code>off</code></code><br><strong>default</strong>:
       <code>recursive_error_pages off</code><br><strong>context</strong>:
@@ -866,8 +866,8 @@ If a URI need to be modified, the
       <code>satisfy all</code><br><strong>context</strong>:
       <code>location</code><br><p>
 Allows access if any of the
-<u>http_access</u>
-or <u>http_auth_basic</u>
+<a href="ngx_http_access_module.html">http_access</a>
+or <a href="ngx_http_auth_basic_module.html">http_auth_basic</a>
 modules grant access.
 <blockquote><pre>
 location / {
@@ -911,8 +911,8 @@ Instead, the <a href="#listen">listen</a> directives describe all
 addresses and ports that should accept connections for a server, and the
 <a href="#server_name">server_name</a> directive lists all server names.
 An example configuration is provided in the
-<u>
-Setting Up Virtual Servers</u> document.
+<a href="../virtual_hosts.html">
+Setting Up Virtual Servers</a> document.
 </p><hr><a name="server_name"></a><strong>syntax</strong>:
          <code>server_name <code><i>name</i></code> ...</code><br><strong>default</strong>:
       <code>server_name hostname</code><br><strong>context</strong>:
@@ -1015,7 +1015,7 @@ If this field is not present, an IP address of the server is used.
       <code>http</code><br><p>
 Sets the maximum <code><i>size</i></code> of the server names hash tables.
 For more information, please refer to
-<u>Setting Up Hashes</u>.
+<a href="../hash.html">Setting Up Hashes</a>.
 </p><hr><a name="server_names_hash_bucket_size"></a><strong>syntax</strong>:
          <code>server_names_hash_bucket_size <code><i>size</i></code></code><br><strong>default</strong>:
       <code>server_names_hash_bucket_size 32/64/128</code><br><strong>context</strong>:
@@ -1023,7 +1023,7 @@ For more information, please refer to
 Sets the bucket size for the server names hash tables.
 Default value depends on the size of the processor's cache line.
 For more information, please refer to
-<u>Setting Up Hashes</u>.
+<a href="../hash.html">Setting Up Hashes</a>.
 </p><hr><a name="server_tokens"></a><strong>syntax</strong>:
          <code>server_tokens <code>on</code> | <code>off</code></code><br><strong>default</strong>:
       <code>server_tokens on</code><br><strong>context</strong>:
@@ -1241,9 +1241,9 @@ request body
 <p>
 The variable's value is made available in locations
 processed by the
-<u>proxy_pass</u>
+<a href="ngx_http_proxy_module.html#proxy_pass">proxy_pass</a>
 and
-<u>fastcgi_pass</u>
+<a href="ngx_http_fastcgi_module.html#fastcgi_pass">fastcgi_pass</a>
 directives.
 </p></dd><dt><code>$request_body_file</code></dt><dd>
 name of a temporary file with the request body
@@ -1255,15 +1255,15 @@ needs be specified.
 When passing the name of a temporary file in a proxied request,
 or in a request to a FastCGI server,
 passing of the request body should be disabled by the
-<u>proxy_pass_request_body</u>
+<a href="ngx_http_proxy_module.html#proxy_pass_request_body">proxy_pass_request_body</a>
 and
-<u>fastcgi_pass_request_body</u>
+<a href="ngx_http_fastcgi_module.html#fastcgi_pass_request_body">fastcgi_pass_request_body</a>
 directives, respectively.
 </p></dd><dt><code>$request_uri</code></dt><dd>
 full original request URI (with arguments)
 </dd><dt><code>$query_string</code></dt><dd>
 same as <code>$args</code></dd><dt><code>$scheme</code></dt><dd>
-request scheme, &ldquo;<code>http</code>&rdquo; or &ldquo;<code>https</code>&gt;&rdquo;</dd><dt><code>$server_protocol</code></dt><dd>
+request scheme, &ldquo;<code>http</code>&rdquo; or &ldquo;<code>https</code>&rdquo;</dd><dt><code>$server_protocol</code></dt><dd>
 request protocol, usually
 &ldquo;<code>HTTP/1.0</code>&rdquo;
 or
