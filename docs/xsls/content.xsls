@@ -39,7 +39,14 @@ X:stylesheet {
         X:text{ (} !{@code} X:text{)}
     }
 
+    X:template = "link[@url]" { <a href="{@url}"> !!; </a> }
     X:template = "link[@id and not(@doc)]" { <a href="#{@id}"> !!; </a> }
+    X:template = "link[@doc and not(@id)]" {
+        <a href="{substring-before(@doc, '.xml')}.html"> !!; </a>
+    }
+    X:template = "link[@id and @doc]" {
+        <a href="{substring-before(@doc, '.xml')}.html#{@id}"> !!; </a>
+    }
     X:template = "link" { <u> !!; </u> }
 
     X:template = "list[@type='bullet']" { <ul> !!; </ul> }

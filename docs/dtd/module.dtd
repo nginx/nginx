@@ -55,6 +55,7 @@
 <!ATTLIST   link
             doc         CDATA #IMPLIED
             id          CDATA #IMPLIED
+            url         CDATA #IMPLIED
 >
 
 <!ELEMENT   list        (listitem+ | (tag-name | tag-desc)+) >
