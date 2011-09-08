@@ -101,8 +101,28 @@
       <xsl:text>)</xsl:text>
    </xsl:template>
 
+   <xsl:template match="link[@url]"> 
+      <a href="{@url}">
+         <xsl:apply-templates/>
+      </a>
+   </xsl:template>
+
    <xsl:template match="link[@id and not(@doc)]"> 
       <a href="#{@id}">
+         <xsl:apply-templates/>
+      </a>
+   </xsl:template>
+
+   <xsl:template match="link[@doc and not(@id)]">
+
+      <a href="{substring-before(@doc, '.xml')}.html">
+         <xsl:apply-templates/>
+      </a>
+   </xsl:template>
+
+   <xsl:template match="link[@id and @doc]">
+
+      <a href="{substring-before(@doc, '.xml')}.html#{@id}">
          <xsl:apply-templates/>
       </a>
    </xsl:template>
