@@ -441,7 +441,7 @@ using XFS under Linux, it needs to be increased to 4K.
 Defines the URI that will be shown for the specified errors.
 These directives are inherited from the previous level if and
 only if there are no
-<link doc="../core_module.xml" id="error_page">error_page</link>
+<command>error_page</command>
 directives on
 the current level.
 A URI value can contain variables.
@@ -1039,7 +1039,7 @@ used for request redirection.
 
 <para>
 Enables or disables logging of errors about not found files into the
-<link doc="ngx_core_module.xml" id="error_log">error_log</link>.
+<link doc="../ngx_core_module.xml" id="error_log">error_log</link>.
 </para>
 
 </directive>
@@ -1352,7 +1352,7 @@ On FreeBSD, the
 <code>fcntl(O_READAHEAD,</code><argument>size</argument><code>)</code>
 system call is used, supported in FreeBSD&nbsp;9.0-CURRENT.
 FreeBSD&nbsp;7 needs to be
-<link doc="http://sysoev.ru/freebsd/patch.readahead.txt">patched</link>.
+<link url="http://sysoev.ru/freebsd/patch.readahead.txt">patched</link>.
 </para>
 
 </directive>
@@ -1556,7 +1556,7 @@ Instead, the <link id="listen">listen</link> directives describe all
 addresses and ports that should accept connections for a server, and the
 <link id="server_name">server_name</link> directive lists all server names.
 An example configuration is provided in the
-<link doc="/docs/virtual_hosts.xml">
+<link doc="../virtual_hosts.xml">
 Setting Up Virtual Servers</link> document.
 </para>
 
@@ -1716,7 +1716,7 @@ If this field is not present, an IP address of the server is used.
 <para>
 Sets the maximum <argument>size</argument> of the server names hash tables.
 For more information, please refer to
-<link doc="/docs/hash.xml">Setting Up Hashes</link>.
+<link doc="../hash.xml">Setting Up Hashes</link>.
 </para>
 
 </directive>
@@ -1731,7 +1731,7 @@ For more information, please refer to
 Sets the bucket size for the server names hash tables.
 Default value depends on the size of the processor's cache line.
 For more information, please refer to
-<link doc="/docs/hash.xml">Setting Up Hashes</link>.
+<link doc="../hash.xml">Setting Up Hashes</link>.
 </para>
 
 </directive>
@@ -2144,7 +2144,7 @@ same as <var>$args</var>
 
 <tag-name><var>$scheme</var></tag-name>
 <tag-desc>
-request scheme, <dq><code>http</code></dq> or <dq><code>https</code>></dq>
+request scheme, <dq><code>http</code></dq> or <dq><code>https</code></dq>
 </tag-desc>
 
 <tag-name><var>$server_protocol</var></tag-name>
