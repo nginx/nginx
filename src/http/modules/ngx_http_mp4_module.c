@@ -410,6 +410,7 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
     ngx_memzero(&of, sizeof(ngx_open_file_info_t));
 
     of.read_ahead = clcf->read_ahead;
+    of.directio = NGX_MAX_OFF_T_VALUE;
     of.valid = clcf->open_file_cache_valid;
     of.min_uses = clcf->open_file_cache_min_uses;
     of.errors = clcf->open_file_cache_errors;
@@ -533,6 +534,8 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_directio_on_n " \"%s\" failed", path.data);
         }
+
+        of.is_directio = 1;
 
         if (mp4) {
             mp4->file.directio = 1;
