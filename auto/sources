@@ -463,6 +463,10 @@ HTTP_FLV_MODULE=ngx_http_flv_module
 HTTP_FLV_SRCS=src/http/modules/ngx_http_flv_module.c
 
 
+HTTP_MP4_MODULE=ngx_http_mp4_module
+HTTP_MP4_SRCS=src/http/modules/ngx_http_mp4_module.c
+
+
 HTTP_GZIP_STATIC_MODULE=ngx_http_gzip_static_module
 HTTP_GZIP_STATIC_SRCS=src/http/modules/ngx_http_gzip_static_module.c
 
