@@ -35,8 +35,7 @@ X:stylesheet {
     X:template = "header" { <code> !!; </code> }
 
     X:template = "http-error" {
-        <i> X:text{&quot;} !{@text} X:text{&quot;} </i>
-        X:text{ (} !{@code} X:text{)}
+        !{@code} X:text{ (} !{@text} X:text{)}
     }
 
     X:template = "link[@url]" { <a href="{@url}"> !!; </a> }
