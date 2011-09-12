@@ -1692,7 +1692,7 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
         /* codecs of interest: avc1 (H.264), mp4a (MPEG-4 audio) */
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                       "stsd entries:%ui, codec:%*s",
+                       "stsd entries:%uD, codec:%*s",
                        entries, 4,
                        atom_header + sizeof(ngx_mp4_stsd_atom_t) + 4);
 
@@ -1750,7 +1750,7 @@ ngx_http_mp4_read_stts_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     entries = ngx_mp4_get_32value(stts_atom->entries);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "mp4 time-to-sample entries:%ui", entries);
+                   "mp4 time-to-sample entries:%uD", entries);
 
     atom_table = atom_header + sizeof(ngx_mp4_stts_atom_t);
     atom_end = atom_table + entries * sizeof(ngx_mp4_stts_entry_t);
@@ -1817,7 +1817,7 @@ ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
     start_time = mp4->start * trak->timescale / 1000;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "time-to-sample start_time:%ui", start_time);
+                   "time-to-sample start_time:%uL", start_time);
 
     start_sample = 0;
     entry = (ngx_mp4_stts_entry_t *) data->pos;
@@ -1898,7 +1898,7 @@ ngx_http_mp4_read_stss_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     entries = ngx_mp4_get_32value(stss_atom->entries);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "sync sample entries:%ui", entries);
+                   "sync sample entries:%uD", entries);
 
     trak = ngx_mp4_last_trak(mp4);
     trak->sync_samples_entries = entries;
@@ -2043,7 +2043,7 @@ ngx_http_mp4_read_ctts_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     entries = ngx_mp4_get_32value(ctts_atom->entries);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "composition offset entries:%ui", entries);
+                   "composition offset entries:%uD", entries);
 
     trak = ngx_mp4_last_trak(mp4);
     trak->composition_offset_entries = entries;
@@ -2182,7 +2182,7 @@ ngx_http_mp4_read_stsc_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     entries = ngx_mp4_get_32value(stsc_atom->entries);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "sample-to-chunk entries:%ui", entries);
+                   "sample-to-chunk entries:%uD", entries);
 
     atom_table = atom_header + sizeof(ngx_mp4_stsc_atom_t);
     atom_end = atom_table + entries * sizeof(ngx_mp4_stsc_entry_t);
