@@ -2488,7 +2488,7 @@ ngx_http_mp4_update_stco_atom(ngx_http_mp4_file_t *mp4,
 
     if (trak->start_chunk > trak->chunks) {
         ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
-                      "start time is out mp4 stsc chunks in \"%\"",
+                      "start time is out mp4 stco chunks in \"%\"",
                       mp4->file.name.data);
         return NGX_ERROR;
     }
