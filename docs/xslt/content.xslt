@@ -90,14 +90,9 @@
 
    <xsl:template match="http-error">
 
-      <i>
-         <xsl:text>"</xsl:text>
-         <xsl:value-of select="@text"/>
-         <xsl:text>"</xsl:text>
-      </i>
-
-      <xsl:text> (</xsl:text>
       <xsl:value-of select="@code"/>
+      <xsl:text> (</xsl:text>
+      <xsl:value-of select="@text"/>
       <xsl:text>)</xsl:text>
    </xsl:template>
 
