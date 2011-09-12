@@ -1693,7 +1693,9 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "stsd entries:%ui, codec:%*s",
-                       entries, 4, atom_table);
+                       entries, 4,
+                       atom_header + sizeof(ngx_mp4_stsd_atom_t) + 4);
+
     }
     }
 #endif
