@@ -37,7 +37,7 @@
 
 typedef struct {
     size_t                buffer_size;
-    size_t                max_moov_size;
+    size_t                max_buffer_size;
 } ngx_http_mp4_conf_t;
 
 
@@ -275,11 +275,11 @@ static ngx_command_t  ngx_http_mp4_commands[] = {
       offsetof(ngx_http_mp4_conf_t, buffer_size),
       NULL },
 
-    { ngx_string("mp4_max_moov_size"),
+    { ngx_string("mp4_max_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_mp4_conf_t, max_moov_size),
+      offsetof(ngx_http_mp4_conf_t, max_buffer_size),
       NULL },
 
       ngx_null_command
@@ -937,10 +937,10 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 
     if (atom_data_size > mp4->buffer_size) {
 
-        if (atom_data_size > conf->max_moov_size) {
+        if (atom_data_size > conf->max_buffer_size) {
             ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
                           "\"%s\" mp4 moov atom is too large:%uL, "
-                          "you may want to increase mp4_max_moov_size",
+                          "you may want to increase mp4_max_buffer_size",
                           mp4->file.name.data, atom_data_size);
             return NGX_ERROR;
         }
@@ -2574,7 +2574,7 @@ ngx_http_mp4_create_conf(ngx_conf_t *cf)
     }
 
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
-    conf->max_moov_size = NGX_CONF_UNSET_SIZE;
+    conf->max_buffer_size = NGX_CONF_UNSET_SIZE;
 
     return conf;
 }
@@ -2587,7 +2587,7 @@ ngx_http_mp4_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_mp4_conf_t *conf = child;
 
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size, 512 * 1024);
-    ngx_conf_merge_size_value(conf->max_moov_size, prev->max_moov_size,
+    ngx_conf_merge_size_value(conf->max_buffer_size, prev->max_buffer_size,
                               10 * 1024 * 1024);
 
     return NGX_CONF_OK;
