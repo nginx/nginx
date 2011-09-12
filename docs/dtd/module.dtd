@@ -41,7 +41,7 @@
 
 <!ELEMENT   emphasis    (#PCDATA)* >
 
-<!ELEMENT   example     (#PCDATA)* >
+<!ELEMENT   example     ANY >
 
 <!ELEMENT   header      (#PCDATA | argument)* >
 
@@ -79,3 +79,7 @@
 
 <!ENTITY    nbsp        "&#xA0;" >
 <!ENTITY    mdash       "&nbsp;- " >
+<!ENTITY    lsquo       "&#8216;">
+<!ENTITY    rsquo       "&#8217;">
+<!ENTITY    ldquo       "&#8220;">
+<!ENTITY    rdquo       "&#8221;">
