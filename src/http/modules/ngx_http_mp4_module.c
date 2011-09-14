@@ -1718,7 +1718,8 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     ngx_mp4_set_atom_name(stsd_atom, 's', 't', 's', 'd');
 
     if ((uint64_t) (sizeof(ngx_mp4_stsd_atom_t) - sizeof(ngx_mp4_atom_header_t))
-         > atom_data_size) {
+         > atom_data_size)
+    {
         ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
                       "\"%s\" mp4 stsd atom too large",
                       mp4->file.name.data);
