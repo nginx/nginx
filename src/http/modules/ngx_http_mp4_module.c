@@ -1702,7 +1702,6 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 {
     u_char               *atom_header, *atom_table;
     size_t                atom_size;
-    uint32_t              entries;
     ngx_buf_t            *atom;
     ngx_mp4_stsd_atom_t  *stsd_atom;
     ngx_http_mp4_trak_t  *trak;
@@ -1717,8 +1716,6 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     atom_table = atom_header + atom_size;
     ngx_mp4_set_32value(stsd_atom->size, atom_size);
     ngx_mp4_set_atom_name(stsd_atom, 's', 't', 's', 'd');
-
-    entries = ngx_mp4_get_32value(stsd_atom->entries);
 
     if ((uint64_t) (sizeof(ngx_mp4_stsd_atom_t) - sizeof(ngx_mp4_atom_header_t))
          > atom_data_size) {
