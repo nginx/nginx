@@ -288,6 +288,8 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
                     file->use_event = 1;
                 }
 
+                of->is_directio = file->is_directio;
+
                 goto update;
             }
 
