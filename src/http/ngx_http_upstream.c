@@ -1942,12 +1942,7 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     r->headers_out.content_length_n = u->headers_in.content_length_n;
 
-    if (u->headers_in.content_length_n != -1) {
-        u->length = (size_t) u->headers_in.content_length_n;
-
-    } else {
-        u->length = NGX_MAX_SIZE_T_VALUE;
-    }
+    u->length = u->headers_in.content_length_n;
 
     return NGX_OK;
 }
@@ -2419,10 +2414,6 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
 
         size = b->end - b->last;
 
-        if (size > u->length) {
-            size = u->length;
-        }
-
         if (size && upstream->read->ready) {
 
             n = upstream->recv(upstream, b->last, size);
@@ -2519,7 +2510,7 @@ ngx_http_upstream_non_buffered_filter(void *data, ssize_t bytes)
     cl->buf->last = b->last;
     cl->buf->tag = u->output.tag;
 
-    if (u->length == NGX_MAX_SIZE_T_VALUE) {
+    if (u->length == -1) {
         return NGX_OK;
     }
 
