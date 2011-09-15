@@ -96,8 +96,8 @@ typedef struct {
     ngx_buf_t             stsc_data_buf;
     ngx_buf_t             stsz_atom_buf;
     ngx_buf_t             stsz_data_buf;
-    ngx_buf_t             tsco_atom_buf;
-    ngx_buf_t             tsco_data_buf;
+    ngx_buf_t             stco_atom_buf;
+    ngx_buf_t             stco_data_buf;
 
     ngx_mp4_stsc_entry_t  stsc_chunk_entry;
 } ngx_http_mp4_trak_t;
@@ -2552,12 +2552,12 @@ ngx_http_mp4_read_stco_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     trak = ngx_mp4_last_trak(mp4);
     trak->chunks = entries;
 
-    atom = &trak->tsco_atom_buf;
+    atom = &trak->stco_atom_buf;
     atom->temporary = 1;
     atom->pos = atom_header;
     atom->last = atom_table;
 
-    data = &trak->tsco_data_buf;
+    data = &trak->stco_data_buf;
     data->temporary = 1;
     data->pos = atom_table;
     data->last = atom_end;
