@@ -378,7 +378,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         cl = NULL;
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &cl,
+        ngx_chain_update_chains(r->pool, &ctx->free, &ctx->busy, &cl,
                                 (ngx_buf_tag_t) &ngx_http_gzip_filter_module);
         ctx->nomem = 0;
     }
@@ -448,7 +448,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ngx_http_gzip_filter_free_copy_buf(r, ctx);
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &ctx->out,
+        ngx_chain_update_chains(r->pool, &ctx->free, &ctx->busy, &ctx->out,
                                 (ngx_buf_tag_t) &ngx_http_gzip_filter_module);
         ctx->last_out = &ctx->out;
 

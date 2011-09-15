@@ -638,7 +638,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             return ngx_event_pipe_drain_chains(p);
         }
 
-        ngx_chain_update_chains(&p->free, &p->busy, &out, p->tag);
+        ngx_chain_update_chains(p->pool, &p->free, &p->busy, &out, p->tag);
 
         for (cl = p->free; cl; cl = cl->next) {
 

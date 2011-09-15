@@ -208,7 +208,8 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             return last;
         }
 
-        ngx_chain_update_chains(&ctx->free, &ctx->busy, &out, ctx->tag);
+        ngx_chain_update_chains(ctx->pool, &ctx->free, &ctx->busy, &out,
+                                ctx->tag);
         last_out = &out;
     }
 }
