@@ -366,6 +366,7 @@ found:
 
         u->headers_in.status_n = 404;
         u->state->status = 404;
+        u->keepalive = 1;
 
         return NGX_OK;
     }
@@ -426,6 +427,10 @@ ngx_http_memcached_filter(void *data, ssize_t bytes)
         u->length -= bytes;
         ctx->rest -= bytes;
 
+        if (u->length == 0) {
+            u->keepalive = 1;
+        }
+
         return NGX_OK;
     }
 
@@ -463,12 +468,23 @@ ngx_http_memcached_filter(void *data, ssize_t bytes)
     if (ngx_strncmp(last, ngx_http_memcached_end, b->last - last) != 0) {
         ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, 0,
                       "memcached sent invalid trailer");
+
+        b->last = last;
+        cl->buf->last = last;
+        u->length = 0;
+        ctx->rest = 0;
+
+        return NGX_OK;
     }
 
     ctx->rest -= b->last - last;
     b->last = last;
     cl->buf->last = last;
     u->length = ctx->rest;
+
+    if (u->length == 0) {
+        u->keepalive = 1;
+    }
 
     return NGX_OK;
 }
