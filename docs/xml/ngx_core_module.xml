@@ -4,7 +4,7 @@
 
 <module name="Core Module" id="core_module">
 
-<section name="Example Configuration" id="example">
+<section id="example" name="Example Configuration">
 
 <para>
 <example>
@@ -25,7 +25,7 @@ events {
 </section>
 
 
-<section name="Directives" id="directives">
+<section id="directives" name="Directives">
 
 <directive name="daemon">
 <syntax>daemon <value>on</value> | <value>off</value></syntax>
@@ -57,9 +57,8 @@ of an executable file;
 </listitem>
 
 <listitem>
-use of variables by the
-<link doc="http/ngx_http_perl_module.xml">http_perl</link>
-module;
+use of variables by the module
+<link doc="http/ngx_http_perl_module.xml">ngx_http_perl_module</link>;
 </listitem>
 
 <listitem>
@@ -77,9 +76,9 @@ of an executable file.
 </para>
 
 <para>
-The TZ variable is always inherited and made available to the
-<link doc="http/ngx_http_perl_module.xml">http_perl</link>
-module, unless configured explicitly.
+The TZ variable is always inherited and made available to the module
+<link doc="http/ngx_http_perl_module.xml">ngx_http_perl_module</link>,
+unless configured explicitly.
 </para>
 
 <para>

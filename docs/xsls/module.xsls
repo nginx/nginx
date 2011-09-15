@@ -24,6 +24,7 @@ X:template = "/module" {
     </head>
     <body>
 
+    <center><h3> !{@name} </h3></center>
     !!;
 
     </body>

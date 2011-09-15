@@ -24,7 +24,7 @@
 <!ELEMENT   context     (#PCDATA)* >
 
 <!ELEMENT   para        (#PCDATA | argument | c-def | c-func | code | command |
-                         dq | emphasis | example | header | http-error | link |
+                         dq | emphasis | example | header | http-status | link |
                          list | note | parameter | pathname | value | var)* >
 
 <!ELEMENT   argument    (#PCDATA)* >
@@ -41,12 +41,12 @@
 
 <!ELEMENT   emphasis    (#PCDATA)* >
 
-<!ELEMENT   example     ANY >
+<!ELEMENT   example     (#PCDATA)* >
 
 <!ELEMENT   header      (#PCDATA | argument)* >
 
-<!ELEMENT   http-error  EMPTY >
-<!ATTLIST   http-error
+<!ELEMENT   http-status EMPTY >
+<!ATTLIST   http-status
             code        CDATA #REQUIRED
             text        CDATA #IMPLIED
 >

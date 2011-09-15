@@ -202,8 +202,8 @@ This directive can be used during debugging, or when using the
 <var>$request_body_file</var>
 variable, or the
 <link doc="ngx_http_perl_module.xml" id="methods">$r->request_body_file</link>
-method of the
-<link doc="ngx_http_perl_module.xml">http_perl</link> module.
+method of the module
+<link doc="ngx_http_perl_module.xml">ngx_http_perl_module</link>.
 </para>
 
 <para>
@@ -300,8 +300,8 @@ Defines a timeout for reading client request body.
 A timeout is only set between two successive read operations,
 not for the transmission of the whole request body.
 If a client does not transmit anything within this time,
-the error
-<http-error code="408" text="Request time out"/>
+the client error
+<http-status code="408" text="Request Time-out"/>
 is returned.
 </para>
 
@@ -337,8 +337,8 @@ directive.
 <para>
 Defines a timeout for reading client request header.
 If a client does not transmit the entire header within this time,
-the error
-<http-error code="408" text="Request time out"/>
+the client error
+<http-status code="408" text="Request Time-out"/>
 is returned.
 </para>
 
@@ -357,9 +357,9 @@ Sets the maximum allowed size of the client request body,
 specified in the
 <header>Content-Length</header>
 request header field.
-If <argument>size</argument> is greater than the configured value, the
-<http-error code="413" text="Request Entity Too Large"/>
-error is returned to a client.
+If it exceeds the configured value, the client error
+<http-status code="413" text="Request Entity Too Large"/>
+is returned.
 Please be aware that
 <link doc="/web/upload.xml">browsers cannot correctly display
 this error</link>.
@@ -539,8 +539,9 @@ request header.
 
 <para>
 Specifies that a given location can only be used for internal requests.
-For external requests, the <http-error code="404" text="Not found"/>
-error is returned.
+For external requests, the client error
+<http-status code="404" text="Not Found"/>
+is returned.
 Internal requests are the following:
 
 <list type="bullet">
@@ -552,15 +553,15 @@ requests redirected by the <link id="error_page">error_page</link> directive;
 <listitem>
 subrequests formed by the
 <command>include virtual</command>
-command of the
-<link doc="ngx_http_ssi_module.xml">http_ssi</link> module;
+command of the module
+<link doc="ngx_http_ssi_module.xml">ngx_http_ssi_module</link>;
 </listitem>
 
 <listitem>
 requests changed by the
 <link doc="ngx_http_rewrite_module.xml" id="rewrite">rewrite</link>
-directive of the
-<link doc="ngx_http_rewrite_module.xml">http_rewrite</link> module.
+directive of the module
+<link doc="ngx_http_rewrite_module.xml">ngx_http_rewrite_module</link>.
 </listitem>
 
 </list>
@@ -633,12 +634,13 @@ MSIE will close keep-alive connection in about 60 seconds.
 <para>
 Sets the maximum <argument>number</argument> and <argument>size</argument> of
 buffers used when reading large client request headers.
-A request line cannot exceed the size of one buffer, or the
-<http-error code="414" text="Request URI too large"/>
-error is returned.
+A request line cannot exceed the size of one buffer, or the client error
+<http-status code="414" text="Request-URI Too Large"/>
+is returned.
 A request header field cannot exceed the size of one buffer as well, or the
-<http-error code="400" text="Bad request"/>
-error is returned.
+client error
+<http-status code="400" text="Bad Request"/>
+is returned.
 Buffers are allocated only on demand.
 By default, the buffer size is equal to one memory page size.
 It is either 4K or 8K, platform dependent.
@@ -658,9 +660,9 @@ into the keep-alive state, these buffers are freed.
 Limits allowed HTTP methods inside a location.
 The GET method also implies the HEAD method.
 Access to other methods can be limited using the
-<link doc="ngx_http_access_module.xml">http_access</link>
+<link doc="ngx_http_access_module.xml">ngx_http_access_module</link>
 and
-<link doc="ngx_http_auth_basic_module.xml">http_auth_basic</link>
+<link doc="ngx_http_auth_basic_module.xml">ngx_http_auth_basic_module</link>
 modules directives:
 <example>
 limit_except GET {
@@ -1477,8 +1479,8 @@ If a URI need to be modified, the
 
 <para>
 Allows access if any of the
-<link doc="ngx_http_access_module.xml">http_access</link>
-or <link doc="ngx_http_auth_basic_module.xml">http_auth_basic</link>
+<link doc="ngx_http_access_module.xml">ngx_http_access_module</link>
+or <link doc="ngx_http_auth_basic_module.xml">ngx_http_auth_basic_module</link>
 modules grant access.
 <example>
 location / {
@@ -1985,8 +1987,8 @@ Enables or disables the use of underscores in client request header fields.
 <section id="variables" name="Embedded Variables">
 
 <para>
-The http_core module supports embedded variables with names matching
-those of the Apache Server.
+The module <code>ngx_http_core_module</code> supports embedded variables with
+names matching those of the Apache Server.
 First of all, these are variables representing client request header
 fields, such as, <var>$http_user_agent</var>, <var>$http_cookie</var>,
 and so on.

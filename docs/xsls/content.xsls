@@ -34,7 +34,7 @@ X:stylesheet {
 
     X:template = "header" { <code> !!; </code> }
 
-    X:template = "http-error" {
+    X:template = "http-status" {
         !{@code} X:text{ (} !{@text} X:text{)}
     }
 
