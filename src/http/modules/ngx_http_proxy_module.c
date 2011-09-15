@@ -1210,6 +1210,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 
         r->http_version = NGX_HTTP_VERSION_9;
         u->state->status = NGX_HTTP_OK;
+        u->headers_in.connection_close = 1;
 
         return NGX_OK;
     }
@@ -1233,6 +1234,10 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy status %ui \"%V\"",
                    u->headers_in.status_n, &u->headers_in.status_line);
+
+    if (ctx->status.http_version < NGX_HTTP_VERSION_11) {
+        u->headers_in.connection_close = 1;
+    }
 
     u->process_header = ngx_http_proxy_process_header;
 

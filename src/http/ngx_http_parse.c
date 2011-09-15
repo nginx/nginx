@@ -1403,6 +1403,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
+            r->http_major = ch - '0';
             state = sw_major_digit;
             break;
 
@@ -1417,6 +1418,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
+            r->http_major = r->http_major * 10 + ch - '0';
             break;
 
         /* the first digit of minor HTTP version */
@@ -1425,6 +1427,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
+            r->http_minor = ch - '0';
             state = sw_minor_digit;
             break;
 
@@ -1439,6 +1442,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
+            r->http_minor = r->http_minor * 10 + ch - '0';
             break;
 
         /* HTTP status code */
@@ -1516,6 +1520,7 @@ done:
         status->end = p;
     }
 
+    status->http_version = r->http_major * 1000 + r->http_minor;
     r->state = sw_start;
 
     return NGX_OK;

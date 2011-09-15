@@ -52,6 +52,7 @@ struct ngx_http_log_ctx_s {
 
 
 typedef struct {
+    ngx_uint_t           http_version;
     ngx_uint_t           code;
     ngx_uint_t           count;
     u_char              *start;
