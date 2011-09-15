@@ -91,6 +91,8 @@ static ngx_int_t ngx_http_upstream_process_buffering(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_charset(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_connection(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
     ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
@@ -218,7 +220,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  offsetof(ngx_http_headers_out_t, accept_ranges), 1 },
 
     { ngx_string("Connection"),
-                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_process_connection, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
     { ngx_string("Keep-Alive"),
@@ -3366,6 +3368,23 @@ ngx_http_upstream_process_charset(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
     r->headers_out.override_charset = &h->value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    r->upstream->headers_in.connection = h;
+
+    if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
+                         (u_char *) "close", 5 - 1)
+        != NULL)
+    {
+        r->upstream->headers_in.connection_close = 1;
+    }
 
     return NGX_OK;
 }

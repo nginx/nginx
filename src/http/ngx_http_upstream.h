@@ -227,6 +227,7 @@ typedef struct {
 
     ngx_array_t                      cache_control;
 
+    unsigned                         connection_close:1;
     unsigned                         chunked:1;
 } ngx_http_upstream_headers_in_t;
 
