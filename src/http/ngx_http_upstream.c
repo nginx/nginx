@@ -1136,8 +1136,20 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->sendfile &= r->connection->sendfile;
     u->output.sendfile = c->sendfile;
 
-    c->pool = r->pool;
+    if (c->pool == NULL) {
+
+        /* we need separate pool here to be able to cache SSL connections */
+
+        c->pool = ngx_create_pool(128, r->connection->log);
+        if (c->pool == NULL) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
     c->log = r->connection->log;
+    c->pool->log = c->log;
     c->read->log = c->log;
     c->write->log = c->log;
 
@@ -2890,6 +2902,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
 #endif
 
+        ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
 
@@ -2984,6 +2997,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
 
+        ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
 
