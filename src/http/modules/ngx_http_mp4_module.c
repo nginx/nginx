@@ -32,8 +32,10 @@
 #define NGX_HTTP_MP4_STSZ_DATA    21
 #define NGX_HTTP_MP4_STCO_ATOM    22
 #define NGX_HTTP_MP4_STCO_DATA    23
+#define NGX_HTTP_MP4_CO64_ATOM    24
+#define NGX_HTTP_MP4_CO64_DATA    25
 
-#define NGX_HTTP_MP4_LAST_ATOM    NGX_HTTP_MP4_STCO_DATA
+#define NGX_HTTP_MP4_LAST_ATOM    NGX_HTTP_MP4_CO64_DATA
 
 
 typedef struct {
@@ -61,7 +63,7 @@ typedef struct {
     ngx_uint_t            start_sample;
     ngx_uint_t            start_chunk;
     ngx_uint_t            chunk_samples;
-    ngx_uint_t            chunk_samples_size;
+    uint64_t              chunk_samples_size;
     off_t                 start_offset;
 
     size_t                tkhd_size;
@@ -98,6 +100,8 @@ typedef struct {
     ngx_buf_t             stsz_data_buf;
     ngx_buf_t             stco_atom_buf;
     ngx_buf_t             stco_data_buf;
+    ngx_buf_t             co64_atom_buf;
+    ngx_buf_t             co64_data_buf;
 
     ngx_mp4_stsc_entry_t  stsc_chunk_entry;
 } ngx_http_mp4_trak_t;
@@ -268,6 +272,12 @@ static ngx_int_t ngx_http_mp4_update_stco_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
 static void ngx_http_mp4_adjust_stco_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak, int32_t adjustment);
+static ngx_int_t ngx_http_mp4_read_co64_atom(ngx_http_mp4_file_t *mp4,
+    uint64_t atom_data_size);
+static ngx_int_t ngx_http_mp4_update_co64_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
+static void ngx_http_mp4_adjust_co64_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak, off_t adjustment);
 static char *ngx_http_mp4(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void *ngx_http_mp4_create_conf(ngx_conf_t *cf);
 static char *ngx_http_mp4_merge_conf(ngx_conf_t *cf, void *parent, void *child);
@@ -373,6 +383,7 @@ static ngx_http_mp4_atom_handler_t  ngx_http_mp4_stbl_atoms[] = {
     { "stsc", ngx_http_mp4_read_stsc_atom },
     { "stsz", ngx_http_mp4_read_stsz_atom },
     { "stco", ngx_http_mp4_read_stco_atom },
+    { "co64", ngx_http_mp4_read_co64_atom },
     { NULL, NULL }
 };
 
@@ -676,8 +687,15 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
 
         ngx_http_mp4_update_stsz_atom(mp4, &trak[i]);
 
-        if (ngx_http_mp4_update_stco_atom(mp4, &trak[i]) != NGX_OK) {
-            return NGX_ERROR;
+        if (trak[i].out[NGX_HTTP_MP4_CO64_DATA].buf) {
+            if (ngx_http_mp4_update_co64_atom(mp4, &trak[i]) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+        } else {
+            if (ngx_http_mp4_update_stco_atom(mp4, &trak[i]) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
 
         ngx_http_mp4_update_stbl_atom(mp4, &trak[i]);
@@ -721,7 +739,11 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
                    "mp4 adjustment:%D", adjustment);
 
     for (i = 0; i < mp4->trak.nelts; i++) {
-        ngx_http_mp4_adjust_stco_atom(mp4, &trak[i], (int32_t) adjustment);
+        if (trak[i].out[NGX_HTTP_MP4_CO64_DATA].buf) {
+            ngx_http_mp4_adjust_co64_atom(mp4, &trak[i], adjustment);
+        } else {
+            ngx_http_mp4_adjust_stco_atom(mp4, &trak[i], (int32_t) adjustment);
+        }
     }
 
     return NGX_OK;
@@ -2495,7 +2517,7 @@ ngx_http_mp4_update_stsz_atom(ngx_http_mp4_file_t *mp4,
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                       "chunk samples sizes:%uD", trak->chunk_samples_size);
+                       "chunk samples sizes:%uL", trak->chunk_samples_size);
 
         atom_size = sizeof(ngx_mp4_stsz_atom_t) + (data->last - data->pos);
         trak->size += atom_size;
@@ -2641,6 +2663,142 @@ ngx_http_mp4_adjust_stco_atom(ngx_http_mp4_file_t *mp4,
         offset = ngx_mp4_get_32value(entry);
         offset += adjustment;
         ngx_mp4_set_32value(entry, offset);
+        entry++;
+    }
+}
+
+
+typedef struct {
+    u_char    size[4];
+    u_char    name[4];
+    u_char    version[1];
+    u_char    flags[3];
+    u_char    entries[4];
+} ngx_mp4_co64_atom_t;
+
+
+static ngx_int_t
+ngx_http_mp4_read_co64_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
+{
+    u_char               *atom_header, *atom_table, *atom_end;
+    uint32_t              entries;
+    ngx_buf_t            *atom, *data;
+    ngx_mp4_co64_atom_t  *co64_atom;
+    ngx_http_mp4_trak_t  *trak;
+
+    /* chunk offsets atom */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0, "mp4 co64 atom");
+
+    atom_header = ngx_mp4_atom_header(mp4);
+    co64_atom = (ngx_mp4_co64_atom_t *) atom_header;
+    ngx_mp4_set_atom_name(co64_atom, 'c', 'o', '6', '4');
+
+    entries = ngx_mp4_get_32value(co64_atom->entries);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0, "chunks:%uD", entries);
+
+    atom_table = atom_header + sizeof(ngx_mp4_co64_atom_t);
+    atom_end = atom_table + entries * sizeof(uint64_t);
+
+    if ((uint64_t) (atom_end - co64_atom->version) > atom_data_size) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "\"%s\" mp4 co64 atom too large", mp4->file.name.data);
+        return NGX_ERROR;
+    }
+
+    trak = ngx_mp4_last_trak(mp4);
+    trak->chunks = entries;
+
+    atom = &trak->co64_atom_buf;
+    atom->temporary = 1;
+    atom->pos = atom_header;
+    atom->last = atom_table;
+
+    data = &trak->co64_data_buf;
+    data->temporary = 1;
+    data->pos = atom_table;
+    data->last = atom_end;
+
+    trak->out[NGX_HTTP_MP4_CO64_ATOM].buf = atom;
+    trak->out[NGX_HTTP_MP4_CO64_DATA].buf = data;
+
+    ngx_mp4_atom_next(mp4, atom_data_size);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_mp4_update_co64_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak)
+{
+    size_t                atom_size;
+    ngx_buf_t            *atom, *data;
+    ngx_mp4_co64_atom_t  *co64_atom;
+
+    /*
+     * mdia.minf.stbl.co64 updating requires trak->start_chunk
+     * from mdia.minf.stbl.stsc which depends on value from mdia.mdhd
+     * atom which may reside after mdia.minf
+     */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                   "mp4 co64 atom update");
+
+    data = trak->out[NGX_HTTP_MP4_CO64_DATA].buf;
+
+    if (data == NULL) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "no mp4 co64 atoms were found in \"%s\"",
+                      mp4->file.name.data);
+        return NGX_ERROR;
+    }
+
+    data->pos += trak->start_chunk * sizeof(uint64_t);
+    atom_size = sizeof(ngx_mp4_co64_atom_t) + (data->last - data->pos);
+    trak->size += atom_size;
+
+    trak->start_offset = ngx_mp4_get_64value(data->pos);
+    trak->start_offset += trak->chunk_samples_size;
+    ngx_mp4_set_64value(data->pos, trak->start_offset);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                   "start chunk offset:%uL", trak->start_offset);
+
+    atom = trak->out[NGX_HTTP_MP4_CO64_ATOM].buf;
+    co64_atom = (ngx_mp4_co64_atom_t *) atom->pos;
+
+    ngx_mp4_set_32value(co64_atom->size, atom_size);
+    ngx_mp4_set_32value(co64_atom->entries, trak->chunks - trak->start_chunk);
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_mp4_adjust_co64_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak, off_t adjustment)
+{
+    uint64_t    offset, *entry, *end;
+    ngx_buf_t  *data;
+
+    /*
+     * moov.trak.mdia.minf.stbl.co64 adjustment requires
+     * minimal start offset of all traks and new moov atom size
+     */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                   "mp4 co64 atom adjustment");
+
+    data = trak->out[NGX_HTTP_MP4_CO64_DATA].buf;
+    entry = (uint64_t *) data->pos;
+    end = (uint64_t *) data->last;
+
+    while (entry < end) {
+        offset = ngx_mp4_get_64value(entry);
+        offset += adjustment;
+        ngx_mp4_set_64value(entry, offset);
         entry++;
     }
 }
