@@ -1,4 +1,4 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>Core Module</title></head><body><a name="example"></a><center><h4>Example Configuration</h4></center><p><blockquote><pre>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>Core Module</title></head><body><center><h3>Core Module</h3></center><a name="example"></a><center><h4>Example Configuration</h4></center><p><blockquote><pre>
 user www www;
 worker_processes 2;
 
@@ -27,9 +27,8 @@ variable inheritance during a
 <a href="control.html#upgrade">live upgrade</a>
 of an executable file;
 </li><li>
-use of variables by the
-<a href="http/ngx_http_perl_module.html">http_perl</a>
-module;
+use of variables by the module
+<a href="http/ngx_http_perl_module.html">ngx_http_perl_module</a>;
 </li><li>
 use of variables by worker processes.
 Please bear in mind that controlling system libraries in this way
@@ -40,9 +39,9 @@ An exception from this is an above mentioned
 <a href="control.html#upgrade">live upgrade</a>
 of an executable file.
 </li></ul></p><p>
-The TZ variable is always inherited and made available to the
-<a href="http/ngx_http_perl_module.html">http_perl</a>
-module, unless configured explicitly.
+The TZ variable is always inherited and made available to the module
+<a href="http/ngx_http_perl_module.html">ngx_http_perl_module</a>,
+unless configured explicitly.
 </p><p>
 Usage example:
 <blockquote><pre>

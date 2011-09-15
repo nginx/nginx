@@ -1,4 +1,4 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>HTTP Core Module</title></head><body><a name="directives"></a><center><h4>Directives</h4></center><hr><a name="aio"></a><strong>syntax</strong>:
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>HTTP Core Module</title></head><body><center><h3>HTTP Core Module</h3></center><a name="directives"></a><center><h4>Directives</h4></center><hr><a name="aio"></a><strong>syntax</strong>:
          <code>aio
         <code>on</code> |
         <code>off</code> |
@@ -148,8 +148,8 @@ This directive can be used during debugging, or when using the
 <code>$request_body_file</code>
 variable, or the
 <a href="ngx_http_perl_module.html#methods">$r-&gt;request_body_file</a>
-method of the
-<a href="ngx_http_perl_module.html">http_perl</a> module.
+method of the module
+<a href="ngx_http_perl_module.html">ngx_http_perl_module</a>.
 </p><p>
 When set to the value <code>on</code>, temporary files are not
 removed after request processing.
@@ -203,8 +203,8 @@ Defines a timeout for reading client request body.
 A timeout is only set between two successive read operations,
 not for the transmission of the whole request body.
 If a client does not transmit anything within this time,
-the error
-<i>"Request time out"</i> (408)
+the client error
+408 (Request Time-out)
 is returned.
 </p><hr><a name="client_header_buffer_size"></a><strong>syntax</strong>:
          <code>client_header_buffer_size <code><i>size</i></code></code><br><strong>default</strong>:
@@ -224,8 +224,8 @@ directive.
       <code>http</code>, <code>server</code><br><p>
 Defines a timeout for reading client request header.
 If a client does not transmit the entire header within this time,
-the error
-<i>"Request time out"</i> (408)
+the client error
+408 (Request Time-out)
 is returned.
 </p><hr><a name="client_max_body_size"></a><strong>syntax</strong>:
          <code>client_max_body_size <code><i>size</i></code></code><br><strong>default</strong>:
@@ -235,9 +235,9 @@ Sets the maximum allowed size of the client request body,
 specified in the
 <code>Content-Length</code>
 request header field.
-If <code><i>size</i></code> is greater than the configured value, the
-<i>"Request Entity Too Large"</i> (413)
-error is returned to a client.
+If it exceeds the configured value, the client error
+413 (Request Entity Too Large)
+is returned.
 Please be aware that
 <a href="/web/upload.html">browsers cannot correctly display
 this error</a>.
@@ -341,8 +341,9 @@ request header.
       <strong>none</strong><br><strong>context</strong>:
       <code>location</code><br><p>
 Specifies that a given location can only be used for internal requests.
-For external requests, the <i>"Not found"</i> (404)
-error is returned.
+For external requests, the client error
+404 (Not Found)
+is returned.
 Internal requests are the following:
 
 <ul><li>
@@ -350,13 +351,13 @@ requests redirected by the <a href="#error_page">error_page</a> directive;
 </li><li>
 subrequests formed by the
 <code>include virtual</code>
-command of the
-<a href="ngx_http_ssi_module.html">http_ssi</a> module;
+command of the module
+<a href="ngx_http_ssi_module.html">ngx_http_ssi_module</a>;
 </li><li>
 requests changed by the
 <a href="ngx_http_rewrite_module.html#rewrite">rewrite</a>
-directive of the
-<a href="ngx_http_rewrite_module.html">http_rewrite</a> module.
+directive of the module
+<a href="ngx_http_rewrite_module.html">ngx_http_rewrite_module</a>.
 </li></ul></p><p>
 Example:
 <blockquote><pre>
@@ -396,12 +397,13 @@ MSIE will close keep-alive connection in about 60 seconds.
       <code>http</code>, <code>server</code><br><p>
 Sets the maximum <code><i>number</i></code> and <code><i>size</i></code> of
 buffers used when reading large client request headers.
-A request line cannot exceed the size of one buffer, or the
-<i>"Request URI too large"</i> (414)
-error is returned.
+A request line cannot exceed the size of one buffer, or the client error
+414 (Request-URI Too Large)
+is returned.
 A request header field cannot exceed the size of one buffer as well, or the
-<i>"Bad request"</i> (400)
-error is returned.
+client error
+400 (Bad Request)
+is returned.
 Buffers are allocated only on demand.
 By default, the buffer size is equal to one memory page size.
 It is either 4K or 8K, platform dependent.
@@ -414,9 +416,9 @@ into the keep-alive state, these buffers are freed.
 Limits allowed HTTP methods inside a location.
 The GET method also implies the HEAD method.
 Access to other methods can be limited using the
-<a href="ngx_http_access_module.html">http_access</a>
+<a href="ngx_http_access_module.html">ngx_http_access_module</a>
 and
-<a href="ngx_http_auth_basic_module.html">http_auth_basic</a>
+<a href="ngx_http_auth_basic_module.html">ngx_http_auth_basic_module</a>
 modules directives:
 <blockquote><pre>
 limit_except GET {
@@ -866,8 +868,8 @@ If a URI need to be modified, the
       <code>satisfy all</code><br><strong>context</strong>:
       <code>location</code><br><p>
 Allows access if any of the
-<a href="ngx_http_access_module.html">http_access</a>
-or <a href="ngx_http_auth_basic_module.html">http_auth_basic</a>
+<a href="ngx_http_access_module.html">ngx_http_access_module</a>
+or <a href="ngx_http_auth_basic_module.html">ngx_http_auth_basic_module</a>
 modules grant access.
 <blockquote><pre>
 location / {
@@ -1192,8 +1194,8 @@ location /download/ {
       <code>http</code>, <code>server</code><br><p>
 Enables or disables the use of underscores in client request header fields.
 </p><a name="variables"></a><center><h4>Embedded Variables</h4></center><p>
-The http_core module supports embedded variables with names matching
-those of the Apache Server.
+The module <code>ngx_http_core_module</code> supports embedded variables with
+names matching those of the Apache Server.
 First of all, these are variables representing client request header
 fields, such as, <code>$http_user_agent</code>, <code>$http_cookie</code>,
 and so on.

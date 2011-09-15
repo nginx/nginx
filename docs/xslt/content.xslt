@@ -88,7 +88,7 @@
       </code>
    </xsl:template>
 
-   <xsl:template match="http-error">
+   <xsl:template match="http-status">
 
       <xsl:value-of select="@code"/>
       <xsl:text> (</xsl:text>

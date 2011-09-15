@@ -26,6 +26,12 @@
 
          <body>
 
+            <center>
+               <h3>
+                  <xsl:value-of select="@name"/>
+               </h3>
+            </center>
+
             <xsl:apply-templates/>
 
          </body>
