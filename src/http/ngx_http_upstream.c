@@ -2812,6 +2812,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
         status = 0;
 
+        /* TODO: inform balancer instead */
+
+        u->peer.tries++;
+
     } else {
         switch(ft_type) {
 
