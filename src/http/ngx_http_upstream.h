@@ -217,6 +217,7 @@ typedef struct {
     ngx_table_elt_t                 *location;
     ngx_table_elt_t                 *accept_ranges;
     ngx_table_elt_t                 *www_authenticate;
+    ngx_table_elt_t                 *transfer_encoding;
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t                 *content_encoding;
@@ -225,6 +226,8 @@ typedef struct {
     off_t                            content_length_n;
 
     ngx_array_t                      cache_control;
+
+    unsigned                         chunked:1;
 } ngx_http_upstream_headers_in_t;
 
 
