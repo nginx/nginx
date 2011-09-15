@@ -58,7 +58,8 @@ docs/xslt/changes.xslt:		docs/xsls/changes.xsls
 
 html:									\
 	docs/html/ngx_core_module.html					\
-	docs/html/http/ngx_http_core_module.html
+	docs/html/http/ngx_http_core_module.html			\
+	docs/html/http/ngx_http_mp4_module.html
 
 docs/html/%.html:							\
 		docs/xml/%.xml						\
