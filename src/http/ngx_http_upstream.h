@@ -308,6 +308,7 @@ struct ngx_http_upstream_s {
 #endif
 
     unsigned                         buffering:1;
+    unsigned                         keepalive:1;
 
     unsigned                         request_sent:1;
     unsigned                         header_sent:1;
