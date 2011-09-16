@@ -181,7 +181,7 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (tl == NULL) {
             return NGX_ERROR;
         }
- 
+
         b = tl->buf;
 
         b->tag = (ngx_buf_tag_t) &ngx_http_chunked_filter_module;
