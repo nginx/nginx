@@ -16,7 +16,7 @@ extern aio_context_t  ngx_aio_ctx;
 static void ngx_file_aio_event_handler(ngx_event_t *ev);
 
 
-static long
+static int
 io_submit(aio_context_t ctx, long n, struct iocb **paiocb)
 {
     return syscall(SYS_io_submit, ctx, n, paiocb);
@@ -27,7 +27,7 @@ ssize_t
 ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     ngx_pool_t *pool)
 {
-    long              n;
+    ngx_err_t         err;
     struct iocb      *piocb[1];
     ngx_event_t      *ev;
     ngx_event_aio_t  *aio;
@@ -96,9 +96,7 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
 
     piocb[0] = &aio->aiocb;
 
-    n = io_submit(ngx_aio_ctx, 1, piocb);
-
-    if (n == 1) {
+    if (io_submit(ngx_aio_ctx, 1, piocb) == 1) {
         ev->active = 1;
         ev->ready = 0;
         ev->complete = 0;
@@ -106,16 +104,16 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
         return NGX_AGAIN;
     }
 
-    n = -n;
+    err = ngx_errno;
 
-    if (n == NGX_EAGAIN) {
+    if (err == NGX_EAGAIN) {
         return ngx_read_file(file, buf, size, offset);
     }
 
-    ngx_log_error(NGX_LOG_CRIT, file->log, n,
+    ngx_log_error(NGX_LOG_CRIT, file->log, err,
                   "io_submit(\"%V\") failed", &file->name);
 
-    if (n == NGX_ENOSYS) {
+    if (err == NGX_ENOSYS) {
         ngx_file_aio = 0;
         return ngx_read_file(file, buf, size, offset);
     }

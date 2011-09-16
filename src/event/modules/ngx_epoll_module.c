@@ -184,7 +184,7 @@ ngx_module_t  ngx_epoll_module = {
  * into single eventfd() function with different number of parameters.
  */
 
-static long
+static int
 io_setup(u_int nr_reqs, aio_context_t *ctx)
 {
     return syscall(SYS_io_setup, nr_reqs, ctx);
@@ -198,7 +198,7 @@ io_destroy(aio_context_t ctx)
 }
 
 
-static long
+static int
 io_getevents(aio_context_t ctx, long min_nr, long nr, struct io_event *events,
     struct timespec *tmo)
 {
@@ -247,10 +247,10 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "eventfd: %d", ngx_eventfd);
 
-        n = io_setup(1024, &ngx_aio_ctx);
+        if (io_setup(1024, &ngx_aio_ctx) == -1) {
 
-        if (n != 0) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, -n, "io_setup() failed");
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "io_setup() failed");
             return NGX_ERROR;
         }
 
@@ -316,7 +316,7 @@ ngx_epoll_done(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_FILE_AIO)
 
-    if (io_destroy(ngx_aio_ctx) != 0) {
+    if (io_destroy(ngx_aio_ctx) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "io_destroy() failed");
     }
@@ -667,8 +667,8 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 static void
 ngx_epoll_eventfd_handler(ngx_event_t *ev)
 {
-    int               n;
-    long              i, events;
+    int               n, events;
+    long              i;
     uint64_t          ready;
     ngx_err_t         err;
     ngx_event_t      *e;
@@ -738,8 +738,9 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
             return;
         }
 
-        /* events < 0 */
-        ngx_log_error(NGX_LOG_ALERT, ev->log, -events, "io_getevents() failed");
+        /* events == -1 */
+        ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+                      "io_getevents() failed");
         return;
     }
 }
