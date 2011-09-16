@@ -205,6 +205,74 @@ io_getevents(aio_context_t ctx, long min_nr, long nr, struct io_event *events,
     return syscall(SYS_io_getevents, ctx, min_nr, nr, events, tmo);
 }
 
+
+static void
+ngx_epoll_aio_init(ngx_cycle_t *cycle)
+{
+    int                 n;
+    struct epoll_event  ee;
+
+    ngx_eventfd = syscall(SYS_eventfd, 0);
+
+    if (ngx_eventfd == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "eventfd() failed");
+        ngx_file_aio = 0;
+        return;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "eventfd: %d", ngx_eventfd);
+
+    n = 1;
+
+    if (ioctl(ngx_eventfd, FIONBIO, &n) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "ioctl(eventfd, FIONBIO) failed");
+        goto failed;
+    }
+
+    if (io_setup(1024, &ngx_aio_ctx) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "io_setup() failed");
+        goto failed;
+    }
+
+    ngx_eventfd_event.data = &ngx_eventfd_conn;
+    ngx_eventfd_event.handler = ngx_epoll_eventfd_handler;
+    ngx_eventfd_event.log = cycle->log;
+    ngx_eventfd_event.active = 1;
+    ngx_eventfd_conn.fd = ngx_eventfd;
+    ngx_eventfd_conn.read = &ngx_eventfd_event;
+    ngx_eventfd_conn.log = cycle->log;
+
+    ee.events = EPOLLIN|EPOLLET;
+    ee.data.ptr = &ngx_eventfd_conn;
+
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, ngx_eventfd, &ee) != -1) {
+        return;
+    }
+
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                  "epoll_ctl(EPOLL_CTL_ADD, eventfd) failed");
+
+    if (io_destroy(ngx_aio_ctx) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "io_destroy() failed");
+    }
+
+failed:
+
+    if (close(ngx_eventfd) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "eventfd close() failed");
+    }
+
+    ngx_eventfd = -1;
+    ngx_aio_ctx = 0;
+    ngx_file_aio = 0;
+}
+
 #endif
 
 
@@ -225,52 +293,9 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
 
 #if (NGX_HAVE_FILE_AIO)
-        {
-        int                 n;
-        struct epoll_event  ee;
 
-        ngx_eventfd = syscall(SYS_eventfd, 0);
+        ngx_epoll_aio_init(cycle);
 
-        if (ngx_eventfd == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "eventfd() failed");
-            return NGX_ERROR;
-        }
-
-        n = 1;
-
-        if (ioctl(ngx_eventfd, FIONBIO, &n) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "ioctl(eventfd, FIONBIO) failed");
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "eventfd: %d", ngx_eventfd);
-
-        if (io_setup(1024, &ngx_aio_ctx) == -1) {
-
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "io_setup() failed");
-            return NGX_ERROR;
-        }
-
-        ngx_eventfd_event.data = &ngx_eventfd_conn;
-        ngx_eventfd_event.handler = ngx_epoll_eventfd_handler;
-        ngx_eventfd_event.log = cycle->log;
-        ngx_eventfd_event.active = 1;
-        ngx_eventfd_conn.fd = ngx_eventfd;
-        ngx_eventfd_conn.read = &ngx_eventfd_event;
-        ngx_eventfd_conn.log = cycle->log;
-
-        ee.events = EPOLLIN|EPOLLET;
-        ee.data.ptr = &ngx_eventfd_conn;
-
-        if (epoll_ctl(ep, EPOLL_CTL_ADD, ngx_eventfd, &ee) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "epoll_ctl(EPOLL_CTL_ADD, eventfd) failed");
-            return NGX_ERROR;
-        }
-        }
 #endif
     }
 
@@ -316,9 +341,19 @@ ngx_epoll_done(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_FILE_AIO)
 
-    if (io_destroy(ngx_aio_ctx) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "io_destroy() failed");
+    if (ngx_eventfd != -1) {
+
+        if (io_destroy(ngx_aio_ctx) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "io_destroy() failed");
+        }
+
+        if (close(ngx_eventfd) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "eventfd close() failed");
+        }
+
+        ngx_eventfd = -1;
     }
 
     ngx_aio_ctx = 0;
