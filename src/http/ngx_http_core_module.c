@@ -3191,7 +3191,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->underscores_in_headers, 0);
 
     if (conf->server_names.nelts == 0) {
-        /* the array has 4 empty preallocated elements, so push can not fail */
+        /* the array has 4 empty preallocated elements, so push cannot fail */
         sn = ngx_array_push(&conf->server_names);
 #if (NGX_PCRE)
         sn->regex = NULL;

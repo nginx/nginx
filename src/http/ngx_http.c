@@ -1226,7 +1226,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 
     /*
-     * we can not compare whole sockaddr struct's as kernel
+     * we cannot compare whole sockaddr struct's as kernel
      * may fill some fields in inherited sockaddr struct's
      */
 

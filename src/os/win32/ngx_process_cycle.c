@@ -530,7 +530,7 @@ ngx_reap_worker(ngx_cycle_t *cycle, HANDLE h)
                 == NGX_INVALID_PID)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                              "can not respawn %s", ngx_processes[n].name);
+                              "could not respawn %s", ngx_processes[n].name);
 
                 if (n == ngx_last_process - 1) {
                     ngx_last_process--;

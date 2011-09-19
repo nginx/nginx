@@ -381,7 +381,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 
                     /*
                      * (int64_t) cast is required for msvc6:
-                     * it can not convert uint64_t to double
+                     * it cannot convert uint64_t to double
                      */
                     ui64 = (uint64_t) ((f - (int64_t) ui64) * scale + 0.5);
 

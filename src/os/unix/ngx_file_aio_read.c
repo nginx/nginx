@@ -23,7 +23,7 @@
  *    kqueue EVFILT_AIO filter is level triggered only: an event repeats
  *    until aio_return() will be called;
  *
- *    aio_cancel() can not cancel file AIO: it returns AIO_NOTCANCELED always.
+ *    aio_cancel() cannot cancel file AIO: it returns AIO_NOTCANCELED always.
  */
 
 

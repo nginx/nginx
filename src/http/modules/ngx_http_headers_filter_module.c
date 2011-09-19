@@ -507,7 +507,7 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         minus = 0;
 
         if (hcf->expires == NGX_HTTP_EXPIRES_MODIFIED) {
-            return "daily time can not be used with \"modified\" parameter";
+            return "daily time cannot be used with \"modified\" parameter";
         }
 
         hcf->expires = NGX_HTTP_EXPIRES_DAILY;

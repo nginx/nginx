@@ -739,7 +739,7 @@ old_shm_zone_done:
         ngx_temp_pool = ngx_create_pool(128, cycle->log);
         if (ngx_temp_pool == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                          "can not create ngx_temp_pool");
+                          "could not create ngx_temp_pool");
             exit(1);
         }
 

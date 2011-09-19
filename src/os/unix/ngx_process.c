@@ -541,7 +541,7 @@ ngx_process_get_status(void)
         if (WEXITSTATUS(status) == 2 && ngx_processes[i].respawn) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                           "%s %P exited with fatal code %d "
-                          "and can not be respawn",
+                          "and cannot be respawned",
                           process, pid, WEXITSTATUS(status));
             ngx_processes[i].respawn = 0;
         }

@@ -68,7 +68,7 @@ ngx_destroy_pool(ngx_pool_t *pool)
 
     /*
      * we could allocate the pool->log from this pool
-     * so we can not use this log while the free()ing the pool
+     * so we cannot use this log while free()ing the pool
      */
 
     for (p = pool, n = pool->d.next; /* void */; p = n, n = n->d.next) {

@@ -11,7 +11,7 @@
 
 /*
  * Although FreeBSD sendfile() allows to pass a header and a trailer,
- * it can not send a header with a part of the file in one packet until
+ * it cannot send a header with a part of the file in one packet until
  * FreeBSD 5.3.  Besides, over the fast ethernet connection sendfile()
  * may send the partially filled packets, i.e. the 8 file pages may be sent
  * as the 11 full 1460-bytes packets, then one incomplete 324-bytes packet,
