@@ -1259,7 +1259,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         tf++;
 
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "try to use %s: \"%s\" \"%s\"",
+                       "trying to use %s: \"%s\" \"%s\"",
                        test_dir ? "dir" : "file", name, path.data);
 
         if (tf->lengths == NULL && tf->name.len == 0) {
@@ -1897,7 +1897,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     if (alias && !r->valid_location) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      "\"alias\" could not be used in location \"%V\" "
+                      "\"alias\" cannot be used in location \"%V\" "
                       "where URI was rewritten", &clcf->name);
         return NULL;
     }
@@ -2468,7 +2468,7 @@ ngx_http_internal_redirect(ngx_http_request_t *r,
     if (r->uri_changes == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "rewrite or internal redirection cycle "
-                      "while internal redirect to \"%V\"", uri);
+                      "while internally redirecting to \"%V\"", uri);
 
         r->main->count++;
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -2862,7 +2862,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
         if (pclcf->exact_match) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "location \"%V\" could not be inside "
+                               "location \"%V\" cannot be inside "
                                "the exact location \"%V\"",
                                &clcf->name, &pclcf->name);
             return NGX_CONF_ERROR;
@@ -2870,7 +2870,7 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
         if (pclcf->named) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "location \"%V\" could not be inside "
+                               "location \"%V\" cannot be inside "
                                "the named location \"%V\"",
                                &clcf->name, &pclcf->name);
             return NGX_CONF_ERROR;
@@ -2878,8 +2878,8 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
         if (clcf->named) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "named location \"%V\" must be "
-                               "on server level only",
+                               "named location \"%V\" can be "
+                               "on the server level only",
                                &clcf->name);
             return NGX_CONF_ERROR;
         }
@@ -2948,7 +2948,7 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
 #else
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "the using of the regex \"%V\" requires PCRE library",
+                       "using regex \"%V\" requires PCRE library",
                        regex);
     return NGX_ERROR;
 
@@ -3024,9 +3024,9 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
                 type[n].value = content_type;
 
                 ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                                   "duplicate extention \"%V\", "
+                                   "duplicate extension \"%V\", "
                                    "content type: \"%V\", "
-                                   "old content type: \"%V\"",
+                                   "previous content type: \"%V\"",
                                    &value[i], content_type, old);
                 continue;
             }
@@ -3178,7 +3178,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->large_client_header_buffers.size < conf->connection_pool_size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the \"large_client_header_buffers\" size must be "
-                           "equal to or bigger than \"connection_pool_size\"");
+                           "equal to or greater than \"connection_pool_size\"");
         return NGX_CONF_ERROR;
     }
 
@@ -3779,7 +3779,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "bind ipv6only is not supported "
+                               "ipv6only is not supported "
                                "on this platform");
             return NGX_CONF_ERROR;
 #endif
@@ -3798,7 +3798,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the invalid \"%V\" parameter", &value[n]);
+                           "invalid parameter \"%V\"", &value[n]);
         return NGX_CONF_ERROR;
     }
 
@@ -3836,7 +3836,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strchr(value[i].data, '/')) {
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "server name \"%V\" has strange symbols",
+                               "server name \"%V\" has suspicious symbols",
                                &value[i]);
         }
 
@@ -3907,7 +3907,7 @@ ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the using of the regex \"%V\" "
+                           "using regex \"%V\" "
                            "requires PCRE library", &value[i]);
 
         return NGX_CONF_ERROR;
@@ -3939,7 +3939,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" directive is duplicate, "
-                               "\"%s\" directive is specified before",
+                               "\"%s\" directive was specified earlier",
                                &cmd->name, clcf->alias ? "alias" : "root");
         }
 
@@ -3948,8 +3948,8 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (clcf->named && alias) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the \"alias\" directive may not be used "
-                           "inside named location");
+                           "the \"alias\" directive cannot be used "
+                           "inside the named location");
 
         return NGX_CONF_ERROR;
     }
@@ -3960,7 +3960,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         || ngx_strstr(value[1].data, "${document_root}"))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the $document_root variable may not be used "
+                           "the $document_root variable cannot be used "
                            "in the \"%V\" directive",
                            &cmd->name);
 
@@ -3971,7 +3971,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         || ngx_strstr(value[1].data, "${realpath_root}"))
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the $realpath_root variable may not be used "
+                           "the $realpath_root variable cannot be used "
                            "in the \"%V\" directive",
                            &cmd->name);
 
@@ -4430,7 +4430,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (max == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"open_file_cache\" must have \"max\" parameter");
+                           "\"open_file_cache\" must have the \"max\" parameter");
         return NGX_CONF_ERROR;
     }
 
