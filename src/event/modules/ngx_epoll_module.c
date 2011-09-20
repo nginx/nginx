@@ -86,6 +86,7 @@ int eventfd(u_int initval)
 
 typedef struct {
     ngx_uint_t  events;
+    ngx_uint_t  aio_requests;
 } ngx_epoll_conf_t;
 
 
@@ -131,6 +132,13 @@ static ngx_command_t  ngx_epoll_commands[] = {
       ngx_conf_set_num_slot,
       0,
       offsetof(ngx_epoll_conf_t, events),
+      NULL },
+
+    { ngx_string("worker_aio_requests"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_epoll_conf_t, aio_requests),
       NULL },
 
       ngx_null_command
@@ -207,7 +215,7 @@ io_getevents(aio_context_t ctx, long min_nr, long nr, struct io_event *events,
 
 
 static void
-ngx_epoll_aio_init(ngx_cycle_t *cycle)
+ngx_epoll_aio_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
 {
     int                 n;
     struct epoll_event  ee;
@@ -232,7 +240,7 @@ ngx_epoll_aio_init(ngx_cycle_t *cycle)
         goto failed;
     }
 
-    if (io_setup(1024, &ngx_aio_ctx) == -1) {
+    if (io_setup(epcf->aio_requests, &ngx_aio_ctx) == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                       "io_setup() failed");
         goto failed;
@@ -294,7 +302,7 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 
 #if (NGX_HAVE_FILE_AIO)
 
-        ngx_epoll_aio_init(cycle);
+        ngx_epoll_aio_init(cycle, epcf);
 
 #endif
     }
@@ -794,6 +802,7 @@ ngx_epoll_create_conf(ngx_cycle_t *cycle)
     }
 
     epcf->events = NGX_CONF_UNSET;
+    epcf->aio_requests = NGX_CONF_UNSET;
 
     return epcf;
 }
@@ -805,6 +814,7 @@ ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_epoll_conf_t *epcf = conf;
 
     ngx_conf_init_uint_value(epcf->events, 512);
+    ngx_conf_init_uint_value(epcf->aio_requests, 32);
 
     return NGX_CONF_OK;
 }
