@@ -153,9 +153,9 @@ The <argument>path</argument> value can contain variables.
 </para>
 
 <para>
-If <command>alias</command> is used inside a location defined
+If <code>alias</code> is used inside a location defined
 with a regular expression then such regular expression should
-contain captures and <command>alias</command> should refer to
+contain captures and <code>alias</code> should refer to
 these captures (0.7.40), for example:
 <example>
 location ~ ^/users/(.+\.(?:gif|jpe?g|png))$ {
@@ -441,7 +441,7 @@ using XFS under Linux, it needs to be increased to 4K.
 Defines the URI that will be shown for the specified errors.
 These directives are inherited from the previous level if and
 only if there are no
-<command>error_page</command>
+<code>error_page</code>
 directives on
 the current level.
 A URI value can contain variables.
@@ -1464,7 +1464,7 @@ The <argument>path</argument> value can contain variables.
 
 <para>
 A path to the file is constructed by merely adding a URI to the value
-of the <command>root</command> directive.
+of the <code>root</code> directive.
 If a URI need to be modified, the
 <link id="alias">alias</link> directive should be used.
 </para>
@@ -1879,7 +1879,7 @@ location / {
     try_files $uri $uri/ @drupal;
 }
 </example>
-the <command>try_files</command> directive is equivalent to
+the <code>try_files</code> directive is equivalent to
 <example>
 location / {
     error_page 404 = @drupal;
@@ -1898,7 +1898,7 @@ location ~ \.php$ {
     ...
 }
 </example>
-<command>try_files</command> checks the existence of the PHP file
+<code>try_files</code> checks the existence of the PHP file
 before passing the request to the FastCGI server.
 </para>
 
@@ -2162,7 +2162,7 @@ or
 an address of the server which accepted a request
 <para>
 Computing a value of this variable usually requires one system call.
-To avoid a system call, the <command>listen</command> directives
+To avoid a system call, the <link id="listen">listen</link> directives
 must specify addresses and use the <parameter>bind</parameter> parameter
 </para>
 </tag-desc>

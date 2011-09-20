@@ -245,7 +245,7 @@ Used to increase the limit without restarting the main process.
 
 <para>
 Defines a scheduling priority for worker processes like is
-done by the <command>nice</command>: a negative
+done by the <command>nice</command> command: a negative
 <argument>number</argument>
 means higher priority.
 Allowed range normally varies from -20 to 20.

@@ -72,7 +72,7 @@ this module at all.
 
 <para>
 This module is not built by default, it should be enabled with the
-<command>--with-http_mp4_module</command>
+<code>--with-http_mp4_module</code>
 configuration parameter.
 <note>
 If you were using the third-party mp4 module, be sure to disable it.
