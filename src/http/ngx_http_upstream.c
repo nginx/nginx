@@ -2922,7 +2922,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
 #endif
 
-        ngx_destroy_pool(u->peer.connection->pool);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+        }
+
         ngx_close_connection(u->peer.connection);
     }
 
@@ -3017,7 +3020,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
 
-        ngx_destroy_pool(u->peer.connection->pool);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+        }
+
         ngx_close_connection(u->peer.connection);
     }
 
