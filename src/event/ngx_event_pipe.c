@@ -409,6 +409,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             }
 
             p->free_raw_bufs = cl->next;
+            ngx_free_chain(p->pool, cl);
         }
     }
 
