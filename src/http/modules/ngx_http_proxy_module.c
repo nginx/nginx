@@ -1559,7 +1559,7 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         r = p->input_ctx;
         p->upstream_done = 1;
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                       "upstream sent too many data");
     }
 
@@ -1817,9 +1817,6 @@ done:
 
 invalid:
 
-    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                  "upstream sent invalid chunked response");
-
     return NGX_ERROR;
 }
 
@@ -1933,7 +1930,7 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
         /* invalid response */
 
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent invalid chunked response");
 
         return NGX_ERROR;
@@ -2089,7 +2086,7 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
 
         /* invalid response */
 
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent invalid chunked response");
 
         return NGX_ERROR;
