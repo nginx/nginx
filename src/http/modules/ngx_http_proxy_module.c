@@ -1647,6 +1647,8 @@ ngx_http_proxy_parse_chunked(ngx_http_request_t *r, ngx_buf_t *buf)
                     state = sw_trailer;
                     break;
                 case ';':
+                case ' ':
+                case '\t':
                     state = sw_last_chunk_extension;
                     break;
                 default:
@@ -1664,6 +1666,8 @@ ngx_http_proxy_parse_chunked(ngx_http_request_t *r, ngx_buf_t *buf)
                 state = sw_chunk_data;
                 break;
             case ';':
+            case ' ':
+            case '\t':
                 state = sw_chunk_extension;
                 break;
             default:
