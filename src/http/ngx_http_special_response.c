@@ -421,7 +421,6 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
     if (error == NGX_HTTP_CREATED) {
         /* 201 */
         err = 0;
-        r->header_only = 1;
 
     } else if (error == NGX_HTTP_NO_CONTENT) {
         /* 204 */
@@ -636,7 +635,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
         r->headers_out.content_type_lowcase = NULL;
 
     } else {
-        r->headers_out.content_length_n = -1;
+        r->headers_out.content_length_n = 0;
     }
 
     if (r->headers_out.content_length) {
@@ -654,7 +653,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
     }
 
     if (ngx_http_error_pages[err].len == 0) {
-        return NGX_OK;
+        return ngx_http_send_special(r, NGX_HTTP_LAST);
     }
 
     b = ngx_calloc_buf(r->pool);
