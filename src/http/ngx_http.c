@@ -1747,10 +1747,12 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
 #if (NGX_WIN32)
     {
-    ngx_iocp_conf_t  *iocpcf;
+    ngx_iocp_conf_t  *iocpcf = NULL;
 
-    iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);
-    if (iocpcf->acceptex_read) {
+    if (ngx_get_conf(cf->cycle->conf_ctx, ngx_events_module)) {
+        iocpcf = ngx_event_get_conf(cf->cycle->conf_ctx, ngx_iocp_module);
+    }
+    if (iocpcf && iocpcf->acceptex_read) {
         ls->post_accept_buffer_size = cscf->client_header_buffer_size;
     }
     }
