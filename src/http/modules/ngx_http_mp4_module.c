@@ -187,14 +187,14 @@ typedef struct {
     + (           ((u_char *) (p))[7]) )
 
 #define ngx_mp4_set_64value(p, n)                                             \
-    ((u_char *) (p))[0] = (u_char) ((n) >> 56);                               \
-    ((u_char *) (p))[1] = (u_char) ((n) >> 48);                               \
-    ((u_char *) (p))[2] = (u_char) ((n) >> 40);                               \
-    ((u_char *) (p))[3] = (u_char) ((n) >> 32);                               \
-    ((u_char *) (p))[4] = (u_char) ((n) >> 24);                               \
-    ((u_char *) (p))[5] = (u_char) ((n) >> 16);                               \
-    ((u_char *) (p))[6] = (u_char) ((n) >> 8);                                \
-    ((u_char *) (p))[7] = (u_char) (n)
+    ((u_char *) (p))[0] = (u_char) ((uint64_t) (n) >> 56);                    \
+    ((u_char *) (p))[1] = (u_char) ((uint64_t) (n) >> 48);                    \
+    ((u_char *) (p))[2] = (u_char) ((uint64_t) (n) >> 40);                    \
+    ((u_char *) (p))[3] = (u_char) ((uint64_t) (n) >> 32);                    \
+    ((u_char *) (p))[4] = (u_char) (           (n) >> 24);                    \
+    ((u_char *) (p))[5] = (u_char) (           (n) >> 16);                    \
+    ((u_char *) (p))[6] = (u_char) (           (n) >> 8);                     \
+    ((u_char *) (p))[7] = (u_char)             (n)
 
 #define ngx_mp4_last_trak(mp4)                                                \
     &((ngx_http_mp4_trak_t *) mp4->trak.elts)[mp4->trak.nelts - 1]
@@ -1066,7 +1066,7 @@ ngx_http_mp4_update_mdat_atom(ngx_http_mp4_file_t *mp4, off_t start_offset)
 
     atom_header = mp4->mdat_atom_header;
 
-    if (atom_data_size > 0xffffffff) {
+    if ((uint64_t) atom_data_size > 0xffffffff) {
         atom_size = 1;
         atom_header_size = sizeof(ngx_mp4_atom_header64_t);
         ngx_mp4_set_64value(atom_header + sizeof(ngx_mp4_atom_header_t),
