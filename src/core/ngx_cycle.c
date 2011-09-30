@@ -418,11 +418,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-        if (shm_zone[i].init == NULL) {
-            /* unused shared zone */
-            continue;
-        }
-
         shm_zone[i].shm.log = cycle->log;
 
         opart = &old_cycle->shared_memory.part;

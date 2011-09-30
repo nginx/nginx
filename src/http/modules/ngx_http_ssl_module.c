@@ -616,6 +616,8 @@ ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
+            sscf->shm_zone->init = ngx_ssl_session_cache_init;
+
             continue;
         }
 
