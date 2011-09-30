@@ -633,12 +633,12 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
         rc = p->output_filter(p->output_ctx, out);
 
+        ngx_chain_update_chains(&p->free, &p->busy, &out, p->tag);
+
         if (rc == NGX_ERROR) {
             p->downstream_error = 1;
             return ngx_event_pipe_drain_chains(p);
         }
-
-        ngx_chain_update_chains(&p->free, &p->busy, &out, p->tag);
 
         for (cl = p->free; cl; cl = cl->next) {
 
