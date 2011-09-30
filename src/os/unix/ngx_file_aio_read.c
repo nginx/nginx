@@ -86,6 +86,9 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
             return aio->nbytes;
         }
 
+        ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+                      "aio read \"%s\" failed", file->name.data);
+
         return NGX_ERROR;
     }
 
