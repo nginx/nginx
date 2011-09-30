@@ -8,6 +8,8 @@
 #define _NGX_DARWIN_CONFIG_H_INCLUDED_
 
 
+#define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_0
+
 
 #include <sys/types.h>
 #include <sys/time.h>
