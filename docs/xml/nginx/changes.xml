@@ -9,6 +9,191 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.7" date="30.09.2011">
+
+<change type="change">
+<para lang="ru">
+теперь, если суммарный размер всех диапазонов больше размера исходного ответа,
+то nginx возвращает только исходный ответ, не обрабатывая диапазоны.
+</para>
+<para lang="en">
+now if total size of all ranges is greater than source response size,
+then nginx disables ranges and returns just the source response.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива max_ranges.
+</para>
+<para lang="en">
+the "max_ranges" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_mp4_module.
+</para>
+<para lang="en">
+the module ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_aio_requests.
+</para>
+<para lang="en">
+the "worker_aio_requests" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с файловым AIO,
+он не мог запускаться на Linux без поддержки AIO.
+</para>
+<para lang="en">
+if nginx was built --with-file-aio it could not be run on Linux
+kernel which did not support AIO.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при работе с Linux AIO.
+<br/>
+Спасибо Hagai Avrahami.
+</para>
+<para lang="en">
+in Linux AIO error processing.
+<br/>
+Thanks to Hagai Avrahami.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в Linux AIO, используемым совместно с open_file_cache.
+</para>
+<para lang="en">
+in Linux AIO combined with open_file_cache.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+open_file_cache не обновлял информацию о файле,
+если файл был изменён не атомарно.
+</para>
+<para lang="en">
+open_file_cache did not update file info on retest
+if file was not atomically changed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уменьшено потребление памяти для долгоживущих запросов.
+</para>
+<para lang="en">
+reduced memory consumption for long-lived requests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy/fastcgi/scgi/ uwsgi_ignore_client_abort.
+</para>
+<para lang="en">
+in the "proxy/fastcgi/scgi/uwsgi_ignore_client_abort" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на MacOSX 10.7.
+</para>
+<para lang="en">
+nginx could not be built on MacOSX 10.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy/fastcgi/scgi/ uwsgi_ignore_client_abort.
+</para>
+<para lang="en">
+in the "proxy/fastcgi/scgi/uwsgi_ignore_client_abort" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обработка тела запроса могла быть неверной, если клиент использовал pipelining.
+</para>
+<para lang="en">
+request body might be processed incorrectly if client used pipelining.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве request_body_in_single_buf.
+</para>
+<para lang="en">
+in the "request_body_in_single_buf" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy_set_body и proxy_pass_request_body
+при использовании SSL-соединения с бэкендом.
+</para>
+<para lang="en">
+in "proxy_set_body" and "proxy_pass_request_body" directives
+if SSL connection to backend was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx нагружал процессор, если все серверы в upstream'е были помечены
+флагом down.
+</para>
+<para lang="en">
+nginx hogged CPU if all servers in an upstream were marked as "down".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при переконфигурации мог произойти segmentation fault,
+если в предыдущей конфигурации был определён, но не использовался
+ssl_session_cache.
+</para>
+<para lang="en">
+a segmentation fault might occur during reconfiguration
+if ssl_session_cache was defined but not used in previous configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании большого количества backup-серверов
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if many backup servers were used in an upstream.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.6" date="29.08.2011">
 
 <change type="feature">
