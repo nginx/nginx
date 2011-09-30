@@ -499,9 +499,16 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
 
         if (ngx_http_arg(r, (u_char *) "start", 5, &value) == NGX_OK) {
 
-            start = ngx_atofp(value.data, value.len, 3);
+            /*
+             * A Flash player may send start value with a lot of digits
+             * after dot so strtod() is used instead of atofp().  NaNs and
+             * infinities become negative numbers after (int) conversion.
+             */
 
-            if (start != NGX_ERROR) {
+            ngx_set_errno(0);
+            start = (int) (strtod((char *) value.data, NULL) * 1000);
+
+            if (ngx_errno == 0 && start >= 0) {
                 r->allow_ranges = 0;
 
                 mp4 = ngx_pcalloc(r->pool, sizeof(ngx_http_mp4_file_t));
