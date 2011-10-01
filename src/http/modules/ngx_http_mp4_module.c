@@ -742,7 +742,7 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
                  + ngx_http_mp4_update_mdat_atom(mp4, start_offset)
                  - start_offset;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "mp4 adjustment:%D", adjustment);
 
     for (i = 0; i < mp4->trak.nelts; i++) {
@@ -836,7 +836,7 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
 
         atom_name = atom_header + sizeof(uint32_t);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "mp4 atom: %*s @%O:%uL",
                        4, atom_name, mp4->offset, atom_size);
 
@@ -1068,7 +1068,7 @@ ngx_http_mp4_update_mdat_atom(ngx_http_mp4_file_t *mp4, off_t start_offset)
     mp4->mdat_data.buf->file_pos = start_offset;
     mp4->content_length += atom_data_size;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "mdat new offset @%O:%O", start_offset, atom_data_size);
 
     atom_header = mp4->mdat_atom_header;
@@ -2179,7 +2179,7 @@ ngx_http_mp4_update_ctts_atom(ngx_http_mp4_file_t *mp4,
     while (entry < end) {
         count = ngx_mp4_get_32value(entry->count);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "start:%uD, count:%uD, offset:%uD",
                        start_sample, count, ngx_mp4_get_32value(entry->offset));
 
