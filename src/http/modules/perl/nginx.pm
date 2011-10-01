@@ -48,7 +48,7 @@ our @EXPORT = qw(
     HTTP_INSUFFICIENT_STORAGE
 );
 
-our $VERSION = '1.0.7';
+our $VERSION = '1.0.8';
 
 require XSLoader;
 XSLoader::load('nginx', $VERSION);
