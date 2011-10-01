@@ -9,6 +9,20 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.8" date="01.10.2011">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с модулем ngx_http_mp4_module и без параметра --with-debug.
+</para>
+<para lang="en">
+nginx could not be built --with-http_mp4_module and without --with-debug option.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.7" date="30.09.2011">
 
 <change type="change">
