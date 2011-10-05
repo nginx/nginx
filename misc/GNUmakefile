@@ -10,6 +10,21 @@ ZLIB =		zlib-1.2.3
 PCRE =		pcre-7.9
 
 
+RELEASE:
+	test -d $(TEMP) || mkdir -p $(TEMP)
+
+	echo "nginx-$(VER)-RELEASE" > $(TEMP)/message
+	svn ci -F $(TEMP)/message
+
+	echo "release-$(VER) tag" > $(TEMP)/message
+	svn copy $(REPO)/nginx/trunk $(REPO)/nginx/tags/release-$(VER)  \
+		-F $(TEMP)/message
+
+	svn up
+
+	$(MAKE) release
+
+
 release:
 	rm -rf $(TEMP)
 
