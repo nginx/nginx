@@ -683,6 +683,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_DECLINED;
         }
 
+        u->cacheable = 1;
+
         switch (ngx_http_test_predicates(r, u->conf->cache_bypass)) {
 
         case NGX_ERROR:
@@ -695,8 +697,6 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         default: /* NGX_OK */
             break;
         }
-
-        u->cacheable = 1;
 
         c = r->cache;
 
@@ -2181,8 +2181,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 ngx_http_upstream_finalize_request(r, u, 0);
                 return;
             }
-
-            u->cacheable = 1;
         }
 
         break;
