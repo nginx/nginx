@@ -9,6 +9,87 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.5" date="05.10.2011">
+
+<change type="feature">
+<para lang="ru">
+директивы uwsgi_buffering и scgi_buffering.<br/>
+Спасибо Peter Smit.
+</para>
+<para lang="en">
+the "uwsgi_buffering" and "scgi_buffering" directives.<br/>
+Thanks to Peter Smit.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании proxy_cache_bypass могли быть закэшированы
+некэшируемые ответы.<br/>
+Спасибо John Ferlito.
+</para>
+<para lang="en">
+non-cacheable responses might be cached if "proxy_cache_bypass" directive
+was used.<br/>
+Thanks to John Ferlito.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_proxy_module при работе с бэкендами по HTTP/1.1.
+</para>
+<para lang="en">
+in HTTP/1.1 support in the ngx_http_proxy_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закэшированные ответы с пустым телом возвращались некорректно;
+ошибка появилась в 0.8.31.
+</para>
+<para lang="en">
+cached responses with an empty body were returned incorrectly;
+the bug had appeared in 0.8.31.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы с кодом 201 модуля ngx_http_dav_module были некорректны;
+ошибка появилась в 0.8.32.
+</para>
+<para lang="en">
+201 responses of the ngx_http_dav_module were incorrect;
+the bug had appeared in 0.8.32.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве return.
+</para>
+<para lang="en">
+in the "return" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "ssl_session_cache builtin" происходил
+segmentation fault;
+ошибка появилась в 1.1.1.
+</para>
+<para lang="en">
+the "ssl_session_cache builtin" directive caused segmentation fault;
+the bug had appeared in 1.1.1.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.4" date="20.09.2011">
 
 <change type="feature">
