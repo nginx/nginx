@@ -3,6 +3,7 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 			| sed -e 's/^.*\"\(.*\)\"/\1/')
 NGINX =		nginx-$(VER)
 TEMP =		tmp
+REPO =		svn://svn.nginx.com
 
 OBJS =		objs.msvc8
 OPENSSL =	openssl-1.0.0d
