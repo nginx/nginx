@@ -24,7 +24,7 @@ define  XSLT
 endef
 
 
-all:		changes html
+all:		changes
 
 changes:	$(TEMP)/$(NGINX)/CHANGES.ru				\
 		$(TEMP)/$(NGINX)/CHANGES
@@ -55,27 +55,3 @@ $(TEMP)/$(NGINX)/CHANGES:	docs/xml/nginx/changes.xml		\
 docs/xslt/changes.xslt:		docs/xsls/changes.xsls
 
 	$(call XSLScript, docs/xsls/changes.xsls, $@)
-
-html:									\
-	docs/html/ngx_core_module.html					\
-	docs/html/http/ngx_http_core_module.html			\
-	docs/html/http/ngx_http_mp4_module.html
-
-docs/html/%.html:							\
-		docs/xml/%.xml						\
-		docs/xslt/module.xslt					\
-		docs/dtd/module.dtd
-	$(call XSLT, docs/xslt/module.xslt, $<, $@)
-
-docs/html/http/%.html:							\
-		docs/xml/http/%.xml					\
-		docs/xslt/module.xslt					\
-		docs/dtd/module.dtd
-	$(call XSLT, docs/xslt/module.xslt, $<, $@)
-
-docs/xslt/module.xslt:							\
-		docs/xslt/directive.xslt				\
-		docs/xslt/content.xslt
-
-docs/xslt/%.xslt:		docs/xsls/%.xsls
-	$(call XSLScript, $<, $@)
