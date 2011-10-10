@@ -836,7 +836,7 @@ variable(r, name, value = NULL)
     var.len = len;
     var.data = lowcase;
 
-    #if (NGX_LOG_DEBUG)
+    #if (NGX_DEBUG)
 
     if (value) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
