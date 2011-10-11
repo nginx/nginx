@@ -3425,7 +3425,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         types_hash.key = ngx_hash_key_lc;
         types_hash.max_size = conf->types_hash_max_size;
         types_hash.bucket_size = conf->types_hash_bucket_size;
-        types_hash.name = "mime_types_hash";
+        types_hash.name = "types_hash";
         types_hash.pool = cf->pool;
         types_hash.temp_pool = NULL;
 
