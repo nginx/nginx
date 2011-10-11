@@ -1882,7 +1882,7 @@ ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
     }
 
     entries = trak->time_to_sample_entries;
-    start_time = mp4->start * trak->timescale / 1000;
+    start_time = (uint64_t) mp4->start * trak->timescale / 1000;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "time-to-sample start_time:%uL", start_time);
