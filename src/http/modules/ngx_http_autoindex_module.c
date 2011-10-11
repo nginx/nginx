@@ -28,7 +28,6 @@ typedef struct {
     size_t         escape;
 
     unsigned       dir:1;
-    unsigned       colon:1;
 
     time_t         mtime;
     off_t          size;
@@ -338,15 +337,13 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
 
         entry->escape = 2 * ngx_escape_uri(NULL, ngx_de_name(&dir), len,
-                                           NGX_ESCAPE_HTML);
+                                           NGX_ESCAPE_URI_COMPONENT);
 
         if (utf8) {
             entry->utf_len = ngx_utf8_length(entry->name.data, entry->name.len);
         } else {
             entry->utf_len = len;
         }
-
-        entry->colon = (ngx_strchr(entry->name.data, ':') != NULL);
 
         entry->dir = ngx_de_is_dir(&dir);
         entry->mtime = ngx_de_mtime(&dir);
@@ -373,7 +370,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             + entry[i].name.len + entry[i].escape
             + 1                                          /* 1 is for "/" */
             + sizeof("\">") - 1
-            + entry[i].name.len - entry[i].utf_len + entry[i].colon * 2
+            + entry[i].name.len - entry[i].utf_len
             + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
             + sizeof("</a>") - 1
             + sizeof(" 28-Sep-1970 12:00 ") - 1
@@ -406,14 +403,9 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     for (i = 0; i < entries.nelts; i++) {
         b->last = ngx_cpymem(b->last, "<a href=\"", sizeof("<a href=\"") - 1);
 
-        if (entry[i].colon) {
-            *b->last++ = '.';
-            *b->last++ = '/';
-        }
-
         if (entry[i].escape) {
             ngx_escape_uri(b->last, entry[i].name.data, entry[i].name.len,
-                           NGX_ESCAPE_HTML);
+                           NGX_ESCAPE_URI_COMPONENT);
 
             b->last += entry[i].name.len + entry[i].escape;
 
