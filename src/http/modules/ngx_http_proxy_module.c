@@ -1560,7 +1560,7 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         p->upstream_done = 1;
 
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "upstream sent too many data");
+                      "upstream sent too much data");
     }
 
     return NGX_OK;
