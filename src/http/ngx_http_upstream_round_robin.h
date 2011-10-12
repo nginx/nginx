@@ -23,6 +23,7 @@ typedef struct {
 
     ngx_uint_t                      fails;
     time_t                          accessed;
+    time_t                          checked;
 
     ngx_uint_t                      max_fails;
     time_t                          fail_timeout;

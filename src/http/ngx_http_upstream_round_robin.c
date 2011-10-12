@@ -443,8 +443,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                             break;
                         }
 
-                        if (now - peer->accessed > peer->fail_timeout) {
-                            peer->fails = 0;
+                        if (now - peer->checked > peer->fail_timeout) {
+                            peer->checked = now;
                             break;
                         }
 
@@ -491,8 +491,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
                             break;
                         }
 
-                        if (now - peer->accessed > peer->fail_timeout) {
-                            peer->fails = 0;
+                        if (now - peer->checked > peer->fail_timeout) {
+                            peer->checked = now;
                             break;
                         }
 
@@ -663,15 +663,16 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         return;
     }
 
+    peer = &rrp->peers->peer[rrp->current];
+
     if (state & NGX_PEER_FAILED) {
         now = ngx_time();
-
-        peer = &rrp->peers->peer[rrp->current];
 
         /* ngx_lock_mutex(rrp->peers->mutex); */
 
         peer->fails++;
         peer->accessed = now;
+        peer->checked = now;
 
         if (peer->max_fails) {
             peer->current_weight -= peer->weight / peer->max_fails;
@@ -686,6 +687,14 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
         }
 
         /* ngx_unlock_mutex(rrp->peers->mutex); */
+
+    } else {
+
+        /* mark peer live if check passed */
+
+        if (peer->accessed < peer->checked) {
+            peer->fails = 0;
+        }
     }
 
     rrp->current++;
