@@ -2994,6 +2994,12 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[0].data, "include") == 0) {
+        if (cf->args->nelts != 2) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid number of arguments"
+                               " in \"include\" directive");
+            return NGX_CONF_ERROR;
+        }
         file = value[1];
 
         if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
@@ -3027,7 +3033,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
                                    "content type: \"%V\", "
                                    "previous content type: \"%V\"",
                                    &value[i], content_type, old);
-                continue;
+                goto next;
             }
         }
 
@@ -3040,6 +3046,9 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         type->key = value[i];
         type->key_hash = hash;
         type->value = content_type;
+
+    next:
+        continue;
     }
 
     return NGX_CONF_OK;
