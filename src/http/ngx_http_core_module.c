@@ -3400,7 +3400,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->types == NULL) {
-        conf->types = ngx_array_create(cf->pool, 4, sizeof(ngx_hash_key_t));
+        conf->types = ngx_array_create(cf->pool, 3, sizeof(ngx_hash_key_t));
         if (conf->types == NULL) {
             return NGX_CONF_ERROR;
         }
