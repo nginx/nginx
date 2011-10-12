@@ -3373,7 +3373,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                              ngx_cacheline_size);
 
     /*
-     * the special handling the "types" directive in the "http" section
+     * the special handling of the "types" directive in the "http" section
      * to inherit the http's conf->types_hash to all servers
      */
 
