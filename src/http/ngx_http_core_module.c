@@ -3467,9 +3467,10 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
                               NGX_HTTP_IMS_EXACT);
     ngx_conf_merge_uint_value(conf->max_ranges, prev->max_ranges,
-                              0x7fffffff);
+                              NGX_MAX_INT32_VALUE);
     ngx_conf_merge_uint_value(conf->client_body_in_file_only,
-                              prev->client_body_in_file_only, 0);
+                              prev->client_body_in_file_only,
+                              NGX_HTTP_REQUEST_BODY_FILE_OFF);
     ngx_conf_merge_value(conf->client_body_in_single_buffer,
                               prev->client_body_in_single_buffer, 0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
@@ -3477,11 +3478,11 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
 #if (NGX_HAVE_FILE_AIO)
-    ngx_conf_merge_value(conf->aio, prev->aio, 0);
+    ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
 #endif
     ngx_conf_merge_size_value(conf->read_ahead, prev->read_ahead, 0);
     ngx_conf_merge_off_value(conf->directio, prev->directio,
-                              NGX_MAX_OFF_T_VALUE);
+                              NGX_OPEN_FILE_DIRECTIO_OFF);
     ngx_conf_merge_off_value(conf->directio_alignment, prev->directio_alignment,
                               512);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);
