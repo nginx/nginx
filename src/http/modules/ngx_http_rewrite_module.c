@@ -135,9 +135,21 @@ ngx_module_t  ngx_http_rewrite_module = {
 static ngx_int_t
 ngx_http_rewrite_handler(ngx_http_request_t *r)
 {
+    ngx_int_t                     index;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t     *e;
+    ngx_http_core_srv_conf_t     *cscf;
+    ngx_http_core_main_conf_t    *cmcf;
     ngx_http_rewrite_loc_conf_t  *rlcf;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+    index = cmcf->phase_engine.location_rewrite_index;
+
+    if (r->phase_handler == index && r->loc_conf == cscf->ctx->loc_conf) {
+        /* skipping location rewrite phase for server null location */
+        return NGX_DECLINED;
+    }
 
     rlcf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
 
