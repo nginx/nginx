@@ -2546,6 +2546,9 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
             r->content_handler = NULL;
             r->loc_conf = (*clcfp)->loc_conf;
 
+            /* clear the modules contexts */
+            ngx_memzero(r->ctx, sizeof(void *) * ngx_http_max_module);
+
             ngx_http_update_location_config(r);
 
             cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
