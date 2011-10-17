@@ -9,6 +9,126 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.6" date="17.10.2011">
+
+<change>
+<para lang="ru">
+Изменение во внутреннем API: теперь при внутреннем редиректе
+в именованный location контексты модулей очищаются.<br/>
+По запросу Yichun Zhang.
+</para>
+<para lang="en">
+Change in internal API: now module context data are cleared
+while internal redirect to named location.<br/>
+Requested by Yichun Zhang.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь если сервер, описанный в блоке upstream, был признан неработающим,
+то после истечения fail_timeout на него будет отправлен только один запрос;
+сервер будет считаться работающим, если успешно ответит на этот запрос.
+</para>
+<para lang="en">
+if a server in an upstream failed, only one request will be sent to it
+after fail_timeout; the server will be considered alive if it will
+successfully respond to the request.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь символы 0x7F-0xFF в access_log записываются в виде \xXX.
+</para>
+<para lang="en">
+now the 0x7F-0x1F characters are escaped as \xXX in an access_log.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы "proxy/fastcgi/scgi/uwsgi_ignore_headers" теперь поддерживают
+значения X-Accel-Limit-Rate, X-Accel-Buffering и X-Accel-Charset.
+</para>
+<para lang="en">
+"proxy/fastcgi/scgi/uwsgi_ignore_headers" directives support the following
+additional values: X-Accel-Limit-Rate, X-Accel-Buffering, X-Accel-Charset.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+уменьшение потребления памяти при использовании SSL.
+</para>
+<para lang="en">
+decrease of memory consumption if SSL is used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некоторые UTF-8 символы обрабатывались неправильно.<br/>
+Спасибо Алексею Куцу.
+</para>
+<para lang="en">
+some UTF-8 characters were processed incorrectly.<br/>
+Thanks to Alexey Kuts.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы модуля ngx_http_rewrite_module, заданные на уровне server, 
+применялись повторно, если для запроса не находилось ни одного location'а.
+</para>
+<para lang="en">
+the ngx_http_rewrite_module directives specified at "server" level were
+executed twice if no matching locations were defined.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании "aio sendfile" могла происходить утечка сокетов.
+</para>
+<para lang="en">
+a socket leak might occurred if "aio sendfile" was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании файлового AIO соединения с быстрыми клиентами
+могли быть закрыты по истечению send_timeout.
+</para>
+<para lang="en">
+connections with fast clients might be closed after send_timeout
+if file AIO was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_mp4_module не поддерживал перемотку на 32-битных платформах.
+</para>
+<para lang="en">
+the module ngx_http_mp4_module did not support seeking on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.5" date="05.10.2011">
 
 <change type="feature">
