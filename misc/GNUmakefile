@@ -35,9 +35,6 @@ release:
 
 	$(MAKE) -f docs/GNUmakefile changes
 
-	# delete incomplete draft documentation
-	rm -r $(TEMP)/$(NGINX)/html/http
-
 	rm -r $(TEMP)/$(NGINX)/docs
 	rm -r $(TEMP)/$(NGINX)/misc
 
@@ -103,9 +100,6 @@ zip:
 
 	svn export -rHEAD contrib $(TEMP)/$(NGINX)/contrib/
 	svn export -rHEAD docs/html $(TEMP)/$(NGINX)/html/
-
-	# delete incomplete draft documentation
-	rm -r $(TEMP)/$(NGINX)/html/http
 
 	$(MAKE) -f docs/GNUmakefile changes
 
