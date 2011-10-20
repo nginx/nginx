@@ -153,7 +153,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 {
     u_char        *prev;
     size_t         size;
-    ssize_t        n;
+    ssize_t        total, n;
     ngx_array_t    vec;
     struct iovec  *iov, iovs[NGX_IOVS];
 
@@ -164,6 +164,8 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
                               (size_t) (cl->buf->last - cl->buf->pos),
                               offset);
     }
+
+    total = 0;
 
     vec.elts = iovs;
     vec.size = sizeof(struct iovec);
@@ -233,10 +235,11 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
         file->sys_offset += n;
         file->offset += n;
+        total += n;
 
     } while (cl);
 
-    return n;
+    return total;
 }
 
 
