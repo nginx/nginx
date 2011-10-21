@@ -204,8 +204,15 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
         if (vec.nelts == 1) {
             iov = vec.elts;
-            return ngx_write_file(file, (u_char *) iov[0].iov_base,
-                                  iov[0].iov_len, offset);
+
+            n = ngx_write_file(file, (u_char *) iov[0].iov_base,
+                               iov[0].iov_len, offset);
+
+            if (n == NGX_ERROR) {
+                return n;
+            }
+
+            return total + n;
         }
 
         if (file->sys_offset != offset) {
