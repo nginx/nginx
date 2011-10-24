@@ -46,10 +46,10 @@
 
 #else
 
-#if (NGX_FREEBSD)
+#if (NGX_HAVE_DEBUG_MALLOC)
 
 #define ngx_slab_junk(p, size)                                                \
-    if (ngx_freebsd_debug_malloc)  ngx_memset(p, 0xD0, size)
+    if (ngx_debug_malloc)          ngx_memset(p, 0xD0, size)
 
 #else
 

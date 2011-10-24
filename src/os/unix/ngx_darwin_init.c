@@ -14,6 +14,8 @@ int     ngx_darwin_hw_ncpu;
 int     ngx_darwin_kern_ipc_somaxconn;
 u_long  ngx_darwin_net_inet_tcp_sendspace;
 
+ngx_uint_t  ngx_debug_malloc;
+
 
 static ngx_os_io_t ngx_darwin_io = {
     ngx_unix_recv,
@@ -53,6 +55,34 @@ sysctl_t sysctls[] = {
 
     { NULL, NULL, 0, 0 }
 };
+
+
+void
+ngx_debug_init()
+{
+#if (NGX_DEBUG_MALLOC)
+
+    /*
+     * MacOSX 10.6, 10.7:  MallocScribble fills freed memory with 0x55
+     *                     and fills allocated memory with 0xAA.
+     * MacOSX 10.4, 10.5:  MallocScribble fills freed memory with 0x55,
+     *                     MallocPreScribble fills allocated memory with 0xAA.
+     * MacOSX 10.3:        MallocScribble fills freed memory with 0x55,
+     *                     and no way to fill allocated memory.
+     */
+
+    setenv("MallocScribble", "1", 0);
+
+    ngx_debug_malloc = 1;
+
+#else
+
+    if (getenv("MallocScribble")) {
+        ngx_debug_malloc = 1;
+    }
+
+#endif
+}
 
 
 ngx_int_t

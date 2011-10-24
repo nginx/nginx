@@ -31,7 +31,6 @@ typedef struct {
 } ngx_os_io_t;
 
 
-void ngx_debug_init(void);
 ngx_int_t ngx_os_init(ngx_log_t *log);
 void ngx_os_status(ngx_log_t *log);
 ngx_int_t ngx_os_specific_init(ngx_log_t *log);

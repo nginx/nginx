@@ -182,6 +182,7 @@ typedef int                 sig_atomic_t;
 
 
 #define ngx_random               rand
+#define ngx_debug_init()
 
 
 #endif /* _NGX_WIN32_CONFIG_H_INCLUDED_ */
