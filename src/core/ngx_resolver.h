@@ -77,15 +77,15 @@ typedef struct {
 typedef struct {
     /* has to be pointer because of "incomplete type" */
     ngx_event_t              *event;
-
-    /* TODO: DNS peers balancer */
-    /* STUB */
-    ngx_udp_connection_t     *udp_connection;
-
+    void                     *dummy;
     ngx_log_t                *log;
 
     /* ident must be after 3 pointers */
     ngx_int_t                 ident;
+
+    /* simple round robin DNS peers balancer */
+    ngx_array_t               udp_connections;
+    ngx_uint_t                last_connection;
 
     ngx_rbtree_t              name_rbtree;
     ngx_rbtree_node_t         name_sentinel;
@@ -123,8 +123,6 @@ struct ngx_resolver_ctx_s {
     in_addr_t                *addrs;
     in_addr_t                 addr;
 
-    /* TODO: DNS peers balancer ctx */
-
     ngx_resolver_handler_pt   handler;
     void                     *data;
     ngx_msec_t                timeout;
@@ -135,7 +133,8 @@ struct ngx_resolver_ctx_s {
 };
 
 
-ngx_resolver_t *ngx_resolver_create(ngx_conf_t *cf, ngx_addr_t *addr);
+ngx_resolver_t *ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names,
+    ngx_uint_t n);
 ngx_resolver_ctx_t *ngx_resolve_start(ngx_resolver_t *r,
     ngx_resolver_ctx_t *temp);
 ngx_int_t ngx_resolve_name(ngx_resolver_ctx_t *ctx);

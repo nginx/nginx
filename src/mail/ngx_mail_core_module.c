@@ -69,7 +69,7 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       NULL },
 
     { ngx_string("resolver"),
-      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
       ngx_mail_core_resolver,
       NGX_MAIL_SRV_CONF_OFFSET,
       0,
@@ -493,7 +493,6 @@ ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_mail_core_srv_conf_t  *cscf = conf;
 
-    ngx_url_t   u;
     ngx_str_t  *value;
 
     value = cf->args->elts;
@@ -507,19 +506,9 @@ ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    ngx_memzero(&u, sizeof(ngx_url_t));
-
-    u.host = value[1];
-    u.port = 53;
-
-    if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V: %s", &u.host, u.err);
-        return NGX_CONF_ERROR;
-    }
-
-    cscf->resolver = ngx_resolver_create(cf, &u.addrs[0]);
+    cscf->resolver = ngx_resolver_create(cf, &value[1], cf->args->nelts - 1);
     if (cscf->resolver == NULL) {
-        return NGX_CONF_OK;
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
