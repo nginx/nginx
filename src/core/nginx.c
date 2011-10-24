@@ -203,6 +203,10 @@ main(int argc, char *const *argv)
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
 
+#if (NGX_FREEBSD)
+    ngx_debug_init();
+#endif
+
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
@@ -259,10 +263,6 @@ main(int argc, char *const *argv)
             return 0;
         }
     }
-
-#if (NGX_FREEBSD)
-    ngx_debug_init();
-#endif
 
     /* TODO */ ngx_max_sockets = -1;
 
