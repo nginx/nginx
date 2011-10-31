@@ -863,6 +863,13 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
         ngx_log_error(NGX_LOG_NOTICE, c->log, 0, "SSL renegotiation disabled");
 
+        while (ERR_peek_error()) {
+            ngx_ssl_error(NGX_LOG_DEBUG, c->log, 0,
+                          "ignoring stale global SSL error");
+        }
+
+        ERR_clear_error();
+
         c->ssl->no_wait_shutdown = 1;
         c->ssl->no_send_shutdown = 1;
 
