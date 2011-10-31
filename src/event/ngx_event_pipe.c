@@ -680,10 +680,10 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 static ngx_int_t
 ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
-    ssize_t       size, bsize;
+    ssize_t       size, bsize, n;
     ngx_buf_t    *b;
     ngx_uint_t    prev_last_shadow;
-    ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free, fl;
+    ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_out, **last_free, fl;
 
     if (p->buf_to_file) {
         fl.buf = p->buf_to_file;
@@ -748,9 +748,62 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         p->last_in = &p->in;
     }
 
-    if (ngx_write_chain_to_temp_file(p->temp_file, out) == NGX_ERROR) {
+    n = ngx_write_chain_to_temp_file(p->temp_file, out);
+
+    if (n == NGX_ERROR) {
         return NGX_ABORT;
     }
+
+    if (p->buf_to_file) {
+        p->temp_file->offset = p->buf_to_file->last - p->buf_to_file->pos;
+        n -= p->buf_to_file->last - p->buf_to_file->pos;
+        p->buf_to_file = NULL;
+        out = out->next;
+    }
+
+    if (n > 0) {
+        /* update previous buffer or add new buffer */
+
+        if (p->out) {
+            for (cl = p->out; cl->next; cl = cl->next) { /* void */ }
+
+            b = cl->buf;
+
+            if (b->file_last == p->temp_file->offset) {
+                p->temp_file->offset += n;
+                b->file_last = p->temp_file->offset;
+                goto free;
+            }
+
+            last_out = &cl->next;
+
+        } else {
+            last_out = &p->out;
+        }
+
+        cl = ngx_chain_get_free_buf(p->pool, &p->free);
+        if (cl == NULL) {
+            return NGX_ABORT;
+        }
+
+        b = cl->buf;
+
+        ngx_memzero(b, sizeof(ngx_buf_t));
+
+        b->tag = p->tag;
+
+        b->file = &p->temp_file->file;
+        b->file_pos = p->temp_file->offset;
+        p->temp_file->offset += n;
+        b->file_last = p->temp_file->offset;
+
+        b->in_file = 1;
+        b->temp_file = 1;
+
+        *last_out = cl;
+    }
+
+free:
 
     for (last_free = &p->free_raw_bufs;
          *last_free != NULL;
@@ -759,31 +812,13 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         /* void */
     }
 
-    if (p->buf_to_file) {
-        p->temp_file->offset = p->buf_to_file->last - p->buf_to_file->pos;
-        p->buf_to_file = NULL;
-        out = out->next;
-    }
-
     for (cl = out; cl; cl = next) {
         next = cl->next;
-        cl->next = NULL;
+
+        cl->next = p->free;
+        p->free = cl;
 
         b = cl->buf;
-        b->file = &p->temp_file->file;
-        b->file_pos = p->temp_file->offset;
-        p->temp_file->offset += b->last - b->pos;
-        b->file_last = p->temp_file->offset;
-
-        b->in_file = 1;
-        b->temp_file = 1;
-
-        if (p->out) {
-            *p->last_out = cl;
-        } else {
-            p->out = cl;
-        }
-        p->last_out = &cl->next;
 
         if (b->last_shadow) {
 

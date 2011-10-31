@@ -30,8 +30,6 @@ struct ngx_event_pipe_s {
     ngx_chain_t      **last_in;
 
     ngx_chain_t       *out;
-    ngx_chain_t      **last_out;
-
     ngx_chain_t       *free;
     ngx_chain_t       *busy;
 
