@@ -9,6 +9,66 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.7" date="31.10.2011">
+
+<change type="feature">
+<para lang="ru">
+поддержка нескольких DNS серверов в директиве "resolver".<br/>
+Спасибо Кириллу Коринскому.
+</para>
+<para lang="en">
+support of several resolvers in the "resolver" directive.<br/>
+Thanks to Kirill A. Korinskiy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации происходил segmentation fault,
+если директива ssl использовалась на уровне http и не был указан
+ssl_certificate.
+</para>
+<para lang="en">
+a segmentation fault occurred on start or while reconfiguration 
+if the "ssl" directive was used at http level and there was
+no "ssl_certificate" defined.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уменьшено потребление памяти при проксировании больших файлов,
+если они буферизировались на диск.
+</para>
+<para lang="en">
+reduced memory consumption while proxying of big files
+if they were buffered to disk.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива "proxy_http_version 1.1".
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if "proxy_http_version 1.1" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве "expires @time".
+</para>
+<para lang="en">
+in the "expires @time" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.6" date="17.10.2011">
 
 <change>
