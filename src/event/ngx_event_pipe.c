@@ -15,8 +15,6 @@ static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
 
 static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p);
 static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf);
-static ngx_inline void ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free,
-                                                          ngx_buf_t *buf);
 static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 
 
@@ -576,16 +574,12 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             if (p->out) {
                 cl = p->out;
 
-                if (cl->buf->recycled
-                    && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
-                {
-                    flush = 1;
-                    break;
+                if (cl->buf->recycled) {
+                    ngx_log_error(NGX_LOG_ALERT, p->log, 0,
+                                  "recycled buffer in pipe out chain");
                 }
 
                 p->out = p->out->next;
-
-                ngx_event_pipe_free_shadow_raw_buf(&p->free_raw_bufs, cl->buf);
 
             } else if (!p->cacheable && p->in) {
                 cl = p->in;
@@ -596,24 +590,13 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                                cl->buf->pos,
                                cl->buf->last - cl->buf->pos);
 
-                if (cl->buf->recycled
-                    && cl->buf->last_shadow
-                    && bsize + cl->buf->last - cl->buf->pos > p->busy_size)
-                {
-                    if (!prev_last_shadow) {
-                        p->in = p->in->next;
-
-                        cl->next = NULL;
-
-                        if (out) {
-                            *ll = cl;
-                        } else {
-                            out = cl;
-                        }
+                if (cl->buf->recycled && prev_last_shadow) {
+                    if (bsize + cl->buf->end - cl->buf->start > p->busy_size) {
+                        flush = 1;
+                        break;
                     }
 
-                    flush = 1;
-                    break;
+                    bsize += cl->buf->end - cl->buf->start;
                 }
 
                 prev_last_shadow = cl->buf->last_shadow;
@@ -622,10 +605,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
             } else {
                 break;
-            }
-
-            if (cl->buf->recycled) {
-                bsize += cl->buf->last - cl->buf->pos;
             }
 
             cl->next = NULL;
@@ -703,6 +682,7 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
 {
     ssize_t       size, bsize;
     ngx_buf_t    *b;
+    ngx_uint_t    prev_last_shadow;
     ngx_chain_t  *cl, *tl, *next, *out, **ll, **last_free, fl;
 
     if (p->buf_to_file) {
@@ -719,6 +699,7 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         size = 0;
         cl = out;
         ll = NULL;
+        prev_last_shadow = 1;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe offset: %O", p->temp_file->offset);
@@ -726,15 +707,20 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         do {
             bsize = cl->buf->last - cl->buf->pos;
 
-            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                           "pipe buf %p, pos %p, size: %z",
-                           cl->buf->start, cl->buf->pos, bsize);
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                           "pipe buf ls:%d %p, pos %p, size: %z",
+                           cl->buf->last_shadow, cl->buf->start,
+                           cl->buf->pos, bsize);
 
-            if ((size + bsize > p->temp_file_write_size)
-               || (p->temp_file->offset + size + bsize > p->max_temp_file_size))
+            if (prev_last_shadow
+                && ((size + bsize > p->temp_file_write_size)
+                    || (p->temp_file->offset + size + bsize
+                        > p->max_temp_file_size)))
             {
                 break;
             }
+
+            prev_last_shadow = cl->buf->last_shadow;
 
             size += bsize;
             ll = &cl->next;
@@ -910,35 +896,6 @@ ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf)
     b->shadow = NULL;
 
     buf->shadow = NULL;
-}
-
-
-static ngx_inline void
-ngx_event_pipe_free_shadow_raw_buf(ngx_chain_t **free, ngx_buf_t *buf)
-{
-    ngx_buf_t    *s;
-    ngx_chain_t  *cl, **ll;
-
-    if (buf->shadow == NULL) {
-        return;
-    }
-
-    for (s = buf->shadow; !s->last_shadow; s = s->shadow) { /* void */ }
-
-    ll = free;
-
-    for (cl = *free; cl; cl = cl->next) {
-        if (cl->buf == s) {
-            *ll = cl->next;
-            break;
-        }
-
-        if (cl->buf->shadow) {
-            break;
-        }
-
-        ll = &cl->next;
-    }
 }
 
 
