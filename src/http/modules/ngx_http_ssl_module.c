@@ -346,7 +346,16 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_pool_cleanup_t  *cln;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    if (conf->enable == NGX_CONF_UNSET) {
+        if (prev->enable == NGX_CONF_UNSET) {
+            conf->enable = 0;
+
+        } else {
+            conf->enable = prev->enable;
+            conf->file = prev->file;
+            conf->line = prev->line;
+        }
+    }
 
     ngx_conf_merge_value(conf->session_timeout,
                          prev->session_timeout, 300);
