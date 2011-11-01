@@ -62,6 +62,7 @@ types {
     audio/midi                            mid midi kar;
     audio/mpeg                            mp3;
     audio/ogg                             ogg;
+    audio/x-m4a                           m4a;
     audio/x-realaudio                     ra;
 
     video/3gpp                            3gpp 3gp;
@@ -69,6 +70,7 @@ types {
     video/mpeg                            mpeg mpg;
     video/quicktime                       mov;
     video/x-flv                           flv;
+    video/x-m4v                           m4v;
     video/x-mng                           mng;
     video/x-ms-asf                        asx asf;
     video/x-ms-wmv                        wmv;
