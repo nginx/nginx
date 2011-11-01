@@ -53,7 +53,7 @@ esac
 
 
 case ".$NGX_ERROR_LOG_PATH" in
-    ./*)
+    ./* | .)
     ;;
 
     *)
@@ -78,7 +78,7 @@ manpage:
 	sed -e "s|%%PREFIX%%|$NGX_PREFIX|" \\
 		-e "s|%%PID_PATH%%|$NGX_PID_PATH|" \\
 		-e "s|%%CONF_PATH%%|$NGX_CONF_PATH|" \\
-		-e "s|%%ERROR_LOG_PATH%%|$NGX_ERROR_LOG_PATH|" \\
+		-e "s|%%ERROR_LOG_PATH%%|${NGX_ERROR_LOG_PATH:-stderr}|" \\
 		< man/nginx.8 > $NGX_OBJS/nginx.8
 
 install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
@@ -137,7 +137,7 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 END
 
 
-if test -n "\$(DESTDIR)$NGX_ERROR_LOG_PATH"; then
+if test -n "$NGX_ERROR_LOG_PATH"; then
     cat << END                                                >> $NGX_MAKEFILE
 
 	test -d '\$(DESTDIR)`dirname "$NGX_ERROR_LOG_PATH"`' || \

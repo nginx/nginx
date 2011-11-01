@@ -369,12 +369,13 @@ ngx_log_create(ngx_cycle_t *cycle, ngx_str_t *name)
 char *
 ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
-    ngx_uint_t   i, n, d;
+    ngx_uint_t   i, n, d, found;
     ngx_str_t   *value;
 
     value = cf->args->elts;
 
     for (i = 2; i < cf->args->nelts; i++) {
+        found = 0;
 
         for (n = 1; n <= NGX_LOG_DEBUG; n++) {
             if (ngx_strcmp(value[i].data, err_levels[n].data) == 0) {
@@ -387,7 +388,8 @@ ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
                 }
 
                 log->log_level = n;
-                continue;
+                found = 1;
+                break;
             }
         }
 
@@ -401,11 +403,13 @@ ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
                 }
 
                 log->log_level |= d;
+                found = 1;
+                break;
             }
         }
 
 
-        if (log->log_level == 0) {
+        if (!found) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid log level \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
