@@ -295,6 +295,7 @@ if [ $ngx_found != yes ]; then
     fi
 fi
 
+
 ngx_feature="SO_SETFIB"
 ngx_feature_name="NGX_HAVE_SETFIB"
 ngx_feature_run=no
@@ -302,6 +303,28 @@ ngx_feature_incs="#include <sys/socket.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_SETFIB, NULL, 4)"
+. auto/feature
+
+
+ngx_feature="SO_ACCEPTFILTER"
+ngx_feature_name="NGX_HAVE_DEFERRED_ACCEPT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)"
+. auto/feature
+
+
+ngx_feature="TCP_DEFER_ACCEPT"
+ngx_feature_name="NGX_HAVE_DEFERRED_ACCEPT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>
+                  #include <netinet/tcp.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_TCP, TCP_DEFER_ACCEPT, NULL, 0)"
 . auto/feature
 
 
