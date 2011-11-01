@@ -960,7 +960,7 @@ buffer:
 
         if (log->script) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "buffered logs can not have variables in name");
+                               "buffered logs cannot have variables in name");
             return NGX_CONF_ERROR;
         }
 

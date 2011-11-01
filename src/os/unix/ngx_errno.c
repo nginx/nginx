@@ -12,7 +12,7 @@
  * The strerror() messages are copied because:
  *
  * 1) strerror() and strerror_r() functions are not Async-Signal-Safe,
- *    therefore, they can not be used in signal handlers;
+ *    therefore, they cannot be used in signal handlers;
  *
  * 2) a direct sys_errlist[] array may be used instead of these functions,
  *    but Linux linker warns about its usage:

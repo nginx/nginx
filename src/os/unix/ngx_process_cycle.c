@@ -620,7 +620,8 @@ ngx_reap_children(ngx_cycle_t *cycle)
                     == NGX_INVALID_PID)
                 {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                                  "can not respawn %s", ngx_processes[i].name);
+                                  "could not respawn %s",
+                                  ngx_processes[i].name);
                     continue;
                 }
 
