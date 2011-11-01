@@ -983,6 +983,8 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
     }
 
     if (rc == NGX_DONE) {
+        ngx_http_clear_location(r);
+
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1784,18 +1786,19 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
     ngx_buf_t    *b;
     ngx_chain_t   out;
 
-    r->headers_out.status = status;
-
-    if (status == NGX_HTTP_NO_CONTENT) {
-        r->header_only = 1;
-        return ngx_http_send_header(r);
+    if (ngx_http_discard_request_body(r) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    r->headers_out.status = status;
 
     if (ngx_http_complex_value(r, cv, &val) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     if (status >= NGX_HTTP_MOVED_PERMANENTLY && status <= NGX_HTTP_SEE_OTHER) {
+
+        ngx_http_clear_location(r);
 
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {

@@ -111,17 +111,10 @@ static ngx_str_t  ngx_http_gif_type = ngx_string("image/gif");
 static ngx_int_t
 ngx_http_empty_gif_handler(ngx_http_request_t *r)
 {
-    ngx_int_t                 rc;
     ngx_http_complex_value_t  cv;
 
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
-    }
-
-    rc = ngx_http_discard_request_body(r);
-
-    if (rc != NGX_OK) {
-        return rc;
     }
 
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));

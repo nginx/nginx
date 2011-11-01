@@ -529,5 +529,12 @@ extern ngx_str_t  ngx_http_core_get_method;
         r->headers_out.last_modified = NULL;                                  \
     }
 
+#define ngx_http_clear_location(r)                                            \
+                                                                              \
+    if (r->headers_out.location) {                                            \
+        r->headers_out.location->hash = 0;                                    \
+        r->headers_out.location = NULL;                                       \
+    }
+
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

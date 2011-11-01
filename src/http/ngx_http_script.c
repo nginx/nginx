@@ -1106,6 +1106,8 @@ ngx_http_script_regex_end_code(ngx_http_script_engine_t *e)
                           "rewritten redirect: \"%V\"", &e->buf);
         }
 
+        ngx_http_clear_location(r);
+
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {
             e->ip = ngx_http_script_exit;

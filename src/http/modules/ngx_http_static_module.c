@@ -139,6 +139,8 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http dir");
 
+        ngx_http_clear_location(r);
+
         r->headers_out.location = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
         if (r->headers_out.location == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
