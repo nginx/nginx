@@ -3,6 +3,7 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 			| sed -e 's/^.*\"\(.*\)\"/\1/')
 NGINX =		nginx-$(VER)
 TEMP =		tmp
+REPO =		svn://svn.nginx.com
 
 OBJS =		objs.msvc8
 OPENSSL =	openssl-0.9.8r
@@ -38,6 +39,22 @@ release:
 	rm -r $(TEMP)/$(NGINX)/misc
 
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
+
+
+RELEASE:
+	test -d $(TEMP) || mkdir -p $(TEMP)
+
+	echo "nginx-$(VER)-RELEASE" > $(TEMP)/message
+	svn ci -F $(TEMP)/message
+
+	echo "release-$(VER) tag" > $(TEMP)/message
+	svn copy $(REPO)/nginx/branches/stable-1.0			\
+		$(REPO)/nginx/tags/release-$(VER)  			\
+		-F $(TEMP)/message
+
+	svn up
+
+	$(MAKE) release
 
 
 snapshot:
