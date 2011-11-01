@@ -136,15 +136,6 @@ nginx could not be built on MacOSX 10.7.
 
 <change type="bugfix">
 <para lang="ru">
-в директивах proxy/fastcgi/scgi/ uwsgi_ignore_client_abort.
-</para>
-<para lang="en">
-in the "proxy/fastcgi/scgi/uwsgi_ignore_client_abort" directives.
-</para>
-</change>
-
-<change type="bugfix">
-<para lang="ru">
 обработка тела запроса могла быть неверной, если клиент использовал pipelining.
 </para>
 <para lang="en">
