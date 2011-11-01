@@ -1211,19 +1211,19 @@ ngx_utf8_decode(u_char **p, size_t n)
 
     u = **p;
 
-    if (u > 0xf0) {
+    if (u >= 0xf0) {
 
         u &= 0x07;
         valid = 0xffff;
         len = 3;
 
-    } else if (u > 0xe0) {
+    } else if (u >= 0xe0) {
 
         u &= 0x0f;
         valid = 0x7ff;
         len = 2;
 
-    } else if (u > 0xc0) {
+    } else if (u >= 0xc2) {
 
         u &= 0x1f;
         valid = 0x7f;
