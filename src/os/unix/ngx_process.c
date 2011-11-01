@@ -339,8 +339,10 @@ ngx_signal_handler(int signo)
             break;
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
-            ngx_noaccept = 1;
-            action = ", stop accepting connections";
+            if (ngx_daemonized) {
+                ngx_noaccept = 1;
+                action = ", stop accepting connections";
+            }
             break;
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
@@ -392,6 +394,9 @@ ngx_signal_handler(int signo)
         switch (signo) {
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
+            if (!ngx_daemonized) {
+                break;
+            }
             ngx_debug_quit = 1;
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
