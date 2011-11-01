@@ -26,8 +26,6 @@ release:
 
 	rm -r $(TEMP)/$(NGINX)/src/mysql
 
-	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
-
 	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
@@ -71,8 +69,6 @@ snapshot:
 	rm -r $(TEMP)/$(NGINX)/src/os/win32
 
 	rm -r $(TEMP)/$(NGINX)/src/mysql
-
-	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
 
 	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
