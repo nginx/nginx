@@ -9,7 +9,7 @@
 
 
 #define WIN32         0x0400
-#define _WIN32_WINNT  0x0500
+#define _WIN32_WINNT  0x0501
 
 
 #define STRICT
@@ -126,8 +126,11 @@ typedef unsigned __int64    uint64_t;
 typedef int                 intptr_t;
 typedef u_int               uintptr_t;
 
-typedef int                 ssize_t;
+/* Windows defines off_t as long, which is 32-bit */
 typedef __int64             off_t;
+#define _OFF_T_DEFINED
+
+typedef int                 ssize_t;
 typedef uint32_t            in_addr_t;
 typedef u_short             in_port_t;
 typedef int                 sig_atomic_t;
