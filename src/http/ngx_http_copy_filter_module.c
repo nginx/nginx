@@ -158,6 +158,11 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ngx_file_t            *file;
             ngx_http_ephemeral_t  *e;
 
+            if (r->aio) {
+                c->busy_sendfile = NULL;
+                return rc;
+            }
+
             file = c->busy_sendfile->file;
             offset = c->busy_sendfile->file_pos;
 

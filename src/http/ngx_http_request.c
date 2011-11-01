@@ -2248,17 +2248,17 @@ ngx_http_writer(ngx_http_request_t *r)
             return;
         }
 
-    } else {
-        if (wev->delayed || r->aio) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
-                           "http writer delayed");
+    }
 
-            if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
-                ngx_http_close_request(r, 0);
-            }
+    if (wev->delayed || r->aio) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                       "http writer delayed");
 
-            return;
+        if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
+            ngx_http_close_request(r, 0);
         }
+
+        return;
     }
 
     rc = ngx_http_output_filter(r, NULL);
@@ -2274,7 +2274,7 @@ ngx_http_writer(ngx_http_request_t *r)
 
     if (r->buffered || r->postponed || (r == r->main && c->buffered)) {
 
-        if (!wev->ready && !wev->delayed) {
+        if (!wev->delayed) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
 
