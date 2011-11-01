@@ -123,6 +123,13 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.store_access),
       NULL },
 
+    { ngx_string("uwsgi_buffering"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.buffering),
+      NULL },
+
     { ngx_string("uwsgi_ignore_client_abort"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -445,7 +452,7 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
     u->abort_request = ngx_http_uwsgi_abort_request;
     u->finalize_request = ngx_http_uwsgi_finalize_request;
 
-    u->buffering = 1;
+    u->buffering = uwcf->upstream.buffering;
 
     u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (u->pipe == NULL) {
@@ -1090,6 +1097,8 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 
     /* "uwsgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
+
+    conf->upstream.change_buffering = 1;
 
     ngx_str_set(&conf->upstream.module, "uwsgi");
 
