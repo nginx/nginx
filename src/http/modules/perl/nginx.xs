@@ -474,6 +474,13 @@ header_out(r, key, value)
         r->headers_out.content_length = header;
     }
 
+    if (header->key.len == sizeof("Content-Encoding") - 1
+        && ngx_strncasecmp(header->key.data, "Content-Encoding",
+                           sizeof("Content-Encoding") - 1) == 0)
+    {
+        r->headers_out.content_encoding = header;
+    }
+
 
 void
 filename(r)
@@ -836,7 +843,7 @@ variable(r, name, value = NULL)
     var.len = len;
     var.data = lowcase;
 
-    #if (NGX_LOG_DEBUG)
+    #if (NGX_DEBUG)
 
     if (value) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
