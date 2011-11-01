@@ -309,7 +309,7 @@ ngx_http_referer_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.key = ngx_hash_key_lc;
     hash.max_size = conf->referer_hash_max_size;
     hash.bucket_size = conf->referer_hash_bucket_size;
-    hash.name = "referers_hash";
+    hash.name = "referer_hash";
     hash.pool = cf->pool;
 
     if (conf->keys->keys.nelts) {

@@ -402,7 +402,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                        |NGX_CONF_TAKE1,
+                        |NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, sendfile),
@@ -639,7 +639,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("chunked_transfer_encoding"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, chunked_transfer_encoding),
@@ -2995,6 +2995,12 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[0].data, "include") == 0) {
+        if (cf->args->nelts != 2) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid number of arguments"
+                               " in \"include\" directive");
+            return NGX_CONF_ERROR;
+        }
         file = value[1];
 
         if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
@@ -3028,7 +3034,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
                                    "content type: \"%V\", "
                                    "old content type: \"%V\"",
                                    &value[i], content_type, old);
-                continue;
+                goto next;
             }
         }
 
@@ -3041,6 +3047,9 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         type->key = value[i];
         type->key_hash = hash;
         type->value = content_type;
+
+    next:
+        continue;
     }
 
     return NGX_CONF_OK;
@@ -3374,7 +3383,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                              ngx_cacheline_size);
 
     /*
-     * the special handling the "types" directive in the "http" section
+     * the special handling of the "types" directive in the "http" section
      * to inherit the http's conf->types_hash to all servers
      */
 
@@ -3401,7 +3410,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->types == NULL) {
-        conf->types = ngx_array_create(cf->pool, 4, sizeof(ngx_hash_key_t));
+        conf->types = ngx_array_create(cf->pool, 3, sizeof(ngx_hash_key_t));
         if (conf->types == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -3468,9 +3477,10 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
                               NGX_HTTP_IMS_EXACT);
     ngx_conf_merge_uint_value(conf->max_ranges, prev->max_ranges,
-                              0x7fffffff);
+                              NGX_MAX_INT32_VALUE);
     ngx_conf_merge_uint_value(conf->client_body_in_file_only,
-                              prev->client_body_in_file_only, 0);
+                              prev->client_body_in_file_only,
+                              NGX_HTTP_REQUEST_BODY_FILE_OFF);
     ngx_conf_merge_value(conf->client_body_in_single_buffer,
                               prev->client_body_in_single_buffer, 0);
     ngx_conf_merge_value(conf->internal, prev->internal, 0);
@@ -3478,11 +3488,11 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
 #if (NGX_HAVE_FILE_AIO)
-    ngx_conf_merge_value(conf->aio, prev->aio, 0);
+    ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
 #endif
     ngx_conf_merge_size_value(conf->read_ahead, prev->read_ahead, 0);
     ngx_conf_merge_off_value(conf->directio, prev->directio,
-                              NGX_MAX_OFF_T_VALUE);
+                              NGX_OPEN_FILE_DIRECTIO_OFF);
     ngx_conf_merge_off_value(conf->directio_alignment, prev->directio_alignment,
                               512);
     ngx_conf_merge_value(conf->tcp_nopush, prev->tcp_nopush, 0);

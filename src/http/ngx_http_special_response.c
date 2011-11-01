@@ -375,7 +375,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         }
     }
 
-    if (r->lingering_close == 1) {
+    if (r->lingering_close) {
         switch (error) {
             case NGX_HTTP_BAD_REQUEST:
             case NGX_HTTP_TO_HTTPS:
