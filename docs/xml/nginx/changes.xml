@@ -17,7 +17,7 @@
 Спасибо Кириллу Коринскому.
 </para>
 <para lang="en">
-support of several resolvers in the "resolver" directive.<br/>
+support of several DNS servers in the "resolver" directive.<br/>
 Thanks to Kirill A. Korinskiy.
 </para>
 </change>
@@ -29,7 +29,7 @@ Thanks to Kirill A. Korinskiy.
 ssl_certificate.
 </para>
 <para lang="en">
-a segmentation fault occurred on start or while reconfiguration 
+a segmentation fault occurred on start or during reconfiguration 
 if the "ssl" directive was used at http level and there was
 no "ssl_certificate" defined.
 </para>
@@ -41,7 +41,7 @@ no "ssl_certificate" defined.
 если они буферизировались на диск.
 </para>
 <para lang="en">
-reduced memory consumption while proxying of big files
+reduced memory consumption while proxying big files
 if they were buffered to disk.
 </para>
 </change>
