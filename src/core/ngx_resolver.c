@@ -1952,7 +1952,13 @@ done:
     n = *src++;
 
     for ( ;; ) {
-        if (n != 0xc0) {
+        if (n & 0xc0) {
+            n = ((n & 0x3f) << 8) + *src;
+            src = &buf[n];
+
+            n = *src++;
+
+        } else {
             ngx_memcpy(dst, src, n);
             dst += n;
             src += n;
@@ -1962,12 +1968,6 @@ done:
             if (n != 0) {
                 *dst++ = '.';
             }
-
-        } else {
-            n = ((n & 0x3f) << 8) + *src;
-            src = &buf[n];
-
-            n = *src++;
         }
 
         if (n == 0) {
