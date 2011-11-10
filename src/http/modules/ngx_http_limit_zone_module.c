@@ -37,6 +37,8 @@ typedef struct {
 } ngx_http_limit_zone_conf_t;
 
 
+static ngx_rbtree_node_t *ngx_http_limit_zone_lookup(ngx_rbtree_t *rbtree,
+    ngx_http_variable_value_t *vv, uint32_t hash);
 static void ngx_http_limit_zone_cleanup(void *data);
 
 static void *ngx_http_limit_zone_create_conf(ngx_conf_t *cf);
@@ -121,9 +123,8 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 {
     size_t                          len, n;
     uint32_t                        hash;
-    ngx_int_t                       rc;
     ngx_slab_pool_t                *shpool;
-    ngx_rbtree_node_t              *node, *sentinel;
+    ngx_rbtree_node_t              *node;
     ngx_pool_cleanup_t             *cln;
     ngx_http_variable_value_t      *vv;
     ngx_http_limit_zone_ctx_t      *ctx;
@@ -176,70 +177,46 @@ ngx_http_limit_zone_handler(ngx_http_request_t *r)
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    node = ctx->rbtree->root;
-    sentinel = ctx->rbtree->sentinel;
+    node = ngx_http_limit_zone_lookup(ctx->rbtree, vv, hash);
 
-    while (node != sentinel) {
-
-        if (hash < node->key) {
-            node = node->left;
-            continue;
-        }
-
-        if (hash > node->key) {
-            node = node->right;
-            continue;
-        }
-
-        /* hash == node->key */
-
-        do {
-            lz = (ngx_http_limit_zone_node_t *) &node->color;
-
-            rc = ngx_memn2cmp(vv->data, lz->data, len, (size_t) lz->len);
-
-            if (rc == 0) {
-                if ((ngx_uint_t) lz->conn < lzcf->conn) {
-                    lz->conn++;
-                    goto done;
-                }
-
-                ngx_shmtx_unlock(&shpool->mutex);
-
-                ngx_log_error(lzcf->log_level, r->connection->log, 0,
-                              "limiting connections by zone \"%V\"",
-                              &lzcf->shm_zone->shm.name);
-
-                return NGX_HTTP_SERVICE_UNAVAILABLE;
-            }
-
-            node = (rc < 0) ? node->left : node->right;
-
-        } while (node != sentinel && hash == node->key);
-
-        break;
-    }
-
-    n = offsetof(ngx_rbtree_node_t, color)
-        + offsetof(ngx_http_limit_zone_node_t, data)
-        + len;
-
-    node = ngx_slab_alloc_locked(shpool, n);
     if (node == NULL) {
-        ngx_shmtx_unlock(&shpool->mutex);
-        return NGX_HTTP_SERVICE_UNAVAILABLE;
+
+        n = offsetof(ngx_rbtree_node_t, color)
+            + offsetof(ngx_http_limit_zone_node_t, data)
+            + len;
+
+        node = ngx_slab_alloc_locked(shpool, n);
+        if (node == NULL) {
+            ngx_shmtx_unlock(&shpool->mutex);
+            return NGX_HTTP_SERVICE_UNAVAILABLE;
+        }
+
+        lz = (ngx_http_limit_zone_node_t *) &node->color;
+
+        node->key = hash;
+        lz->len = (u_char) len;
+        lz->conn = 1;
+        ngx_memcpy(lz->data, vv->data, len);
+
+        ngx_rbtree_insert(ctx->rbtree, node);
+
+    } else {
+
+        lz = (ngx_http_limit_zone_node_t *) &node->color;
+
+        if ((ngx_uint_t) lz->conn >= lzcf->conn) {
+
+            ngx_shmtx_unlock(&shpool->mutex);
+
+            ngx_log_error(lzcf->log_level, r->connection->log, 0,
+                          "limiting connections by zone \"%V\"",
+                          &lzcf->shm_zone->shm.name);
+
+            return NGX_HTTP_SERVICE_UNAVAILABLE;
+        }
+
+        lz->conn++;
     }
-
-    lz = (ngx_http_limit_zone_node_t *) &node->color;
-
-    node->key = hash;
-    lz->len = (u_char) len;
-    lz->conn = 1;
-    ngx_memcpy(lz->data, vv->data, len);
-
-    ngx_rbtree_insert(ctx->rbtree, node);
-
-done:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "limit zone: %08XD %d", node->key, lz->conn);
@@ -294,6 +271,51 @@ ngx_http_limit_zone_rbtree_insert_value(ngx_rbtree_node_t *temp,
     node->left = sentinel;
     node->right = sentinel;
     ngx_rbt_red(node);
+}
+
+
+static ngx_rbtree_node_t *
+ngx_http_limit_zone_lookup(ngx_rbtree_t *rbtree, ngx_http_variable_value_t *vv,
+    uint32_t hash)
+{
+    ngx_int_t                    rc;
+    ngx_rbtree_node_t           *node, *sentinel;
+    ngx_http_limit_zone_node_t  *lzn;
+
+    node = rbtree->root;
+    sentinel = rbtree->sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        /* hash == node->key */
+
+        do {
+            lzn = (ngx_http_limit_zone_node_t *) &node->color;
+
+            rc = ngx_memn2cmp(vv->data, lzn->data,
+                              (size_t) vv->len, (size_t) lzn->len);
+            if (rc == 0) {
+                return node;
+            }
+
+            node = (rc < 0) ? node->left : node->right;
+
+        } while (node != sentinel && hash == node->key);
+
+        break;
+    }
+
+    return NULL;
 }
 
 
