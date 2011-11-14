@@ -47,7 +47,8 @@ ngx_md5_update(ngx_md5_t *ctx, const void *data, size_t size)
             return;
         }
 
-        data = ngx_cpymem(&ctx->buffer[used], data, free);
+        ngx_memcpy(&ctx->buffer[used], data, free);
+        data = (u_char *) data + free;
         size -= free;
         (void) ngx_md5_body(ctx, ctx->buffer, 64);
     }
