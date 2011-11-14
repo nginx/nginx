@@ -1066,7 +1066,6 @@ ngx_http_mp4_update_mdat_atom(ngx_http_mp4_file_t *mp4, off_t start_offset)
 
     atom_data_size = mp4->mdat_data.buf->file_last - start_offset;
     mp4->mdat_data.buf->file_pos = start_offset;
-    mp4->content_length += atom_data_size;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "mdat new offset @%O:%O", start_offset, atom_data_size);
@@ -1082,6 +1081,8 @@ ngx_http_mp4_update_mdat_atom(ngx_http_mp4_file_t *mp4, off_t start_offset)
         atom_size = sizeof(ngx_mp4_atom_header_t) + atom_data_size;
         atom_header_size = sizeof(ngx_mp4_atom_header_t);
     }
+
+    mp4->content_length += atom_header_size + atom_data_size;
 
     ngx_mp4_set_32value(atom_header, atom_size);
     ngx_mp4_set_atom_name(atom_header, 'm', 'd', 'a', 't');
