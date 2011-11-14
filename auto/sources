@@ -435,8 +435,8 @@ HTTP_MEMCACHED_MODULE=ngx_http_memcached_module
 HTTP_MEMCACHED_SRCS=src/http/modules/ngx_http_memcached_module.c
 
 
-HTTP_LIMIT_ZONE_MODULE=ngx_http_limit_zone_module
-HTTP_LIMIT_ZONE_SRCS=src/http/modules/ngx_http_limit_zone_module.c
+HTTP_LIMIT_CONN_MODULE=ngx_http_limit_conn_module
+HTTP_LIMIT_CONN_SRCS=src/http/modules/ngx_http_limit_conn_module.c
 
 
 HTTP_LIMIT_REQ_MODULE=ngx_http_limit_req_module

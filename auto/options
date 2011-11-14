@@ -85,7 +85,7 @@ HTTP_UWSGI=YES
 HTTP_SCGI=YES
 HTTP_PERL=NO
 HTTP_MEMCACHED=YES
-HTTP_LIMIT_ZONE=YES
+HTTP_LIMIT_CONN=YES
 HTTP_LIMIT_REQ=YES
 HTTP_EMPTY_GIF=YES
 HTTP_BROWSER=YES
@@ -142,6 +142,8 @@ NGX_CPP_TEST=NO
 NGX_LIBATOMIC=NO
 
 NGX_CPU_CACHE_LINE=
+
+NGX_POST_CONF_MSG=
 
 opt=
 
@@ -227,7 +229,13 @@ do
         --without-http_uwsgi_module)     HTTP_UWSGI=NO              ;;
         --without-http_scgi_module)      HTTP_SCGI=NO               ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
-        --without-http_limit_zone_module) HTTP_LIMIT_ZONE=NO        ;;
+        --without-http_limit_zone_module)
+            HTTP_LIMIT_CONN=NO
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--without-http_limit_zone_module\" option is deprecated, \
+use the \"--without-http_limit_conn_module\" option instead"
+        ;;
+        --without-http_limit_conn_module) HTTP_LIMIT_CONN=NO        ;;
         --without-http_limit_req_module) HTTP_LIMIT_REQ=NO         ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
         --without-http_browser_module)   HTTP_BROWSER=NO            ;;
@@ -364,7 +372,7 @@ cat << END
   --without-http_uwsgi_module        disable ngx_http_uwsgi_module
   --without-http_scgi_module         disable ngx_http_scgi_module
   --without-http_memcached_module    disable ngx_http_memcached_module
-  --without-http_limit_zone_module   disable ngx_http_limit_zone_module
+  --without-http_limit_conn_module   disable ngx_http_limit_conn_module
   --without-http_limit_req_module    disable ngx_http_limit_req_module
   --without-http_empty_gif_module    disable ngx_http_empty_gif_module
   --without-http_browser_module      disable ngx_http_browser_module

@@ -111,3 +111,5 @@ fi
 if [ $HTTP_SCGI = YES ]; then
     echo "  nginx http scgi temporary files: \"$NGX_HTTP_SCGI_TEMP_PATH\""
 fi
+
+echo "$NGX_POST_CONF_MSG"
