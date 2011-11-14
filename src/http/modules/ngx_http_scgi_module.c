@@ -1316,8 +1316,11 @@ ngx_http_scgi_merge_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
     u_char                       *p;
     size_t                        size;
     uintptr_t                    *code;
-    ngx_uint_t                    i;
+    ngx_uint_t                    i, nsrc;
     ngx_array_t                   headers_names;
+#if (NGX_HTTP_CACHE)
+    ngx_array_t                   params_merged;
+#endif
     ngx_keyval_t                 *src;
     ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
@@ -1325,36 +1328,32 @@ ngx_http_scgi_merge_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
     ngx_http_script_copy_code_t  *copy;
 
     if (conf->params_source == NULL) {
-        conf->flushes = prev->flushes;
-        conf->params_len = prev->params_len;
-        conf->params = prev->params;
         conf->params_source = prev->params_source;
-        conf->headers_hash = prev->headers_hash;
 
+        if (prev->headers_hash.buckets
 #if (NGX_HTTP_CACHE)
+            && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
+#endif
+           )
+        {
+            conf->flushes = prev->flushes;
+            conf->params_len = prev->params_len;
+            conf->params = prev->params;
+            conf->headers_hash = prev->headers_hash;
+            conf->header_params = prev->header_params;
 
-        if (conf->params_source == NULL) {
-
-            if ((conf->upstream.cache == NULL)
-                == (prev->upstream.cache == NULL))
-            {
-                return NGX_OK;
-            }
-
-            /* 6 is a number of ngx_http_scgi_cache_headers entries */
-            conf->params_source = ngx_array_create(cf->pool, 6,
-                                                   sizeof(ngx_keyval_t));
-            if (conf->params_source == NULL) {
-                return NGX_ERROR;
-            }
-        }
-#else
-
-        if (conf->params_source == NULL) {
             return NGX_OK;
         }
+    }
 
+    if (conf->params_source == NULL
+#if (NGX_HTTP_CACHE)
+        && (conf->upstream.cache == NULL)
 #endif
+       )
+    {
+        conf->headers_hash.buckets = (void *) 1;
+        return NGX_OK;
     }
 
     conf->params_len = ngx_array_create(cf->pool, 64, 1);
@@ -1373,39 +1372,68 @@ ngx_http_scgi_merge_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
         return NGX_ERROR;
     }
 
-    src = conf->params_source->elts;
+    if (conf->params_source) {
+        src = conf->params_source->elts;
+        nsrc = conf->params_source->nelts;
+
+    } else {
+        src = NULL;
+        nsrc = 0;
+    }
 
 #if (NGX_HTTP_CACHE)
 
     if (conf->upstream.cache) {
         ngx_keyval_t  *h, *s;
 
-        for (h = ngx_http_scgi_cache_headers; h->key.len; h++) {
+        if (ngx_array_init(&params_merged, cf->temp_pool, 4, sizeof(ngx_keyval_t))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
 
-            for (i = 0; i < conf->params_source->nelts; i++) {
+        for (i = 0; i < nsrc; i++) {
+
+            s = ngx_array_push(&params_merged);
+            if (s == NULL) {
+                return NGX_ERROR;
+            }
+
+            *s = src[i];
+        }
+
+        h = ngx_http_scgi_cache_headers;
+
+        while (h->key.len) {
+
+            src = params_merged.elts;
+            nsrc = params_merged.nelts;
+
+            for (i = 0; i < nsrc; i++) {
                 if (ngx_strcasecmp(h->key.data, src[i].key.data) == 0) {
                     goto next;
                 }
             }
 
-            s = ngx_array_push(conf->params_source);
+            s = ngx_array_push(&params_merged);
             if (s == NULL) {
                 return NGX_ERROR;
             }
 
             *s = *h;
 
-            src = conf->params_source->elts;
-
         next:
 
             h++;
         }
+
+        src = params_merged.elts;
+        nsrc = params_merged.nelts;
     }
 
 #endif
 
-    for (i = 0; i < conf->params_source->nelts; i++) {
+    for (i = 0; i < nsrc; i++) {
 
         if (src[i].key.len > sizeof("HTTP_") - 1
             && ngx_strncmp(src[i].key.data, "HTTP_", sizeof("HTTP_") - 1) == 0)
