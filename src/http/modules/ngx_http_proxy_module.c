@@ -2493,7 +2493,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     u_char                     *p;
     size_t                      size;
-    ngx_keyval_t               *s;
     ngx_hash_init_t             hash;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_proxy_redirect_t  *pr;
@@ -2841,22 +2840,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         if (ngx_http_script_compile(&sc) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
-
-        if (conf->headers_source == NULL) {
-            conf->headers_source = ngx_array_create(cf->pool, 4,
-                                                    sizeof(ngx_keyval_t));
-            if (conf->headers_source == NULL) {
-                return NGX_CONF_ERROR;
-            }
-        }
-
-        s = ngx_array_push(conf->headers_source);
-        if (s == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_str_set(&s->key, "Content-Length");
-        ngx_str_set(&s->value, "$proxy_internal_body_length");
     }
 
     if (ngx_http_proxy_merge_headers(cf, conf, prev) != NGX_OK) {
@@ -2891,6 +2874,8 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
     if (conf->headers_set_hash.buckets
+        && ((conf->body_source.data == NULL)
+            == (prev->body_source.data == NULL))
 #if (NGX_HTTP_CACHE)
         && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
 #endif
@@ -2971,6 +2956,16 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     next:
 
         h++;
+    }
+
+    if (conf->body_source.data) {
+        s = ngx_array_push(&headers_merged);
+        if (s == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_str_set(&s->key, "Content-Length");
+        ngx_str_set(&s->value, "$proxy_internal_body_length");
     }
 
 
