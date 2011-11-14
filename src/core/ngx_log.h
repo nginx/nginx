@@ -203,6 +203,22 @@ void ngx_cdecl ngx_log_stderr(ngx_err_t err, const char *fmt, ...);
 u_char *ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err);
 
 
+/*
+ * ngx_write_stderr() cannot be implemented as macro, since
+ * MSVC does not allow to use #ifdef inside macro parameters.
+ *
+ * ngx_write_fd() is used instead of ngx_write_console(), since
+ * CharToOemBuff() inside ngx_write_console() cannot be used with
+ * read only buffer as destination and CharToOemBuff() is not needed
+ * for ngx_write_stderr() anyway.
+ */
+static ngx_inline void
+ngx_write_stderr(char *text)
+{
+    (void) ngx_write_fd(ngx_stderr, text, strlen(text));
+}
+
+
 extern ngx_module_t  ngx_errlog_module;
 extern ngx_uint_t    ngx_use_stderr;
 

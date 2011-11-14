@@ -214,47 +214,49 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_show_version) {
-        ngx_log_stderr(0, "nginx version: " NGINX_VER);
+        ngx_write_stderr("nginx version: " NGINX_VER NGX_LINEFEED);
 
         if (ngx_show_help) {
-            ngx_log_stderr(0,
+            ngx_write_stderr(
                 "Usage: nginx [-?hvVtq] [-s signal] [-c filename] "
-                             "[-p prefix] [-g directives]" CRLF CRLF
-                "Options:" CRLF
-                "  -?,-h         : this help" CRLF
-                "  -v            : show version and exit" CRLF
+                             "[-p prefix] [-g directives]" NGX_LINEFEED
+                             NGX_LINEFEED
+                "Options:" NGX_LINEFEED
+                "  -?,-h         : this help" NGX_LINEFEED
+                "  -v            : show version and exit" NGX_LINEFEED
                 "  -V            : show version and configure options then exit"
-                                   CRLF
-                "  -t            : test configuration and exit" CRLF
+                                   NGX_LINEFEED
+                "  -t            : test configuration and exit" NGX_LINEFEED
                 "  -q            : suppress non-error messages "
-                                   "during configuration testing" CRLF
+                                   "during configuration testing" NGX_LINEFEED
                 "  -s signal     : send signal to a master process: "
-                                   "stop, quit, reopen, reload" CRLF
+                                   "stop, quit, reopen, reload" NGX_LINEFEED
 #ifdef NGX_PREFIX
                 "  -p prefix     : set prefix path (default: "
-                                   NGX_PREFIX ")" CRLF
+                                   NGX_PREFIX ")" NGX_LINEFEED
 #else
-                "  -p prefix     : set prefix path (default: NONE)" CRLF
+                "  -p prefix     : set prefix path (default: NONE)" NGX_LINEFEED
 #endif
                 "  -c filename   : set configuration file (default: "
-                                   NGX_CONF_PATH ")" CRLF
+                                   NGX_CONF_PATH ")" NGX_LINEFEED
                 "  -g directives : set global directives out of configuration "
-                                   "file" CRLF
+                                   "file" NGX_LINEFEED NGX_LINEFEED
                 );
         }
 
         if (ngx_show_configure) {
+            ngx_write_stderr(
 #ifdef NGX_COMPILER
-            ngx_log_stderr(0, "built by " NGX_COMPILER);
+                "built by " NGX_COMPILER NGX_LINEFEED
 #endif
 #if (NGX_SSL)
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-            ngx_log_stderr(0, "TLS SNI support enabled");
+                "TLS SNI support enabled" NGX_LINEFEED
 #else
-            ngx_log_stderr(0, "TLS SNI support disabled");
+                "TLS SNI support disabled" NGX_LINEFEED
 #endif
 #endif
-            ngx_log_stderr(0, "configure arguments:" NGX_CONFIGURE);
+                "configure arguments:" NGX_CONFIGURE NGX_LINEFEED);
         }
 
         if (!ngx_test_config) {
