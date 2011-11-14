@@ -9,6 +9,101 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.8" date="14.11.2011">
+
+<change type="change">
+<para lang="ru">
+модуль ngx_http_limit_zone_module переименован в ngx_http_limit_conn_module.
+</para>
+<para lang="en">
+the ngx_http_limit_zone_module was renamed to the ngx_http_limit_conn_module.
+</para>          
+</change>
+
+<change type="change">
+<para lang="ru">
+директива limit_zone заменена директивой limit_conn_zone с новым синтаксисом.
+</para>
+<para lang="en">
+the "limit_zone" directive was superseded by the "limit_conn_zone" directive
+with a new syntax.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка ограничения по нескольким limit_conn на одном уровне.
+</para>
+<para lang="en">
+support for multiple "limit_conn" limits on the same level.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_sharpen.
+</para>
+<para lang="en">
+the "image_filter_sharpen" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если resolver получил большой DNS-ответ.<br/>
+Спасибо Ben Hawkes.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if resolver got a big DNS response.<br/>
+Thanks to Ben Hawkes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в вычислении ключа для кэширования,
+если использовалась внутренняя реализация MD5;
+ошибка появилась в 1.0.4.
+</para>
+<para lang="en">
+in cache key calculation
+if internal MD5 implementation was used;
+the bug had appeared in 1.0.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "If-Modified-Since", "If-Range" и им подобные в заголовке запроса
+клиента могли передаваться бэкенду при кэшировании; или не передаваться при
+выключенном кэшировании, если кэширование было включено в другой части
+конфигурации.
+</para>
+<para lang="en">
+the "If-Modified-Since", "If-Range", etc. client request header lines
+might be passed to backend while caching; or not passed without caching
+if caching was enabled in another part of the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_mp4_module выдавал неверную строку "Content-Length"
+в заголовке ответа, использовался аргумент start.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the module ngx_http_mp4_module sent incorrect "Content-Length" response
+header line if the "start" argument was used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.7" date="31.10.2011">
 
 <change type="feature">
