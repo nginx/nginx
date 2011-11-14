@@ -2875,7 +2875,7 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     size_t                        size;
     uintptr_t                    *code;
     ngx_uint_t                    i;
-    ngx_array_t                   headers_names;
+    ngx_array_t                   headers_names, headers_merged;
     ngx_keyval_t                 *src, *s, *h;
     ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
@@ -2906,6 +2906,12 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         return NGX_ERROR;
     }
 
+    if (ngx_array_init(&headers_merged, cf->temp_pool, 4, sizeof(ngx_keyval_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     if (conf->headers_source == NULL) {
         conf->headers_source = ngx_array_create(cf->pool, 4,
                                                 sizeof(ngx_keyval_t));
@@ -2925,8 +2931,6 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
 
-    src = conf->headers_source->elts;
-
 #if (NGX_HTTP_CACHE)
 
     h = conf->upstream.cache ? ngx_http_proxy_cache_headers:
@@ -2937,22 +2941,32 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 
 #endif
 
+    src = conf->headers_source->elts;
+    for (i = 0; i < conf->headers_source->nelts; i++) {
+
+        s = ngx_array_push(&headers_merged);
+        if (s == NULL) {
+            return NGX_ERROR;
+        }
+
+        *s = src[i];
+    }
+
     while (h->key.len) {
 
-        for (i = 0; i < conf->headers_source->nelts; i++) {
+        src = headers_merged.elts;
+        for (i = 0; i < headers_merged.nelts; i++) {
             if (ngx_strcasecmp(h->key.data, src[i].key.data) == 0) {
                 goto next;
             }
         }
 
-        s = ngx_array_push(conf->headers_source);
+        s = ngx_array_push(&headers_merged);
         if (s == NULL) {
             return NGX_ERROR;
         }
 
         *s = *h;
-
-        src = conf->headers_source->elts;
 
     next:
 
@@ -2960,8 +2974,8 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
 
-    src = conf->headers_source->elts;
-    for (i = 0; i < conf->headers_source->nelts; i++) {
+    src = headers_merged.elts;
+    for (i = 0; i < headers_merged.nelts; i++) {
 
         hk = ngx_array_push(&headers_names);
         if (hk == NULL) {
