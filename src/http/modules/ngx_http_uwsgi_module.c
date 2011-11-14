@@ -50,6 +50,8 @@ static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
 static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_http_uwsgi_merge_params(ngx_conf_t *cf,
+    ngx_http_uwsgi_loc_conf_t *conf, ngx_http_uwsgi_loc_conf_t *prev);
 
 static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -1112,17 +1114,9 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_uwsgi_loc_conf_t *prev = parent;
     ngx_http_uwsgi_loc_conf_t *conf = child;
 
-    u_char                       *p;
     size_t                        size;
-    uintptr_t                    *code;
-    ngx_uint_t                    i;
-    ngx_array_t                   headers_names;
-    ngx_keyval_t                 *src;
-    ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
     ngx_http_core_loc_conf_t     *clcf;
-    ngx_http_script_compile_t     sc;
-    ngx_http_script_copy_code_t  *copy;
 
     if (conf->upstream.store != 0) {
         ngx_conf_merge_value(conf->upstream.store, prev->upstream.store, 0);
@@ -1365,6 +1359,29 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->modifier1, prev->modifier1, 0);
     ngx_conf_merge_uint_value(conf->modifier2, prev->modifier2, 0);
 
+    if (ngx_http_uwsgi_merge_params(cf, conf, prev) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_uwsgi_merge_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
+    ngx_http_uwsgi_loc_conf_t *prev)
+{
+    u_char                       *p;
+    size_t                        size;
+    uintptr_t                    *code;
+    ngx_uint_t                    i;
+    ngx_array_t                   headers_names;
+    ngx_keyval_t                 *src;
+    ngx_hash_key_t               *hk;
+    ngx_hash_init_t               hash;
+    ngx_http_script_compile_t     sc;
+    ngx_http_script_copy_code_t  *copy;
+
     if (conf->params_source == NULL) {
         conf->flushes = prev->flushes;
         conf->params_len = prev->params_len;
@@ -1379,20 +1396,20 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             if ((conf->upstream.cache == NULL)
                 == (prev->upstream.cache == NULL))
             {
-                return NGX_CONF_OK;
+                return NGX_OK;
             }
 
             /* 6 is a number of ngx_http_uwsgi_cache_headers entries */
             conf->params_source = ngx_array_create(cf->pool, 6,
                                                    sizeof(ngx_keyval_t));
             if (conf->params_source == NULL) {
-                return NGX_CONF_ERROR;
+                return NGX_ERROR;
             }
         }
 #else
 
         if (conf->params_source == NULL) {
-            return NGX_CONF_OK;
+            return NGX_OK;
         }
 
 #endif
@@ -1400,18 +1417,18 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     conf->params_len = ngx_array_create(cf->pool, 64, 1);
     if (conf->params_len == NULL) {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     conf->params = ngx_array_create(cf->pool, 512, 1);
     if (conf->params == NULL) {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     if (ngx_array_init(&headers_names, cf->temp_pool, 4, sizeof(ngx_hash_key_t))
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     src = conf->params_source->elts;
@@ -1431,7 +1448,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
             s = ngx_array_push(conf->params_source);
             if (s == NULL) {
-                return NGX_CONF_ERROR;
+                return NGX_ERROR;
             }
 
             *s = *h;
@@ -1453,7 +1470,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         {
             hk = ngx_array_push(&headers_names);
             if (hk == NULL) {
-                return NGX_CONF_ERROR;
+                return NGX_ERROR;
             }
 
             hk->key.len = src[i].key.len - 5;
@@ -1469,7 +1486,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         copy = ngx_array_push_n(conf->params_len,
                                 sizeof(ngx_http_script_copy_code_t));
         if (copy == NULL) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
@@ -1482,7 +1499,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         copy = ngx_array_push_n(conf->params, size);
         if (copy == NULL) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         copy->code = ngx_http_script_copy_code;
@@ -1501,12 +1518,12 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         sc.values = &conf->params;
 
         if (ngx_http_script_compile(&sc) != NGX_OK) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         code = ngx_array_push_n(conf->params_len, sizeof(uintptr_t));
         if (code == NULL) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         *code = (uintptr_t) NULL;
@@ -1514,7 +1531,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         code = ngx_array_push_n(conf->params, sizeof(uintptr_t));
         if (code == NULL) {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
         *code = (uintptr_t) NULL;
@@ -1522,7 +1539,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     code = ngx_array_push_n(conf->params_len, sizeof(uintptr_t));
     if (code == NULL) {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     *code = (uintptr_t) NULL;
@@ -1537,12 +1554,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
 
-    if (ngx_hash_init(&hash, headers_names.elts, headers_names.nelts) != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
-    }
-
-    return NGX_CONF_OK;
+    return ngx_hash_init(&hash, headers_names.elts, headers_names.nelts);
 }
 
 
