@@ -2696,9 +2696,17 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
             } else if (p->upstream_eof) {
 
-                /* TODO: check length & update cache */
+                tf = u->pipe->temp_file;
 
-                ngx_http_file_cache_update(r, u->pipe->temp_file);
+                if (u->headers_in.content_length_n == -1
+                    || u->headers_in.content_length_n
+                       == tf->offset - (off_t) r->cache->body_start)
+                {
+                    ngx_http_file_cache_update(r, tf);
+
+                } else {
+                    ngx_http_file_cache_free(r->cache, tf);
+                }
 
             } else if (p->upstream_error) {
                 ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
