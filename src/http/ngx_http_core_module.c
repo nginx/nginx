@@ -3267,12 +3267,12 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     clcf->auto_redirect = 0;
      *     clcf->alias = 0;
      *     clcf->gzip_proxied = 0;
+     *     clcf->keepalive_disable = 0;
      */
 
     clcf->client_max_body_size = NGX_CONF_UNSET;
     clcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     clcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
-    clcf->keepalive_disable = NGX_CONF_UNSET_UINT;
     clcf->satisfy = NGX_CONF_UNSET_UINT;
     clcf->if_modified_since = NGX_CONF_UNSET_UINT;
     clcf->max_ranges = NGX_CONF_UNSET_UINT;
