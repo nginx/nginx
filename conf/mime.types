@@ -21,7 +21,7 @@ types {
     image/x-icon                          ico;
     image/x-jng                           jng;
     image/x-ms-bmp                        bmp;
-    image/svg+xml                         svg;
+    image/svg+xml                         svg svgz;
     image/webp                            webp;
 
     application/java-archive              jar war ear;
