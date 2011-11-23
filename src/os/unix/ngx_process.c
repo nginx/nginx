@@ -22,6 +22,7 @@ typedef struct {
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 static void ngx_signal_handler(int signo);
 static void ngx_process_get_status(void);
+static void ngx_unlock_mutexes(ngx_pid_t pid);
 
 
 int              ngx_argc;
@@ -497,17 +498,6 @@ ngx_process_get_status(void)
         }
 
 
-        if (ngx_accept_mutex_ptr) {
-
-            /*
-             * unlock the accept mutex if the abnormally exited process
-             * held it
-             */
-
-            ngx_shmtx_force_unlock(&ngx_accept_mutex, pid);
-        }
-
-
         one = 1;
         process = "unknown process";
 
@@ -544,6 +534,55 @@ ngx_process_get_status(void)
                           "and cannot be respawned",
                           process, pid, WEXITSTATUS(status));
             ngx_processes[i].respawn = 0;
+        }
+
+        ngx_unlock_mutexes(pid);
+    }
+}
+
+
+static void
+ngx_unlock_mutexes(ngx_pid_t pid)
+{ 
+    ngx_uint_t        i;
+    ngx_shm_zone_t   *shm_zone;
+    ngx_list_part_t  *part;
+    ngx_slab_pool_t  *sp;
+
+    /*
+     * unlock the accept mutex if the abnormally exited process
+     * held it
+     */
+
+    if (ngx_accept_mutex_ptr) {
+        ngx_shmtx_force_unlock(&ngx_accept_mutex, pid);
+    }
+
+    /*
+     * unlock shared memory mutexes if held by the abnormally exited
+     * process
+     */
+
+    part = (ngx_list_part_t *) &ngx_cycle->shared_memory.part;
+    shm_zone = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            shm_zone = part->elts;
+            i = 0;
+        }
+
+        sp = (ngx_slab_pool_t *) shm_zone[i].shm.addr;
+
+        if (ngx_shmtx_force_unlock(&sp->mutex, pid)) {
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "shared memory zone \"%V\" was locked by %P",
+                          &shm_zone[i].shm.name, pid);
         }
     }
 }
