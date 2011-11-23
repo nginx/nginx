@@ -504,7 +504,7 @@ ngx_process_get_status(void)
              * held it
              */
 
-            ngx_atomic_cmp_set(ngx_accept_mutex_ptr, pid, 0);
+            ngx_shmtx_force_unlock(&ngx_accept_mutex, pid);
         }
 
 

@@ -521,7 +521,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_accept_mutex.spin = (ngx_uint_t) -1;
 
-    if (ngx_shmtx_create(&ngx_accept_mutex, shared, cycle->lock_file.data)
+    if (ngx_shmtx_create(&ngx_accept_mutex, (ngx_shmtx_sh_t *) shared,
+                         cycle->lock_file.data)
         != NGX_OK)
     {
         return NGX_ERROR;

@@ -952,7 +952,7 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 
 #endif
 
-    if (ngx_shmtx_create(&sp->mutex, (void *) &sp->lock, file) != NGX_OK) {
+    if (ngx_shmtx_create(&sp->mutex, &sp->lock, file) != NGX_OK) {
         return NGX_ERROR;
     }
 
