@@ -1262,7 +1262,11 @@ ngx_http_image_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     } else if (cf->args->nelts == 3) {
 
         if (ngx_strcmp(value[i].data, "rotate") == 0) {
-            imcf->filter = NGX_HTTP_IMAGE_ROTATE;
+            if (imcf->filter != NGX_HTTP_IMAGE_RESIZE
+                && imcf->filter != NGX_HTTP_IMAGE_CROP)
+            {
+                imcf->filter = NGX_HTTP_IMAGE_ROTATE;
+            }
 
             ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
