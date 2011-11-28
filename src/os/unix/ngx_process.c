@@ -555,7 +555,7 @@ ngx_unlock_mutexes(ngx_pid_t pid)
      */
 
     if (ngx_accept_mutex_ptr) {
-        ngx_shmtx_force_unlock(&ngx_accept_mutex, pid);
+        (void) ngx_shmtx_force_unlock(&ngx_accept_mutex, pid);
     }
 
     /*

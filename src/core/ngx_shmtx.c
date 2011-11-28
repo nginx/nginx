@@ -97,7 +97,7 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
 #if (NGX_HAVE_POSIX_SEM)
 
         if (mtx->semaphore) {
-            ngx_atomic_fetch_add(mtx->wait, 1);
+            (void) ngx_atomic_fetch_add(mtx->wait, 1);
 
             if (*mtx->lock == 0 && ngx_atomic_cmp_set(mtx->lock, 0, ngx_pid)) {
                 return;
