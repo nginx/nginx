@@ -9,6 +9,172 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.9" date="28.11.2011">
+
+<change type="change">
+<para lang="ru">
+теперь двойные кавычки экранируется при выводе SSI-командой echo.<br/>
+Спасибо Зауру Абасмирзоеву.
+</para>
+<para lang="en">
+now double quotes are encoded in an "echo" SSI-command output.<br/>
+Thanks to Zaur Abasmirzoev.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр valid в директиве resolver.  По умолчанию теперь
+используется TTL, возвращённый DNS-сервером.<br/>
+Спасибо Кириллу Коринскому.
+</para>
+<para lang="en">
+the "valid" parameter of the "resolver" directive.  By default TTL
+returned by a DNS server is used.<br/>
+Thanks to Kirill A. Korinskiy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог перестать отвечать, если рабочий процесс завершался аварийно.
+</para>
+<para lang="en">
+nginx might hang after a worker process abnormal termination.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалось SNI;
+ошибка появилась в 1.1.2.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if SNI was used;
+the bug had appeared in 1.1.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве keepalive_disable;
+ошибка появилась в 1.1.8.<br/>
+Спасибо Александру Усову.
+</para>
+<para lang="en">
+in the "keepalive_disable" directive;
+the bug had appeared in 1.1.8.<br/>
+Thanks to Alexander Usov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сигнал SIGWINCH переставал работать после первого обновления исполняемого
+файла;
+ошибка появилась в 1.1.1.
+</para>
+<para lang="en">
+SIGWINCH signal did not work after first binary upgrade;
+the bug had appeared in 1.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь ответы бэкендов, длина которых не соответствует заголовку
+Content-Length, не кэширутся.
+</para>
+<para lang="en">
+backend responses with length not matching "Content-Length" header line
+are no longer cached.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве scgi_param при использовании составных параметров.
+</para>
+<para lang="en">
+in the "scgi_param" directive, if complex parameters were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в методе epoll.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+in the "epoll" event method.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_flv_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_flv_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx понимает IPv6-адреса в строке запроса и в заголовке Host.
+</para>
+<para lang="en">
+IPv6 addresses are now handled properly in a request line and in a "Host"
+request header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы add_header и expires не работали для ответов с кодом 206,
+если запрос проксировался.
+</para>
+<para lang="en">
+"add_header" and "expires" directives did not work if a request was proxied
+and response status code was 206.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на FreeBSD 10.
+</para>
+<para lang="en">
+nginx could not be built on FreeBSD 10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на AIX.
+</para>
+<para lang="en">
+nginx could not be built on AIX.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.8" date="14.11.2011">
 
 <change type="change">
