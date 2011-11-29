@@ -681,19 +681,19 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
         wev = c->write;
 
-        if (c->fd == -1 || wev->instance != instance) {
-
-            /*
-             * the stale event from a file descriptor
-             * that was just closed in this iteration
-             */
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "epoll: stale event %p", c);
-            continue;
-        }
-
         if ((revents & EPOLLOUT) && wev->active) {
+
+            if (c->fd == -1 || wev->instance != instance) {
+
+                /*
+                 * the stale event from a file descriptor
+                 * that was just closed in this iteration
+                 */
+
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                               "epoll: stale event %p", c);
+                continue;
+            }
 
             if (flags & NGX_POST_THREAD_EVENTS) {
                 wev->posted_ready = 1;
