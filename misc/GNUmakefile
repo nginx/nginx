@@ -3,7 +3,7 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 			| sed -e 's/^.*\"\(.*\)\"/\1/')
 NGINX =		nginx-$(VER)
 TEMP =		tmp
-REPO =		svn://svn.nginx.com
+REPO =		$(shell svn info | sed -n 's/^Repository Root: //p')
 
 OBJS =		objs.msvc8
 OPENSSL =	openssl-1.0.0d
@@ -46,7 +46,7 @@ RELEASE:
 	svn ci -F $(TEMP)/message
 
 	echo "release-$(VER) tag" > $(TEMP)/message
-	svn copy $(REPO)/nginx/trunk $(REPO)/nginx/tags/release-$(VER)  \
+	svn copy $(REPO)/trunk $(REPO)/tags/release-$(VER)		\
 		-F $(TEMP)/message
 
 	svn up
