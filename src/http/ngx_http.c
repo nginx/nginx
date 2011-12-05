@@ -1762,6 +1762,13 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->rcvbuf = addr->opt.rcvbuf;
     ls->sndbuf = addr->opt.sndbuf;
 
+    ls->keepalive = addr->opt.so_keepalive;
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+    ls->keepidle = addr->opt.tcp_keepidle;
+    ls->keepintvl = addr->opt.tcp_keepintvl;
+    ls->keepcnt = addr->opt.tcp_keepcnt;
+#endif
+
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     ls->accept_filter = addr->opt.accept_filter;
 #endif

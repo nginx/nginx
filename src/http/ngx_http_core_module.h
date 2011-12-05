@@ -77,12 +77,18 @@ typedef struct {
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
     unsigned                   ipv6only:2;
 #endif
+    unsigned                   so_keepalive:2;
 
     int                        backlog;
     int                        rcvbuf;
     int                        sndbuf;
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
+#endif
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+    int                        tcp_keepidle;
+    int                        tcp_keepintvl;
+    int                        tcp_keepcnt;
 #endif
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)

@@ -3815,6 +3815,97 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strncmp(value[n].data, "so_keepalive=", 13) == 0) {
+
+            if (ngx_strcmp(&value[n].data[13], "on") == 0) {
+                lsopt.so_keepalive = 1;
+
+            } else if (ngx_strcmp(&value[n].data[13], "off") == 0) {
+                lsopt.so_keepalive = 2;
+
+            } else {
+
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+                u_char     *p, *end;
+                ngx_str_t   s;
+
+                end = value[n].data + value[n].len;
+                s.data = value[n].data + 13;
+
+                p = ngx_strlchr(s.data, end, ':');
+                if (p == NULL) {
+                    p = end;
+                }
+
+                if (p > s.data) {
+                    s.len = p - s.data;
+
+                    lsopt.tcp_keepidle = ngx_parse_time(&s, 1);
+                    if (lsopt.tcp_keepidle == NGX_ERROR) {
+                        goto invalid_so_keepalive;
+                    }
+                }
+
+                s.data = (p < end) ? (p + 1) : end;
+
+                p = ngx_strlchr(s.data, end, ':');
+                if (p == NULL) {
+                    p = end;
+                }
+
+                if (p > s.data) {
+                    s.len = p - s.data;
+
+                    lsopt.tcp_keepintvl = ngx_parse_time(&s, 1);
+                    if (lsopt.tcp_keepintvl == NGX_ERROR) {
+                        goto invalid_so_keepalive;
+                    }
+                }
+
+                s.data = (p < end) ? (p + 1) : end;
+
+                if (s.data < end) {
+                    s.len = end - s.data;
+
+                    lsopt.tcp_keepcnt = ngx_atoi(s.data, s.len);
+                    if (lsopt.tcp_keepcnt == NGX_ERROR) {
+                        goto invalid_so_keepalive;
+                    }
+                }
+
+                if (lsopt.tcp_keepidle == 0 && lsopt.tcp_keepintvl == 0 
+                    && lsopt.tcp_keepcnt == 0)
+                {
+                    goto invalid_so_keepalive;
+                }
+
+                lsopt.so_keepalive = 1;
+
+#else
+
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "the \"so_keepalive\" parameter accepts "
+                                   "only \"on\" or \"off\" on this platform");
+                return NGX_CONF_ERROR;
+
+#endif
+            }
+
+            lsopt.set = 1;
+            lsopt.bind = 1;
+
+            continue;
+
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+        invalid_so_keepalive:
+
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid so_keepalive value: \"%s\"",
+                               &value[n].data[13]);
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[n]);
         return NGX_CONF_ERROR;
