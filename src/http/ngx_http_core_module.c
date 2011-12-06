@@ -1289,6 +1289,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 
         ngx_memzero(&of, sizeof(ngx_open_file_info_t));
 
+        of.read_ahead = clcf->read_ahead;
         of.directio = clcf->directio;
         of.valid = clcf->open_file_cache_valid;
         of.min_uses = clcf->open_file_cache_min_uses;
