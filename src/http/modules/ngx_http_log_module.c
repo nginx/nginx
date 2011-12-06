@@ -971,7 +971,7 @@ buffer:
 
         if (buf == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[3]);
+                               "invalid buffer value \"%V\"", &name);
             return NGX_CONF_ERROR;
         }
 
@@ -1003,6 +1003,12 @@ ngx_http_log_set_format(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t           *value;
     ngx_uint_t           i;
     ngx_http_log_fmt_t  *fmt;
+
+    if (cf->cmd_type != NGX_HTTP_MAIN_CONF) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "the \"log_format\" directive may be used "
+                           "only on \"http\" level");
+    }
 
     value = cf->args->elts;
 
