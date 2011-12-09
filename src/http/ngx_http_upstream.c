@@ -4444,6 +4444,50 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
+char *
+ngx_http_upstream_param_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t                   *value;
+    ngx_array_t                **a;
+    ngx_http_upstream_param_t   *param;
+
+    a = (ngx_array_t **) (p + cmd->offset);
+
+    if (*a == NULL) {
+        *a = ngx_array_create(cf->pool, 4, sizeof(ngx_http_upstream_param_t));
+        if (*a == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    param = ngx_array_push(*a);
+    if (param == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    param->key = value[1];
+    param->value = value[2];
+    param->skip_empty = 0;
+
+    if (cf->args->nelts == 4) {
+        if (ngx_strcmp(value[3].data, "if_not_empty") != 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[3]);
+            return NGX_CONF_ERROR;
+        }
+
+        param->skip_empty = 1;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 ngx_int_t
 ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev,
