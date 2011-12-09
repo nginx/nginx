@@ -8,6 +8,7 @@ uwsgi_param  REQUEST_URI        $request_uri;
 uwsgi_param  PATH_INFO          $document_uri;
 uwsgi_param  DOCUMENT_ROOT      $document_root;
 uwsgi_param  SERVER_PROTOCOL    $server_protocol;
+uwsgi_param  HTTPS              $https if_not_empty;
 
 uwsgi_param  REMOTE_ADDR        $remote_addr;
 uwsgi_param  REMOTE_PORT        $remote_port;
