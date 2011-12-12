@@ -1113,12 +1113,12 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
         /*
          * abnormally exited workers may leave locked cache entries,
          * and although it may be safe to remove them completely,
-         * we prefer to remove them from inactive queue and rbtree
-         * only, and to allow other leaks
+         * we prefer to just move them to the top of the inactive queue
          */
 
         ngx_queue_remove(q);
-        ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
+        fcn->expire = ngx_time() + cache->inactive;
+        ngx_queue_insert_head(&cache->sh->queue, &fcn->queue);
 
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                       "ignore long locked inactive cache entry %*s, count:%d",
