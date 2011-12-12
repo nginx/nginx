@@ -9,6 +9,104 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.11" date="12.12.2011">
+
+<change type="feature">
+<para lang="ru">
+параметр so_keepalive в директиве listen.<br/>
+Спасибо Всеволоду Стахову.
+</para>
+<para lang="en">
+the "so_keepalive" parameter of the "listen" directive.<br/>
+Thanks to Vsevolod Stakhov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр if_not_empty в директивах fastcgi/scgi/uwsgi_param.
+</para>
+<para lang="en">
+the "if_not_empty" parameter of the "fastcgi/scgi/uwsgi_param" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $https.
+</para>
+<para lang="en">
+the $https variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_redirect поддерживает переменные в первом параметре.
+</para>
+<para lang="en">
+the "proxy_redirect" directive supports variables in the first parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_redirect поддерживает регулярные выражения.
+</para>
+<para lang="en">
+the "proxy_redirect" directive supports regular expressions.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $sent_http_cache_control могла содержать неверное значение при
+использовании директивы expires.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+the $sent_http_cache_control variable might contain a wrong value if the
+"expires" directive was used.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива read_ahead могла не работать при использовании совместно с 
+try_files и open_file_cache. 
+</para>
+<para lang="en">
+the "read_ahead" directive might not work combined with "try_files"
+and "open_file_cache".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в параметре inactive директивы proxy_cache_path
+было указано малое время,
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if small time was used in the "inactive" parameter of
+the "proxy_cache_path" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы из кэша могли зависать.
+</para>
+<para lang="en">
+responses from cache might hang.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.10" date="30.11.2011">
 
 <change type="bugfix">
