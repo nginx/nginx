@@ -51,7 +51,7 @@ RELEASE:
 
 	svn up
 
-	$(MAKE) release
+	$(MAKE) -f docs/GNUmakefile release
 
 
 snapshot:
