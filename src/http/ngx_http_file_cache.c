@@ -386,6 +386,13 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         return NGX_DECLINED;
     }
 
+    if (h->body_start > c->body_start) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "cache file \"%s\" has too long header",
+                      c->file.name.data);
+        return NGX_DECLINED;
+    }
+
     c->buf->last += n;
 
     c->valid_sec = h->valid_sec;
