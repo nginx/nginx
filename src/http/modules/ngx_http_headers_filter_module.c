@@ -253,7 +253,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         return NGX_ERROR;
     }
 
-    if (conf->expires_time == 0) {
+    if (conf->expires_time == 0 && conf->expires != NGX_HTTP_EXPIRES_DAILY) {
         ngx_memcpy(expires->value.data, ngx_cached_http_time.data,
                    ngx_cached_http_time.len + 1);
         ngx_str_set(&cc->value, "max-age=0");
@@ -262,15 +262,15 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 
     now = ngx_time();
 
-    if (conf->expires == NGX_HTTP_EXPIRES_ACCESS
-        || r->headers_out.last_modified_time == -1)
+    if (conf->expires == NGX_HTTP_EXPIRES_DAILY) {
+        expires_time = ngx_next_time(conf->expires_time);
+        max_age = expires_time - now;
+
+    } else if (conf->expires == NGX_HTTP_EXPIRES_ACCESS
+               || r->headers_out.last_modified_time == -1)
     {
         expires_time = now + conf->expires_time;
         max_age = conf->expires_time;
-
-    } else if (conf->expires == NGX_HTTP_EXPIRES_DAILY) {
-        expires_time = ngx_next_time(conf->expires_time);
-        max_age = expires_time - now;
 
     } else {
         expires_time = r->headers_out.last_modified_time + conf->expires_time;
