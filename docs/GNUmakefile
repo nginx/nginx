@@ -16,7 +16,7 @@ define  XSLScript
 endef
 
 define  XSLT
-	xmllint --noout --valid $2;					\
+	xmllint --noout --valid $2
 	xsltproc -o $3							\
 		$(shell echo $4						\\
 		| sed -e "s/\([^= ]*\)=\([^= ]*\)/--param \1 \"'\2'\"/g") \
@@ -29,21 +29,23 @@ changes:	$(TEMP)/$(NGINX)/CHANGES.ru				\
 
 
 $(TEMP)/$(NGINX)/CHANGES.ru:	docs/xml/nginx/changes.xml		\
+				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	test -d $(TEMP)/$(NGINX) || mkdir -p $(TEMP)/$(NGINX)
 
-	xsltproc --param lang "'ru'"					\
+	xsltproc --stringparam lang ru					\
 		-o $(TEMP)/$(NGINX)/CHANGES.ru				\
 		docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 
 
 $(TEMP)/$(NGINX)/CHANGES:	docs/xml/nginx/changes.xml		\
+				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	test -d $(TEMP)/$(NGINX) || mkdir -p $(TEMP)/$(NGINX)
 
-	xsltproc --param lang "'en'"					\
+	xsltproc --stringparam lang en					\
 		-o $(TEMP)/$(NGINX)/CHANGES				\
 		docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 

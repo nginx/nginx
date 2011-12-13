@@ -3,7 +3,7 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 			| sed -e 's/^.*\"\(.*\)\"/\1/')
 NGINX =		nginx-$(VER)
 TEMP =		tmp
-REPO =		svn://svn.nginx.com
+REPO =		$(shell svn info | sed -n 's/^Repository Root: //p')
 
 OBJS =		objs.msvc8
 OPENSSL =	openssl-0.9.8r
@@ -26,8 +26,6 @@ release:
 
 	rm -r $(TEMP)/$(NGINX)/src/mysql
 
-	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
-
 	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
@@ -48,13 +46,13 @@ RELEASE:
 	svn ci -F $(TEMP)/message
 
 	echo "release-$(VER) tag" > $(TEMP)/message
-	svn copy $(REPO)/nginx/branches/stable-1.0			\
-		$(REPO)/nginx/tags/release-$(VER)  			\
+	svn copy $(REPO)/branches/stable-1.0				\
+		$(REPO)/tags/release-$(VER)				\
 		-F $(TEMP)/message
 
 	svn up
 
-	$(MAKE) release
+	$(MAKE) -f misc/GNUmakefile release
 
 
 snapshot:
@@ -72,8 +70,6 @@ snapshot:
 	rm -r $(TEMP)/$(NGINX)/src/os/win32
 
 	rm -r $(TEMP)/$(NGINX)/src/mysql
-
-	rm $(TEMP)/$(NGINX)/src/http/modules/ngx_http_status_module.c
 
 	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
