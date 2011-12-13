@@ -2888,6 +2888,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 #endif
 
         ngx_close_connection(u->peer.connection);
+        u->peer.connection = NULL;
     }
 
 #if 0
