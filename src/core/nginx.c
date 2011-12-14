@@ -376,6 +376,10 @@ main(int argc, char *const *argv)
         ngx_daemonized = 1;
     }
 
+    if (ngx_inherited) {
+        ngx_daemonized = 1;
+    }
+
 #endif
 
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
