@@ -60,7 +60,7 @@ static ngx_command_t  ngx_mail_proxy_commands[] = {
       NULL },
 
     { ngx_string("proxy_pass_error_message"),
-      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_proxy_conf_t, pass_error_message),
