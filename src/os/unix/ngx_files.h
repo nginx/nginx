@@ -128,6 +128,7 @@ ngx_write_fd(ngx_fd_t fd, void *buf, size_t n)
 
 #define ngx_linefeed(p)          *p++ = LF;
 #define NGX_LINEFEED_SIZE        1
+#define NGX_LINEFEED             "\x0a"
 
 
 #define ngx_rename_file(o, n)    rename((const char *) o, (const char *) n)
