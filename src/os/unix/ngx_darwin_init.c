@@ -58,7 +58,6 @@ sysctl_t sysctls[] = {
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {
-    int         somaxconn;
     size_t      size;
     ngx_err_t   err;
     ngx_uint_t  i;
@@ -125,12 +124,9 @@ ngx_os_specific_init(ngx_log_t *log)
 
     ngx_ncpu = ngx_darwin_hw_ncpu;
 
-    somaxconn = 32676;
-
-    if (ngx_darwin_kern_ipc_somaxconn > somaxconn) {
+    if (ngx_darwin_kern_ipc_somaxconn > 32767) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "sysctl kern.ipc.somaxconn must be no more than %d",
-                      somaxconn);
+                      "sysctl kern.ipc.somaxconn must be less than 32768");
         return NGX_ERROR;
     }
 

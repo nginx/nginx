@@ -783,7 +783,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
             sin->sin_family = AF_INET;
 
             port = ngx_atoi(ctx->port.data, ctx->port.len);
-            if (port == NGX_ERROR || port < 1 || port > 65536) {
+            if (port == NGX_ERROR || port < 1 || port > 65535) {
                 ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                               "auth http server %V sent invalid server "
                               "port:\"%V\"",

@@ -97,7 +97,7 @@ ngx_debug_init()
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {
-    int         version, somaxconn;
+    int         version;
     size_t      size;
     ngx_err_t   err;
     ngx_uint_t  i;
@@ -209,12 +209,9 @@ ngx_os_specific_init(ngx_log_t *log)
         ngx_ncpu = ngx_freebsd_hw_ncpu;
     }
 
-    somaxconn = version < 600008 ? 32676 : 65535;
-
-    if (ngx_freebsd_kern_ipc_somaxconn > somaxconn) {
+    if (version < 600008 && ngx_freebsd_kern_ipc_somaxconn > 32767) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "sysctl kern.ipc.somaxconn must be no more than %d",
-                      somaxconn);
+                      "sysctl kern.ipc.somaxconn must be less than 32768");
         return NGX_ERROR;
     }
 
