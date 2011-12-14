@@ -304,21 +304,21 @@ if [ $help = yes ]; then
 
 cat << END
 
-  --help                             this message
+  --help                             print this message
 
-  --prefix=PATH                      set the installation prefix
-  --sbin-path=PATH                   set path to the nginx binary file
-  --conf-path=PATH                   set path to the nginx.conf file
-  --error-log-path=PATH              set path to the error log
-  --pid-path=PATH                    set path to nginx.pid file
-  --lock-path=PATH                   set path to nginx.lock file
+  --prefix=PATH                      set installation prefix
+  --sbin-path=PATH                   set nginx binary pathname
+  --conf-path=PATH                   set nginx.conf pathname
+  --error-log-path=PATH              set error log pathname
+  --pid-path=PATH                    set nginx.pid pathname
+  --lock-path=PATH                   set nginx.lock pathname
 
-  --user=USER                        set non-privilege user
-                                     for the worker processes
-  --group=GROUP                      set non-privilege group
-                                     for the worker processes
+  --user=USER                        set non-privileged user for
+                                     worker processes
+  --group=GROUP                      set non-privileged group for
+                                     worker processes
 
-  --builddir=DIR                     set the build directory
+  --builddir=DIR                     set build directory
 
   --with-rtsig_module                enable rtsig module
   --with-select_module               enable select module
@@ -326,8 +326,8 @@ cat << END
   --with-poll_module                 enable poll module
   --without-poll_module              disable poll module
 
-  --with-file-aio                    enable file aio support
-  --with-ipv6                        enable ipv6 support
+  --with-file-aio                    enable file AIO support
+  --with-ipv6                        enable IPv6 support
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_realip_module          enable ngx_http_realip_module
@@ -370,17 +370,20 @@ cat << END
                                      disable ngx_http_upstream_ip_hash_module
 
   --with-http_perl_module            enable ngx_http_perl_module
-  --with-perl_modules_path=PATH      set path to the perl modules
-  --with-perl=PATH                   set path to the perl binary
+  --with-perl_modules_path=PATH      set Perl modules path
+  --with-perl=PATH                   set perl binary pathname
 
-  --http-log-path=PATH               set path to the http access log
-  --http-client-body-temp-path=PATH  set path to the http client request body
-                                     temporary files
-  --http-proxy-temp-path=PATH        set path to the http proxy temporary files
-  --http-fastcgi-temp-path=PATH      set path to the http fastcgi temporary
-                                     files
-  --http-uwsgi-temp-path=PATH        set path to the http uwsgi temporary files
-  --http-scgi-temp-path=PATH         set path to the http scgi temporary files
+  --http-log-path=PATH               set http access log pathname
+  --http-client-body-temp-path=PATH  set path to store
+                                     http client request body temporary files
+  --http-proxy-temp-path=PATH        set path to store
+                                     http proxy temporary files
+  --http-fastcgi-temp-path=PATH      set path to store
+                                     http fastcgi temporary files
+  --http-uwsgi-temp-path=PATH        set path to store
+                                     http uwsgi temporary files
+  --http-scgi-temp-path=PATH         set path to store
+                                     http scgi temporary files
 
   --without-http                     disable HTTP server
   --without-http-cache               disable HTTP cache
@@ -396,40 +399,40 @@ cat << END
 
   --add-module=PATH                  enable an external module
 
-  --with-cc=PATH                     set path to C compiler
-  --with-cpp=PATH                    set path to C preprocessor
-  --with-cc-opt=OPTIONS              set additional options for C compiler
-  --with-ld-opt=OPTIONS              set additional options for linker
-  --with-cpu-opt=CPU                 build for specified CPU, the valid values:
+  --with-cc=PATH                     set C compiler pathname
+  --with-cpp=PATH                    set C preprocessor pathname
+  --with-cc-opt=OPTIONS              set additional C compiler options
+  --with-ld-opt=OPTIONS              set additional linker options
+  --with-cpu-opt=CPU                 build for the specified CPU, valid values:
                                      pentium, pentiumpro, pentium3, pentium4,
                                      athlon, opteron, sparc32, sparc64, ppc64
 
   --without-pcre                     disable PCRE library usage
   --with-pcre                        force PCRE library usage
   --with-pcre=DIR                    set path to PCRE library sources
-  --with-pcre-opt=OPTIONS            set additional options for PCRE building
+  --with-pcre-opt=OPTIONS            set additional build options for PCRE
 
   --with-md5=DIR                     set path to md5 library sources
-  --with-md5-opt=OPTIONS             set additional options for md5 building
+  --with-md5-opt=OPTIONS             set additional build options for md5
   --with-md5-asm                     use md5 assembler sources
 
   --with-sha1=DIR                    set path to sha1 library sources
-  --with-sha1-opt=OPTIONS            set additional options for sha1 building
+  --with-sha1-opt=OPTIONS            set additional build options for sha1
   --with-sha1-asm                    use sha1 assembler sources
 
   --with-zlib=DIR                    set path to zlib library sources
-  --with-zlib-opt=OPTIONS            set additional options for zlib building
+  --with-zlib-opt=OPTIONS            set additional build options for zlib
   --with-zlib-asm=CPU                use zlib assembler sources optimized
-                                     for specified CPU, the valid values:
+                                     for the specified CPU, valid values:
                                      pentium, pentiumpro
 
   --with-libatomic                   force libatomic_ops library usage
   --with-libatomic=DIR               set path to libatomic_ops library sources
 
   --with-openssl=DIR                 set path to OpenSSL library sources
-  --with-openssl-opt=OPTIONS         set additional options for OpenSSL building
+  --with-openssl-opt=OPTIONS         set additional build options for OpenSSL
 
-  --with-debug                       enable the debugging logging
+  --with-debug                       enable debug logging
 
 END
 

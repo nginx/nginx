@@ -72,16 +72,28 @@ case ".$NGX_HTTP_LOG_PATH" in
 esac
 
 
+if test -e man/nginx.8 ; then
+    NGX_MAN=man/nginx.8
+else
+    NGX_MAN=docs/man/nginx.8
+fi
+
+if test -d html ; then
+    NGX_HTML=html
+else
+    NGX_HTML=docs/html
+fi
+
 cat << END                                                    >> $NGX_MAKEFILE
 
 manpage:	$NGX_OBJS/nginx.8
 
-$NGX_OBJS/nginx.8:	man/nginx.8 $NGX_AUTO_CONFIG_H
+$NGX_OBJS/nginx.8:	$NGX_MAN $NGX_AUTO_CONFIG_H
 	sed -e "s|%%PREFIX%%|$NGX_PREFIX|" \\
 		-e "s|%%PID_PATH%%|$NGX_PID_PATH|" \\
 		-e "s|%%CONF_PATH%%|$NGX_CONF_PATH|" \\
 		-e "s|%%ERROR_LOG_PATH%%|${NGX_ERROR_LOG_PATH:-stderr}|" \\
-		< man/nginx.8 > $NGX_OBJS/nginx.8
+		< $NGX_MAN > \$@
 
 install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 		$NGX_INSTALL_PERL_MODULES
@@ -135,7 +147,7 @@ install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
 		mkdir -p '\$(DESTDIR)`dirname "$NGX_HTTP_LOG_PATH"`'
 
 	test -d '\$(DESTDIR)$NGX_PREFIX/html' \
-		|| cp -r html '\$(DESTDIR)$NGX_PREFIX'
+		|| cp -R $NGX_HTML '\$(DESTDIR)$NGX_PREFIX'
 END
 
 
