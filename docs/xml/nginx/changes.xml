@@ -9,6 +9,137 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.11" date="15.12.2011">
+
+<change type="change">
+<para lang="ru">
+теперь двойные кавычки экранируется при выводе SSI-командой echo.<br/>
+Спасибо Зауру Абасмирзоеву.
+</para>
+<para lang="en">
+now double quotes are encoded in an "echo" SSI-command output.<br/>
+Thanks to Zaur Abasmirzoev.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_sharpen.
+</para>
+<para lang="en">
+the "image_filter_sharpen" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалось SNI;
+ошибка появилась в 1.0.9.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if SNI was used;
+the bug had appeared in 1.0.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сигнал SIGWINCH переставал работать после первого обновления исполняемого
+файла;
+ошибка появилась в 1.0.9.
+</para>
+<para lang="en">
+SIGWINCH signal did not work after first binary upgrade;
+the bug had appeared in 1.0.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строки "If-Modified-Since", "If-Range" и им подобные в заголовке запроса
+клиента могли передаваться бэкенду при кэшировании; или не передаваться при
+выключенном кэшировании, если кэширование было включено в другой части
+конфигурации.
+</para>
+<para lang="en">
+the "If-Modified-Since", "If-Range", etc. client request header lines
+might be passed to backend while caching; or not passed without caching
+if caching was enabled in another part of the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве scgi_param при использовании составных параметров.
+</para>
+<para lang="en">
+in the "scgi_param" directive, if complex parameters were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы add_header и expires не работали для ответов с кодом 206,
+если запрос проксировался.
+</para>
+<para lang="en">
+"add_header" and "expires" directives did not work if a request was proxied
+and response status code was 206.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве "expires @time".
+</para>
+<para lang="en">
+in the "expires @time" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_flv_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_flv_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на FreeBSD 10.
+</para>
+<para lang="en">
+nginx could not be built on FreeBSD 10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на AIX.
+</para>
+<para lang="en">
+nginx could not be built on AIX.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.10" date="15.11.2011">
 
 <change type="bugfix">
