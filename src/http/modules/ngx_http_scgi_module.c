@@ -857,11 +857,7 @@ ngx_http_scgi_process_status_line(ngx_http_request_t *r)
     }
 
     if (rc == NGX_ERROR) {
-
-        r->http_version = NGX_HTTP_VERSION_9;
-
         u->process_header = ngx_http_scgi_process_header;
-
         return ngx_http_scgi_process_header(r);
     }
 
@@ -961,11 +957,11 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http scgi header done");
 
-            if (r->http_version > NGX_HTTP_VERSION_9) {
+            u = r->upstream;
+
+            if (u->headers_in.status_n) {
                 return NGX_OK;
             }
-
-            u = r->upstream;
 
             if (u->headers_in.status) {
                 status_line = &u->headers_in.status->value;
@@ -978,12 +974,10 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                 }
 
-                r->http_version = NGX_HTTP_VERSION_10;
                 u->headers_in.status_n = status;
                 u->headers_in.status_line = *status_line;
 
             } else if (u->headers_in.location) {
-                r->http_version = NGX_HTTP_VERSION_10;
                 u->headers_in.status_n = 302;
                 ngx_str_set(&u->headers_in.status_line,
                             "302 Moved Temporarily");
