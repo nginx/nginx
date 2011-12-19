@@ -624,16 +624,6 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     continue;
                 }
 
-                if (cmd->conditional
-                    && (ctx->conditional == 0
-                        || ctx->conditional > cmd->conditional))
-                {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "invalid context of SSI command: \"%V\"",
-                                  &ctx->command);
-                    goto ssi_error;
-                }
-
                 if (!ctx->output && !cmd->block) {
 
                     if (ctx->block) {
@@ -707,6 +697,16 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     if (cmd->conditional == 0) {
                         continue;
                     }
+                }
+
+                if (cmd->conditional
+                    && (ctx->conditional == 0
+                        || ctx->conditional > cmd->conditional))
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "invalid context of SSI command: \"%V\"",
+                                  &ctx->command);
+                    goto ssi_error;
                 }
 
                 if (ctx->params.nelts > NGX_HTTP_SSI_MAX_PARAMS) {
