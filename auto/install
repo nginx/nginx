@@ -72,7 +72,7 @@ case ".$NGX_HTTP_LOG_PATH" in
 esac
 
 
-if test -e man/nginx.8 ; then
+if test -f man/nginx.8 ; then
     NGX_MAN=man/nginx.8
 else
     NGX_MAN=docs/man/nginx.8
