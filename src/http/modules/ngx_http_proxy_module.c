@@ -736,9 +736,6 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
             url.uri.len++;
             url.uri.data = p - 1;
         }
-
-    } else {
-        url.uri = r->unparsed_uri;
     }
 
     ctx->vars.key_start = u->schema;
@@ -806,7 +803,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (plcf->proxy_lengths) {
+    if (plcf->proxy_lengths && ctx->vars.uri.len) {
 
         *key = ctx->vars.uri;
         u->uri = ctx->vars.uri;
@@ -916,7 +913,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     loc_len = 0;
     unparsed_uri = 0;
 
-    if (plcf->proxy_lengths) {
+    if (plcf->proxy_lengths && ctx->vars.uri.len) {
         uri_len = ctx->vars.uri.len;
 
     } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri && r == r->main)
@@ -1022,7 +1019,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u->uri.data = b->last;
 
-    if (plcf->proxy_lengths) {
+    if (plcf->proxy_lengths && ctx->vars.uri.len) {
         b->last = ngx_copy(b->last, ctx->vars.uri.data, ctx->vars.uri.len);
 
     } else if (unparsed_uri) {
