@@ -14812,7 +14812,7 @@ the bug had appeared in 0.3.3.
 если в директиве proxy_pass отсутствовал URI, то всегда использовался порт 80.
 </para>
 <para lang="en">
-if the URI part is omitted in "proxy_pass" directive, the the 80 port was
+if the URI part is omitted in "proxy_pass" directive, the 80 port was
 always used.
 </para>
 </change>
@@ -15601,7 +15601,7 @@ the FastCGI parameters with the empty values now are passed to a server.
 <para lang="en">
 the segmentation fault may occurred if there were errors while
 working with proxied or FastCGI server;
-in the proxied mode the the bug had appeared in 0.1.29.
+in the proxied mode the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -15618,7 +15618,7 @@ segmentation fault или рабочий процесс мог зациклит�
 the segmentation fault occurred or the worker process may got caught
 in an endless loop if the proxied or FastCGI server sent the "Cache-Control"
 header line and the "expires" directive was used;
-in the proxied mode the the bug had appeared in 0.1.29.
+in the proxied mode the bug had appeared in 0.1.29.
 </para>
 </change>
 
@@ -15855,7 +15855,7 @@ Bugfixes in IMAP/POP3 proxy in interaction with a backend at the login state.
 директива limit_rate поддерживается в режиме прокси и FastCGI.
 </para>
 <para lang="en">
-the "limit_rate" directive is supported in in proxy and FastCGI mode.
+the "limit_rate" directive is supported in proxy and FastCGI mode.
 </para>
 </change>
 
@@ -16362,7 +16362,7 @@ FastCGI сервера была равна 500 байт, то nginx возвра
 <para lang="en">
 if the length of the response part received at once from proxied
 or FastCGI server was equal to 500, then nginx returns the 500 response code;
-in proxy mode the the bug had appeared in 0.1.29 only.
+in proxy mode the bug had appeared in 0.1.29 only.
 </para>
 </change>
 
@@ -17182,7 +17182,7 @@ nginx could not be built on NetBSD 2.0.
 во время чтения тела запроса клиента в SSL соединении мог произойти таймаут.
 </para>
 <para lang="en">
-the timeout may occur while reading of the the client request body
+the timeout may occur while reading of the client request body
 via SSL connections.
 </para>
 </change>
