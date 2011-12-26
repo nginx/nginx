@@ -395,7 +395,7 @@ ngx_http_file_cache_lock(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache lock u:%d wt:%M",
                    c->updating, c->wait_time);
 
@@ -437,7 +437,7 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
     r = ev->data;
     c = r->cache;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                    "http file cache wait handler wt:%M cur:%M",
                    c->wait_time, ngx_current_msec);
 
