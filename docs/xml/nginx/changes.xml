@@ -9,6 +9,146 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.12" date="26.12.2011">
+
+<change type="change">
+<para lang="ru">
+после перенаправления запроса с помощью директивы error_page
+директива proxy_pass без URI теперь использует изменённый URI;<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+a "proxy_pass" directive without URI part now uses changed URI
+after redirection with the "error_page" directive;<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy/fastcgi/scgi/uwsgi_cache_lock,
+proxy/fastcgi/scgi/uwsgi_cache_lock_timeout.
+</para>
+<para lang="en">
+the "proxy/fastcgi/scgi/uwsgi_cache_lock",
+"proxy/fastcgi/scgi/uwsgi_cache_lock_timeout" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива pcre_jit.
+</para>
+<para lang="en">
+the "pcre_jit" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+SSI команда if поддерживает выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the "if" SSI command supports captures in regular expressions.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSI команда if не работала внутри команды block.
+</para>
+<para lang="en">
+the "if" SSI command did not work inside the "block" command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы limit_conn_log_level и limit_req_log_level могли не работать.
+</para>
+<para lang="en">
+the "limit_conn_log_level" and "limit_req_log_level" directives might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_rate не позволяла передавать на полной скорости,
+даже если был указан очень большой лимит.
+</para>
+<para lang="en">
+the "limit_rate" directive did not allow to use full throughput,
+even if limit value was very high.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива sendfile_max_chunk не работала,
+если использовалась директива limit_rate.
+</para>
+<para lang="en">
+the "sendfile_max_chunk" directive did not work,
+if the "limit_rate" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в директиве proxy_pass использовались переменные и не был указан URI,
+всегда использовался URI исходного запроса.
+</para>
+<para lang="en">
+a "proxy_pass" directive without URI part always used original request URI
+if variables were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления запроса с помощью директивы try_files
+директива proxy_pass без URI могла использовать URI исходного запроса;<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+a "proxy_pass" directive without URI part might use original request
+after redirection with the "try_files" directive;<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_scgi_module.
+</para>
+<para lang="en">
+in the ngx_http_scgi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris;
+ошибка появилась в 1.1.9.
+</para>
+<para lang="en">
+nginx could not be built on Solaris;
+the bug had appeared in 1.1.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.11" date="12.12.2011">
 
 <change type="feature">
