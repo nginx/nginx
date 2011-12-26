@@ -2382,6 +2382,8 @@ found:
     data->pos = (u_char *) entry;
     atom_size = sizeof(ngx_mp4_stsc_atom_t) + (data->last - data->pos);
 
+    ngx_mp4_set_32value(entry->chunk, 1);
+
     if (trak->chunk_samples) {
 
         first = &trak->stsc_chunk_entry;
