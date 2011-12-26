@@ -396,6 +396,12 @@ if [ $USE_OPENSSL = YES ]; then
     CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
 fi
 
+if [ $USE_PCRE = YES ]; then
+    modules="$modules $REGEX_MODULE"
+    CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
+    CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
+fi
+
 if [ $HTTP = YES ]; then
     modules="$modules $HTTP_MODULES $HTTP_FILTER_MODULES \
              $HTTP_HEADERS_FILTER_MODULE \

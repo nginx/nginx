@@ -4,8 +4,6 @@
 
 if [ $PCRE != NONE ]; then
     CORE_INCS="$CORE_INCS $PCRE"
-    CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
-    CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
 
     case "$NGX_CC_NAME" in
 
@@ -80,6 +78,12 @@ if [ $PCRE != NONE ]; then
         ;;
 
     esac
+
+
+    if [ $PCRE_JIT = YES ]; then
+        have=NGX_HAVE_PCRE_JIT . auto/have
+        PCRE_CONF_OPT="$PCRE_CONF_OPT --enable-jit"
+    fi
 
 else
 
@@ -156,11 +160,22 @@ else
         fi
 
         if [ $ngx_found = yes ]; then
-            CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
-            CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
             CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
+        fi
+
+        if [ $PCRE == YES ]; then
+            ngx_feature="PCRE JIT support"
+            ngx_feature_name="NGX_HAVE_PCRE_JIT"
+            ngx_feature_test="int jit = 0;
+                              pcre_config(PCRE_CONFIG_JIT, &jit);
+                              if (jit != 1) return 1;"
+            . auto/feature
+
+            if [ $ngx_found = yes ]; then
+                PCRE_JIT=YES
+            fi
         fi
     fi
 

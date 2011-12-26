@@ -69,6 +69,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_crypt.c"
 
 
+REGEX_MODULE=ngx_regex_module
 REGEX_DEPS=src/core/ngx_regex.h
 REGEX_SRCS=src/core/ngx_regex.c
 
