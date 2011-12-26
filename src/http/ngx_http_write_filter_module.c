@@ -262,7 +262,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
         }
 
-        delay = (ngx_msec_t) ((nsent - sent) * 1000 / r->limit_rate + 1);
+        delay = (ngx_msec_t) ((nsent - sent) * 1000 / r->limit_rate);
 
         if (delay > 0) {
             c->write->delayed = 1;
