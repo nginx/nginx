@@ -707,6 +707,9 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         c->body_start = u->conf->buffer_size;
         c->file_cache = u->conf->cache->data;
 
+        c->lock = u->conf->cache_lock;
+        c->lock_timeout = u->conf->cache_lock_timeout;
+
         u->cache_status = NGX_HTTP_CACHE_MISS;
     }
 

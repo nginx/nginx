@@ -79,6 +79,14 @@ struct ngx_http_cache_s {
     ngx_http_file_cache_t           *file_cache;
     ngx_http_file_cache_node_t      *node;
 
+    ngx_msec_t                       lock_timeout;
+    ngx_msec_t                       wait_time;
+
+    ngx_event_t                      wait_event;
+
+    unsigned                         lock:1;
+    unsigned                         waiting:1;
+
     unsigned                         updated:1;
     unsigned                         updating:1;
     unsigned                         exists:1;
