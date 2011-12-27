@@ -111,7 +111,7 @@ zip:
 	cp -p $(OBJS)/lib/$(PCRE)/LICENCE				\
 		$(TEMP)/$(NGINX)/docs/PCRE.LICENCE
 
-	perl -ne 'print if /^ \(C\) 1995-2004/ .. /^  jloup\@gzip.org/'	\
+	perl -ne 'print if /^ \(C\) 1995-20/ .. /^  jloup\@gzip.org/'	\
 		$(OBJS)/lib/$(ZLIB)/README				\
 		> $(TEMP)/$(NGINX)/docs/zlib.LICENSE
 
