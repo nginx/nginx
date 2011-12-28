@@ -14,12 +14,12 @@
 <change type="change">
 <para lang="ru">
 после перенаправления запроса с помощью директивы error_page
-директива proxy_pass без URI теперь использует изменённый URI;<br/>
+директива proxy_pass без URI теперь использует изменённый URI.<br/>
 Спасибо Lanshun Zhou.
 </para>
 <para lang="en">
 a "proxy_pass" directive without URI part now uses changed URI
-after redirection with the "error_page" directive;<br/>
+after redirection with the "error_page" directive.<br/>
 Thanks to Lanshun Zhou.
 </para>
 </change>
@@ -107,12 +107,12 @@ if variables were used.
 <change type="bugfix">
 <para lang="ru">
 после перенаправления запроса с помощью директивы try_files
-директива proxy_pass без URI могла использовать URI исходного запроса;<br/>
+директива proxy_pass без URI могла использовать URI исходного запроса.<br/>
 Спасибо Lanshun Zhou.
 </para>
 <para lang="en">
 a "proxy_pass" directive without URI part might use original request
-after redirection with the "try_files" directive;<br/>
+after redirection with the "try_files" directive.<br/>
 Thanks to Lanshun Zhou.
 </para>
 </change>
