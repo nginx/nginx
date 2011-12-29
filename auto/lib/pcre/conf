@@ -165,7 +165,7 @@ else
             PCRE=YES
         fi
 
-        if [ $PCRE == YES ]; then
+        if [ $PCRE = YES ]; then
             ngx_feature="PCRE JIT support"
             ngx_feature_name="NGX_HAVE_PCRE_JIT"
             ngx_feature_test="int jit = 0;
