@@ -2348,6 +2348,8 @@ static ngx_int_t
 ngx_http_proxy_rewrite_redirect_regex(ngx_http_request_t *r, ngx_table_elt_t *h,
     size_t prefix, ngx_http_proxy_redirect_t *pr)
 {
+    size_t      len;
+    u_char     *data;
     ngx_str_t   redirect, replacement;
 
     redirect.len = h->value.len - prefix;
@@ -2361,7 +2363,23 @@ ngx_http_proxy_rewrite_redirect_regex(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    h->value = replacement;
+    if (!prefix) {
+        h->value = replacement;
+        return NGX_OK;
+    }
+
+    len = prefix + replacement.len;
+
+    data = ngx_pnalloc(r->pool, len);
+    if (data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(data, h->value.data, prefix);
+    ngx_memcpy(data + prefix, replacement.data, replacement.len);
+
+    h->value.len = len;
+    h->value.data = data;
 
     return NGX_OK;
 }
