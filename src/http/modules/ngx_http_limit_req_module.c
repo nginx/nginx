@@ -570,6 +570,8 @@ ngx_http_limit_req_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->shm_zone == NULL) {
         conf->shm_zone = prev->shm_zone;
+        conf->burst = prev->burst;
+        conf->nodelay = prev->nodelay;
     }
 
     ngx_conf_merge_uint_value(conf->limit_log_level, prev->limit_log_level,
