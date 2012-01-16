@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.13" date="16.01.2012">
+
+<change type="feature">
+<para lang="ru">
+параметры TLSv1.1 и TLSv1.2 в директиве ssl_protocols.
+</para>
+<para lang="en">
+the "TLSv1.1" and "TLSv1.2" parameters of the "ssl_protocols" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметры директивы limit_req наследовались некорректно;
+ошибка появилась в 1.1.12.
+</para>
+<para lang="en">
+the "limit_req" directive parameters were not inherited correctly;
+the bug had appeared in 1.1.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_redirect некорректно обрабатывала заголовк Refresh
+при использовании регулярных выражений.
+</para>
+<para lang="en">
+the "proxy_redirect" directive incorrectly processed "Refresh" header
+if regular expression were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_cache_use_stale с параметром error не возвращала ответ из
+кэша, если все бекенды были признаны неработающими.
+</para>
+<para lang="en">
+the "proxy_cache_use_stale" directive with "error" parameter did not return
+answer from cache if there were no live upstreams.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива worker_cpu_affinity могла не работать.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris;
+ошибка появилась в 1.1.12.
+</para>
+<para lang="en">
+nginx could not be built on Solaris;
+the bug had appeared in 1.1.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.12" date="26.12.2011">
 
 <change type="change">
