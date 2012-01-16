@@ -165,10 +165,10 @@ typedef struct {
     ((u_char *) (p))[7] = n4
 
 #define ngx_mp4_get_32value(p)                                                \
-    ( (((u_char *) (p))[0] << 24)                                             \
-    + (((u_char *) (p))[1] << 16)                                             \
-    + (((u_char *) (p))[2] << 8)                                              \
-    + (((u_char *) (p))[3]) )
+    ( ((uint32_t) ((u_char *) (p))[0] << 24)                                  \
+    + (           ((u_char *) (p))[1] << 16)                                  \
+    + (           ((u_char *) (p))[2] << 8)                                   \
+    + (           ((u_char *) (p))[3]) )
 
 #define ngx_mp4_set_32value(p, n)                                             \
     ((u_char *) (p))[0] = (u_char) ((n) >> 24);                               \
