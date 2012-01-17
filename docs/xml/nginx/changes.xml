@@ -33,7 +33,7 @@ the bug had appeared in 1.1.12.
 
 <change type="bugfix">
 <para lang="ru">
-директива proxy_redirect некорректно обрабатывала заголовк Refresh
+директива proxy_redirect некорректно обрабатывала заголовок Refresh
 при использовании регулярных выражений.
 </para>
 <para lang="en">
@@ -45,7 +45,7 @@ if regular expression were used.
 <change type="bugfix">
 <para lang="ru">
 директива proxy_cache_use_stale с параметром error не возвращала ответ из
-кэша, если все бекенды были признаны неработающими.
+кэша, если все бэкенды были признаны неработающими.
 </para>
 <para lang="en">
 the "proxy_cache_use_stale" directive with "error" parameter did not return
