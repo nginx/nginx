@@ -1,5 +1,6 @@
 /
 / Copyright (C) Igor Sysoev
+/ Copyright (C) Nginx, Inc.
 /
 
 / ngx_atomic_uint_t ngx_atomic_cmp_set(ngx_atomic_t *lock,

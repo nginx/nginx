@@ -1,5 +1,6 @@
 
 # Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
 
 
 CFLAGS = -nologo -O2 -Ob1 -Oi -Gs $(LIBC) $(CPU_OPT) -D L_ENDIAN

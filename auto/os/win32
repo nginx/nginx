@@ -1,5 +1,6 @@
 
 # Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
 
 
 have=NGX_WIN32 . auto/have_headers

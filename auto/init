@@ -1,5 +1,6 @@
 
 # Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
 
 
 NGX_MAKEFILE=$NGX_OBJS/Makefile
