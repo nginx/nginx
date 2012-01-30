@@ -190,7 +190,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             rc = n;
 
-            if (file->aio) {
+            if (rc == NGX_AGAIN) {
                 file->aio->data = r;
                 file->aio->handler = ngx_http_copy_aio_sendfile_event_handler;
 
