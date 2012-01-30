@@ -166,6 +166,10 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     rc = NGX_DECLINED;
 
+#if (NGX_SUPPRESS_WARN)
+    limit = NULL;
+#endif
+
     for (n = 0; n < lrcf->limits.nelts; n++) {
 
         limit = &limits[n];
