@@ -691,8 +691,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ctx == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "no variable is defined for limit_req_zone \"%V\"",
-                           &cmd->name);
+                           "no variable is defined for %V \"%V\"",
+                           &cmd->name, &name);
         return NGX_CONF_ERROR;
     }
 
@@ -708,8 +708,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ctx = shm_zone->data;
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                   "limit_req_zone \"%V\" is already bound to variable \"%V\"",
-                   &value[1], &ctx->var);
+                           "%V \"%V\" is already bound to variable \"%V\"",
+                           &cmd->name, &name, &ctx->var);
         return NGX_CONF_ERROR;
     }
 
