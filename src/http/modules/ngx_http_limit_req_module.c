@@ -136,15 +136,12 @@ ngx_module_t  ngx_http_limit_req_module = {
 static ngx_int_t
 ngx_http_limit_req_handler(ngx_http_request_t *r)
 {
-    size_t                      len, n;
+    size_t                      len;
     uint32_t                    hash;
     ngx_int_t                   rc;
     ngx_uint_t                  excess;
-    ngx_time_t                 *tp;
-    ngx_rbtree_node_t          *node;
     ngx_http_variable_value_t  *vv;
     ngx_http_limit_req_ctx_t   *ctx;
-    ngx_http_limit_req_node_t  *lr;
     ngx_http_limit_req_conf_t  *lrcf;
 
     if (r->main->limit_req_set) {
@@ -189,57 +186,23 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     rc = ngx_http_limit_req_lookup(lrcf, hash, vv->data, len, &excess);
 
+    ngx_shmtx_unlock(&ctx->shpool->mutex);
+
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "limit_req: %i %ui.%03ui", rc, excess / 1000, excess % 1000);
-
-    if (rc == NGX_DECLINED) {
-
-        n = offsetof(ngx_rbtree_node_t, color)
-            + offsetof(ngx_http_limit_req_node_t, data)
-            + len;
-
-        node = ngx_slab_alloc_locked(ctx->shpool, n);
-        if (node == NULL) {
-
-            ngx_http_limit_req_expire(ctx, 0);
-
-            node = ngx_slab_alloc_locked(ctx->shpool, n);
-            if (node == NULL) {
-                ngx_shmtx_unlock(&ctx->shpool->mutex);
-                return NGX_HTTP_SERVICE_UNAVAILABLE;
-            }
-        }
-
-        lr = (ngx_http_limit_req_node_t *) &node->color;
-
-        node->key = hash;
-        lr->len = (u_char) len;
-
-        tp = ngx_timeofday();
-        lr->last = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
-
-        lr->excess = 0;
-        ngx_memcpy(lr->data, vv->data, len);
-
-        ngx_rbtree_insert(&ctx->sh->rbtree, node);
-
-        ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
-
-        ngx_shmtx_unlock(&ctx->shpool->mutex);
-
-        return NGX_DECLINED;
-    }
-
-    ngx_shmtx_unlock(&ctx->shpool->mutex);
 
     if (rc == NGX_OK) {
         return NGX_DECLINED;
     }
 
-    if (rc == NGX_BUSY) {
-        ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
-                      "limiting requests, excess: %ui.%03ui by zone \"%V\"",
-                      excess / 1000, excess % 1000, &lrcf->shm_zone->shm.name);
+    if (rc == NGX_BUSY || rc == NGX_ERROR) {
+
+        if (rc == NGX_BUSY) {
+            ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
+                          "limiting requests, excess: %ui.%03ui by zone \"%V\"",
+                          excess / 1000, excess % 1000,
+                          &lrcf->shm_zone->shm.name);
+        }
 
         return NGX_HTTP_SERVICE_UNAVAILABLE;
     }
@@ -345,6 +308,7 @@ static ngx_int_t
 ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
     u_char *data, size_t len, ngx_uint_t *ep)
 {
+    size_t                      size;
     ngx_int_t                   rc, excess;
     ngx_time_t                 *tp;
     ngx_msec_t                  now;
@@ -352,6 +316,9 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
     ngx_rbtree_node_t          *node, *sentinel;
     ngx_http_limit_req_ctx_t   *ctx;
     ngx_http_limit_req_node_t  *lr;
+
+    tp = ngx_timeofday();
+    now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
 
     ctx = lrcf->shm_zone->data;
 
@@ -381,9 +348,6 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
                 ngx_queue_remove(&lr->queue);
                 ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
-                tp = ngx_timeofday();
-
-                now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
                 ms = (ngx_msec_int_t) (now - lr->last);
 
                 excess = lr->excess - ctx->rate * ngx_abs(ms) / 1000 + 1000;
@@ -417,7 +381,36 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
 
     *ep = 0;
 
-    return NGX_DECLINED;
+    size = offsetof(ngx_rbtree_node_t, color)
+           + offsetof(ngx_http_limit_req_node_t, data)
+           + len;
+
+    node = ngx_slab_alloc_locked(ctx->shpool, size);
+
+    if (node == NULL) {
+        ngx_http_limit_req_expire(ctx, 0);
+
+        node = ngx_slab_alloc_locked(ctx->shpool, size);
+        if (node == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    node->key = hash;
+
+    ngx_rbtree_insert(&ctx->sh->rbtree, node);
+
+    lr = (ngx_http_limit_req_node_t *) &node->color;
+
+    ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
+
+    lr->len = (u_char) len;
+    lr->excess = 0;
+    lr->last = now;
+
+    ngx_memcpy(lr->data, data, len);
+
+    return NGX_OK;
 }
 
 
