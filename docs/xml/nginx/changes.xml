@@ -9,6 +9,67 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.14" date="30.01.2012">
+
+<change type="feature">
+<para lang="ru">
+теперь можно указать несколько ограничений limit_req одновременно.
+</para>
+<para lang="en">
+multiple "limit_req" limits may be used simultaneously.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при соединении с бэкендом.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in error handling while connecting to a backend.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при использовании AIO на FreeBSD.
+</para>
+<para lang="en">
+in AIO error handling on FreeBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в инициализации библиотеки OpenSSL.
+</para>
+<para lang="en">
+in the OpenSSL library initialization.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_redirect могли наследоваться некорректно.
+</para>
+<para lang="en">
+the "proxy_redirect" directives might not be correctly inherited.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при переконфигурации, если использовалась директива pcre_jit.
+</para>
+<para lang="en">
+memory leak during reconfiguration if the "pcre_jit" directive was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.13" date="16.01.2012">
 
 <change type="feature">
