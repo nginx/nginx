@@ -182,8 +182,6 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     ngx_shmtx_lock(&ctx->shpool->mutex);
 
-    ngx_http_limit_req_expire(ctx, 1);
-
     rc = ngx_http_limit_req_lookup(lrcf, hash, vv->data, len, &excess);
 
     ngx_shmtx_unlock(&ctx->shpool->mutex);
@@ -384,6 +382,8 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
     size = offsetof(ngx_rbtree_node_t, color)
            + offsetof(ngx_http_limit_req_node_t, data)
            + len;
+
+    ngx_http_limit_req_expire(ctx, 1);
 
     node = ngx_slab_alloc_locked(ctx->shpool, size);
 
