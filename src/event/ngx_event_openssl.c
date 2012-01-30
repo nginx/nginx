@@ -92,8 +92,6 @@ ngx_ssl_init(ngx_log_t *log)
     SSL_library_init();
     SSL_load_error_strings();
 
-    ENGINE_load_builtin_engines();
-
     OpenSSL_add_all_algorithms();
 
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
