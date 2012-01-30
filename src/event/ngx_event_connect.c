@@ -160,6 +160,9 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             ngx_log_error(level, c->log, err, "connect() to %V failed",
                           pc->name);
 
+            ngx_close_connection(c);
+            pc->connection = NULL;
+
             return NGX_DECLINED;
         }
     }
@@ -241,12 +244,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
 failed:
 
-    ngx_free_connection(c);
-
-    if (ngx_close_socket(s) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
-                      ngx_close_socket_n " failed");
-    }
+    ngx_close_connection(c);
+    pc->connection = NULL;
 
     return NGX_ERROR;
 }
