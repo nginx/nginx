@@ -421,7 +421,8 @@ ngx_http_limit_zone_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_limit_zone_conf_t *conf = child;
 
     if (conf->shm_zone == NULL) {
-        *conf = *prev;
+        conf->shm_zone = prev->shm_zone;
+        conf->conn = prev->conn;
     }
 
     ngx_conf_merge_uint_value(conf->log_level, prev->log_level, NGX_LOG_ERR);
