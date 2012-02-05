@@ -2766,7 +2766,9 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     plcf->upstream.ssl->log = cf->log;
 
     if (ngx_ssl_create(plcf->upstream.ssl,
-                       NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1, NULL)
+                       NGX_SSL_SSLv2|NGX_SSL_SSLv3|NGX_SSL_TLSv1
+                                    |NGX_SSL_TLSv1_1|NGX_SSL_TLSv1_2,
+                       NULL)
         != NGX_OK)
     {
         return NGX_ERROR;
