@@ -2,7 +2,7 @@
 # Copyright (C) Igor Sysoev
 
 
-# Intel C++ compiler 7.1, 8.0, 8.1, 9.0
+# Intel C++ compiler 7.1, 8.0, 8.1, 9.0, 11.1
 
 NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
                          | sed -e 's/^.* Version \([^ ]*\) *Build.*$/\1/'`
@@ -15,32 +15,7 @@ have=NGX_COMPILER value="\"Intel C Compiler $NGX_ICC_VER\"" . auto/define
 # optimizations
 
 CFLAGS="$CFLAGS -O"
-# inline the functions declared with __inline
-#CFLAGS="$CFLAGS -Ob1"
-# inline any function, at the compiler's discretion
-CFLAGS="$CFLAGS -Ob2"
 
-# multi-file IP optimizations
-case "$NGX_ICC_VER" in
-    9.*)
-        IPO="-ipo"
-    ;;
-
-    # 8.1.38 under FreeBSD can not link -ipo
-    8.1)
-        IPO="-ip"
-    ;;
-
-    *)
-        IPO="-ipo -ipo_obj"
-    ;;
-esac
-
-# single-file IP optimizations
-#IPO="-ip"
-
-CFLAGS="$CFLAGS $IPO"
-CORE_LINK="$CORE_LINK $IPO"
 CORE_LINK="$CORE_LINK -opt_report_file=$NGX_OBJS/opt_report_file"
 
 
@@ -64,15 +39,15 @@ esac
 CFLAGS="$CFLAGS $CPU_OPT"
 
 if [ ".$PCRE_OPT" = "." ]; then
-    PCRE_OPT="-O $IPO $CPU_OPT"
+    PCRE_OPT="-O $CPU_OPT"
 fi
 
 if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-O $IPO $CPU_OPT"
+    MD5_OPT="-O $CPU_OPT"
 fi
 
 if [ ".$ZLIB_OPT" = "." ]; then
-    ZLIB_OPT="-O $IPO $CPU_OPT"
+    ZLIB_OPT="-O $CPU_OPT"
 fi
 
 
