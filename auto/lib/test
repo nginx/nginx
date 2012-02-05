@@ -1,5 +1,6 @@
 
 # Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
 
 
 echo $ngx_n "checking for $ngx_lib ...$ngx_c"

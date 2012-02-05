@@ -1,5 +1,6 @@
 
 # Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
 
 
 CFLAGS =	-q -O2 -tWM -w-8004 $(CPU_OPT)

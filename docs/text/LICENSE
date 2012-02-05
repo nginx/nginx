@@ -1,5 +1,6 @@
 /* 
- * Copyright (C) 2002-2011 Igor Sysoev
+ * Copyright (C) 2002-2012 Igor Sysoev
+ * Copyright (C) 2011,2012 Nginx, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
