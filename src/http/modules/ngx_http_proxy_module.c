@@ -1903,16 +1903,20 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               (NGX_CONF_BITMASK_SET
                                |NGX_HTTP_UPSTREAM_FT_OFF));
 
+    if (conf->upstream.cache_use_stale & NGX_HTTP_UPSTREAM_FT_OFF) {
+        conf->upstream.cache_use_stale = NGX_CONF_BITMASK_SET
+                                         |NGX_HTTP_UPSTREAM_FT_OFF;
+    }
+
+    if (conf->upstream.cache_use_stale & NGX_HTTP_UPSTREAM_FT_ERROR) {
+        conf->upstream.cache_use_stale |= NGX_HTTP_UPSTREAM_FT_NOLIVE;
+    }
+
     if (conf->upstream.cache_methods == 0) {
         conf->upstream.cache_methods = prev->upstream.cache_methods;
     }
 
     conf->upstream.cache_methods |= NGX_HTTP_GET|NGX_HTTP_HEAD;
-
-    if (conf->upstream.cache_use_stale & NGX_HTTP_UPSTREAM_FT_OFF) {
-        conf->upstream.cache_use_stale = NGX_CONF_BITMASK_SET
-                                         |NGX_HTTP_UPSTREAM_FT_OFF;
-    }
 
     ngx_conf_merge_ptr_value(conf->upstream.cache_bypass,
                              prev->upstream.cache_bypass, NULL);
