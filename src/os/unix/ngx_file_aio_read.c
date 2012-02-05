@@ -157,24 +157,15 @@ ngx_file_aio_result(ngx_file_t *file, ngx_event_aio_t *aio, ngx_event_t *ev)
         return NGX_ERROR;
     }
 
-    if (n != 0) {
-        if (n == NGX_EINPROGRESS) {
-            if (ev->ready) {
-                ev->ready = 0;
-                ngx_log_error(NGX_LOG_ALERT, file->log, n,
-                              "aio_read(\"%V\") still in progress",
-                              &file->name);
-            }
-
-            return NGX_AGAIN;
+    if (n == NGX_EINPROGRESS) {
+        if (ev->ready) {
+            ev->ready = 0;
+            ngx_log_error(NGX_LOG_ALERT, file->log, n,
+                          "aio_read(\"%V\") still in progress",
+                          &file->name);
         }
 
-        aio->err = n;
-        ev->ready = 0;
-
-        ngx_log_error(NGX_LOG_CRIT, file->log, n,
-                      "aio_read(\"%V\") failed", &file->name);
-        return NGX_ERROR;
+        return NGX_AGAIN;
     }
 
     n = aio_return(&aio->aiocb);
@@ -182,9 +173,9 @@ ngx_file_aio_result(ngx_file_t *file, ngx_event_aio_t *aio, ngx_event_t *ev)
     if (n == -1) {
         err = ngx_errno;
         aio->err = err;
-        ev->ready = 0;
+        ev->ready = 1;
 
-        ngx_log_error(NGX_LOG_ALERT, file->log, err,
+        ngx_log_error(NGX_LOG_CRIT, file->log, err,
                       "aio_return(\"%V\") failed", &file->name);
         return NGX_ERROR;
     }
