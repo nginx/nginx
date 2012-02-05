@@ -387,6 +387,13 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         return NGX_DECLINED;
     }
 
+    if (h->body_start > c->body_start) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "cache file \"%s\" has too long header",
+                      c->file.name.data);
+        return NGX_DECLINED;
+    }
+
     c->buf->last += n;
 
     c->valid_sec = h->valid_sec;
@@ -1107,12 +1114,12 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
         /*
          * abnormally exited workers may leave locked cache entries,
          * and although it may be safe to remove them completely,
-         * we prefer to remove them from inactive queue and rbtree
-         * only, and to allow other leaks
+         * we prefer to just move them to the top of the inactive queue
          */
 
         ngx_queue_remove(q);
-        ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
+        fcn->expire = ngx_time() + cache->inactive;
+        ngx_queue_insert_head(&cache->sh->queue, &fcn->queue);
 
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                       "ignore long locked inactive cache entry %*s, count:%d",
@@ -1706,72 +1713,6 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
         v->status = status;
         v->valid = valid;
-    }
-
-    return NGX_CONF_OK;
-}
-
-
-ngx_int_t
-ngx_http_cache(ngx_http_request_t *r, ngx_array_t *no_cache)
-{
-    ngx_str_t                  val;
-    ngx_uint_t                 i;
-    ngx_http_complex_value_t  *cv;
-
-    cv = no_cache->elts;
-
-    for (i = 0; i < no_cache->nelts; i++) {
-        if (ngx_http_complex_value(r, &cv[i], &val) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (val.len && val.data[0] != '0') {
-            return NGX_DECLINED;
-        }
-    }
-
-    return NGX_OK;
-}
-
-
-char *
-ngx_http_no_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    char  *p = conf;
-
-    ngx_str_t                          *value;
-    ngx_uint_t                          i;
-    ngx_array_t                       **a;
-    ngx_http_complex_value_t           *cv;
-    ngx_http_compile_complex_value_t    ccv;
-
-    a = (ngx_array_t **) (p + cmd->offset);
-
-    if (*a == NGX_CONF_UNSET_PTR) {
-        *a = ngx_array_create(cf->pool, 1, sizeof(ngx_http_complex_value_t));
-        if (*a == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    value = cf->args->elts;
-
-    for (i = 1; i < cf->args->nelts; i++) {
-        cv = ngx_array_push(*a);
-        if (cv == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-
-        ccv.cf = cf;
-        ccv.value = &value[i];
-        ccv.complex_value = cv;
-
-        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
     }
 
     return NGX_CONF_OK;
