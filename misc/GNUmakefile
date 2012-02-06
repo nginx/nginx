@@ -6,9 +6,9 @@ TEMP =		tmp
 REPO =		$(shell svn info | sed -n 's/^Repository Root: //p')
 
 OBJS =		objs.msvc8
-OPENSSL =	openssl-0.9.8r
-ZLIB =		zlib-1.2.3
-PCRE =		pcre-7.9
+OPENSSL =	openssl-0.9.8t
+ZLIB =		zlib-1.2.5
+PCRE =		pcre-8.21
 
 
 release:
