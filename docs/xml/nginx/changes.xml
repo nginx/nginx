@@ -9,6 +9,204 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.12" date="06.02.2012">
+
+<change type="feature">
+<para lang="ru">
+параметры TLSv1.1 и TLSv1.2 в директиве ssl_protocols.
+</para>
+<para lang="en">
+the "TLSv1.1" and "TLSv1.2" parameters of the "ssl_protocols" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+SSI команда if поддерживает выделения в регулярных выражениях.
+</para>
+<para lang="en">
+the "if" SSI command supports captures in regular expressions.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSI команда if не работала внутри команды block.
+</para>
+<para lang="en">
+the "if" SSI command did not work inside the "block" command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при использовании AIO на FreeBSD.
+</para>
+<para lang="en">
+in AIO error handling on FreeBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в инициализации библиотеки OpenSSL.
+</para>
+<para lang="en">
+in the OpenSSL library initialization.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива worker_cpu_affinity могла не работать.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы limit_conn_log_level и limit_req_log_level могли не работать.
+</para>
+<para lang="en">
+the "limit_conn_log_level" and "limit_req_log_level" directives might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива read_ahead могла не работать при использовании совместно с 
+try_files и open_file_cache. 
+</para>
+<para lang="en">
+the "read_ahead" directive might not work combined with "try_files"
+and "open_file_cache".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_cache_use_stale с параметром error не возвращала ответ из
+кэша, если все бэкенды были признаны неработающими.
+</para>
+<para lang="en">
+the "proxy_cache_use_stale" directive with "error" parameter did not return
+answer from cache if there were no live upstreams.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в параметре inactive директивы proxy_cache_path
+было указано малое время,
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if small time was used in the "inactive" parameter of
+the "proxy_cache_path" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы из кэша могли зависать.
+</para>
+<para lang="en">
+responses from cache might hang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при соединении с бэкендом.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in error handling while connecting to a backend.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в методе epoll.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+in the "epoll" event method.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $sent_http_cache_control могла содержать неверное значение при
+использовании директивы expires.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+the $sent_http_cache_control variable might contain a wrong value if the
+"expires" directive was used.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива limit_rate не позволяла передавать на полной скорости,
+даже если был указан очень большой лимит.
+</para>
+<para lang="en">
+the "limit_rate" directive did not allow to use full throughput,
+even if limit value was very high.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива sendfile_max_chunk не работала,
+если использовалась директива limit_rate.
+</para>
+<para lang="en">
+the "sendfile_max_chunk" directive did not work,
+if the "limit_rate" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris;
+ошибка появилась в 1.0.11.
+</para>
+<para lang="en">
+nginx could not be built on Solaris;
+the bug had appeared in 1.0.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_scgi_module.
+</para>
+<para lang="en">
+in the ngx_http_scgi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.11" date="15.12.2011">
 
 <change type="change">
