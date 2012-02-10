@@ -159,8 +159,6 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    r->main->limit_conn_set = 1;
-
     lccf = ngx_http_get_module_loc_conf(r, ngx_http_limit_conn_module);
     limits = lccf->limits.elts;
 
@@ -186,6 +184,8 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
                           &ctx->var, vv);
             continue;
         }
+
+        r->main->limit_conn_set = 1;
 
         hash = ngx_crc32_short(vv->data, len);
 
