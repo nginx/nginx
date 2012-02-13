@@ -2453,7 +2453,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->start_sec = tp->sec;
     sr->start_msec = tp->msec;
 
-    r->main->subrequests++;
     r->main->count++;
 
     *psr = sr;
