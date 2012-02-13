@@ -76,6 +76,10 @@ typedef struct {
 #define NGX_FILE_APPEND          O_WRONLY|O_APPEND
 #define NGX_FILE_NONBLOCK        O_NONBLOCK
 
+#if (NGX_HAVE_OPENAT)
+#define NGX_FILE_NOFOLLOW        O_NOFOLLOW
+#endif
+
 #define NGX_FILE_DEFAULT_ACCESS  0644
 #define NGX_FILE_OWNER_ACCESS    0600
 
@@ -322,6 +326,21 @@ ngx_int_t ngx_directio_off(ngx_fd_t fd);
 #endif
 
 size_t ngx_fs_bsize(u_char *name);
+
+
+#if (NGX_HAVE_OPENAT)
+
+#define ngx_openat_file(fd, name, mode, create, access)                      \
+    openat(fd, (const char *) name, mode|create, access)
+
+#define ngx_openat_file_n        "openat()"
+
+#define ngx_file_at_info(fd, name, sb, flag)                                 \
+    fstatat(fd, (const char *) name, sb, flag)
+
+#define ngx_file_at_info_n       "fstatat()"
+
+#endif
 
 
 #define ngx_stderr               STDERR_FILENO

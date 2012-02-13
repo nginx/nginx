@@ -731,3 +731,17 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="sysconf(_SC_NPROCESSORS_ONLN)"
 . auto/feature
+
+
+ngx_feature="openat(), fstatat()"
+ngx_feature_name="NGX_HAVE_OPENAT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/types.h>
+                  #include <sys/stat.h>
+                  #include <fcntl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct stat sb;
+                  openat(AT_FDCWD, \".\", O_RDONLY|O_NOFOLLOW);
+                  fstatat(AT_FDCWD, \".\", &sb, AT_SYMLINK_NOFOLLOW);"
+. auto/feature

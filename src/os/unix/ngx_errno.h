@@ -48,6 +48,11 @@ typedef int               ngx_err_t;
 #define NGX_EILSEQ        EILSEQ
 #define NGX_ENOMOREFILES  0
 
+#if (NGX_HAVE_OPENAT)
+#define NGX_EMLINK        EMLINK
+#define NGX_ELOOP         ELOOP
+#endif
+
 #if (__hpux__)
 #define NGX_EAGAIN        EWOULDBLOCK
 #else
