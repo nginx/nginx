@@ -187,6 +187,18 @@ static ngx_str_t  ngx_http_gzip_private = ngx_string("private");
 #endif
 
 
+#if (NGX_HAVE_OPENAT)
+
+static ngx_conf_enum_t  ngx_http_core_disable_symlinks[] = {
+    { ngx_string("off"), NGX_DISABLE_SYMLINKS_OFF },
+    { ngx_string("if_not_owner"), NGX_DISABLE_SYMLINKS_NOTOWNER },
+    { ngx_string("on"), NGX_DISABLE_SYMLINKS_ON },
+    { ngx_null_string, 0 }
+};
+
+#endif
+
+
 static ngx_command_t  ngx_http_core_commands[] = {
 
     { ngx_string("variables_hash_max_size"),
@@ -764,6 +776,17 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 #endif
 
+#if (NGX_HAVE_OPENAT)
+
+    { ngx_string("disable_symlinks"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, disable_symlinks),
+      &ngx_http_core_disable_symlinks },
+
+#endif
+
       ngx_null_command
 };
 
@@ -1297,6 +1320,9 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         of.test_only = 1;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
+#if (NGX_HAVE_OPENAT)
+        of.disable_symlinks = clcf->disable_symlinks;
+#endif
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
@@ -3344,6 +3370,10 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 #endif
 #endif
 
+#if (NGX_HAVE_OPENAT)
+    clcf->disable_symlinks = NGX_CONF_UNSET_UINT;
+#endif
+
     return clcf;
 }
 
@@ -3621,6 +3651,11 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
 #endif
+#endif
+
+#if (NGX_HAVE_OPENAT)
+    ngx_conf_merge_uint_value(conf->disable_symlinks, prev->disable_symlinks,
+                              NGX_DISABLE_SYMLINKS_OFF);
 #endif
 
     return NGX_CONF_OK;

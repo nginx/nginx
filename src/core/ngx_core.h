@@ -91,5 +91,10 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 
 void ngx_cpuinfo(void);
 
+#if (NGX_HAVE_OPENAT)
+#define NGX_DISABLE_SYMLINKS_OFF        0
+#define NGX_DISABLE_SYMLINKS_ON         1
+#define NGX_DISABLE_SYMLINKS_NOTOWNER   2
+#endif
 
 #endif /* _NGX_CORE_H_INCLUDED_ */

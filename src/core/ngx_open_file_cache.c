@@ -22,6 +22,15 @@
 
 
 static void ngx_open_file_cache_cleanup(void *data);
+#if (NGX_HAVE_OPENAT)
+static ngx_fd_t ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
+    ngx_int_t mode, ngx_int_t create, ngx_int_t access);
+#endif
+static ngx_fd_t ngx_open_file_wrapper(ngx_str_t *name,
+    ngx_open_file_info_t *of, ngx_int_t mode, ngx_int_t create,
+    ngx_int_t access);
+static ngx_int_t ngx_file_info_wrapper(ngx_str_t *name,
+    ngx_open_file_info_t *of, ngx_file_info_t *fi);
 static ngx_int_t ngx_open_and_stat_file(ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_log_t *log);
 static void ngx_open_file_add_event(ngx_open_file_cache_t *cache,
@@ -147,9 +156,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
         if (of->test_only) {
 
-            if (ngx_file_info(name->data, &fi) == NGX_FILE_ERROR) {
-                of->err = ngx_errno;
-                of->failed = ngx_file_info_n;
+            if (ngx_file_info_wrapper(name, of, &fi) == NGX_FILE_ERROR) {
                 return NGX_ERROR;
             }
 
@@ -217,7 +224,11 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
         if (file->use_event
             || (file->event == NULL
                 && (of->uniq == 0 || of->uniq == file->uniq)
-                && now - file->created < of->valid))
+                && now - file->created < of->valid
+#if (NGX_HAVE_OPENAT)
+                && of->disable_symlinks == file->disable_symlinks
+#endif
+            ))
         {
             if (file->err == 0) {
 
@@ -239,7 +250,12 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
             } else {
                 of->err = file->err;
+#if (NGX_HAVE_OPENAT)
+                of->failed = file->disable_symlinks ? ngx_openat_file_n
+                                                    : ngx_open_file_n;
+#else
                 of->failed = ngx_open_file_n;
+#endif
             }
 
             goto found;
@@ -375,6 +391,9 @@ update:
 
     file->fd = of->fd;
     file->err = of->err;
+#if (NGX_HAVE_OPENAT)
+    file->disable_symlinks = of->disable_symlinks;
+#endif
 
     if (of->err == 0) {
         file->uniq = of->uniq;
@@ -459,6 +478,212 @@ failed:
 }
 
 
+#if (NGX_HAVE_OPENAT)
+
+static ngx_fd_t
+ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
+    ngx_int_t mode, ngx_int_t create, ngx_int_t access)
+{
+    ngx_fd_t         fd;
+    ngx_file_info_t  fi, atfi;
+
+    /*
+     * To allow symlinks with the same owner, use openat() (followed
+     * by fstat()) and fstatat(AT_SYMLINK_NOFOLLOW), and then compare
+     * uids between fstat() and fstatat().
+     *
+     * As there is a race between openat() and fstatat() we don't
+     * know if openat() in fact opened symlink or not.  Therefore,
+     * we have to compare uids even if fstatat() reports the opened
+     * component isn't a symlink (as we don't know whether it was
+     * symlink during openat() or not).
+     */
+
+    fd = ngx_openat_file(at_fd, name, mode, create, access);
+
+    if (fd == NGX_FILE_ERROR) {
+        return NGX_FILE_ERROR;
+    }
+
+    if (ngx_file_at_info(at_fd, name, &atfi, AT_SYMLINK_NOFOLLOW)
+        == NGX_FILE_ERROR)
+    {
+        ngx_close_file(fd);
+        return NGX_FILE_ERROR;
+    }
+
+    if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
+        ngx_close_file(fd);
+        return NGX_FILE_ERROR;
+    }
+
+    if (fi.st_uid != atfi.st_uid) {
+        ngx_close_file(fd);
+        ngx_set_errno(NGX_ELOOP);
+        return NGX_FILE_ERROR;
+    }
+
+    return fd;
+}
+
+#endif
+
+
+static ngx_fd_t
+ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
+    ngx_int_t mode, ngx_int_t create, ngx_int_t access)
+{
+    ngx_fd_t  fd;
+
+#if !(NGX_HAVE_OPENAT)
+
+    fd = ngx_open_file(name->data, mode, create, access);
+
+    if (fd == NGX_FILE_ERROR) {
+        of->err = ngx_errno;
+        of->failed = ngx_open_file_n;
+        return NGX_FILE_ERROR;
+    }
+
+    return fd;
+
+#else
+
+    u_char    *p, *cp, *end;
+    ngx_fd_t   at_fd;
+
+    if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_OFF) {
+        fd = ngx_open_file(name->data, mode, create, access);
+
+        if (fd == NGX_FILE_ERROR) {
+            of->err = ngx_errno;
+            of->failed = ngx_open_file_n;
+            return NGX_FILE_ERROR;
+        }
+
+        return fd;
+    }
+
+    at_fd = ngx_openat_file(AT_FDCWD, "/", NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                            NGX_FILE_OPEN, 0);
+
+    if (at_fd == NGX_FILE_ERROR) {
+        of->err = ngx_errno;
+        of->failed = ngx_openat_file_n;
+        return NGX_FILE_ERROR;
+    }
+
+    end = name->data + name->len;
+    p = name->data + 1;
+
+    for ( ;; ) {
+        cp = ngx_strlchr(p, end, '/');
+        if (cp == NULL) {
+            break;
+        }
+
+        *cp = '\0';
+
+        if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER) {
+            fd = ngx_openat_file_owner(at_fd, p,
+                                       NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                                       NGX_FILE_OPEN, 0);
+
+        } else {
+            fd = ngx_openat_file(at_fd, p,
+                           NGX_FILE_RDONLY|NGX_FILE_NONBLOCK|NGX_FILE_NOFOLLOW,
+                           NGX_FILE_OPEN, 0);
+        }
+
+        *cp = '/';
+
+        ngx_close_file(at_fd);
+
+        if (fd == NGX_FILE_ERROR) {
+            of->err = ngx_errno;
+            of->failed = ngx_openat_file_n;
+            return NGX_FILE_ERROR;
+        }
+
+        p = cp + 1;
+        at_fd = fd;
+    }
+
+    if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER) {
+        fd = ngx_openat_file_owner(at_fd, p, mode, create, access);
+
+    } else {
+        fd = ngx_openat_file(at_fd, p, mode|NGX_FILE_NOFOLLOW, create, access);
+    }
+
+    if (fd == NGX_FILE_ERROR) {
+        of->err = ngx_errno;
+        of->failed = ngx_openat_file_n;
+    }
+
+    ngx_close_file(at_fd);
+
+    return fd;
+#endif
+}
+
+
+static ngx_int_t
+ngx_file_info_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
+    ngx_file_info_t *fi)
+{
+    ngx_int_t  rc;
+
+#if !(NGX_HAVE_OPENAT)
+
+    rc = ngx_file_info(name->data, fi);
+
+    if (rc == NGX_FILE_ERROR) {
+        of->err = ngx_errno;
+        of->failed = ngx_file_info_n;
+        return NGX_FILE_ERROR;
+    }
+
+    return rc;
+
+#else
+
+    ngx_fd_t  fd;
+
+    if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_OFF) {
+
+        rc = ngx_file_info(name->data, fi);
+
+        if (rc == NGX_FILE_ERROR) {
+            of->err = ngx_errno;
+            of->failed = ngx_file_info_n;
+            return NGX_FILE_ERROR;
+        }
+
+        return rc;
+    }
+
+    fd = ngx_open_file_wrapper(name, of, NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                               NGX_FILE_OPEN, 0);
+
+    if (fd == NGX_FILE_ERROR) {
+        return NGX_FILE_ERROR;
+    }
+
+    if (ngx_fd_info(fd, fi) == NGX_FILE_ERROR) {
+        of->err = ngx_errno;
+        of->failed = ngx_fd_info_n;
+        ngx_close_file(fd);
+        return NGX_FILE_ERROR;
+    }
+
+    ngx_close_file(fd);
+
+    return NGX_OK;
+#endif
+}
+
+
 static ngx_int_t
 ngx_open_and_stat_file(ngx_str_t *name, ngx_open_file_info_t *of,
     ngx_log_t *log)
@@ -468,9 +693,9 @@ ngx_open_and_stat_file(ngx_str_t *name, ngx_open_file_info_t *of,
 
     if (of->fd != NGX_INVALID_FILE) {
 
-        if (ngx_file_info(name->data, &fi) == NGX_FILE_ERROR) {
-            of->failed = ngx_file_info_n;
-            goto failed;
+        if (ngx_file_info_wrapper(name, of, &fi) == NGX_FILE_ERROR) {
+            of->fd = NGX_INVALID_FILE;
+            return NGX_ERROR;
         }
 
         if (of->uniq == ngx_file_uniq(&fi)) {
@@ -479,9 +704,9 @@ ngx_open_and_stat_file(ngx_str_t *name, ngx_open_file_info_t *of,
 
     } else if (of->test_dir) {
 
-        if (ngx_file_info(name->data, &fi) == NGX_FILE_ERROR) {
-            of->failed = ngx_file_info_n;
-            goto failed;
+        if (ngx_file_info_wrapper(name, of, &fi) == NGX_FILE_ERROR) {
+            of->fd = NGX_INVALID_FILE;
+            return NGX_ERROR;
         }
 
         if (ngx_is_dir(&fi)) {
@@ -496,18 +721,18 @@ ngx_open_and_stat_file(ngx_str_t *name, ngx_open_file_info_t *of,
          * This flag has no effect on a regular files.
          */
 
-        fd = ngx_open_file(name->data, NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
-                           NGX_FILE_OPEN, 0);
+        fd = ngx_open_file_wrapper(name, of, NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                                   NGX_FILE_OPEN, 0);
 
     } else {
-        fd = ngx_open_file(name->data, NGX_FILE_APPEND,
-                           NGX_FILE_CREATE_OR_OPEN,
-                           NGX_FILE_DEFAULT_ACCESS);
+        fd = ngx_open_file_wrapper(name, of, NGX_FILE_APPEND,
+                                   NGX_FILE_CREATE_OR_OPEN,
+                                   NGX_FILE_DEFAULT_ACCESS);
     }
 
     if (fd == NGX_INVALID_FILE) {
-        of->failed = ngx_open_file_n;
-        goto failed;
+        of->fd = NGX_INVALID_FILE;
+        return NGX_ERROR;
     }
 
     if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
@@ -565,13 +790,6 @@ done:
     of->is_exec = ngx_is_exec(&fi);
 
     return NGX_OK;
-
-failed:
-
-    of->fd = NGX_INVALID_FILE;
-    of->err = ngx_errno;
-
-    return NGX_ERROR;
 }
 
 

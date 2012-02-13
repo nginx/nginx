@@ -32,6 +32,10 @@ typedef struct {
 
     ngx_uint_t               min_uses;
 
+#if (NGX_HAVE_OPENAT)
+    unsigned                 disable_symlinks:2;
+#endif
+
     unsigned                 test_dir:1;
     unsigned                 test_only:1;
     unsigned                 log:1;
@@ -63,6 +67,10 @@ struct ngx_cached_open_file_s {
     ngx_err_t                err;
 
     uint32_t                 uses;
+
+#if (NGX_HAVE_OPENAT)
+    unsigned                 disable_symlinks:2;
+#endif
 
     unsigned                 count:24;
     unsigned                 close:1;

@@ -404,6 +404,10 @@ struct ngx_http_core_loc_conf_s {
 #endif
 #endif
 
+#if (NGX_HAVE_OPENAT)
+    ngx_uint_t    disable_symlinks;        /* disable_symlinks */
+#endif
+
     ngx_array_t  *error_pages;             /* error_page */
     ngx_http_try_file_t    *try_files;     /* try_files */
 
