@@ -432,7 +432,7 @@ ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
 
     v = &r->variables[index];
 
-    if (v->valid) {
+    if (v->valid || v->not_found) {
         if (!v->no_cacheable) {
             return v;
         }
