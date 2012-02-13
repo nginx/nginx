@@ -110,6 +110,8 @@ static ngx_int_t ngx_http_upstream_rewrite_location(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -198,7 +200,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Set-Cookie"),
                  ngx_http_upstream_process_set_cookie, 0,
-                 ngx_http_upstream_copy_header_line, 0, 1 },
+                 ngx_http_upstream_rewrite_set_cookie, 0, 1 },
 
     { ngx_string("Content-Disposition"),
                  ngx_http_upstream_ignore_header_line, 0,
@@ -3667,6 +3669,27 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->headers_out.refresh = ho;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    ngx_table_elt_t  *ho;
+
+    ho = ngx_list_push(&r->headers_out.headers);
+    if (ho == NULL) {
+        return NGX_ERROR;
+    }
+
+    *ho = *h;
+
+    if (r->upstream->rewrite_cookie) {
+        return r->upstream->rewrite_cookie(r, ho);
+    }
 
     return NGX_OK;
 }
