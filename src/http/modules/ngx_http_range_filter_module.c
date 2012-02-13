@@ -595,15 +595,8 @@ ngx_http_range_test_overlapped(ngx_http_request_t *r,
     buf = in->buf;
 
     if (!buf->last_buf) {
-
-        if (buf->in_file) {
-            start = buf->file_pos + ctx->offset;
-            last = buf->file_last + ctx->offset;
-
-        } else {
-            start = buf->pos - buf->start + ctx->offset;
-            last = buf->last - buf->start + ctx->offset;
-        }
+        start = ctx->offset;
+        last = ctx->offset + ngx_buf_size(buf);
 
         range = ctx->ranges.elts;
         for (i = 0; i < ctx->ranges.nelts; i++) {
@@ -716,7 +709,6 @@ static ngx_int_t
 ngx_http_range_multipart_body(ngx_http_request_t *r,
     ngx_http_range_filter_ctx_t *ctx, ngx_chain_t *in)
 {
-    off_t              body_start;
     ngx_buf_t         *b, *buf;
     ngx_uint_t         i;
     ngx_chain_t       *out, *hcl, *rcl, *dcl, **ll;
@@ -725,12 +717,6 @@ ngx_http_range_multipart_body(ngx_http_request_t *r,
     ll = &out;
     buf = in->buf;
     range = ctx->ranges.elts;
-
-#if (NGX_HTTP_CACHE)
-    body_start = r->cached ? r->cache->body_start : 0;
-#else
-    body_start = 0;
-#endif
 
     for (i = 0; i < ctx->ranges.nelts; i++) {
 
@@ -792,13 +778,13 @@ ngx_http_range_multipart_body(ngx_http_request_t *r,
         b->file = buf->file;
 
         if (buf->in_file) {
-            b->file_pos = body_start + range[i].start;
-            b->file_last = body_start + range[i].end;
+            b->file_pos = buf->file_pos + range[i].start;
+            b->file_last = buf->file_pos + range[i].end;
         }
 
         if (ngx_buf_in_memory(buf)) {
-            b->pos = buf->start + (size_t) range[i].start;
-            b->last = buf->start + (size_t) range[i].end;
+            b->pos = buf->pos + (size_t) range[i].start;
+            b->last = buf->pos + (size_t) range[i].end;
         }
 
         dcl = ngx_alloc_chain_link(r->pool);
