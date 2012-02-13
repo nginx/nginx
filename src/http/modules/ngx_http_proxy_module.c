@@ -149,6 +149,9 @@ static char *ngx_http_proxy_cache_key(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
 
+static ngx_int_t ngx_http_proxy_rewrite_regex(ngx_conf_t *cf,
+    ngx_http_proxy_rewrite_t *pr, ngx_str_t *regex, ngx_uint_t caseless);
+
 #if (NGX_HTTP_SSL)
 static ngx_int_t ngx_http_proxy_set_ssl(ngx_conf_t *cf,
     ngx_http_proxy_loc_conf_t *plcf);
@@ -3385,39 +3388,23 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     if (value[1].data[0] == '~') {
-#if (NGX_PCRE)
-        u_char               errstr[NGX_MAX_CONF_ERRSTR];
-        ngx_regex_compile_t  rc;
-
         value[1].len--;
         value[1].data++;
-
-        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
         if (value[1].data[0] == '*') {
             value[1].len--;
             value[1].data++;
-            rc.options = NGX_REGEX_CASELESS;
+
+            if (ngx_http_proxy_rewrite_regex(cf, pr, &value[1], 1) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+        } else {
+            if (ngx_http_proxy_rewrite_regex(cf, pr, &value[1], 0) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
         }
 
-        rc.pattern = value[1];
-        rc.err.len = NGX_MAX_CONF_ERRSTR;
-        rc.err.data = errstr;
-
-        pr->pattern.regex = ngx_http_regex_compile(cf, &rc);
-        if (pr->pattern.regex == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        pr->handler = ngx_http_proxy_rewrite_regex_handler;
-
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "using regex \"%V\" requires PCRE library",
-                           &value[1]);
-
-        return NGX_CONF_ERROR;
-#endif
     } else {
 
         ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
@@ -3445,6 +3432,43 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_rewrite_regex(ngx_conf_t *cf, ngx_http_proxy_rewrite_t *pr,
+    ngx_str_t *regex, ngx_uint_t caseless)
+{
+#if (NGX_PCRE)
+    u_char               errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_regex_compile_t  rc;
+
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+
+    rc.pattern = *regex;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
+
+    if (caseless) {
+        rc.options = NGX_REGEX_CASELESS;
+    }
+
+    pr->pattern.regex = ngx_http_regex_compile(cf, &rc);
+    if (pr->pattern.regex == NULL) {
+        return NGX_ERROR;
+    }
+
+    pr->handler = ngx_http_proxy_rewrite_regex_handler;
+
+    return NGX_OK;
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "using regex \"%V\" requires PCRE library", regex);
+    return NGX_ERROR;
+
+#endif
 }
 
 
