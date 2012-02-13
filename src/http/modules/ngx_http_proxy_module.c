@@ -10,20 +10,20 @@
 #include <ngx_http.h>
 
 
-typedef struct ngx_http_proxy_redirect_s  ngx_http_proxy_redirect_t;
+typedef struct ngx_http_proxy_rewrite_s  ngx_http_proxy_rewrite_t;
 
-typedef ngx_int_t (*ngx_http_proxy_redirect_pt)(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, ngx_http_proxy_redirect_t *pr);
+typedef ngx_int_t (*ngx_http_proxy_rewrite_pt)(ngx_http_request_t *r,
+    ngx_table_elt_t *h, size_t prefix, ngx_http_proxy_rewrite_t *pr);
 
-struct ngx_http_proxy_redirect_s {
-    ngx_http_proxy_redirect_pt     handler;
+struct ngx_http_proxy_rewrite_s {
+    ngx_http_proxy_rewrite_pt      handler;
 
     union {
         ngx_http_complex_value_t   complex;
 #if (NGX_PCRE)
         ngx_http_regex_t          *regex;
 #endif
-    } redirect;
+    } pattern;
 
     ngx_http_complex_value_t       replacement;
 };
@@ -2274,8 +2274,8 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
 {
     ngx_int_t                   rc;
     ngx_uint_t                  i;
+    ngx_http_proxy_rewrite_t   *pr;
     ngx_http_proxy_loc_conf_t  *plcf;
-    ngx_http_proxy_redirect_t  *pr;
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
@@ -2298,20 +2298,20 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_redirect_complex(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, ngx_http_proxy_redirect_t *pr)
+ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
+    ngx_table_elt_t *h, size_t prefix, ngx_http_proxy_rewrite_t *pr)
 {
     size_t      len;
     u_char     *data, *p;
-    ngx_str_t   redirect, replacement;
+    ngx_str_t   pattern, replacement;
 
-    if (ngx_http_complex_value(r, &pr->redirect.complex, &redirect) != NGX_OK) {
+    if (ngx_http_complex_value(r, &pr->pattern.complex, &pattern) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    if (redirect.len > h->value.len - prefix
-        || ngx_rstrncmp(h->value.data + prefix, redirect.data,
-                        redirect.len) != 0)
+    if (pattern.len > h->value.len - prefix
+        || ngx_rstrncmp(h->value.data + prefix, pattern.data,
+                        pattern.len) != 0)
     {
         return NGX_DECLINED;
     }
@@ -2320,7 +2320,7 @@ ngx_http_proxy_rewrite_redirect_complex(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    len = replacement.len + h->value.len - redirect.len;
+    len = replacement.len + h->value.len - pattern.len;
 
     data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
@@ -2333,8 +2333,8 @@ ngx_http_proxy_rewrite_redirect_complex(ngx_http_request_t *r,
         p = ngx_copy(p, replacement.data, replacement.len);
     }
 
-    ngx_memcpy(p, h->value.data + prefix + redirect.len,
-               h->value.len - redirect.len - prefix);
+    ngx_memcpy(p, h->value.data + prefix + pattern.len,
+               h->value.len - pattern.len - prefix);
 
     h->value.len = len;
     h->value.data = data;
@@ -2346,17 +2346,17 @@ ngx_http_proxy_rewrite_redirect_complex(ngx_http_request_t *r,
 #if (NGX_PCRE)
 
 static ngx_int_t
-ngx_http_proxy_rewrite_redirect_regex(ngx_http_request_t *r, ngx_table_elt_t *h,
-    size_t prefix, ngx_http_proxy_redirect_t *pr)
+ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_table_elt_t *h,
+    size_t prefix, ngx_http_proxy_rewrite_t *pr)
 {
     size_t      len;
     u_char     *data;
-    ngx_str_t   redirect, replacement;
+    ngx_str_t   pattern, replacement;
 
-    redirect.len = h->value.len - prefix;
-    redirect.data = h->value.data + prefix;
+    pattern.len = h->value.len - prefix;
+    pattern.data = h->value.data + prefix;
 
-    if (ngx_http_regex_exec(r, pr->redirect.regex, &redirect) != NGX_OK) {
+    if (ngx_http_regex_exec(r, pr->pattern.regex, &pattern) != NGX_OK) {
         return NGX_DECLINED;
     }
 
@@ -2507,7 +2507,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     size_t                      size;
     ngx_hash_init_t             hash;
     ngx_http_core_loc_conf_t   *clcf;
-    ngx_http_proxy_redirect_t  *pr;
+    ngx_http_proxy_rewrite_t   *pr;
     ngx_http_script_compile_t   sc;
 
     if (conf->upstream.store != 0) {
@@ -2760,7 +2760,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         if (conf->redirects == NULL && conf->url.data) {
 
             conf->redirects = ngx_array_create(cf->pool, 1,
-                                            sizeof(ngx_http_proxy_redirect_t));
+                                             sizeof(ngx_http_proxy_rewrite_t));
             if (conf->redirects == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -2770,27 +2770,27 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                 return NGX_CONF_ERROR;
             }
 
-            ngx_memzero(&pr->redirect.complex,
+            ngx_memzero(&pr->pattern.complex,
                         sizeof(ngx_http_complex_value_t));
 
             ngx_memzero(&pr->replacement, sizeof(ngx_http_complex_value_t));
 
-            pr->handler = ngx_http_proxy_rewrite_redirect_complex;
+            pr->handler = ngx_http_proxy_rewrite_complex_handler;
 
             if (conf->vars.uri.len) {
-                pr->redirect.complex.value = conf->url;
+                pr->pattern.complex.value = conf->url;
                 pr->replacement.value = conf->location;
 
             } else {
-                pr->redirect.complex.value.len = conf->url.len
-                                                 + sizeof("/") - 1;
+                pr->pattern.complex.value.len = conf->url.len
+                                                + sizeof("/") - 1;
 
-                p = ngx_pnalloc(cf->pool, pr->redirect.complex.value.len);
+                p = ngx_pnalloc(cf->pool, pr->pattern.complex.value.len);
                 if (p == NULL) {
                     return NGX_CONF_ERROR;
                 }
 
-                pr->redirect.complex.value.data = p;
+                pr->pattern.complex.value.data = p;
 
                 p = ngx_cpymem(p, conf->url.data, conf->url.len);
                 *p = '/';
@@ -3285,7 +3285,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u_char                            *p;
     ngx_str_t                         *value;
-    ngx_http_proxy_redirect_t         *pr;
+    ngx_http_proxy_rewrite_t          *pr;
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->redirect == 0) {
@@ -3320,7 +3320,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (plcf->redirects == NULL) {
         plcf->redirects = ngx_array_create(cf->pool, 1,
-                                           sizeof(ngx_http_proxy_redirect_t));
+                                           sizeof(ngx_http_proxy_rewrite_t));
         if (plcf->redirects == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -3346,25 +3346,25 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        pr->handler = ngx_http_proxy_rewrite_redirect_complex;
+        pr->handler = ngx_http_proxy_rewrite_complex_handler;
 
-        ngx_memzero(&pr->redirect.complex, sizeof(ngx_http_complex_value_t));
+        ngx_memzero(&pr->pattern.complex, sizeof(ngx_http_complex_value_t));
 
         ngx_memzero(&pr->replacement, sizeof(ngx_http_complex_value_t));
 
         if (plcf->vars.uri.len) {
-            pr->redirect.complex.value = plcf->url;
+            pr->pattern.complex.value = plcf->url;
             pr->replacement.value = plcf->location;
 
         } else {
-            pr->redirect.complex.value.len = plcf->url.len + sizeof("/") - 1;
+            pr->pattern.complex.value.len = plcf->url.len + sizeof("/") - 1;
 
-            p = ngx_pnalloc(cf->pool, pr->redirect.complex.value.len);
+            p = ngx_pnalloc(cf->pool, pr->pattern.complex.value.len);
             if (p == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            pr->redirect.complex.value.data = p;
+            pr->pattern.complex.value.data = p;
 
             p = ngx_cpymem(p, plcf->url.data, plcf->url.len);
             *p = '/';
@@ -3396,12 +3396,12 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         rc.err.len = NGX_MAX_CONF_ERRSTR;
         rc.err.data = errstr;
 
-        pr->redirect.regex = ngx_http_regex_compile(cf, &rc);
-        if (pr->redirect.regex == NULL) {
+        pr->pattern.regex = ngx_http_regex_compile(cf, &rc);
+        if (pr->pattern.regex == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        pr->handler = ngx_http_proxy_rewrite_redirect_regex;
+        pr->handler = ngx_http_proxy_rewrite_regex_handler;
 
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3416,13 +3416,13 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         ccv.cf = cf;
         ccv.value = &value[1];
-        ccv.complex_value = &pr->redirect.complex;
+        ccv.complex_value = &pr->pattern.complex;
 
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
 
-        pr->handler = ngx_http_proxy_rewrite_redirect_complex;
+        pr->handler = ngx_http_proxy_rewrite_complex_handler;
     }
 
 
