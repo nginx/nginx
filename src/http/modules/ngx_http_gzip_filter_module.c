@@ -759,6 +759,7 @@ static ngx_int_t
 ngx_http_gzip_filter_deflate(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 {
     int                    rc;
+    ngx_buf_t             *b;
     ngx_chain_t           *cl;
     ngx_http_gzip_conf_t  *conf;
 
@@ -770,7 +771,7 @@ ngx_http_gzip_filter_deflate(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 
     rc = deflate(&ctx->zstream, ctx->flush);
 
-    if (rc != Z_OK && rc != Z_STREAM_END) {
+    if (rc != Z_OK && rc != Z_STREAM_END && rc != Z_BUF_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       "deflate() failed: %d, %d", ctx->flush, rc);
         return NGX_ERROR;
@@ -819,8 +820,6 @@ ngx_http_gzip_filter_deflate(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 
     if (ctx->flush == Z_SYNC_FLUSH) {
 
-        ctx->zstream.avail_out = 0;
-        ctx->out_buf->flush = 1;
         ctx->flush = Z_NO_FLUSH;
 
         cl = ngx_alloc_chain_link(r->pool);
@@ -828,7 +827,22 @@ ngx_http_gzip_filter_deflate(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
             return NGX_ERROR;
         }
 
-        cl->buf = ctx->out_buf;
+        b = ctx->out_buf;
+
+        if (ngx_buf_size(b) == 0) {
+
+            b = ngx_calloc_buf(ctx->request->pool);
+            if (b == NULL) {
+                return NGX_ERROR;
+            }
+
+        } else {
+            ctx->zstream.avail_out = 0;
+        }
+
+        b->flush = 1;
+
+        cl->buf = b;
         cl->next = NULL;
         *ctx->last_out = cl;
         ctx->last_out = &cl->next;
