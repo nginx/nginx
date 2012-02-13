@@ -1295,10 +1295,6 @@ ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "invalid value";
     }
 
-    if (*msp == (ngx_msec_t) NGX_PARSE_LARGE_TIME) {
-        return "value must be less than 597 hours";
-    }
-
     if (cmd->post) {
         post = cmd->post;
         return post->post_handler(cf, post, msp);
@@ -1326,12 +1322,8 @@ ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     *sp = ngx_parse_time(&value[1], 1);
-    if (*sp == NGX_ERROR) {
+    if (*sp == (time_t) NGX_ERROR) {
         return "invalid value";
-    }
-
-    if (*sp == NGX_PARSE_LARGE_TIME) {
-        return "value must be less than 68 years";
     }
 
     if (cmd->post) {

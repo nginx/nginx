@@ -160,7 +160,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 
             r->valid = ngx_parse_time(&s, 1);
 
-            if (r->valid == NGX_ERROR) {
+            if (r->valid == (time_t) NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid parameter: %V", &names[i]);
                 return NULL;

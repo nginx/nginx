@@ -774,12 +774,8 @@ ngx_http_userid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ucf->expires = ngx_parse_time(&value[1], 1);
-    if (ucf->expires == NGX_ERROR) {
+    if (ucf->expires == (time_t) NGX_ERROR) {
         return "invalid value";
-    }
-
-    if (ucf->expires == NGX_PARSE_LARGE_TIME) {
-        return "value must be less than 68 years";
     }
 
     return NGX_CONF_OK;

@@ -1597,7 +1597,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                  inactive;
     ssize_t                 size;
     ngx_str_t               s, name, *value;
-    ngx_int_t               loader_files, loader_sleep, loader_threshold;
+    ngx_int_t               loader_files;
+    ngx_msec_t              loader_sleep, loader_threshold;
     ngx_uint_t              i, n;
     ngx_http_file_cache_t  *cache;
 
@@ -1704,7 +1705,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             s.data = value[i].data + 9;
 
             inactive = ngx_parse_time(&s, 1);
-            if (inactive < 0) {
+            if (inactive == (time_t) NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid inactive value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
@@ -1746,7 +1747,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             s.data = value[i].data + 13;
 
             loader_sleep = ngx_parse_time(&s, 0);
-            if (loader_sleep < 0) {
+            if (loader_sleep == (ngx_msec_t) NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid loader_sleep value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
@@ -1761,7 +1762,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             s.data = value[i].data + 17;
 
             loader_threshold = ngx_parse_time(&s, 0);
-            if (loader_threshold < 0) {
+            if (loader_threshold == (ngx_msec_t) NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid loader_threshold value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
@@ -1788,8 +1789,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cache->path->conf_file = cf->conf_file->file.name.data;
     cache->path->line = cf->conf_file->line;
     cache->loader_files = loader_files;
-    cache->loader_sleep = (ngx_msec_t) loader_sleep;
-    cache->loader_threshold = (ngx_msec_t) loader_threshold;
+    cache->loader_sleep = loader_sleep;
+    cache->loader_threshold = loader_threshold;
 
     if (ngx_add_path(cf, &cache->path) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -1843,7 +1844,7 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     n = cf->args->nelts - 1;
 
     valid = ngx_parse_time(&value[n], 1);
-    if (valid < 0) {
+    if (valid == (time_t) NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid time value \"%V\"", &value[n]);
         return NGX_CONF_ERROR;

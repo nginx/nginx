@@ -530,7 +530,7 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     hcf->expires_time = ngx_parse_time(&value[n], 1);
 
-    if (hcf->expires_time == NGX_ERROR) {
+    if (hcf->expires_time == (time_t) NGX_ERROR) {
         return "invalid value";
     }
 
@@ -538,10 +538,6 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         && hcf->expires_time > 24 * 60 * 60)
     {
         return "daily time value must be less than 24 hours";
-    }
-
-    if (hcf->expires_time == NGX_PARSE_LARGE_TIME) {
-        return "value must be less than 68 years";
     }
 
     if (minus) {

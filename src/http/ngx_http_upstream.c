@@ -4268,7 +4268,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             fail_timeout = ngx_parse_time(&s, 1);
 
-            if (fail_timeout == NGX_ERROR) {
+            if (fail_timeout == (time_t) NGX_ERROR) {
                 goto invalid;
             }
 

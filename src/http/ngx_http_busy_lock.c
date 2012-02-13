@@ -274,7 +274,7 @@ char *ngx_http_set_busy_lock_slot(ngx_conf_t *cf, ngx_command_t *cmd,
             line.data = value[i].data + 2;
 
             bl->timeout = ngx_parse_time(&line, 1);
-            if (bl->timeout == NGX_ERROR) {
+            if (bl->timeout == (time_t) NGX_ERROR) {
                 invalid = 1;
                 break;
             }
