@@ -440,6 +440,9 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
     of.min_uses = clcf->open_file_cache_min_uses;
     of.errors = clcf->open_file_cache_errors;
     of.events = clcf->open_file_cache_events;
+#if (NGX_HAVE_OPENAT)
+    of.disable_symlinks = clcf->disable_symlinks;
+#endif
 
     if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
         != NGX_OK)
@@ -458,6 +461,10 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
             break;
 
         case NGX_EACCES:
+#if (NGX_HAVE_OPENAT)
+        case NGX_EMLINK:
+        case NGX_ELOOP:
+#endif
 
             level = NGX_LOG_ERR;
             rc = NGX_HTTP_FORBIDDEN;

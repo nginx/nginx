@@ -209,6 +209,9 @@ ngx_http_index_handler(ngx_http_request_t *r)
         of.test_only = 1;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
+#if (NGX_HAVE_OPENAT)
+        of.disable_symlinks = clcf->disable_symlinks;
+#endif
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
@@ -219,6 +222,14 @@ ngx_http_index_handler(ngx_http_request_t *r)
             if (of.err == 0) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
+
+#if (NGX_HAVE_OPENAT)
+            if (of.err == NGX_EMLINK
+                || of.err == NGX_ELOOP)
+            {
+                return NGX_HTTP_FORBIDDEN;
+            }
+#endif
 
             if (of.err == NGX_ENOTDIR
                 || of.err == NGX_ENAMETOOLONG
@@ -296,11 +307,22 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
     of.test_only = 1;
     of.valid = clcf->open_file_cache_valid;
     of.errors = clcf->open_file_cache_errors;
+#if (NGX_HAVE_OPENAT)
+    of.disable_symlinks = clcf->disable_symlinks;
+#endif
 
     if (ngx_open_cached_file(clcf->open_file_cache, &dir, &of, r->pool)
         != NGX_OK)
     {
         if (of.err) {
+
+#if (NGX_HAVE_OPENAT)
+            if (of.err == NGX_EMLINK
+                || of.err == NGX_ELOOP)
+            {
+                return NGX_HTTP_FORBIDDEN;
+            }
+#endif
 
             if (of.err == NGX_ENOENT) {
                 *last = c;
