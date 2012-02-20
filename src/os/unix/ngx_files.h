@@ -340,6 +340,8 @@ size_t ngx_fs_bsize(u_char *name);
 
 #define ngx_file_at_info_n       "fstatat()"
 
+#define NGX_AT_FDCWD             (ngx_fd_t) AT_FDCWD
+
 #endif
 
 

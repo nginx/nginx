@@ -582,7 +582,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
     p = name->data;
     end = p + name->len;
 
-    at_fd = AT_FDCWD;
+    at_fd = NGX_AT_FDCWD;
     at_name = *name;
 
     if (p[0] == '/') {
@@ -632,7 +632,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
             goto failed;
         }
 
-        if (at_fd != AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
+        if (at_fd != NGX_AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                           ngx_close_file_n " \"%V\" failed", &at_name);
         }
@@ -642,7 +642,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
         at_name.len = cp - at_name.data;
     }
 
-    if (p == end && at_fd != AT_FDCWD) {
+    if (p == end && at_fd != NGX_AT_FDCWD) {
 
         /*
          * If pathname ends with a trailing slash, check if last path
@@ -690,7 +690,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
 failed:
 
-    if (at_fd != AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
+    if (at_fd != NGX_AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
                       ngx_close_file_n " \"%V\" failed", &at_name);
     }
