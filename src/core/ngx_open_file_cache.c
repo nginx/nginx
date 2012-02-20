@@ -590,10 +590,10 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
                                 NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
                                 NGX_FILE_OPEN, 0);
 
-        if (at_fd == NGX_FILE_ERROR) {
+        if (at_fd == NGX_INVALID_FILE) {
             of->err = ngx_errno;
             of->failed = ngx_openat_file_n;
-            return NGX_FILE_ERROR;
+            return NGX_INVALID_FILE;
         }
 
         at_name.len = 1;
@@ -634,7 +634,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
         if (at_fd != AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          ngx_close_file_n " \"%V\" failed", at_name);
+                          ngx_close_file_n " \"%V\" failed", &at_name);
         }
 
         p = cp + 1;
@@ -692,7 +692,7 @@ failed:
 
     if (at_fd != AT_FDCWD && ngx_close_file(at_fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      ngx_close_file_n " \"%V\" failed", at_name);
+                      ngx_close_file_n " \"%V\" failed", &at_name);
     }
 
     return fd;
