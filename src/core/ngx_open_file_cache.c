@@ -678,7 +678,9 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
         goto failed;
     }
 
-    if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER) {
+    if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER
+        && !(create & (NGX_FILE_CREATE_OR_OPEN|NGX_FILE_TRUNCATE)))
+    {
         fd = ngx_openat_file_owner(at_fd, p, mode, create, access, log);
 
     } else {
