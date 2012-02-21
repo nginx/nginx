@@ -504,8 +504,8 @@ ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
 
     fd = ngx_openat_file(at_fd, name, mode, create, access);
 
-    if (fd == NGX_FILE_ERROR) {
-        return NGX_FILE_ERROR;
+    if (fd == NGX_INVALID_FILE) {
+        return NGX_INVALID_FILE;
     }
 
     if (ngx_file_at_info(at_fd, name, &atfi, AT_SYMLINK_NOFOLLOW)
@@ -582,13 +582,12 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
     p = name->data;
     end = p + name->len;
 
-    at_fd = NGX_AT_FDCWD;
     at_name = *name;
 
-    if (p[0] == '/') {
-        at_fd = ngx_openat_file(at_fd, "/",
-                                NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
-                                NGX_FILE_OPEN, 0);
+    if (*p == '/') {
+        at_fd = ngx_open_file("/",
+                              NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                              NGX_FILE_OPEN, 0);
 
         if (at_fd == NGX_INVALID_FILE) {
             of->err = ngx_errno;
@@ -598,6 +597,9 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
         at_name.len = 1;
         p++;
+
+    } else {
+        at_fd = NGX_AT_FDCWD;
     }
 
     for ( ;; ) {
@@ -642,7 +644,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
         at_name.len = cp - at_name.data;
     }
 
-    if (p == end && at_fd != NGX_AT_FDCWD) {
+    if (p == end) {
 
         /*
          * If pathname ends with a trailing slash, check if last path
