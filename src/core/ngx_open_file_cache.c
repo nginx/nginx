@@ -565,7 +565,6 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
     u_char           *p, *cp, *end;
     ngx_fd_t          at_fd;
     ngx_str_t         at_name;
-    ngx_file_info_t   fi;
 
     if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_OFF) {
         fd = ngx_open_file(name->data, mode, create, access);
@@ -586,7 +585,7 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
     if (*p == '/') {
         at_fd = ngx_open_file("/",
-                              NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                              NGX_FILE_SEARCH|NGX_FILE_NONBLOCK,
                               NGX_FILE_OPEN, 0);
 
         if (at_fd == NGX_INVALID_FILE) {
@@ -617,12 +616,12 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
         if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER) {
             fd = ngx_openat_file_owner(at_fd, p,
-                                       NGX_FILE_RDONLY|NGX_FILE_NONBLOCK,
+                                       NGX_FILE_SEARCH|NGX_FILE_NONBLOCK,
                                        NGX_FILE_OPEN, 0, log);
 
         } else {
             fd = ngx_openat_file(at_fd, p,
-                           NGX_FILE_RDONLY|NGX_FILE_NONBLOCK|NGX_FILE_NOFOLLOW,
+                           NGX_FILE_SEARCH|NGX_FILE_NONBLOCK|NGX_FILE_NOFOLLOW,
                            NGX_FILE_OPEN, 0);
         }
 
@@ -647,35 +646,18 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
     if (p == end) {
 
         /*
-         * If pathname ends with a trailing slash, check if last path
-         * component is a directory; if not, fail with ENOTDIR as per
-         * POSIX.
+         * If pathname ends with a trailing slash, assume the last path
+         * component is a directory and reopen it with requested flags;
+         * if not, fail with ENOTDIR as per POSIX.
          *
-         * We use separate check instead of O_DIRECTORY in the loop above,
-         * as O_DIRECTORY doesn't work on FreeBSD 8.
-         *
-         * Note this returns already opened file descriptor, with different
-         * mode/create/access.  This is believed to be safe as we don't
-         * use this codepath to create directories.
+         * We cannot rely on O_DIRECTORY in the loop above to check
+         * that the last path component is a directory because
+         * O_DIRECTORY doesn't work on FreeBSD 8.  Fortunately, by
+         * reopening a directory, we don't depend on it at all.
          */
 
-        if (ngx_fd_info(at_fd, &fi) == NGX_FILE_ERROR) {
-            of->err = ngx_errno;
-            of->failed = ngx_fd_info_n;
-            fd = NGX_INVALID_FILE;
-
-            goto failed;
-        }
-
-        if (ngx_is_dir(&fi)) {
-            return at_fd;
-        }
-
-        of->err = ENOTDIR;
-        of->failed = ngx_openat_file_n;
-        fd = NGX_INVALID_FILE;
-
-        goto failed;
+        fd = ngx_openat_file(at_fd, ".", mode, create, access);
+        goto done;
     }
 
     if (of->disable_symlinks == NGX_DISABLE_SYMLINKS_NOTOWNER
@@ -686,6 +668,8 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
     } else {
         fd = ngx_openat_file(at_fd, p, mode|NGX_FILE_NOFOLLOW, create, access);
     }
+
+done:
 
     if (fd == NGX_INVALID_FILE) {
         of->err = ngx_errno;

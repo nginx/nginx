@@ -78,7 +78,24 @@ typedef struct {
 
 #if (NGX_HAVE_OPENAT)
 #define NGX_FILE_NOFOLLOW        O_NOFOLLOW
+
+#if defined(O_DIRECTORY)
+#define NGX_FILE_DIRECTORY       O_DIRECTORY
+#else
+#define NGX_FILE_DIRECTORY       0
 #endif
+
+#if defined(O_SEARCH)
+#define NGX_FILE_SEARCH          O_SEARCH|NGX_FILE_DIRECTORY
+
+#elif defined(O_EXEC)
+#define NGX_FILE_SEARCH          O_EXEC|NGX_FILE_DIRECTORY
+
+#else
+#define NGX_FILE_SEARCH          O_RDONLY|NGX_FILE_DIRECTORY
+#endif
+
+#endif /* NGX_HAVE_OPENAT */
 
 #define NGX_FILE_DEFAULT_ACCESS  0644
 #define NGX_FILE_OWNER_ACCESS    0600
