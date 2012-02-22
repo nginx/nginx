@@ -294,16 +294,16 @@ static ngx_str_t ngx_http_error_pages[] = {
 
     ngx_null_string,                     /* 201, 204 */
 
-#define NGX_HTTP_LAST_LEVEL_200  202
-#define NGX_HTTP_LEVEL_200       (NGX_HTTP_LAST_LEVEL_200 - 201)
+#define NGX_HTTP_LAST_2XX  202
+#define NGX_HTTP_OFF_3XX   (NGX_HTTP_LAST_2XX - 201)
 
     /* ngx_null_string, */               /* 300 */
     ngx_string(ngx_http_error_301_page),
     ngx_string(ngx_http_error_302_page),
     ngx_string(ngx_http_error_303_page),
 
-#define NGX_HTTP_LAST_LEVEL_300  304
-#define NGX_HTTP_LEVEL_300       (NGX_HTTP_LAST_LEVEL_300 - 301)
+#define NGX_HTTP_LAST_3XX  304
+#define NGX_HTTP_OFF_4XX   (NGX_HTTP_LAST_3XX - 301 + NGX_HTTP_OFF_3XX)
 
     ngx_string(ngx_http_error_400_page),
     ngx_string(ngx_http_error_401_page),
@@ -323,8 +323,8 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_415_page),
     ngx_string(ngx_http_error_416_page),
 
-#define NGX_HTTP_LAST_LEVEL_400  417
-#define NGX_HTTP_LEVEL_400       (NGX_HTTP_LAST_LEVEL_400 - 400)
+#define NGX_HTTP_LAST_4XX  417
+#define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string(ngx_http_error_494_page), /* 494, request header too large */
     ngx_string(ngx_http_error_495_page), /* 495, https certificate error */
@@ -342,7 +342,7 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_null_string,                     /* 506 */
     ngx_string(ngx_http_error_507_page)
 
-#define NGX_HTTP_LAST_LEVEL_500  508
+#define NGX_HTTP_LAST_5XX  508
 
 };
 
@@ -428,25 +428,22 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         err = 0;
 
     } else if (error >= NGX_HTTP_MOVED_PERMANENTLY
-               && error < NGX_HTTP_LAST_LEVEL_300)
+               && error < NGX_HTTP_LAST_3XX)
     {
         /* 3XX */
-        err = error - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_LEVEL_200;
+        err = error - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_OFF_3XX;
 
     } else if (error >= NGX_HTTP_BAD_REQUEST
-               && error < NGX_HTTP_LAST_LEVEL_400)
+               && error < NGX_HTTP_LAST_4XX)
     {
         /* 4XX */
-        err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_LEVEL_200
-                                           + NGX_HTTP_LEVEL_300;
+        err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_OFF_4XX;
 
     } else if (error >= NGX_HTTP_NGINX_CODES
-               && error < NGX_HTTP_LAST_LEVEL_500)
+               && error < NGX_HTTP_LAST_5XX)
     {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_NGINX_CODES + NGX_HTTP_LEVEL_200
-                                           + NGX_HTTP_LEVEL_300
-                                           + NGX_HTTP_LEVEL_400;
+        err = error - NGX_HTTP_NGINX_CODES + NGX_HTTP_OFF_5XX;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:
             case NGX_HTTPS_CERT_ERROR:
@@ -595,7 +592,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
 
     return ngx_http_send_special_response(r, clcf, r->err_status
                                                    - NGX_HTTP_MOVED_PERMANENTLY
-                                                   + NGX_HTTP_LEVEL_200);
+                                                   + NGX_HTTP_OFF_3XX);
 }
 
 
@@ -626,7 +623,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
         if (clcf->msie_padding
             && (r->headers_in.msie || r->headers_in.chrome)
             && r->http_version >= NGX_HTTP_VERSION_10
-            && err >= NGX_HTTP_LEVEL_300)
+            && err >= NGX_HTTP_OFF_4XX)
         {
             r->headers_out.content_length_n +=
                                          sizeof(ngx_http_msie_padding) - 1;
