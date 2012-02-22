@@ -401,13 +401,14 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
         if (cl->buf->last - cl->buf->pos >= p->length) {
 
+            p->free_raw_bufs = cl->next;
+
             /* STUB */ cl->buf->num = p->num++;
 
             if (p->input_filter(p, cl->buf) == NGX_ERROR) {
                  return NGX_ABORT;
             }
 
-            p->free_raw_bufs = cl->next;
             ngx_free_chain(p->pool, cl);
         }
     }
