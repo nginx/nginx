@@ -209,9 +209,10 @@ ngx_http_index_handler(ngx_http_request_t *r)
         of.test_only = 1;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
-#if (NGX_HAVE_OPENAT)
-        of.disable_symlinks = clcf->disable_symlinks;
-#endif
+
+        if (ngx_http_set_disable_symlinks(r, clcf, &path, &of) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
@@ -307,9 +308,10 @@ ngx_http_index_test_dir(ngx_http_request_t *r, ngx_http_core_loc_conf_t *clcf,
     of.test_only = 1;
     of.valid = clcf->open_file_cache_valid;
     of.errors = clcf->open_file_cache_errors;
-#if (NGX_HAVE_OPENAT)
-    of.disable_symlinks = clcf->disable_symlinks;
-#endif
+
+    if (ngx_http_set_disable_symlinks(r, clcf, &dir, &of) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     if (ngx_open_cached_file(clcf->open_file_cache, &dir, &of, r->pool)
         != NGX_OK)

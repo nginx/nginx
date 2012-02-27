@@ -1320,9 +1320,11 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         of.test_only = 1;
         of.errors = clcf->open_file_cache_errors;
         of.events = clcf->open_file_cache_events;
-#if (NGX_HAVE_OPENAT)
-        of.disable_symlinks = clcf->disable_symlinks;
-#endif
+
+        if (ngx_http_set_disable_symlinks(r, clcf, &path, &of) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_OK;
+        }
 
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
@@ -2642,6 +2644,18 @@ ngx_http_cleanup_add(ngx_http_request_t *r, size_t size)
                    "http cleanup add: %p", cln);
 
     return cln;
+}
+
+
+ngx_int_t
+ngx_http_set_disable_symlinks(ngx_http_request_t *r,
+    ngx_http_core_loc_conf_t *clcf, ngx_str_t *path, ngx_open_file_info_t *of)
+{
+#if (NGX_HAVE_OPENAT)
+    of->disable_symlinks = clcf->disable_symlinks;
+#endif
+
+    return NGX_OK;
 }
 
 

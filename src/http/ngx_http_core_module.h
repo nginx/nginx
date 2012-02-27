@@ -509,6 +509,10 @@ ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 
 
+ngx_int_t ngx_http_set_disable_symlinks(ngx_http_request_t *r,
+    ngx_http_core_loc_conf_t *clcf, ngx_str_t *path, ngx_open_file_info_t *of);
+
+
 extern ngx_module_t  ngx_http_core_module;
 
 extern ngx_uint_t ngx_http_max_module;

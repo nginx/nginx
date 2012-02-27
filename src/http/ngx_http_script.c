@@ -1505,9 +1505,12 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     of.test_only = 1;
     of.errors = clcf->open_file_cache_errors;
     of.events = clcf->open_file_cache_events;
-#if (NGX_HAVE_OPENAT)
-    of.disable_symlinks = clcf->disable_symlinks;
-#endif
+
+    if (ngx_http_set_disable_symlinks(r, clcf, &path, &of) != NGX_OK) {
+        e->ip = ngx_http_script_exit;
+        e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return;
+    }
 
     if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
         != NGX_OK)
