@@ -21,7 +21,9 @@ our @EXPORT = qw(
     HTTP_MOVED_PERMANENTLY
     HTTP_MOVED_TEMPORARILY
     HTTP_REDIRECT
+    HTTP_SEE_OTHER
     HTTP_NOT_MODIFIED
+    HTTP_TEMPORARY_REDIRECT
 
     HTTP_BAD_REQUEST
     HTTP_UNAUTHORIZED
@@ -67,7 +69,9 @@ use constant HTTP_PARTIAL_CONTENT           => 206;
 use constant HTTP_MOVED_PERMANENTLY         => 301;
 use constant HTTP_MOVED_TEMPORARILY         => 302;
 use constant HTTP_REDIRECT                  => 302;
+use constant HTTP_SEE_OTHER                 => 303;
 use constant HTTP_NOT_MODIFIED              => 304;
+use constant HTTP_TEMPORARY_REDIRECT        => 307;
 
 use constant HTTP_BAD_REQUEST               => 400;
 use constant HTTP_UNAUTHORIZED              => 401;

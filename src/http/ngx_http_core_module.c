@@ -1824,8 +1824,11 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (status >= NGX_HTTP_MOVED_PERMANENTLY && status <= NGX_HTTP_SEE_OTHER) {
-
+    if (status == NGX_HTTP_MOVED_PERMANENTLY
+        || status == NGX_HTTP_MOVED_TEMPORARILY
+        || status == NGX_HTTP_SEE_OTHER
+        || status == NGX_HTTP_TEMPORARY_REDIRECT)
+    {
         ngx_http_clear_location(r);
 
         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
