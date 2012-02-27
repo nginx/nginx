@@ -33,6 +33,7 @@ typedef struct {
     ngx_uint_t               min_uses;
 
 #if (NGX_HAVE_OPENAT)
+    size_t                   disable_symlinks_from;
     unsigned                 disable_symlinks:2;
 #endif
 
@@ -69,6 +70,7 @@ struct ngx_cached_open_file_s {
     uint32_t                 uses;
 
 #if (NGX_HAVE_OPENAT)
+    size_t                   disable_symlinks_from;
     unsigned                 disable_symlinks:2;
 #endif
 

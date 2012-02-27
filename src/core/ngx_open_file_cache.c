@@ -229,6 +229,7 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
                 && now - file->created < of->valid
 #if (NGX_HAVE_OPENAT)
                 && of->disable_symlinks == file->disable_symlinks
+                && of->disable_symlinks_from == file->disable_symlinks_from
 #endif
             ))
         {
@@ -395,6 +396,7 @@ update:
     file->err = of->err;
 #if (NGX_HAVE_OPENAT)
     file->disable_symlinks = of->disable_symlinks;
+    file->disable_symlinks_from = of->disable_symlinks_from;
 #endif
 
     if (of->err == 0) {
@@ -583,7 +585,28 @@ ngx_open_file_wrapper(ngx_str_t *name, ngx_open_file_info_t *of,
 
     at_name = *name;
 
-    if (*p == '/') {
+    if (of->disable_symlinks_from) {
+
+        cp = p + of->disable_symlinks_from;
+
+        *cp = '\0';
+
+        at_fd = ngx_open_file(p, NGX_FILE_SEARCH|NGX_FILE_NONBLOCK,
+                              NGX_FILE_OPEN, 0);
+
+        *cp = '/';
+
+        if (at_fd == NGX_INVALID_FILE) {
+            of->err = ngx_errno;
+            of->failed = ngx_open_file_n;
+            return NGX_INVALID_FILE;
+        }
+
+        at_name.len = of->disable_symlinks_from;
+        p = cp + 1;
+
+    } else if (*p == '/') {
+
         at_fd = ngx_open_file("/",
                               NGX_FILE_SEARCH|NGX_FILE_NONBLOCK,
                               NGX_FILE_OPEN, 0);
