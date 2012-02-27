@@ -799,21 +799,16 @@ ngx_http_file_cache_lookup(ngx_http_file_cache_t *cache, u_char *key)
 
         /* node_key == node->key */
 
-        do {
-            fcn = (ngx_http_file_cache_node_t *) node;
+        fcn = (ngx_http_file_cache_node_t *) node;
 
-            rc = ngx_memcmp(&key[sizeof(ngx_rbtree_key_t)], fcn->key,
-                            NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t));
+        rc = ngx_memcmp(&key[sizeof(ngx_rbtree_key_t)], fcn->key,
+                        NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t));
 
-            if (rc == 0) {
-                return fcn;
-            }
+        if (rc == 0) {
+            return fcn;
+        }
 
-            node = (rc < 0) ? node->left : node->right;
-
-        } while (node != sentinel && node_key == node->key);
-
-        break;
+        node = (rc < 0) ? node->left : node->right;
     }
 
     /* not found */

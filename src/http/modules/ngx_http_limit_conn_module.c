@@ -325,20 +325,15 @@ ngx_http_limit_conn_lookup(ngx_rbtree_t *rbtree, ngx_http_variable_value_t *vv,
 
         /* hash == node->key */
 
-        do {
-            lcn = (ngx_http_limit_conn_node_t *) &node->color;
+        lcn = (ngx_http_limit_conn_node_t *) &node->color;
 
-            rc = ngx_memn2cmp(vv->data, lcn->data,
-                              (size_t) vv->len, (size_t) lcn->len);
-            if (rc == 0) {
-                return node;
-            }
+        rc = ngx_memn2cmp(vv->data, lcn->data,
+                          (size_t) vv->len, (size_t) lcn->len);
+        if (rc == 0) {
+            return node;
+        }
 
-            node = (rc < 0) ? node->left : node->right;
-
-        } while (node != sentinel && hash == node->key);
-
-        break;
+        node = (rc < 0) ? node->left : node->right;
     }
 
     return NULL;
