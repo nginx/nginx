@@ -76,6 +76,10 @@ static ngx_uint_t ngx_http_gzip_quantity(u_char *p, u_char *last);
 static char *ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #endif
+#if (NGX_HAVE_OPENAT)
+static char *ngx_http_disable_symlinks(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+#endif
 
 static char *ngx_http_core_lowat_check(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data);
@@ -183,18 +187,6 @@ static ngx_conf_bitmask_t  ngx_http_gzip_proxied_mask[] = {
 static ngx_str_t  ngx_http_gzip_no_cache = ngx_string("no-cache");
 static ngx_str_t  ngx_http_gzip_no_store = ngx_string("no-store");
 static ngx_str_t  ngx_http_gzip_private = ngx_string("private");
-
-#endif
-
-
-#if (NGX_HAVE_OPENAT)
-
-static ngx_conf_enum_t  ngx_http_core_disable_symlinks[] = {
-    { ngx_string("off"), NGX_DISABLE_SYMLINKS_OFF },
-    { ngx_string("if_not_owner"), NGX_DISABLE_SYMLINKS_NOTOWNER },
-    { ngx_string("on"), NGX_DISABLE_SYMLINKS_ON },
-    { ngx_null_string, 0 }
-};
 
 #endif
 
@@ -779,11 +771,11 @@ static ngx_command_t  ngx_http_core_commands[] = {
 #if (NGX_HAVE_OPENAT)
 
     { ngx_string("disable_symlinks"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
+      ngx_http_disable_symlinks,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, disable_symlinks),
-      &ngx_http_core_disable_symlinks },
+      0,
+      NULL },
 
 #endif
 
@@ -2652,7 +2644,45 @@ ngx_http_set_disable_symlinks(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t *clcf, ngx_str_t *path, ngx_open_file_info_t *of)
 {
 #if (NGX_HAVE_OPENAT)
+    u_char     *p;
+    ngx_str_t   from;
+
     of->disable_symlinks = clcf->disable_symlinks;
+
+    if (clcf->disable_symlinks_from == NULL) {
+        return NGX_OK;
+    }
+
+    if (ngx_http_complex_value(r, clcf->disable_symlinks_from, &from)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (from.len == 0
+        || from.len > path->len
+        || ngx_memcmp(path->data, from.data, from.len) != 0)
+    {
+        return NGX_OK;
+    }
+
+    if (from.len == path->len) {
+        of->disable_symlinks = NGX_DISABLE_SYMLINKS_OFF;
+        return NGX_OK;
+    }
+
+    p = path->data + from.len;
+
+    if (*p == '/') {
+        of->disable_symlinks_from = from.len;
+        return NGX_OK;
+    }
+
+    p--;
+
+    if (*p == '/') {
+        of->disable_symlinks_from = from.len - 1;
+    }
 #endif
 
     return NGX_OK;
@@ -3389,6 +3419,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
 
 #if (NGX_HAVE_OPENAT)
     clcf->disable_symlinks = NGX_CONF_UNSET_UINT;
+    clcf->disable_symlinks_from = NGX_CONF_UNSET_PTR;
 #endif
 
     return clcf;
@@ -3673,6 +3704,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HAVE_OPENAT)
     ngx_conf_merge_uint_value(conf->disable_symlinks, prev->disable_symlinks,
                               NGX_DISABLE_SYMLINKS_OFF);
+    ngx_conf_merge_ptr_value(conf->disable_symlinks_from,
+                             prev->disable_symlinks_from, NULL);
 #endif
 
     return NGX_CONF_OK;
@@ -4803,6 +4836,100 @@ ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 
 #endif
+}
+
+#endif
+
+
+#if (NGX_HAVE_OPENAT)
+
+static char *
+ngx_http_disable_symlinks(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_uint_t                         i;
+    ngx_http_compile_complex_value_t   ccv;
+
+    if (clcf->disable_symlinks != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "off") == 0) {
+            clcf->disable_symlinks = NGX_DISABLE_SYMLINKS_OFF;
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "if_not_owner") == 0) {
+            clcf->disable_symlinks = NGX_DISABLE_SYMLINKS_NOTOWNER;
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "on") == 0) {
+            clcf->disable_symlinks = NGX_DISABLE_SYMLINKS_ON;
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "from=", 5) == 0) {
+            value[i].len -= 5;
+            value[i].data += 5;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            ccv.cf = cf;
+            ccv.value = &value[i];
+            ccv.complex_value = ngx_palloc(cf->pool,
+                                           sizeof(ngx_http_complex_value_t));
+            if (ccv.complex_value == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+            clcf->disable_symlinks_from = ccv.complex_value;
+
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[i]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (clcf->disable_symlinks == NGX_CONF_UNSET_UINT) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"%V\" must have \"off\", \"on\" "
+                           "or \"if_not_owner\" parameter",
+                           &cmd->name);
+        return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts == 2) {
+        clcf->disable_symlinks_from = NULL;
+        return NGX_CONF_OK;
+    }
+
+    if (clcf->disable_symlinks_from == NGX_CONF_UNSET_PTR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "duplicate parameters \"%V %V\"",
+                           &value[1], &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (clcf->disable_symlinks == NGX_DISABLE_SYMLINKS_OFF) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"from=\" cannot be used with \"off\" parameter");
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
 }
 
 #endif

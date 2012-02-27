@@ -406,6 +406,7 @@ struct ngx_http_core_loc_conf_s {
 
 #if (NGX_HAVE_OPENAT)
     ngx_uint_t    disable_symlinks;        /* disable_symlinks */
+    ngx_http_complex_value_t  *disable_symlinks_from;
 #endif
 
     ngx_array_t  *error_pages;             /* error_page */
