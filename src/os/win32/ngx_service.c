@@ -20,7 +20,7 @@ ngx_int_t ngx_service(ngx_log_t *log)
 {
     /* primary thread */
 
-    /* StartServiceCtrlDispatcher() shouxpdl be called within 30 seconds */
+    /* StartServiceCtrlDispatcher() should be called within 30 seconds */
 
     if (StartServiceCtrlDispatcher(st) == 0) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,

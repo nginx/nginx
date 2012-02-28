@@ -287,7 +287,7 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
 
     days = n / 86400;
 
-    /* Jaunary 1, 1970 was Thursday */
+    /* January 1, 1970 was Thursday */
 
     wday = (4 + days) % 7;
 

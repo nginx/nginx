@@ -83,7 +83,7 @@ struct ngx_event_s {
 #endif
 
 #if (NGX_WIN32)
-    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was succesfull */
+    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was successful */
     unsigned         accept_context_updated:1;
 #endif
 

@@ -2293,7 +2293,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (ngx_event_flags & NGX_USE_AIO_EVENT) {
-        /* the posted aio operation may currupt a shadow buffer */
+        /* the posted aio operation may corrupt a shadow buffer */
         p->single_buf = 1;
     }
 

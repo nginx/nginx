@@ -173,7 +173,7 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         if (file && header.nelts == 0) {
 
-            /* create the tailer iovec and coalesce the neighbouring bufs */
+            /* create the trailer iovec and coalesce the neighbouring bufs */
 
             prev = NULL;
             iov = NULL;
