@@ -9,6 +9,119 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.16" date="29.02.2012">
+
+<change type="change">
+<para lang="ru">
+ограничение на количество одновременных подзапросов поднято до 200.
+</para>
+<para lang="en">
+the simultaneous subrequest limit has been raised to 200.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр from в директиве disable_symlinks.
+</para>
+<para lang="en">
+the "from" parameter of the "disable_symlinks" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы return и error_page теперь могут использоваться для возврата
+перенаправлений с кодом 307.
+</para>
+<para lang="en">
+the "return" and "error_page" directives can be used to return 307
+redirections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива resolver
+и на глобальном уровне не была задана директива error_log.<br/>
+Спасибо Роману Арутюняну.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "resolver" directive was used
+and there was no "error_log" directive specified at global level.<br/>
+Thanks to Roman Arutyunyan.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовались директивы "proxy_http_version 1.1" или
+"fastcgi_keep_conn on".
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "proxy_http_version 1.1" or "fastcgi_keep_conn on" directives
+were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечек памяти.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+memory leaks.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве disable_symlinks.
+</para>
+<para lang="en">
+in the "disable_symlinks" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании ZFS размер кэша на диске мог считаться некорректно;
+ошибка появилась в 1.0.1.
+</para>
+<para lang="en">
+on ZFS filesystem disk cache size might be calculated incorrectly;
+the bug had appeared in 1.0.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался компилятором icc 12.1.
+</para>
+<para lang="en">
+nginx could not be built by the icc 12.1 compiler.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc на Solaris;
+ошибка появилась в 1.1.15.
+</para>
+<para lang="en">
+nginx could not be built by gcc on Solaris;
+the bug had appeared in 1.1.15.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.15" date="15.02.2012">
 
 <change type="feature">
