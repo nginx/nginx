@@ -2496,6 +2496,8 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
+    plcf->redirect = 1;
+
     value = cf->args->elts;
 
     if (cf->args->nelts == 2) {
