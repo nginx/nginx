@@ -64,14 +64,14 @@ if [ "$CC" = bcc32 ]; then
     echo " + using Borland C++ compiler"
 
 else
-if `$CC -v 2>&1 | grep 'gcc version' >/dev/null 2>&1`; then
-    NGX_CC_NAME=gcc
-    echo " + using GNU C compiler"
-
-else
 if `$CC -V 2>&1 | grep '^Intel(R) C' >/dev/null 2>&1`; then
     NGX_CC_NAME=icc
     echo " + using Intel C++ compiler"
+
+else
+if `$CC -v 2>&1 | grep 'gcc version' >/dev/null 2>&1`; then
+    NGX_CC_NAME=gcc
+    echo " + using GNU C compiler"
 
 else
 if `$CC -V 2>&1 | grep 'Sun C' >/dev/null 2>&1`; then
