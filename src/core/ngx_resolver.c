@@ -152,11 +152,6 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_addr_t *addr)
         uc->sockaddr = addr->sockaddr;
         uc->socklen = addr->socklen;
         uc->server = addr->name;
-
-        uc->log = cf->cycle->new_log;
-        uc->log.handler = ngx_resolver_log_error;
-        uc->log.data = uc;
-        uc->log.action = "resolving";
     }
 
     return r;
@@ -830,6 +825,12 @@ ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
     uc = r->udp_connection;
 
     if (uc->connection == NULL) {
+
+        uc->log = *r->log;
+        uc->log.handler = ngx_resolver_log_error;
+        uc->log.data = uc;
+        uc->log.action = "resolving";
+
         if (ngx_udp_connect(uc) != NGX_OK) {
             return NGX_ERROR;
         }
