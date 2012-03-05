@@ -2616,7 +2616,6 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 static void
 ngx_http_upstream_process_request(ngx_http_request_t *r)
 {
-    ngx_uint_t            del;
     ngx_temp_file_t      *tf;
     ngx_event_pipe_t     *p;
     ngx_http_upstream_t  *u;
@@ -2628,30 +2627,16 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
         if (u->store) {
 
-            del = p->upstream_error;
-
-            tf = u->pipe->temp_file;
-
             if (p->upstream_eof || p->upstream_done) {
+
+                tf = u->pipe->temp_file;
 
                 if (u->headers_in.status_n == NGX_HTTP_OK
                     && (u->headers_in.content_length_n == -1
                         || (u->headers_in.content_length_n == tf->offset)))
                 {
                     ngx_http_upstream_store(r, u);
-
-                } else {
-                    del = 1;
-                }
-            }
-
-            if (del && tf->file.fd != NGX_INVALID_FILE) {
-
-                if (ngx_delete_file(tf->file.name.data) == NGX_FILE_ERROR) {
-
-                    ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                                  ngx_delete_file_n " \"%s\" failed",
-                                  u->pipe->temp_file->file.name.data);
+                    u->store = 0;
                 }
             }
         }
@@ -2992,6 +2977,18 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream temp fd: %d",
                        u->pipe->temp_file->file.fd);
+    }
+
+    if (u->store && u->pipe && u->pipe->temp_file
+        && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
+    {
+        if (ngx_delete_file(u->pipe->temp_file->file.name.data)
+            == NGX_FILE_ERROR)
+        {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                          ngx_delete_file_n " \"%s\" failed",
+                          u->pipe->temp_file->file.name.data);
+        }
     }
 
 #if (NGX_HTTP_CACHE)
