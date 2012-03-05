@@ -837,20 +837,15 @@ ngx_open_file_lookup(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
         /* hash == node->key */
 
-        do {
-            file = (ngx_cached_open_file_t *) node;
+        file = (ngx_cached_open_file_t *) node;
 
-            rc = ngx_strcmp(name->data, file->name);
+        rc = ngx_strcmp(name->data, file->name);
 
-            if (rc == 0) {
-                return file;
-            }
+        if (rc == 0) {
+            return file;
+        }
 
-            node = (rc < 0) ? node->left : node->right;
-
-        } while (node != sentinel && hash == node->key);
-
-        break;
+        node = (rc < 0) ? node->left : node->right;
     }
 
     return NULL;

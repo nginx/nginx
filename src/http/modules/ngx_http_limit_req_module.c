@@ -372,47 +372,42 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_conf_t *lrcf, ngx_uint_t hash,
 
         /* hash == node->key */
 
-        do {
-            lr = (ngx_http_limit_req_node_t *) &node->color;
+        lr = (ngx_http_limit_req_node_t *) &node->color;
 
-            rc = ngx_memn2cmp(data, lr->data, len, (size_t) lr->len);
+        rc = ngx_memn2cmp(data, lr->data, len, (size_t) lr->len);
 
-            if (rc == 0) {
-                ngx_queue_remove(&lr->queue);
-                ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
+        if (rc == 0) {
+            ngx_queue_remove(&lr->queue);
+            ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
-                tp = ngx_timeofday();
+            tp = ngx_timeofday();
 
-                now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
-                ms = (ngx_msec_int_t) (now - lr->last);
+            now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
+            ms = (ngx_msec_int_t) (now - lr->last);
 
-                excess = lr->excess - ctx->rate * ngx_abs(ms) / 1000 + 1000;
+            excess = lr->excess - ctx->rate * ngx_abs(ms) / 1000 + 1000;
 
-                if (excess < 0) {
-                    excess = 0;
-                }
-
-                *ep = excess;
-
-                if ((ngx_uint_t) excess > lrcf->burst) {
-                    return NGX_BUSY;
-                }
-
-                lr->excess = excess;
-                lr->last = now;
-
-                if (excess) {
-                    return NGX_AGAIN;
-                }
-
-                return NGX_OK;
+            if (excess < 0) {
+                excess = 0;
             }
 
-            node = (rc < 0) ? node->left : node->right;
+            *ep = excess;
 
-        } while (node != sentinel && hash == node->key);
+            if ((ngx_uint_t) excess > lrcf->burst) {
+                return NGX_BUSY;
+            }
 
-        break;
+            lr->excess = excess;
+            lr->last = now;
+
+            if (excess) {
+                return NGX_AGAIN;
+            }
+
+            return NGX_OK;
+        }
+
+        node = (rc < 0) ? node->left : node->right;
     }
 
     *ep = 0;
