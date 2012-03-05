@@ -707,3 +707,13 @@ ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="struct dirent  dir; dir.d_type = DT_REG"
 . auto/feature
+
+
+ngx_feature="sysconf(_SC_NPROCESSORS_ONLN)"
+ngx_feature_name="NGX_HAVE_SC_NPROCESSORS_ONLN"
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="sysconf(_SC_NPROCESSORS_ONLN)"
+. auto/feature
