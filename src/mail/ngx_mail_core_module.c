@@ -26,7 +26,7 @@ static char *ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static ngx_conf_deprecated_t  ngx_conf_deprecated_so_keepalive = {
-    ngx_conf_deprecated, "so_keepalive", 
+    ngx_conf_deprecated, "so_keepalive",
     "so_keepalive\" parameter of the \"listen"
 };
 

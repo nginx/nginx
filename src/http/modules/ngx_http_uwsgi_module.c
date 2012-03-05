@@ -1441,7 +1441,8 @@ ngx_http_uwsgi_merge_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
 
         if (prev->headers_hash.buckets
 #if (NGX_HTTP_CACHE)
-            && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
+            && ((conf->upstream.cache == NULL)
+                == (prev->upstream.cache == NULL))
 #endif
            )
         {

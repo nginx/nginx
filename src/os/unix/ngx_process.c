@@ -544,7 +544,7 @@ ngx_process_get_status(void)
 
 static void
 ngx_unlock_mutexes(ngx_pid_t pid)
-{ 
+{
     ngx_uint_t        i;
     ngx_shm_zone_t   *shm_zone;
     ngx_list_part_t  *part;

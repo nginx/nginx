@@ -3970,7 +3970,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     }
                 }
 
-                if (lsopt.tcp_keepidle == 0 && lsopt.tcp_keepintvl == 0 
+                if (lsopt.tcp_keepidle == 0 && lsopt.tcp_keepintvl == 0
                     && lsopt.tcp_keepcnt == 0)
                 {
                     goto invalid_so_keepalive;
@@ -4629,7 +4629,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (max == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"open_file_cache\" must have the \"max\" parameter");
+                        "\"open_file_cache\" must have the \"max\" parameter");
         return NGX_CONF_ERROR;
     }
 

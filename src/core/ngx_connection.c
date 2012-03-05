@@ -514,7 +514,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             }
         }
 
-#if (NGX_HAVE_KEEPALIVE_TUNABLE) 
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
 
         if (ls[i].keepidle) {
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_KEEPIDLE,
