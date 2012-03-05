@@ -242,7 +242,7 @@ ngx_http_parse_time(u_char *value, size_t len)
         year -= 1;
     }
 
-    /* Gauss' formula for Grigorian days since March 1, 1 BC */
+    /* Gauss' formula for Gregorian days since March 1, 1 BC */
 
     time = (uint64_t) (
             /* days in years including leap years since March 1, 1 BC */

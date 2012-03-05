@@ -946,7 +946,7 @@ ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
         return NGX_OK;
     }
 
-    /* the first free buf is partialy filled, thus add the free buf after it */
+    /* the first free buf is partially filled, thus add the free buf after it */
 
     cl->next = p->free_raw_bufs->next;
     p->free_raw_bufs->next = cl;

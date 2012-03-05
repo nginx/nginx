@@ -842,7 +842,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
         case NGX_ERROR:
             c->read->error = 1;
 
-            /* fall thruogh */
+            /* fall through */
 
         case NGX_AGAIN:
             return c->ssl->last;

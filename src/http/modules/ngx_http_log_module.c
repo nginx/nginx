@@ -161,8 +161,8 @@ static ngx_http_module_t  ngx_http_log_module_ctx = {
     NULL,                                  /* create server configuration */
     NULL,                                  /* merge server configuration */
 
-    ngx_http_log_create_loc_conf,          /* create location configration */
-    ngx_http_log_merge_loc_conf            /* merge location configration */
+    ngx_http_log_create_loc_conf,          /* create location configuration */
+    ngx_http_log_merge_loc_conf            /* merge location configuration */
 };
 
 
@@ -375,10 +375,10 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
 
     if (!r->root_tested) {
 
-        /* test root directory existance */
+        /* test root directory existence */
 
         if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
-            /* simulate successfull logging */
+            /* simulate successful logging */
             return len;
         }
 
@@ -399,14 +399,14 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
             != NGX_OK)
         {
             if (of.err == 0) {
-                /* simulate successfull logging */
+                /* simulate successful logging */
                 return len;
             }
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, of.err,
                           "testing \"%s\" existence failed", path.data);
 
-            /* simulate successfull logging */
+            /* simulate successful logging */
             return len;
         }
 
@@ -414,7 +414,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
             ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ENOTDIR,
                           "testing \"%s\" existence failed", path.data);
 
-            /* simulate successfull logging */
+            /* simulate successful logging */
             return len;
         }
     }
@@ -423,7 +423,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
                             script->values->elts)
         == NULL)
     {
-        /* simulate successfull logging */
+        /* simulate successful logging */
         return len;
     }
 
@@ -447,7 +447,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       "%s \"%s\" failed", of.failed, log.data);
-        /* simulate successfull logging */
+        /* simulate successful logging */
         return len;
     }
 

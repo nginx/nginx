@@ -67,7 +67,7 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
 #if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
 
-    /* crypt() is a time consuming funtion, so we only try to lock */
+    /* crypt() is a time consuming function, so we only try to lock */
 
     if (ngx_mutex_trylock(ngx_crypt_mutex) != NGX_OK) {
         return NGX_AGAIN;
