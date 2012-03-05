@@ -35,7 +35,7 @@ the "from" parameter of the "disable_symlinks" directive.
 перенаправлений с кодом 307.
 </para>
 <para lang="en">
-the "return" and "error_page" directives can be used to return 307
+the "return" and "error_page" directives can now be used to return 307
 redirections.
 </para>
 </change>
@@ -172,7 +172,7 @@ if the --with-openssl option was used.
 не ограничивалось.
 </para>
 <para lang="en">
-internal redirects to named locations were not limited.
+the number of internal redirects to named locations was not limited.
 </para>
 </change>
 
@@ -194,7 +194,7 @@ in the ngx_http_gzip_filter_module.
 </para>
 <para lang="en">
 temporary files might be not removed
-if the "proxy_store" directive were used with SSI includes.
+if the "proxy_store" directive was used with SSI includes.
 </para>
 </change>
 
@@ -270,7 +270,7 @@ in the OpenSSL library initialization.
 директивы proxy_redirect могли наследоваться некорректно.
 </para>
 <para lang="en">
-the "proxy_redirect" directives might not be correctly inherited.
+the "proxy_redirect" directives might be inherited incorrectly.
 </para>
 </change>
 
