@@ -152,6 +152,12 @@ events {
 	debug_connection 127.0.0.1;
 }
 .Ed
+.Sh ENVIRONMENT
+The
+.Ev NGINX
+environment variable is used internally by
+.Nm
+and should not be set directly by the user.
 .Sh FILES
 .Bl -tag -width indent
 .It Pa %%PID_PATH%%
@@ -189,7 +195,7 @@ started in 2002, with the first public release on October 4, 2004.
 .An -nosplit
 .An Igor Sysoev Aq igor@sysoev.ru .
 .Pp
-This manual page was written by
+This manual page was originally written by
 .An Sergey A. Osokin Aq osa@FreeBSD.org.ru
 as a result of compiling many
 .Nm
