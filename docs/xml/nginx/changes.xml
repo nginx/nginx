@@ -9,6 +9,24 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.14" date="15.03.2012">
+
+<change type="security">
+<para lang="ru">
+содержимое ранее освобождённой памяти могло быть отправлено клиенту,
+если бэкенд возвращал специально созданный ответ.<br/>
+Спасибо Matthew Daley.
+</para>
+<para lang="en">
+content of previously freed memory might be sent to a client
+if backend returned specially crafted response.<br/>
+Thanks to Matthew Daley.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.13" date="05.03.2012">
 
 <change type="feature">
