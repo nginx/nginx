@@ -4,8 +4,8 @@
 
 
 echo $ngx_n "checking for uintptr_t ...$ngx_c"
-echo >> $NGX_ERR
-echo "checking for uintptr_t" >> $NGX_ERR
+echo >> $NGX_AUTOCONF_ERR
+echo "checking for uintptr_t" >> $NGX_AUTOCONF_ERR
 
 found=no
 
@@ -15,13 +15,17 @@ cat << END > $NGX_AUTOTEST.c
 $NGX_INTTYPES_H
 
 int main() {
-    uintptr_t i = 0;
+    uintptr_t i;
+    i = 0;
     return 0;
 }
 
 END
 
-eval "$CC -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
+          -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT"
+
+eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
     echo " uintptr_t found"

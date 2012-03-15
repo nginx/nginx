@@ -237,7 +237,7 @@ ngx_feature_incs="$NGX_INCLUDE_SYS_PARAM_H
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="struct statfs  fs;
-                  statfs(NULL, &fs);"
+                  statfs(\".\", &fs);"
 . auto/feature
 
 
@@ -249,7 +249,7 @@ ngx_feature_incs="#include <sys/types.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="struct statvfs  fs;
-                  statvfs(NULL, &fs);"
+                  statvfs(\".\", &fs);"
 . auto/feature
 
 
@@ -481,7 +481,7 @@ fi
 ngx_feature="setproctitle()"
 ngx_feature_name="NGX_HAVE_SETPROCTITLE"
 ngx_feature_run=no
-ngx_feature_incs=
+ngx_feature_incs="#include <stdlib.h>"
 ngx_feature_path=
 ngx_feature_libs=$NGX_SETPROCTITLE_LIB
 ngx_feature_test="setproctitle(\"test\");"
@@ -585,7 +585,8 @@ ngx_feature_test="void *p; int n; n = posix_memalign(&p, 4096, 4096)"
 ngx_feature="memalign()"
 ngx_feature_name="NGX_HAVE_MEMALIGN"
 ngx_feature_run=no
-ngx_feature_incs="#include <stdlib.h>"
+ngx_feature_incs="#include <stdlib.h>
+                  #include <malloc.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="void *p; p = memalign(4096, 4096)"
