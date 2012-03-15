@@ -74,7 +74,7 @@ ngx_module_t  ngx_http_copy_filter_module = {
 };
 
 
-static ngx_http_output_body_filter_pt    ngx_http_next_filter;
+static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
 static ngx_int_t
@@ -115,7 +115,8 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->bufs = conf->bufs;
         ctx->tag = (ngx_buf_tag_t) &ngx_http_copy_filter_module;
 
-        ctx->output_filter = (ngx_output_chain_filter_pt) ngx_http_next_filter;
+        ctx->output_filter = (ngx_output_chain_filter_pt)
+                                  ngx_http_next_body_filter;
         ctx->filter_ctx = r;
 
 #if (NGX_HAVE_FILE_AIO)
@@ -292,7 +293,7 @@ ngx_http_copy_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t
 ngx_http_copy_filter_init(ngx_conf_t *cf)
 {
-    ngx_http_next_filter = ngx_http_top_body_filter;
+    ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_copy_filter;
 
     return NGX_OK;
