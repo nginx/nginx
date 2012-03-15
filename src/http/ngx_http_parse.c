@@ -874,6 +874,10 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
+                if (ch == '\0') {
+                    return NGX_HTTP_PARSE_INVALID_HEADER;
+                }
+
                 r->invalid_header = 1;
 
                 break;
@@ -936,6 +940,10 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
+            if (ch == '\0') {
+                return NGX_HTTP_PARSE_INVALID_HEADER;
+            }
+
             r->invalid_header = 1;
 
             break;
@@ -954,6 +962,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_start = p;
                 r->header_end = p;
                 goto done;
+            case '\0':
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             default:
                 r->header_start = p;
                 state = sw_value;
@@ -975,6 +985,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             case LF:
                 r->header_end = p;
                 goto done;
+            case '\0':
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
             break;
 
@@ -988,6 +1000,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto done;
+            case '\0':
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             default:
                 state = sw_value;
                 break;
