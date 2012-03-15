@@ -384,7 +384,7 @@ ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name)
     v->flags = 0;
     v->index = cmcf->variables.nelts - 1;
 
-    return cmcf->variables.nelts - 1;
+    return v->index;
 }
 
 
