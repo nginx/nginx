@@ -4647,7 +4647,7 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
-    ngx_str_t  *value;
+    ngx_str_t  *value, name;
 
     if (clcf->error_log) {
         return "is duplicate";
@@ -4655,7 +4655,14 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    clcf->error_log = ngx_log_create(cf->cycle, &value[1]);
+    if (ngx_strcmp(value[1].data, "stderr") == 0) {
+        ngx_str_null(&name);
+
+    } else {
+        name = value[1];
+    }
+
+    clcf->error_log = ngx_log_create(cf->cycle, &name);
     if (clcf->error_log == NULL) {
         return NGX_CONF_ERROR;
     }
