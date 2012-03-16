@@ -26,7 +26,7 @@ $NGX_INCLUDE_INTTYPES_H
 $NGX_INCLUDE_AUTO_CONFIG_H
 
 int main() {
-    printf("%zu", sizeof($ngx_type));
+    printf("%d", (int) sizeof($ngx_type));
     return 0;
 }
 
