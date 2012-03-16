@@ -343,6 +343,19 @@ ngx_feature_test="setsockopt(0, IPPROTO_TCP, TCP_KEEPIDLE, NULL, 0);
 . auto/feature
 
 
+ngx_feature="TCP_INFO"
+ngx_feature_name="NGX_HAVE_TCP_INFO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>
+                  #include <netinet/tcp.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="socklen_t optlen = sizeof(struct tcp_info);
+                  getsockopt(0, IPPROTO_TCP, TCP_INFO, NULL, &optlen)"
+. auto/feature
+
+
 ngx_feature="accept4()"
 ngx_feature_name="NGX_HAVE_ACCEPT4"
 ngx_feature_run=no

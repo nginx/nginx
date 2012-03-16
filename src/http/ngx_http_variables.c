@@ -34,6 +34,10 @@ static ngx_int_t ngx_http_variable_cookie(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_argument(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+#if (NGX_HAVE_TCP_INFO)
+static ngx_int_t ngx_http_variable_tcpinfo(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+#endif
 
 static ngx_int_t ngx_http_variable_host(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -258,6 +262,20 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("pid"), NULL, ngx_http_variable_pid,
       0, 0, 0 },
+
+#if (NGX_HAVE_TCP_INFO)
+    { ngx_string("tcpinfo_rtt"), NULL, ngx_http_variable_tcpinfo,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("tcpinfo_rttvar"), NULL, ngx_http_variable_tcpinfo,
+      1, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("tcpinfo_snd_cwnd"), NULL, ngx_http_variable_tcpinfo,
+      2, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("tcpinfo_rcv_space"), NULL, ngx_http_variable_tcpinfo,
+      3, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+#endif
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -882,6 +900,61 @@ ngx_http_variable_argument(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     return NGX_OK;
 }
+
+
+#if (NGX_HAVE_TCP_INFO)
+
+static ngx_int_t
+ngx_http_variable_tcpinfo(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
+{
+    struct tcp_info  ti;
+    socklen_t        len;
+    uint32_t         value;
+
+    len = sizeof(struct tcp_info);
+    if (getsockopt(r->connection->fd, IPPROTO_TCP, TCP_INFO, &ti, &len) == -1) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    switch (data) {
+    case 0:
+        value = ti.tcpi_rtt;
+        break;
+
+    case 1:
+        value = ti.tcpi_rttvar;
+        break;
+
+    case 2:
+        value = ti.tcpi_snd_cwnd;
+        break;
+
+    case 3:
+        value = ti.tcpi_rcv_space;
+        break;
+
+    /* suppress warning */
+    default:
+        value = 0;
+        break;
+    }
+
+    v->len = ngx_sprintf(v->data, "%uD", value) - v->data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t
