@@ -1153,6 +1153,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
             case '+':
                 r->plus_in_uri = 1;
+                /* fall through */
             default:
                 *u++ = ch;
                 break;

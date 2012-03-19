@@ -3312,6 +3312,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         switch (n) {
         case 0:
             u->cacheable = 0;
+            /* fall through */
+
         case NGX_ERROR:
             return NGX_OK;
 
@@ -4460,6 +4462,8 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     case NGX_DECLINED:
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid address \"%V\"", &value[1]);
+        /* fall through */
+
     default:
         return NGX_CONF_ERROR;
     }
