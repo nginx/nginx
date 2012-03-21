@@ -128,8 +128,9 @@ ngx_feature_run=no
 ngx_feature_incs="#include <sched.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="long mask = 0;
-                  sched_setaffinity(0, 32, (cpu_set_t *) &mask)"
+ngx_feature_test="cpu_set_t mask;
+                  CPU_ZERO(&mask);
+                  sched_setaffinity(0, sizeof(cpu_set_t), &mask)"
 . auto/feature
 
 

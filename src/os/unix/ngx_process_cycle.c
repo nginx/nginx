@@ -62,7 +62,7 @@ ngx_int_t              ngx_threads_n;
 #endif
 
 
-u_long         cpu_affinity;
+uint64_t       cpu_affinity;
 static u_char  master_process[] = "master process";
 
 
@@ -913,22 +913,9 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
         }
     }
 
-#if (NGX_HAVE_SCHED_SETAFFINITY)
-
     if (cpu_affinity) {
-        ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
-                      "sched_setaffinity(0x%08Xl)", cpu_affinity);
-
-        if (sched_setaffinity(0, sizeof(cpu_affinity),
-                              (cpu_set_t *) &cpu_affinity)
-            == -1)
-        {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "sched_setaffinity(0x%08Xl) failed", cpu_affinity);
-        }
+        ngx_setaffinity(cpu_affinity, cycle->log);
     }
-
-#endif
 
 #if (NGX_HAVE_PR_SET_DUMPABLE)
 

@@ -145,6 +145,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_channel.h \
             src/os/unix/ngx_shmem.h \
             src/os/unix/ngx_process.h \
+            src/os/unix/ngx_setaffinity.h \
             src/os/unix/ngx_setproctitle.h \
             src/os/unix/ngx_atomic.h \
             src/os/unix/ngx_gcc_atomic_x86.h \
@@ -179,6 +180,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_shmem.c \
             src/os/unix/ngx_process.c \
             src/os/unix/ngx_daemon.c \
+            src/os/unix/ngx_setaffinity.c \
             src/os/unix/ngx_setproctitle.c \
             src/os/unix/ngx_posix_init.c \
             src/os/unix/ngx_user.c \
