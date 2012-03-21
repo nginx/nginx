@@ -385,6 +385,8 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
             return NGX_ERROR;
         }
 
+        *old = h;
+
     } else {
         h = *old;
 
