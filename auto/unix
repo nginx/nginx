@@ -352,6 +352,11 @@ ngx_feature_incs="#include <sys/socket.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="socklen_t optlen = sizeof(struct tcp_info);
+                  struct tcp_info ti;
+                  ti.tcpi_rtt = 0;
+                  ti.tcpi_rttvar = 0;
+                  ti.tcpi_snd_cwnd = 0;
+                  ti.tcpi_rcv_space = 0;
                   getsockopt(0, IPPROTO_TCP, TCP_INFO, NULL, &optlen)"
 . auto/feature
 
