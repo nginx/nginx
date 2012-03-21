@@ -25,23 +25,25 @@ typedef struct {
 
 struct ngx_http_header_val_s {
     ngx_http_complex_value_t   value;
-    ngx_uint_t                 hash;
     ngx_str_t                  key;
     ngx_http_set_header_pt     handler;
     ngx_uint_t                 offset;
 };
 
 
-#define NGX_HTTP_EXPIRES_OFF       0
-#define NGX_HTTP_EXPIRES_EPOCH     1
-#define NGX_HTTP_EXPIRES_MAX       2
-#define NGX_HTTP_EXPIRES_ACCESS    3
-#define NGX_HTTP_EXPIRES_MODIFIED  4
-#define NGX_HTTP_EXPIRES_DAILY     5
+typedef enum {
+    NGX_HTTP_EXPIRES_OFF,
+    NGX_HTTP_EXPIRES_EPOCH,
+    NGX_HTTP_EXPIRES_MAX,
+    NGX_HTTP_EXPIRES_ACCESS,
+    NGX_HTTP_EXPIRES_MODIFIED,
+    NGX_HTTP_EXPIRES_DAILY,
+    NGX_HTTP_EXPIRES_UNSET
+} ngx_http_expires_t;
 
 
 typedef struct {
-    ngx_uint_t               expires;
+    ngx_http_expires_t       expires;
     time_t                   expires_time;
     ngx_array_t             *headers;
 } ngx_http_headers_conf_t;
@@ -50,6 +52,8 @@ typedef struct {
 static ngx_int_t ngx_http_set_expires(ngx_http_request_t *r,
     ngx_http_headers_conf_t *conf);
 static ngx_int_t ngx_http_add_cache_control(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value);
+static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
@@ -313,7 +317,7 @@ ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
             return NGX_ERROR;
         }
 
-        h->hash = hv->hash;
+        h->hash = 1;
         h->key = hv->key;
         h->value = *value;
     }
@@ -366,16 +370,11 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
 {
     ngx_table_elt_t  *h, **old;
 
-    if (hv->offset) {
-        old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
-
-    } else {
-        old = NULL;
-    }
+    old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
 
     r->headers_out.last_modified_time = -1;
 
-    if (old == NULL || *old == NULL) {
+    if (*old == NULL) {
 
         if (value->len == 0) {
             return NGX_OK;
@@ -395,7 +394,7 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
         }
     }
 
-    h->hash = hv->hash;
+    h->hash = 1;
     h->key = hv->key;
     h->value = *value;
 
@@ -420,7 +419,7 @@ ngx_http_headers_create_conf(ngx_conf_t *cf)
      *     conf->expires_time = 0;
      */
 
-    conf->expires = NGX_CONF_UNSET_UINT;
+    conf->expires = NGX_HTTP_EXPIRES_UNSET;
 
     return conf;
 }
@@ -432,11 +431,11 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_headers_conf_t *prev = parent;
     ngx_http_headers_conf_t *conf = child;
 
-    if (conf->expires == NGX_CONF_UNSET_UINT) {
+    if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
         conf->expires = prev->expires;
         conf->expires_time = prev->expires_time;
 
-        if (conf->expires == NGX_CONF_UNSET_UINT) {
+        if (conf->expires == NGX_HTTP_EXPIRES_UNSET) {
             conf->expires = NGX_HTTP_EXPIRES_OFF;
         }
     }
@@ -467,7 +466,7 @@ ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t   minus, n;
     ngx_str_t   *value;
 
-    if (hcf->expires != NGX_CONF_UNSET_UINT) {
+    if (hcf->expires != NGX_HTTP_EXPIRES_UNSET) {
         return "is duplicate";
     }
 
@@ -576,7 +575,6 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    hv->hash = 1;
     hv->key = value[1];
     hv->handler = ngx_http_add_header;
     hv->offset = 0;
