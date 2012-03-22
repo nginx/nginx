@@ -585,7 +585,7 @@ ngx_http_xslt_params(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
                        "xslt filter param: \"%s\"", string.data);
 
         p = string.data;
-        last = string.data + string.len - 1;
+        last = string.data + string.len;
 
         while (p && *p) {
 
