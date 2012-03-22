@@ -3568,8 +3568,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_bitmask_value(conf->keepalive_disable,
                               prev->keepalive_disable,
                               (NGX_CONF_BITMASK_SET
-                               |NGX_HTTP_KEEPALIVE_DISABLE_MSIE6
-                               |NGX_HTTP_KEEPALIVE_DISABLE_SAFARI));
+                               |NGX_HTTP_KEEPALIVE_DISABLE_MSIE6));
     ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
                               NGX_HTTP_SATISFY_ALL);
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
