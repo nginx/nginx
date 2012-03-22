@@ -1840,7 +1840,7 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
             len++;
 
         } else {
-            if (len == 0) {
+            if (len == 0 || len > 255) {
                 return NGX_DECLINED;
             }
 
@@ -1849,6 +1849,10 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
         }
 
         p--;
+    }
+
+    if (len == 0 || len > 255) {
+        return NGX_DECLINED;
     }
 
     *p = (u_char) len;
