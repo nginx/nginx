@@ -1493,7 +1493,9 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
         } else if (ngx_strstrn(user_agent, "Chrome/", 7 - 1)) {
             r->headers_in.chrome = 1;
 
-        } else if (ngx_strstrn(user_agent, "Safari/", 7 - 1)) {
+        } else if (ngx_strstrn(user_agent, "Safari/", 7 - 1)
+                   && ngx_strstrn(user_agent, "Mac OS X", 8 - 1))
+        {
             r->headers_in.safari = 1;
 
         } else if (ngx_strstrn(user_agent, "Konqueror", 9 - 1)) {
