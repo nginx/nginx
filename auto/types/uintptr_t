@@ -15,9 +15,8 @@ cat << END > $NGX_AUTOTEST.c
 $NGX_INTTYPES_H
 
 int main() {
-    uintptr_t i;
-    i = 0;
-    return 0;
+    uintptr_t i = 0;
+    return (int) i;
 }
 
 END

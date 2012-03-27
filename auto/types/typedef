@@ -28,9 +28,8 @@ do
 $NGX_INCLUDE_INTTYPES_H
 
 int main() {
-    $ngx_try i;
-    i = 0;
-    return 0;
+    $ngx_try i = 0;
+    return (int) i;
 }
 
 END

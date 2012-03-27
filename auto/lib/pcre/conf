@@ -98,7 +98,9 @@ else
         ngx_feature_incs="#include <pcre.h>"
         ngx_feature_path=
         ngx_feature_libs="-lpcre"
-        ngx_feature_test="pcre *re; re = pcre_compile(NULL, 0, NULL, 0, NULL)"
+        ngx_feature_test="pcre *re;
+                          re = pcre_compile(NULL, 0, NULL, 0, NULL);
+                          if (re == NULL) return 1"
         . auto/feature
 
         if [ $ngx_found = no ]; then
