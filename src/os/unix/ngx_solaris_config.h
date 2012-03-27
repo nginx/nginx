@@ -29,6 +29,7 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#include <time.h>
 #include <sys/statvfs.h>        /* statvfs() */
 
 #include <sys/filio.h>          /* FIONBIO */

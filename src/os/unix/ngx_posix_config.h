@@ -45,6 +45,7 @@
 #include <grp.h>
 #include <dirent.h>
 #include <glob.h>
+#include <time.h>
 #if (NGX_HAVE_SYS_PARAM_H)
 #include <sys/param.h>          /* statfs() */
 #endif
