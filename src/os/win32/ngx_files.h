@@ -183,6 +183,7 @@ char *ngx_realpath(u_char *path, u_char *resolved);
 #define ngx_getcwd_n                "GetCurrentDirectory()"
 #define ngx_path_separator(c)       ((c) == '/' || (c) == '\\')
 
+#define NGX_HAVE_MAX_PATH           1
 #define NGX_MAX_PATH                MAX_PATH
 
 #define NGX_DIR_MASK                (u_char *) "/*"

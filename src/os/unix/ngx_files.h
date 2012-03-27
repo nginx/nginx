@@ -200,13 +200,24 @@ void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 #endif
 
 
-#define ngx_realpath(p, r)       realpath((char *) p, (char *) r)
+#define ngx_realpath(p, r)       (u_char *) realpath((char *) p, (char *) r)
 #define ngx_realpath_n           "realpath()"
 #define ngx_getcwd(buf, size)    (getcwd((char *) buf, size) != NULL)
 #define ngx_getcwd_n             "getcwd()"
 #define ngx_path_separator(c)    ((c) == '/')
 
+
+#if defined(PATH_MAX)
+
+#define NGX_HAVE_MAX_PATH        1
 #define NGX_MAX_PATH             PATH_MAX
+
+#else
+
+#define NGX_MAX_PATH             4096
+
+#endif
+
 
 #define NGX_DIR_MASK_LEN         0
 

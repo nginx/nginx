@@ -1273,10 +1273,13 @@ static ngx_int_t
 ngx_http_variable_realpath_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    u_char                    *real;
     size_t                     len;
     ngx_str_t                  path;
     ngx_http_core_loc_conf_t  *clcf;
-    u_char                     real[NGX_MAX_PATH];
+#if (NGX_HAVE_MAX_PATH)
+    u_char                     buffer[NGX_MAX_PATH];
+#endif
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -1298,7 +1301,15 @@ ngx_http_variable_realpath_root(ngx_http_request_t *r,
         }
     }
 
-    if (ngx_realpath(path.data, real) == NULL) {
+#if (NGX_HAVE_MAX_PATH)
+    real = buffer;
+#else
+    real = NULL;
+#endif
+
+    real = ngx_realpath(path.data, real);
+
+    if (real == NULL) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       ngx_realpath_n " \"%s\" failed", path.data);
         return NGX_ERROR;
@@ -1308,6 +1319,9 @@ ngx_http_variable_realpath_root(ngx_http_request_t *r,
 
     v->data = ngx_pnalloc(r->pool, len);
     if (v->data == NULL) {
+#if !(NGX_HAVE_MAX_PATH)
+        ngx_free(real);
+#endif
         return NGX_ERROR;
     }
 
@@ -1317,6 +1331,10 @@ ngx_http_variable_realpath_root(ngx_http_request_t *r,
     v->not_found = 0;
 
     ngx_memcpy(v->data, real, len);
+
+#if !(NGX_HAVE_MAX_PATH)
+    ngx_free(real);
+#endif
 
     return NGX_OK;
 }
