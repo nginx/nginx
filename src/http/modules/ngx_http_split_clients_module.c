@@ -97,7 +97,7 @@ ngx_http_split_clients_variable(ngx_http_request_t *r,
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http split: %uD %uD", hash, part[i].percent);
 
-        if (hash < part[i].percent) {
+        if (hash < part[i].percent || part[i].percent == 0) {
             *v = part[i].value;
             return NGX_OK;
         }
@@ -111,8 +111,9 @@ static char *
 ngx_conf_split_clients_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                                *rv;
+    uint32_t                             sum, last;
     ngx_str_t                           *value, name;
-    ngx_uint_t                           i, sum, last;
+    ngx_uint_t                           i;
     ngx_conf_t                           save;
     ngx_http_variable_t                 *var;
     ngx_http_split_clients_ctx_t        *ctx;
@@ -175,19 +176,15 @@ ngx_conf_split_clients_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 0; i < ctx->parts.nelts; i++) {
         sum = part[i].percent ? sum + part[i].percent : 10000;
         if (sum > 10000) {
-           ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                              "percent sum is more than 100%%");
-           return NGX_CONF_ERROR;
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "percent sum is more than 100%%");
+            return NGX_CONF_ERROR;
         }
 
         if (part[i].percent) {
-            part[i].percent = (uint32_t)
-                                 (last + 0xffffffff / 10000 * part[i].percent);
-        } else {
-            part[i].percent = 0xffffffff;
+            last += part[i].percent * (uint64_t) 0xffffffff / 10000;
+            part[i].percent = last;
         }
-
-        last = part[i].percent;
     }
 
     return rv;
