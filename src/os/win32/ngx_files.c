@@ -426,11 +426,11 @@ ngx_close_file_mapping(ngx_file_mapping_t *fm)
 }
 
 
-char *
+u_char *
 ngx_realpath(u_char *path, u_char *resolved)
 {
     /* STUB */
-    return (char *) path;
+    return path;
 }
 
 
