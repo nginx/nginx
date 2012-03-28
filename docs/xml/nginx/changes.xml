@@ -9,6 +9,89 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.18" date="28.03.2012">
+
+<change type="change">
+<para lang="ru">
+теперь keepalive соединения не запрещены для Safari по умолчанию.
+</para>
+<para lang="en">
+keepalive connections are no longer disabled for Safari by default.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $connection_requests.
+</para>
+<para lang="en">
+the $connection_requests variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $tcpinfo_rtt, $tcpinfo_rttvar, $tcpinfo_snd_cwnd и
+$tcpinfo_rcv_space.
+</para>
+<para lang="en">
+$tcpinfo_rtt, $tcpinfo_rttvar, $tcpinfo_snd_cwnd and
+$tcpinfo_rcv_space variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_cpu_affinity теперь работает на FreeBSD.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive now works on FreeBSD.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы xslt_param и xslt_string_param.<br/>
+Спасибо Samuel Behan.
+</para>
+<para lang="en">
+the "xslt_param" and "xslt_string_param" directives.<br/>
+Thanks to Samuel Behan.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в configure.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in configure tests.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_xslt_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_xslt_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Debian GNU/Hurd.
+</para>
+<para lang="en">
+nginx could not be built on Debian GNU/Hurd.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.17" date="15.03.2012">
 
 <change type="security">
