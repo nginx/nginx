@@ -703,8 +703,8 @@ ngx_feature_incs="#include <sys/socket.h>
                   #include <stdio.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="struct msghdr  msg; msg.msg_control = NULL;
-                  printf(\"%d\", (int) msg.msg_control)"
+ngx_feature_test="struct msghdr  msg;
+                  printf(\"%d\", (int) sizeof(msg.msg_control))"
 . auto/feature
 
 
