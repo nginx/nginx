@@ -16,13 +16,7 @@
 
 
 typedef struct {
-    in_addr_t          mask;
-    in_addr_t          addr;
-} ngx_http_realip_from_t;
-
-
-typedef struct {
-    ngx_array_t       *from;     /* array of ngx_http_realip_from_t */
+    ngx_array_t       *from;     /* array of ngx_in_cidr_t */
     ngx_uint_t         type;
     ngx_uint_t         hash;
     ngx_str_t          header;
@@ -114,9 +108,9 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     ngx_list_part_t             *part;
     ngx_table_elt_t             *header;
     struct sockaddr_in          *sin;
+    ngx_in_cidr_t               *from;
     ngx_connection_t            *c;
     ngx_http_realip_ctx_t       *ctx;
-    ngx_http_realip_from_t      *from;
     ngx_http_realip_loc_conf_t  *rlcf;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_realip_module);
@@ -317,7 +311,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                rc;
     ngx_str_t               *value;
     ngx_cidr_t               cidr;
-    ngx_http_realip_from_t  *from;
+    ngx_in_cidr_t           *from;
 
     value = cf->args->elts;
 
@@ -332,7 +326,7 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (rlcf->from == NULL) {
         rlcf->from = ngx_array_create(cf->pool, 2,
-                                      sizeof(ngx_http_realip_from_t));
+                                      sizeof(ngx_in_cidr_t));
         if (rlcf->from == NULL) {
             return NGX_CONF_ERROR;
         }
