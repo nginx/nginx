@@ -714,7 +714,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 if (ctx->params.nelts > NGX_HTTP_SSI_MAX_PARAMS) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "too many SSI command paramters: \"%V\"",
+                                  "too many SSI command parameters: \"%V\"",
                                   &ctx->command);
                     goto ssi_error;
                 }
