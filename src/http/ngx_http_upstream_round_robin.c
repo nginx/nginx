@@ -49,6 +49,13 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             n += server[i].naddrs;
         }
 
+        if (n == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no servers in upstream \"%V\" in %s:%ui",
+                          &us->host, us->file_name, us->line);
+            return NGX_ERROR;
+        }
+
         peers = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_rr_peers_t)
                               + sizeof(ngx_http_upstream_rr_peer_t) * (n - 1));
         if (peers == NULL) {
