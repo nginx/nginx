@@ -72,7 +72,18 @@ ngx_thread_set_tls(ngx_tls_key_t *key, void *data)
 ngx_mutex_t *
 ngx_mutex_init(ngx_log_t *log, ngx_uint_t flags)
 {
-    return (ngx_mutex_t *) 1;
+    ngx_mutex_t  *m;
+
+    m = ngx_alloc(sizeof(ngx_mutex_t), log);
+    if (m == NULL) {
+        return NULL;
+    }
+
+    m->log = log;
+
+    /* STUB */
+
+    return m;
 }
 
 
