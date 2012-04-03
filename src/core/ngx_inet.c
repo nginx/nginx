@@ -407,6 +407,10 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
+        if (shift > 128) {
+            return NGX_ERROR;
+        }
+
         addr = cidr->u.in6.addr.s6_addr;
         mask = cidr->u.in6.mask.s6_addr;
         rc = NGX_OK;
@@ -428,6 +432,9 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 #endif
 
     default: /* AF_INET */
+        if (shift > 32) {
+            return NGX_ERROR;
+        }
 
         if (shift) {
             cidr->u.in.mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
