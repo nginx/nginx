@@ -15,7 +15,7 @@
  *         r0 = [r1];
  *     }
  *
- * so "r0 == r2" means that the operation was successfull.
+ * so "r0 == r2" means that the operation was successful.
  *
  *
  * The "r" means the general register.

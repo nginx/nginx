@@ -20,7 +20,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 /*
- * we need to include <windows.h> explicity before <winsock2.h> because
+ * we need to include <windows.h> explicitly before <winsock2.h> because
  * the warning 4201 is enabled in <windows.h>
  */
 #include <windows.h>

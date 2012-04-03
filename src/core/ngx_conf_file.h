@@ -14,7 +14,7 @@
 
 
 /*
- *        AAAA  number of agruments
+ *        AAAA  number of arguments
  *      FF      command flags
  *    TT        command type, i.e. HTTP "location" or "server" command
  */

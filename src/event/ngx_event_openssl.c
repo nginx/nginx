@@ -489,7 +489,7 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
     /*
      * Elliptic-Curve Diffie-Hellman parameters are either "named curves"
-     * from RFC 4492 section 5.1.1, or explicitely described curves over
+     * from RFC 4492 section 5.1.1, or explicitly described curves over
      * binary fields. OpenSSL only supports the "named curves", which provide
      * maximum interoperability.
      */

@@ -11,14 +11,14 @@
 /*
  * The threads implementation uses the rfork(RFPROC|RFTHREAD|RFMEM) syscall
  * to create threads.  All threads use the stacks of the same size mmap()ed
- * below the main stack.  Thus the current thread id is determinated via
+ * below the main stack.  Thus the current thread id is determined via
  * the stack pointer value.
  *
  * The mutex implementation uses the ngx_atomic_cmp_set() operation
  * to acquire a mutex and the SysV semaphore to wait on a mutex and to wake up
  * the waiting threads.  The light mutex does not use semaphore, so after
  * spinning in the lock the thread calls sched_yield().  However the light
- * mutecies are intended to be used with the "trylock" operation only.
+ * mutexes are intended to be used with the "trylock" operation only.
  * The SysV semop() is a cheap syscall, particularly if it has little sembuf's
  * and does not use SEM_UNDO.
  *

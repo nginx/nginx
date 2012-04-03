@@ -445,7 +445,7 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     /*
      * when the file descriptor is closed, the epoll automatically deletes
-     * it from its queue, so we do not need to delete explicity the event
+     * it from its queue, so we do not need to delete explicitly the event
      * before the closing the file descriptor
      */
 
@@ -524,7 +524,7 @@ ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 
     /*
      * when the file descriptor is closed the epoll automatically deletes
-     * it from its queue so we do not need to delete explicity the event
+     * it from its queue so we do not need to delete explicitly the event
      * before the closing the file descriptor
      */
 

@@ -808,7 +808,7 @@ failed:
  *     reallocated if ctx->alloc is nonzero
  *
  * ctx->alloc - a size of data structure that is allocated at every level
- *     and is initilialized by ctx->init_handler()
+ *     and is initialized by ctx->init_handler()
  *
  * ctx->log - a log
  *

@@ -1097,7 +1097,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
         /*
          * we use "ch = *p++" inside the cycle, but this operation is safe,
-         * because after the URI there is always at least one charcter:
+         * because after the URI there is always at least one character:
          * the line feed
          */
 

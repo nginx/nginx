@@ -322,7 +322,7 @@ ngx_eventport_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     /*
      * when the file descriptor is closed, the event port automatically
-     * dissociates it from the port, so we do not need to dissociate explicity
+     * dissociates it from the port, so we do not need to dissociate explicitly
      * the event before the closing the file descriptor
      */
 

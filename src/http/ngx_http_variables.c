@@ -112,7 +112,7 @@ static ngx_int_t ngx_http_variable_pid(ngx_http_request_t *r,
 /*
  * the $http_host, $http_user_agent, $http_referer, $http_via,
  * and $http_x_forwarded_for variables may be handled by generic
- * ngx_http_variable_unknown_header_in(), but for perfomance reasons
+ * ngx_http_variable_unknown_header_in(), but for performance reasons
  * they are handled using dedicated entries
  */
 

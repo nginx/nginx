@@ -1417,7 +1417,7 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
 
         /*
          * check whether all name-based servers have the same
-         * configuraiton as a default server for given address:port
+         * configuration as a default server for given address:port
          */
 
         addr = port[p].addrs.elts;

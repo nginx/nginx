@@ -708,7 +708,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                     /*
                      * it seems that Linux-2.6.x OpenVZ sends events
                      * for closed shared listening sockets unless
-                     * the events was explicity deleted
+                     * the events was explicitly deleted
                      */
 
                     ngx_del_event(c->read, NGX_READ_EVENT, 0);

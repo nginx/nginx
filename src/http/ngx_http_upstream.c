@@ -1196,7 +1196,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     {
         /*
          * the r->request_body->buf can be reused for one request only,
-         * the subrequests should allocate their own temporay bufs
+         * the subrequests should allocate their own temporary bufs
          */
 
         u->output.free = ngx_alloc_chain_link(r->pool);

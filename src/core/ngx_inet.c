@@ -459,7 +459,7 @@ ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text, size_t len)
     struct sockaddr_in6  *sin6;
 
     /*
-     * prevent MSVC8 waring:
+     * prevent MSVC8 warning:
      *    potentially uninitialized local variable 'inaddr6' used
      */
     ngx_memzero(inaddr6.s6_addr, sizeof(struct in6_addr));

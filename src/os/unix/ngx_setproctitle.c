@@ -21,7 +21,7 @@
  * from argv[0] for our process title.
  *
  * The Solaris's standard /bin/ps does not show the changed process title.
- * You have to use "/usr/ucb/ps -w" instead.  Besides, the UCB ps dos not
+ * You have to use "/usr/ucb/ps -w" instead.  Besides, the UCB ps does not
  * show a new title if its length less than the origin command line length.
  * To avoid it we append to a new title the origin command line in the
  * parenthesis.
