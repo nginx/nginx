@@ -67,7 +67,7 @@ ngx_event_find_timer(void)
 
     ngx_mutex_unlock(ngx_event_timer_mutex);
 
-    timer = (ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_msec;
+    timer = (ngx_msec_int_t) (node->key - ngx_current_msec);
 
     return (ngx_msec_t) (timer > 0 ? timer : 0);
 }
@@ -95,8 +95,7 @@ ngx_event_expire_timers(void)
 
         /* node->key <= ngx_current_time */
 
-        if ((ngx_msec_int_t) node->key - (ngx_msec_int_t) ngx_current_msec <= 0)
-        {
+        if ((ngx_msec_int_t) (node->key - ngx_current_msec) <= 0) {
             ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
 #if (NGX_THREADS)
