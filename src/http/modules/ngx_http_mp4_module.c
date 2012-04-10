@@ -752,7 +752,7 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
                  - start_offset;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
-                   "mp4 adjustment:%D", adjustment);
+                   "mp4 adjustment:%O", adjustment);
 
     for (i = 0; i < mp4->trak.nelts; i++) {
         if (trak[i].out[NGX_HTTP_MP4_CO64_DATA].buf) {
