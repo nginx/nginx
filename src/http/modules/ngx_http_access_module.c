@@ -351,14 +351,19 @@ ngx_http_access_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_access_loc_conf_t  *prev = parent;
     ngx_http_access_loc_conf_t  *conf = child;
 
+#if (NGX_HAVE_INET6)
+
+    if (conf->rules == NULL && conf->rules6 == NULL) {
+        conf->rules = prev->rules;
+        conf->rules6 = prev->rules6;
+    }
+
+#else
+
     if (conf->rules == NULL) {
         conf->rules = prev->rules;
     }
 
-#if (NGX_HAVE_INET6)
-    if (conf->rules6 == NULL) {
-        conf->rules6 = prev->rules6;
-    }
 #endif
 
     return NGX_CONF_OK;
