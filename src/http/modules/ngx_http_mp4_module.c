@@ -1910,7 +1910,7 @@ ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
 
         if (start_time < (uint64_t) count * duration) {
             start_sample += (ngx_uint_t) (start_time / duration);
-            count -= start_sample;
+            count -= start_time;
             ngx_mp4_set_32value(entry->count, count);
             goto found;
         }
