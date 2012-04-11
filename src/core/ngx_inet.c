@@ -420,7 +420,7 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
             s = (shift > 8) ? 8 : shift;
             shift -= s;
 
-            mask[i] = (u_char) (0 - (1 << (8 - s)));
+            mask[i] = (u_char) (0xffu << (8 - s));
 
             if (addr[i] != (addr[i] & mask[i])) {
                 rc = NGX_DONE;
@@ -437,7 +437,7 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
         }
 
         if (shift) {
-            cidr->u.in.mask = htonl((ngx_uint_t) (0 - (1 << (32 - shift))));
+            cidr->u.in.mask = htonl((uint32_t) (0xffffffffu << (32 - shift)));
 
         } else {
             /* x86 compilers use a shl instruction that shifts by modulo 32 */
