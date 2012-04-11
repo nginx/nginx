@@ -458,10 +458,11 @@ ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent, void *child)
      * with a real skip value.  The zero value means Opera.
      */
 
-    if (conf->modern_browsers == NULL) {
+    if (conf->modern_browsers == NULL && conf->modern_unlisted_browsers == 0) {
         conf->modern_browsers = prev->modern_browsers;
+        conf->modern_unlisted_browsers = prev->modern_unlisted_browsers;
 
-    } else {
+    } else if (conf->modern_browsers != NULL) {
         browsers = conf->modern_browsers->elts;
 
         for (i = 0; i < conf->modern_browsers->nelts; i++) {
@@ -501,8 +502,9 @@ found:
         }
     }
 
-    if (conf->ancient_browsers == NULL) {
+    if (conf->ancient_browsers == NULL && conf->netscape4 == 0) {
         conf->ancient_browsers = prev->ancient_browsers;
+        conf->netscape4 = prev->netscape4;
     }
 
     if (conf->modern_browser_value == NULL) {
