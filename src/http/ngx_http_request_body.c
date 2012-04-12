@@ -303,7 +303,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
             if (n == 0) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client closed prematurely connection");
+                              "client prematurely closed connection");
             }
 
             if (n == 0 || n == NGX_ERROR) {

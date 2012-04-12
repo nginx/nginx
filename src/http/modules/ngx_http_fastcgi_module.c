@@ -1254,7 +1254,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
             if (f->type == NGX_HTTP_FASTCGI_STDOUT && f->length == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream closed prematurely FastCGI stdout");
+                              "upstream prematurely closed FastCGI stdout");
 
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
@@ -2198,8 +2198,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.busy_buffers_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-             "\"fastcgi_busy_buffers_size\" must be equal or bigger than "
-             "maximum of the value of \"fastcgi_buffer_size\" and "
+             "\"fastcgi_busy_buffers_size\" must be equal to or greater than "
+             "the maximum of the value of \"fastcgi_buffer_size\" and "
              "one of the \"fastcgi_buffers\"");
 
         return NGX_CONF_ERROR;
@@ -2229,8 +2229,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.temp_file_write_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-             "\"fastcgi_temp_file_write_size\" must be equal or bigger than "
-             "maximum of the value of \"fastcgi_buffer_size\" and "
+             "\"fastcgi_temp_file_write_size\" must be equal to or greater "
+             "than the maximum of the value of \"fastcgi_buffer_size\" and "
              "one of the \"fastcgi_buffers\"");
 
         return NGX_CONF_ERROR;
@@ -2253,8 +2253,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
              "\"fastcgi_max_temp_file_size\" must be equal to zero to disable "
-             "the temporary files usage or must be equal or bigger than "
-             "maximum of the value of \"fastcgi_buffer_size\" and "
+             "temporary files usage or must be equal to or greater than "
+             "the maximum of the value of \"fastcgi_buffer_size\" and "
              "one of the \"fastcgi_buffers\"");
 
         return NGX_CONF_ERROR;

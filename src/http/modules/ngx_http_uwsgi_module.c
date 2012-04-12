@@ -1216,8 +1216,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.busy_buffers_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "\"uwsgi_busy_buffers_size\" must be equal or bigger "
-            "than maximum of the value of \"uwsgi_buffer_size\" and "
+            "\"uwsgi_busy_buffers_size\" must be equal to or greater "
+            "than the maximum of the value of \"uwsgi_buffer_size\" and "
             "one of the \"uwsgi_buffers\"");
 
         return NGX_CONF_ERROR;
@@ -1247,8 +1247,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->upstream.temp_file_write_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "\"uwsgi_temp_file_write_size\" must be equal or bigger than "
-            "maximum of the value of \"uwsgi_buffer_size\" and "
+            "\"uwsgi_temp_file_write_size\" must be equal to or greater than "
+            "the maximum of the value of \"uwsgi_buffer_size\" and "
             "one of the \"uwsgi_buffers\"");
 
         return NGX_CONF_ERROR;
@@ -1270,8 +1270,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         && conf->upstream.max_temp_file_size < size) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
             "\"uwsgi_max_temp_file_size\" must be equal to zero to disable "
-            "the temporary files usage or must be equal or bigger than "
-            "maximum of the value of \"uwsgi_buffer_size\" and "
+            "temporary files usage or must be equal to or greater than "
+            "the maximum of the value of \"uwsgi_buffer_size\" and "
             "one of the \"uwsgi_buffers\"");
 
         return NGX_CONF_ERROR;

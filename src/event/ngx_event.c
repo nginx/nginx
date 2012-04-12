@@ -471,7 +471,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
                          (ngx_int_t) rlmt.rlim_cur : ccf->rlimit_nofile;
 
             ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
-                          "%ui worker_connections are more than "
+                          "%ui worker_connections exceed "
                           "open file resource limit: %i",
                           ecf->connections, limit);
         }
@@ -489,7 +489,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     }
 
 
-    /* cl should be equal or bigger than cache line size */
+    /* cl should be equal to or greater than cache line size */
 
     cl = 128;
 

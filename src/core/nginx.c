@@ -649,7 +649,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
         if (ngx_rename_file(ccf->oldpid.data, ccf->pid.data) != NGX_OK) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           ngx_rename_file_n " %s back to %s failed after "
-                          "the try to execute the new binary process \"%s\"",
+                          "an attempt to execute new binary process \"%s\"",
                           ccf->oldpid.data, ccf->pid.data, argv[0]);
         }
     }

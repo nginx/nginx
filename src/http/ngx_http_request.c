@@ -1175,7 +1175,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
 
     if (n == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client closed prematurely connection");
+                      "client prematurely closed connection");
     }
 
     if (n == 0 || n == NGX_ERROR) {
@@ -2426,7 +2426,7 @@ closed:
     }
 
     ngx_log_error(NGX_LOG_INFO, c->log, err,
-                  "client closed prematurely connection");
+                  "client prematurely closed connection");
 
     ngx_http_finalize_request(r, 0);
 }

@@ -566,7 +566,7 @@ ngx_http_geo_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     if (ctx->binary_include) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "binary geo range base \"%s\" may not be mixed with usual entries",
+            "binary geo range base \"%s\" cannot be mixed with usual entries",
             ctx->include_name.data);
         return NGX_CONF_ERROR;
     }
@@ -1195,7 +1195,7 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     if (ctx->outside_entries) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "binary geo range base \"%s\" may not be mixed with usual entries",
+            "binary geo range base \"%s\" cannot be mixed with usual entries",
             name->data);
         rc = NGX_ERROR;
         goto done;
@@ -1203,7 +1203,7 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     if (ctx->binary_include) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "second binary geo range base \"%s\" may not be mixed with \"%s\"",
+            "second binary geo range base \"%s\" cannot be mixed with \"%s\"",
             name->data, ctx->include_name.data);
         rc = NGX_ERROR;
         goto done;

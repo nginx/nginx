@@ -2003,7 +2003,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (set && stub) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "\"set\" and \"stub\" may not be used together "
+                      "\"set\" and \"stub\" cannot be used together "
                       "in \"include\" SSI command");
         return NGX_HTTP_SSI_ERROR;
     }
@@ -2011,7 +2011,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     if (wait) {
         if (uri == NULL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "\"wait\" may not be used with file=\"%V\"", file);
+                          "\"wait\" cannot be used with file=\"%V\"", file);
             return NGX_HTTP_SSI_ERROR;
         }
 
@@ -2188,7 +2188,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     } else {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "only one subrequest may be waited at the same time");
+                      "can only wait for one subrequest at a time");
     }
 
     return NGX_OK;
