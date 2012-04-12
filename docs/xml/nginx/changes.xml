@@ -9,6 +9,36 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.0.15" date="12.04.2012">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного mp4 файла модулем ngx_http_mp4_module
+могли перезаписываться области памяти рабочего процесса, что могло
+приводить к выполнению произвольного кода (CVE-2012-2089).<br/>
+Спасибо Matthew Daley.
+</para>
+<para lang="en">
+specially crafted mp4 file might allow to overwrite
+memory locations in a worker process
+if the ngx_http_mp4_module was used,
+potentially resulting in arbitrary code execution (CVE-2012-2089).<br/>
+Thanks to Matthew Daley.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.0.14" date="15.03.2012">
 
 <change type="security">
