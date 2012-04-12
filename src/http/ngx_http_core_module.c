@@ -1228,20 +1228,29 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             len = tf->name.len;
         }
 
-        /* 16 bytes are preallocation */
-        reserve = ngx_abs((ssize_t) (len - r->uri.len)) + alias + 16;
+        if (!alias) {
+            reserve = len > r->uri.len ? len - r->uri.len : 0;
+
+#if (NGX_PCRE)
+        } else if (clcf->regex) {
+            reserve = len;
+#endif
+
+        } else {
+            reserve = len > r->uri.len - alias ? len - (r->uri.len - alias) : 0;
+        }
 
         if (reserve > allocated) {
 
-            /* we just need to allocate path and to copy a root */
+            /* 16 bytes are preallocation */
+            allocated = reserve + 16;
 
-            if (ngx_http_map_uri_to_path(r, &path, &root, reserve) == NULL) {
+            if (ngx_http_map_uri_to_path(r, &path, &root, allocated) == NULL) {
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return NGX_OK;
             }
 
             name = path.data + root;
-            allocated = path.len - root - (r->uri.len - alias);
          }
 
         if (tf->values == NULL) {
