@@ -9,6 +9,88 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.1.19" date="12.04.2012">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного mp4 файла модулем ngx_http_mp4_module
+могли перезаписываться области памяти рабочего процесса, что могло
+приводить к выполнению произвольного кода (CVE-2012-2089).<br/>
+Спасибо Matthew Daley.
+</para>
+<para lang="en">
+specially crafted mp4 file might allow to overwrite
+memory locations in a worker process
+if the ngx_http_mp4_module was used,
+potentially resulting in arbitrary code execution (CVE-2012-2089).<br/>
+Thanks to Matthew Daley.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows мог завершаться аварийно.<br/>
+Спасибо Vincent Lee.
+</para>
+<para lang="en">
+nginx/Windows might be terminated abnormally.<br/>
+Thanks to Vincent Lee.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx нагружал процессор, если все серверы в upstream'е были помечены
+флагом backup.
+</para>
+<para lang="en">
+nginx hogged CPU if all servers in an upstream were marked as "backup".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы allow и deny могли наследоваться некорректно,
+если в них использовались IPv6 адреса.
+</para>
+<para lang="en">
+the "allow" and "deny" directives might be inherited incorrectly
+if they were used with IPv6 addresses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы modern_browser и ancient_browser
+могли наследоваться некорректно.
+</para>
+<para lang="en">
+the "modern_browser" and "ancient_browser" directives 
+might be inherited incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+таймауты могли работать некорректно на Solaris/SPARC.
+</para>
+<para lang="en">
+timeouts might be handled incorrectly on Solaris/SPARC.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.1.18" date="28.03.2012">
 
 <change type="change">
