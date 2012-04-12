@@ -44,11 +44,7 @@ ngx_inet_addr(u_char *text, size_t len)
         return INADDR_NONE;
     }
 
-    if (n != 3) {
-        return INADDR_NONE;
-    }
-
-    if (octet < 256) {
+    if (n == 3 && octet < 256) {
         addr = (addr << 8) + octet;
         return htonl(addr);
     }
