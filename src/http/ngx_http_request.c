@@ -612,6 +612,8 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 
         c->ssl->no_wait_shutdown = 1;
 
+        c->log->action = "reading client request line";
+
         c->read->handler = ngx_http_process_request_line;
         /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
 
