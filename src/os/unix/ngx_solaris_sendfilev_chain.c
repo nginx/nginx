@@ -74,7 +74,6 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
 
     send = 0;
-    complete = 0;
 
     vec.elts = sfvs;
     vec.size = sizeof(sendfilevec_t);
@@ -87,6 +86,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         fprev = 0;
         sfv = NULL;
         eintr = 0;
+        complete = 0;
         sent = 0;
         prev_send = send;
 

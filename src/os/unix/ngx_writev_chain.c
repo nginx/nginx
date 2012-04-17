@@ -54,7 +54,6 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
     send = 0;
-    complete = 0;
 
     vec.elts = iovs;
     vec.size = sizeof(struct iovec);
@@ -65,6 +64,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         prev = NULL;
         iov = NULL;
         eintr = 0;
+        complete = 0;
         prev_send = send;
 
         vec.nelts = 0;
