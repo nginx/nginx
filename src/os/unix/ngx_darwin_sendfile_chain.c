@@ -103,10 +103,8 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         prev = NULL;
         iov = NULL;
 
-        for (cl = in;
-             cl && header.nelts < IOV_MAX && send < limit;
-             cl = cl->next)
-        {
+        for (cl = in; cl && send < limit; cl = cl->next) {
+
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }
@@ -125,6 +123,10 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 iov->iov_len += (size_t) size;
 
             } else {
+                if (header.nelts >= IOV_MAX) {
+                    break;
+                }
+
                 iov = ngx_array_push(&header);
                 if (iov == NULL) {
                     return NGX_CHAIN_ERROR;
@@ -178,7 +180,7 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             prev = NULL;
             iov = NULL;
 
-            while (cl && header.nelts < IOV_MAX && send < limit) {
+            while (cl && send < limit) {
 
                 if (ngx_buf_special(cl->buf)) {
                     cl = cl->next;
@@ -199,6 +201,10 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     iov->iov_len += (size_t) size;
 
                 } else {
+                    if (trailer.nelts >= IOV_MAX) {
+                        break;
+                    }
+
                     iov = ngx_array_push(&trailer);
                     if (iov == NULL) {
                         return NGX_CHAIN_ERROR;
