@@ -465,7 +465,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
 
             if (cf->conf_file->file.offset >= file_size) {
 
-                if (cf->args->nelts > 0) {
+                if (cf->args->nelts > 0 || !last_space) {
 
                     if (cf->conf_file->file.fd == NGX_INVALID_FILE) {
                         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
