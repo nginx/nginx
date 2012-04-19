@@ -1240,7 +1240,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             reserve = len > r->uri.len - alias ? len - (r->uri.len - alias) : 0;
         }
 
-        if (reserve > allocated) {
+        if (reserve > allocated || !allocated) {
 
             /* 16 bytes are preallocation */
             allocated = reserve + 16;
