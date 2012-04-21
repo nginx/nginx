@@ -817,9 +817,7 @@ transparent:
 
         resize = 0;
 
-        if ((ngx_uint_t) (dx * 100 / dy)
-            < ctx->max_width * 100 / ctx->max_height)
-        {
+        if ((double) dx / dy < (double) ctx->max_width / ctx->max_height) {
             if ((ngx_uint_t) dx > ctx->max_width) {
                 dy = dy * ctx->max_width / dx;
                 dy = dy ? dy : 1;
