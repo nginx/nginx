@@ -1497,6 +1497,10 @@ ngx_http_proxy_input_filter_init(void *data)
     u = r->upstream;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy filter init s:%d h:%d c:%d l:%O",
                    u->headers_in.status_n, ctx->head, u->headers_in.chunked,
@@ -1636,6 +1640,11 @@ ngx_http_proxy_parse_chunked(ngx_http_request_t *r, ngx_buf_t *buf)
     } state;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
     state = ctx->state;
 
     if (state == sw_chunk_data && ctx->size == 0) {
@@ -1883,6 +1892,10 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     r = p->input_ctx;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
     b = NULL;
     prev = &buf->shadow;
 
@@ -2064,6 +2077,11 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
     ngx_http_proxy_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
     u = r->upstream;
     buf = &u->buffer;
 
