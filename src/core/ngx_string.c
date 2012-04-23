@@ -146,12 +146,12 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
 {
     u_char                *p, zero;
     int                    d;
-    double                 f, scale;
+    double                 f;
     size_t                 len, slen;
     int64_t                i64;
-    uint64_t               ui64;
+    uint64_t               ui64, frac;
     ngx_msec_t             ms;
-    ngx_uint_t             width, sign, hex, max_width, frac_width, n;
+    ngx_uint_t             width, sign, hex, max_width, frac_width, scale, n;
     ngx_str_t             *v;
     ngx_variable_value_t  *vv;
 
@@ -365,28 +365,31 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
                 }
 
                 ui64 = (int64_t) f;
+                frac = 0;
+
+                if (frac_width) {
+
+                    scale = 1;
+                    for (n = frac_width; n; n--) {
+                        scale *= 10;
+                    }
+
+                    frac = (uint64_t) ((f - (double) ui64) * scale + 0.5);
+
+                    if (frac == scale) {
+                        ui64++;
+                        frac = 0;
+                    }
+                }
 
                 buf = ngx_sprintf_num(buf, last, ui64, zero, 0, width);
 
                 if (frac_width) {
-
                     if (buf < last) {
                         *buf++ = '.';
                     }
 
-                    scale = 1.0;
-
-                    for (n = frac_width; n; n--) {
-                        scale *= 10.0;
-                    }
-
-                    /*
-                     * (int64_t) cast is required for msvc6:
-                     * it cannot convert uint64_t to double
-                     */
-                    ui64 = (uint64_t) ((f - (int64_t) ui64) * scale + 0.5);
-
-                    buf = ngx_sprintf_num(buf, last, ui64, '0', 0, frac_width);
+                    buf = ngx_sprintf_num(buf, last, frac, '0', 0, frac_width);
                 }
 
                 fmt++;
