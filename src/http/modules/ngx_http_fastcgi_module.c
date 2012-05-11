@@ -1356,7 +1356,11 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 }
 
             } else {
-                f->state = ngx_http_fastcgi_st_version;
+                if (f->padding) {
+                    f->state = ngx_http_fastcgi_st_padding;
+                } else {
+                    f->state = ngx_http_fastcgi_st_version;
+                }
             }
 
             continue;
@@ -1689,7 +1693,12 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             }
 
             if (f->type == NGX_HTTP_FASTCGI_STDOUT && f->length == 0) {
-                f->state = ngx_http_fastcgi_st_version;
+
+                if (f->padding) {
+                    f->state = ngx_http_fastcgi_st_padding;
+                } else {
+                    f->state = ngx_http_fastcgi_st_version;
+                }
 
                 if (!flcf->keep_conn) {
                     p->upstream_done = 1;
@@ -1702,7 +1711,13 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             }
 
             if (f->type == NGX_HTTP_FASTCGI_END_REQUEST) {
-                f->state = ngx_http_fastcgi_st_version;
+
+                if (f->padding) {
+                    f->state = ngx_http_fastcgi_st_padding;
+                } else {
+                    f->state = ngx_http_fastcgi_st_version;
+                }
+
                 p->upstream_done = 1;
 
                 if (flcf->keep_conn) {
@@ -1775,7 +1790,11 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                 }
 
             } else {
-                f->state = ngx_http_fastcgi_st_version;
+                if (f->padding) {
+                    f->state = ngx_http_fastcgi_st_padding;
+                } else {
+                    f->state = ngx_http_fastcgi_st_version;
+                }
             }
 
             continue;
