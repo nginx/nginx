@@ -1043,7 +1043,6 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         }
 
         e->buf.len = len;
-        e->is_args = le.is_args;
     }
 
     if (code->add_args && r->args.len) {
