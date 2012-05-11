@@ -434,6 +434,7 @@ ngx_http_scgi_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_scgi_process_status_line;
     u->abort_request = ngx_http_scgi_abort_request;
     u->finalize_request = ngx_http_scgi_finalize_request;
+    r->state = 0;
 
     u->buffering = scf->upstream.buffering;
 
@@ -843,6 +844,7 @@ ngx_http_scgi_reinit_request(ngx_http_request_t *r)
     status->end = NULL;
 
     r->upstream->process_header = ngx_http_scgi_process_status_line;
+    r->state = 0;
 
     return NGX_OK;
 }
