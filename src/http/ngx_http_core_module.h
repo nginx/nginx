@@ -513,6 +513,9 @@ ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_set_disable_symlinks(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t *clcf, ngx_str_t *path, ngx_open_file_info_t *of);
 
+ngx_int_t ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+    u_char *xff, size_t xfflen, ngx_array_t *proxies, int recursive);
+
 
 extern ngx_module_t  ngx_http_core_module;
 

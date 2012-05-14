@@ -2699,6 +2699,102 @@ ngx_http_set_disable_symlinks(ngx_http_request_t *r,
 }
 
 
+ngx_int_t
+ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
+    u_char *xff, size_t xfflen, ngx_array_t *proxies, int recursive)
+{
+    u_char           *p;
+    in_addr_t        *inaddr;
+    ngx_addr_t        paddr;
+    ngx_cidr_t       *cidr;
+    ngx_uint_t        family, i;
+#if (NGX_HAVE_INET6)
+    ngx_uint_t        n;
+    struct in6_addr  *inaddr6;
+#endif
+
+    family = addr->sockaddr->sa_family;
+
+    if (family == AF_INET) {
+        inaddr = &((struct sockaddr_in *) addr->sockaddr)->sin_addr.s_addr;
+    }
+
+#if (NGX_HAVE_INET6)
+    else if (family == AF_INET6) {
+        inaddr6 = &((struct sockaddr_in6 *) addr->sockaddr)->sin6_addr;
+
+        if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
+            family = AF_INET;
+            inaddr = (in_addr_t *) &inaddr6->s6_addr[12];
+        }
+    }
+#endif
+
+    for (cidr = proxies->elts, i = 0; i < proxies->nelts; i++) {
+        if (cidr[i].family != family) {
+            goto next;
+        }
+
+        switch (family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            for (n = 0; n < 16; n++) {
+                if ((inaddr6->s6_addr[n] & cidr[i].u.in6.mask.s6_addr[n])
+                    != cidr[i].u.in6.addr.s6_addr[n])
+                {
+                    goto next;
+                }
+            }
+            break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            break;
+#endif
+
+        default: /* AF_INET */
+            if ((*inaddr & cidr[i].u.in.mask) != cidr[i].u.in.addr) {
+                goto next;
+            }
+            break;
+        }
+
+        for (p = xff + xfflen - 1; p > xff; p--, xfflen--) {
+            if (*p != ' ' && *p != ',') {
+                break;
+            }
+        }
+
+        for ( /* void */ ; p > xff; p--) {
+            if (*p == ' ' || *p == ',') {
+                p++;
+                break;
+            }
+        }
+
+        if (ngx_parse_addr(r->pool, &paddr, p, xfflen - (p - xff)) != NGX_OK) {
+            return NGX_DECLINED;
+        }
+
+        *addr = paddr;
+
+        if (recursive && p > xff) {
+            (void) ngx_http_get_forwarded_addr(r, addr, xff, p - 1 - xff,
+                                               proxies, 1);
+        }
+
+        return NGX_OK;
+
+    next:
+        continue;
+    }
+
+    return NGX_DECLINED;
+}
+
+
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
