@@ -2715,20 +2715,28 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
 
     family = addr->sockaddr->sa_family;
 
-    if (family == AF_INET) {
-        inaddr = &((struct sockaddr_in *) addr->sockaddr)->sin_addr.s_addr;
-    }
+    switch (family) {
 
 #if (NGX_HAVE_INET6)
-    else if (family == AF_INET6) {
+    case AF_INET6:
         inaddr6 = &((struct sockaddr_in6 *) addr->sockaddr)->sin6_addr;
 
         if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
             family = AF_INET;
             inaddr = (in_addr_t *) &inaddr6->s6_addr[12];
         }
-    }
+
+        break;
 #endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        break;
+#endif
+
+    default: /* AF_INET */
+        inaddr = &((struct sockaddr_in *) addr->sockaddr)->sin_addr.s_addr;
+    }
 
     for (cidr = proxies->elts, i = 0; i < proxies->nelts; i++) {
         if (cidr[i].family != family) {
