@@ -20,6 +20,7 @@ typedef struct {
     ngx_str_t                       name;
 
     ngx_int_t                       current_weight;
+    ngx_int_t                       effective_weight;
     ngx_int_t                       weight;
 
     ngx_uint_t                      fails;
