@@ -80,8 +80,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peers->peer[n].max_fails = server[i].max_fails;
                 peers->peer[n].fail_timeout = server[i].fail_timeout;
                 peers->peer[n].down = server[i].down;
-                peers->peer[n].weight = server[i].down ? 0 : server[i].weight;
-                peers->peer[n].effective_weight = peers->peer[n].weight;
+                peers->peer[n].weight = server[i].weight;
+                peers->peer[n].effective_weight = server[i].weight;
                 peers->peer[n].current_weight = 0;
                 n++;
             }
