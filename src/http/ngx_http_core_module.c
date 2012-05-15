@@ -2704,7 +2704,7 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
     u_char *xff, size_t xfflen, ngx_array_t *proxies, int recursive)
 {
     u_char           *p;
-    in_addr_t        *inaddr;
+    in_addr_t         inaddr;
     ngx_addr_t        paddr;
     ngx_cidr_t       *cidr;
     ngx_uint_t        family, i;
@@ -2714,7 +2714,7 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
 #endif
 
 #if (NGX_SUPPRESS_WARN)
-    inaddr = NULL;
+    inaddr = 0;
 #if (NGX_HAVE_INET6)
     inaddr6 = NULL;
 #endif
@@ -2723,7 +2723,7 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
     family = addr->sockaddr->sa_family;
 
     if (family == AF_INET) {
-        inaddr = &((struct sockaddr_in *) addr->sockaddr)->sin_addr.s_addr;
+        inaddr = ((struct sockaddr_in *) addr->sockaddr)->sin_addr.s_addr;
     }
 
 #if (NGX_HAVE_INET6)
@@ -2732,7 +2732,7 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
 
         if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
             family = AF_INET;
-            inaddr = (in_addr_t *) &inaddr6->s6_addr[12];
+            inaddr = *(in_addr_t *) &inaddr6->s6_addr[12];
         }
     }
 #endif
@@ -2762,7 +2762,7 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
 #endif
 
         default: /* AF_INET */
-            if ((*inaddr & cidr[i].u.in.mask) != cidr[i].u.in.addr) {
+            if ((inaddr & cidr[i].u.in.mask) != cidr[i].u.in.addr) {
                 goto next;
             }
             break;
