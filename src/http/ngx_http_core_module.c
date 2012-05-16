@@ -4662,7 +4662,7 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         code = ngx_atoi(tf[i - 1].name.data + 1, tf[i - 1].name.len - 2);
 
-        if (code == NGX_ERROR) {
+        if (code == NGX_ERROR || code > 999) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid code \"%*s\"",
                                tf[i - 1].name.len - 1, tf[i - 1].name.data);
