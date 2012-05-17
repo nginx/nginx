@@ -152,7 +152,7 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
         return NGX_ERROR;
     }
 
-    rc->regex->pcre = re;
+    rc->regex->code = re;
 
     /* do not study at runtime */
 
@@ -367,7 +367,7 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
             i = 0;
         }
 
-        elts[i].regex->extra = pcre_study(elts[i].regex->pcre, opt, &errstr);
+        elts[i].regex->extra = pcre_study(elts[i].regex->code, opt, &errstr);
 
         if (errstr != NULL) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
@@ -380,7 +380,7 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
             int jit, n;
 
             jit = 0;
-            n = pcre_fullinfo(elts[i].regex->pcre, elts[i].regex->extra,
+            n = pcre_fullinfo(elts[i].regex->code, elts[i].regex->extra,
                               PCRE_INFO_JIT, &jit);
 
             if (n != 0 || jit != 1) {
