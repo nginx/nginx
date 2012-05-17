@@ -1933,8 +1933,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     if (rc == NGX_OK && r->filter_finalize) {
         c->error = 1;
-        ngx_http_finalize_connection(r);
-        return;
     }
 
     if (rc == NGX_DECLINED) {
