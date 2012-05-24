@@ -810,7 +810,7 @@ ngx_http_xslt_entities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     file = xmcf->dtd_files.elts;
     for (i = 0; i < xmcf->dtd_files.nelts; i++) {
-        if (ngx_strcmp(file[i].name, &value[1].data) == 0) {
+        if (ngx_strcmp(file[i].name, value[1].data) == 0) {
             xlcf->dtd = file[i].data;
             return NGX_CONF_OK;
         }
@@ -884,7 +884,7 @@ ngx_http_xslt_stylesheet(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     file = xmcf->sheet_files.elts;
     for (i = 0; i < xmcf->sheet_files.nelts; i++) {
-        if (ngx_strcmp(file[i].name, &value[1].data) == 0) {
+        if (ngx_strcmp(file[i].name, value[1].data) == 0) {
             sheet->stylesheet = file[i].data;
             goto found;
         }
