@@ -291,6 +291,7 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
     ngx_http_geoip_variable_handler_pt  handler =
         (ngx_http_geoip_variable_handler_pt) data;
 
+    size_t                  len;
     const char             *val;
     ngx_http_geoip_conf_t  *gcf;
 
@@ -306,11 +307,21 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
         goto not_found;
     }
 
-    v->len = ngx_strlen(val);
+    len = ngx_strlen(val);
+    v->data = ngx_pnalloc(r->pool, len);
+    if (v->data == NULL) {
+        ngx_free(val);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(v->data, val, len);
+
+    v->len = len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = (u_char *) val;
+
+    ngx_free(val);
 
     return NGX_OK;
 
