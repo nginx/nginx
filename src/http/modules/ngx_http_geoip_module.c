@@ -310,7 +310,7 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
     len = ngx_strlen(val);
     v->data = ngx_pnalloc(r->pool, len);
     if (v->data == NULL) {
-        ngx_free(val);
+        ngx_free((void *) val);
         return NGX_ERROR;
     }
 
@@ -321,7 +321,7 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    ngx_free(val);
+    ngx_free((void *) val);
 
     return NGX_OK;
 
