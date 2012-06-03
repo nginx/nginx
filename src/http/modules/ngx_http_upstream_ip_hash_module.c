@@ -140,6 +140,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
     ngx_http_upstream_ip_hash_peer_data_t  *iphp = data;
 
     time_t                        now;
+    ngx_int_t                     w;
     uintptr_t                     m;
     ngx_uint_t                    i, n, p, hash;
     ngx_http_upstream_rr_peer_t  *peer;
@@ -166,7 +167,21 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
             hash = (hash * 113 + iphp->addr[i]) % 6271;
         }
 
-        p = hash % iphp->rrp.peers->number;
+        if (!iphp->rrp.peers->weighted) {
+            p = hash % iphp->rrp.peers->number;
+
+        } else {
+            w = hash % iphp->rrp.peers->total_weight;
+
+            for (i = 0; i < iphp->rrp.peers->number; i++) {
+                w -= iphp->rrp.peers->peer[i].weight;
+                if (w < 0) {
+                    break;
+                }
+            }
+
+            p = i;
+        }
 
         n = p / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
@@ -229,6 +244,7 @@ ngx_http_upstream_ip_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     uscf->peer.init_upstream = ngx_http_upstream_init_ip_hash;
 
     uscf->flags = NGX_HTTP_UPSTREAM_CREATE
+                  |NGX_HTTP_UPSTREAM_WEIGHT
                   |NGX_HTTP_UPSTREAM_MAX_FAILS
                   |NGX_HTTP_UPSTREAM_FAIL_TIMEOUT
                   |NGX_HTTP_UPSTREAM_DOWN;
