@@ -1040,7 +1040,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
     nan = (query->nan_hi << 8) + query->nan_lo;
 
     ngx_log_debug6(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver DNS response %ui fl:%04Xui %ui/%ui/%ui/%ui",
+                   "resolver DNS response %ui fl:%04Xui %ui/%ui/%ud/%ud",
                    ident, flags, nqs, nan,
                    (query->nns_hi << 8) + query->nns_lo,
                    (query->nar_hi << 8) + query->nar_lo);
