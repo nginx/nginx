@@ -21,6 +21,7 @@ ngx_event_accept(ngx_event_t *ev)
     socklen_t          socklen;
     ngx_err_t          err;
     ngx_log_t         *log;
+    ngx_uint_t         level;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
     ngx_listening_t   *ls;
@@ -30,6 +31,14 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_HAVE_ACCEPT4)
     static ngx_uint_t  use_accept4 = 1;
 #endif
+
+    if (ev->timedout) {
+        if (ngx_enable_accept_events((ngx_cycle_t *) ngx_cycle) != NGX_OK) {
+            return;
+        }
+
+        ev->timedout = 0;
+    }
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
@@ -70,10 +79,17 @@ ngx_event_accept(ngx_event_t *ev)
                 return;
             }
 
+            level = NGX_LOG_ALERT;
+
+            if (err == NGX_ECONNABORTED) {
+                level = NGX_LOG_ERR;
+
+            } else if (err == NGX_EMFILE || err == NGX_ENFILE) {
+                level = NGX_LOG_CRIT;
+            }
+
 #if (NGX_HAVE_ACCEPT4)
-            ngx_log_error((ngx_uint_t) ((err == NGX_ECONNABORTED) ?
-                                             NGX_LOG_ERR : NGX_LOG_ALERT),
-                          ev->log, err,
+            ngx_log_error(level, ev->log, err,
                           use_accept4 ? "accept4() failed" : "accept() failed");
 
             if (use_accept4 && err == NGX_ENOSYS) {
@@ -82,9 +98,7 @@ ngx_event_accept(ngx_event_t *ev)
                 continue;
             }
 #else
-            ngx_log_error((ngx_uint_t) ((err == NGX_ECONNABORTED) ?
-                                             NGX_LOG_ERR : NGX_LOG_ALERT),
-                          ev->log, err, "accept() failed");
+            ngx_log_error(level, ev->log, err, "accept() failed");
 #endif
 
             if (err == NGX_ECONNABORTED) {
@@ -94,6 +108,26 @@ ngx_event_accept(ngx_event_t *ev)
 
                 if (ev->available) {
                     continue;
+                }
+            }
+
+            if (err == NGX_EMFILE || err == NGX_ENFILE) {
+                if (ngx_disable_accept_events((ngx_cycle_t *) ngx_cycle)
+                    != NGX_OK)
+                {
+                    return;
+                }
+
+                if (ngx_use_accept_mutex) {
+                    if (ngx_accept_mutex_held) {
+                        ngx_shmtx_unlock(&ngx_accept_mutex);
+                        ngx_accept_mutex_held = 0;
+                    }
+
+                    ngx_accept_disabled = 1;
+
+                } else {
+                    ngx_add_timer(ev, ecf->accept_mutex_delay);
                 }
             }
 
@@ -343,6 +377,10 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         c = ls[i].connection;
+
+        if (c->read->active) {
+            continue;
+        }
 
         if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
 
