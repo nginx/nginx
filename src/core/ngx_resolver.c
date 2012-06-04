@@ -171,14 +171,14 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 
         ngx_memzero(&u, sizeof(ngx_url_t));
 
-        u.host = names[i];
-        u.port = 53;
+        u.url = names[i];
+        u.default_port = 53;
 
-        if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
+        if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
             if (u.err) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "%s in resolver \"%V\"",
-                                   u.err, &u.host);
+                                   u.err, &u.url);
             }
 
             return NULL;
@@ -2189,7 +2189,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
     ngx_socket_t       s;
     ngx_connection_t  *c;
 
-    s = ngx_socket(AF_INET, SOCK_DGRAM, 0);
+    s = ngx_socket(uc->sockaddr->sa_family, SOCK_DGRAM, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &uc->log, 0, "UDP socket %d", s);
 
