@@ -513,8 +513,10 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
         /* lock alloc mutex */
 
-        ngx_resolver_free_locked(r, rn->query);
-        rn->query = NULL;
+        if (rn->query) {
+            ngx_resolver_free_locked(r, rn->query);
+            rn->query = NULL;
+        }
 
         if (rn->cnlen) {
             ngx_resolver_free_locked(r, rn->u.cname);
@@ -1409,6 +1411,9 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             ngx_resolver_free(r, addrs);
         }
 
+        ngx_resolver_free(r, rn->query);
+        rn->query = NULL;
+
         return;
 
     } else if (cname) {
@@ -1440,6 +1445,9 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             (void) ngx_resolve_name_locked(r, ctx);
         }
+
+        ngx_resolver_free(r, rn->query);
+        rn->query = NULL;
 
         return;
     }
@@ -1833,6 +1841,10 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
     len = 0;
     p--;
     *p-- = '\0';
+
+    if (ctx->name.len == 0)  {
+        return NGX_DECLINED;
+    }
 
     for (s = ctx->name.data + ctx->name.len - 1; s >= ctx->name.data; s--) {
         if (*s != '.') {
