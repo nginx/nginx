@@ -286,17 +286,56 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_DEBUG)
         {
 
-        in_addr_t            i;
-        ngx_event_debug_t   *dc;
-        struct sockaddr_in  *sin;
+        struct sockaddr_in   *sin;
+        ngx_cidr_t           *cidr;
+        ngx_uint_t            i;
+#if (NGX_HAVE_INET6)
+        struct sockaddr_in6  *sin6;
+        ngx_uint_t            n;
+#endif
 
-        sin = (struct sockaddr_in *) sa;
-        dc = ecf->debug_connection.elts;
+        cidr = ecf->debug_connection.elts;
         for (i = 0; i < ecf->debug_connection.nelts; i++) {
-            if ((sin->sin_addr.s_addr & dc[i].mask) == dc[i].addr) {
-                log->log_level = NGX_LOG_DEBUG_CONNECTION|NGX_LOG_DEBUG_ALL;
+            if (cidr[i].family != c->sockaddr->sa_family) {
+                goto next;
+            }
+
+            switch (cidr[i].family) {
+
+#if (NGX_HAVE_INET6)
+            case AF_INET6:
+                sin6 = (struct sockaddr_in6 *) c->sockaddr;
+                for (n = 0; n < 16; n++) {
+                    if ((sin6->sin6_addr.s6_addr[n]
+                        & cidr[i].u.in6.mask.s6_addr[n])
+                        != cidr[i].u.in6.addr.s6_addr[n])
+                    {
+                        goto next;
+                    }
+                }
+                break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+            case AF_UNIX:
+                break;
+#endif
+
+            default: /* AF_INET */
+                sin = (struct sockaddr_in *) c->sockaddr;
+                if ((sin->sin_addr.s_addr & cidr[i].u.in.mask)
+                    != cidr[i].u.in.addr)
+                {
+                    goto next;
+                }
                 break;
             }
+
+            log->log_level = NGX_LOG_DEBUG_CONNECTION|NGX_LOG_DEBUG_ALL;
+            break;
+
+        next:
+            continue;
         }
 
         }

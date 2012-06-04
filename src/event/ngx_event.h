@@ -222,12 +222,6 @@ struct ngx_event_aio_s {
 
 
 typedef struct {
-    in_addr_t  mask;
-    in_addr_t  addr;
-} ngx_event_debug_t;
-
-
-typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
