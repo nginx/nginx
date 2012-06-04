@@ -619,6 +619,7 @@ ngx_http_fastcgi_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_fastcgi_process_header;
     u->abort_request = ngx_http_fastcgi_abort_request;
     u->finalize_request = ngx_http_fastcgi_finalize_request;
+    r->state = 0;
 
     u->buffering = 1;
 
@@ -1193,6 +1194,8 @@ ngx_http_fastcgi_reinit_request(ngx_http_request_t *r)
     f->state = ngx_http_fastcgi_st_version;
     f->fastcgi_stdout = 0;
     f->large_stderr = 0;
+
+    r->state = 0;
 
     return NGX_OK;
 }
