@@ -122,7 +122,6 @@ static ngx_int_t
 ngx_http_upstream_init_least_conn_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
-    ngx_int_t                             rc;
     ngx_http_upstream_lc_peer_data_t     *lcp;
     ngx_http_upstream_least_conn_conf_t  *lcf;
 
@@ -140,8 +139,6 @@ ngx_http_upstream_init_least_conn_peer(ngx_http_request_t *r,
     lcp->conns = lcf->conns;
 
     r->upstream->peer.data = &lcp->rrp;
-
-    rc = ngx_http_upstream_init_round_robin_peer(r, us);
 
     if (ngx_http_upstream_init_round_robin_peer(r, us) != NGX_OK) {
         return NGX_ERROR;
@@ -350,7 +347,8 @@ ngx_http_upstream_free_least_conn_peer(ngx_peer_connection_t *pc,
                    "free least conn peer %ui %ui", pc->tries, state);
 
     if (lcp->rrp.peers->single) {
-        return lcp->free_rr_peer(pc, &lcp->rrp, state);
+        lcp->free_rr_peer(pc, &lcp->rrp, state);
+        return;
     }
 
     if (state == 0 && pc->tries == 0) {
@@ -359,7 +357,7 @@ ngx_http_upstream_free_least_conn_peer(ngx_peer_connection_t *pc,
 
     lcp->conns[lcp->rrp.current]--;
 
-    return lcp->free_rr_peer(pc, &lcp->rrp, state);
+    lcp->free_rr_peer(pc, &lcp->rrp, state);
 }
 
 
