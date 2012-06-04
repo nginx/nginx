@@ -121,7 +121,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = b->last - b->pos;
 
-    b->last_buf = 1;
+    b->last_buf = (r == r->main) ? 1 : 0;
 
     rc = ngx_http_send_header(r);
 
