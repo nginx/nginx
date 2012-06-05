@@ -9,6 +9,158 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.2.1" date="05.06.2012">
+
+<change type="security">
+<para lang="ru">
+теперь nginx/Windows игнорирует точку в конце компонента URI
+и не разрешает URI, содержащие последовательность ":$".<br/>
+Спасибо Владимиру Кочеткову, Positive Research Center.
+</para>
+<para lang="en">
+now nginx/Windows ignores trailing dot in URI path component, and
+does not allow URIs with ":$" in it.<br/>
+Thanks to Vladimir Kochetkov, Positive Research Center.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива debug_connection теперь поддерживает IPv6-адреса
+и параметр "unix:".
+</para>
+<para lang="en">
+the "debug_connection" directive now supports IPv6 addresses
+and the "unix:" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива set_real_ip_from и параметр proxy
+директивы geo теперь поддерживают IPv6-адреса.
+</para>
+<para lang="en">
+the "set_real_ip_from" directive and the "proxy" parameter
+of the "geo" directive now support IPv6 addresses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы real_ip_recursive, geoip_proxy и geoip_proxy_recursive.
+</para>
+<para lang="en">
+the "real_ip_recursive", "geoip_proxy", and "geoip_proxy_recursive" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy_recursive директивы geo.
+</para>
+<para lang="en">
+the "proxy_recursive" parameter of the "geo" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива resolver.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "resolver" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовались директивы fastcgi_pass, scgi_pass или uwsgi_pass
+и бэкенд возвращал некорректный ответ.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "fastcgi_pass", "scgi_pass", or "uwsgi_pass" directives were used
+and backend returned incorrect response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива rewrite и в новых аргументах запроса в строке
+замены использовались переменные.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "rewrite" directive was used and new request arguments
+in a replacement used variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог нагружать процессор,
+если было достигнуто ограничение на количество открытых файлов.
+</para>
+<para lang="en">
+nginx might hog CPU
+if the open file resource limit was reached.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы proxy_next_upstream с параметром http_404
+nginx мог бесконечно перебирать бэкенды, если в блоке upstream был
+хотя бы один сервер с флагом backup.
+</para>
+<para lang="en">
+nginx might loop infinitely over backends
+if the "proxy_next_upstream" directive with the "http_404" parameter was used
+and there were backup servers specified in an upstream block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ip_hash
+установка параметра down директивы server
+могла приводить к ненужному перераспределению клиентов между бэкендами.
+</para>
+<para lang="en">
+adding the "down" parameter of the "server" directive
+might cause unneeded client redistribution among backend servers
+if the "ip_hash" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+socket leak.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_fastcgi_module.
+</para>
+<para lang="en">
+in the ngx_http_fastcgi_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.0" date="23.04.2012">
 
 <change type="bugfix">
