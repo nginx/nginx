@@ -11,6 +11,8 @@
 
 #define NGX_UTF16_BUFLEN  256
 
+static ngx_int_t ngx_win32_check_filename(u_char *name, u_short *u,
+    size_t len);
 static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len);
 
 
@@ -20,8 +22,7 @@ ngx_fd_t
 ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 {
     size_t      len;
-    u_long      n;
-    u_short    *u, *lu;
+    u_short    *u;
     ngx_fd_t    fd;
     ngx_err_t   err;
     u_short     utf16[NGX_UTF16_BUFLEN];
@@ -34,25 +35,11 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
     }
 
     fd = INVALID_HANDLE_VALUE;
-    lu = NULL;
 
-    if (create == NGX_FILE_OPEN) {
-
-        lu = malloc(len * 2);
-        if (lu == NULL) {
-            goto failed;
-        }
-
-        n = GetLongPathNameW(u, lu, len);
-
-        if (n == 0) {
-            goto failed;
-        }
-
-        if (n != len - 1 || _wcsicmp(u, lu) != 0) {
-            ngx_set_errno(NGX_ENOENT);
-            goto failed;
-        }
+    if (create == NGX_FILE_OPEN
+        && ngx_win32_check_filename(name, u, len) != NGX_OK)
+    {
+        goto failed;
     }
 
     fd = CreateFileW(u, mode,
@@ -61,17 +48,11 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
 
 failed:
 
-    err = ngx_errno;
-
-    if (lu) {
-        ngx_free(lu);
-    }
-
     if (u != utf16) {
+        err = ngx_errno;
         ngx_free(u);
+        ngx_set_errno(err);
     }
-
-    ngx_set_errno(err);
 
     return fd;
 }
@@ -294,13 +275,13 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
         return NGX_FILE_ERROR;
     }
 
-    rc = GetFileAttributesExW(u, GetFileExInfoStandard, &fa);
+    rc = NGX_FILE_ERROR;
 
-    if (u != utf16) {
-        err = ngx_errno;
-        ngx_free(u);
-        ngx_set_errno(err);
+    if (ngx_win32_check_filename(file, u, len) != NGX_OK) {
+        goto failed;
     }
+
+    rc = GetFileAttributesExW(u, GetFileExInfoStandard, &fa);
 
     sb->dwFileAttributes = fa.dwFileAttributes;
     sb->ftCreationTime = fa.ftCreationTime;
@@ -308,6 +289,14 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
     sb->ftLastWriteTime = fa.ftLastWriteTime;
     sb->nFileSizeHigh = fa.nFileSizeHigh;
     sb->nFileSizeLow = fa.nFileSizeLow;
+
+failed:
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
+    }
 
     return rc;
 }
@@ -637,6 +626,148 @@ ngx_fs_bsize(u_char *name)
     }
 
     return sc * bs;
+}
+
+
+static ngx_int_t
+ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
+{
+    u_char     *p, ch;
+    u_long      n;
+    u_short    *lu;
+    ngx_err_t   err;
+    enum {
+        sw_start = 0,
+        sw_normal,
+        sw_after_slash,
+        sw_after_colon,
+        sw_after_dot
+    } state;
+
+    /* check for NTFS streams (":"), trailing dots and spaces */
+
+    lu = NULL;
+    state = sw_start;
+
+    for (p = name; *p; p++) {
+        ch = *p;
+
+        switch (state) {
+
+        case sw_start:
+
+            /*
+             * skip till first "/" to allow paths starting with drive and
+             * relative path, like "c:html/"
+             */
+
+            if (ch == '/' || ch == '\\') {
+                state = sw_after_slash;
+            }
+
+            break;
+
+        case sw_normal:
+
+            if (ch == ':') {
+                state = sw_after_colon;
+                break;
+            }
+
+            if (ch == '.' || ch == ' ') {
+                state = sw_after_dot;
+                break;
+            }
+
+            if (ch == '/' || ch == '\\') {
+                state = sw_after_slash;
+                break;
+            }
+
+            break;
+
+        case sw_after_slash:
+
+            if (ch == '/' || ch == '\\') {
+                break;
+            }
+
+            if (ch == '.') {
+                break;
+            }
+
+            if (ch == ':') {
+                state = sw_after_colon;
+                break;
+            }
+
+            state = sw_normal;
+            break;
+
+        case sw_after_colon:
+
+            if (ch == '/' || ch == '\\') {
+                state = sw_after_slash;
+                break;
+            }
+
+            goto invalid;
+
+        case sw_after_dot:
+
+            if (ch == '/' || ch == '\\') {
+                goto invalid;
+            }
+
+            if (ch == ':') {
+                goto invalid;
+            }
+       
+            if (ch == '.' || ch == ' ') {
+                break;
+            }
+
+            state = sw_normal;
+            break;
+        }
+    }
+
+    if (state == sw_after_dot) {
+        goto invalid;
+    }
+
+    /* check if long name match */
+
+    lu = malloc(len * 2);
+    if (lu == NULL) {
+        return NGX_ERROR;
+    }
+
+    n = GetLongPathNameW(u, lu, len);
+
+    if (n == 0) {
+        goto failed;
+    }
+
+    if (n != len - 1 || _wcsicmp(u, lu) != 0) {
+        goto invalid;
+    }
+
+    return NGX_OK;
+
+invalid:
+
+    ngx_set_errno(NGX_ENOENT);
+
+failed:
+
+    if (lu) {
+        err = ngx_errno;
+        ngx_free(lu);
+        ngx_set_errno(err);
+    }
+
+    return NGX_ERROR;
 }
 
 
