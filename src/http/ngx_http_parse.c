@@ -543,6 +543,13 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
             switch (ch) {
             case '/':
+#if (NGX_WIN32)
+                if (r->uri_ext == p) {
+                    r->complex_uri = 1;
+                    state = sw_uri;
+                    break;
+                }
+#endif
                 r->uri_ext = NULL;
                 state = sw_after_slash_in_uri;
                 break;
@@ -1117,6 +1124,12 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             switch(ch) {
 #if (NGX_WIN32)
             case '\\':
+                if (u - 2 >= r->uri.data
+                    && *(u - 1) == '.' && *(u - 2) != '.')
+                {
+                    u--;
+                }
+
                 r->uri_ext = NULL;
 
                 if (p == r->uri_start + r->uri.len) {
@@ -1134,6 +1147,13 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
 #endif
             case '/':
+#if (NGX_WIN32)
+                if (u - 2 >= r->uri.data
+                    && *(u - 1) == '.' && *(u - 2) != '.')
+                {
+                    u--;
+                }
+#endif
                 r->uri_ext = NULL;
                 state = sw_slash;
                 *u++ = ch;
