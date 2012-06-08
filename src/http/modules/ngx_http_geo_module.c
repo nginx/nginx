@@ -145,7 +145,7 @@ typedef struct {
     u_char    GEORNG[6];
     u_char    version;
     u_char    ptr_size;
-    uint32_t  endianess;
+    uint32_t  endianness;
     uint32_t  crc32;
 } ngx_http_geo_header_t;
 

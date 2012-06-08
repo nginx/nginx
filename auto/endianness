@@ -3,9 +3,9 @@
 # Copyright (C) Nginx, Inc.
 
 
-echo $ngx_n "checking for system endianess ...$ngx_c"
+echo $ngx_n "checking for system byte ordering ...$ngx_c"
 echo >> $NGX_ERR
-echo "checking for system endianess" >> $NGX_ERR
+echo "checking for system byte ordering" >> $NGX_ERR
 
 
 cat << END > $NGX_AUTOTEST.c
@@ -28,10 +28,10 @@ eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 
 if [ -x $NGX_AUTOTEST ]; then
     if $NGX_AUTOTEST >/dev/null 2>&1; then
-        echo " little endianess"
+        echo " little endian"
         have=NGX_HAVE_LITTLE_ENDIAN . auto/have
     else
-        echo " big endianess"
+        echo " big endian"
     fi
 
     rm $NGX_AUTOTEST*
@@ -40,6 +40,6 @@ else
     rm $NGX_AUTOTEST*
 
     echo
-    echo "$0: error: can not detect system endianess"
+    echo "$0: error: cannot detect system byte ordering"
     exit 1
 fi

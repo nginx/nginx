@@ -464,7 +464,7 @@ ngx_type="rlim_t"; ngx_types="int"; . auto/types/typedef
 
 . auto/types/uintptr_t
 
-. auto/endianess
+. auto/endianness
 
 ngx_type="size_t"; . auto/types/sizeof
 ngx_param=NGX_MAX_SIZE_T_VALUE; ngx_value=$ngx_max_value; . auto/types/value
