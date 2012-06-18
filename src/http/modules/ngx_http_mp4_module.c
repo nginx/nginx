@@ -2488,7 +2488,13 @@ found:
 
     ngx_mp4_set_32value(entry->chunk, 1);
 
-    if (trak->chunk_samples) {
+    if (trak->chunk_samples && next_chunk - trak->start_chunk == 2) {
+
+        /* last chunk in the entry */
+
+        ngx_mp4_set_32value(entry->samples, samples - trak->chunk_samples);
+
+    } else if (trak->chunk_samples) {
 
         first = &trak->stsc_chunk_entry;
         ngx_mp4_set_32value(first->chunk, 1);
@@ -2504,6 +2510,7 @@ found:
 
         ngx_mp4_set_32value(entry->chunk, 2);
 
+        entries++;
         atom_size += sizeof(ngx_mp4_stsc_entry_t);
     }
 
