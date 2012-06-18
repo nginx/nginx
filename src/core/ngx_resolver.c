@@ -977,12 +977,11 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 
         if (rn->waiting) {
 
-            if (ngx_resolver_send_query(r, rn) == NGX_OK) {
+            (void) ngx_resolver_send_query(r, rn);
 
-                rn->expire = now + r->resend_timeout;
+            rn->expire = now + r->resend_timeout;
 
-                ngx_queue_insert_head(queue, &rn->queue);
-            }
+            ngx_queue_insert_head(queue, q);
 
             continue;
         }
