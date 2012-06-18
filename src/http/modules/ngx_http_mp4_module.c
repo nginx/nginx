@@ -1024,6 +1024,10 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                          + NGX_HTTP_MP4_MOOV_BUFFER_EXCESS * no_mdat;
     }
 
+    if (ngx_http_mp4_read(mp4, atom_data_size) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     mp4->trak.elts = &mp4->traks;
     mp4->trak.size = sizeof(ngx_http_mp4_trak_t);
     mp4->trak.nalloc = 2;
@@ -1043,6 +1047,12 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     if (no_mdat) {
         mp4->buffer_start = mp4->buffer_pos;
         mp4->buffer_size = NGX_HTTP_MP4_MOOV_BUFFER_EXCESS;
+
+        if (mp4->buffer_start + mp4->buffer_size > mp4->buffer_end) {
+            mp4->buffer = NULL;
+            mp4->buffer_pos = NULL;
+            mp4->buffer_end = NULL;
+        }
 
     } else {
         /* skip atoms after moov atom */
