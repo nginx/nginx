@@ -93,6 +93,7 @@ case "$NGX_MACHINE" in
     ;;
 
     *)
+        have=NGX_ALIGNMENT value=16 . auto/define
         NGX_MACH_CACHE_LINE=32
     ;;
 
