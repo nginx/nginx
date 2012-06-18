@@ -96,7 +96,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 {
     ngx_str_t              s;
     ngx_url_t              u;
-    ngx_uint_t             i;
+    ngx_uint_t             i, j;
     ngx_resolver_t        *r;
     ngx_pool_cleanup_t    *cln;
     ngx_udp_connection_t  *uc;
@@ -184,16 +184,18 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
             return NULL;
         }
 
-        uc = ngx_array_push(&r->udp_connections);
+        uc = ngx_array_push_n(&r->udp_connections, u.naddrs);
         if (uc == NULL) {
             return NULL;
         }
 
-        ngx_memzero(uc, sizeof(ngx_udp_connection_t));
+        ngx_memzero(uc, u.naddrs * sizeof(ngx_udp_connection_t));
 
-        uc->sockaddr = u.addrs->sockaddr;
-        uc->socklen = u.addrs->socklen;
-        uc->server = u.addrs->name;
+        for (j = 0; j < u.naddrs; j++) {
+            uc[j].sockaddr = u.addrs[j].sockaddr;
+            uc[j].socklen = u.addrs[j].socklen;
+            uc[j].server = u.addrs[j].name;
+        }
     }
 
     return r;
