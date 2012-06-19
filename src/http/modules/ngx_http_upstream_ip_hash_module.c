@@ -16,7 +16,8 @@ typedef struct {
 
     ngx_uint_t                         hash;
 
-    u_char                             addr[3];
+    u_char                             addrlen;
+    u_char                            *addr;
 
     u_char                             tries;
 
@@ -76,7 +77,10 @@ ngx_module_t  ngx_http_upstream_ip_hash_module = {
 };
 
 
-ngx_int_t
+static u_char ngx_http_upstream_ip_hash_pseudo_addr[3];
+
+
+static ngx_int_t
 ngx_http_upstream_init_ip_hash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 {
     if (ngx_http_upstream_init_round_robin(cf, us) != NGX_OK) {
@@ -93,8 +97,10 @@ static ngx_int_t
 ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
-    u_char                                 *p;
     struct sockaddr_in                     *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6                    *sin6;
+#endif
     ngx_http_upstream_ip_hash_peer_data_t  *iphp;
 
     iphp = ngx_palloc(r->pool, sizeof(ngx_http_upstream_ip_hash_peer_data_t));
@@ -110,20 +116,25 @@ ngx_http_upstream_init_ip_hash_peer(ngx_http_request_t *r,
 
     r->upstream->peer.get = ngx_http_upstream_get_ip_hash_peer;
 
-    /* AF_INET only */
+    switch (r->connection->sockaddr->sa_family) {
 
-    if (r->connection->sockaddr->sa_family == AF_INET) {
-
+    case AF_INET:
         sin = (struct sockaddr_in *) r->connection->sockaddr;
-        p = (u_char *) &sin->sin_addr.s_addr;
-        iphp->addr[0] = p[0];
-        iphp->addr[1] = p[1];
-        iphp->addr[2] = p[2];
+        iphp->addr = (u_char *) &sin->sin_addr.s_addr;
+        iphp->addrlen = 3;
+        break;
 
-    } else {
-        iphp->addr[0] = 0;
-        iphp->addr[1] = 0;
-        iphp->addr[2] = 0;
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
+        iphp->addr = (u_char *) &sin6->sin6_addr.s6_addr;
+        iphp->addrlen = 16;
+        break;
+#endif
+
+    default:
+        iphp->addr = ngx_http_upstream_ip_hash_pseudo_addr;
+        iphp->addrlen = 3;
     }
 
     iphp->hash = 89;
@@ -163,7 +174,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     for ( ;; ) {
 
-        for (i = 0; i < 3; i++) {
+        for (i = 0; i < iphp->addrlen; i++) {
             hash = (hash * 113 + iphp->addr[i]) % 6271;
         }
 
