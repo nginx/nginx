@@ -46,7 +46,8 @@ RELEASE:
 	svn ci -F $(TEMP)/message
 
 	echo "release-$(VER) tag" > $(TEMP)/message
-	svn copy $(REPO)/trunk $(REPO)/tags/release-$(VER)		\
+	svn copy $(REPO)/branches/stable-1.2				\
+		$(REPO)/tags/release-$(VER)				\
 		-F $(TEMP)/message
 
 	svn up
