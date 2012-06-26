@@ -476,7 +476,7 @@ header_out(r, key, value)
     }
 
     if (header->key.len == sizeof("Content-Encoding") - 1
-        && ngx_strncasecmp(header->key.data, "Content-Encoding",
+        && ngx_strncasecmp(header->key.data, (u_char *) "Content-Encoding",
                            sizeof("Content-Encoding") - 1) == 0)
     {
         r->headers_out.content_encoding = header;
