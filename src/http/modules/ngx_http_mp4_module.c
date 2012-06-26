@@ -1024,7 +1024,7 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                          + NGX_HTTP_MP4_MOOV_BUFFER_EXCESS * no_mdat;
     }
 
-    if (ngx_http_mp4_read(mp4, atom_data_size) != NGX_OK) {
+    if (ngx_http_mp4_read(mp4, (size_t) atom_data_size) != NGX_OK) {
         return NGX_ERROR;
     }
 
