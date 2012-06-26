@@ -29,6 +29,22 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # MacPorts
+
+    ngx_feature="Google perftools in /opt/local/"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lprofiler"
+    else
+        ngx_feature_libs="-L/opt/local/lib -lprofiler"
+    fi
+
+    . auto/feature
+fi
+
+
 if [ $ngx_found = yes ]; then
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 
