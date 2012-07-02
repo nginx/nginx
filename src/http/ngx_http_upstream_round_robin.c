@@ -30,7 +30,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us)
 {
     ngx_url_t                      u;
-    ngx_uint_t                     i, j, n;
+    ngx_uint_t                     i, j, n, w;
     ngx_http_upstream_server_t    *server;
     ngx_http_upstream_rr_peers_t  *peers, *backup;
 
@@ -40,6 +40,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         server = us->servers->elts;
 
         n = 0;
+        w = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
             if (server[i].backup) {
@@ -47,6 +48,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             }
 
             n += server[i].naddrs;
+            w += server[i].naddrs * server[i].weight;
         }
 
         if (n == 0) {
@@ -64,6 +66,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
         peers->single = (n == 1);
         peers->number = n;
+        peers->weighted = (w != n);
+        peers->total_weight = w;
         peers->name = &us->host;
 
         n = 0;
@@ -96,6 +100,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         /* backup servers */
 
         n = 0;
+        w = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
             if (!server[i].backup) {
@@ -103,6 +108,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             }
 
             n += server[i].naddrs;
+            w += server[i].naddrs * server[i].weight;
         }
 
         if (n == 0) {
@@ -118,6 +124,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         peers->single = 0;
         backup->single = 0;
         backup->number = n;
+        backup->weighted = (w != n);
+        backup->total_weight = w;
         backup->name = &us->host;
 
         n = 0;
@@ -185,6 +193,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
     peers->single = (n == 1);
     peers->number = n;
+    peers->weighted = 0;
+    peers->total_weight = n;
     peers->name = &us->host;
 
     for (i = 0; i < u.naddrs; i++) {

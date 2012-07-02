@@ -41,12 +41,16 @@ typedef struct {
 typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 
 struct ngx_http_upstream_rr_peers_s {
-    ngx_uint_t                      single;        /* unsigned  single:1; */
     ngx_uint_t                      number;
     ngx_uint_t                      last_cached;
 
  /* ngx_mutex_t                    *mutex; */
     ngx_connection_t              **cached;
+
+    ngx_uint_t                      total_weight;
+
+    unsigned                        single:1;
+    unsigned                        weighted:1;
 
     ngx_str_t                      *name;
 
