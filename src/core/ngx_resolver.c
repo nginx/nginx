@@ -175,7 +175,12 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         u.port = 53;
 
         if (ngx_inet_resolve_host(cf->pool, &u) != NGX_OK) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V: %s", &u.host, u.err);
+            if (u.err) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "%s in resolver \"%V\"",
+                                   u.err, &u.host);
+            }
+
             return NULL;
         }
 
