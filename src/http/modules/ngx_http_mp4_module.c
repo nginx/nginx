@@ -1024,6 +1024,10 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                          + NGX_HTTP_MP4_MOOV_BUFFER_EXCESS * no_mdat;
     }
 
+    if (ngx_http_mp4_read(mp4, (size_t) atom_data_size) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     mp4->trak.elts = &mp4->traks;
     mp4->trak.size = sizeof(ngx_http_mp4_trak_t);
     mp4->trak.nalloc = 2;
@@ -1043,6 +1047,12 @@ ngx_http_mp4_read_moov_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     if (no_mdat) {
         mp4->buffer_start = mp4->buffer_pos;
         mp4->buffer_size = NGX_HTTP_MP4_MOOV_BUFFER_EXCESS;
+
+        if (mp4->buffer_start + mp4->buffer_size > mp4->buffer_end) {
+            mp4->buffer = NULL;
+            mp4->buffer_pos = NULL;
+            mp4->buffer_end = NULL;
+        }
 
     } else {
         /* skip atoms after moov atom */
@@ -2488,7 +2498,13 @@ found:
 
     ngx_mp4_set_32value(entry->chunk, 1);
 
-    if (trak->chunk_samples) {
+    if (trak->chunk_samples && next_chunk - trak->start_chunk == 2) {
+
+        /* last chunk in the entry */
+
+        ngx_mp4_set_32value(entry->samples, samples - trak->chunk_samples);
+
+    } else if (trak->chunk_samples) {
 
         first = &trak->stsc_chunk_entry;
         ngx_mp4_set_32value(first->chunk, 1);
@@ -2504,6 +2520,7 @@ found:
 
         ngx_mp4_set_32value(entry->chunk, 2);
 
+        entries++;
         atom_size += sizeof(ngx_mp4_stsc_entry_t);
     }
 
