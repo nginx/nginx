@@ -634,10 +634,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
     args = ngx_strlchr(host, last, '?');
 
     if (args) {
-        if (uri == NULL) {
-            uri = args;
-
-        } else if (args < uri) {
+        if (uri == NULL || args < uri) {
             uri = args;
         }
     }
@@ -662,11 +659,6 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         port++;
 
         len = last - port;
-
-        if (len == 0) {
-            u->err = "invalid port";
-            return NGX_ERROR;
-        }
 
         n = ngx_atoi(port, len);
 
@@ -774,11 +766,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_OK;
     }
 
-    if (ngx_inet_resolve_host(pool, u) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
+    return ngx_inet_resolve_host(pool, u);
 }
 
 
@@ -826,11 +814,6 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
             port++;
 
             len = last - port;
-
-            if (len == 0) {
-                u->err = "invalid port";
-                return NGX_ERROR;
-            }
 
             n = ngx_atoi(port, len);
 
