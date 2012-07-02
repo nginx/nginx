@@ -137,6 +137,13 @@
 #define NGX_HTTP_COPY_BUFFERED             0x04
 
 
+#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP || NGX_HTTP_GEO)
+#ifndef NGX_HTTP_X_FORWARDED_FOR
+#define NGX_HTTP_X_FORWARDED_FOR           1
+#endif
+#endif
+
+
 typedef enum {
     NGX_HTTP_INITING_REQUEST_STATE = 0,
     NGX_HTTP_READING_REQUEST_STATE,
@@ -192,7 +199,7 @@ typedef struct {
 
     ngx_table_elt_t                  *keep_alive;
 
-#if (NGX_HTTP_PROXY || NGX_HTTP_REALIP || NGX_HTTP_GEO)
+#if (NGX_HTTP_X_FORWARDED_FOR)
     ngx_table_elt_t                  *x_forwarded_for;
 #endif
 
