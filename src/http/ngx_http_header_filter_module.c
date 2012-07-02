@@ -395,7 +395,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         }
 
     } else {
-        len += sizeof("Connection: closed" CRLF) - 1;
+        len += sizeof("Connection: close" CRLF) - 1;
     }
 
 #if (NGX_HTTP_GZIP)

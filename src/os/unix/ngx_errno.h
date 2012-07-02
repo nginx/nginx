@@ -69,7 +69,7 @@ typedef int               ngx_err_t;
 
 
 u_char *ngx_strerror(ngx_err_t err, u_char *errstr, size_t size);
-ngx_uint_t ngx_strerror_init(void);
+ngx_int_t ngx_strerror_init(void);
 
 
 #endif /* _NGX_ERRNO_H_INCLUDED_ */

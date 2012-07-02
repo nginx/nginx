@@ -722,7 +722,7 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
             if (ch == ':') {
                 goto invalid;
             }
-       
+
             if (ch == '.' || ch == ' ') {
                 break;
             }
