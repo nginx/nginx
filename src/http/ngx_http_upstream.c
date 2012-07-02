@@ -3677,6 +3677,7 @@ static ngx_int_t
 ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    ngx_int_t         rc;
     ngx_table_elt_t  *ho;
 
     ho = ngx_list_push(&r->headers_out.headers);
@@ -3687,7 +3688,20 @@ ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     *ho = *h;
 
     if (r->upstream->rewrite_cookie) {
-        return r->upstream->rewrite_cookie(r, ho);
+        rc = r->upstream->rewrite_cookie(r, ho);
+
+        if (rc == NGX_DECLINED) {
+            return NGX_OK;
+        }
+
+#if (NGX_DEBUG)
+        if (rc == NGX_OK) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "rewritten cookie: \"%V\"", &ho->value);
+        }
+#endif
+
+        return rc;
     }
 
     return NGX_OK;
