@@ -924,17 +924,6 @@ wildcard:
     }
 
 
-    hk = ngx_array_push(hwc);
-    if (hk == NULL) {
-        return NGX_ERROR;
-    }
-
-    hk->key.len = last - 1;
-    hk->key.data = p;
-    hk->key_hash = 0;
-    hk->value = value;
-
-
     /* check conflicts in wildcard hash */
 
     name = keys->elts;
@@ -971,6 +960,19 @@ wildcard:
     }
 
     ngx_memcpy(name->data, key->data + skip, name->len);
+
+
+    /* add to wildcard hash */
+
+    hk = ngx_array_push(hwc);
+    if (hk == NULL) {
+        return NGX_ERROR;
+    }
+
+    hk->key.len = last - 1;
+    hk->key.data = p;
+    hk->key_hash = 0;
+    hk->value = value;
 
     return NGX_OK;
 }
