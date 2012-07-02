@@ -808,6 +808,8 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 
             u->uri.len = last - uri;
             u->uri.data = uri;
+
+            last = uri;
         }
 
         if (*port == ':') {
@@ -840,8 +842,8 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    u->host.len = len;
-    u->host.data = host;
+    u->host.len = len + 2;
+    u->host.data = host - 1;
 
     if (ngx_inet6_addr(host, len, sin6->sin6_addr.s6_addr) != NGX_OK) {
         u->err = "invalid IPv6 address";
@@ -852,16 +854,37 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
         u->wildcard = 1;
     }
 
-    u->family = AF_INET6;
-
-    if (u->no_resolve) {
-        return NGX_OK;
-    }
-
     if (u->no_port) {
         u->port = u->default_port;
         sin6->sin6_port = htons(u->default_port);
     }
+
+    u->family = AF_INET6;
+    u->naddrs = 1;
+
+    u->addrs = ngx_pcalloc(pool, sizeof(ngx_addr_t));
+    if (u->addrs == NULL) {
+        return NGX_ERROR;
+    }
+
+    sin6 = ngx_pcalloc(pool, sizeof(struct sockaddr_in6));
+    if (sin6 == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(sin6, u->sockaddr, sizeof(struct sockaddr_in6));
+
+    u->addrs[0].sockaddr = (struct sockaddr *) sin6;
+    u->addrs[0].socklen = sizeof(struct sockaddr_in6);
+
+    p = ngx_pnalloc(pool, u->host.len + sizeof(":65535") - 1);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    u->addrs[0].name.len = ngx_sprintf(p, "%V:%d",
+                                       &u->host, u->port) - p;
+    u->addrs[0].name.data = p;
 
     return NGX_OK;
 
