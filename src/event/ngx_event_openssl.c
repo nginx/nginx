@@ -990,7 +990,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             if (n == NGX_AGAIN) {
-                c->buffered |= NGX_SSL_BUFFERED;
                 return in;
             }
 
