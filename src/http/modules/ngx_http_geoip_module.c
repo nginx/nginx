@@ -28,7 +28,7 @@ typedef struct {
 } ngx_http_geoip_var_t;
 
 
-typedef const char *(*ngx_http_geoip_variable_handler_pt)(GeoIP *, u_long addr);
+typedef char *(*ngx_http_geoip_variable_handler_pt)(GeoIP *, u_long addr);
 
 static u_long ngx_http_geoip_addr(ngx_http_request_t *r,
     ngx_http_geoip_conf_t *gcf);
@@ -291,7 +291,8 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
     ngx_http_geoip_variable_handler_pt  handler =
         (ngx_http_geoip_variable_handler_pt) data;
 
-    const char             *val;
+    size_t                  len;
+    char                   *val;
     ngx_http_geoip_conf_t  *gcf;
 
     gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
@@ -306,11 +307,21 @@ ngx_http_geoip_org_variable(ngx_http_request_t *r,
         goto not_found;
     }
 
-    v->len = ngx_strlen(val);
+    len = ngx_strlen(val);
+    v->data = ngx_pnalloc(r->pool, len);
+    if (v->data == NULL) {
+        ngx_free(val);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(v->data, val, len);
+
+    v->len = len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = (u_char *) val;
+
+    ngx_free(val);
 
     return NGX_OK;
 
