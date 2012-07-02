@@ -522,11 +522,6 @@ ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
         return ngx_parse_unix_domain_url(pool, u);
     }
 
-    if ((p[0] == ':' || p[0] == '/') && !u->listen) {
-        u->err = "invalid host";
-        return NGX_ERROR;
-    }
-
     if (p[0] == '[') {
         return ngx_parse_inet6_url(pool, u);
     }
