@@ -2588,6 +2588,7 @@ ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name)
 
             r->internal = 1;
             r->content_handler = NULL;
+            r->uri_changed = 0;
             r->loc_conf = (*clcfp)->loc_conf;
 
             /* clear the modules contexts */
