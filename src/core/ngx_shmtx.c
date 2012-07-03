@@ -44,7 +44,7 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 
 
 void
-ngx_shmtx_destory(ngx_shmtx_t *mtx)
+ngx_shmtx_destroy(ngx_shmtx_t *mtx)
 {
 #if (NGX_HAVE_POSIX_SEM)
 
@@ -208,7 +208,7 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
             return NGX_OK;
         }
 
-        ngx_shmtx_destory(mtx);
+        ngx_shmtx_destroy(mtx);
     }
 
     mtx->fd = ngx_open_file(name, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
@@ -232,7 +232,7 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 
 
 void
-ngx_shmtx_destory(ngx_shmtx_t *mtx)
+ngx_shmtx_destroy(ngx_shmtx_t *mtx)
 {
     if (ngx_close_file(mtx->fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_errno,
