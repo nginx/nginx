@@ -9,6 +9,210 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.2.2" date="03.07.2012">
+
+<change type="change">
+<para lang="ru">
+параметр single директивы keepalive теперь игнорируется.
+</para>
+<para lang="en">
+the "single" parameter of the "keepalive" directive is now ignored.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+сжатие SSL теперь отключено
+в том числе при использовании OpenSSL cтарее 1.0.0.
+</para>
+<para lang="en">
+SSL compression is now disabled when using all versions of OpenSSL,
+including ones prior to 1.0.0.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_pass, fastcgi_pass, scgi_pass, uwsgi_pass и
+директива server в блоке upstream
+теперь поддерживают IPv6-адреса.
+</para>
+<para lang="en">
+the "proxy_pass", "fastcgi_pass", "scgi_pass", "uwsgi_pass" directives, and
+the "server" directive inside the "upstream" block,
+now support IPv6 addresses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в директиве resolver теперь можно указывать порт и
+задавать IPv6-адреса DNS-серверов.
+</para>
+<para lang="en">
+the "resolver" directive now support IPv6 addresses and
+an optional port specification.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива least_conn в блоке upstream.
+</para>
+<para lang="en">
+the "least_conn" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при использовании директивы ip_hash
+теперь можно задавать веса серверов.
+</para>
+<para lang="en">
+it is now possible to specify a weight for servers
+while using the "ip_hash" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву "ip_hash" теперь можно использовать для балансировки IPv6 клиентов.
+</para>
+<para lang="en">
+it is now possible to use the "ip_hash" directive to balance IPv6 clients.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменную $status теперь можно использовать не только в директиве log_format.
+</para>
+<para lang="en">
+the $status variable can now be used not only in the "log_format" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с модулем ngx_cpp_test_module;
+ошибка появилась в 1.1.12.
+</para>
+<para lang="en">
+nginx could not be built with ngx_cpp_test_module;
+the bug had appeared in 1.1.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+доступ к переменным из SSI и встроенного перла мог не работать после
+переконфигурации.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+access to variables from SSI and embedded perl module might not work after
+reconfiguration.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_xslt_filter_module.<br/>
+Спасибо Kuramoto Eiji.
+</para>
+<para lang="en">
+in the ngx_http_xslt_filter_module.<br/>
+Thanks to Kuramoto Eiji.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании переменной $geoip_org.<br/>
+Спасибо Денису Латыпову.
+</para>
+<para lang="en">
+memory leak if $geoip_org variable was used.<br/>
+Thanks to Denis F. Latypoff.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy_cookie_domain и proxy_cookie_path.
+</para>
+<para lang="en">
+in the "proxy_cookie_domain" and "proxy_cookie_path" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при завершении рабочего процесса мог произойти segmentation fault,
+если использовалась директива resolver.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process on shutdown
+if the "resolver" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_mp4_module.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_mp4_module was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовались конфликтующие имена серверов с масками.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if conflicting wildcard server names were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на платформе ARM nginx мог аварийно завершаться по сигналу SIGBUS.
+</para>
+<para lang="en">
+nginx might be terminated abnormally on a SIGBUS signal on ARM platform.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во время переконфигурации на HP-UX в лог
+записывался alert "sendmsg() failed (9: Bad file number)".
+</para>
+<para lang="en">
+an alert "sendmsg() failed (9: Bad file number)" on HP-UX
+while reconfiguration.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.1" date="05.06.2012">
 
 <change type="security">
