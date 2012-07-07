@@ -656,6 +656,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
 
     ngx_http_clear_accept_ranges(r);
     ngx_http_clear_last_modified(r);
+    ngx_http_clear_etag(r);
 
     rc = ngx_http_send_header(r);
 
@@ -754,6 +755,7 @@ ngx_http_send_refresh(ngx_http_request_t *r)
 
     ngx_http_clear_accept_ranges(r);
     ngx_http_clear_last_modified(r);
+    ngx_http_clear_etag(r);
 
     rc = ngx_http_send_header(r);
 

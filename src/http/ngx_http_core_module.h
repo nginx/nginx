@@ -555,5 +555,12 @@ extern ngx_str_t  ngx_http_core_get_method;
         r->headers_out.location = NULL;                                       \
     }
 
+#define ngx_http_clear_etag(r)                                                \
+                                                                              \
+    if (r->headers_out.etag) {                                                \
+        r->headers_out.etag->hash = 0;                                        \
+        r->headers_out.etag = NULL;                                           \
+    }
+
 
 #endif /* _NGX_HTTP_CORE_H_INCLUDED_ */

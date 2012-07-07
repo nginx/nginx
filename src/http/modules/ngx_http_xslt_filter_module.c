@@ -328,6 +328,7 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
         }
 
         ngx_http_clear_last_modified(r);
+        ngx_http_clear_etag(r);
     }
 
     rc = ngx_http_next_header_filter(r);
