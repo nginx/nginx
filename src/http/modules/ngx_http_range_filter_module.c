@@ -174,7 +174,11 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
         goto next_filter;
     }
 
-    if (r->headers_in.if_range && r->headers_out.last_modified_time != -1) {
+    if (r->headers_in.if_range) {
+
+        if (r->headers_out.last_modified_time == (time_t) -1) {
+            goto next_filter;
+        }
 
         if_range = ngx_http_parse_time(r->headers_in.if_range->value.data,
                                        r->headers_in.if_range->value.len);
