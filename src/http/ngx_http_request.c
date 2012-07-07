@@ -93,6 +93,14 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  offsetof(ngx_http_headers_in_t, if_unmodified_since),
                  ngx_http_process_unique_header_line },
 
+    { ngx_string("If-Match"),
+                 offsetof(ngx_http_headers_in_t, if_match),
+                 ngx_http_process_unique_header_line },
+
+    { ngx_string("If-None-Match"),
+                 offsetof(ngx_http_headers_in_t, if_none_match),
+                 ngx_http_process_unique_header_line },
+
     { ngx_string("User-Agent"), offsetof(ngx_http_headers_in_t, user_agent),
                  ngx_http_process_user_agent },
 

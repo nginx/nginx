@@ -12,6 +12,8 @@
 
 static ngx_uint_t ngx_http_test_if_unmodified(ngx_http_request_t *r);
 static ngx_uint_t ngx_http_test_if_modified(ngx_http_request_t *r);
+static ngx_uint_t ngx_http_test_if_match(ngx_http_request_t *r,
+    ngx_table_elt_t *header);
 static ngx_int_t ngx_http_not_modified_filter_init(ngx_conf_t *cf);
 
 
@@ -66,9 +68,27 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
                                                 NGX_HTTP_PRECONDITION_FAILED);
     }
 
-    if (r->headers_in.if_modified_since
-        && !ngx_http_test_if_modified(r))
+    if (r->headers_in.if_match
+        && !ngx_http_test_if_match(r, r->headers_in.if_match))
     {
+        return ngx_http_filter_finalize_request(r, NULL,
+                                                NGX_HTTP_PRECONDITION_FAILED);
+    }
+
+    if (r->headers_in.if_modified_since || r->headers_in.if_none_match) {
+
+        if (r->headers_in.if_modified_since
+            && ngx_http_test_if_modified(r))
+        {
+            return ngx_http_next_header_filter(r);
+        }
+
+        if (r->headers_in.if_none_match
+            && !ngx_http_test_if_match(r, r->headers_in.if_none_match))
+        {
+            return ngx_http_next_header_filter(r);
+        }
+
         /* not modified */
 
         r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
@@ -134,6 +154,76 @@ ngx_http_test_if_modified(ngx_http_request_t *r)
         || ims < r->headers_out.last_modified_time)
     {
         return 1;
+    }
+
+    return 0;
+}
+
+
+static ngx_uint_t
+ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header)
+{
+    u_char     *start, *end, ch;
+    ngx_str_t  *etag, *list;
+
+    list = &header->value;
+
+    if (list->len == 1 && list->data[0] == '*') {
+        return 1;
+    }
+
+    if (r->headers_out.etag == NULL) {
+        return 0;
+    }
+
+    etag = &r->headers_out.etag->value;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http im:\"%V\" etag:%V", list, etag);
+
+    start = list->data;
+    end = list->data + list->len;
+
+    while (start < end) {
+
+        if (etag->len > (size_t) (end - start)) {
+            return 0;
+        }
+
+        if (ngx_strncmp(start, etag->data, etag->len) != 0) {
+            goto skip;
+        }
+
+        start += etag->len;
+
+        while (start < end) {
+            ch = *start;
+
+            if (ch == ' ' || ch == '\t') {
+                start++;
+                continue;
+            }
+
+            break;
+        }
+
+        if (start == end || *start == ',') {
+            return 1;
+        }
+
+    skip:
+
+        while (start < end && *start != ',') { start++; }
+        while (start < end) {
+            ch = *start;
+
+            if (ch == ' ' || ch == '\t' || ch == ',') {
+                start++;
+                continue;
+            }
+
+            break;
+        }
     }
 
     return 0;
