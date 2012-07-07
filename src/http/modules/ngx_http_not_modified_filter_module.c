@@ -10,8 +10,8 @@
 #include <ngx_http.h>
 
 
-static ngx_int_t ngx_http_test_precondition(ngx_http_request_t *r);
-static ngx_int_t ngx_http_test_not_modified(ngx_http_request_t *r);
+static ngx_uint_t ngx_http_test_if_unmodified(ngx_http_request_t *r);
+static ngx_uint_t ngx_http_test_if_modified(ngx_http_request_t *r);
 static ngx_int_t ngx_http_not_modified_filter_init(ngx_conf_t *cf);
 
 
@@ -59,20 +59,38 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (r->headers_in.if_unmodified_since) {
-        return ngx_http_test_precondition(r);
+    if (r->headers_in.if_unmodified_since
+        && !ngx_http_test_if_unmodified(r))
+    {
+        return ngx_http_filter_finalize_request(r, NULL,
+                                                NGX_HTTP_PRECONDITION_FAILED);
     }
 
-    if (r->headers_in.if_modified_since) {
-        return ngx_http_test_not_modified(r);
+    if (r->headers_in.if_modified_since
+        && !ngx_http_test_if_modified(r))
+    {
+        /* not modified */
+
+        r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
+        r->headers_out.status_line.len = 0;
+        r->headers_out.content_type.len = 0;
+        ngx_http_clear_content_length(r);
+        ngx_http_clear_accept_ranges(r);
+
+        if (r->headers_out.content_encoding) {
+            r->headers_out.content_encoding->hash = 0;
+            r->headers_out.content_encoding = NULL;
+        }
+
+        return ngx_http_next_header_filter(r);
     }
 
     return ngx_http_next_header_filter(r);
 }
 
 
-static ngx_int_t
-ngx_http_test_precondition(ngx_http_request_t *r)
+static ngx_uint_t
+ngx_http_test_if_unmodified(ngx_http_request_t *r)
 {
     time_t  iums;
 
@@ -83,16 +101,15 @@ ngx_http_test_precondition(ngx_http_request_t *r)
                  "http iums:%d lm:%d", iums, r->headers_out.last_modified_time);
 
     if (iums >= r->headers_out.last_modified_time) {
-        return ngx_http_next_header_filter(r);
+        return 1;
     }
 
-    return ngx_http_filter_finalize_request(r, NULL,
-                                            NGX_HTTP_PRECONDITION_FAILED);
+    return 0;
 }
 
 
-static ngx_int_t
-ngx_http_test_not_modified(ngx_http_request_t *r)
+static ngx_uint_t
+ngx_http_test_if_modified(ngx_http_request_t *r)
 {
     time_t                     ims;
     ngx_http_core_loc_conf_t  *clcf;
@@ -100,7 +117,7 @@ ngx_http_test_not_modified(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (clcf->if_modified_since == NGX_HTTP_IMS_OFF) {
-        return ngx_http_next_header_filter(r);
+        return 1;
     }
 
     ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
@@ -109,27 +126,17 @@ ngx_http_test_not_modified(ngx_http_request_t *r)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http ims:%d lm:%d", ims, r->headers_out.last_modified_time);
 
-    if (ims != r->headers_out.last_modified_time) {
-
-        if (clcf->if_modified_since == NGX_HTTP_IMS_EXACT
-            || ims < r->headers_out.last_modified_time)
-        {
-            return ngx_http_next_header_filter(r);
-        }
+    if (ims == r->headers_out.last_modified_time) {
+        return 0;
     }
 
-    r->headers_out.status = NGX_HTTP_NOT_MODIFIED;
-    r->headers_out.status_line.len = 0;
-    r->headers_out.content_type.len = 0;
-    ngx_http_clear_content_length(r);
-    ngx_http_clear_accept_ranges(r);
-
-    if (r->headers_out.content_encoding) {
-        r->headers_out.content_encoding->hash = 0;
-        r->headers_out.content_encoding = NULL;
+    if (clcf->if_modified_since == NGX_HTTP_IMS_EXACT
+        || ims < r->headers_out.last_modified_time)
+    {
+        return 1;
     }
 
-    return ngx_http_next_header_filter(r);
+    return 0;
 }
 
 
