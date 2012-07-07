@@ -72,9 +72,7 @@ static ngx_http_set_header_t  ngx_http_set_headers[] = {
 
     { ngx_string("Cache-Control"), 0, ngx_http_add_cache_control },
 
-    { ngx_string("Last-Modified"),
-                 offsetof(ngx_http_headers_out_t, last_modified),
-                 ngx_http_set_last_modified },
+    { ngx_string("Last-Modified"), 0, ngx_http_set_last_modified },
 
     { ngx_null_string, 0, NULL }
 };
@@ -368,33 +366,23 @@ static ngx_int_t
 ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     ngx_str_t *value)
 {
-    ngx_table_elt_t  *h, **old;
+    ngx_table_elt_t  *h;
 
-    old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
+    ngx_http_clear_last_modified(r);
 
-    r->headers_out.last_modified_time = -1;
-
-    if (*old == NULL) {
-
-        if (value->len == 0) {
-            return NGX_OK;
-        }
-
-        h = ngx_list_push(&r->headers_out.headers);
-        if (h == NULL) {
-            return NGX_ERROR;
-        }
-
-        *old = h;
-
-    } else {
-        h = *old;
-
-        if (value->len == 0) {
-            h->hash = 0;
-            return NGX_OK;
-        }
+    if (value->len == 0) {
+        return NGX_OK;
     }
+
+    r->headers_out.last_modified_time = ngx_http_parse_time(value->data,
+                                                            value->len);
+
+    h = ngx_list_push(&r->headers_out.headers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    r->headers_out.last_modified = h;
 
     h->hash = 1;
     h->key = hv->key;
