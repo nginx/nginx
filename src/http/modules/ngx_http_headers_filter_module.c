@@ -57,6 +57,8 @@ static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
+static ngx_int_t ngx_http_set_response_header(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value);
 
 static void *ngx_http_headers_create_conf(ngx_conf_t *cf);
 static char *ngx_http_headers_merge_conf(ngx_conf_t *cf,
@@ -73,6 +75,10 @@ static ngx_http_set_header_t  ngx_http_set_headers[] = {
     { ngx_string("Cache-Control"), 0, ngx_http_add_cache_control },
 
     { ngx_string("Last-Modified"), 0, ngx_http_set_last_modified },
+
+    { ngx_string("ETag"),
+                 offsetof(ngx_http_headers_out_t, etag),
+                 ngx_http_set_response_header },
 
     { ngx_null_string, 0, NULL }
 };
@@ -383,6 +389,38 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     }
 
     r->headers_out.last_modified = h;
+
+    h->hash = 1;
+    h->key = hv->key;
+    h->value = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_set_response_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
+    ngx_str_t *value)
+{
+    ngx_table_elt_t  *h, **old;
+
+    old = (ngx_table_elt_t **) ((char *) &r->headers_out + hv->offset);
+
+    if (*old) {
+        (*old)->hash = 0;
+        *old = NULL;
+    }
+
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
+    h = ngx_list_push(&r->headers_out.headers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *old = h;
 
     h->hash = 1;
     h->key = hv->key;
