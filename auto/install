@@ -8,7 +8,7 @@ if [ $USE_PERL = YES ]; then
     cat << END                                                >> $NGX_MAKEFILE
 
 install_perl_modules:
-	cd $NGX_OBJS/src/http/modules/perl && make install
+	cd $NGX_OBJS/src/http/modules/perl && \${MAKE} install
 END
 
     NGX_INSTALL_PERL_MODULES=install_perl_modules
