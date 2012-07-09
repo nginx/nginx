@@ -179,7 +179,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
         if_range = &r->headers_in.if_range->value;
 
-        if (if_range->len > 2 && if_range->data[if_range->len - 1] == '"') {
+        if (if_range->len >= 2 && if_range->data[if_range->len - 1] == '"') {
 
             if (r->headers_out.etag == NULL) {
                 goto next_filter;
