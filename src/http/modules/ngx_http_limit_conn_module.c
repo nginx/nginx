@@ -238,7 +238,7 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "limit zone: %08XD %d", node->key, lc->conn);
+                       "limit conn: %08XD %d", node->key, lc->conn);
 
         ngx_shmtx_unlock(&shpool->mutex);
 
@@ -358,7 +358,7 @@ ngx_http_limit_conn_cleanup(void *data)
     ngx_shmtx_lock(&shpool->mutex);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, lccln->shm_zone->shm.log, 0,
-                   "limit zone cleanup: %08XD %d", node->key, lc->conn);
+                   "limit conn cleanup: %08XD %d", node->key, lc->conn);
 
     lc->conn--;
 
