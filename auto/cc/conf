@@ -56,6 +56,12 @@ else
             . auto/cc/gcc
         ;;
 
+        clang)
+            # Clang C compiler
+
+            . auto/cc/clang
+        ;;
+
         icc)
             # Intel C++ compiler 7.1, 8.0, 8.1
 
