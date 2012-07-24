@@ -81,7 +81,7 @@ ngx_module_t  ngx_http_upstream_least_conn_module = {
 };
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_upstream_init_least_conn(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us)
 {

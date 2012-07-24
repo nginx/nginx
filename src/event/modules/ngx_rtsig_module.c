@@ -12,6 +12,13 @@
 
 #if (NGX_TEST_BUILD_RTSIG)
 
+#if (NGX_DARWIN)
+
+#define SIGRTMIN       33
+#define si_fd          __pad[0]
+
+#else
+
 #ifdef  SIGRTMIN
 #define si_fd          _reason.__spare__.__spare2__[0]
 #else
@@ -19,9 +26,14 @@
 #define si_fd          __spare__[0]
 #endif
 
+#endif
+
 #define F_SETSIG       10
 #define KERN_RTSIGNR   30
 #define KERN_RTSIGMAX  31
+
+int sigtimedwait(const sigset_t *set, siginfo_t *info,
+                 const struct timespec *timeout);
 
 int sigtimedwait(const sigset_t *set, siginfo_t *info,
                  const struct timespec *timeout)
