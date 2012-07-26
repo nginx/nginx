@@ -45,9 +45,7 @@
 
 #define ngx_slab_junk(p, size)     ngx_memset(p, 0xA5, size)
 
-#else
-
-#if (NGX_HAVE_DEBUG_MALLOC)
+#elif (NGX_HAVE_DEBUG_MALLOC)
 
 #define ngx_slab_junk(p, size)                                                \
     if (ngx_debug_malloc)          ngx_memset(p, 0xA5, size)
@@ -55,8 +53,6 @@
 #else
 
 #define ngx_slab_junk(p, size)
-
-#endif
 
 #endif
 
