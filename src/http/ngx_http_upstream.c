@@ -4422,12 +4422,12 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
         uscf->servers = ngx_array_create(cf->pool, 1,
                                          sizeof(ngx_http_upstream_server_t));
         if (uscf->servers == NULL) {
-            return NGX_CONF_ERROR;
+            return NULL;
         }
 
         us = ngx_array_push(uscf->servers);
         if (us == NULL) {
-            return NGX_CONF_ERROR;
+            return NULL;
         }
 
         ngx_memzero(us, sizeof(ngx_http_upstream_server_t));
