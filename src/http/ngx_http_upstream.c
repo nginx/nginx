@@ -4433,7 +4433,7 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
         ngx_memzero(us, sizeof(ngx_http_upstream_server_t));
 
         us->addrs = u->addrs;
-        us->naddrs = u->naddrs;
+        us->naddrs = 1;
     }
 
     uscfp = ngx_array_push(&umcf->upstreams);
