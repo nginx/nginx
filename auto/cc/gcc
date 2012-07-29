@@ -156,9 +156,6 @@ case "$NGX_GCC_VER" in
     3.* | 4.* )
         # we have a lot of the unused function arguments
         CFLAGS="$CFLAGS -Wno-unused-parameter"
-        CFLAGS="$CFLAGS -Wunused-function"
-        CFLAGS="$CFLAGS -Wunused-variable"
-        CFLAGS="$CFLAGS -Wunused-value"
         # 4.2.1 shows the warning in wrong places
         #CFLAGS="$CFLAGS -Wunreachable-code"
     ;;
