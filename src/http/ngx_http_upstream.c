@@ -4541,6 +4541,9 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     if (conf->hide_headers == NGX_CONF_UNSET_PTR
         && conf->pass_headers == NGX_CONF_UNSET_PTR)
     {
+        conf->hide_headers = prev->hide_headers;
+        conf->pass_headers = prev->pass_headers;
+
         conf->hide_headers_hash = prev->hide_headers_hash;
 
         if (conf->hide_headers_hash.buckets
@@ -4551,9 +4554,6 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
         {
             return NGX_OK;
         }
-
-        conf->hide_headers = prev->hide_headers;
-        conf->pass_headers = prev->pass_headers;
 
     } else {
         if (conf->hide_headers == NGX_CONF_UNSET_PTR) {
