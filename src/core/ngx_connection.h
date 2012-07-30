@@ -64,7 +64,7 @@ struct ngx_listening_s {
     unsigned            addr_ntop:1;
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-    unsigned            ipv6only:2;
+    unsigned            ipv6only:1;
 #endif
     unsigned            keepalive:2;
 

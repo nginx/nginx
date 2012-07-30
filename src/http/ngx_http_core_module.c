@@ -3912,6 +3912,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lsopt.setfib = -1;
 #endif
     lsopt.wildcard = u.wildcard;
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    lsopt.ipv6only = 1;
+#endif
 
     (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.addr,
                          NGX_SOCKADDR_STRLEN, 1);
@@ -4031,7 +4034,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     lsopt.ipv6only = 1;
 
                 } else if (ngx_strcmp(&value[n].data[10], "ff") == 0) {
-                    lsopt.ipv6only = 2;
+                    lsopt.ipv6only = 0;
 
                 } else {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

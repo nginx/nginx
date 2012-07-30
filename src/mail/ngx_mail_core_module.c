@@ -374,6 +374,10 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->wildcard = u.wildcard;
     ls->ctx = cf->ctx;
 
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    ls->ipv6only = 1;
+#endif
+
     for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
             continue;
@@ -413,7 +417,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     ls->ipv6only = 1;
 
                 } else if (ngx_strcmp(&value[i].data[10], "ff") == 0) {
-                    ls->ipv6only = 2;
+                    ls->ipv6only = 0;
 
                 } else {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

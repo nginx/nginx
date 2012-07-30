@@ -76,7 +76,7 @@ typedef struct {
     unsigned                   ssl:1;
 #endif
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-    unsigned                   ipv6only:2;
+    unsigned                   ipv6only:1;
 #endif
     unsigned                   so_keepalive:2;
 
