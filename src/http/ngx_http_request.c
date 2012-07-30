@@ -1831,7 +1831,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
 #endif
 
-    return NGX_OK;
+    return NGX_DECLINED;
 
 found:
 
