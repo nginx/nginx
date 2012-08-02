@@ -92,7 +92,7 @@ zip:
 	mkdir -p $(TEMP)/$(NGINX)/temp
 
 	svn export -rHEAD conf $(TEMP)/$(NGINX)/conf/
-	perl -pi -e 's/$$/\r/' $(TEMP)/$(NGINX)/conf/*
+	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
 
 	svn export -rHEAD contrib $(TEMP)/$(NGINX)/contrib/
 	svn export -rHEAD docs/html $(TEMP)/$(NGINX)/html/
@@ -111,7 +111,7 @@ zip:
 	cp -p $(OBJS)/lib/$(PCRE)/LICENCE				\
 		$(TEMP)/$(NGINX)/docs/PCRE.LICENCE
 
-	perl -ne 'print if /^ \(C\) 1995-20/ .. /^  jloup\@gzip.org/'	\
+	sed -ne '/^ (C) 1995-20/,/^  jloup@gzip\.org/p'			\
 		$(OBJS)/lib/$(ZLIB)/README				\
 		> $(TEMP)/$(NGINX)/docs/zlib.LICENSE
 
