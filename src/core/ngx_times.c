@@ -211,6 +211,10 @@ ngx_time_sigsafe_update(void)
         slot++;
     }
 
+    tp = &cached_time[slot];
+
+    tp->sec = 0;
+
     ngx_gmtime(sec + cached_gmtoff * 60, &tm);
 
     p = &cached_err_log_time[slot][0];
