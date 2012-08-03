@@ -1820,9 +1820,9 @@ ngx_http_set_etag(ngx_http_request_t *r)
 {
     ngx_table_elt_t           *etag;
     ngx_http_core_loc_conf_t  *clcf;
-    
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
- 
+
     if (!clcf->etag) {
         return NGX_OK;
     }
