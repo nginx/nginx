@@ -139,7 +139,7 @@ ngx_open_tempfile(u_char *name, ngx_uint_t persistent, ngx_uint_t access)
               access ? access : 0600);
 
     if (fd != -1 && !persistent) {
-        unlink((const char *) name);
+        (void) unlink((const char *) name);
     }
 
     return fd;
