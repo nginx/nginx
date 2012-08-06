@@ -50,7 +50,7 @@ now support IPv6 addresses.
 задавать IPv6-адреса DNS-серверов.
 </para>
 <para lang="en">
-the "resolver" directive now support IPv6 addresses and
+the "resolver" directive now supports IPv6 addresses and
 an optional port specification.
 </para>
 </change>
