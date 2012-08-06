@@ -113,15 +113,6 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         return NULL;
     }
 
-    if (n) {
-        if (ngx_array_init(&r->udp_connections, cf->pool, n,
-                           sizeof(ngx_udp_connection_t))
-            != NGX_OK)
-        {
-            return NULL;
-        }
-    }
-
     cln->data = r;
 
     r->event = ngx_calloc(sizeof(ngx_event_t), cf->log);
@@ -152,6 +143,15 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 
     r->log = &cf->cycle->new_log;
     r->log_level = NGX_LOG_ERR;
+
+    if (n) {
+        if (ngx_array_init(&r->udp_connections, cf->pool, n,
+                           sizeof(ngx_udp_connection_t))
+            != NGX_OK)
+        {
+            return NULL;
+        }
+    }
 
     for (i = 0; i < n; i++) {
         if (ngx_strncmp(names[i].data, "valid=", 6) == 0) {
