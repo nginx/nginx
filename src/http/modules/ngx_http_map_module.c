@@ -110,7 +110,6 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 {
     ngx_http_map_ctx_t  *map = (ngx_http_map_ctx_t *) data;
 
-    size_t                      len;
     ngx_str_t                   val;
     ngx_http_variable_value_t  *value;
 
@@ -121,10 +120,8 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         return NGX_ERROR;
     }
 
-    len = val.len;
-
-    if (len && map->hostnames && val.data[len - 1] == '.') {
-        len--;
+    if (map->hostnames && val.len > 0 && val.data[val.len - 1] == '.') {
+        val.len--;
     }
 
     value = ngx_http_map_find(r, &map->map, &val);
@@ -280,6 +277,8 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     map->default_value = ctx.default_value ? ctx.default_value:
                                              &ngx_http_variable_null_value;
+
+    map->hostnames = ctx.hostnames;
 
     hash.key = ngx_hash_key_lc;
     hash.max_size = mcf->hash_max_size;
