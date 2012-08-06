@@ -218,7 +218,7 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
 };
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_log_handler(ngx_http_request_t *r)
 {
     u_char                   *line, *p;

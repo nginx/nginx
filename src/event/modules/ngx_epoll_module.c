@@ -44,15 +44,24 @@ struct epoll_event {
     epoll_data_t  data;
 };
 
+
+int epoll_create(int size);
+
 int epoll_create(int size)
 {
     return -1;
 }
 
+
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 {
     return -1;
 }
+
+
+int epoll_wait(int epfd, struct epoll_event *events, int nevents, int timeout);
 
 int epoll_wait(int epfd, struct epoll_event *events, int nevents, int timeout)
 {
@@ -75,11 +84,6 @@ struct io_event {
     int64_t   res2;  /* secondary result */
 };
 
-
-int eventfd(u_int initval)
-{
-    return -1;
-}
 
 #endif
 #endif

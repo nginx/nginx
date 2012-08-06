@@ -20,6 +20,8 @@ extern "C" {
 // #include <string>
 
 
+void ngx_cpp_test_handler(void *data);
+
 void
 ngx_cpp_test_handler(void *data)
 {

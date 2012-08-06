@@ -15,6 +15,12 @@
 #define ushort_t  u_short
 #define uint_t    u_int
 
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME          0
+typedef int     clockid_t;
+typedef void *  timer_t;
+#endif
+
 /* Solaris declarations */
 
 #define PORT_SOURCE_AIO         1
@@ -24,7 +30,9 @@
 #define PORT_SOURCE_ALERT       5
 #define PORT_SOURCE_MQ          6
 
+#ifndef ETIME
 #define ETIME                   64
+#endif
 
 #define SIGEV_PORT              4
 
@@ -50,10 +58,16 @@ typedef struct itimerspec {     /* definition per POSIX.4 */
 
 #endif
 
+int port_create(void);
+
 int port_create(void)
 {
     return -1;
 }
+
+
+int port_associate(int port, int source, uintptr_t object, int events,
+    void *user);
 
 int port_associate(int port, int source, uintptr_t object, int events,
     void *user)
@@ -61,10 +75,17 @@ int port_associate(int port, int source, uintptr_t object, int events,
     return -1;
 }
 
+
+int port_dissociate(int port, int source, uintptr_t object);
+
 int port_dissociate(int port, int source, uintptr_t object)
 {
     return -1;
 }
+
+
+int port_getn(int port, port_event_t list[], uint_t max, uint_t *nget,
+    struct timespec *timeout);
 
 int port_getn(int port, port_event_t list[], uint_t max, uint_t *nget,
     struct timespec *timeout)
@@ -72,16 +93,26 @@ int port_getn(int port, port_event_t list[], uint_t max, uint_t *nget,
     return -1;
 }
 
+
+int timer_create(clockid_t clock_id, struct sigevent *evp, timer_t *timerid);
+
 int timer_create(clockid_t clock_id, struct sigevent *evp, timer_t *timerid)
 {
     return -1;
 }
+
+
+int timer_settime(timer_t timerid, int flags, const struct itimerspec *value,
+    struct itimerspec *ovalue);
 
 int timer_settime(timer_t timerid, int flags, const struct itimerspec *value,
     struct itimerspec *ovalue)
 {
     return -1;
 }
+
+
+int timer_delete(timer_t timerid);
 
 int timer_delete(timer_t timerid)
 {

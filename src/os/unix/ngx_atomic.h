@@ -48,7 +48,9 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
 #include <libkern/OSAtomic.h>
 
 /* "bool" conflicts with perl's CORE/handy.h */
+#if 0
 #undef bool
+#endif
 
 
 #define NGX_HAVE_ATOMIC_OPS  1

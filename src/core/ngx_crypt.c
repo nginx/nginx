@@ -6,6 +6,7 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <ngx_crypt.h>
 #include <ngx_md5.h>
 #if (NGX_HAVE_SHA1)
 #include <ngx_sha1.h>

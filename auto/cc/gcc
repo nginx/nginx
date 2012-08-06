@@ -149,6 +149,7 @@ CFLAGS="$CFLAGS ${NGX_GCC_OPT:--O} -W"
 CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Wconversion"
 #CFLAGS="$CFLAGS -Winline"
+#CFLAGS="$CFLAGS -Wmissing-prototypes"
 
 
 case "$NGX_GCC_VER" in

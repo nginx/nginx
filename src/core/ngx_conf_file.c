@@ -1448,11 +1448,15 @@ ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+#if 0
+
 char *
 ngx_conf_unsupported(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     return "unsupported on this platform";
 }
+
+#endif
 
 
 char *
