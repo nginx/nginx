@@ -39,7 +39,7 @@ typedef struct {
 
 ngx_int_t ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr,
     u_char *name);
-void ngx_shmtx_destory(ngx_shmtx_t *mtx);
+void ngx_shmtx_destroy(ngx_shmtx_t *mtx);
 ngx_uint_t ngx_shmtx_trylock(ngx_shmtx_t *mtx);
 void ngx_shmtx_lock(ngx_shmtx_t *mtx);
 void ngx_shmtx_unlock(ngx_shmtx_t *mtx);
