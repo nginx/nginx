@@ -1214,7 +1214,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
     fd = epoll_create(100);
 
     if (fd != -1) {
-        close(fd);
+        (void) close(fd);
         module = &ngx_epoll_module;
 
     } else if (ngx_errno != NGX_ENOSYS) {
