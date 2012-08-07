@@ -9,6 +9,82 @@
 <title lang="en">nginx changelog</title>
 
 
+<changes ver="1.2.3" date="07.08.2012">
+
+<change type="feature">
+<para lang="ru">
+поддержка компилятора Clang.
+</para>
+<para lang="en">
+the Clang compiler support.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+могли создаваться лишние слушающие сокеты.<br/>
+Спасибо Роману Одайскому.
+</para>
+<para lang="en">
+extra listening sockets might be created.<br/>
+Thanks to Roman Odaisky.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows мог нагружать процессор, если при запуске рабочего процесса
+происходила ошибка.<br/>
+Спасибо Ricardo Villalobos Guevara.
+</para>
+<para lang="en">
+nginx/Windows might hog CPU if a worker process failed to start.<br/>
+Thanks to Ricardo Villalobos Guevara.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_pass_header, fastcgi_pass_header, scgi_pass_header,
+uwsgi_pass_header, proxy_hide_header, fastcgi_hide_header,
+scgi_hide_header и uwsgi_hide_header
+могли наследоваться некорректно.
+</para>
+<para lang="en">
+the "proxy_pass_header", "fastcgi_pass_header", "scgi_pass_header",
+"uwsgi_pass_header", "proxy_hide_header", "fastcgi_hide_header",
+"scgi_hide_header", and "uwsgi_hide_header" directives
+might be inherited incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы map с параметром hostnames
+не игнорировалась конечная точка в исходном значении.
+</para>
+<para lang="en">
+trailing dot in a source value was not ignored
+if the "map" directive was used with the "hostnames" parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для обработки запроса мог использоваться неверный location,
+если переход в именованный location происходил
+после изменения URI с помощью директивы rewrite.
+</para>
+<para lang="en">
+incorrect location might be used to process a request
+if a URI was changed via a "rewrite" directive
+before an internal redirect to a named location.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.2" date="03.07.2012">
 
 <change type="change">
