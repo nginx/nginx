@@ -1626,6 +1626,9 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
         }
 
         part = ngx_array_push(f->split_parts);
+        if (part == NULL) {
+            return NGX_ERROR;
+        }
 
         part->start = part_start;
         part->end = part_end;
