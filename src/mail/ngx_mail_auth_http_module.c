@@ -1332,7 +1332,7 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
         if (conf->peer == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"http_auth\" is defined for server in %s:%ui",
+                          "no \"auth_http\" is defined for server in %s:%ui",
                           conf->file, conf->line);
 
             return NGX_CONF_ERROR;
