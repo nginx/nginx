@@ -378,21 +378,23 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->ipv6only = 1;
 #endif
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
-            continue;
-        }
-
-        module = ngx_modules[m]->ctx;
-
-        if (module->protocol == NULL) {
-            continue;
-        }
-
-        for (i = 0; module->protocol->port[i]; i++) {
-            if (module->protocol->port[i] == u.port) {
-                cscf->protocol = module->protocol;
-                break;
+    if (cscf->protocol == NULL) {
+        for (m = 0; ngx_modules[m]; m++) {
+            if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+                continue;
+            }
+    
+            module = ngx_modules[m]->ctx;
+    
+            if (module->protocol == NULL) {
+                continue;
+            }
+    
+            for (i = 0; module->protocol->port[i]; i++) {
+                if (module->protocol->port[i] == u.port) {
+                    cscf->protocol = module->protocol;
+                    break;
+                }
             }
         }
     }
