@@ -400,14 +400,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
+        if (ctx.high.default_value == NULL) {
+            ctx.high.default_value = &ngx_http_variable_null_value;
+        }
+
         geo->u.high = ctx.high;
 
         var->get_handler = ngx_http_geo_range_variable;
         var->data = (uintptr_t) geo;
-
-        if (ctx.high.default_value == NULL) {
-            ctx.high.default_value = &ngx_http_variable_null_value;
-        }
 
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
