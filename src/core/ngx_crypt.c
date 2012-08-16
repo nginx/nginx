@@ -194,6 +194,7 @@ static ngx_int_t
 ngx_crypt_ssha(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
     size_t       len;
+    ngx_int_t    rc;
     ngx_str_t    encoded, decoded;
     ngx_sha1_t   sha1;
 
@@ -204,12 +205,18 @@ ngx_crypt_ssha(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     encoded.data = salt + sizeof("{SSHA}") - 1;
     encoded.len = ngx_strlen(encoded.data);
 
-    decoded.data = ngx_pnalloc(pool, ngx_base64_decoded_length(encoded.len));
+    len = ngx_max(ngx_base64_decoded_length(encoded.len), 20);
+
+    decoded.data = ngx_pnalloc(pool, len);
     if (decoded.data == NULL) {
         return NGX_ERROR;
     }
 
-    ngx_decode_base64(&decoded, &encoded);
+    rc = ngx_decode_base64(&decoded, &encoded);
+
+    if (rc != NGX_OK || decoded.len < 20) {
+        decoded.len = 20;
+    }
 
     /* update SHA1 from key and salt */
 
