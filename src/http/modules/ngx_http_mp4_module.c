@@ -1842,14 +1842,6 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                    ngx_mp4_get_32value(stsd_atom->entries),
                    4, stsd_atom->media_name);
 
-    /* supported media format: "avc1" (H.264) and "mp4a" (MPEG-4/AAC) */
-
-    if (ngx_strncmp(stsd_atom->media_name, "avc1", 4) != 0
-        && ngx_strncmp(stsd_atom->media_name, "mp4a", 4) != 0)
-    {
-        return NGX_DECLINED;
-    }
-
     trak = ngx_mp4_last_trak(mp4);
 
     atom = &trak->stsd_atom_buf;
