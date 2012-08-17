@@ -340,6 +340,14 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            off = offsetof(struct sockaddr_un, sun_path);
+            len = sizeof(((struct sockaddr_un *) sa)->sun_path);
+            port = 0;
+            break;
+#endif
+
         default: /* AF_INET */
             off = offsetof(struct sockaddr_in, sin_addr);
             len = 4;

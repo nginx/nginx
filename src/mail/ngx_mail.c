@@ -263,6 +263,12 @@ ngx_mail_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        p = 0;
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) sa;
         p = sin->sin_port;
