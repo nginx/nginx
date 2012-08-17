@@ -539,6 +539,11 @@ ngx_mail_cmp_conf_addrs(const void *one, const void *two)
         return 1;
     }
 
+    if (second->wildcard) {
+        /* a wildcard must be the last resort, shift it to the end */
+        return -1;
+    }
+
     if (first->bind && !second->bind) {
         /* shift explicit bind()ed addresses to the start */
         return -1;
