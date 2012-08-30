@@ -2776,7 +2776,15 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
 
         if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
             family = AF_INET;
-            inaddr = *(in_addr_t *) &inaddr6->s6_addr[12];
+
+            p = inaddr6->s6_addr;
+
+            inaddr = p[12] << 24;
+            inaddr += p[13] << 16;
+            inaddr += p[14] << 8;
+            inaddr += p[15];
+
+            inaddr = htonl(inaddr);
         }
     }
 #endif
