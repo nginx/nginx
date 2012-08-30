@@ -12,22 +12,26 @@ changes:	$(TEMP)/$(NGINX)/CHANGES.ru				\
 		$(TEMP)/$(NGINX)/CHANGES
 
 
-$(TEMP)/$(NGINX)/CHANGES.ru:	docs/xml/nginx/changes.xml		\
+$(TEMP)/$(NGINX)/CHANGES.ru:	docs/dtd/changes.dtd			\
+				docs/xml/nginx/changes.xml		\
 				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	mkdir -p $(TEMP)/$(NGINX)
 
+	xmllint --noout --valid docs/xml/nginx/changes.xml
 	xsltproc --stringparam lang ru					\
 		-o $@ docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 
 
-$(TEMP)/$(NGINX)/CHANGES:	docs/xml/nginx/changes.xml		\
+$(TEMP)/$(NGINX)/CHANGES:	docs/dtd/changes.dtd			\
+				docs/xml/nginx/changes.xml		\
 				docs/xml/change_log_conf.xml		\
 				docs/xslt/changes.xslt
 
 	mkdir -p $(TEMP)/$(NGINX)
 
+	xmllint --noout --valid docs/xml/nginx/changes.xml
 	xsltproc --stringparam lang en					\
 		-o $@ docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 

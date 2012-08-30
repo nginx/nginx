@@ -12,10 +12,10 @@
 >
 
 <!ELEMENT change       (para)* >
-<!ATTLIST change       type (bugfix | feature | change | workaround) #IMPLIED >
+<!ATTLIST change       type (bugfix | feature | change | security | workaround) #IMPLIED >
 
 <!ELEMENT para         (#PCDATA | at | br | nobr)* >
-<!ATTLIST para         lang (ru | en) #IMPLIED >
+<!ATTLIST para         lang (ru | en) #REQUIRED >
 
 <!ELEMENT at           EMPTY >
 <!ELEMENT br           EMPTY >
