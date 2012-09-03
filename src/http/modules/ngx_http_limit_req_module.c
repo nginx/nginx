@@ -444,16 +444,16 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
     node->key = hash;
 
-    ngx_rbtree_insert(&ctx->sh->rbtree, node);
-
     lr = (ngx_http_limit_req_node_t *) &node->color;
-
-    ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
     lr->len = (u_char) len;
     lr->excess = 0;
 
     ngx_memcpy(lr->data, data, len);
+
+    ngx_rbtree_insert(&ctx->sh->rbtree, node);
+
+    ngx_queue_insert_head(&ctx->sh->queue, &lr->queue);
 
     if (account) {
         lr->last = now;
