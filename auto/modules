@@ -109,6 +109,7 @@ fi
 #         ngx_http_image_filter
 #         ngx_http_sub_filter
 #         ngx_http_addition_filter
+#         ngx_http_gunzip_filter
 #         ngx_http_userid_filter
 #         ngx_http_headers_filter
 #     ngx_http_copy_filter
@@ -164,6 +165,13 @@ fi
 if [ $HTTP_ADDITION = YES ]; then
     HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_ADDITION_FILTER_MODULE"
     HTTP_SRCS="$HTTP_SRCS $HTTP_ADDITION_SRCS"
+fi
+
+if [ $HTTP_GUNZIP = YES ]; then
+    have=NGX_HTTP_GZIP . auto/have
+    USE_ZLIB=YES
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_GUNZIP_FILTER_MODULE"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_GUNZIP_SRCS"
 fi
 
 if [ $HTTP_USERID = YES ]; then

@@ -331,6 +331,10 @@ HTTP_GZIP_FILTER_MODULE=ngx_http_gzip_filter_module
 HTTP_GZIP_SRCS=src/http/modules/ngx_http_gzip_filter_module.c
 
 
+HTTP_GUNZIP_FILTER_MODULE=ngx_http_gunzip_filter_module
+HTTP_GUNZIP_SRCS=src/http/modules/ngx_http_gunzip_filter_module.c
+
+
 HTTP_SSI_FILTER_MODULE=ngx_http_ssi_filter_module
 HTTP_SSI_DEPS=src/http/modules/ngx_http_ssi_filter_module.h
 HTTP_SSI_SRCS=src/http/modules/ngx_http_ssi_filter_module.c
