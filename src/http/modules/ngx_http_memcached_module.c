@@ -13,6 +13,7 @@
 typedef struct {
     ngx_http_upstream_conf_t   upstream;
     ngx_int_t                  index;
+    ngx_uint_t                 gzip_flag;
 } ngx_http_memcached_loc_conf_t;
 
 
@@ -100,6 +101,13 @@ static ngx_command_t  ngx_http_memcached_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_memcached_loc_conf_t, upstream.next_upstream),
       &ngx_http_memcached_next_upstream_masks },
+
+    { ngx_string("memcached_gzip_flag"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_memcached_loc_conf_t, gzip_flag),
+      NULL },
 
       ngx_null_command
 };
@@ -281,10 +289,13 @@ ngx_http_memcached_reinit_request(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_memcached_process_header(ngx_http_request_t *r)
 {
-    u_char                    *p, *len;
-    ngx_str_t                  line;
-    ngx_http_upstream_t       *u;
-    ngx_http_memcached_ctx_t  *ctx;
+    u_char                         *p, *start;
+    ngx_str_t                       line;
+    ngx_uint_t                      flags;
+    ngx_table_elt_t                *h;
+    ngx_http_upstream_t            *u;
+    ngx_http_memcached_ctx_t       *ctx;
+    ngx_http_memcached_loc_conf_t  *mlcf;
 
     u = r->upstream;
 
@@ -309,6 +320,7 @@ found:
     p = u->buffer.pos;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_memcached_module);
+    mlcf = ngx_http_get_module_loc_conf(r, ngx_http_memcached_module);
 
     if (ngx_strncmp(p, "VALUE ", sizeof("VALUE ") - 1) == 0) {
 
@@ -329,23 +341,56 @@ found:
             goto no_valid;
         }
 
-        /* skip flags */
+        /* flags */
+
+        start = p;
 
         while (*p) {
             if (*p++ == ' ') {
-                goto length;
+                if (mlcf->gzip_flag) {
+                    goto flags;
+                } else {
+                    goto length;
+                }
             }
         }
 
         goto no_valid;
 
+    flags:
+
+        flags = ngx_atoi(start, p - start - 1);
+
+        if (flags == (ngx_uint_t) NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "memcached sent invalid flags in response \"%V\" "
+                          "for key \"%V\"",
+                          &line, &ctx->key);
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
+        if (flags & mlcf->gzip_flag) {
+            h = ngx_list_push(&r->headers_out.headers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+
+            h->hash = 1;
+            h->key.len = sizeof("Content-Encoding") - 1;
+            h->key.data = (u_char *) "Content-Encoding";
+            h->value.len = sizeof("gzip") - 1;
+            h->value.data = (u_char *) "gzip";
+
+            r->headers_out.content_encoding = h;
+        }
+
     length:
 
-        len = p;
+        start = p;
 
         while (*p && *p++ != CR) { /* void */ }
 
-        u->headers_in.content_length_n = ngx_atoof(len, p - len - 1);
+        u->headers_in.content_length_n = ngx_atoof(start, p - start - 1);
         if (u->headers_in.content_length_n == -1) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "memcached sent invalid length in response \"%V\" "
@@ -550,6 +595,7 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_request_body = 0;
 
     conf->index = NGX_CONF_UNSET;
+    conf->gzip_flag = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -592,6 +638,8 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->index == NGX_CONF_UNSET) {
         conf->index = prev->index;
     }
+
+    ngx_conf_merge_uint_value(conf->gzip_flag, prev->gzip_flag, 0);
 
     return NGX_CONF_OK;
 }
