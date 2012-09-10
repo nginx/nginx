@@ -10,8 +10,13 @@
 #include <ngx_http.h>
 
 
+#define NGX_HTTP_GZIP_STATIC_OFF     0
+#define NGX_HTTP_GZIP_STATIC_ON      1
+#define NGX_HTTP_GZIP_STATIC_ALWAYS  2
+
+
 typedef struct {
-    ngx_flag_t  enable;
+    ngx_uint_t  enable;
 } ngx_http_gzip_static_conf_t;
 
 
@@ -22,14 +27,22 @@ static char *ngx_http_gzip_static_merge_conf(ngx_conf_t *cf, void *parent,
 static ngx_int_t ngx_http_gzip_static_init(ngx_conf_t *cf);
 
 
+static ngx_conf_enum_t  ngx_http_gzip_static[] = {
+    { ngx_string("off"), NGX_HTTP_GZIP_STATIC_OFF },
+    { ngx_string("on"), NGX_HTTP_GZIP_STATIC_ON },
+    { ngx_string("always"), NGX_HTTP_GZIP_STATIC_ALWAYS },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_gzip_static_commands[] = {
 
     { ngx_string("gzip_static"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_conf_set_enum_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_gzip_static_conf_t, enable),
-      NULL },
+      &ngx_http_gzip_static },
 
       ngx_null_command
 };
@@ -92,11 +105,17 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
     gzcf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_static_module);
 
-    if (!gzcf->enable) {
+    if (gzcf->enable == NGX_HTTP_GZIP_STATIC_OFF) {
         return NGX_DECLINED;
     }
 
-    rc = ngx_http_gzip_ok(r);
+    if (gzcf->enable == NGX_HTTP_GZIP_STATIC_ON) {
+        rc = ngx_http_gzip_ok(r);
+
+    } else {
+        /* always */
+        rc = NGX_OK;
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -169,10 +188,12 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    r->gzip_vary = 1;
+    if (gzcf->enable == NGX_HTTP_GZIP_STATIC_ON) {
+        r->gzip_vary = 1;
 
-    if (rc != NGX_OK) {
-        return NGX_DECLINED;
+        if (rc != NGX_OK) {
+            return NGX_DECLINED;
+        }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http static fd: %d", of.fd);
@@ -274,7 +295,7 @@ ngx_http_gzip_static_create_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    conf->enable = NGX_CONF_UNSET;
+    conf->enable = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -286,7 +307,8 @@ ngx_http_gzip_static_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_gzip_static_conf_t *prev = parent;
     ngx_http_gzip_static_conf_t *conf = child;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_uint_value(conf->enable, prev->enable,
+                              NGX_HTTP_GZIP_STATIC_OFF);
 
     return NGX_CONF_OK;
 }
