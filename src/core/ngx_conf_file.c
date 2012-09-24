@@ -12,7 +12,6 @@
 
 static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last);
 static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
-static char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_conf_test_full_name(ngx_str_t *name);
 static void ngx_conf_flush_files(ngx_cycle_t *cycle);
 
@@ -731,7 +730,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
 }
 
 
-static char *
+char *
 ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char        *rv;

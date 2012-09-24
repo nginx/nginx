@@ -3193,7 +3193,7 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
-    ngx_str_t       *value, *content_type, *old, file;
+    ngx_str_t       *value, *content_type, *old;
     ngx_uint_t       i, n, hash;
     ngx_hash_key_t  *type;
 
@@ -3206,15 +3206,8 @@ ngx_http_core_type(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
                                " in \"include\" directive");
             return NGX_CONF_ERROR;
         }
-        file = value[1];
 
-        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
-
-        return ngx_conf_parse(cf, &file);
+        return ngx_conf_include(cf, dummy, conf);
     }
 
     content_type = ngx_palloc(cf->pool, sizeof(ngx_str_t));

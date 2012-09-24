@@ -369,7 +369,7 @@ static char *
 ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
     ngx_int_t                   rc, index;
-    ngx_str_t                  *value, file, name;
+    ngx_str_t                  *value, name;
     ngx_uint_t                  i, key;
     ngx_http_map_conf_ctx_t    *ctx;
     ngx_http_variable_value_t  *var, **vp;
@@ -391,15 +391,7 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     }
 
     if (ngx_strcmp(value[0].data, "include") == 0) {
-        file = value[1];
-
-        if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
-
-        return ngx_conf_parse(cf, &file);
+        return ngx_conf_include(cf, dummy, conf);
     }
 
     if (value[1].data[0] == '$') {
