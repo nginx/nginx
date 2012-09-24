@@ -226,12 +226,21 @@ ngx_http_geoip_addr(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
 #if (NGX_HAVE_INET6)
 
     if (addr.sockaddr->sa_family == AF_INET6) {
+        u_char           *p;
+        in_addr_t         inaddr;
         struct in6_addr  *inaddr6;
 
         inaddr6 = &((struct sockaddr_in6 *) addr.sockaddr)->sin6_addr;
 
         if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
-            return ntohl(*(in_addr_t *) &inaddr6->s6_addr[12]);
+            p = inaddr6->s6_addr;
+
+            inaddr = p[12] << 24;
+            inaddr += p[13] << 16;
+            inaddr += p[14] << 8;
+            inaddr += p[15];
+
+            return inaddr;
         }
     }
 
