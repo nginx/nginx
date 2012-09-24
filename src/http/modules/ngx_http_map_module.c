@@ -416,11 +416,12 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
         for (i = 0; i < ctx->var_values.nelts; i++) {
             if (index == (ngx_int_t) var[i].data) {
+                var = &var[i];
                 goto found;
             }
         }
 
-        var = ngx_palloc(ctx->keys.pool, sizeof(ngx_http_variable_value_t));
+        var = ngx_array_push(&ctx->var_values);
         if (var == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -430,13 +431,6 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         var->not_found = 0;
         var->len = 0;
         var->data = (u_char *) index;
-
-        vp = ngx_array_push(&ctx->var_values);
-        if (vp == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        *vp = var;
 
         goto found;
     }
