@@ -721,6 +721,10 @@ ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     limit = ngx_array_push(&lccf->limits);
+    if (limit == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
     limit->conn = n;
     limit->shm_zone = shm_zone;
 

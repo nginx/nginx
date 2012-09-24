@@ -1024,6 +1024,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
         switch (state) {
 
         case ssi_start_state:
+            /* not reached */
             break;
 
         case ssi_tag_state:
