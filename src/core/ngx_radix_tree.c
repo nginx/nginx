@@ -60,7 +60,7 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
      */
 
     if (preallocate == -1) {
-        switch (ngx_pagesize / sizeof(ngx_radix_tree_t)) {
+        switch (ngx_pagesize / sizeof(ngx_radix_node_t)) {
 
         /* amd64 */
         case 128:

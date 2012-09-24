@@ -185,18 +185,14 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (size == 0 && !(c->buffered & NGX_LOWLEVEL_BUFFERED)) {
-        if (last) {
+        if (last || flush) {
+            for (cl = r->out; cl; /* void */) {
+                ln = cl;
+                cl = cl->next;
+                ngx_free_chain(r->pool, ln);
+            }
+
             r->out = NULL;
-            c->buffered &= ~NGX_HTTP_WRITE_BUFFERED;
-
-            return NGX_OK;
-        }
-
-        if (flush) {
-            do {
-                r->out = r->out->next;
-            } while (r->out);
-
             c->buffered &= ~NGX_HTTP_WRITE_BUFFERED;
 
             return NGX_OK;
