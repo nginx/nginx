@@ -8,8 +8,10 @@ CFLAGS = -q -O2 -tWM -w-8004 -w-8012 $(CPU_OPT)
 zlib.lib:
 	cd $(ZLIB)
 
-	bcc32 -c $(CFLAGS) adler32.c crc32.c deflate.c trees.c zutil.c \
-		compress.c
+	bcc32 -c $(CFLAGS) adler32.c crc32.c deflate.c \
+		trees.c zutil.c compress.c \
+		inflate.c inffast.c inftrees.c
 
 	tlib zlib.lib +adler32.obj +crc32.obj +deflate.obj \
-		+trees.obj +zutil.obj +compress.obj
+		+trees.obj +zutil.obj +compress.obj \
+		+inflate.obj +inffast.obj +inftrees.obj
