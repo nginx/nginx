@@ -38,8 +38,6 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
     /* find the server configuration for the address:port */
 
-    /* AF_INET only */
-
     port = c->listening->servers;
 
     if (port->naddrs > 1) {
