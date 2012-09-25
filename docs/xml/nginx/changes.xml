@@ -5,6 +5,101 @@
 <change_log title="nginx">
 
 
+<changes ver="1.2.4" date="25.09.2012">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве "limit_req";
+ошибка появилась в 1.1.14.<br/>
+Спасибо Charles Chen.
+</para>
+<para lang="en">
+in the "limit_req" directive;
+the bug had appeared in 1.1.14.<br/>
+Thanks to Charles Chen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 4.7 с оптимизацией -O2
+если использовался параметр --with-ipv6.
+</para>
+<para lang="en">
+nginx could not be built by gcc 4.7 with -O2 optimization
+if the --with-ipv6 option was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если в директиве map в качестве значений использовались переменные.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "map" directive was used with variables as values.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+при использовании директивы geo с параметром ranges,
+но без параметра default; ошибка появилась в 0.8.43.<br/>
+Спасибо Zhen Chen и Weibin Yao.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "geo" directive was used with the "ranges" parameter
+but without the "default" parameter; the bug had appeared in 0.8.43.<br/>
+Thanks to Zhen Chen and Weibin Yao.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке параметра командной строки -p.
+</para>
+<para lang="en">
+in the -p command-line parameter handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+in the mail proxy server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных потенциальных ошибок.<br/>
+Спасибо Coverity.
+</para>
+<para lang="en">
+of minor potential bugs.<br/>
+Thanks to Coverity.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с Visual Studio 2005 Express.<br/>
+Спасибо HAYASHI Kentaro.
+</para>
+<para lang="en">
+nginx/Windows could not be built with Visual Studio 2005 Express.<br/>
+Thanks to HAYASHI Kentaro.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.3" date="07.08.2012">
 
 <change type="feature">
