@@ -100,14 +100,14 @@ ngx_ssl_init(ngx_log_t *log)
      * Disable gzip compression in OpenSSL prior to 1.0.0 version,
      * this saves about 522K per connection.
      */
-    int                 i, n;
+    int                  n;
     STACK_OF(SSL_COMP)  *ssl_comp_methods;
 
     ssl_comp_methods = SSL_COMP_get_compression_methods();
     n = sk_SSL_COMP_num(ssl_comp_methods);
 
-    for (i = 0; i < n; i++) {
-        (void) sk_SSL_COMP_delete(ssl_comp_methods, i);
+    while (n--) {
+        (void) sk_SSL_COMP_pop(ssl_comp_methods);
     }
     }
 #endif
