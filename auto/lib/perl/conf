@@ -12,9 +12,17 @@ NGX_PERL_VER=`$NGX_PERL -v 2>&1 | grep '^This is perl' 2>&1 \
 if test -n "$NGX_PERL_VER"; then
     echo " + perl version: $NGX_PERL_VER"
 
-    if [ "`echo 'use 5.006001; print "OK"' | $NGX_PERL 2>&1`" != OK ]; then
+    if [ "`$NGX_PERL -e 'use 5.006001; print "OK"'`" != "OK" ]; then
         echo
         echo "$0: error: perl 5.6.1 or higher is required"
+        echo
+
+        exit 1;
+    fi
+
+    if [ "`$NGX_PERL -MExtUtils::Embed -e 'print "OK"'`" != "OK" ]; then
+        echo
+        echo "$0: error: perl module ExtUtils::Embed is required"
         echo
 
         exit 1;
