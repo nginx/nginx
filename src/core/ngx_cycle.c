@@ -1038,6 +1038,8 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    ngx_memzero(&file, sizeof(ngx_file_t));
+
     file.name = ccf->pid;
     file.log = cycle->log;
 
