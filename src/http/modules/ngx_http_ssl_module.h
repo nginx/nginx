@@ -35,6 +35,7 @@ typedef struct {
     ngx_str_t                       dhparam;
     ngx_str_t                       ecdh_curve;
     ngx_str_t                       client_certificate;
+    ngx_str_t                       trusted_certificate;
     ngx_str_t                       crl;
 
     ngx_str_t                       ciphers;

@@ -297,6 +297,33 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
 
 ngx_int_t
+ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
+    ngx_int_t depth)
+{
+    SSL_CTX_set_verify_depth(ssl->ctx, depth);
+
+    if (cert->len == 0) {
+        return NGX_OK;
+    }
+
+    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_load_verify_locations(ssl->ctx, (char *) cert->data, NULL)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_load_verify_locations(\"%s\") failed",
+                      cert->data);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
 {
     X509_STORE   *store;

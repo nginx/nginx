@@ -124,6 +124,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, client_certificate),
       NULL },
 
+    { ngx_string("ssl_trusted_certificate"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, trusted_certificate),
+      NULL },
+
     { ngx_string("ssl_prefer_server_ciphers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -325,6 +332,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->dhparam = { 0, NULL };
      *     sscf->ecdh_curve = { 0, NULL };
      *     sscf->client_certificate = { 0, NULL };
+     *     sscf->trusted_certificate = { 0, NULL };
      *     sscf->crl = { 0, NULL };
      *     sscf->ciphers = { 0, NULL };
      *     sscf->shm_zone = NULL;
@@ -380,6 +388,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
                          "");
+    ngx_conf_merge_str_value(conf->trusted_certificate,
+                         prev->trusted_certificate, "");
     ngx_conf_merge_str_value(conf->crl, prev->crl, "");
 
     ngx_conf_merge_str_value(conf->ecdh_curve, prev->ecdh_curve,
@@ -479,10 +489,18 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         {
             return NGX_CONF_ERROR;
         }
+    }
 
-        if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
+    if (ngx_ssl_trusted_certificate(cf, &conf->ssl,
+                                    &conf->trusted_certificate,
+                                    conf->verify_depth)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     if (conf->prefer_server_ciphers) {
