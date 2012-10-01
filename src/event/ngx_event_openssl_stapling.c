@@ -1142,9 +1142,9 @@ ngx_ssl_ocsp_create_request(ngx_ssl_ocsp_ctx_t *ctx)
     escape = ngx_escape_uri(NULL, base64.data, base64.len,
                             NGX_ESCAPE_URI_COMPONENT);
 
-    ngx_log_debug(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
-                  "ssl ocsp request length %z, escape %d",
-                  base64.len, escape);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                   "ssl ocsp request length %z, escape %d",
+                   base64.len, escape);
 
     len = sizeof("GET ") - 1 + ctx->uri.len + sizeof("/") - 1
           + base64.len + 2 * escape + sizeof(" HTTP/1.0" CRLF) - 1
@@ -1729,8 +1729,8 @@ ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
 
 ngx_int_t
-ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
-    ngx_str_t *file)
+ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
+    ngx_str_t *responder, ngx_uint_t verify)
 {
     ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                   "\"ssl_stapling\" ignored, not supported");
