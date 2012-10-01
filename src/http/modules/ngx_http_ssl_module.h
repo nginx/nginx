@@ -43,6 +43,7 @@ typedef struct {
     ngx_shm_zone_t                 *shm_zone;
 
     ngx_flag_t                      stapling;
+    ngx_flag_t                      stapling_verify;
     ngx_str_t                       stapling_file;
     ngx_str_t                       stapling_responder;
 

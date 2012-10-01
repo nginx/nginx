@@ -182,6 +182,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, stapling_responder),
       NULL },
 
+    { ngx_string("ssl_stapling_verify"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, stapling_verify),
+      NULL },
+
       ngx_null_command
 };
 
@@ -370,6 +377,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->builtin_session_cache = NGX_CONF_UNSET;
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->stapling = NGX_CONF_UNSET;
+    sscf->stapling_verify = NGX_CONF_UNSET;
 
     return sscf;
 }
@@ -424,6 +432,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
     ngx_conf_merge_value(conf->stapling, prev->stapling, 0);
+    ngx_conf_merge_value(conf->stapling_verify, prev->stapling_verify, 0);
     ngx_conf_merge_str_value(conf->stapling_file, prev->stapling_file, "");
     ngx_conf_merge_str_value(conf->stapling_responder,
                          prev->stapling_responder, "");
@@ -565,8 +574,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->stapling) {
 
-        if (ngx_ssl_stapling(cf, &conf->ssl, &conf->stapling_responder,
-                             &conf->stapling_file)
+        if (ngx_ssl_stapling(cf, &conf->ssl, &conf->stapling_file,
+                             &conf->stapling_responder, conf->stapling_verify)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;

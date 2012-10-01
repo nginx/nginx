@@ -33,7 +33,8 @@ typedef struct {
 
     time_t                       valid;
 
-    ngx_uint_t                   loading;     /* unsigned:1 */
+    unsigned                     verify:1;
+    unsigned                     loading:1;
 } ngx_ssl_stapling_t;
 
 
@@ -114,8 +115,8 @@ static u_char *ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
 ngx_int_t
-ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
-    ngx_str_t *file)
+ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
+    ngx_str_t *responder, ngx_uint_t verify)
 {
     ngx_int_t                  rc;
     ngx_pool_cleanup_t        *cln;
@@ -144,6 +145,7 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
 
     staple->ssl_ctx = ssl->ctx;
     staple->timeout = 60000;
+    staple->verify = verify;
 
     if (file->len) {
         /* use OCSP response from the file */
@@ -588,7 +590,10 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
     chain = staple->ssl_ctx->extra_certs;
 #endif
 
-    if (OCSP_basic_verify(basic, chain, store, OCSP_TRUSTOTHER) != 1) {
+    if (OCSP_basic_verify(basic, chain, store,
+                          staple->verify ? OCSP_TRUSTOTHER : OCSP_NOVERIFY)
+        != 1)
+    {
         ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
                       "OCSP_basic_verify() failed");
         goto error;
