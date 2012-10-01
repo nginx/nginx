@@ -1425,6 +1425,7 @@ done:
 static ngx_int_t
 ngx_ssl_ocsp_process_headers(ngx_ssl_ocsp_ctx_t *ctx)
 {
+    size_t     len;
     ngx_int_t  rc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
@@ -1441,6 +1442,33 @@ ngx_ssl_ocsp_process_headers(ngx_ssl_ocsp_ctx_t *ctx)
                            ctx->header_name_start,
                            ctx->header_end - ctx->header_start,
                            ctx->header_start);
+
+            len = ctx->header_name_end - ctx->header_name_start;
+
+            if (len == sizeof("Content-Type") - 1
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Content-Type",
+                                   sizeof("Content-Type") - 1)
+                   == 0)
+            {
+                len = ctx->header_end - ctx->header_start;
+
+                if (len != sizeof("application/ocsp-response") - 1
+                    || ngx_strncasecmp(ctx->header_start,
+                                       (u_char *) "application/ocsp-response",
+                                       sizeof("application/ocsp-response") - 1)
+                       != 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                                  "OCSP responder sent invalid "
+                                  "\"Content-Type\" header: \"%*s\"",
+                                  ctx->header_end - ctx->header_start,
+                                  ctx->header_start);
+                    return NGX_ERROR;
+                }
+
+                continue;
+            }
 
             /* TODO: honor Content-Length */
 
