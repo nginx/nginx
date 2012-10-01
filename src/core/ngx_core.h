@@ -69,12 +69,12 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_slab.h>
 #include <ngx_inet.h>
 #include <ngx_cycle.h>
+#include <ngx_resolver.h>
 #if (NGX_OPENSSL)
 #include <ngx_event_openssl.h>
 #endif
 #include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>
-#include <ngx_resolver.h>
 #include <ngx_open_file_cache.h>
 #include <ngx_os.h>
 #include <ngx_connection.h>

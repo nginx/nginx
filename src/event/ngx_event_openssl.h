@@ -105,7 +105,10 @@ ngx_int_t ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
 ngx_int_t ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_int_t depth);
 ngx_int_t ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl);
-ngx_int_t ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file);
+ngx_int_t ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_str_t *responder, ngx_str_t *file);
+ngx_int_t ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_resolver_t *resolver, ngx_msec_t resolver_timeout);
 RSA *ngx_ssl_rsa512_key_callback(SSL *ssl, int is_export, int key_length);
 ngx_int_t ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file);
 ngx_int_t ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name);
@@ -161,6 +164,8 @@ void ngx_ssl_cleanup_ctx(void *data);
 extern int  ngx_ssl_connection_index;
 extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
+extern int  ngx_ssl_certificate_index;
+extern int  ngx_ssl_stapling_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

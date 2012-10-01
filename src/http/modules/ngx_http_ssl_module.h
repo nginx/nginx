@@ -44,6 +44,7 @@ typedef struct {
 
     ngx_flag_t                      stapling;
     ngx_str_t                       stapling_file;
+    ngx_str_t                       stapling_responder;
 
     u_char                         *file;
     ngx_uint_t                      line;
