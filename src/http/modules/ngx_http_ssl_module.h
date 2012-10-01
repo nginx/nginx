@@ -42,6 +42,9 @@ typedef struct {
 
     ngx_shm_zone_t                 *shm_zone;
 
+    ngx_flag_t                      stapling;
+    ngx_str_t                       stapling_file;
+
     u_char                         *file;
     ngx_uint_t                      line;
 } ngx_http_ssl_srv_conf_t;
