@@ -588,7 +588,7 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
     chain = staple->ssl_ctx->extra_certs;
 #endif
 
-    if (OCSP_basic_verify(basic, chain, store, 0) != 1) {
+    if (OCSP_basic_verify(basic, chain, store, OCSP_TRUSTOTHER) != 1) {
         ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
                       "OCSP_basic_verify() failed");
         goto error;
