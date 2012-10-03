@@ -209,8 +209,6 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("bytes_sent"), NGX_OFF_T_LEN, ngx_http_log_bytes_sent },
     { ngx_string("body_bytes_sent"), NGX_OFF_T_LEN,
                           ngx_http_log_body_bytes_sent },
-    { ngx_string("apache_bytes_sent"), NGX_OFF_T_LEN,
-                          ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           ngx_http_log_request_length },
 
@@ -1141,12 +1139,6 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *flushes,
 
                 if (var.len == 0) {
                     goto invalid;
-                }
-
-                if (ngx_strncmp(var.data, "apache_bytes_sent", 17) == 0) {
-                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                        "use \"$body_bytes_sent\" instead of "
-                        "\"$apache_bytes_sent\"");
                 }
 
                 for (v = ngx_http_log_vars; v->name.len; v++) {
