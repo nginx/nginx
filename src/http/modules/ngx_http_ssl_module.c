@@ -737,7 +737,7 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
         sscf = cscfp[s]->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
-        if (!sscf->stapling) {
+        if (sscf->ssl.ctx == NULL || !sscf->stapling) {
             continue;
         }
 
