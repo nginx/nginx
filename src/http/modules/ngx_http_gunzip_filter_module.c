@@ -145,7 +145,7 @@ ngx_http_gunzip_header_filter(ngx_http_request_t *r)
             return ngx_http_next_header_filter(r);
         }
 
-    } else if (!r->gzip_ok) {
+    } else if (r->gzip_ok) {
         return ngx_http_next_header_filter(r);
     }
 
