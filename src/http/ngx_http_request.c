@@ -2753,6 +2753,20 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
             ngx_http_close_connection(c);
         }
 
+        /*
+         * Like ngx_http_set_keepalive() we are trying to not hold
+         * c->buffer's memory for a keepalive connection.
+         */
+
+        if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+
+            /*
+             * the special note that c->buffer's memory was freed
+             */
+
+            b->pos = NULL;
+        }
+
         return;
     }
 
