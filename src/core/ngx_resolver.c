@@ -2144,6 +2144,10 @@ ngx_resolver_rotate(ngx_resolver_t *r, in_addr_t *src, ngx_uint_t n)
 
     dst = ngx_resolver_alloc(r, n * sizeof(in_addr_t));
 
+    if (dst == NULL) {
+        return dst;
+    }
+
     j = ngx_random() % n;
 
     if (j == 0) {
