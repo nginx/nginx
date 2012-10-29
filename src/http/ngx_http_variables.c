@@ -97,6 +97,11 @@ static ngx_int_t ngx_http_variable_sent_keep_alive(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_sent_transfer_encoding(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t ngx_http_variable_connection(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_connection_requests(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+
 static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
@@ -264,6 +269,12 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       ngx_http_variable_request_get_size,
       offsetof(ngx_http_request_t, limit_rate),
       NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("connection"), NULL,
+      ngx_http_variable_connection, 0, 0, 0 },
+
+    { ngx_string("connection_requests"), NULL,
+      ngx_http_variable_connection_requests, 0, 0, 0 },
 
     { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
       0, 0, 0 },
@@ -1808,6 +1819,48 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->request_body->temp_file->file.name.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_connection(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, NGX_ATOMIC_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%uA", r->connection->number) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_connection_requests(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, NGX_INT_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%ui", r->connection->requests) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
 
     return NGX_OK;
 }

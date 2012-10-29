@@ -78,10 +78,6 @@ static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
     ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
 
-static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op);
-static u_char *ngx_http_log_connection_requests(ngx_http_request_t *r,
-    u_char *buf, ngx_http_log_op_t *op);
 static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
@@ -194,9 +190,6 @@ static ngx_str_t  ngx_http_combined_fmt =
 
 
 static ngx_http_log_var_t  ngx_http_log_vars[] = {
-    { ngx_string("connection"), NGX_ATOMIC_T_LEN, ngx_http_log_connection },
-    { ngx_string("connection_requests"), NGX_INT_T_LEN,
-                          ngx_http_log_connection_requests },
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
     { ngx_string("time_local"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           ngx_http_log_time },
@@ -496,22 +489,6 @@ ngx_http_log_copy_long(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
     return ngx_cpymem(buf, (u_char *) op->data, op->len);
-}
-
-
-static u_char *
-ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    return ngx_sprintf(buf, "%uA", r->connection->number);
-}
-
-
-static u_char *
-ngx_http_log_connection_requests(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    return ngx_sprintf(buf, "%ui", r->connection->requests);
 }
 
 
