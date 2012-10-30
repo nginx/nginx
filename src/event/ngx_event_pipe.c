@@ -946,8 +946,15 @@ ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
         return NGX_ERROR;
     }
 
-    b->pos = b->start;
-    b->last = b->start;
+    if (p->buf_to_file && b->start == p->buf_to_file->start) {
+        b->pos = p->buf_to_file->last;
+        b->last = p->buf_to_file->last;
+
+    } else {
+        b->pos = b->start;
+        b->last = b->start;
+    }
+
     b->shadow = NULL;
 
     cl->buf = b;

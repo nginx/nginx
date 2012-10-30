@@ -2287,6 +2287,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
 
+        p->buf_to_file->start = u->buffer.start;
         p->buf_to_file->pos = u->buffer.start;
         p->buf_to_file->last = u->buffer.pos;
         p->buf_to_file->temporary = 1;
