@@ -5,6 +5,71 @@
 <change_log title="nginx">
 
 
+<changes ver="1.3.8" date="30.10.2012">
+
+<change type="feature">
+<para lang="ru">
+параметр optional_no_ca директивы ssl_verify_client.<br/>
+Спасибо Михаилу Казанцеву и Eric O'Connor.
+</para>
+<para lang="en">
+the "optional_no_ca" parameter of the "ssl_verify_client" directive.<br/>
+Thanks to Mike Kazantsev and Eric O'Connor.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $bytes_sent, $connection и $connection_requests
+теперь можно использовать не только в директиве log_format.<br/>
+Спасибо Benjamin Grössing.
+</para>
+<para lang="en">
+the $bytes_sent, $connection, and $connection_requests variables
+can now be used not only in the "log_format" directive.<br/>
+Thanks to Benjamin Grössing.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр auto директивы worker_processes.
+</para>
+<para lang="en">
+the "auto" parameter of the "worker_processes" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения "cache file ... has md5 collision".
+</para>
+<para lang="en">
+"cache file ... has md5 collision" alert.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_gunzip_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_gunzip_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_stapling.
+</para>
+<para lang="en">
+in the "ssl_stapling" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.7" date="02.10.2012">
 
 <change type="feature">
