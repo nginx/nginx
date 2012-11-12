@@ -88,6 +88,8 @@ static void *ngx_resolver_calloc(ngx_resolver_t *r, size_t size);
 static void ngx_resolver_free(ngx_resolver_t *r, void *p);
 static void ngx_resolver_free_locked(ngx_resolver_t *r, void *p);
 static void *ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size);
+static in_addr_t *ngx_resolver_rotate(ngx_resolver_t *r, in_addr_t *src,
+    ngx_uint_t n);
 static u_char *ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
@@ -445,8 +447,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
                 if (naddrs != 1) {
                     addr = 0;
-                    addrs = ngx_resolver_dup(r, rn->u.addrs,
-                                             naddrs * sizeof(in_addr_t));
+                    addrs = ngx_resolver_rotate(r, rn->u.addrs, naddrs);
                     if (addrs == NULL) {
                         return NGX_ERROR;
                     }
@@ -2130,6 +2131,32 @@ ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size)
     }
 
     ngx_memcpy(dst, src, size);
+
+    return dst;
+}
+
+
+static in_addr_t *
+ngx_resolver_rotate(ngx_resolver_t *r, in_addr_t *src, ngx_uint_t n)
+{
+    void        *dst, *p;
+    ngx_uint_t   j;
+
+    dst = ngx_resolver_alloc(r, n * sizeof(in_addr_t));
+
+    if (dst == NULL) {
+        return dst;
+    }
+
+    j = ngx_random() % n;
+
+    if (j == 0) {
+        ngx_memcpy(dst, src, n * sizeof(in_addr_t));
+        return dst;
+    }
+
+    p = ngx_cpymem(dst, &src[j], (n - j) * sizeof(in_addr_t));
+    ngx_memcpy(p, src, j * sizeof(in_addr_t));
 
     return dst;
 }
