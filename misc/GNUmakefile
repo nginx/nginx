@@ -86,7 +86,7 @@ snapshot:
 win32:
 	./auto/configure						\
 		--with-cc=cl						\
-		--builddir=${OBJS}					\
+		--builddir=$(OBJS)					\
 		--with-debug						\
 		--prefix= 						\
 		--conf-path=conf/nginx.conf				\
@@ -100,8 +100,8 @@ win32:
 		--http-scgi-temp-path=temp/scgi_temp			\
 		--http-uwsgi-temp-path=temp/uwsgi_temp			\
 		--with-cc-opt=-DFD_SETSIZE=1024				\
-		--with-pcre=${OBJS}/lib/${PCRE}				\
-		--with-zlib=${OBJS}/lib/${ZLIB}				\
+		--with-pcre=$(OBJS)/lib/$(PCRE)				\
+		--with-zlib=$(OBJS)/lib/$(ZLIB)				\
 		--with-select_module					\
 		--with-http_realip_module				\
 		--with-http_addition_module				\
@@ -114,7 +114,7 @@ win32:
 		--with-http_random_index_module				\
 		--with-http_secure_link_module				\
 		--with-mail						\
-		--with-openssl=${OBJS}/lib/${OPENSSL}			\
+		--with-openssl=$(OBJS)/lib/$(OPENSSL)			\
 		--with-openssl-opt=enable-tlsext			\
 		--with-http_ssl_module					\
 		--with-mail_ssl_module					\

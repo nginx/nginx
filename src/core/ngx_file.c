@@ -412,8 +412,8 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 
     path = *slot;
 
-    p = cf->cycle->pathes.elts;
-    for (i = 0; i < cf->cycle->pathes.nelts; i++) {
+    p = cf->cycle->paths.elts;
+    for (i = 0; i < cf->cycle->paths.nelts; i++) {
         if (p[i]->name.len == path->name.len
             && ngx_strcmp(p[i]->name.data, path->name.data) == 0)
         {
@@ -457,7 +457,7 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
         }
     }
 
-    p = ngx_array_push(&cf->cycle->pathes);
+    p = ngx_array_push(&cf->cycle->paths);
     if (p == NULL) {
         return NGX_ERROR;
     }
@@ -469,14 +469,14 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 
 
 ngx_int_t
-ngx_create_pathes(ngx_cycle_t *cycle, ngx_uid_t user)
+ngx_create_paths(ngx_cycle_t *cycle, ngx_uid_t user)
 {
     ngx_err_t         err;
     ngx_uint_t        i;
     ngx_path_t      **path;
 
-    path = cycle->pathes.elts;
-    for (i = 0; i < cycle->pathes.nelts; i++) {
+    path = cycle->paths.elts;
+    for (i = 0; i < cycle->paths.nelts; i++) {
 
         if (ngx_create_dir(path[i]->name.data, 0700) == NGX_FILE_ERROR) {
             err = ngx_errno;
