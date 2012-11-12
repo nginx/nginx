@@ -94,22 +94,24 @@ ngx_ssl_init(ngx_log_t *log)
 
     OpenSSL_add_all_algorithms();
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef SSL_OP_NO_COMPRESSION
     {
     /*
      * Disable gzip compression in OpenSSL prior to 1.0.0 version,
      * this saves about 522K per connection.
      */
-    int                 i, n;
+    int                  n;
     STACK_OF(SSL_COMP)  *ssl_comp_methods;
 
     ssl_comp_methods = SSL_COMP_get_compression_methods();
     n = sk_SSL_COMP_num(ssl_comp_methods);
 
-    for (i = 0; i < n; i++) {
-        (void) sk_SSL_COMP_delete(ssl_comp_methods, i);
+    while (n--) {
+        (void) sk_SSL_COMP_pop(ssl_comp_methods);
     }
     }
+#endif
 #endif
 
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
