@@ -371,6 +371,8 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 
         ngx_pass_open_channel(cycle, &ch);
     }
+
+    cpu_affinity = 0;
 }
 
 
