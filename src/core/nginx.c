@@ -21,6 +21,8 @@ static char *ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_conf_enum_t  ngx_debug_points[] = {
@@ -69,9 +71,9 @@ static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("worker_processes"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
+      ngx_set_worker_processes,
       0,
-      offsetof(ngx_core_conf_t, worker_processes),
+      0,
       NULL },
 
     { ngx_string("debug_points"),
@@ -1328,4 +1330,33 @@ ngx_get_cpu_affinity(ngx_uint_t n)
     }
 
     return ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+}
+
+
+static char *
+ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_str_t        *value;
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) conf;
+
+    if (ccf->worker_processes != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = (ngx_str_t *) cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "auto") == 0) {
+        ccf->worker_processes = ngx_ncpu;
+        return NGX_CONF_OK;
+    }
+
+    ccf->worker_processes = ngx_atoi(value[1].data, value[1].len);
+
+    if (ccf->worker_processes == NGX_ERROR) {
+        return "invalid value";
+    }
+
+    return NGX_CONF_OK;
 }
