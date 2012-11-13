@@ -78,10 +78,6 @@ static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
     ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
 
-static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op);
-static u_char *ngx_http_log_connection_requests(ngx_http_request_t *r,
-    u_char *buf, ngx_http_log_op_t *op);
 static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
 static u_char *ngx_http_log_time(ngx_http_request_t *r, u_char *buf,
@@ -194,9 +190,6 @@ static ngx_str_t  ngx_http_combined_fmt =
 
 
 static ngx_http_log_var_t  ngx_http_log_vars[] = {
-    { ngx_string("connection"), NGX_ATOMIC_T_LEN, ngx_http_log_connection },
-    { ngx_string("connection_requests"), NGX_INT_T_LEN,
-                          ngx_http_log_connection_requests },
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
     { ngx_string("time_local"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
                           ngx_http_log_time },
@@ -208,8 +201,6 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("status"), NGX_INT_T_LEN, ngx_http_log_status },
     { ngx_string("bytes_sent"), NGX_OFF_T_LEN, ngx_http_log_bytes_sent },
     { ngx_string("body_bytes_sent"), NGX_OFF_T_LEN,
-                          ngx_http_log_body_bytes_sent },
-    { ngx_string("apache_bytes_sent"), NGX_OFF_T_LEN,
                           ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           ngx_http_log_request_length },
@@ -498,22 +489,6 @@ ngx_http_log_copy_long(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
     return ngx_cpymem(buf, (u_char *) op->data, op->len);
-}
-
-
-static u_char *
-ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    return ngx_sprintf(buf, "%uA", r->connection->number);
-}
-
-
-static u_char *
-ngx_http_log_connection_requests(ngx_http_request_t *r, u_char *buf,
-    ngx_http_log_op_t *op)
-{
-    return ngx_sprintf(buf, "%ui", r->connection->requests);
 }
 
 
@@ -1141,12 +1116,6 @@ ngx_http_log_compile_format(ngx_conf_t *cf, ngx_array_t *flushes,
 
                 if (var.len == 0) {
                     goto invalid;
-                }
-
-                if (ngx_strncmp(var.data, "apache_bytes_sent", 17) == 0) {
-                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                        "use \"$body_bytes_sent\" instead of "
-                        "\"$apache_bytes_sent\"");
                 }
 
                 for (v = ngx_http_log_vars; v->name.len; v++) {
