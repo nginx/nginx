@@ -1634,7 +1634,9 @@ ngx_http_process_request(ngx_http_request_t *r)
         if (sscf->verify) {
             rc = SSL_get_verify_result(c->ssl->connection);
 
-            if (rc != X509_V_OK) {
+            if (rc != X509_V_OK
+                && (sscf->verify != 3 || !ngx_ssl_verify_error_optional(rc)))
+            {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client SSL certificate verify error: (%l:%s)",
                               rc, X509_verify_cert_error_string(rc));

@@ -48,6 +48,7 @@ static ngx_conf_enum_t  ngx_http_ssl_verify[] = {
     { ngx_string("off"), 0 },
     { ngx_string("on"), 1 },
     { ngx_string("optional"), 2 },
+    { ngx_string("optional_no_ca"), 3 },
     { ngx_null_string, 0 }
 };
 
@@ -466,7 +467,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->verify) {
 
-        if (conf->client_certificate.len == 0) {
+        if (conf->client_certificate.len == 0 && conf->verify != 3) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no ssl_client_certificate for ssl_client_verify");
             return NGX_CONF_ERROR;

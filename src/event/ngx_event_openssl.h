@@ -120,6 +120,13 @@ ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
 #define ngx_ssl_get_server_conf(ssl_ctx)                                      \
     SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_server_conf_index)
 
+#define ngx_ssl_verify_error_optional(n)                                      \
+    (n == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT                              \
+     || n == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN                             \
+     || n == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY                     \
+     || n == X509_V_ERR_CERT_UNTRUSTED                                        \
+     || n == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)
+
 
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
