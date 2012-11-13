@@ -5,6 +5,75 @@
 <change_log title="nginx">
 
 
+<changes ver="1.2.5" date="13.11.2012">
+
+<change type="feature">
+<para lang="ru">
+параметр optional_no_ca директивы ssl_verify_client.<br/>
+Спасибо Михаилу Казанцеву и Eric O'Connor.
+</para>
+<para lang="en">
+the "optional_no_ca" parameter of the "ssl_verify_client" directive.<br/>
+Thanks to Mike Kazantsev and Eric O'Connor.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $bytes_sent, $connection и $connection_requests
+теперь можно использовать не только в директиве log_format.<br/>
+Спасибо Benjamin Grössing.
+</para>
+<para lang="en">
+the $bytes_sent, $connection, and $connection_requests variables
+can now be used not only in the "log_format" directive.<br/>
+Thanks to Benjamin Grössing.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь resolver случайным образом меняет порядок
+возвращаемых закэшированных адресов.<br/>
+Спасибо Антону Жулину.
+</para>
+<para lang="en">
+resolver now randomly rotates addresses
+returned from cache.<br/>
+Thanks to Anton Jouline.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр auto директивы worker_processes.
+</para>
+<para lang="en">
+the "auto" parameter of the "worker_processes" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения "cache file ... has md5 collision".
+</para>
+<para lang="en">
+"cache file ... has md5 collision" alert.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с OpenSSL 0.9.7.
+</para>
+<para lang="en">
+OpenSSL 0.9.7 compatibility.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.4" date="25.09.2012">
 
 <change type="bugfix">
