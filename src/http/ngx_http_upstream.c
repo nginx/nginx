@@ -1818,7 +1818,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
             }
 
             c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, err, 
+            (void) ngx_connection_error(c, err,
                                     "kevent() reported that connect() failed");
             return NGX_ERROR;
         }
