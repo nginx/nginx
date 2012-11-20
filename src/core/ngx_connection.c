@@ -749,6 +749,8 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         ls[i].fd = (ngx_socket_t) -1;
     }
+
+    cycle->listening.nelts = 0;
 }
 
 
