@@ -33,7 +33,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ssize_t                    size;
     ngx_buf_t                 *b;
     ngx_chain_t               *cl, **next;
-    ngx_temp_file_t           *tf;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -65,30 +64,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     if (r->headers_in.content_length_n == 0) {
 
         if (r->request_body_in_file_only) {
-            tf = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
-            if (tf == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            tf->file.fd = NGX_INVALID_FILE;
-            tf->file.log = r->connection->log;
-            tf->path = clcf->client_body_temp_path;
-            tf->pool = r->pool;
-            tf->warn = "a client request body is buffered to a temporary file";
-            tf->log_level = r->request_body_file_log_level;
-            tf->persistent = r->request_body_in_persistent_file;
-            tf->clean = r->request_body_in_clean_file;
-
-            if (r->request_body_file_group_access) {
-                tf->access = 0660;
-            }
-
-            rb->temp_file = tf;
-
-            if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
-                                     tf->persistent, tf->clean, tf->access)
-                != NGX_OK)
-            {
+            if (ngx_http_write_request_body(r, NULL) != NGX_OK) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
         }
@@ -419,6 +395,19 @@ ngx_http_write_request_body(ngx_http_request_t *r, ngx_chain_t *body)
         }
 
         rb->temp_file = tf;
+
+        if (body == NULL) {
+            /* empty body with r->request_body_in_file_only */
+
+            if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
+                                     tf->persistent, tf->clean, tf->access)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
     }
 
     n = ngx_write_chain_to_temp_file(rb->temp_file, body);
