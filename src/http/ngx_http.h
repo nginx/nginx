@@ -18,6 +18,7 @@ typedef struct ngx_http_upstream_s    ngx_http_upstream_t;
 typedef struct ngx_http_cache_s       ngx_http_cache_t;
 typedef struct ngx_http_file_cache_s  ngx_http_file_cache_t;
 typedef struct ngx_http_log_ctx_s     ngx_http_log_ctx_t;
+typedef struct ngx_http_chunked_s     ngx_http_chunked_t;
 
 typedef ngx_int_t (*ngx_http_header_handler_pt)(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
@@ -49,6 +50,13 @@ struct ngx_http_log_ctx_s {
     ngx_connection_t    *connection;
     ngx_http_request_t  *request;
     ngx_http_request_t  *current_request;
+};
+
+
+struct ngx_http_chunked_s {
+    ngx_uint_t           state;
+    off_t                size;
+    off_t                length;
 };
 
 
@@ -92,6 +100,8 @@ ngx_int_t ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len,
     ngx_str_t *value);
 void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args);
+ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
+    ngx_http_chunked_t *ctx);
 
 
 ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
