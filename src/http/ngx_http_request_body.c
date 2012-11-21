@@ -482,19 +482,21 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         }
     }
 
+    if (ngx_http_read_discarded_request_body(r) == NGX_OK) {
+        r->lingering_close = 0;
+        return NGX_OK;
+    }
+
+    /* == NGX_AGAIN */
+
     r->read_event_handler = ngx_http_discarded_request_body_handler;
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_http_read_discarded_request_body(r) == NGX_OK) {
-        r->lingering_close = 0;
-
-    } else {
-        r->count++;
-        r->discard_body = 1;
-    }
+    r->count++;
+    r->discard_body = 1;
 
     return NGX_OK;
 }
