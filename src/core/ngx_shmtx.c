@@ -117,10 +117,10 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
                                   "sem_wait() failed while waiting on shmtx");
                     break;
                 }
-
-                ngx_log_debug0(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
-                               "shmtx awoke");
             }
+
+            ngx_log_debug0(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
+                           "shmtx awoke");
 
             continue;
         }
