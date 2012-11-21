@@ -112,7 +112,7 @@ static ngx_str_t ngx_http_status_lines[] = {
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string("500 Internal Server Error"),
-    ngx_string("501 Method Not Implemented"),
+    ngx_string("501 Not Implemented"),
     ngx_string("502 Bad Gateway"),
     ngx_string("503 Service Temporarily Unavailable"),
     ngx_string("504 Gateway Time-out"),
