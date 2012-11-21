@@ -2065,6 +2065,9 @@ data:
 
 done:
 
+    ctx->state = 0;
+    b->pos = pos + 1;
+
     return NGX_DONE;
 
 invalid:
