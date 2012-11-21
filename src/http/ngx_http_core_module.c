@@ -848,7 +848,8 @@ ngx_http_handler(ngx_http_request_t *r)
             break;
         }
 
-        r->lingering_close = (r->headers_in.content_length_n > 0);
+        r->lingering_close = (r->headers_in.content_length_n > 0
+                              || r->headers_in.chunked);
         r->phase_handler = 0;
 
     } else {

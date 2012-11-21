@@ -1574,17 +1574,9 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         if (r->headers_in.content_length_n == NGX_ERROR) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent invalid \"Content-Length\" header");
-            ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             return NGX_ERROR;
         }
-    }
-
-    if (r->method & NGX_HTTP_PUT && r->headers_in.content_length_n == -1) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "client sent %V method without \"Content-Length\" header",
-                  &r->method_name);
-        ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
-        return NGX_ERROR;
     }
 
     if (r->method & NGX_HTTP_TRACE) {
@@ -1594,14 +1586,25 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.transfer_encoding
-        && ngx_strcasestrn(r->headers_in.transfer_encoding->value.data,
-                           "chunked", 7 - 1))
-    {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent \"Transfer-Encoding: chunked\" header");
-        ngx_http_finalize_request(r, NGX_HTTP_LENGTH_REQUIRED);
-        return NGX_ERROR;
+    if (r->headers_in.transfer_encoding) {
+        if (r->headers_in.transfer_encoding->value.len == 7
+            && ngx_strncasecmp(r->headers_in.transfer_encoding->value.data,
+                               (u_char *) "chunked", 7) == 0)
+        {
+            r->headers_in.content_length = NULL;
+            r->headers_in.content_length_n = -1;
+            r->headers_in.chunked = 1;
+
+        } else if (r->headers_in.transfer_encoding->value.len != 8
+            || ngx_strncasecmp(r->headers_in.transfer_encoding->value.data,
+                               (u_char *) "identity", 8) != 0)
+        {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent unknown \"Transfer-Encoding\": \"%V\"",
+                          &r->headers_in.transfer_encoding->value);
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_IMPLEMENTED);
+            return NGX_ERROR;
+        }
     }
 
     if (r->headers_in.connection_type == NGX_HTTP_CONNECTION_KEEP_ALIVE) {

@@ -224,6 +224,7 @@ typedef struct {
     time_t                            keep_alive_n;
 
     unsigned                          connection_type:2;
+    unsigned                          chunked:1;
     unsigned                          msie:1;
     unsigned                          msie6:1;
     unsigned                          opera:1;
@@ -276,7 +277,9 @@ typedef struct {
     ngx_chain_t                      *bufs;
     ngx_buf_t                        *buf;
     off_t                             rest;
-    ngx_chain_t                      *to_write;
+    ngx_chain_t                      *free;
+    ngx_chain_t                      *busy;
+    ngx_http_chunked_t               *chunked;
     ngx_http_client_body_handler_pt   post_handler;
 } ngx_http_request_body_t;
 
