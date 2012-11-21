@@ -83,7 +83,7 @@ typedef struct {
     ngx_http_status_t              status;
     ngx_http_chunked_t             chunked;
     ngx_http_proxy_vars_t          vars;
-    size_t                         internal_body_length;
+    off_t                          internal_body_length;
 
     ngx_uint_t                     head;  /* unsigned  head:1 */
 } ngx_http_proxy_ctx_t;
@@ -555,6 +555,8 @@ static char  ngx_http_proxy_version_11[] = " HTTP/1.1" CRLF;
 static ngx_keyval_t  ngx_http_proxy_headers[] = {
     { ngx_string("Host"), ngx_string("$proxy_host") },
     { ngx_string("Connection"), ngx_string("close") },
+    { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
+    { ngx_string("Transfer-Encoding"), ngx_string("") },
     { ngx_string("Keep-Alive"), ngx_string("") },
     { ngx_string("Expect"), ngx_string("") },
     { ngx_string("Upgrade"), ngx_string("") },
@@ -580,6 +582,8 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
 static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
     { ngx_string("Host"), ngx_string("$proxy_host") },
     { ngx_string("Connection"), ngx_string("close") },
+    { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
+    { ngx_string("Transfer-Encoding"), ngx_string("") },
     { ngx_string("Keep-Alive"), ngx_string("") },
     { ngx_string("Expect"), ngx_string("") },
     { ngx_string("Upgrade"), ngx_string("") },
@@ -1003,6 +1007,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
         ctx->internal_body_length = body_len;
         len += body_len;
+
+    } else {
+        ctx->internal_body_length = r->headers_in.content_length_n;
     }
 
     le.ip = plcf->headers_set_len->elts;
@@ -2039,7 +2046,7 @@ ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
-    if (ctx == NULL) {
+    if (ctx == NULL || ctx->internal_body_length < 0) {
         v->not_found = 1;
         return NGX_OK;
     }
@@ -2048,13 +2055,13 @@ ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    v->data = ngx_pnalloc(r->connection->pool, NGX_SIZE_T_LEN);
+    v->data = ngx_pnalloc(r->connection->pool, NGX_OFF_T_LEN);
 
     if (v->data == NULL) {
         return NGX_ERROR;
     }
 
-    v->len = ngx_sprintf(v->data, "%uz", ctx->internal_body_length) - v->data;
+    v->len = ngx_sprintf(v->data, "%O", ctx->internal_body_length) - v->data;
 
     return NGX_OK;
 }
@@ -2822,8 +2829,6 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     }
 
     if (conf->headers_set_hash.buckets
-        && ((conf->body_source.data == NULL)
-            == (prev->body_source.data == NULL))
 #if (NGX_HTTP_CACHE)
         && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
 #endif
@@ -2904,16 +2909,6 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     next:
 
         h++;
-    }
-
-    if (conf->body_source.data) {
-        s = ngx_array_push(&headers_merged);
-        if (s == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_str_set(&s->key, "Content-Length");
-        ngx_str_set(&s->value, "$proxy_internal_body_length");
     }
 
 
