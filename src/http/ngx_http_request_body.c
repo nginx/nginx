@@ -471,12 +471,18 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         }
     }
 
-    if (ngx_http_read_discarded_request_body(r) == NGX_OK) {
+    rc = ngx_http_read_discarded_request_body(r);
+
+    if (rc == NGX_OK) {
         r->lingering_close = 0;
         return NGX_OK;
     }
 
-    /* == NGX_AGAIN */
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        return rc;
+    }
+
+    /* rc == NGX_AGAIN */
 
     r->read_event_handler = ngx_http_discarded_request_body_handler;
 
@@ -530,6 +536,12 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
         r->discard_body = 0;
         r->lingering_close = 0;
         ngx_http_finalize_request(r, NGX_DONE);
+        return;
+    }
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        c->error = 1;
+        ngx_http_finalize_request(r, NGX_ERROR);
         return;
     }
 
@@ -606,8 +618,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
         rc = ngx_http_discard_request_body_filter(r, &b);
 
         if (rc != NGX_OK) {
-            r->connection->error = 1;
-            return NGX_OK;
+            return rc;
         }
     }
 }
