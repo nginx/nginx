@@ -105,6 +105,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             rb->buf = r->header_in;
             r->read_event_handler = ngx_http_read_client_request_body_handler;
+            r->write_event_handler = ngx_http_request_empty_handler;
 
             rc = ngx_http_do_read_client_request_body(r);
             goto done;
@@ -166,6 +167,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 
     r->read_event_handler = ngx_http_read_client_request_body_handler;
+    r->write_event_handler = ngx_http_request_empty_handler;
 
     rc = ngx_http_do_read_client_request_body(r);
 
