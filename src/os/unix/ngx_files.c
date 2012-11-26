@@ -246,6 +246,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
         file->sys_offset += n;
         file->offset += n;
+        offset += n;
         total += n;
 
     } while (cl);
