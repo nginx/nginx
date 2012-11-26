@@ -459,7 +459,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 
     size = r->header_in->last - r->header_in->pos;
 
-    if (size) {
+    if (size || r->headers_in.chunked) {
         rc = ngx_http_discard_request_body_filter(r, r->header_in);
 
         if (rc != NGX_OK) {
