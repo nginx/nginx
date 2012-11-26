@@ -134,6 +134,13 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         return NGX_OK;
     }
 
+    if (rb->rest < 0) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "negative request body rest");
+        rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        goto done;
+    }
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     size = clcf->client_body_buffer_size;
@@ -643,7 +650,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             rb->chunked = ngx_pcalloc(r->pool, sizeof(ngx_http_chunked_t));
-            if (rb == NULL) {
+            if (rb->chunked == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
@@ -1022,7 +1029,9 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     /* TODO: coalesce neighbouring buffers */
 
-    ngx_chain_add_copy(r->pool, &rb->bufs, in);
+    if (ngx_chain_add_copy(r->pool, &rb->bufs, in) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     return NGX_OK;
 }
