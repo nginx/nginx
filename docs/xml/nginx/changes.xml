@@ -5,6 +5,51 @@
 <change_log title="nginx">
 
 
+<changes ver="1.3.9" date="27.11.2012">
+
+<change type="feature">
+<para lang="ru">
+поддержка chunked transfer encoding при получении тела запроса.
+</para>
+<para lang="en">
+support for chunked transfer encoding while reading client request body.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $request_time и $msec
+теперь можно использовать не только в директиве log_format.
+</para>
+<para lang="en">
+the $request_time and $msec variables
+can now be used not only in the "log_format" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+cache manager и cache loader могли не запускаться,
+если использовалось более 512 listen-сокетов.
+</para>
+<para lang="en">
+cache manager and cache loader processes might not be able to start
+if more than 512 listen sockets were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_dav_module.
+</para>
+<para lang="en">
+in the ngx_http_dav_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.8" date="30.10.2012">
 
 <change type="feature">
