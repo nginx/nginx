@@ -363,7 +363,7 @@ ngx_open_glob(ngx_glob_t *gl)
 {
     int  n;
 
-    n = glob((char *) gl->pattern, GLOB_NOSORT, NULL, &gl->pglob);
+    n = glob((char *) gl->pattern, 0, NULL, &gl->pglob);
 
     if (n == 0) {
         return NGX_OK;
