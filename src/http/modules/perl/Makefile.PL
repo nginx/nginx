@@ -16,20 +16,9 @@ WriteMakefile(
     CCFLAGS           => "$ENV{NGX_PM_CFLAGS}",
     OPTIMIZE          => '-O',
 
-    INC               => "-I ../../../../../src/core " .
-                         "-I ../../../../../src/event " .
-                         "-I ../../../../../src/os/unix " .
-                         "-I ../../../../../src/http " .
-                         "-I ../../../../../src/http/modules " .
-                         "-I ../../../../../src/http/modules/perl " .
-                         "-I ../../../../../$ENV{NGX_OBJS} " .
-                         ($ENV{NGX_PCRE} =~ /^(YES|NO)/ ? "" :
-                             ($ENV{NGX_PCRE} =~ m#^/# ? "-I $ENV{NGX_PCRE} " :
-                                  "-I ../../../../../$ENV{NGX_PCRE} ")) .
-                         ($ENV{NGX_OPENSSL} =~ /^(YES|NO)/ ? "" :
-                             ($ENV{NGX_OPENSSL} =~ m#^/# ?
-                                  "-I $ENV{NGX_OPENSSL}/.openssl/include " :
-                      "-I ../../../../../$ENV{NGX_OPENSSL}/.openssl/include ")),
+    INC               => join(" ", map {
+                             m#^/# ? "-I $_" : "-I ../../../../../$_"
+                         } (split /\s+/, $ENV{NGX_INCS})),
 
     depend => {
         'nginx.c'     =>
