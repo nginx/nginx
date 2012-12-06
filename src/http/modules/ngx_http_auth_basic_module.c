@@ -117,7 +117,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_basic_module);
 
-    if (alcf->realm.len == 0 || alcf->user_file.value.len == 0) {
+    if (alcf->realm.len == 0 || alcf->user_file.value.data == NULL) {
         return NGX_DECLINED;
     }
 
@@ -390,7 +390,7 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->realm = prev->realm;
     }
 
-    if (conf->user_file.value.len == 0) {
+    if (conf->user_file.value.data == NULL) {
         conf->user_file = prev->user_file;
     }
 
@@ -456,7 +456,7 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                         *value;
     ngx_http_compile_complex_value_t   ccv;
 
-    if (alcf->user_file.value.len) {
+    if (alcf->user_file.value.data) {
         return "is duplicate";
     }
 
