@@ -430,6 +430,10 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     if (rrp->peers->single) {
         peer = &rrp->peers->peer[0];
 
+        if (peer->down) {
+            goto failed;
+        }
+
     } else {
 
         /* there are several peers */
