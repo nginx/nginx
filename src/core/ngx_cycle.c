@@ -447,7 +447,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 continue;
             }
 
-            if (shm_zone[i].shm.size == oshm_zone[n].shm.size) {
+            if (shm_zone[i].tag == oshm_zone[n].tag
+                && shm_zone[i].shm.size == oshm_zone[n].shm.size)
+            {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
 
                 if (shm_zone[i].init(&shm_zone[i], oshm_zone[n].data)
