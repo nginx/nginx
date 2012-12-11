@@ -5,6 +5,42 @@
 <change_log title="nginx">
 
 
+<changes ver="1.2.6" date="11.12.2012">
+
+<change type="feature">
+<para lang="ru">
+переменные $request_time и $msec
+теперь можно использовать не только в директиве log_format.
+</para>
+<para lang="en">
+the $request_time and $msec variables
+can now be used not only in the "log_format" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+cache manager и cache loader могли не запускаться,
+если использовалось более 512 listen-сокетов.
+</para>
+<para lang="en">
+cache manager and cache loader processes might not be able to start
+if more than 512 listen sockets were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_dav_module.
+</para>
+<para lang="en">
+in the ngx_http_dav_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.5" date="13.11.2012">
 
 <change type="feature">
