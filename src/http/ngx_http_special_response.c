@@ -260,9 +260,9 @@ static char ngx_http_error_500_page[] =
 
 static char ngx_http_error_501_page[] =
 "<html>" CRLF
-"<head><title>501 Method Not Implemented</title></head>" CRLF
+"<head><title>501 Not Implemented</title></head>" CRLF
 "<body bgcolor=\"white\">" CRLF
-"<center><h1>501 Method Not Implemented</h1></center>" CRLF
+"<center><h1>501 Not Implemented</h1></center>" CRLF
 ;
 
 
@@ -384,6 +384,7 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             case NGX_HTTPS_CERT_ERROR:
             case NGX_HTTPS_NO_CERT:
             case NGX_HTTP_INTERNAL_SERVER_ERROR:
+            case NGX_HTTP_NOT_IMPLEMENTED:
                 r->keepalive = 0;
         }
     }

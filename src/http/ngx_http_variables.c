@@ -1767,7 +1767,7 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
 {
     u_char       *p;
     size_t        len;
-    ngx_buf_t    *buf, *next;
+    ngx_buf_t    *buf;
     ngx_chain_t  *cl;
 
     if (r->request_body == NULL
@@ -1792,8 +1792,13 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    next = cl->next->buf;
-    len = (buf->last - buf->pos) + (next->last - next->pos);
+    len = buf->last - buf->pos;
+    cl = cl->next;
+
+    for ( /* void */ ; cl; cl = cl->next) {
+        buf = cl->buf;
+        len += buf->last - buf->pos;
+    }
 
     p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
@@ -1801,9 +1806,12 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
     }
 
     v->data = p;
+    cl = r->request_body->bufs;
 
-    p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
-    ngx_memcpy(p, next->pos, next->last - next->pos);
+    for ( /* void */ ; cl; cl = cl->next) {
+        buf = cl->buf;
+        p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
+    }
 
     v->len = len;
     v->valid = 1;
