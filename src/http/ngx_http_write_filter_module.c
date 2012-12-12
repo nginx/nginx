@@ -207,7 +207,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (r->limit_rate) {
-        limit = r->limit_rate * (ngx_time() - r->start_sec + 1)
+        limit = (off_t) r->limit_rate * (ngx_time() - r->start_sec + 1)
                 - (c->sent - clcf->limit_rate_after);
 
         if (limit <= 0) {
