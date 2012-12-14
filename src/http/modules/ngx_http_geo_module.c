@@ -303,7 +303,6 @@ static char *
 ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                     *rv;
-    void                    **p;
     size_t                    len;
     ngx_str_t                *value, name;
     ngx_uint_t                i;
@@ -402,8 +401,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     return NGX_CONF_ERROR;
                 }
 
-                p = (void **) ngx_cpymem(ctx.high.low[i], a->elts, len);
-                *p = NULL;
+                ngx_memcpy(ctx.high.low[i], a->elts, len);
+                ctx.high.low[i][a->nelts].value = NULL;
                 ctx.data_size += len + sizeof(void *);
             }
 
