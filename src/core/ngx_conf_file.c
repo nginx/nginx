@@ -983,7 +983,7 @@ ngx_conf_flush_files(ngx_cycle_t *cycle)
 
         n = ngx_write_fd(file[i].fd, file[i].buffer, len);
 
-        if (n == NGX_FILE_ERROR) {
+        if (n == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           ngx_write_fd_n " to \"%s\" failed",
                           file[i].name.data);
