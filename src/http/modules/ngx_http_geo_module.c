@@ -189,19 +189,22 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     *v = *ctx->u.high.default_value;
 
-    addr = ngx_http_geo_addr(r, ctx);
-
-    range = ctx->u.high.low[addr >> 16];
-
-    if (range) {
-        n = addr & 0xffff;
-        do {
-            if (n >= (ngx_uint_t) range->start && n <= (ngx_uint_t) range->end)
-            {
-                *v = *range->value;
-                break;
-            }
-        } while ((++range)->value);
+    if (ctx->u.high.low) {
+        addr = ngx_http_geo_addr(r, ctx);
+    
+        range = ctx->u.high.low[addr >> 16];
+    
+        if (range) {
+            n = addr & 0xffff;
+            do {
+                if (n >= (ngx_uint_t) range->start
+                    && n <= (ngx_uint_t) range->end)
+                {
+                    *v = *range->value;
+                    break;
+                }
+            } while ((++range)->value);
+        }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -384,9 +387,9 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     geo->proxies = ctx.proxies;
     geo->proxy_recursive = ctx.proxy_recursive;
 
-    if (ctx.high.low) {
+    if (ctx.ranges) {
 
-        if (!ctx.binary_include) {
+        if (ctx.high.low && !ctx.binary_include) {
             for (i = 0; i < 0x10000; i++) {
                 a = (ngx_array_t *) ctx.high.low[i];
 
