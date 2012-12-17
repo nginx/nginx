@@ -705,6 +705,11 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         }
 
         u->no_port = 1;
+
+        if (!u->no_resolve) {
+            u->port = u->default_port;
+            sin->sin_port = htons(u->default_port);
+        }
     }
 
     len = last - host;
@@ -714,52 +719,43 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    if (len == 1 && *host == '*') {
-        len = 0;
-    }
-
     u->host.len = len;
     u->host.data = host;
+
+    if (u->listen && len == 1 && *host == '*') {
+        sin->sin_addr.s_addr = INADDR_ANY;
+        u->wildcard = 1;
+        return NGX_OK;
+    }
 
     if (u->no_resolve) {
         return NGX_OK;
     }
 
-    if (len) {
-        sin->sin_addr.s_addr = ngx_inet_addr(host, len);
+    sin->sin_addr.s_addr = ngx_inet_addr(host, len);
 
-        if (sin->sin_addr.s_addr == INADDR_NONE) {
-            p = ngx_alloc(++len, pool->log);
-            if (p == NULL) {
-                return NGX_ERROR;
-            }
-
-            (void) ngx_cpystrn(p, host, len);
-
-            h = gethostbyname((const char *) p);
-
-            ngx_free(p);
-
-            if (h == NULL || h->h_addr_list[0] == NULL) {
-                u->err = "host not found";
-                return NGX_ERROR;
-            }
-
-            sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[0]);
+    if (sin->sin_addr.s_addr == INADDR_NONE) {
+        p = ngx_alloc(++len, pool->log);
+        if (p == NULL) {
+            return NGX_ERROR;
         }
 
-        if (sin->sin_addr.s_addr == INADDR_ANY) {
-            u->wildcard = 1;
+        (void) ngx_cpystrn(p, host, len);
+
+        h = gethostbyname((const char *) p);
+
+        ngx_free(p);
+
+        if (h == NULL || h->h_addr_list[0] == NULL) {
+            u->err = "host not found";
+            return NGX_ERROR;
         }
 
-    } else {
-        sin->sin_addr.s_addr = INADDR_ANY;
-        u->wildcard = 1;
+        sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[0]);
     }
 
-    if (u->no_port) {
-        u->port = u->default_port;
-        sin->sin_port = htons(u->default_port);
+    if (sin->sin_addr.s_addr == INADDR_ANY) {
+        u->wildcard = 1;
     }
 
     if (u->listen) {
