@@ -828,6 +828,11 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 
         } else {
             u->no_port = 1;
+
+            if (!u->no_resolve) {
+                u->port = u->default_port;
+                sin6->sin6_port = htons(u->default_port);
+            }
         }
     }
 
@@ -848,11 +853,6 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 
     if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
         u->wildcard = 1;
-    }
-
-    if (u->no_port) {
-        u->port = u->default_port;
-        sin6->sin6_port = htons(u->default_port);
     }
 
     u->family = AF_INET6;
