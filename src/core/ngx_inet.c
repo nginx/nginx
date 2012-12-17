@@ -611,11 +611,13 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 static ngx_int_t
 ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 {
-    u_char              *p, *host, *port, *last, *uri, *args;
-    size_t               len;
-    ngx_int_t            n;
-    struct hostent      *h;
-    struct sockaddr_in  *sin;
+    u_char               *p, *host, *port, *last, *uri, *args;
+    size_t                len;
+    ngx_int_t             n;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
     u->socklen = sizeof(struct sockaddr_in);
     sin = (struct sockaddr_in *) &u->sockaddr;
@@ -728,41 +730,79 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_OK;
     }
 
-    if (u->no_resolve) {
-        return NGX_OK;
-    }
-
     sin->sin_addr.s_addr = ngx_inet_addr(host, len);
 
-    if (sin->sin_addr.s_addr == INADDR_NONE) {
-        p = ngx_alloc(++len, pool->log);
+    if (sin->sin_addr.s_addr != INADDR_NONE) {
+
+        if (sin->sin_addr.s_addr == INADDR_ANY) {
+            u->wildcard = 1;
+        }
+
+        u->naddrs = 1;
+
+        u->addrs = ngx_pcalloc(pool, sizeof(ngx_addr_t));
+        if (u->addrs == NULL) {
+            return NGX_ERROR;
+        }
+
+        sin = ngx_pcalloc(pool, sizeof(struct sockaddr_in));
+        if (sin == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(sin, u->sockaddr, sizeof(struct sockaddr_in));
+
+        u->addrs[0].sockaddr = (struct sockaddr *) sin;
+        u->addrs[0].socklen = sizeof(struct sockaddr_in);
+
+        p = ngx_pnalloc(pool, u->host.len + sizeof(":65535") - 1);
         if (p == NULL) {
             return NGX_ERROR;
         }
 
-        (void) ngx_cpystrn(p, host, len);
+        u->addrs[0].name.len = ngx_sprintf(p, "%V:%d",
+                                           &u->host, u->port) - p;
+        u->addrs[0].name.data = p;
 
-        h = gethostbyname((const char *) p);
-
-        ngx_free(p);
-
-        if (h == NULL || h->h_addr_list[0] == NULL) {
-            u->err = "host not found";
-            return NGX_ERROR;
-        }
-
-        sin->sin_addr.s_addr = *(in_addr_t *) (h->h_addr_list[0]);
-    }
-
-    if (sin->sin_addr.s_addr == INADDR_ANY) {
-        u->wildcard = 1;
-    }
-
-    if (u->listen) {
         return NGX_OK;
     }
 
-    return ngx_inet_resolve_host(pool, u);
+    if (u->no_resolve) {
+        return NGX_OK;
+    }
+
+    if (ngx_inet_resolve_host(pool, u) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    u->family = u->addrs[0].sockaddr->sa_family;
+    u->socklen = u->addrs[0].socklen;
+    ngx_memcpy(u->sockaddr, u->addrs[0].sockaddr, u->addrs[0].socklen);
+
+    switch (u->family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) &u->sockaddr;
+
+        if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
+            u->wildcard = 1;
+        }
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) &u->sockaddr;
+
+        if (sin->sin_addr.s_addr == INADDR_ANY) {
+            u->wildcard = 1;
+        }
+
+        break;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -894,6 +934,150 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 }
 
 
+#if (NGX_HAVE_GETADDRINFO && NGX_HAVE_INET6)
+
+ngx_int_t
+ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
+{
+    u_char               *p, *host;
+    size_t                len;
+    in_port_t             port;
+    ngx_uint_t            i;
+    struct addrinfo       hints, *res, *rp;
+    struct sockaddr_in   *sin;
+    struct sockaddr_in6  *sin6;
+
+    port = htons(u->port);
+
+    host = ngx_alloc(u->host.len + 1, pool->log);
+    if (host == NULL) {
+        return NGX_ERROR;
+    }
+
+    (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
+
+    ngx_memzero(&hints, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo((char *) host, NULL, &hints, &res) != 0) {
+        u->err = "host not found";
+        ngx_free(host);
+        return NGX_ERROR;
+    }
+
+    ngx_free(host);
+
+    for (i = 0, rp = res; rp != NULL; rp = rp->ai_next) {
+
+        switch (rp->ai_family) {
+
+        case AF_INET:
+        case AF_INET6:
+            break;
+
+        default:
+            continue;
+        }
+
+        i++;
+    }
+
+    if (i == 0) {
+        u->err = "host not found";
+        goto failed;
+    }
+
+    /* MP: ngx_shared_palloc() */
+
+    u->addrs = ngx_pcalloc(pool, i * sizeof(ngx_addr_t));
+    if (u->addrs == NULL) {
+        goto failed;
+    }
+
+    u->naddrs = i;
+
+    i = 0;
+
+    /* AF_INET addresses first */
+
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+
+        if (rp->ai_family != AF_INET) {
+            continue;
+        }
+
+        sin = ngx_pcalloc(pool, rp->ai_addrlen);
+        if (sin == NULL) {
+            goto failed;
+        }
+
+        ngx_memcpy(sin, rp->ai_addr, rp->ai_addrlen);
+
+        sin->sin_port = port;
+
+        u->addrs[i].sockaddr = (struct sockaddr *) sin;
+        u->addrs[i].socklen = rp->ai_addrlen;
+
+        len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+
+        p = ngx_pnalloc(pool, len);
+        if (p == NULL) {
+            goto failed;
+        }
+
+        len = ngx_sock_ntop((struct sockaddr *) sin, p, len, 1);
+
+        u->addrs[i].name.len = len;
+        u->addrs[i].name.data = p;
+
+        i++;
+    }
+
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+
+        if (rp->ai_family != AF_INET6) {
+            continue;
+        }
+
+        sin6 = ngx_pcalloc(pool, rp->ai_addrlen);
+        if (sin6 == NULL) {
+            goto failed;
+        }
+
+        ngx_memcpy(sin6, rp->ai_addr, rp->ai_addrlen);
+
+        sin6->sin6_port = port;
+
+        u->addrs[i].sockaddr = (struct sockaddr *) sin6;
+        u->addrs[i].socklen = rp->ai_addrlen;
+
+        len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1;
+
+        p = ngx_pnalloc(pool, len);
+        if (p == NULL) {
+            goto failed;
+        }
+
+        len = ngx_sock_ntop((struct sockaddr *) sin6, p, len, 1);
+
+        u->addrs[i].name.len = len;
+        u->addrs[i].name.data = p;
+
+        i++;
+    }
+
+    freeaddrinfo(res);
+    return NGX_OK;
+
+failed:
+
+    freeaddrinfo(res);
+    return NGX_ERROR;
+}
+
+#else /* !NGX_HAVE_GETADDRINFO || !NGX_HAVE_INET6 */
+
 ngx_int_t
 ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 {
@@ -928,12 +1112,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
             return NGX_ERROR;
         }
 
-        if (u->one_addr == 0) {
-            for (i = 0; h->h_addr_list[i] != NULL; i++) { /* void */ }
-
-        } else {
-            i = 1;
-        }
+        for (i = 0; h->h_addr_list[i] != NULL; i++) { /* void */ }
 
         /* MP: ngx_shared_palloc() */
 
@@ -1006,3 +1185,5 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
     return NGX_OK;
 }
+
+#endif /* NGX_HAVE_GETADDRINFO && NGX_HAVE_INET6 */

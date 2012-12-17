@@ -1388,7 +1388,6 @@ ngx_mail_auth_http(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     u.url = value[1];
     u.default_port = 80;
     u.uri_part = 1;
-    u.one_addr = 1;
 
     if (ngx_strncmp(u.url.data, "http://", 7) == 0) {
         u.url.len -= 7;
