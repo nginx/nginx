@@ -540,7 +540,7 @@ ngx_http_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (value[i].len > 1 && value[i].data[0] == '$') {
+        if (value[i].data[0] == '$') {
 
             value[i].len--;
             value[i].data++;
@@ -613,7 +613,7 @@ ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (value[2].len < 2 || value[2].data[0] != '$') {
+    if (value[2].data[0] != '$') {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid variable name \"%V\"", &value[2]);
         return NGX_CONF_ERROR;
