@@ -1200,22 +1200,30 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    /* 75 is libjpeg default quality */
-    ngx_conf_merge_uint_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+    if (conf->jpeg_quality == NGX_CONF_UNSET_UINT) {
 
-    if (conf->jqcv == NULL) {
-        conf->jqcv = prev->jqcv;
+        /* 75 is libjpeg default quality */
+        ngx_conf_merge_uint_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+
+        if (conf->jqcv == NULL) {
+            conf->jqcv = prev->jqcv;
+        }
     }
 
-    ngx_conf_merge_uint_value(conf->sharpen, prev->sharpen, 0);
+    if (conf->sharpen == NGX_CONF_UNSET_UINT) {
+        ngx_conf_merge_uint_value(conf->sharpen, prev->sharpen, 0);
 
-    if (conf->shcv == NULL) {
-        conf->shcv = prev->shcv;
+        if (conf->shcv == NULL) {
+            conf->shcv = prev->shcv;
+        }
     }
 
-    ngx_conf_merge_uint_value(conf->angle, prev->angle, 0);
-    if (conf->acv == NULL) {
-        conf->acv = prev->acv;
+    if (conf->angle == NGX_CONF_UNSET_UINT) {
+        ngx_conf_merge_uint_value(conf->angle, prev->angle, 0);
+
+        if (conf->acv == NULL) {
+            conf->acv = prev->acv;
+        }
     }
 
     ngx_conf_merge_value(conf->transparency, prev->transparency, 1);
