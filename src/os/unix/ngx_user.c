@@ -28,10 +28,7 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
     char               *value;
     size_t              len;
-    ngx_err_t           err;
     struct crypt_data   cd;
-
-    ngx_set_errno(0);
 
     cd.initialized = 0;
     /* work around the glibc bug */
@@ -39,19 +36,19 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
     value = crypt_r((char *) key, (char *) salt, &cd);
 
-    err = ngx_errno;
-
-    if (err == 0) {
+    if (value) {
         len = ngx_strlen(value) + 1;
 
         *encrypted = ngx_pnalloc(pool, len);
-        if (*encrypted) {
-            ngx_memcpy(*encrypted, value, len);
-            return NGX_OK;
+        if (*encrypted == NULL) {
+            return NGX_ERROR;
         }
+
+        ngx_memcpy(*encrypted, value, len);
+        return NGX_OK;
     }
 
-    ngx_log_error(NGX_LOG_CRIT, pool->log, err, "crypt_r() failed");
+    ngx_log_error(NGX_LOG_CRIT, pool->log, ngx_errno, "crypt_r() failed");
 
     return NGX_ERROR;
 }
@@ -75,18 +72,20 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
 #endif
 
-    ngx_set_errno(0);
-
     value = crypt((char *) key, (char *) salt);
 
     if (value) {
         len = ngx_strlen(value) + 1;
 
         *encrypted = ngx_pnalloc(pool, len);
-        if (*encrypted) {
-            ngx_memcpy(*encrypted, value, len);
+        if (*encrypted == NULL) {
+#if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
+            ngx_mutex_unlock(ngx_crypt_mutex);
+#endif
+            return NGX_ERROR;
         }
 
+        ngx_memcpy(*encrypted, value, len);
 #if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
         ngx_mutex_unlock(ngx_crypt_mutex);
 #endif
