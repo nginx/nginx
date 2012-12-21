@@ -453,16 +453,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
 
-        if (ngx_radix32tree_find(ctx.tree, 0) != NGX_RADIX_NO_VALUE) {
-            return rv;
-        }
-
         if (ngx_radix32tree_insert(ctx.tree, 0, 0,
                                    (uintptr_t) &ngx_http_variable_null_value)
             == NGX_ERROR)
         {
             return NGX_CONF_ERROR;
         }
+
+        /* NGX_BUSY is okay (default was set explicitly) */
     }
 
     return rv;
