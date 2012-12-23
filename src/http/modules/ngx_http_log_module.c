@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_ZLIB)
+#include <zlib.h>
+#endif
+
 
 typedef struct ngx_http_log_op_s  ngx_http_log_op_t;
 
@@ -47,6 +51,7 @@ typedef struct {
 
     ngx_event_t                *event;
     ngx_msec_t                  flush;
+    ngx_int_t                   gzip;
 } ngx_http_log_buf_t;
 
 
@@ -87,6 +92,14 @@ static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
     u_char *buf, size_t len);
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
     ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
+
+#if (NGX_ZLIB)
+static ssize_t ngx_http_log_gzip(ngx_fd_t fd, u_char *buf, size_t len,
+    ngx_int_t level, ngx_log_t *log);
+
+static void *ngx_http_log_gzip_alloc(void *opaque, u_int items, u_int size);
+static void ngx_http_log_gzip_free(void *opaque, void *address);
+#endif
 
 static void ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log);
 static void ngx_http_log_flush_handler(ngx_event_t *ev);
@@ -331,14 +344,29 @@ static void
 ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log, u_char *buf,
     size_t len)
 {
-    u_char     *name;
-    time_t      now;
-    ssize_t     n;
-    ngx_err_t   err;
+    u_char              *name;
+    time_t               now;
+    ssize_t              n;
+    ngx_err_t            err;
+#if (NGX_ZLIB)
+    ngx_http_log_buf_t  *buffer;
+#endif
 
     if (log->script == NULL) {
         name = log->file->name.data;
+
+#if (NGX_ZLIB)
+        buffer = log->file->data;
+
+        if (buffer && buffer->gzip) {
+            n = ngx_http_log_gzip(log->file->fd, buf, len, buffer->gzip,
+                                  r->connection->log);
+        } else {
+            n = ngx_write_fd(log->file->fd, buf, len);
+        }
+#else
         n = ngx_write_fd(log->file->fd, buf, len);
+#endif
 
     } else {
         name = NULL;
@@ -486,6 +514,140 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
 }
 
 
+#if (NGX_ZLIB)
+
+static ssize_t
+ngx_http_log_gzip(ngx_fd_t fd, u_char *buf, size_t len, ngx_int_t level,
+    ngx_log_t *log)
+{
+    int          rc, wbits, memlevel;
+    u_char      *out;
+    size_t       size;
+    ssize_t      n;
+    z_stream     zstream;
+    ngx_err_t    err;
+    ngx_pool_t  *pool;
+
+    wbits = MAX_WBITS;
+    memlevel = MAX_MEM_LEVEL - 1;
+
+    while ((ssize_t) len < ((1 << (wbits - 1)) - 262)) {
+        wbits--;
+        memlevel--;
+    }
+
+    /*
+     * This is a formula from deflateBound() for conservative upper bound of
+     * compressed data plus 18 bytes of gzip wrapper.
+     */
+
+    size = len + ((len + 7) >> 3) + ((len + 63) >> 6) + 5 + 18;
+
+    ngx_memzero(&zstream, sizeof(z_stream));
+
+    pool = ngx_create_pool(256, log);
+    if (pool == NULL) {
+        /* simulate successful logging */
+        return len;
+    }
+
+    pool->log = log;
+
+    zstream.zalloc = ngx_http_log_gzip_alloc;
+    zstream.zfree = ngx_http_log_gzip_free;
+    zstream.opaque = pool;
+
+    out = ngx_pnalloc(pool, size);
+    if (out == NULL) {
+        goto done;
+    }
+
+    zstream.next_in = buf;
+    zstream.avail_in = len;
+    zstream.next_out = out;
+    zstream.avail_out = size;
+
+    rc = deflateInit2(&zstream, (int) level, Z_DEFLATED, wbits + 16, memlevel,
+                      Z_DEFAULT_STRATEGY);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "deflateInit2() failed: %d", rc);
+        goto done;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "deflate in: ni:%p no:%p ai:%ud ao:%ud",
+                   zstream.next_in, zstream.next_out,
+                   zstream.avail_in, zstream.avail_out);
+
+    rc = deflate(&zstream, Z_FINISH);
+
+    if (rc != Z_STREAM_END) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "deflate(Z_FINISH) failed: %d", rc);
+        goto done;
+    }
+
+    ngx_log_debug5(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "deflate out: ni:%p no:%p ai:%ud ao:%ud rc:%d",
+                   zstream.next_in, zstream.next_out,
+                   zstream.avail_in, zstream.avail_out,
+                   rc);
+
+    size -= zstream.avail_out;
+
+    rc = deflateEnd(&zstream);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "deflateEnd() failed: %d", rc);
+        goto done;
+    }
+
+    n = ngx_write_fd(fd, out, size);
+
+    if (n != (ssize_t) size) {
+        err = (n == -1) ? ngx_errno : 0;
+
+        ngx_destroy_pool(pool);
+
+        ngx_set_errno(err);
+        return -1;
+    }
+
+done:
+
+    ngx_destroy_pool(pool);
+
+    /* simulate successful logging */
+    return len;
+}
+
+
+static void *
+ngx_http_log_gzip_alloc(void *opaque, u_int items, u_int size)
+{
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pool->log, 0,
+                   "gzip alloc: n:%ud s:%ud", items, size);
+
+    return ngx_palloc(pool, items * size);
+}
+
+
+static void
+ngx_http_log_gzip_free(void *opaque, void *address)
+{
+#if 0
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0, "gzip free: %p", address);
+#endif
+}
+
+#endif
+
+
 static void
 ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
 {
@@ -501,7 +663,15 @@ ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
         return;
     }
 
+#if (NGX_ZLIB)
+    if (buffer->gzip) {
+        n = ngx_http_log_gzip(file->fd, buffer->start, len, buffer->gzip, log);
+    } else {
+        n = ngx_write_fd(file->fd, buffer->start, len);
+    }
+#else
     n = ngx_write_fd(file->fd, buffer->start, len);
+#endif
 
     if (n == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -916,6 +1086,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_log_loc_conf_t *llcf = conf;
 
     ssize_t                     size;
+    ngx_int_t                   gzip;
     ngx_uint_t                  i, n;
     ngx_msec_t                  flush;
     ngx_str_t                  *value, name, s;
@@ -1017,6 +1188,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     size = 0;
     flush = 0;
+    gzip = 0;
 
     for (i = 3; i < cf->args->nelts; i++) {
 
@@ -1050,6 +1222,39 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[i].data, "gzip", 4) == 0
+            && (value[i].len == 4 || value[i].data[4] == '='))
+        {
+#if (NGX_ZLIB)
+            if (size == 0) {
+                size = 64 * 1024;
+            }
+
+            if (value[i].len == 4) {
+                gzip = Z_BEST_SPEED;
+                continue;
+            }
+
+            s.len = value[i].len - 5;
+            s.data = value[i].data + 5;
+
+            gzip = ngx_atoi(s.data, s.len);
+
+            if (gzip < 1 || gzip > 9) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid compression level \"%V\"", &s);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "nginx was built without zlib support");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[i]);
         return NGX_CONF_ERROR;
@@ -1074,7 +1279,8 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             buffer = log->file->data;
 
             if (buffer->last - buffer->start != size
-                || buffer->flush != flush)
+                || buffer->flush != flush
+                || buffer->gzip != gzip)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "access_log \"%V\" already defined "
@@ -1111,6 +1317,8 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             buffer->flush = flush;
         }
+
+        buffer->gzip = gzip;
 
         log->file->flush = ngx_http_log_flush;
         log->file->data = buffer;
