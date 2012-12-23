@@ -41,6 +41,13 @@ typedef struct {
 
 
 typedef struct {
+    u_char                     *start;
+    u_char                     *pos;
+    u_char                     *last;
+} ngx_http_log_buf_t;
+
+
+typedef struct {
     ngx_array_t                *lengths;
     ngx_array_t                *values;
 } ngx_http_log_script_t;
@@ -77,6 +84,8 @@ static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
     u_char *buf, size_t len);
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
     ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
+
+static void ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log);
 
 static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
@@ -216,8 +225,8 @@ ngx_http_log_handler(ngx_http_request_t *r)
     size_t                    len;
     ngx_uint_t                i, l;
     ngx_http_log_t           *log;
-    ngx_open_file_t          *file;
     ngx_http_log_op_t        *op;
+    ngx_http_log_buf_t       *buffer;
     ngx_http_log_loc_conf_t  *lcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -258,21 +267,21 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
         len += NGX_LINEFEED_SIZE;
 
-        file = log[l].file;
+        buffer = log[l].file ? log[l].file->data : NULL;
 
-        if (file && file->buffer) {
+        if (buffer) {
 
-            if (len > (size_t) (file->last - file->pos)) {
+            if (len > (size_t) (buffer->last - buffer->pos)) {
 
-                ngx_http_log_write(r, &log[l], file->buffer,
-                                   file->pos - file->buffer);
+                ngx_http_log_write(r, &log[l], buffer->start,
+                                   buffer->pos - buffer->start);
 
-                file->pos = file->buffer;
+                buffer->pos = buffer->start;
             }
 
-            if (len <= (size_t) (file->last - file->pos)) {
+            if (len <= (size_t) (buffer->last - buffer->pos)) {
 
-                p = file->pos;
+                p = buffer->pos;
 
                 for (i = 0; i < log[l].format->ops->nelts; i++) {
                     p = op[i].run(r, p, &op[i]);
@@ -280,7 +289,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
                 ngx_linefeed(p);
 
-                file->pos = p;
+                buffer->pos = p;
 
                 continue;
             }
@@ -462,6 +471,38 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     n = ngx_write_fd(of.fd, buf, len);
 
     return n;
+}
+
+
+static void
+ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
+{
+    size_t               len;
+    ssize_t              n;
+    ngx_http_log_buf_t  *buffer;
+
+    buffer = file->data;
+
+    len = buffer->pos - buffer->start;
+
+    if (len == 0) {
+        return;
+    }
+
+    n = ngx_write_fd(file->fd, buffer->start, len);
+
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                      ngx_write_fd_n " to \"%s\" failed",
+                      file->name.data);
+
+    } else if ((size_t) n != len) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      ngx_write_fd_n " to \"%s\" was incomplete: %z of %uz",
+                      file->name.data, n, len);
+    }
+
+    buffer->pos = buffer->start;
 }
 
 
@@ -848,10 +889,11 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_log_loc_conf_t *llcf = conf;
 
-    ssize_t                     buf;
+    ssize_t                     size;
     ngx_uint_t                  i, n;
     ngx_str_t                  *value, name;
     ngx_http_log_t             *log;
+    ngx_http_log_buf_t         *buffer;
     ngx_http_log_fmt_t         *fmt;
     ngx_http_log_main_conf_t   *lmcf;
     ngx_http_script_compile_t   sc;
@@ -962,16 +1004,18 @@ buffer:
         name.len = value[3].len - 7;
         name.data = value[3].data + 7;
 
-        buf = ngx_parse_size(&name);
+        size = ngx_parse_size(&name);
 
-        if (buf == NGX_ERROR) {
+        if (size == NGX_ERROR) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid buffer value \"%V\"", &name);
             return NGX_CONF_ERROR;
         }
 
-        if (log->file->buffer) {
-            if (log->file->last - log->file->pos != buf) {
+        if (log->file->data) {
+            buffer = log->file->data;
+
+            if (buffer->last - buffer->start != size) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "access_log \"%V\" already defined "
                                    "with different buffer size", &value[1]);
@@ -981,13 +1025,21 @@ buffer:
             return NGX_CONF_OK;
         }
 
-        log->file->buffer = ngx_palloc(cf->pool, buf);
-        if (log->file->buffer == NULL) {
+        buffer = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_buf_t));
+        if (buffer == NULL) {
             return NGX_CONF_ERROR;
         }
 
-        log->file->pos = log->file->buffer;
-        log->file->last = log->file->buffer + buf;
+        buffer->start = ngx_pnalloc(cf->pool, size);
+        if (buffer->start == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        buffer->pos = buffer->start;
+        buffer->last = buffer->start + size;
+
+        log->file->flush = ngx_http_log_flush;
+        log->file->data = buffer;
     }
 
     return NGX_CONF_OK;
