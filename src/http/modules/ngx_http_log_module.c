@@ -970,11 +970,15 @@ buffer:
             return NGX_CONF_ERROR;
         }
 
-        if (log->file->buffer && log->file->last - log->file->pos != buf) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "access_log \"%V\" already defined "
-                               "with different buffer size", &value[1]);
-            return NGX_CONF_ERROR;
+        if (log->file->buffer) {
+            if (log->file->last - log->file->pos != buf) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "access_log \"%V\" already defined "
+                                   "with different buffer size", &value[1]);
+                return NGX_CONF_ERROR;
+            }
+
+            return NGX_CONF_OK;
         }
 
         log->file->buffer = ngx_palloc(cf->pool, buf);
