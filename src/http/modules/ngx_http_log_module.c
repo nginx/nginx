@@ -44,6 +44,9 @@ typedef struct {
     u_char                     *start;
     u_char                     *pos;
     u_char                     *last;
+
+    ngx_event_t                *event;
+    ngx_msec_t                  flush;
 } ngx_http_log_buf_t;
 
 
@@ -86,6 +89,7 @@ static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
     ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
 
 static void ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log);
+static void ngx_http_log_flush_handler(ngx_event_t *ev);
 
 static u_char *ngx_http_log_pipe(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
@@ -141,7 +145,7 @@ static ngx_command_t  ngx_http_log_commands[] = {
 
     { ngx_string("access_log"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                        |NGX_HTTP_LMT_CONF|NGX_CONF_TAKE123,
+                        |NGX_HTTP_LMT_CONF|NGX_CONF_1MORE,
       ngx_http_log_set_log,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -283,6 +287,10 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
                 p = buffer->pos;
 
+                if (buffer->event && p == buffer->start) {
+                    ngx_add_timer(buffer->event, buffer->flush);
+                }
+
                 for (i = 0; i < log[l].format->ops->nelts; i++) {
                     p = op[i].run(r, p, &op[i]);
                 }
@@ -292,6 +300,10 @@ ngx_http_log_handler(ngx_http_request_t *r)
                 buffer->pos = p;
 
                 continue;
+            }
+
+            if (buffer->event && buffer->event->timer_set) {
+                ngx_del_timer(buffer->event);
             }
         }
 
@@ -503,6 +515,20 @@ ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
     }
 
     buffer->pos = buffer->start;
+
+    if (buffer->event && buffer->event->timer_set) {
+        ngx_del_timer(buffer->event);
+    }
+}
+
+
+static void
+ngx_http_log_flush_handler(ngx_event_t *ev)
+{
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "http log buffer flush handler");
+
+    ngx_http_log_flush(ev->data, ev->log);
 }
 
 
@@ -891,7 +917,8 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ssize_t                     size;
     ngx_uint_t                  i, n;
-    ngx_str_t                  *value, name;
+    ngx_msec_t                  flush;
+    ngx_str_t                  *value, name, s;
     ngx_http_log_t             *log;
     ngx_http_log_buf_t         *buffer;
     ngx_http_log_fmt_t         *fmt;
@@ -978,22 +1005,64 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             && ngx_strcasecmp(fmt[i].name.data, name.data) == 0)
         {
             log->format = &fmt[i];
-            goto buffer;
+            break;
         }
     }
 
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "unknown log format \"%V\"", &name);
-    return NGX_CONF_ERROR;
+    if (log->format == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "unknown log format \"%V\"", &name);
+        return NGX_CONF_ERROR;
+    }
 
-buffer:
+    size = 0;
+    flush = 0;
 
-    if (cf->args->nelts == 4) {
-        if (ngx_strncmp(value[3].data, "buffer=", 7) != 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[3]);
-            return NGX_CONF_ERROR;
+    for (i = 3; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "buffer=", 7) == 0) {
+            s.len = value[i].len - 7;
+            s.data = value[i].data + 7;
+
+            size = ngx_parse_size(&s);
+
+            if (size == NGX_ERROR || size == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid buffer size \"%V\"", &s);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
         }
+
+        if (ngx_strncmp(value[i].data, "flush=", 6) == 0) {
+            s.len = value[i].len - 6;
+            s.data = value[i].data + 6;
+
+            flush = ngx_parse_time(&s, 0);
+
+            if (flush == (ngx_msec_t) NGX_ERROR || flush == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid flush time \"%V\"", &s);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[i]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (flush && size == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "no buffer is defined for access_log \"%V\"",
+                           &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (size) {
 
         if (log->script) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1001,24 +1070,16 @@ buffer:
             return NGX_CONF_ERROR;
         }
 
-        name.len = value[3].len - 7;
-        name.data = value[3].data + 7;
-
-        size = ngx_parse_size(&name);
-
-        if (size == NGX_ERROR) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid buffer value \"%V\"", &name);
-            return NGX_CONF_ERROR;
-        }
-
         if (log->file->data) {
             buffer = log->file->data;
 
-            if (buffer->last - buffer->start != size) {
+            if (buffer->last - buffer->start != size
+                || buffer->flush != flush)
+            {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "access_log \"%V\" already defined "
-                                   "with different buffer size", &value[1]);
+                                   "with conflicting parameters",
+                                   &value[1]);
                 return NGX_CONF_ERROR;
             }
 
@@ -1037,6 +1098,19 @@ buffer:
 
         buffer->pos = buffer->start;
         buffer->last = buffer->start + size;
+
+        if (flush) {
+            buffer->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
+            if (buffer->event == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            buffer->event->data = log->file;
+            buffer->event->handler = ngx_http_log_flush_handler;
+            buffer->event->log = &cf->cycle->new_log;
+
+            buffer->flush = flush;
+        }
 
         log->file->flush = ngx_http_log_flush;
         log->file->data = buffer;
