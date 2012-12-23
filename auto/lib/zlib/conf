@@ -9,11 +9,13 @@ if [ $ZLIB != NONE ]; then
     case "$NGX_CC_NAME" in
 
         msvc* | owc* | bcc)
+            have=NGX_ZLIB . auto/have
             LINK_DEPS="$LINK_DEPS $ZLIB/zlib.lib"
             CORE_LIBS="$CORE_LIBS $ZLIB/zlib.lib"
         ;;
 
         icc*)
+            have=NGX_ZLIB . auto/have
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
 
             # to allow -ipo optimization we link with the *.o but not library
@@ -30,6 +32,7 @@ if [ $ZLIB != NONE ]; then
         ;;
 
         *)
+            have=NGX_ZLIB . auto/have
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
             CORE_LIBS="$CORE_LIBS $ZLIB/libz.a"
             #CORE_LIBS="$CORE_LIBS -L $ZLIB -lz"
@@ -45,7 +48,7 @@ else
         # FreeBSD, Solaris, Linux
 
         ngx_feature="zlib library"
-        ngx_feature_name=
+        ngx_feature_name="NGX_ZLIB"
         ngx_feature_run=no
         ngx_feature_incs="#include <zlib.h>"
         ngx_feature_path=
