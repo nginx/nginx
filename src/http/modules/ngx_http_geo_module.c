@@ -191,9 +191,9 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     if (ctx->u.high.low) {
         addr = ngx_http_geo_addr(r, ctx);
-    
+
         range = ctx->u.high.low[addr >> 16];
-    
+
         if (range) {
             n = addr & 0xffff;
             do {
