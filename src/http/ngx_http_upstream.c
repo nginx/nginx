@@ -3099,6 +3099,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     r->connection->log->action = "sending to client";
 
     if (rc == 0
+        && !r->header_only
 #if (NGX_HTTP_CACHE)
         && !r->cached
 #endif
