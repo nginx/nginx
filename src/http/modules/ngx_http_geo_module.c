@@ -1037,7 +1037,7 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 #endif
 
     if (ngx_strcmp(value[0].data, "default") == 0) {
-        /* cidr.family = AF_INET; */
+        cidr.family = AF_INET;
         cidr.u.in.addr = 0;
         cidr.u.in.mask = 0;
         net = &value[0];
