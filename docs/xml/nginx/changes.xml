@@ -4,6 +4,183 @@
 
 <change_log title="nginx">
 
+<changes ver="1.3.10" date="25.12.2012">
+
+<change type="change">
+<para lang="ru">
+для указанных в конфигурационном файле доменных имён теперь
+используются не только IPv4, но и IPv6 адреса.
+</para>
+<para lang="en">
+domain names specified in configuration file
+are now resolved to IPv6 addresses as well as IPv4 ones.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при использовании директивы include с маской на Unix-системах
+включаемые файлы сортируются в алфавитном порядке.
+</para>
+<para lang="en">
+now if the "include" directive with mask is used on Unix systems,
+included files are sorted in alphabetical order.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива add_header добавляет строки в ответы с кодом 201.
+</para>
+<para lang="en">
+the "add_header" directive adds headers to 201 responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива geo теперь поддерживает IPv6 адреса в формате CIDR.
+</para>
+<para lang="en">
+the "geo" directive now supports IPv6 addresses in CIDR notation.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры flush и gzip в директиве access_log.
+</para>
+<para lang="en">
+the "flush" and "gzip" parameters of the "access_log" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива auth_basic поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "auth_basic" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx в некоторых случаях не собирался с модулем ngx_http_perl_module.
+</para>
+<para lang="en">
+nginx could not be built with the ngx_http_perl_module in some cases.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_xslt_module.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_xslt_module was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться на MacOSX.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx could not be built on MacOSX in some cases.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы limit_rate с большими значениями скорости
+на 32-битных системах ответ мог возвращаться не целиком.<br/>
+Спасибо Алексею Антропову.
+</para>
+<para lang="en">
+the "limit_rate" directive with high rates
+might result in truncated responses on 32-bit platforms.<br/>
+Thanks to Alexey Antropov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива if.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "if" directive was used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ "100 Continue" выдавался
+вместе с ответом "413 Request Entity Too Large".
+</para>
+<para lang="en">
+a "100 Continue" response was issued
+with "413 Request Entity Too Large" responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы image_filter, image_filter_jpeg_quality и image_filter_sharpen
+могли наследоваться некорректно.<br/>
+Спасибо Ивану Боброву.
+</para>
+<para lang="en">
+the "image_filter", "image_filter_jpeg_quality"
+and "image_filter_sharpen" directives
+might be inherited incorrectly.<br/>
+Thanks to Ian Babrou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_basic под Linux
+могли возникать ошибки "crypt_r() failed".
+</para>
+<para lang="en">
+"crypt_r() failed" errors might appear
+if the "auth_basic" directive was used on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке backup-серверов.<br/>
+Спасибо Thomas Chen.
+</para>
+<para lang="en">
+in backup servers handling.<br/>
+Thanks to Thomas Chen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании HEAD-запросов мог возвращаться некорректный ответ,
+если использовалась директива gzip.
+</para>
+<para lang="en">
+proxied HEAD requests might return incorrect response
+if the "gzip" directive was used.
+</para>
+</change>
+
+</changes>
+
 
 <changes ver="1.3.9" date="27.11.2012">
 
