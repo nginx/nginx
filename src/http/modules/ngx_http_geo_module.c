@@ -93,6 +93,8 @@ static ngx_uint_t ngx_http_geo_delete_range(ngx_conf_t *cf,
     ngx_http_geo_conf_ctx_t *ctx, in_addr_t start, in_addr_t end);
 static char *ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value);
+static char *ngx_http_geo_cidr_add(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
+    ngx_cidr_t *cidr, ngx_str_t *value, ngx_str_t *net);
 static ngx_http_variable_value_t *ngx_http_geo_value(ngx_conf_t *cf,
     ngx_http_geo_conf_ctx_t *ctx, ngx_str_t *value);
 static char *ngx_http_geo_add_proxy(ngx_conf_t *cf,
@@ -1014,11 +1016,9 @@ static char *
 ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value)
 {
-    ngx_int_t                        rc, del;
-    ngx_str_t                       *net;
-    ngx_uint_t                       i;
-    ngx_cidr_t                       cidr;
-    ngx_http_variable_value_t       *val, *old;
+    ngx_int_t    rc, del;
+    ngx_str_t   *net;
+    ngx_cidr_t   cidr;
 
     if (ctx->tree == NULL) {
         ctx->tree = ngx_radix_tree_create(ctx->pool, -1);
@@ -1040,66 +1040,95 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         cidr.family = AF_INET;
         cidr.u.in.addr = 0;
         cidr.u.in.mask = 0;
-        net = &value[0];
 
-    } else {
-        if (ngx_strcmp(value[0].data, "delete") == 0) {
-            net = &value[1];
-            del = 1;
-
-        } else {
-            net = &value[0];
-            del = 0;
-        }
-
-        if (ngx_http_geo_cidr_value(cf, net, &cidr) != NGX_OK) {
+        if (ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0])
+            != NGX_CONF_OK)
+        {
             return NGX_CONF_ERROR;
         }
 
-        if (cidr.family == AF_INET) {
-            cidr.u.in.addr = ntohl(cidr.u.in.addr);
-            cidr.u.in.mask = ntohl(cidr.u.in.mask);
-        }
-
-        if (del) {
-            switch (cidr.family) {
-
 #if (NGX_HAVE_INET6)
-            case AF_INET6:
-                rc = ngx_radix128tree_delete(ctx->tree6,
-                                             cidr.u.in6.addr.s6_addr,
-                                             cidr.u.in6.mask.s6_addr);
-                break;
+        cidr.family = AF_INET6;
+        ngx_memzero(&cidr.u.in6, sizeof(ngx_in6_cidr_t));
+
+        if (ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0])
+            != NGX_CONF_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
 #endif
 
-            default: /* AF_INET */
-                rc = ngx_radix32tree_delete(ctx->tree, cidr.u.in.addr,
-                                            cidr.u.in.mask);
-                break;
-            }
-
-            if (rc != NGX_OK) {
-                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                                   "no network \"%V\" to delete", net);
-            }
-
-            return NGX_CONF_OK;
-        }
+        return NGX_CONF_OK;
     }
 
-    val = ngx_http_geo_value(cf, ctx, &value[1]);
+    if (ngx_strcmp(value[0].data, "delete") == 0) {
+        net = &value[1];
+        del = 1;
+
+    } else {
+        net = &value[0];
+        del = 0;
+    }
+
+    if (ngx_http_geo_cidr_value(cf, net, &cidr) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cidr.family == AF_INET) {
+        cidr.u.in.addr = ntohl(cidr.u.in.addr);
+        cidr.u.in.mask = ntohl(cidr.u.in.mask);
+    }
+
+    if (del) {
+        switch (cidr.family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            rc = ngx_radix128tree_delete(ctx->tree6,
+                                         cidr.u.in6.addr.s6_addr,
+                                         cidr.u.in6.mask.s6_addr);
+            break;
+#endif
+
+        default: /* AF_INET */
+            rc = ngx_radix32tree_delete(ctx->tree, cidr.u.in.addr,
+                                        cidr.u.in.mask);
+            break;
+        }
+
+        if (rc != NGX_OK) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "no network \"%V\" to delete", net);
+        }
+
+        return NGX_CONF_OK;
+    }
+
+    return ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], net);
+}
+
+
+static char *
+ngx_http_geo_cidr_add(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
+    ngx_cidr_t *cidr, ngx_str_t *value, ngx_str_t *net)
+{
+    ngx_int_t                   rc;
+    ngx_uint_t                  i;
+    ngx_http_variable_value_t  *val, *old;
+
+    val = ngx_http_geo_value(cf, ctx, value);
 
     if (val == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    switch (cidr.family) {
+    switch (cidr->family) {
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
         for (i = 2; i; i--) {
-            rc = ngx_radix128tree_insert(ctx->tree6, cidr.u.in6.addr.s6_addr,
-                                         cidr.u.in6.mask.s6_addr,
+            rc = ngx_radix128tree_insert(ctx->tree6, cidr->u.in6.addr.s6_addr,
+                                         cidr->u.in6.mask.s6_addr,
                                          (uintptr_t) val);
 
             if (rc == NGX_OK) {
@@ -1114,15 +1143,15 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
             old = (ngx_http_variable_value_t *)
                        ngx_radix128tree_find(ctx->tree6,
-                                             cidr.u.in6.addr.s6_addr);
+                                             cidr->u.in6.addr.s6_addr);
 
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                   "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
                   net, val, old);
 
             rc = ngx_radix128tree_delete(ctx->tree6,
-                                         cidr.u.in6.addr.s6_addr,
-                                         cidr.u.in6.mask.s6_addr);
+                                         cidr->u.in6.addr.s6_addr,
+                                         cidr->u.in6.mask.s6_addr);
 
             if (rc == NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
@@ -1135,8 +1164,8 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     default: /* AF_INET */
         for (i = 2; i; i--) {
-            rc = ngx_radix32tree_insert(ctx->tree, cidr.u.in.addr,
-                                        cidr.u.in.mask, (uintptr_t) val);
+            rc = ngx_radix32tree_insert(ctx->tree, cidr->u.in.addr,
+                                        cidr->u.in.mask, (uintptr_t) val);
 
             if (rc == NGX_OK) {
                 return NGX_CONF_OK;
@@ -1149,14 +1178,14 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             /* rc == NGX_BUSY */
 
             old = (ngx_http_variable_value_t *)
-                       ngx_radix32tree_find(ctx->tree, cidr.u.in.addr);
+                       ngx_radix32tree_find(ctx->tree, cidr->u.in.addr);
 
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                   "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
                   net, val, old);
 
             rc = ngx_radix32tree_delete(ctx->tree,
-                                        cidr.u.in.addr, cidr.u.in.mask);
+                                        cidr->u.in.addr, cidr->u.in.mask);
 
             if (rc == NGX_ERROR) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
