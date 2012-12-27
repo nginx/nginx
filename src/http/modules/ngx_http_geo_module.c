@@ -1016,6 +1016,7 @@ static char *
 ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *value)
 {
+    char        *rv;
     ngx_int_t    rc, del;
     ngx_str_t   *net;
     ngx_cidr_t   cidr;
@@ -1041,20 +1042,20 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         cidr.u.in.addr = 0;
         cidr.u.in.mask = 0;
 
-        if (ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0])
-            != NGX_CONF_OK)
-        {
-            return NGX_CONF_ERROR;
+        rv = ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0]);
+
+        if (rv != NGX_CONF_OK) {
+            return rv;
         }
 
 #if (NGX_HAVE_INET6)
         cidr.family = AF_INET6;
         ngx_memzero(&cidr.u.in6, sizeof(ngx_in6_cidr_t));
 
-        if (ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0])
-            != NGX_CONF_OK)
-        {
-            return NGX_CONF_ERROR;
+        rv = ngx_http_geo_cidr_add(cf, ctx, &cidr, &value[1], &value[0]);
+
+        if (rv != NGX_CONF_OK) {
+            return rv;
         }
 #endif
 
@@ -1113,7 +1114,6 @@ ngx_http_geo_cidr_add(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_cidr_t *cidr, ngx_str_t *value, ngx_str_t *net)
 {
     ngx_int_t                   rc;
-    ngx_uint_t                  i;
     ngx_http_variable_value_t  *val, *old;
 
     val = ngx_http_geo_value(cf, ctx, value);
@@ -1126,74 +1126,81 @@ ngx_http_geo_cidr_add(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
-        for (i = 2; i; i--) {
-            rc = ngx_radix128tree_insert(ctx->tree6, cidr->u.in6.addr.s6_addr,
-                                         cidr->u.in6.mask.s6_addr,
-                                         (uintptr_t) val);
+        rc = ngx_radix128tree_insert(ctx->tree6, cidr->u.in6.addr.s6_addr,
+                                     cidr->u.in6.mask.s6_addr,
+                                     (uintptr_t) val);
 
-            if (rc == NGX_OK) {
-                return NGX_CONF_OK;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_CONF_ERROR;
-            }
-
-            /* rc == NGX_BUSY */
-
-            old = (ngx_http_variable_value_t *)
-                       ngx_radix128tree_find(ctx->tree6,
-                                             cidr->u.in6.addr.s6_addr);
-
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                  "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
-                  net, val, old);
-
-            rc = ngx_radix128tree_delete(ctx->tree6,
-                                         cidr->u.in6.addr.s6_addr,
-                                         cidr->u.in6.mask.s6_addr);
-
-            if (rc == NGX_ERROR) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
-                return NGX_CONF_ERROR;
-            }
+        if (rc == NGX_OK) {
+            return NGX_CONF_OK;
         }
+
+        if (rc == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        /* rc == NGX_BUSY */
+
+        old = (ngx_http_variable_value_t *)
+                   ngx_radix128tree_find(ctx->tree6,
+                                         cidr->u.in6.addr.s6_addr);
+
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+              "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
+              net, val, old);
+
+        rc = ngx_radix128tree_delete(ctx->tree6,
+                                     cidr->u.in6.addr.s6_addr,
+                                     cidr->u.in6.mask.s6_addr);
+
+        if (rc == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
+            return NGX_CONF_ERROR;
+        }
+
+        rc = ngx_radix128tree_insert(ctx->tree6, cidr->u.in6.addr.s6_addr,
+                                     cidr->u.in6.mask.s6_addr,
+                                     (uintptr_t) val);
 
         break;
 #endif
 
     default: /* AF_INET */
-        for (i = 2; i; i--) {
-            rc = ngx_radix32tree_insert(ctx->tree, cidr->u.in.addr,
-                                        cidr->u.in.mask, (uintptr_t) val);
+        rc = ngx_radix32tree_insert(ctx->tree, cidr->u.in.addr,
+                                    cidr->u.in.mask, (uintptr_t) val);
 
-            if (rc == NGX_OK) {
-                return NGX_CONF_OK;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_CONF_ERROR;
-            }
-
-            /* rc == NGX_BUSY */
-
-            old = (ngx_http_variable_value_t *)
-                       ngx_radix32tree_find(ctx->tree, cidr->u.in.addr);
-
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                  "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
-                  net, val, old);
-
-            rc = ngx_radix32tree_delete(ctx->tree,
-                                        cidr->u.in.addr, cidr->u.in.mask);
-
-            if (rc == NGX_ERROR) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
-                return NGX_CONF_ERROR;
-            }
+        if (rc == NGX_OK) {
+            return NGX_CONF_OK;
         }
 
+        if (rc == NGX_ERROR) {
+            return NGX_CONF_ERROR;
+        }
+
+        /* rc == NGX_BUSY */
+
+        old = (ngx_http_variable_value_t *)
+                   ngx_radix32tree_find(ctx->tree, cidr->u.in.addr);
+
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+              "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
+              net, val, old);
+
+        rc = ngx_radix32tree_delete(ctx->tree,
+                                    cidr->u.in.addr, cidr->u.in.mask);
+
+        if (rc == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid radix tree");
+            return NGX_CONF_ERROR;
+        }
+
+        rc = ngx_radix32tree_insert(ctx->tree, cidr->u.in.addr,
+                                    cidr->u.in.mask, (uintptr_t) val);
+
         break;
+    }
+
+    if (rc == NGX_OK) {
+        return NGX_CONF_OK;
     }
 
     return NGX_CONF_ERROR;
