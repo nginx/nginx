@@ -946,6 +946,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     }
 
     file->flush = NULL;
+    file->data = NULL;
 
     return file;
 }
