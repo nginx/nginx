@@ -643,9 +643,9 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
         return NGX_ERROR;
     }
 
-    SSL_CTX_set_tmp_ecdh(ssl->ctx, ecdh);
-
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_ECDH_USE);
+
+    SSL_CTX_set_tmp_ecdh(ssl->ctx, ecdh);
 
     EC_KEY_free(ecdh);
 #endif
