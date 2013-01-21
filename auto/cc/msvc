@@ -73,9 +73,6 @@ CFLAGS="$CFLAGS -WX"
 # disable logo
 CFLAGS="$CFLAGS -nologo"
 
-
-LINK="\$(CC)"
-
 # the link flags
 CORE_LINK="$CORE_LINK -link -verbose:lib"
 
