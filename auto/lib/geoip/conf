@@ -34,7 +34,7 @@ if [ $ngx_found = no ]; then
     # NetBSD port
 
     ngx_feature="GeoIP library in /usr/pkg/"
-    ngx_feature_path="/usr/pkg/include/"
+    ngx_feature_path="/usr/pkg/include"
 
     if [ $NGX_RPATH = YES ]; then
         ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lGeoIP"
