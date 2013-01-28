@@ -1232,6 +1232,8 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             break;
         }
 
+        flush = 0;
+
         buf->pos = buf->start;
         buf->last = buf->start;
 
