@@ -1213,6 +1213,12 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         size = buf->last - buf->pos;
 
+        if (size == 0) {
+            buf->flush = 0;
+            c->buffered &= ~NGX_SSL_BUFFERED;
+            return in;
+        }
+
         n = ngx_ssl_write(c, buf->pos, size);
 
         if (n == NGX_ERROR) {
