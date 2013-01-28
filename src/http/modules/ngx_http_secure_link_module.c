@@ -111,7 +111,7 @@ ngx_http_secure_link_variable(ngx_http_request_t *r,
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_secure_link_module);
 
-    if (conf->secret.len) {
+    if (conf->secret.data) {
         return ngx_http_secure_link_old_variable(r, conf, v, data);
     }
 
@@ -318,7 +318,16 @@ ngx_http_secure_link_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_secure_link_conf_t *prev = parent;
     ngx_http_secure_link_conf_t *conf = child;
 
-    ngx_conf_merge_str_value(conf->secret, prev->secret, "");
+    if (conf->secret.data) {
+        if (conf->variable || conf->md5) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"secure_link_secret\" cannot be mixed with "
+                               "\"secure_link\" and \"secure_link_md5\"");
+            return NGX_CONF_ERROR;
+        }
+
+        return NGX_CONF_OK;
+    }
 
     if (conf->variable == NULL) {
         conf->variable = prev->variable;
@@ -326,6 +335,10 @@ ngx_http_secure_link_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->md5 == NULL) {
         conf->md5 = prev->md5;
+    }
+
+    if (conf->variable == NULL && conf->md5 == NULL) {
+        conf->secret = prev->secret;
     }
 
     return NGX_CONF_OK;
