@@ -1168,7 +1168,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         buf->end = buf->start + NGX_SSL_BUFSIZE;
     }
 
-    send = 0;
+    send = buf->last - buf->pos;
     flush = (in == NULL) ? 1 : buf->flush;
 
     for ( ;; ) {
