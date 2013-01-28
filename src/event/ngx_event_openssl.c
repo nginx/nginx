@@ -1169,7 +1169,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
     send = 0;
-    flush = (in == NULL) ? 1 : 0;
+    flush = (in == NULL) ? 1 : buf->flush;
 
     for ( ;; ) {
 
@@ -1191,7 +1191,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             if (send + size > limit) {
                 size = (ssize_t) (limit - send);
-                flush = 1;
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1210,7 +1209,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         size = buf->last - buf->pos;
 
-        if (!flush && buf->last < buf->end) {
+        if (!flush && send < limit && buf->last < buf->end) {
             break;
         }
 
@@ -1221,8 +1220,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         if (n == NGX_AGAIN) {
-            c->buffered |= NGX_SSL_BUFFERED;
-            return in;
+            break;
         }
 
         buf->pos += n;
@@ -1241,6 +1239,8 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             break;
         }
     }
+
+    buf->flush = flush;
 
     if (buf->pos < buf->last) {
         c->buffered |= NGX_SSL_BUFFERED;
