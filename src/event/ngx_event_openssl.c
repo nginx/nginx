@@ -1210,7 +1210,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         size = buf->last - buf->pos;
 
-        if (!flush && buf->last < buf->end && c->ssl->buffer) {
+        if (!flush && buf->last < buf->end) {
             break;
         }
 
@@ -1232,10 +1232,8 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             break;
         }
 
-        if (buf->pos == buf->last) {
-            buf->pos = buf->start;
-            buf->last = buf->start;
-        }
+        buf->pos = buf->start;
+        buf->last = buf->start;
 
         if (in == NULL || send == limit) {
             break;
