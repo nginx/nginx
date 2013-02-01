@@ -808,6 +808,10 @@ ngx_ssl_handshake(ngx_connection_t *c)
             return NGX_ERROR;
         }
 
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
         return NGX_AGAIN;
     }
 
@@ -815,6 +819,10 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->write->ready = 0;
         c->read->handler = ngx_ssl_handshake_handler;
         c->write->handler = ngx_ssl_handshake_handler;
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
             return NGX_ERROR;
