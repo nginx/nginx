@@ -1701,16 +1701,14 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             }
 
             if (f->type == NGX_HTTP_FASTCGI_END_REQUEST) {
-                f->state = ngx_http_fastcgi_st_padding;
-
-                p->upstream_done = 1;
-
-                if (flcf->keep_conn) {
-                    r->upstream->keepalive = 1;
-                }
 
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
                                "http fastcgi sent end request");
+
+                if (!flcf->keep_conn) {
+                    p->upstream_done = 1;
+                    break;
+                }
 
                 continue;
             }
@@ -1718,6 +1716,24 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
 
         if (f->state == ngx_http_fastcgi_st_padding) {
+
+            if (f->type == NGX_HTTP_FASTCGI_END_REQUEST) {
+
+                if (f->pos + f->padding < f->last) {
+                    p->upstream_done = 1;
+                    break;
+                }
+
+                if (f->pos + f->padding == f->last) {
+                    p->upstream_done = 1;
+                    r->upstream->keepalive = 1;
+                    break;
+                }
+
+                f->padding -= f->last - f->pos;
+
+                break;
+            }
 
             if (f->pos + f->padding < f->last) {
                 f->state = ngx_http_fastcgi_st_version;
@@ -1775,6 +1791,20 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             }
 
             continue;
+        }
+
+        if (f->type == NGX_HTTP_FASTCGI_END_REQUEST) {
+
+            if (f->pos + f->length <= f->last) {
+                f->state = ngx_http_fastcgi_st_padding;
+                f->pos += f->length;
+
+                continue;
+            }
+
+            f->length -= f->last - f->pos;
+
+            break;
         }
 
 
