@@ -35,7 +35,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     size_t                     preread;
     ssize_t                    size;
     ngx_int_t                  rc;
-    ngx_chain_t                out;
+    ngx_buf_t                 *b;
+    ngx_chain_t                out, *cl;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -128,6 +129,21 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
                 rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 goto done;
             }
+
+            cl = ngx_chain_get_free_buf(r->pool, &rb->free);
+            if (cl == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            b = cl->buf;
+
+            ngx_memzero(b, sizeof(ngx_buf_t));
+
+            b->in_file = 1;
+            b->file_last = rb->temp_file->file.offset;
+            b->file = &rb->temp_file->file;
+
+            rb->bufs = cl;
         }
 
         post_handler(r);
