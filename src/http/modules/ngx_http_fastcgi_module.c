@@ -1788,10 +1788,6 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
                               "FastCGI sent in stderr: \"%*s\"",
                               m + 1 - msg, msg);
 
-                if (f->pos == f->last) {
-                    break;
-                }
-
             } else {
                 if (f->padding) {
                     f->state = ngx_http_fastcgi_st_padding;
