@@ -705,8 +705,6 @@ ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     switch (gcf->country->databaseType) {
 
     case GEOIP_COUNTRY_EDITION:
-    case GEOIP_PROXY_EDITION:
-    case GEOIP_NETSPEED_EDITION:
 
         return NGX_CONF_OK;
 
