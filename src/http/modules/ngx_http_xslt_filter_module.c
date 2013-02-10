@@ -307,7 +307,7 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
     ctx->done = 1;
 
     if (b == NULL) {
-        return ngx_http_filter_finalize_request(r, NULL,
+        return ngx_http_filter_finalize_request(r, &ngx_http_xslt_filter_module,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
@@ -315,7 +315,7 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
 
     if (cln == NULL) {
         ngx_free(b->pos);
-        return ngx_http_filter_finalize_request(r, NULL,
+        return ngx_http_filter_finalize_request(r, &ngx_http_xslt_filter_module,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
