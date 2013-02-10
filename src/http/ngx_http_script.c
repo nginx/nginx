@@ -114,11 +114,6 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
 
     v = ccv->value;
 
-    if (v->len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, ccv->cf, 0, "empty parameter");
-        return NGX_ERROR;
-    }
-
     nv = 0;
     nc = 0;
 
@@ -133,8 +128,9 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
         }
     }
 
-    if (v->data[0] != '$' && (ccv->conf_prefix || ccv->root_prefix)) {
-
+    if ((v->len == 0 || v->data[0] != '$')
+        && (ccv->conf_prefix || ccv->root_prefix))
+    {
         if (ngx_conf_full_name(ccv->cf->cycle, v, ccv->conf_prefix) != NGX_OK) {
             return NGX_ERROR;
         }

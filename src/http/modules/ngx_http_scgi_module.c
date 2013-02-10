@@ -1765,7 +1765,7 @@ ngx_http_scgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (scf->cache_key.value.len) {
+    if (scf->cache_key.value.data) {
         return "is duplicate";
     }
 

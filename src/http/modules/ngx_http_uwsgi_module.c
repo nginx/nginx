@@ -1807,7 +1807,7 @@ ngx_http_uwsgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (uwcf->cache_key.value.len) {
+    if (uwcf->cache_key.value.data) {
         return "is duplicate";
     }
 

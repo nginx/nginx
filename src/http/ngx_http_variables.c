@@ -73,11 +73,15 @@ static ngx_int_t ngx_http_variable_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_pipe(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_body(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -111,6 +115,10 @@ static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_pid(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_msec(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_time_iso8601(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_time_local(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
 /*
@@ -229,6 +237,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("body_bytes_sent"), NULL, ngx_http_variable_body_bytes_sent,
       0, 0, 0 },
 
+    { ngx_string("pipe"), NULL, ngx_http_variable_pipe,
+      0, 0, 0 },
+
     { ngx_string("request_completion"), NULL,
       ngx_http_variable_request_completion,
       0, 0, 0 },
@@ -240,6 +251,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("request_body_file"), NULL,
       ngx_http_variable_request_body_file,
       0, 0, 0 },
+
+    { ngx_string("request_length"), NULL, ngx_http_variable_request_length,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("request_time"), NULL, ngx_http_variable_request_time,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
@@ -295,6 +309,12 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("msec"), NULL, ngx_http_variable_msec,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
+    { ngx_string("time_iso8601"), NULL, ngx_http_variable_time_iso8601,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("time_local"), NULL, ngx_http_variable_time_local,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
 #if (NGX_HAVE_TCP_INFO)
     { ngx_string("tcpinfo_rtt"), NULL, ngx_http_variable_tcpinfo,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
@@ -327,6 +347,12 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
     ngx_hash_key_t             *key;
     ngx_http_variable_t        *v;
     ngx_http_core_main_conf_t  *cmcf;
+
+    if (name->len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"$\"");
+        return NULL;
+    }
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
@@ -390,6 +416,12 @@ ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name)
     ngx_uint_t                  i;
     ngx_http_variable_t        *v;
     ngx_http_core_main_conf_t  *cmcf;
+
+    if (name->len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid variable name \"$\"");
+        return NGX_ERROR;
+    }
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
@@ -1509,6 +1541,20 @@ ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
 
 
 static ngx_int_t
+ngx_http_variable_pipe(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    v->data = (u_char *) (r->pipeline ? "p" : ".");
+    v->len = 1;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_variable_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
@@ -1843,6 +1889,27 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
 
 
 static ngx_int_t
+ngx_http_variable_request_length(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%O", r->request_length) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_variable_request_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
@@ -1977,6 +2044,53 @@ ngx_http_variable_msec(ngx_http_request_t *r,
     tp = ngx_timeofday();
 
     v->len = ngx_sprintf(p, "%T.%03M", tp->sec, tp->msec) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_time_iso8601(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, ngx_cached_http_log_iso8601.len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(p, ngx_cached_http_log_iso8601.data,
+               ngx_cached_http_log_iso8601.len);
+
+    v->len = ngx_cached_http_log_iso8601.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_time_local(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, ngx_cached_http_log_time.len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(p, ngx_cached_http_log_time.data, ngx_cached_http_log_time.len);
+
+    v->len = ngx_cached_http_log_time.len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;

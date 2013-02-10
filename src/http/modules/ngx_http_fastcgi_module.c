@@ -3014,7 +3014,7 @@ ngx_http_fastcgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (flcf->cache_key.value.len) {
+    if (flcf->cache_key.value.data) {
         return "is duplicate";
     }
 
