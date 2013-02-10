@@ -497,6 +497,10 @@ ngx_http_gzip_filter_memory(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
             wbits--;
             memlevel--;
         }
+
+        if (memlevel < 1) {
+            memlevel = 1;
+        }
     }
 
     ctx->wbits = wbits;
