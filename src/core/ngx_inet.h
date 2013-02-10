@@ -30,7 +30,7 @@
 #if (NGX_HAVE_UNIX_DOMAIN)
 #define NGX_SOCKADDR_STRLEN   (sizeof("unix:") - 1 + NGX_UNIX_ADDRSTRLEN)
 #else
-#define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1)
+#define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1)
 #endif
 
 #if (NGX_HAVE_UNIX_DOMAIN)
