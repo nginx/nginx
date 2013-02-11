@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 
 
-static void *ngx_radix_alloc(ngx_radix_tree_t *tree);
+static ngx_radix_node_t *ngx_radix_alloc(ngx_radix_tree_t *tree);
 
 
 ngx_radix_tree_t *
@@ -263,13 +263,13 @@ ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
 }
 
 
-static void *
+static ngx_radix_node_t *
 ngx_radix_alloc(ngx_radix_tree_t *tree)
 {
-    char  *p;
+    ngx_radix_node_t  *p;
 
     if (tree->free) {
-        p = (char *) tree->free;
+        p = tree->free;
         tree->free = tree->free->right;
         return p;
     }
@@ -283,7 +283,7 @@ ngx_radix_alloc(ngx_radix_tree_t *tree)
         tree->size = ngx_pagesize;
     }
 
-    p = tree->start;
+    p = (ngx_radix_node_t *) tree->start;
     tree->start += sizeof(ngx_radix_node_t);
     tree->size -= sizeof(ngx_radix_node_t);
 

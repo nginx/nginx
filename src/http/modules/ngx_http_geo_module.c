@@ -189,19 +189,22 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     *v = *ctx->u.high.default_value;
 
-    addr = ngx_http_geo_addr(r, ctx);
+    if (ctx->u.high.low) {
+        addr = ngx_http_geo_addr(r, ctx);
 
-    range = ctx->u.high.low[addr >> 16];
+        range = ctx->u.high.low[addr >> 16];
 
-    if (range) {
-        n = addr & 0xffff;
-        do {
-            if (n >= (ngx_uint_t) range->start && n <= (ngx_uint_t) range->end)
-            {
-                *v = *range->value;
-                break;
-            }
-        } while ((++range)->value);
+        if (range) {
+            n = addr & 0xffff;
+            do {
+                if (n >= (ngx_uint_t) range->start
+                    && n <= (ngx_uint_t) range->end)
+                {
+                    *v = *range->value;
+                    break;
+                }
+            } while ((++range)->value);
+        }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -303,7 +306,6 @@ static char *
 ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                     *rv;
-    void                    **p;
     size_t                    len;
     ngx_str_t                *value, name;
     ngx_uint_t                i;
@@ -392,9 +394,9 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     geo->proxies = ctx.proxies;
     geo->proxy_recursive = ctx.proxy_recursive;
 
-    if (ctx.high.low) {
+    if (ctx.ranges) {
 
-        if (!ctx.binary_include) {
+        if (ctx.high.low && !ctx.binary_include) {
             for (i = 0; i < 0x10000; i++) {
                 a = (ngx_array_t *) ctx.high.low[i];
 
@@ -409,8 +411,8 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     return NGX_CONF_ERROR;
                 }
 
-                p = (void **) ngx_cpymem(ctx.high.low[i], a->elts, len);
-                *p = NULL;
+                ngx_memcpy(ctx.high.low[i], a->elts, len);
+                ctx.high.low[i][a->nelts].value = NULL;
                 ctx.data_size += len + sizeof(void *);
             }
 
@@ -451,16 +453,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_destroy_pool(ctx.temp_pool);
         ngx_destroy_pool(pool);
 
-        if (ngx_radix32tree_find(ctx.tree, 0) != NGX_RADIX_NO_VALUE) {
-            return rv;
-        }
-
         if (ngx_radix32tree_insert(ctx.tree, 0, 0,
                                    (uintptr_t) &ngx_http_variable_null_value)
             == NGX_ERROR)
         {
             return NGX_CONF_ERROR;
         }
+
+        /* NGX_BUSY is okay (default was set explicitly) */
     }
 
     return rv;
@@ -996,7 +996,7 @@ ngx_http_geo_cidr(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         /* rc == NGX_BUSY */
 
         old = (ngx_http_variable_value_t *)
-              ngx_radix32tree_find(ctx->tree, cidr.u.in.addr & cidr.u.in.mask);
+              ngx_radix32tree_find(ctx->tree, cidr.u.in.addr);
 
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                 "duplicate network \"%V\", value: \"%v\", old value: \"%v\"",
