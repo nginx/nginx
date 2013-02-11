@@ -1169,10 +1169,22 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->width = 0;
+     *     conf->height = 0;
+     *     conf->angle = 0;
+     *     conf->wcv = NULL;
+     *     conf->hcv = NULL;
+     *     conf->acv = NULL;
+     *     conf->jqcv = NULL;
+     *     conf->shcv = NULL;
+     */
+
     conf->filter = NGX_CONF_UNSET_UINT;
     conf->jpeg_quality = NGX_CONF_UNSET_UINT;
     conf->sharpen = NGX_CONF_UNSET_UINT;
-    conf->angle = NGX_CONF_UNSET_UINT;
     conf->transparency = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
 
@@ -1195,27 +1207,29 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->filter = prev->filter;
             conf->width = prev->width;
             conf->height = prev->height;
+            conf->angle = prev->angle;
             conf->wcv = prev->wcv;
             conf->hcv = prev->hcv;
+            conf->acv = prev->acv;
         }
     }
 
-    /* 75 is libjpeg default quality */
-    ngx_conf_merge_uint_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+    if (conf->jpeg_quality == NGX_CONF_UNSET_UINT) {
 
-    if (conf->jqcv == NULL) {
-        conf->jqcv = prev->jqcv;
+        /* 75 is libjpeg default quality */
+        ngx_conf_merge_uint_value(conf->jpeg_quality, prev->jpeg_quality, 75);
+
+        if (conf->jqcv == NULL) {
+            conf->jqcv = prev->jqcv;
+        }
     }
 
-    ngx_conf_merge_uint_value(conf->sharpen, prev->sharpen, 0);
+    if (conf->sharpen == NGX_CONF_UNSET_UINT) {
+        ngx_conf_merge_uint_value(conf->sharpen, prev->sharpen, 0);
 
-    if (conf->shcv == NULL) {
-        conf->shcv = prev->shcv;
-    }
-
-    ngx_conf_merge_uint_value(conf->angle, prev->angle, 0);
-    if (conf->acv == NULL) {
-        conf->acv = prev->acv;
+        if (conf->shcv == NULL) {
+            conf->shcv = prev->shcv;
+        }
     }
 
     ngx_conf_merge_value(conf->transparency, prev->transparency, 1);
