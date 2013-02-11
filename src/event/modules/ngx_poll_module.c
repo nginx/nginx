@@ -371,7 +371,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
         found = 0;
 
-        if (revents & POLLIN) {
+        if ((revents & POLLIN) && c->read->active) {
             found = 1;
 
             ev = c->read;
@@ -388,7 +388,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             ngx_locked_post_event(ev, queue);
         }
 
-        if (revents & POLLOUT) {
+        if ((revents & POLLOUT) && c->write->active) {
             found = 1;
             ev = c->write;
 
