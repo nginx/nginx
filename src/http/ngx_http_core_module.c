@@ -993,6 +993,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
                       "client intended to send too large body: %O bytes",
                       r->headers_in.content_length_n);
 
+        r->expect_tested = 1;
         (void) ngx_http_discard_request_body(r);
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
         return NGX_OK;
