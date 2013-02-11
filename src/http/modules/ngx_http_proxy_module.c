@@ -2608,7 +2608,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.store_lengths = NULL;
      *     conf->upstream.store_values = NULL;
      *
-     *     conf->method = NULL;
+     *     conf->method = { 0, NULL };
      *     conf->headers_source = NULL;
      *     conf->headers_set_len = NULL;
      *     conf->headers_set = NULL;
@@ -2907,10 +2907,11 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #endif
 
-    if (conf->method.len == 0) {
-        conf->method = prev->method;
+    ngx_conf_merge_str_value(conf->method, prev->method, "");
 
-    } else {
+    if (conf->method.len
+        && conf->method.data[conf->method.len - 1] != ' ')
+    {
         conf->method.data[conf->method.len] = ' ';
         conf->method.len++;
     }
