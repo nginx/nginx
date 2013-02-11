@@ -313,7 +313,9 @@ failed:
         lcp->rrp.peers = peers->next;
         pc->tries = lcp->rrp.peers->number;
 
-        n = lcp->rrp.peers->number / (8 * sizeof(uintptr_t)) + 1;
+        n = (lcp->rrp.peers->number + (8 * sizeof(uintptr_t) - 1))
+                / (8 * sizeof(uintptr_t));
+
         for (i = 0; i < n; i++) {
              lcp->rrp.tried[i] = 0;
         }
