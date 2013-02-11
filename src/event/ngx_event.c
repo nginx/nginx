@@ -892,6 +892,10 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_conf_t            pcf;
     ngx_event_module_t   *m;
 
+    if (*(void **) conf) {
+        return "is duplicate";
+    }
+
     /* count the number of the event modules and set up their indices */
 
     ngx_event_max_module = 0;

@@ -502,6 +502,10 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     kcf = ngx_http_conf_upstream_srv_conf(uscf,
                                           ngx_http_upstream_keepalive_module);
 
+    if (kcf->original_init_upstream) {
+        return "is duplicate";
+    }
+
     kcf->original_init_upstream = uscf->peer.init_upstream
                                   ? uscf->peer.init_upstream
                                   : ngx_http_upstream_init_round_robin;
