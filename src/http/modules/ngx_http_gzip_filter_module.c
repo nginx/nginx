@@ -320,7 +320,7 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
 
-    if (ctx == NULL || ctx->done) {
+    if (ctx == NULL || ctx->done || r->header_only) {
         return ngx_http_next_body_filter(r, in);
     }
 
