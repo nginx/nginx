@@ -5,6 +5,259 @@
 <change_log title="nginx">
 
 
+<changes ver="1.2.7" date="12.02.2013">
+
+<change type="change">
+<para lang="ru">
+теперь при использовании директивы include с маской на Unix-системах
+включаемые файлы сортируются в алфавитном порядке.
+</para>
+<para lang="en">
+now if the "include" directive with mask is used on Unix systems,
+included files are sorted in alphabetical order.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива add_header добавляет строки в ответы с кодом 201.
+</para>
+<para lang="en">
+the "add_header" directive adds headers to 201 responses.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива geo теперь поддерживает IPv6 адреса в формате CIDR.
+</para>
+<para lang="en">
+the "geo" directive now supports IPv6 addresses in CIDR notation.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры flush и gzip в директиве access_log.
+</para>
+<para lang="en">
+the "flush" and "gzip" parameters of the "access_log" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива auth_basic поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "auth_basic" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $pipe, $request_length, $time_iso8601 и $time_local
+теперь можно использовать не только в директиве log_format.<br/>
+Спасибо Kiril Kalchev.
+</para>
+<para lang="en">
+the $pipe, $request_length, $time_iso8601, and $time_local variables
+can now be used not only in the "log_format" directive.
+Thanks to Kiril Kalchev.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка IPv6 в модуле ngx_http_geoip_module.<br/>
+Спасибо Gregor Kališnik.
+</para>
+<para lang="en">
+IPv6 support in the ngx_http_geoip_module.<br/>
+Thanks to Gregor Kališnik.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx в некоторых случаях не собирался с модулем ngx_http_perl_module.
+</para>
+<para lang="en">
+nginx could not be built with the ngx_http_perl_module in some cases.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_xslt_module.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_xslt_module was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться на MacOSX.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx could not be built on MacOSX in some cases.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы limit_rate с большими значениями скорости
+на 32-битных системах ответ мог возвращаться не целиком.<br/>
+Спасибо Алексею Антропову.
+</para>
+<para lang="en">
+the "limit_rate" directive with high rates
+might result in truncated responses on 32-bit platforms.<br/>
+Thanks to Alexey Antropov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива if.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "if" directive was used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ "100 Continue" выдавался
+вместе с ответом "413 Request Entity Too Large".
+</para>
+<para lang="en">
+a "100 Continue" response was issued
+with "413 Request Entity Too Large" responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы image_filter, image_filter_jpeg_quality и image_filter_sharpen
+могли наследоваться некорректно.<br/>
+Спасибо Ивану Боброву.
+</para>
+<para lang="en">
+the "image_filter", "image_filter_jpeg_quality"
+and "image_filter_sharpen" directives
+might be inherited incorrectly.<br/>
+Thanks to Ian Babrou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы auth_basic под Linux
+могли возникать ошибки "crypt_r() failed".
+</para>
+<para lang="en">
+"crypt_r() failed" errors might appear
+if the "auth_basic" directive was used on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке backup-серверов.<br/>
+Спасибо Thomas Chen.
+</para>
+<para lang="en">
+in backup servers handling.<br/>
+Thanks to Thomas Chen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании HEAD-запросов мог возвращаться некорректный ответ,
+если использовалась директива gzip.
+</para>
+<para lang="en">
+proxied HEAD requests might return incorrect response
+if the "gzip" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации происходил segmentation fault,
+если директива keepalive была указана несколько раз
+в одном блоке upstream.
+</para>
+<para lang="en">
+a segmentation fault occurred on start or during reconfiguration
+if the "keepalive" directive was specified more than once
+in a single upstream block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_method работала неверно, если была указана на уровне http.
+</para>
+<para lang="en">
+in the "proxy_method" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался resolver и метод poll.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if resolver was used with the poll method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог нагружать процессор во время SSL handshake с бэкендом
+при использовании методов обработки соединений select, poll и /dev/poll.
+</para>
+<para lang="en">
+nginx might hog CPU during SSL handshake with a backend
+if the select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибка "[crit] SSL_write() failed (SSL:)".
+</para>
+<para lang="en">
+the "[crit] SSL_write() failed (SSL:)" error.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве fastcgi_keep_conn.
+</para>
+<para lang="en">
+in the "fastcgi_keep_conn" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.6" date="11.12.2012">
 
 <change type="feature">
