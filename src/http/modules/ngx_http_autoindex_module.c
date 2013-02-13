@@ -489,8 +489,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             }
 
             b->last = ngx_cpymem(b->last, "</a>", sizeof("</a>") - 1);
-            ngx_memset(b->last, ' ', NGX_HTTP_AUTOINDEX_NAME_LEN - len);
-            b->last += NGX_HTTP_AUTOINDEX_NAME_LEN - len;
+
+            if (NGX_HTTP_AUTOINDEX_NAME_LEN - len > 0) {
+                ngx_memset(b->last, ' ', NGX_HTTP_AUTOINDEX_NAME_LEN - len);
+                b->last += NGX_HTTP_AUTOINDEX_NAME_LEN - len;
+            }
         }
 
         *b->last++ = ' ';
