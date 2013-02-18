@@ -55,7 +55,7 @@ static void ngx_http_upstream_upgraded_read_upstream(ngx_http_request_t *r,
 static void ngx_http_upstream_upgraded_write_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
-    ngx_uint_t from_upstream);
+    ngx_uint_t from_upstream, ngx_uint_t do_write);
 static void
     ngx_http_upstream_process_non_buffered_downstream(ngx_http_request_t *r);
 static void
@@ -2432,13 +2432,13 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (u->peer.connection->read->ready
         || u->buffer.pos != u->buffer.last)
     {
-        ngx_http_upstream_process_upgraded(r, 1);
+        ngx_http_upstream_process_upgraded(r, 1, 1);
     }
 
     if (c->read->ready
         || r->header_in->pos != r->header_in->last)
     {
-        ngx_http_upstream_process_upgraded(r, 0);
+        ngx_http_upstream_process_upgraded(r, 0, 1);
     }
 }
 
@@ -2446,14 +2446,14 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
 static void
 ngx_http_upstream_upgraded_read_downstream(ngx_http_request_t *r)
 {
-    ngx_http_upstream_process_upgraded(r, 0);
+    ngx_http_upstream_process_upgraded(r, 0, 0);
 }
 
 
 static void
 ngx_http_upstream_upgraded_write_downstream(ngx_http_request_t *r)
 {
-    ngx_http_upstream_process_upgraded(r, 1);
+    ngx_http_upstream_process_upgraded(r, 1, 1);
 }
 
 
@@ -2461,7 +2461,7 @@ static void
 ngx_http_upstream_upgraded_read_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
-    ngx_http_upstream_process_upgraded(r, 1);
+    ngx_http_upstream_process_upgraded(r, 1, 0);
 }
 
 
@@ -2469,18 +2469,17 @@ static void
 ngx_http_upstream_upgraded_write_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
-    ngx_http_upstream_process_upgraded(r, 0);
+    ngx_http_upstream_process_upgraded(r, 0, 1);
 }
 
 
 static void
 ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
-    ngx_uint_t from_upstream)
+    ngx_uint_t from_upstream, ngx_uint_t do_write)
 {
     size_t                     size;
     ssize_t                    n;
     ngx_buf_t                 *b;
-    ngx_uint_t                 do_write;
     ngx_connection_t          *c, *downstream, *upstream, *dst, *src;
     ngx_http_upstream_t       *u;
     ngx_http_core_loc_conf_t  *clcf;
