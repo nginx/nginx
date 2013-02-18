@@ -379,7 +379,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
         len += sizeof("Transfer-Encoding: chunked" CRLF) - 1;
     }
 
-    if (r->keepalive) {
+    if (r->headers_out.status == NGX_HTTP_SWITCHING_PROTOCOLS) {
+        len += sizeof("Connection: upgrade" CRLF) - 1;
+
+    } else if (r->keepalive) {
         len += sizeof("Connection: keep-alive" CRLF) - 1;
 
         /*
@@ -548,7 +551,11 @@ ngx_http_header_filter(ngx_http_request_t *r)
                              sizeof("Transfer-Encoding: chunked" CRLF) - 1);
     }
 
-    if (r->keepalive) {
+    if (r->headers_out.status == NGX_HTTP_SWITCHING_PROTOCOLS) {
+        b->last = ngx_cpymem(b->last, "Connection: upgrade" CRLF,
+                             sizeof("Connection: upgrade" CRLF) - 1);
+
+    } else if (r->keepalive) {
         b->last = ngx_cpymem(b->last, "Connection: keep-alive" CRLF,
                              sizeof("Connection: keep-alive" CRLF) - 1);
 

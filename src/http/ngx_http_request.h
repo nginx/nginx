@@ -64,6 +64,10 @@
 #define NGX_HTTP_LOG_UNSAFE                8
 
 
+#define NGX_HTTP_CONTINUE                  100
+#define NGX_HTTP_SWITCHING_PROTOCOLS       101
+#define NGX_HTTP_PROCESSING                102
+
 #define NGX_HTTP_OK                        200
 #define NGX_HTTP_CREATED                   201
 #define NGX_HTTP_ACCEPTED                  202
@@ -184,6 +188,7 @@ typedef struct {
 
     ngx_table_elt_t                  *transfer_encoding;
     ngx_table_elt_t                  *expect;
+    ngx_table_elt_t                  *upgrade;
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t                  *accept_encoding;

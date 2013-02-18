@@ -1747,7 +1747,11 @@ ngx_http_variable_sent_connection(ngx_http_request_t *r,
     size_t   len;
     char    *p;
 
-    if (r->keepalive) {
+    if (r->headers_out.status == NGX_HTTP_SWITCHING_PROTOCOLS) {
+        len = sizeof("upgrade") - 1;
+        p = "upgrade";
+
+    } else if (r->keepalive) {
         len = sizeof("keep-alive") - 1;
         p = "keep-alive";
 

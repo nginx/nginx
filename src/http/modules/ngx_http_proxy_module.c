@@ -1474,6 +1474,14 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 u->keepalive = !u->headers_in.connection_close;
             }
 
+            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS) {
+                u->keepalive = 0;
+
+                if (r->headers_in.upgrade) {
+                    u->upgrade = 1;
+                }
+            }
+
             return NGX_OK;
         }
 

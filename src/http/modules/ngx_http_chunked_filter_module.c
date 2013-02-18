@@ -62,6 +62,7 @@ ngx_http_chunked_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.status == NGX_HTTP_NOT_MODIFIED
         || r->headers_out.status == NGX_HTTP_NO_CONTENT
+        || r->headers_out.status < NGX_HTTP_OK
         || r != r->main
         || (r->method & NGX_HTTP_HEAD))
     {
