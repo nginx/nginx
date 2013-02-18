@@ -15,7 +15,7 @@ NGX_LOCK_PATH=
 NGX_USER=
 NGX_GROUP=
 
-CC=${CC:-gcc}
+CC=${CC:-cc}
 CPP=
 NGX_OBJS=objs
 
