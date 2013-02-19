@@ -4,6 +4,45 @@
 
 <change_log title="nginx">
 
+
+<changes ver="1.3.13" date="19.02.2013">
+
+<change type="change">
+<para lang="ru">
+теперь для сборки по умолчанию используется компилятор с именем "cc".
+</para>
+<para lang="en">
+a compiler with name "cc" is now used by default.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка проксирования WebSocket-соединений.<br/>
+Спасибо Apcera и CloudBees за спонсирование разработки.
+</para>
+<para lang="en">
+support for proxying of WebSocket connections.<br/>
+Thanks to Apcera and CloudBees for sponsoring this work.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива auth_basic_user_file поддерживает шифрование паролей
+методом "{SHA}".<br/>
+Спасибо Louis Opter.
+</para>
+<para lang="en">
+the "auth_basic_user_file" directive supports "{SHA}" 
+password encryption method.<br/>
+Thanks to Louis Opter.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.12" date="05.02.2013">
 
 <change type="feature">
