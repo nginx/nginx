@@ -661,7 +661,6 @@ ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             for (j = sizeof("shared:") - 1; j < value[i].len; j++) {
                 if (value[i].data[j] == ':') {
-                    value[i].data[j] = '\0';
                     break;
                 }
 
