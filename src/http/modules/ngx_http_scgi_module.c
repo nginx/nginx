@@ -984,7 +984,7 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
             u = r->upstream;
 
             if (u->headers_in.status_n) {
-                return NGX_OK;
+                goto done;
             }
 
             if (u->headers_in.status) {
@@ -1013,6 +1013,14 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
 
             if (u->state) {
                 u->state->status = u->headers_in.status_n;
+            }
+
+        done:
+
+            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS
+                && r->headers_in.upgrade) 
+            {
+                u->upgrade = 1;
             }
 
             return NGX_OK;
