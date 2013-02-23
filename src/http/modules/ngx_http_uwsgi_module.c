@@ -1052,7 +1052,7 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
         done:
 
             if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS
-                && r->headers_in.upgrade) 
+                && r->headers_in.upgrade)
             {
                 u->upgrade = 1;
             }
