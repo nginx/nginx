@@ -292,6 +292,9 @@ ngx_http_init_connection(ngx_connection_t *c)
         }
     }
 
+    /* the default server configuration for the address:port */
+    hc->conf_ctx = hc->addr_conf->default_server->ctx;
+
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
         ngx_http_close_connection(c);
@@ -399,12 +402,9 @@ ngx_http_init_request(ngx_event_t *rev)
 
     r->connection = c;
 
-    /* the default server configuration for the address:port */
-    cscf = hc->addr_conf->default_server;
-
-    r->main_conf = cscf->ctx->main_conf;
-    r->srv_conf = cscf->ctx->srv_conf;
-    r->loc_conf = cscf->ctx->loc_conf;
+    r->main_conf = hc->conf_ctx->main_conf;
+    r->srv_conf = hc->conf_ctx->srv_conf;
+    r->loc_conf = hc->conf_ctx->loc_conf;
 
     rev->handler = ngx_http_process_request_line;
     r->read_event_handler = ngx_http_block_reading;
@@ -448,6 +448,8 @@ ngx_http_init_request(ngx_event_t *rev)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_http_set_connection_log(r->connection, clcf->error_log);
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     if (c->buffer == NULL) {
         c->buffer = ngx_create_temp_buf(c->pool,
@@ -688,6 +690,8 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     {
         return SSL_TLSEXT_ERR_NOACK;
     }
+
+    hc->conf_ctx = cscf->ctx;
 
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
