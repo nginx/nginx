@@ -303,7 +303,8 @@ typedef struct {
     ngx_buf_t                       **free;
     ngx_int_t                         nfree;
 
-    ngx_uint_t                        pipeline;    /* unsigned  pipeline:1; */
+    unsigned                          pipeline:1;
+    unsigned                          ssl:1;
 } ngx_http_connection_t;
 
 
@@ -492,7 +493,6 @@ struct ngx_http_request_s {
 #endif
 
     unsigned                          pipeline:1;
-    unsigned                          plain_http:1;
     unsigned                          chunked:1;
     unsigned                          header_only:1;
     unsigned                          keepalive:1;
