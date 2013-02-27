@@ -1869,6 +1869,17 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
         return NGX_ERROR;
     }
 
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+
+    if (hc->ssl_servername) {
+        if (rc == NGX_DECLINED) {
+            cscf = hc->addr_conf->default_server;
+            rc = NGX_OK;
+        }
+    }
+
+#endif
+
     if (rc == NGX_DECLINED) {
         return NGX_OK;
     }
