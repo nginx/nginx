@@ -571,4 +571,12 @@ extern ngx_http_header_t       ngx_http_headers_in[];
 extern ngx_http_header_out_t   ngx_http_headers_out[];
 
 
+#define ngx_http_set_connection_log(c, l)                                     \
+                                                                              \
+    c->log->file = l->file;                                                   \
+    if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {                    \
+        c->log->log_level = l->log_level;                                     \
+    }
+
+
 #endif /* _NGX_HTTP_REQUEST_H_INCLUDED_ */
