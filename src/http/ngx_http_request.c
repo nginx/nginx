@@ -32,8 +32,8 @@ static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 static void ngx_http_process_request(ngx_http_request_t *r);
-static ssize_t ngx_http_validate_host(ngx_http_request_t *r, u_char **host,
-    size_t len, ngx_uint_t alloc);
+static ngx_int_t ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool,
+    ngx_uint_t alloc);
 static ngx_int_t ngx_http_find_virtual_server(ngx_http_request_t *r,
     u_char *host, size_t len);
 
@@ -643,8 +643,7 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 int
 ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
-    size_t                    len;
-    u_char                   *host;
+    ngx_str_t                 host;
     const char               *servername;
     ngx_connection_t         *c;
     ngx_http_request_t       *r;
@@ -661,23 +660,21 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "SSL server name: \"%s\"", servername);
 
-    len = ngx_strlen(servername);
+    host.len = ngx_strlen(servername);
 
-    if (len == 0) {
+    if (host.len == 0) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
     r = c->data;
 
-    host = (u_char *) servername;
+    host.data = (u_char *) servername;
 
-    len = ngx_http_validate_host(r, &host, len, 1);
-
-    if (len <= 0) {
+    if (ngx_http_validate_host(&host, r->pool, 1) != NGX_OK) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
-    if (ngx_http_find_virtual_server(r, host, len) != NGX_OK) {
+    if (ngx_http_find_virtual_server(r, host.data, host.len) != NGX_OK) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
@@ -716,9 +713,9 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
-    u_char                    *host;
     ssize_t                    n;
     ngx_int_t                  rc, rv;
+    ngx_str_t                  host;
     ngx_connection_t          *c;
     ngx_http_request_t        *r;
     ngx_http_core_srv_conf_t  *cscf;
@@ -884,24 +881,24 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             if (r->host_start && r->host_end) {
 
-                host = r->host_start;
-                n = ngx_http_validate_host(r, &host,
-                                           r->host_end - r->host_start, 0);
+                host.len = r->host_end - r->host_start;
+                host.data = r->host_start;
 
-                if (n == 0) {
+                rc = ngx_http_validate_host(&host, r->pool, 0);
+
+                if (rc == NGX_DECLINED) {
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                   "client sent invalid host in request line");
                     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                     return;
                 }
 
-                if (n < 0) {
+                if (rc == NGX_ERROR) {
                     ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return;
                 }
 
-                r->headers_in.server.len = n;
-                r->headers_in.server.data = host;
+                r->headers_in.server = host;
             }
 
             if (r->http_version < NGX_HTTP_VERSION_10) {
@@ -1401,24 +1398,25 @@ static ngx_int_t
 ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    u_char   *host;
-    ssize_t   len;
+    ngx_int_t  rc;
+    ngx_str_t  host;
 
     if (r->headers_in.host == NULL) {
         r->headers_in.host = h;
     }
 
-    host = h->value.data;
-    len = ngx_http_validate_host(r, &host, h->value.len, 0);
+    host = h->value;
 
-    if (len == 0) {
+    rc = ngx_http_validate_host(&host, r->pool, 0);
+
+    if (rc == NGX_DECLINED) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent invalid host header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
 
-    if (len < 0) {
+    if (rc == NGX_ERROR) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
@@ -1427,8 +1425,7 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_OK;
     }
 
-    r->headers_in.server.len = len;
-    r->headers_in.server.data = host;
+    r->headers_in.server = host;
 
     return NGX_OK;
 }
@@ -1704,9 +1701,8 @@ ngx_http_process_request(ngx_http_request_t *r)
 }
 
 
-static ssize_t
-ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
-    ngx_uint_t alloc)
+static ngx_int_t
+ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
 {
     u_char  *h, ch;
     size_t   i, dot_pos, host_len;
@@ -1717,21 +1713,21 @@ ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
         sw_rest
     } state;
 
-    dot_pos = len;
-    host_len = len;
+    dot_pos = host->len;
+    host_len = host->len;
 
-    h = *host;
+    h = host->data;
 
     state = sw_usual;
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < host->len; i++) {
         ch = h[i];
 
         switch (ch) {
 
         case '.':
             if (dot_pos == i - 1) {
-                return 0;
+                return NGX_DECLINED;
             }
             dot_pos = i;
             break;
@@ -1757,12 +1753,12 @@ ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
             break;
 
         case '\0':
-            return 0;
+            return NGX_DECLINED;
 
         default:
 
             if (ngx_path_separator(ch)) {
-                return 0;
+                return NGX_DECLINED;
             }
 
             if (ch >= 'A' && ch <= 'Z') {
@@ -1777,16 +1773,22 @@ ngx_http_validate_host(ngx_http_request_t *r, u_char **host, size_t len,
         host_len--;
     }
 
-    if (alloc) {
-        *host = ngx_pnalloc(r->pool, host_len);
-        if (*host == NULL) {
-            return -1;
-        }
-
-        ngx_strlow(*host, h, host_len);
+    if (host_len == 0) {
+        return NGX_DECLINED;
     }
 
-    return host_len;
+    if (alloc) {
+        host->data = ngx_pnalloc(pool, host_len);
+        if (host->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_strlow(host->data, h, host_len);
+    }
+
+    host->len = host_len;
+
+    return NGX_OK;
 }
 
 
