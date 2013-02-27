@@ -295,6 +295,13 @@ typedef struct {
     ngx_http_addr_conf_t             *addr_conf;
     ngx_http_conf_ctx_t              *conf_ctx;
 
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+    ngx_str_t                        *ssl_servername;
+#if (NGX_PCRE)
+    ngx_http_regex_t                 *ssl_servername_regex;
+#endif
+#endif
+
     ngx_http_request_t               *request;
 
     ngx_buf_t                       **busy;

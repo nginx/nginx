@@ -693,6 +693,13 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         return SSL_TLSEXT_ERR_NOACK;
     }
 
+    hc->ssl_servername = ngx_palloc(c->pool, sizeof(ngx_str_t));
+    if (hc->ssl_servername == NULL) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    *hc->ssl_servername = host;
+
     hc->conf_ctx = cscf->ctx;
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
@@ -1831,6 +1838,28 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 
     hc = r->http_connection;
 
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+
+    if (hc->ssl_servername) {
+        if (hc->ssl_servername->len == host->len
+            && ngx_strncmp(hc->ssl_servername->data,
+                           host->data, host->len) == 0)
+        {
+#if (NGX_PCRE)
+            if (hc->ssl_servername_regex
+                && ngx_http_regex_exec(r, hc->ssl_servername_regex,
+                                          hc->ssl_servername) != NGX_OK)
+            {
+                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return NGX_ERROR;
+            }
+#endif
+            return NGX_OK;
+        }
+    }
+
+#endif
+
     rc = ngx_http_find_virtual_server(r->connection,
                                       hc->addr_conf->virtual_names,
                                       host, r, &cscf);
@@ -1887,6 +1916,8 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
         if (r == NULL) {
+            ngx_http_connection_t  *hc;
+
             for (i = 0; i < virtual_names->nregex; i++) {
 
                 n = ngx_regex_exec(sn[i].regex->regex, host, NULL, 0);
@@ -1896,6 +1927,9 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
                 }
 
                 if (n >= 0) {
+                    hc = c->data;
+                    hc->ssl_servername_regex = sn[i].regex;
+
                     *cscfp = sn[i].server;
                     return NGX_OK;
                 }
