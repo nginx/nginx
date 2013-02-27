@@ -919,13 +919,18 @@ ngx_http_process_request_line(ngx_event_t *rev)
                     return;
                 }
 
+                if (ngx_http_set_virtual_server(r, &host) == NGX_ERROR) {
+                    return;
+                }
+
                 r->headers_in.server = host;
             }
 
             if (r->http_version < NGX_HTTP_VERSION_10) {
 
-                if (ngx_http_set_virtual_server(r, &r->headers_in.server)
-                    == NGX_ERROR)
+                if (r->headers_in.server.len == 0
+                    && ngx_http_set_virtual_server(r, &r->headers_in.server)
+                       == NGX_ERROR)
                 {
                     return;
                 }
@@ -1014,7 +1019,6 @@ ngx_http_process_request_headers(ngx_event_t *rev)
     }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     rc = NGX_AGAIN;
 
@@ -1067,6 +1071,9 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 return;
             }
         }
+
+        /* the host header could change the server configuration context */
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
         rc = ngx_http_parse_header_line(r, r->header_in,
                                         cscf->underscores_in_headers);
@@ -1444,6 +1451,10 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_OK;
     }
 
+    if (ngx_http_set_virtual_server(r, &host) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
     r->headers_in.server = host;
 
     return NGX_OK;
@@ -1570,7 +1581,10 @@ ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
-    if (ngx_http_set_virtual_server(r, &r->headers_in.server) == NGX_ERROR) {
+    if (r->headers_in.server.len == 0
+        && ngx_http_set_virtual_server(r, &r->headers_in.server)
+           == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
