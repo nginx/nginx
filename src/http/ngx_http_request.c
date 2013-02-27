@@ -195,8 +195,99 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
-    ngx_event_t         *rev;
-    ngx_http_log_ctx_t  *ctx;
+    ngx_uint_t              i;
+    ngx_event_t            *rev;
+    struct sockaddr_in     *sin;
+    ngx_http_port_t        *port;
+    ngx_http_in_addr_t     *addr;
+    ngx_http_log_ctx_t     *ctx;
+    ngx_http_connection_t  *hc;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6    *sin6;
+    ngx_http_in6_addr_t    *addr6;
+#endif
+
+    hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
+    if (hc == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    c->data = hc;
+
+    /* find the server configuration for the address:port */
+
+    port = c->listening->servers;
+
+    if (port->naddrs > 1) {
+
+        /*
+         * there are several addresses on this port and one of them
+         * is an "*:port" wildcard so getsockname() in ngx_http_server_addr()
+         * is required to determine a server address
+         */
+
+        if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        switch (c->local_sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+            addr6 = port->addrs;
+
+            /* the last address is "*" */
+
+            for (i = 0; i < port->naddrs - 1; i++) {
+                if (ngx_memcmp(&addr6[i].addr6, &sin6->sin6_addr, 16) == 0) {
+                    break;
+                }
+            }
+
+            hc->addr_conf = &addr6[i].conf;
+
+            break;
+#endif
+
+        default: /* AF_INET */
+            sin = (struct sockaddr_in *) c->local_sockaddr;
+
+            addr = port->addrs;
+
+            /* the last address is "*" */
+
+            for (i = 0; i < port->naddrs - 1; i++) {
+                if (addr[i].addr == sin->sin_addr.s_addr) {
+                    break;
+                }
+            }
+
+            hc->addr_conf = &addr[i].conf;
+
+            break;
+        }
+
+    } else {
+
+        switch (c->local_sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            addr6 = port->addrs;
+            hc->addr_conf = &addr6[0].conf;
+            break;
+#endif
+
+        default: /* AF_INET */
+            addr = port->addrs;
+            hc->addr_conf = &addr[0].conf;
+            break;
+        }
+    }
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
@@ -251,22 +342,13 @@ static void
 ngx_http_init_request(ngx_event_t *rev)
 {
     ngx_time_t                 *tp;
-    ngx_uint_t                  i;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
-    struct sockaddr_in         *sin;
-    ngx_http_port_t            *port;
-    ngx_http_in_addr_t         *addr;
     ngx_http_log_ctx_t         *ctx;
-    ngx_http_addr_conf_t       *addr_conf;
     ngx_http_connection_t      *hc;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6        *sin6;
-    ngx_http_in6_addr_t        *addr6;
-#endif
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
@@ -284,14 +366,6 @@ ngx_http_init_request(ngx_event_t *rev)
     c->requests++;
 
     hc = c->data;
-
-    if (hc == NULL) {
-        hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
-        if (hc == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
-    }
 
     r = hc->request;
 
@@ -320,86 +394,10 @@ ngx_http_init_request(ngx_event_t *rev)
     c->sent = 0;
     r->signature = NGX_HTTP_MODULE;
 
-    /* find the server configuration for the address:port */
-
-    port = c->listening->servers;
-
     r->connection = c;
 
-    if (port->naddrs > 1) {
-
-        /*
-         * there are several addresses on this port and one of them
-         * is an "*:port" wildcard so getsockname() in ngx_http_server_addr()
-         * is required to determine a server address
-         */
-
-        if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
-            ngx_http_close_connection(c);
-            return;
-        }
-
-        switch (c->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
-
-            addr6 = port->addrs;
-
-            /* the last address is "*" */
-
-            for (i = 0; i < port->naddrs - 1; i++) {
-                if (ngx_memcmp(&addr6[i].addr6, &sin6->sin6_addr, 16) == 0) {
-                    break;
-                }
-            }
-
-            addr_conf = &addr6[i].conf;
-
-            break;
-#endif
-
-        default: /* AF_INET */
-            sin = (struct sockaddr_in *) c->local_sockaddr;
-
-            addr = port->addrs;
-
-            /* the last address is "*" */
-
-            for (i = 0; i < port->naddrs - 1; i++) {
-                if (addr[i].addr == sin->sin_addr.s_addr) {
-                    break;
-                }
-            }
-
-            addr_conf = &addr[i].conf;
-
-            break;
-        }
-
-    } else {
-
-        switch (c->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            addr6 = port->addrs;
-            addr_conf = &addr6[0].conf;
-            break;
-#endif
-
-        default: /* AF_INET */
-            addr = port->addrs;
-            addr_conf = &addr[0].conf;
-            break;
-        }
-    }
-
-    r->virtual_names = addr_conf->virtual_names;
-
     /* the default server configuration for the address:port */
-    cscf = addr_conf->default_server;
+    cscf = hc->addr_conf->default_server;
 
     r->main_conf = cscf->ctx->main_conf;
     r->srv_conf = cscf->ctx->srv_conf;
@@ -414,13 +412,13 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_ssl_srv_conf_t  *sscf;
 
     sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
-    if (sscf->enable || addr_conf->ssl) {
+    if (sscf->enable || hc->addr_conf->ssl) {
 
         if (c->ssl == NULL) {
 
             c->log->action = "SSL handshaking";
 
-            if (addr_conf->ssl && sscf->ssl.ctx == NULL) {
+            if (hc->addr_conf->ssl && sscf->ssl.ctx == NULL) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
                               "no \"ssl_certificate\" is defined "
                               "in server listening on SSL port");
@@ -1799,12 +1797,15 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 {
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_virtual_names_t  *virtual_names;
 
-    if (r->virtual_names == NULL) {
+    virtual_names = r->http_connection->addr_conf->virtual_names;
+
+    if (virtual_names == NULL) {
         return NGX_DECLINED;
     }
 
-    cscf = ngx_hash_find_combined(&r->virtual_names->names,
+    cscf = ngx_hash_find_combined(&virtual_names->names,
                                   ngx_hash_key(host, len), host, len);
 
     if (cscf) {
@@ -1813,7 +1814,7 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
 
 #if (NGX_PCRE)
 
-    if (len && r->virtual_names->nregex) {
+    if (len && virtual_names->nregex) {
         ngx_int_t                n;
         ngx_uint_t               i;
         ngx_str_t                name;
@@ -1822,9 +1823,9 @@ ngx_http_find_virtual_server(ngx_http_request_t *r, u_char *host, size_t len)
         name.len = len;
         name.data = host;
 
-        sn = r->virtual_names->regex;
+        sn = virtual_names->regex;
 
-        for (i = 0; i < r->virtual_names->nregex; i++) {
+        for (i = 0; i < virtual_names->nregex; i++) {
 
             n = ngx_http_regex_exec(r, sn[i].regex, &name);
 

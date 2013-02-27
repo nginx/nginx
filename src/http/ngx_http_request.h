@@ -289,7 +289,11 @@ typedef struct {
 } ngx_http_request_body_t;
 
 
+typedef struct ngx_http_addr_conf_s  ngx_http_addr_conf_t;
+
 typedef struct {
+    ngx_http_addr_conf_t             *addr_conf;
+
     ngx_http_request_t               *request;
 
     ngx_buf_t                       **busy;
@@ -300,17 +304,6 @@ typedef struct {
 
     ngx_uint_t                        pipeline;    /* unsigned  pipeline:1; */
 } ngx_http_connection_t;
-
-
-typedef struct ngx_http_server_name_s  ngx_http_server_name_t;
-
-
-typedef struct {
-     ngx_hash_combined_t              names;
-
-     ngx_uint_t                       nregex;
-     ngx_http_server_name_t          *regex;
-} ngx_http_virtual_names_t;
 
 
 typedef void (*ngx_http_cleanup_pt)(void *data);
@@ -405,8 +398,6 @@ struct ngx_http_request_s {
     ngx_http_postponed_request_t     *postponed;
     ngx_http_post_subrequest_t       *post_subrequest;
     ngx_http_posted_request_t        *posted_requests;
-
-    ngx_http_virtual_names_t         *virtual_names;
 
     ngx_int_t                         phase_handler;
     ngx_http_handler_pt               content_handler;
