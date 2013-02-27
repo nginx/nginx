@@ -1872,9 +1872,21 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
     if (hc->ssl_servername) {
+        ngx_http_ssl_srv_conf_t  *sscf;
+
         if (rc == NGX_DECLINED) {
             cscf = hc->addr_conf->default_server;
             rc = NGX_OK;
+        }
+
+        sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
+
+        if (sscf->verify) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client attempted to request the server name "
+                          "different from that one was negotiated");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
         }
     }
 
