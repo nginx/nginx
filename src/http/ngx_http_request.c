@@ -316,10 +316,6 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev->handler = ngx_http_init_request;
     c->write->handler = ngx_http_empty_handler;
 
-#if (NGX_STAT_STUB)
-    (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
-
     if (rev->ready) {
         /* the deferred accept(), rtsig, aio, iocp */
 
@@ -335,9 +331,6 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-#if (NGX_STAT_STUB)
-        (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
         ngx_http_close_connection(c);
         return;
     }
@@ -355,10 +348,6 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
-
-#if (NGX_STAT_STUB)
-    (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
-#endif
 
     c = rev->data;
 
@@ -2613,10 +2602,6 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
-#if (NGX_STAT_STUB)
-        (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
-
         hc->pipeline = 1;
         c->log->action = "reading client pipelined request line";
 
@@ -2858,10 +2843,6 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     }
 
     b->last += n;
-
-#if (NGX_STAT_STUB)
-    (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
-#endif
 
     c->log->handler = ngx_http_log_error;
     c->log->action = "reading client request line";
