@@ -200,7 +200,7 @@ typedef struct {
     ngx_table_elt_t                  *keep_alive;
 
 #if (NGX_HTTP_X_FORWARDED_FOR)
-    ngx_table_elt_t                  *x_forwarded_for;
+    ngx_array_t                       x_forwarded_for;
 #endif
 
 #if (NGX_HTTP_REALIP)

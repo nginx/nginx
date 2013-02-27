@@ -21,13 +21,13 @@ static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_multi_header_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_host(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
-    ngx_table_elt_t *h, ngx_uint_t offset);
-static ngx_int_t ngx_http_process_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
@@ -153,7 +153,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #if (NGX_HTTP_X_FORWARDED_FOR)
     { ngx_string("X-Forwarded-For"),
                  offsetof(ngx_http_headers_in_t, x_forwarded_for),
-                 ngx_http_process_header_line },
+                 ngx_http_process_multi_header_lines },
 #endif
 
 #if (NGX_HTTP_REALIP)
@@ -185,7 +185,8 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  ngx_http_process_header_line },
 #endif
 
-    { ngx_string("Cookie"), 0, ngx_http_process_cookie },
+    { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookies),
+                 ngx_http_process_multi_header_lines },
 
     { ngx_null_string, 0, NULL }
 };
@@ -930,15 +931,6 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 return;
             }
 
-
-            if (ngx_array_init(&r->headers_in.cookies, r->pool, 2,
-                               sizeof(ngx_table_elt_t *))
-                != NGX_OK)
-            {
-                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                return;
-            }
-
             c->log->action = "reading client request headers";
 
             rev->handler = ngx_http_process_request_headers;
@@ -1535,20 +1527,31 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
-ngx_http_process_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
+ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ngx_table_elt_t  **cookie;
+    ngx_array_t       *headers;
+    ngx_table_elt_t  **ph;
 
-    cookie = ngx_array_push(&r->headers_in.cookies);
-    if (cookie) {
-        *cookie = h;
-        return NGX_OK;
+    headers = (ngx_array_t *) ((char *) &r->headers_in + offset);
+
+    if (headers->elts == NULL) {
+        if (ngx_array_init(headers, r->pool, 1, sizeof(ngx_table_elt_t *))
+            != NGX_OK)
+        {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
     }
 
-    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    ph = ngx_array_push(headers);
+    if (ph == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
 
-    return NGX_ERROR;
+    *ph = h;
+    return NGX_OK;
 }
 
 
