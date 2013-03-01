@@ -302,8 +302,6 @@ typedef struct {
 #endif
 #endif
 
-    ngx_http_request_t               *request;
-
     ngx_buf_t                       **busy;
     ngx_int_t                         nbusy;
 

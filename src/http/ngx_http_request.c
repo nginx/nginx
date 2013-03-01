@@ -365,6 +365,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 static void
 ngx_http_init_request(ngx_event_t *rev)
 {
+    ngx_pool_t                 *pool;
     ngx_time_t                 *tp;
     ngx_connection_t           *c;
     ngx_http_request_t         *r;
@@ -387,26 +388,24 @@ ngx_http_init_request(ngx_event_t *rev)
 
     hc = c->data;
 
-    r = hc->request;
+    cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
 
-    if (r) {
-        ngx_memzero(r, sizeof(ngx_http_request_t));
-
-        r->pipeline = hc->pipeline;
-
-        if (hc->nbusy) {
-            r->header_in = hc->busy[0];
-        }
-
-    } else {
-        r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
-        if (r == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
-
-        hc->request = r;
+    pool = ngx_create_pool(cscf->request_pool_size, c->log);
+    if (pool == NULL) {
+        ngx_http_close_connection(c);
+        return;
     }
+
+    r = ngx_pcalloc(pool, sizeof(ngx_http_request_t));
+    if (r == NULL) {
+        ngx_destroy_pool(pool);
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    r->pool = pool;
+
+    r->pipeline = hc->pipeline;
 
     c->data = r;
     r->http_connection = hc;
@@ -426,27 +425,17 @@ ngx_http_init_request(ngx_event_t *rev)
 
     ngx_http_set_connection_log(r->connection, clcf->error_log);
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
     if (c->buffer == NULL) {
         c->buffer = ngx_create_temp_buf(c->pool,
                                         cscf->client_header_buffer_size);
         if (c->buffer == NULL) {
+            ngx_destroy_pool(r->pool);
             ngx_http_close_connection(c);
             return;
         }
     }
 
-    if (r->header_in == NULL) {
-        r->header_in = c->buffer;
-    }
-
-    r->pool = ngx_create_pool(cscf->request_pool_size, c->log);
-    if (r->pool == NULL) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
+    r->header_in = hc->nbusy ? hc->busy[0] : c->buffer;
 
     if (ngx_list_init(&r->headers_out.headers, r->pool, 20,
                       sizeof(ngx_table_elt_t))
@@ -2663,6 +2652,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         }
     }
 
+    /* guard against recursive call from ngx_http_finalize_connection() */
     r->keepalive = 0;
 
     ngx_http_free_request(r, 0);
@@ -2694,16 +2684,11 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     hc->pipeline = 0;
 
     /*
-     * To keep a memory footprint as small as possible for an idle
-     * keepalive connection we try to free the ngx_http_request_t and
-     * c->buffer's memory if they were allocated outside the c->pool.
-     * The large header buffers are always allocated outside the c->pool and
-     * are freed too.
+     * To keep a memory footprint as small as possible for an idle keepalive
+     * connection we try to free c->buffer's memory if it was allocated outside
+     * the c->pool.  The large header buffers are always allocated outside the
+     * c->pool and are freed too.
      */
-
-    if (ngx_pfree(c->pool, r) == NGX_OK) {
-        hc->request = NULL;
-    }
 
     b = c->buffer;
 
@@ -3155,6 +3140,7 @@ static void
 ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 {
     ngx_log_t                 *log;
+    ngx_pool_t                *pool;
     struct linger              linger;
     ngx_http_cleanup_t        *cln;
     ngx_http_log_ctx_t        *ctx;
@@ -3221,7 +3207,15 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 
     r->connection->destroyed = 1;
 
-    ngx_destroy_pool(r->pool);
+    /*
+     * Setting r->pool to NULL will increase probability to catch double close
+     * of request since the request object is allocated from its own pool.
+     */
+
+    pool = r->pool;
+    r->pool = NULL;
+
+    ngx_destroy_pool(pool);
 }
 
 
