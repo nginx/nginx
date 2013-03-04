@@ -754,6 +754,13 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
 
     *prev = &mp4->mdat_atom;
 
+    if (start_offset > mp4->mdat_data.buf->file_last) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "start time is out mp4 mdat atom in \"%s\"",
+                      mp4->file.name.data);
+        return NGX_ERROR;
+    }
+
     adjustment = mp4->ftyp_size + mp4->moov_size
                  + ngx_http_mp4_update_mdat_atom(mp4, start_offset)
                  - start_offset;
