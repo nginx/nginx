@@ -5,6 +5,79 @@
 <change_log title="nginx">
 
 
+<changes ver="1.3.14" date="05.03.2013">
+
+<change type="feature">
+<para lang="ru">
+переменные $connections_active, $connections_reading и $connections_writing
+в модуле ngx_http_stub_status_module.
+</para>
+<para lang="en">
+$connections_active, $connections_reading, and $connections_writing variables
+in the ngx_http_stub_status_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка WebSocket-соединений
+в модулях ngx_http_uwsgi_module и ngx_http_scgi_module.
+</para>
+<para lang="en">
+support of WebSocket connections
+in the ngx_http_uwsgi_module and ngx_http_scgi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке виртуальных серверов при использовании SNI.
+</para>
+<para lang="en">
+in virtual servers handling with SNI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "ssl_session_cache shared"
+новые сессии могли не сохраняться,
+если заканчивалось место в разделяемой памяти.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+new sessions were not always stored
+if the "ssl_session_cache shared" directive was used
+and there was no free space in shared memory.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+несколько заголовков X-Forwarded-For обрабатывались неправильно.<br/>
+Спасибо Neal Poole за спонсирование разработки.
+</para>
+<para lang="en">
+multiple X-Forwarded-For headers were handled incorrectly.<br/>
+Thanks to Neal Poole for sponsoring this work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Gernot Vormayr.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Gernot Vormayr.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.13" date="19.02.2013">
 
 <change type="change">
