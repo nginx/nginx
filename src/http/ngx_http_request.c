@@ -10,6 +10,7 @@
 #include <ngx_http.h>
 
 
+static void ngx_http_wait_request_handler(ngx_event_t *ev);
 static void ngx_http_init_request(ngx_event_t *ev);
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
@@ -308,12 +309,12 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log->connection = c->number;
     c->log->handler = ngx_http_log_error;
     c->log->data = ctx;
-    c->log->action = "reading client request line";
+    c->log->action = "waiting for request";
 
     c->log_error = NGX_ERROR_INFO;
 
     rev = c->read;
-    rev->handler = ngx_http_init_request;
+    rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
 
 #if (NGX_HTTP_SSL)
@@ -363,6 +364,99 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 
 static void
+ngx_http_wait_request_handler(ngx_event_t *rev)
+{
+    size_t                     size;
+    ssize_t                    n;
+    ngx_buf_t                 *b;
+    ngx_connection_t          *c;
+    ngx_http_connection_t     *hc;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    c = rev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http wait request handler");
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    hc = c->data;
+    cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
+
+    size = cscf->client_header_buffer_size;
+
+    b = c->buffer;
+
+    if (b == NULL) {
+        b = ngx_create_temp_buf(c->pool, size);
+        if (b == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        c->buffer = b;
+
+    } else if (b->start == NULL) {
+
+        b->start = ngx_palloc(c->pool, size);
+        if (b->start == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        b->pos = b->start;
+        b->last = b->start;
+        b->end = b->last + size;
+    }
+
+    n = c->recv(c, b->last, size);
+
+    if (n == NGX_AGAIN) {
+
+        if (!rev->timer_set) {
+            ngx_add_timer(rev, c->listening->post_accept_timeout);
+        }
+
+        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        /*
+         * We are trying to not hold c->buffer's memory for an idle connection.
+         */
+
+        if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+            b->start = NULL;
+        }
+
+        return;
+    }
+
+    if (n == NGX_ERROR) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (n == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, ngx_socket_errno,
+                      "client closed connection");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    b->last += n;
+
+    c->log->action = "reading client request line";
+
+    ngx_http_init_request(rev);
+}
+
+
+static void
 ngx_http_init_request(ngx_event_t *rev)
 {
     ngx_pool_t                 *pool;
@@ -376,13 +470,6 @@ ngx_http_init_request(ngx_event_t *rev)
     ngx_http_core_main_conf_t  *cmcf;
 
     c = rev->data;
-
-    if (rev->timedout) {
-        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-
-        ngx_http_close_connection(c);
-        return;
-    }
 
     c->requests++;
 
@@ -424,16 +511,6 @@ ngx_http_init_request(ngx_event_t *rev)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     ngx_http_set_connection_log(r->connection, clcf->error_log);
-
-    if (c->buffer == NULL) {
-        c->buffer = ngx_create_temp_buf(c->pool,
-                                        cscf->client_header_buffer_size);
-        if (c->buffer == NULL) {
-            ngx_destroy_pool(r->pool);
-            ngx_http_close_connection(c);
-            return;
-        }
-    }
 
     r->header_in = hc->nbusy ? hc->busy[0] : c->buffer;
 
@@ -592,10 +669,10 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "plain http");
 
-        c->log->action = "reading client request line";
+        c->log->action = "waiting for request";
 
-        rev->handler = ngx_http_init_request;
-        ngx_http_init_request(rev);
+        rev->handler = ngx_http_wait_request_handler;
+        ngx_http_wait_request_handler(rev);
 
         return;
     }
@@ -620,12 +697,12 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 
         c->ssl->no_wait_shutdown = 1;
 
-        c->log->action = "reading client request line";
+        c->log->action = "waiting for request";
 
-        c->read->handler = ngx_http_init_request;
+        c->read->handler = ngx_http_wait_request_handler;
         /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
 
-        ngx_http_init_request(c->read);
+        ngx_http_wait_request_handler(c->read);
 
         return;
     }
