@@ -554,7 +554,6 @@ ngx_http_init_request(ngx_event_t *rev)
         return;
     }
 
-    c->single_connection = 1;
     c->destroyed = 0;
 
 #if (NGX_HTTP_SSL)
