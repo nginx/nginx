@@ -308,8 +308,9 @@ typedef struct {
     ngx_buf_t                       **free;
     ngx_int_t                         nfree;
 
-    unsigned                          pipeline:1;
-    unsigned                          ssl:1;
+#if (NGX_HTTP_SSL)
+    ngx_uint_t                        ssl;    /* unsigned  ssl:1; */
+#endif
 } ngx_http_connection_t;
 
 

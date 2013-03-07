@@ -11,7 +11,7 @@
 
 
 static void ngx_http_wait_request_handler(ngx_event_t *ev);
-static void ngx_http_init_request(ngx_event_t *ev);
+static ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);
 static void ngx_http_process_request_line(ngx_event_t *rev);
 static void ngx_http_process_request_headers(ngx_event_t *rev);
 static ssize_t ngx_http_read_request_header(ngx_http_request_t *r);
@@ -466,24 +466,28 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     c->log->action = "reading client request line";
 
-    ngx_http_init_request(rev);
+    c->data = ngx_http_create_request(c);
+    if (c->data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    rev->handler = ngx_http_process_request_line;
+    ngx_http_process_request_line(rev);
 }
 
 
-static void
-ngx_http_init_request(ngx_event_t *rev)
+static ngx_http_request_t *
+ngx_http_create_request(ngx_connection_t *c)
 {
     ngx_pool_t                 *pool;
     ngx_time_t                 *tp;
-    ngx_connection_t           *c;
     ngx_http_request_t         *r;
     ngx_http_log_ctx_t         *ctx;
     ngx_http_connection_t      *hc;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_core_main_conf_t  *cmcf;
-
-    c = rev->data;
 
     c->requests++;
 
@@ -493,27 +497,19 @@ ngx_http_init_request(ngx_event_t *rev)
 
     pool = ngx_create_pool(cscf->request_pool_size, c->log);
     if (pool == NULL) {
-        ngx_http_close_connection(c);
-        return;
+        return NULL;
     }
 
     r = ngx_pcalloc(pool, sizeof(ngx_http_request_t));
     if (r == NULL) {
         ngx_destroy_pool(pool);
-        ngx_http_close_connection(c);
-        return;
+        return NULL;
     }
 
     r->pool = pool;
 
-    r->pipeline = hc->pipeline;
-
-    c->data = r;
     r->http_connection = hc;
-
-    c->sent = 0;
     r->signature = NGX_HTTP_MODULE;
-
     r->connection = c;
 
     r->main_conf = hc->conf_ctx->main_conf;
@@ -533,15 +529,13 @@ ngx_http_init_request(ngx_event_t *rev)
         != NGX_OK)
     {
         ngx_destroy_pool(r->pool);
-        ngx_http_close_connection(c);
-        return;
+        return NULL;
     }
 
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
         ngx_destroy_pool(r->pool);
-        ngx_http_close_connection(c);
-        return;
+        return NULL;
     }
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
@@ -550,11 +544,8 @@ ngx_http_init_request(ngx_event_t *rev)
                                         * sizeof(ngx_http_variable_value_t));
     if (r->variables == NULL) {
         ngx_destroy_pool(r->pool);
-        ngx_http_close_connection(c);
-        return;
+        return NULL;
     }
-
-    c->destroyed = 0;
 
 #if (NGX_HTTP_SSL)
     if (c->ssl) {
@@ -592,8 +583,7 @@ ngx_http_init_request(ngx_event_t *rev)
     (void) ngx_atomic_fetch_add(ngx_stat_requests, 1);
 #endif
 
-    rev->handler = ngx_http_process_request_line;
-    ngx_http_process_request_line(rev);
+    return r;
 }
 
 
@@ -2722,7 +2712,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
             /*
              * If the large header buffers were allocated while the previous
              * request processing then we do not use c->buffer for
-             * the pipelined request (see ngx_http_init_request()).
+             * the pipelined request (see ngx_http_create_request()).
              *
              * Now we would move the large header buffers to the free list.
              */
@@ -2770,19 +2760,29 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "pipelined request");
 
-        hc->pipeline = 1;
         c->log->action = "reading client pipelined request line";
+
+        r = ngx_http_create_request(c);
+        if (r == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        r->pipeline = 1;
+
+        c->data = r;
+
+        c->sent = 0;
+        c->destroyed = 0;
 
         if (rev->timer_set) {
             ngx_del_timer(rev);
         }
 
-        rev->handler = ngx_http_init_request;
+        rev->handler = ngx_http_process_request_line;
         ngx_post_event(rev, &ngx_posted_events);
         return;
     }
-
-    hc->pipeline = 0;
 
     /*
      * To keep a memory footprint as small as possible for an idle keepalive
@@ -3019,9 +3019,19 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     c->idle = 0;
     ngx_reusable_connection(c, 0);
 
+    c->data = ngx_http_create_request(c);
+    if (c->data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    c->sent = 0;
+    c->destroyed = 0;
+
     ngx_del_timer(rev);
 
-    ngx_http_init_request(rev);
+    rev->handler = ngx_http_process_request_line;
+    ngx_http_process_request_line(rev);
 }
 
 
