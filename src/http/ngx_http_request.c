@@ -2736,8 +2736,6 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     c->data = hc;
 
-    ngx_add_timer(rev, clcf->keepalive_timeout);
-
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_connection(c);
         return;
@@ -2752,6 +2750,10 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
         hc->pipeline = 1;
         c->log->action = "reading client pipelined request line";
+
+        if (rev->timer_set) {
+            ngx_del_timer(rev);
+        }
 
         rev->handler = ngx_http_init_request;
         ngx_post_event(rev, &ngx_posted_events);
@@ -2871,6 +2873,8 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     c->idle = 1;
     ngx_reusable_connection(c, 1);
+
+    ngx_add_timer(rev, clcf->keepalive_timeout);
 
     if (rev->ready) {
         ngx_post_event(rev, &ngx_posted_events);
@@ -2992,6 +2996,8 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
     c->idle = 0;
     ngx_reusable_connection(c, 0);
+
+    ngx_del_timer(rev);
 
     ngx_http_init_request(rev);
 }
