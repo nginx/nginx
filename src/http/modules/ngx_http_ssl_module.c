@@ -18,6 +18,11 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
 #define NGX_DEFAULT_ECDH_CURVE  "prime256v1"
 
 
+#ifdef TLSEXT_TYPE_next_proto_neg
+static int ngx_http_ssl_npn_advertised(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **out, unsigned int *outlen, void *arg);
+#endif
+
 static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_ssl_variable(ngx_http_request_t *r,
@@ -262,6 +267,30 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 static ngx_str_t ngx_http_ssl_sess_id_ctx = ngx_string("HTTP");
 
 
+#ifdef TLSEXT_TYPE_next_proto_neg
+
+#define NGX_HTTP_NPN_ADVERTISE  "\x08http/1.1"
+
+static int
+ngx_http_ssl_npn_advertised(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **out, unsigned int *outlen, void *arg)
+{
+#if (NGX_DEBUG)
+    ngx_connection_t  *c;
+
+    c = ngx_ssl_get_connection(ssl_conn);
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "SSL NPN advertised");
+#endif
+
+    *out = (unsigned char *) NGX_HTTP_NPN_ADVERTISE;
+    *outlen = sizeof(NGX_HTTP_NPN_ADVERTISE) - 1;
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+#endif
+
+
 static ngx_int_t
 ngx_http_ssl_static_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -488,6 +517,11 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             "therefore SNI is not available");
     }
 
+#endif
+
+#ifdef TLSEXT_TYPE_next_proto_neg
+    SSL_CTX_set_next_protos_advertised_cb(conf->ssl.ctx,
+                                          ngx_http_ssl_npn_advertised, NULL);
 #endif
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
