@@ -456,7 +456,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     }
 
     if (n == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client closed connection");
         ngx_http_close_connection(c);
         return;
