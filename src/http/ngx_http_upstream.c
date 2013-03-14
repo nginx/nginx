@@ -894,7 +894,7 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
                       ngx_resolver_strerror(ctx->state));
 
         ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
-        return;
+        goto failed;
     }
 
     ur->naddrs = ctx->naddrs;
@@ -919,13 +919,17 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     if (ngx_http_upstream_create_round_robin_peer(r, ur) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
+        goto failed;
     }
 
     ngx_resolve_name_done(ctx);
     ur->ctx = NULL;
 
     ngx_http_upstream_connect(r, u);
+
+failed:
+
+    ngx_http_run_posted_requests(r->connection);
 }
 
 
