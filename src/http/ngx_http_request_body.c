@@ -826,7 +826,7 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         b->temporary = 1;
         b->tag = (ngx_buf_tag_t) &ngx_http_read_client_request_body;
-        b->start = cl->buf->start;
+        b->start = cl->buf->pos;
         b->pos = cl->buf->pos;
         b->last = cl->buf->last;
         b->end = cl->buf->end;
@@ -933,7 +933,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 b->temporary = 1;
                 b->tag = (ngx_buf_tag_t) &ngx_http_read_client_request_body;
-                b->start = cl->buf->start;
+                b->start = cl->buf->pos;
                 b->pos = cl->buf->pos;
                 b->last = cl->buf->last;
                 b->end = cl->buf->end;
