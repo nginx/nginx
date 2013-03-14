@@ -104,7 +104,20 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         {
             /* the whole request body may be placed in r->header_in */
 
-            rb->buf = r->header_in;
+            b = ngx_calloc_buf(r->pool);
+            if (b == NULL) {
+                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                goto done;
+            }
+
+            b->temporary = 1;
+            b->start = r->header_in->pos;
+            b->pos = r->header_in->pos;
+            b->last = r->header_in->last;
+            b->end = r->header_in->end;
+
+            rb->buf = b;
+
             r->read_event_handler = ngx_http_read_client_request_body_handler;
             r->write_event_handler = ngx_http_request_empty_handler;
 
