@@ -355,6 +355,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 
     ngx_add_timer(rev, c->listening->post_accept_timeout);
+    ngx_reusable_connection(c, 1);
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_connection(c);
@@ -379,6 +380,11 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (c->close) {
         ngx_http_close_connection(c);
         return;
     }
@@ -432,6 +438,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
         if (!rev->timer_set) {
             ngx_add_timer(rev, c->listening->post_accept_timeout);
+            ngx_reusable_connection(c, 1);
         }
 
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -465,6 +472,8 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     b->last += n;
 
     c->log->action = "reading client request line";
+
+    ngx_reusable_connection(c, 0);
 
     c->data = ngx_http_create_request(c);
     if (c->data == NULL) {
@@ -611,6 +620,11 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         return;
     }
 
+    if (c->close) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
     n = recv(c->fd, (char *) buf, 1, MSG_PEEK);
 
     err = ngx_socket_errno;
@@ -631,6 +645,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
 
             if (!rev->timer_set) {
                 ngx_add_timer(rev, c->listening->post_accept_timeout);
+                ngx_reusable_connection(c, 1);
             }
 
             if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -669,6 +684,8 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                 if (!rev->timer_set) {
                     ngx_add_timer(rev, c->listening->post_accept_timeout);
                 }
+
+                ngx_reusable_connection(c, 0);
 
                 c->ssl->handler = ngx_http_ssl_handshake_handler;
                 return;
@@ -713,6 +730,8 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 
         c->read->handler = ngx_http_wait_request_handler;
         /* STUB: epoll edge */ c->write->handler = ngx_http_empty_handler;
+
+        ngx_reusable_connection(c, 1);
 
         ngx_http_wait_request_handler(c->read);
 
