@@ -73,6 +73,9 @@ static ngx_http_variable_t  ngx_http_stub_status_vars[] = {
     { ngx_string("connections_writing"), NULL, ngx_http_stub_status_variable,
       2, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
+    { ngx_string("connections_waiting"), NULL, ngx_http_stub_status_variable,
+      3, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
@@ -83,7 +86,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     ngx_int_t          rc;
     ngx_buf_t         *b;
     ngx_chain_t        out;
-    ngx_atomic_int_t   ap, hn, ac, rq, rd, wr;
+    ngx_atomic_int_t   ap, hn, ac, rq, rd, wr, wa;
 
     if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -126,6 +129,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     rq = *ngx_stat_requests;
     rd = *ngx_stat_reading;
     wr = *ngx_stat_writing;
+    wa = *ngx_stat_waiting;
 
     b->last = ngx_sprintf(b->last, "Active connections: %uA \n", ac);
 
@@ -135,7 +139,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     b->last = ngx_sprintf(b->last, " %uA %uA %uA \n", ap, hn, rq);
 
     b->last = ngx_sprintf(b->last, "Reading: %uA Writing: %uA Waiting: %uA \n",
-                          rd, wr, ac - (rd + wr));
+                          rd, wr, wa);
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_length_n = b->last - b->pos;
@@ -175,6 +179,10 @@ ngx_http_stub_status_variable(ngx_http_request_t *r,
 
     case 2:
         value = *ngx_stat_writing;
+        break;
+
+    case 3:
+        value = *ngx_stat_waiting;
         break;
 
     /* suppress warning */

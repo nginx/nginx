@@ -970,6 +970,10 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
     if (c->reusable) {
         ngx_queue_remove(&c->queue);
+
+#if (NGX_STAT_STUB)
+        (void) ngx_atomic_fetch_add(ngx_stat_waiting, -1);
+#endif
     }
 
     c->reusable = reusable;
@@ -979,6 +983,10 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
         ngx_queue_insert_head(
             (ngx_queue_t *) &ngx_cycle->reusable_connections_queue, &c->queue);
+
+#if (NGX_STAT_STUB)
+        (void) ngx_atomic_fetch_add(ngx_stat_waiting, 1);
+#endif
     }
 }
 
