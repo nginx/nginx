@@ -40,6 +40,7 @@ typedef struct {
 typedef struct {
     ngx_array_t         limits;
     ngx_uint_t          log_level;
+    ngx_uint_t          status_code;
 } ngx_http_limit_conn_conf_t;
 
 
@@ -74,6 +75,11 @@ static ngx_conf_enum_t  ngx_http_limit_conn_log_levels[] = {
 };
 
 
+static ngx_conf_num_bounds_t  ngx_http_limit_conn_status_bounds = {
+    ngx_conf_check_num_bounds, 400, 599
+};
+
+
 static ngx_command_t  ngx_http_limit_conn_commands[] = {
 
     { ngx_string("limit_conn_zone"),
@@ -103,6 +109,13 @@ static ngx_command_t  ngx_http_limit_conn_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_limit_conn_conf_t, log_level),
       &ngx_http_limit_conn_log_levels },
+
+    { ngx_string("limit_conn_status"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_limit_conn_conf_t, status_code),
+      &ngx_http_limit_conn_status_bounds },
 
       ngx_null_command
 };
@@ -206,7 +219,7 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
             if (node == NULL) {
                 ngx_shmtx_unlock(&shpool->mutex);
                 ngx_http_limit_conn_cleanup_all(r->pool);
-                return NGX_HTTP_SERVICE_UNAVAILABLE;
+                return lccf->status_code;
             }
 
             lc = (ngx_http_limit_conn_node_t *) &node->color;
@@ -231,7 +244,7 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
                               &limits[i].shm_zone->shm.name);
 
                 ngx_http_limit_conn_cleanup_all(r->pool);
-                return NGX_HTTP_SERVICE_UNAVAILABLE;
+                return lccf->status_code;
             }
 
             lc->conn++;
@@ -467,6 +480,7 @@ ngx_http_limit_conn_create_conf(ngx_conf_t *cf)
      */
 
     conf->log_level = NGX_CONF_UNSET_UINT;
+    conf->status_code = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -483,6 +497,8 @@ ngx_http_limit_conn_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_uint_value(conf->log_level, prev->log_level, NGX_LOG_ERR);
+    ngx_conf_merge_uint_value(conf->status_code, prev->status_code,
+                              NGX_HTTP_SERVICE_UNAVAILABLE);
 
     return NGX_CONF_OK;
 }
