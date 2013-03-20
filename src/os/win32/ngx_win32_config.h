@@ -70,6 +70,9 @@ typedef long  time_t;
 /* FD_SET() and FD_CLR(): conditional expression is constant */
 #pragma warning(disable:4127)
 
+/* array is too small to include a terminating null character */
+#pragma warning(disable:4295)
+
 #endif
 
 
