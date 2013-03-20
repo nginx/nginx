@@ -429,6 +429,9 @@ struct ngx_http_request_s {
     ngx_uint_t                        err_status;
 
     ngx_http_connection_t            *http_connection;
+#if (NGX_HTTP_SPDY)
+    ngx_http_spdy_stream_t           *spdy_stream;
+#endif
 
     ngx_http_log_handler_pt           log_handler;
 

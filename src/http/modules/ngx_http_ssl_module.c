@@ -275,11 +275,26 @@ static int
 ngx_http_ssl_npn_advertised(ngx_ssl_conn_t *ssl_conn,
     const unsigned char **out, unsigned int *outlen, void *arg)
 {
-#if (NGX_DEBUG)
+#if (NGX_HTTP_SPDY || NGX_DEBUG)
     ngx_connection_t  *c;
 
     c = ngx_ssl_get_connection(ssl_conn);
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "SSL NPN advertised");
+#endif
+
+#if (NGX_HTTP_SPDY)
+    {
+    ngx_http_connection_t  *hc;
+
+    hc = c->data;
+
+    if (hc->addr_conf->spdy) {
+        *out = (unsigned char *) NGX_SPDY_NPN_ADVERTISE NGX_HTTP_NPN_ADVERTISE;
+        *outlen = sizeof(NGX_SPDY_NPN_ADVERTISE NGX_HTTP_NPN_ADVERTISE) - 1;
+
+        return SSL_TLSEXT_ERR_OK;
+    }
+    }
 #endif
 
     *out = (unsigned char *) NGX_HTTP_NPN_ADVERTISE;

@@ -60,6 +60,7 @@ HTTP_CACHE=YES
 HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
+HTTP_SPDY=NO
 HTTP_SSI=YES
 HTTP_POSTPONE=NO
 HTTP_REALIP=NO
@@ -202,6 +203,7 @@ do
         --http-scgi-temp-path=*)         NGX_HTTP_SCGI_TEMP_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
+        --with-http_spdy_module)         HTTP_SPDY=YES              ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
@@ -349,6 +351,7 @@ cat << END
   --with-ipv6                        enable IPv6 support
 
   --with-http_ssl_module             enable ngx_http_ssl_module
+  --with-http_spdy_module            enable ngx_http_spdy_module
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module
