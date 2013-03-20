@@ -31,6 +31,7 @@ static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
 static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
+static ngx_int_t ngx_http_process_request_uri(ngx_http_request_t *r);
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 static void ngx_http_process_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool,
@@ -838,12 +839,11 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
-    ssize_t                    n;
-    ngx_int_t                  rc, rv;
-    ngx_str_t                  host;
-    ngx_connection_t          *c;
-    ngx_http_request_t        *r;
-    ngx_http_core_srv_conf_t  *cscf;
+    ssize_t              n;
+    ngx_int_t            rc, rv;
+    ngx_str_t            host;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
 
     c = rev->data;
     r = c->data;
@@ -880,129 +880,19 @@ ngx_http_process_request_line(ngx_event_t *rev)
             r->request_line.data = r->request_start;
             r->request_length = r->header_in->pos - r->request_start;
 
-
-            if (r->args_start) {
-                r->uri.len = r->args_start - 1 - r->uri_start;
-            } else {
-                r->uri.len = r->uri_end - r->uri_start;
-            }
-
-
-            if (r->complex_uri || r->quoted_uri) {
-
-                r->uri.data = ngx_pnalloc(r->pool, r->uri.len + 1);
-                if (r->uri.data == NULL) {
-                    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                    return;
-                }
-
-                cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-                rc = ngx_http_parse_complex_uri(r, cscf->merge_slashes);
-
-                if (rc == NGX_HTTP_PARSE_INVALID_REQUEST) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "client sent invalid request");
-                    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                    return;
-                }
-
-            } else {
-                r->uri.data = r->uri_start;
-            }
-
-
-            r->unparsed_uri.len = r->uri_end - r->uri_start;
-            r->unparsed_uri.data = r->uri_start;
-
-            r->valid_unparsed_uri = r->space_in_uri ? 0 : 1;
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http request line: \"%V\"", &r->request_line);
 
             r->method_name.len = r->method_end - r->request_start + 1;
             r->method_name.data = r->request_line.data;
-
 
             if (r->http_protocol.data) {
                 r->http_protocol.len = r->request_end - r->http_protocol.data;
             }
 
-
-            if (r->uri_ext) {
-                if (r->args_start) {
-                    r->exten.len = r->args_start - 1 - r->uri_ext;
-                } else {
-                    r->exten.len = r->uri_end - r->uri_ext;
-                }
-
-                r->exten.data = r->uri_ext;
+            if (ngx_http_process_request_uri(r) != NGX_OK) {
+                return;
             }
-
-
-            if (r->args_start && r->uri_end > r->args_start) {
-                r->args.len = r->uri_end - r->args_start;
-                r->args.data = r->args_start;
-            }
-
-#if (NGX_WIN32)
-            {
-            u_char  *p, *last;
-
-            p = r->uri.data;
-            last = r->uri.data + r->uri.len;
-
-            while (p < last) {
-
-                if (*p++ == ':') {
-
-                    /*
-                     * this check covers "::$data", "::$index_allocation" and
-                     * ":$i30:$index_allocation"
-                     */
-
-                    if (p < last && *p == '$') {
-                        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                      "client sent unsafe win32 URI");
-                        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                        return;
-                    }
-                }
-            }
-
-            p = r->uri.data + r->uri.len - 1;
-
-            while (p > r->uri.data) {
-
-                if (*p == ' ') {
-                    p--;
-                    continue;
-                }
-
-                if (*p == '.') {
-                    p--;
-                    continue;
-                }
-
-                break;
-            }
-
-            if (p != r->uri.data + r->uri.len - 1) {
-                r->uri.len = p + 1 - r->uri.data;
-                ngx_http_set_exten(r);
-            }
-
-            }
-#endif
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http request line: \"%V\"", &r->request_line);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http uri: \"%V\"", &r->uri);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http args: \"%V\"", &r->args);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http exten: \"%V\"", &r->exten);
 
             if (r->host_start && r->host_end) {
 
@@ -1092,6 +982,121 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
         }
     }
+}
+
+
+static ngx_int_t
+ngx_http_process_request_uri(ngx_http_request_t *r)
+{
+    ngx_http_core_srv_conf_t  *cscf;
+
+    if (r->args_start) {
+        r->uri.len = r->args_start - 1 - r->uri_start;
+    } else {
+        r->uri.len = r->uri_end - r->uri_start;
+    }
+
+    if (r->complex_uri || r->quoted_uri) {
+
+        r->uri.data = ngx_pnalloc(r->pool, r->uri.len + 1);
+        if (r->uri.data == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
+
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (ngx_http_parse_complex_uri(r, cscf->merge_slashes) != NGX_OK) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid request");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+    } else {
+        r->uri.data = r->uri_start;
+    }
+
+    r->unparsed_uri.len = r->uri_end - r->uri_start;
+    r->unparsed_uri.data = r->uri_start;
+
+    r->valid_unparsed_uri = r->space_in_uri ? 0 : 1;
+
+    if (r->uri_ext) {
+        if (r->args_start) {
+            r->exten.len = r->args_start - 1 - r->uri_ext;
+        } else {
+            r->exten.len = r->uri_end - r->uri_ext;
+        }
+
+        r->exten.data = r->uri_ext;
+    }
+
+    if (r->args_start && r->uri_end > r->args_start) {
+        r->args.len = r->uri_end - r->args_start;
+        r->args.data = r->args_start;
+    }
+
+#if (NGX_WIN32)
+    {
+    u_char  *p, *last;
+
+    p = r->uri.data;
+    last = r->uri.data + r->uri.len;
+
+    while (p < last) {
+
+        if (*p++ == ':') {
+
+            /*
+             * this check covers "::$data", "::$index_allocation" and
+             * ":$i30:$index_allocation"
+             */
+
+            if (p < last && *p == '$') {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent unsafe win32 URI");
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    p = r->uri.data + r->uri.len - 1;
+
+    while (p > r->uri.data) {
+
+        if (*p == ' ') {
+            p--;
+            continue;
+        }
+
+        if (*p == '.') {
+            p--;
+            continue;
+        }
+
+        break;
+    }
+
+    if (p != r->uri.data + r->uri.len - 1) {
+        r->uri.len = p + 1 - r->uri.data;
+        ngx_http_set_exten(r);
+    }
+
+    }
+#endif
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http uri: \"%V\"", &r->uri);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http args: \"%V\"", &r->args);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http exten: \"%V\"", &r->exten);
+
+    return NGX_OK;
 }
 
 
