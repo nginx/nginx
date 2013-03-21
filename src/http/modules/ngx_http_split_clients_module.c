@@ -218,7 +218,7 @@ ngx_http_split_clients(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         part->percent = 0;
 
     } else {
-        if (value[0].data[value[0].len - 1] != '%') {
+        if (value[0].len == 0 || value[0].data[value[0].len - 1] != '%') {
             goto invalid;
         }
 
