@@ -19,15 +19,9 @@ ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
         return NULL;
     }
 
-    a->elts = ngx_palloc(p, n * size);
-    if (a->elts == NULL) {
+    if (ngx_array_init(a, p, n, size) != NGX_OK) {
         return NULL;
     }
-
-    a->nelts = 0;
-    a->size = size;
-    a->nalloc = n;
-    a->pool = p;
 
     return a;
 }
