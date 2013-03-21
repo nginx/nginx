@@ -1479,7 +1479,7 @@ ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
 
     ngx_memzero(&ha, sizeof(ngx_hash_keys_arrays_t));
 
-    ha.temp_pool = ngx_create_pool(16384, cf->log);
+    ha.temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
     if (ha.temp_pool == NULL) {
         return NGX_ERROR;
     }

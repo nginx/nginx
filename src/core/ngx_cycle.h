@@ -14,7 +14,7 @@
 
 
 #ifndef NGX_CYCLE_POOL_SIZE
-#define NGX_CYCLE_POOL_SIZE     16384
+#define NGX_CYCLE_POOL_SIZE     NGX_DEFAULT_POOL_SIZE
 #endif
 
 

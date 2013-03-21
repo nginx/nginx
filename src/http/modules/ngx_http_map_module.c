@@ -227,7 +227,7 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     var->get_handler = ngx_http_map_variable;
     var->data = (uintptr_t) map;
 
-    pool = ngx_create_pool(16384, cf->log);
+    pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
     if (pool == NULL) {
         return NGX_CONF_ERROR;
     }

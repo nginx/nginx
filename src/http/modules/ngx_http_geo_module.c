@@ -430,14 +430,14 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    pool = ngx_create_pool(16384, cf->log);
+    pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
     if (pool == NULL) {
         return NGX_CONF_ERROR;
     }
 
     ngx_memzero(&ctx, sizeof(ngx_http_geo_conf_ctx_t));
 
-    ctx.temp_pool = ngx_create_pool(16384, cf->log);
+    ctx.temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
     if (ctx.temp_pool == NULL) {
         return NGX_CONF_ERROR;
     }
