@@ -11,10 +11,7 @@ ZLIB =		zlib-1.2.7
 PCRE =		pcre-8.32
 
 
-release:
-	rm -rf $(TEMP)
-
-	svn export -rHEAD . $(TEMP)/$(NGINX)
+release: export
 
 	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
 
@@ -39,7 +36,32 @@ release:
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
 
 
+export:
+	rm -rf $(TEMP)
+
+	if [ -d .svn ]; then						\
+		svn export -rHEAD . $(TEMP)/$(NGINX);			\
+	else								\
+		hg archive -X '.hg*' $(TEMP)/$(NGINX);			\
+	fi
+
+
 RELEASE:
+	if [ -d .svn ]; then						\
+		$(MAKE) -f misc/GNUmakefile RELEASE.svn;		\
+	else								\
+		$(MAKE) -f misc/GNUmakefile RELEASE.hg;			\
+	fi
+
+	$(MAKE) -f misc/GNUmakefile release
+
+
+RELEASE.hg:
+	hg ci -m nginx-$(VER)-RELEASE
+	hg tag -m "release-$(VER) tag" release-$(VER)
+
+	
+RELEASE.svn:
 	test -d $(TEMP) || mkdir -p $(TEMP)
 
 	echo "nginx-$(VER)-RELEASE" > $(TEMP)/message
@@ -50,8 +72,6 @@ RELEASE:
 		-F $(TEMP)/message
 
 	svn up
-
-	$(MAKE) -f misc/GNUmakefile release
 
 
 win32:
@@ -92,11 +112,9 @@ win32:
 		--with-mail_ssl_module					\
 		--with-ipv6
 
-zip:
-	rm -rf $(TEMP)
-	rm -f $(NGINX).zip
 
-	svn export -rHEAD . $(TEMP)/$(NGINX)
+zip: export
+	rm -f $(NGINX).zip
 
 	mkdir -p $(TEMP)/$(NGINX)/docs.new
 	mkdir -p $(TEMP)/$(NGINX)/logs
