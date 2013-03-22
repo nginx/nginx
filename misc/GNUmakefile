@@ -124,22 +124,24 @@ zip:
 	rm -rf $(TEMP)
 	rm -f $(NGINX).zip
 
-	mkdir -p $(TEMP)/$(NGINX)/docs
+	svn export -rHEAD . $(TEMP)/$(NGINX)
+
+	mkdir -p $(TEMP)/$(NGINX)/docs.new
 	mkdir -p $(TEMP)/$(NGINX)/logs
 	mkdir -p $(TEMP)/$(NGINX)/temp
 
-	svn export -rHEAD conf $(TEMP)/$(NGINX)/conf/
 	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
 
-	svn export -rHEAD contrib $(TEMP)/$(NGINX)/contrib/
-	svn export -rHEAD docs/html $(TEMP)/$(NGINX)/html/
+	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 
-	$(MAKE) -f docs/GNUmakefile changes
+	rm -r $(TEMP)/$(NGINX)/docs
+	mv $(TEMP)/$(NGINX)/docs.new $(TEMP)/$(NGINX)/docs
 
 	cp -p $(OBJS)/nginx.exe $(TEMP)/$(NGINX)
 
-	cp -p docs/text/LICENSE $(TEMP)/$(NGINX)/docs/
-	cp -p docs/text/README $(TEMP)/$(NGINX)/docs/
+	$(MAKE) -f docs/GNUmakefile changes
 	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
 
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE				\
@@ -154,6 +156,10 @@ zip:
 
 	touch -r $(OBJS)/lib/$(ZLIB)/README				\
 		$(TEMP)/$(NGINX)/docs/zlib.LICENSE
+
+	rm -r $(TEMP)/$(NGINX)/auto
+	rm -r $(TEMP)/$(NGINX)/misc
+	rm -r $(TEMP)/$(NGINX)/src
 
 	cd $(TEMP) && zip -r ../$(NGINX).zip $(NGINX)
 
