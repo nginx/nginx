@@ -454,12 +454,15 @@ static void
 ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx)
 {
-    u_char              *p;
-    time_t               timer;
-    size_t               len, size;
-    ngx_int_t            rc, port, n;
-    ngx_addr_t          *peer;
-    struct sockaddr_in  *sin;
+    u_char               *p;
+    time_t                timer;
+    size_t                len, size;
+    ngx_int_t             rc, port, n;
+    ngx_addr_t           *peer;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
                    "mail auth http process headers");
@@ -772,16 +775,25 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
-            /* AF_INET only */
+            rc = ngx_parse_addr(s->connection->pool, peer,
+                                ctx->addr.data, ctx->addr.len);
 
-            sin = ngx_pcalloc(s->connection->pool, sizeof(struct sockaddr_in));
-            if (sin == NULL) {
+            switch (rc) {
+            case NGX_OK:
+                break;
+
+            case NGX_DECLINED:
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                              "auth http server %V sent invalid server "
+                              "address:\"%V\"",
+                              ctx->peer.name, &ctx->addr);
+                /* fall through */
+
+            default:
                 ngx_destroy_pool(ctx->pool);
                 ngx_mail_session_internal_server_error(s);
                 return;
             }
-
-            sin->sin_family = AF_INET;
 
             port = ngx_atoi(ctx->port.data, ctx->port.len);
             if (port == NGX_ERROR || port < 1 || port > 65535) {
@@ -794,21 +806,20 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
-            sin->sin_port = htons((in_port_t) port);
+            switch (peer->sockaddr->sa_family) {
 
-            sin->sin_addr.s_addr = ngx_inet_addr(ctx->addr.data, ctx->addr.len);
-            if (sin->sin_addr.s_addr == INADDR_NONE) {
-                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                              "auth http server %V sent invalid server "
-                              "address:\"%V\"",
-                              ctx->peer.name, &ctx->addr);
-                ngx_destroy_pool(ctx->pool);
-                ngx_mail_session_internal_server_error(s);
-                return;
+#if (NGX_HAVE_INET6)
+            case AF_INET6:
+                sin6 = (struct sockaddr_in6 *) peer->sockaddr;
+                sin6->sin6_port = htons((in_port_t) port);
+                break;
+#endif
+
+            default: /* AF_INET */
+                sin = (struct sockaddr_in *) peer->sockaddr;
+                sin->sin_port = htons((in_port_t) port);
+                break;
             }
-
-            peer->sockaddr = (struct sockaddr *) sin;
-            peer->socklen = sizeof(struct sockaddr_in);
 
             len = ctx->addr.len + 1 + ctx->port.len;
 
