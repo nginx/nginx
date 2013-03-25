@@ -584,10 +584,6 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "free rr peer %ui %ui", pc->tries, state);
 
-    if (state == 0 && pc->tries == 0) {
-        return;
-    }
-
     /* TODO: NGX_PEER_KEEPALIVE */
 
     if (rrp->peers->single) {
