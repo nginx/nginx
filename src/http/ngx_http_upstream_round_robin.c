@@ -10,8 +10,6 @@
 #include <ngx_http.h>
 
 
-static ngx_int_t ngx_http_upstream_cmp_servers(const void *one,
-    const void *two);
 static ngx_http_upstream_rr_peer_t *ngx_http_upstream_get_peer(
     ngx_http_upstream_rr_peer_data_t *rrp);
 
@@ -93,10 +91,6 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
         us->peer.data = peers;
 
-        ngx_sort(&peers->peer[0], (size_t) n,
-                 sizeof(ngx_http_upstream_rr_peer_t),
-                 ngx_http_upstream_cmp_servers);
-
         /* backup servers */
 
         n = 0;
@@ -150,10 +144,6 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         }
 
         peers->next = backup;
-
-        ngx_sort(&backup->peer[0], (size_t) n,
-                 sizeof(ngx_http_upstream_rr_peer_t),
-                 ngx_http_upstream_cmp_servers);
 
         return NGX_OK;
     }
@@ -213,18 +203,6 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     /* implicitly defined upstream has no backup servers */
 
     return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_upstream_cmp_servers(const void *one, const void *two)
-{
-    ngx_http_upstream_rr_peer_t  *first, *second;
-
-    first = (ngx_http_upstream_rr_peer_t *) one;
-    second = (ngx_http_upstream_rr_peer_t *) two;
-
-    return (first->weight < second->weight);
 }
 
 
