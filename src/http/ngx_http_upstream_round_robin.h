@@ -42,10 +42,8 @@ typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 
 struct ngx_http_upstream_rr_peers_s {
     ngx_uint_t                      number;
-    ngx_uint_t                      last_cached;
 
  /* ngx_mutex_t                    *mutex; */
-    ngx_connection_t              **cached;
 
     ngx_uint_t                      total_weight;
 
