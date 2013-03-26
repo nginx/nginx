@@ -5,6 +5,123 @@
 <change_log title="nginx">
 
 
+<changes ver="1.3.15" date="26.03.2013">
+
+<change type="change">
+<para lang="ru">
+открытие и закрытие соединения без отправки в нём каких-либо данных
+больше не записывается в access_log с кодом ошибки 400.
+</para>
+<para lang="en">
+opening and closing a connection without sending any data in it
+is no longer logged to access_log with error code 400.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_spdy_module.<br/>
+Спасибо Automattic за спонсирование разработки.
+</para>
+<para lang="en">
+the ngx_http_spdy_module.<br/>
+Thanks to Automattic for sponsoring this work.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы limit_req_status и limit_conn_status.<br/>
+Спасибо Nick Marden.
+</para>
+<para lang="en">
+the "limit_req_status" and "limit_conn_status" directives.<br/>
+Thanks to Nick Marden.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива image_filter_interlace.<br/>
+Спасибо Ивану Боброву.
+</para>
+<para lang="en">
+the "image_filter_interlace" directive.<br/>
+Thanks to Ian Babrou.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $connections_waiting в модуле ngx_http_stub_status_module.
+</para>
+<para lang="en">
+$connections_waiting variable in the ngx_http_stub_status_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь почтовый прокси-сервер поддерживает IPv6-бэкенды.
+</para>
+<para lang="en">
+the mail proxy module now supports IPv6 backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при повторной отправке запроса на бэкенд
+тело запроса могло передаваться неправильно; 
+ошибка появилась в 1.3.9.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+request body might be transmitted incorrectly
+when retrying a request to the next upstream server;
+the bug had appeared in 1.3.9.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве client_body_in_file_only;
+ошибка появилась в 1.3.9.
+</para>
+<para lang="en">
+in the "client_body_in_file_only" directive;
+the bug had appeared in 1.3.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы могли зависать,
+если использовались подзапросы
+и при обработке подзапроса происходила DNS-ошибка.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+responses might hang
+if subrequests were used
+and a DNS error happened during subrequest processing.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в процедуре учёта использования бэкендов.
+</para>
+<para lang="en">
+in backend usage accounting.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.14" date="05.03.2013">
 
 <change type="feature">
@@ -195,7 +312,7 @@ the "[crit] SSL_write() failed (SSL:)" error.
 
 <change type="bugfix">
 <para lang="ru">
-в диркетиве client_body_in_file_only;
+в директиве client_body_in_file_only;
 ошибка появилась в 1.3.9.
 </para>
 <para lang="en">
