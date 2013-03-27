@@ -84,7 +84,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     c->log_error = pc->log_error;
 
-    if (pc->sockaddr->sa_family != AF_INET) {
+    if (pc->sockaddr->sa_family == AF_UNIX) {
         c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
         c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
 
