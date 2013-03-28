@@ -1,6 +1,6 @@
 
 VER=	$(shell grep 'define NGINX_VERSION' src/core/nginx.h		\
-		| sed -e 's/^.*\"\(.*\)\"/\1/')
+		| sed -e 's/^.*"\(.*\)".*/\1/')
 NGINX=	nginx-$(VER)
 TEMP=	tmp
 CP=	$(HOME)/java
