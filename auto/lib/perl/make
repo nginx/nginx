@@ -5,7 +5,7 @@
 
 cat << END                                                    >> $NGX_MAKEFILE
 
-$NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.so: \\
+$NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.$ngx_perl_dlext: \\
 		\$(CORE_DEPS) \$(HTTP_DEPS) \\
 		src/http/modules/perl/ngx_http_perl_module.h \\
 		$NGX_OBJS/src/http/modules/perl/Makefile
