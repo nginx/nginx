@@ -594,6 +594,10 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     var = ngx_alloc(sizeof(NGINX_VAR)
                     + cycle->listening.nelts * (NGX_INT32_LEN + 1) + 2,
                     cycle->log);
+    if (var == NULL) {
+        ngx_free(env);
+        return NGX_INVALID_PID;
+    }
 
     p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
 
