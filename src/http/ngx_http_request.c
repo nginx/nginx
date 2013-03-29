@@ -2743,6 +2743,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
     if (n == NGX_AGAIN) {
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_connection(c);
+            return;
         }
 
         /*
