@@ -94,7 +94,6 @@ void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args);
 
 
-ngx_int_t ngx_http_find_server_conf(ngx_http_request_t *r);
 void ngx_http_update_location_config(ngx_http_request_t *r);
 void ngx_http_handler(ngx_http_request_t *r);
 void ngx_http_run_posted_requests(ngx_connection_t *c);
