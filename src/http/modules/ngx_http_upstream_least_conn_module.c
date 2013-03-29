@@ -353,10 +353,6 @@ ngx_http_upstream_free_least_conn_peer(ngx_peer_connection_t *pc,
         return;
     }
 
-    if (state == 0 && pc->tries == 0) {
-        return;
-    }
-
     lcp->conns[lcp->rrp.current]--;
 
     lcp->free_rr_peer(pc, &lcp->rrp, state);

@@ -2846,14 +2846,16 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
 #endif
 
-    if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404) {
-        state = NGX_PEER_NEXT;
-    } else {
-        state = NGX_PEER_FAILED;
-    }
+    if (u->peer.sockaddr) {
 
-    if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) {
+        if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404) {
+            state = NGX_PEER_NEXT;
+        } else {
+            state = NGX_PEER_FAILED;
+        }
+
         u->peer.free(&u->peer, u->peer.data, state);
+        u->peer.sockaddr = NULL;
     }
 
     if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
@@ -3013,8 +3015,9 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     u->finalize_request(r, rc);
 
-    if (u->peer.free) {
+    if (u->peer.free && u->peer.sockaddr) {
         u->peer.free(&u->peer, u->peer.data, 0);
+        u->peer.sockaddr = NULL;
     }
 
     if (u->peer.connection) {
