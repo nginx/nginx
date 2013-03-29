@@ -3256,7 +3256,7 @@ ngx_http_core_regex_location(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf,
 #if (NGX_HAVE_CASELESS_FILESYSTEM)
     rc.options = NGX_REGEX_CASELESS;
 #else
-    rc.options = caseless;
+    rc.options = caseless ? NGX_REGEX_CASELESS : 0;
 #endif
 
     clcf->regex = ngx_http_regex_compile(cf, &rc);
