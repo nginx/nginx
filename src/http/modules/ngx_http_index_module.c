@@ -85,12 +85,12 @@ ngx_module_t  ngx_http_index_module = {
 
 /*
  * Try to open/test the first index file before the test of directory
- * existence because valid requests should be much more than invalid ones.
- * If the file open()/stat() would fail, then the directory stat() should
- * be more quickly because some data is already cached in the kernel.
+ * existence because valid requests should prevail over invalid ones.
+ * If open()/stat() of a file will fail then stat() of a directory
+ * should be faster because kernel may have already cached some data.
  * Besides, Win32 may return ERROR_PATH_NOT_FOUND (NGX_ENOTDIR) at once.
- * Unix has ENOTDIR error, however, it's less helpful than Win32's one:
- * it only indicates that path contains an usual file in place of directory.
+ * Unix has ENOTDIR error; however, it's less helpful than Win32's one:
+ * it only indicates that path points to a regular file, not a directory.
  */
 
 static ngx_int_t
