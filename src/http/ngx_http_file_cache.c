@@ -1674,8 +1674,6 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             p = (u_char *) ngx_strchr(name.data, ':');
 
             if (p) {
-                *p = '\0';
-
                 name.len = p - name.data;
 
                 p++;
