@@ -1716,8 +1716,18 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     }
 
     sess_id = ngx_slab_alloc_locked(shpool, sizeof(ngx_ssl_sess_id_t));
+
     if (sess_id == NULL) {
-        goto failed;
+
+        /* drop the oldest non-expired session and try once more */
+
+        ngx_ssl_expire_sessions(cache, shpool, 0);
+
+        sess_id = ngx_slab_alloc_locked(shpool, sizeof(ngx_ssl_sess_id_t));
+
+        if (sess_id == NULL) {
+            goto failed;
+        }
     }
 
 #if (NGX_PTR_SIZE == 8)
@@ -1727,8 +1737,18 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 #else
 
     id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+
     if (id == NULL) {
-        goto failed;
+
+        /* drop the oldest non-expired session and try once more */
+
+        ngx_ssl_expire_sessions(cache, shpool, 0);
+
+        id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+
+        if (id == NULL) {
+            goto failed;
+        }
     }
 
 #endif
