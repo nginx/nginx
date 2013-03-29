@@ -412,7 +412,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 }
 
                 if (ngx_test_config) {
-                    if (ngx_delete_file(name) == -1) {
+                    if (ngx_delete_file(name) == NGX_FILE_ERROR) {
                         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                                       ngx_delete_file_n " %s failed", name);
                     }
@@ -739,7 +739,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
         {
             u_char *name = ls[i].addr_text.data + sizeof("unix:") - 1;
 
-            if (ngx_delete_file(name) == -1) {
+            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
                               ngx_delete_file_n " %s failed", name);
             }
