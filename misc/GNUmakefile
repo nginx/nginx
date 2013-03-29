@@ -11,10 +11,7 @@ ZLIB =		zlib-1.2.7
 PCRE =		pcre-8.32
 
 
-release:
-	rm -rf $(TEMP)
-
-	svn export -rHEAD . $(TEMP)/$(NGINX)
+release: export
 
 	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
 
@@ -39,7 +36,32 @@ release:
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
 
 
+export:
+	rm -rf $(TEMP)
+
+	if [ -d .svn ]; then						\
+		svn export -rHEAD . $(TEMP)/$(NGINX);			\
+	else								\
+		hg archive -X '.hg*' $(TEMP)/$(NGINX);			\
+	fi
+
+
 RELEASE:
+	if [ -d .svn ]; then						\
+		$(MAKE) -f misc/GNUmakefile RELEASE.svn;		\
+	else								\
+		$(MAKE) -f misc/GNUmakefile RELEASE.hg;			\
+	fi
+
+	$(MAKE) -f misc/GNUmakefile release
+
+
+RELEASE.hg:
+	hg ci -m nginx-$(VER)-RELEASE
+	hg tag -m "release-$(VER) tag" release-$(VER)
+
+	
+RELEASE.svn:
 	test -d $(TEMP) || mkdir -p $(TEMP)
 
 	echo "nginx-$(VER)-RELEASE" > $(TEMP)/message
@@ -52,36 +74,6 @@ RELEASE:
 
 	svn up
 
-	$(MAKE) -f misc/GNUmakefile release
-
-
-snapshot:
-	rm -rf $(TEMP)
-
-	mkdir -p $(TEMP)
-	svn export . $(TEMP)/$(NGINX)
-
-	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
-
-	# delete incomplete sources
-	rm $(TEMP)/$(NGINX)/src/event/ngx_event_acceptex.c
-	rm $(TEMP)/$(NGINX)/src/event/ngx_event_connectex.c
-	rm $(TEMP)/$(NGINX)/src/event/modules/ngx_iocp_module.*
-	rm -r $(TEMP)/$(NGINX)/src/os/win32
-
-	rm -r $(TEMP)/$(NGINX)/src/mysql
-
-	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
-	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
-	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
-	mv $(TEMP)/$(NGINX)/docs/man $(TEMP)/$(NGINX)
-
-	$(MAKE) -f docs/GNUmakefile changes
-
-	rm -r $(TEMP)/$(NGINX)/docs
-	rm -r $(TEMP)/$(NGINX)/misc
-
-	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
 
 win32:
 	./auto/configure						\
@@ -120,26 +112,26 @@ win32:
 		--with-mail_ssl_module					\
 		--with-ipv6
 
-zip:
-	rm -rf $(TEMP)
+
+zip: export
 	rm -f $(NGINX).zip
 
-	mkdir -p $(TEMP)/$(NGINX)/docs
+	mkdir -p $(TEMP)/$(NGINX)/docs.new
 	mkdir -p $(TEMP)/$(NGINX)/logs
 	mkdir -p $(TEMP)/$(NGINX)/temp
 
-	svn export -rHEAD conf $(TEMP)/$(NGINX)/conf/
 	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
 
-	svn export -rHEAD contrib $(TEMP)/$(NGINX)/contrib/
-	svn export -rHEAD docs/html $(TEMP)/$(NGINX)/html/
+	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 
-	$(MAKE) -f docs/GNUmakefile changes
+	rm -r $(TEMP)/$(NGINX)/docs
+	mv $(TEMP)/$(NGINX)/docs.new $(TEMP)/$(NGINX)/docs
 
 	cp -p $(OBJS)/nginx.exe $(TEMP)/$(NGINX)
 
-	cp -p docs/text/LICENSE $(TEMP)/$(NGINX)/docs/
-	cp -p docs/text/README $(TEMP)/$(NGINX)/docs/
+	$(MAKE) -f docs/GNUmakefile changes
 	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
 
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE				\
@@ -154,6 +146,10 @@ zip:
 
 	touch -r $(OBJS)/lib/$(ZLIB)/README				\
 		$(TEMP)/$(NGINX)/docs/zlib.LICENSE
+
+	rm -r $(TEMP)/$(NGINX)/auto
+	rm -r $(TEMP)/$(NGINX)/misc
+	rm -r $(TEMP)/$(NGINX)/src
 
 	cd $(TEMP) && zip -r ../$(NGINX).zip $(NGINX)
 
