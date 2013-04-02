@@ -5,6 +5,61 @@
 <change_log title="nginx">
 
 
+<changes ver="1.2.8" date="02.04.2013">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "ssl_session_cache shared"
+новые сессии могли не сохраняться,
+если заканчивалось место в разделяемой памяти.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+new sessions were not always stored
+if the "ssl_session_cache shared" directive was used
+and there was no free space in shared memory.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы могли зависать,
+если использовались подзапросы
+и при обработке подзапроса происходила DNS-ошибка.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+responses might hang
+if subrequests were used
+and a DNS error happened during subrequest processing.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Gernot Vormayr.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Gernot Vormayr.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в процедуре учёта использования бэкендов.
+</para>
+<para lang="en">
+in backend usage accounting.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.2.7" date="12.02.2013">
 
 <change type="change">
