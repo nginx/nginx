@@ -110,8 +110,9 @@ typedef struct {
     ngx_str_t                        service;
 #endif
 
-    NGX_COMPAT_BEGIN(2)
-    NGX_COMPAT_END
+#if (NGX_HTTP_UPSTREAM_SID || NGX_COMPAT)
+    ngx_str_t                        sid;
+#endif
 } ngx_http_upstream_server_t;
 
 

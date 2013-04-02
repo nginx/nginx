@@ -249,6 +249,17 @@ ngx_http_upstream_get_random_peer(ngx_peer_connection_t *pc, void *data)
 
     now = ngx_time();
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    peer = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &i, 1);
+
+    if (peer) {
+        n = i / (8 * sizeof(uintptr_t));
+        m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
+
+        goto found;
+    }
+#endif
+
     for ( ;; ) {
 
         i = ngx_http_upstream_peek_random_peer(peers, rp);
@@ -292,6 +303,10 @@ ngx_http_upstream_get_random_peer(ngx_peer_connection_t *pc, void *data)
         }
     }
 
+#if (NGX_HTTP_UPSTREAM_SID)
+found:
+#endif
+
     rrp->current = peer;
     ngx_http_upstream_rr_peer_ref(peers, peer);
 
@@ -302,6 +317,10 @@ ngx_http_upstream_get_random_peer(ngx_peer_connection_t *pc, void *data)
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &peer->sid;
+#endif
 
     peer->conns++;
 
@@ -357,6 +376,17 @@ ngx_http_upstream_get_random2_peer(ngx_peer_connection_t *pc, void *data)
     p = 0;
 #endif
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    peer = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &i, 0);
+
+    if (peer) {
+        n = i / (8 * sizeof(uintptr_t));
+        m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
+
+        goto found;
+    }
+#endif
+
     for ( ;; ) {
 
         i = ngx_http_upstream_peek_random_peer(peers, rp);
@@ -410,6 +440,10 @@ ngx_http_upstream_get_random2_peer(ngx_peer_connection_t *pc, void *data)
         }
     }
 
+#if (NGX_HTTP_UPSTREAM_SID)
+found:
+#endif
+
     rrp->current = peer;
     ngx_http_upstream_rr_peer_ref(peers, peer);
 
@@ -420,6 +454,10 @@ ngx_http_upstream_get_random2_peer(ngx_peer_connection_t *pc, void *data)
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &peer->sid;
+#endif
 
     peer->conns++;
 
