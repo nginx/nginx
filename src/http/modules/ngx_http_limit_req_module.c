@@ -795,7 +795,7 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             rate = ngx_atoi(value[i].data + 5, len - 5);
-            if (rate <= NGX_ERROR) {
+            if (rate <= 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid rate \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
