@@ -3276,19 +3276,10 @@ ngx_http_upstream_cleanup(void *data)
 {
     ngx_http_request_t *r = data;
 
-    ngx_http_upstream_t  *u;
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "cleanup http upstream request: \"%V\"", &r->uri);
 
-    u = r->upstream;
-
-    if (u->resolved && u->resolved->ctx) {
-        ngx_resolve_name_done(u->resolved->ctx);
-        u->resolved->ctx = NULL;
-    }
-
-    ngx_http_upstream_finalize_request(r, u, NGX_DONE);
+    ngx_http_upstream_finalize_request(r, r->upstream, NGX_DONE);
 }
 
 
