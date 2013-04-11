@@ -3307,7 +3307,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         u->state->response_sec = tp->sec - u->state->response_sec;
         u->state->response_msec = tp->msec - u->state->response_msec;
 
-        if (u->pipe) {
+        if (u->pipe && u->pipe->read_length) {
             u->state->response_length = u->pipe->read_length;
         }
     }
