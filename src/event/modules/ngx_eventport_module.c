@@ -530,6 +530,14 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
             rev = c->read;
             wev = c->write;
 
+            if (!rev->active) {
+                revents &= ~POLLIN;
+            }
+
+            if (!wew->active) {
+                revents &= ~POLLOUT;
+            }
+
             rev->active = 0;
             wev->active = 0;
 
