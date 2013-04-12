@@ -514,7 +514,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
                 rev->handler(rev);
 
-                if (c->fd == -1 || wev->instance != instance) {
+                if (c->fd == -1 || rev->instance != instance) {
                     continue;
                 }
             }

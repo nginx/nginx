@@ -534,7 +534,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                 revents &= ~POLLIN;
             }
 
-            if (!wew->active) {
+            if (!wev->active) {
                 revents &= ~POLLOUT;
             }
 
