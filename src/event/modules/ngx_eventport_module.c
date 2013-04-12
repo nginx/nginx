@@ -551,7 +551,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                 } else {
                     rev->handler(rev);
 
-                    if (ev->closed) {
+                    if (ev->closed || ev->instance != instance) {
                         continue;
                     }
                 }

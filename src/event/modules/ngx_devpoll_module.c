@@ -343,7 +343,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_fd_t            fd;
     ngx_err_t           err;
     ngx_int_t           i;
-    ngx_uint_t          level;
+    ngx_uint_t          level, instance;
     ngx_event_t        *rev, *wev, **queue;
     ngx_connection_t   *c;
     struct pollfd       pfd;
@@ -510,7 +510,13 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                 ngx_locked_post_event(rev, queue);
 
             } else {
+                instance = rev->instance;
+
                 rev->handler(rev);
+
+                if (c->fd == -1 || wev->instance != instance) {
+                    continue;
+                }
             }
         }
 
