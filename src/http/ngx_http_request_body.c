@@ -49,7 +49,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 #endif
 
-    if (r->request_body || r->discard_body) {
+    if (r != r->main || r->request_body || r->discard_body) {
         post_handler(r);
         return NGX_OK;
     }
