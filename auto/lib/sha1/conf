@@ -57,7 +57,7 @@ else
 
             # OpenSSL crypto library
 
-            ngx_feature="OpenSSL sha1 crypto library"
+            ngx_feature="sha1 in system OpenSSL crypto library"
             ngx_feature_incs="#include <openssl/sha.h>"
             ngx_feature_libs="-lcrypto"
             . auto/feature

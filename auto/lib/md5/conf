@@ -52,7 +52,7 @@ else
 
             # FreeBSD, Solaris 10
 
-            ngx_feature="system md library"
+            ngx_feature="md5 in system md library"
             ngx_feature_name=NGX_HAVE_MD5
             ngx_feature_run=no
             ngx_feature_incs="#include <md5.h>"
@@ -67,7 +67,7 @@ else
 
             # Solaris 8/9
 
-            ngx_feature="system md5 library"
+            ngx_feature="md5 in system md5 library"
             ngx_feature_libs="-lmd5"
             . auto/feature
 
@@ -78,7 +78,7 @@ else
 
             # OpenSSL crypto library
 
-            ngx_feature="OpenSSL md5 crypto library"
+            ngx_feature="md5 in system OpenSSL crypto library"
             ngx_feature_name="NGX_OPENSSL_MD5"
             ngx_feature_incs="#include <openssl/md5.h>"
             ngx_feature_libs="-lcrypto"
