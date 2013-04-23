@@ -357,7 +357,7 @@ has_request_body(r, next)
 
     ngx_http_perl_set_request(r);
 
-    if (r->headers_in.content_length_n <= 0) {
+    if (r->headers_in.content_length_n <= 0 && !r->headers_in.chunked) {
         XSRETURN_UNDEF;
     }
 
@@ -386,7 +386,10 @@ request_body(r)
 
     dXSTARG;
     ngx_http_request_t  *r;
+    u_char              *p, *data;
     size_t               len;
+    ngx_buf_t           *buf;
+    ngx_chain_t         *cl;
 
     ngx_http_perl_set_request(r);
 
@@ -397,13 +400,43 @@ request_body(r)
         XSRETURN_UNDEF;
     }
 
-    len = r->request_body->bufs->buf->last - r->request_body->bufs->buf->pos;
+    cl = r->request_body->bufs;
+    buf = cl->buf;
+
+    if (cl->next == NULL) {
+        len = buf->last - buf->pos;
+        data = buf->pos;
+        goto done;
+    }
+
+    len = buf->last - buf->pos;
+    cl = cl->next;
+
+    for ( /* void */ ; cl; cl = cl->next) {
+        buf = cl->buf;
+        len += buf->last - buf->pos;
+    }
+
+    p = ngx_pnalloc(r->pool, len);
+    if (p == NULL) {
+        return XSRETURN_UNDEF;
+    }
+
+    data = p;
+    cl = r->request_body->bufs;
+
+    for ( /* void */ ; cl; cl = cl->next) {
+        buf = cl->buf;
+        p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
+    }
+
+    done:
 
     if (len == 0) {
         XSRETURN_UNDEF;
     }
 
-    ngx_http_perl_set_targ(r->request_body->bufs->buf->pos, len);
+    ngx_http_perl_set_targ(data, len);
 
     ST(0) = TARG;
 
