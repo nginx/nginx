@@ -1830,6 +1830,7 @@ ngx_http_spdy_create_stream(ngx_http_spdy_connection_t *sc, ngx_uint_t id,
     fc->log = log;
     fc->buffered = 0;
     fc->sndlowat = 1;
+    fc->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
 
     r = ngx_http_create_request(fc);
     if (r == NULL) {
