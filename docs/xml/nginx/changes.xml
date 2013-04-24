@@ -5,6 +5,35 @@
 <change_log title="nginx">
 
 
+<changes ver="1.4.0" date="24.04.2013">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с модулем ngx_http_perl_module,
+если использовался параметр --with-openssl;
+ошибка появилась в 1.3.16.
+</para>
+<para lang="en">
+nginx could not be built with the ngx_http_perl_module
+if the --with-openssl option was used;
+the bug had appeared in 1.3.16.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в работе с телом запроса из модуля ngx_http_perl_module;
+ошибка появилась в 1.3.9.
+</para>
+<para lang="en">
+in a request body handling in the ngx_http_perl_module;
+the bug had appeared in 1.3.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.3.16" date="16.04.2013">
 
 <change type="bugfix">
