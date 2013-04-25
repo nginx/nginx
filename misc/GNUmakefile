@@ -3,7 +3,6 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 			| sed -e 's/^.*"\(.*\)".*/\1/')
 NGINX =		nginx-$(VER)
 TEMP =		tmp
-REPO =		$(shell svn info | sed -n 's/^Repository Root: //p')
 
 OBJS =		objs.msvc8
 OPENSSL =	openssl-1.0.1e
@@ -38,40 +37,14 @@ release: export
 
 export:
 	rm -rf $(TEMP)
-
-	if [ -d .svn ]; then						\
-		svn export -rHEAD . $(TEMP)/$(NGINX);			\
-	else								\
-		hg archive -X '.hg*' $(TEMP)/$(NGINX);			\
-	fi
+	hg archive -X '.hg*' $(TEMP)/$(NGINX)
 
 
 RELEASE:
-	if [ -d .svn ]; then						\
-		$(MAKE) -f misc/GNUmakefile RELEASE.svn;		\
-	else								\
-		$(MAKE) -f misc/GNUmakefile RELEASE.hg;			\
-	fi
-
-	$(MAKE) -f misc/GNUmakefile release
-
-
-RELEASE.hg:
 	hg ci -m nginx-$(VER)-RELEASE
 	hg tag -m "release-$(VER) tag" release-$(VER)
 
-	
-RELEASE.svn:
-	test -d $(TEMP) || mkdir -p $(TEMP)
-
-	echo "nginx-$(VER)-RELEASE" > $(TEMP)/message
-	svn ci -F $(TEMP)/message
-
-	echo "release-$(VER) tag" > $(TEMP)/message
-	svn copy $(REPO)/trunk $(REPO)/tags/release-$(VER)		\
-		-F $(TEMP)/message
-
-	svn up
+	$(MAKE) -f misc/GNUmakefile release
 
 
 win32:
