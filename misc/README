@@ -1,7 +1,4 @@
 
-GNUmakefile, in svn it is available since 0.4.0 only.
-
-
 make -f misc/GNUmakefile release
 
 the required tools:
