@@ -2076,7 +2076,7 @@ ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    v->data = ngx_pnalloc(r->connection->pool, NGX_OFF_T_LEN);
+    v->data = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
 
     if (v->data == NULL) {
         return NGX_ERROR;
