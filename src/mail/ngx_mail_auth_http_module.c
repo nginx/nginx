@@ -699,7 +699,6 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
 
                     p = ngx_pnalloc(s->connection->pool, ctx->err.len);
                     if (p == NULL) {
-                        ngx_close_connection(ctx->peer.connection);
                         ngx_destroy_pool(ctx->pool);
                         ngx_mail_session_internal_server_error(s);
                         return;
