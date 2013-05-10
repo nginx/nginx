@@ -308,6 +308,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_ssl_ecdh_curve(cf, &conf->ssl, &conf->ecdh_curve) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_value(conf->builtin_session_cache,
                          prev->builtin_session_cache, NGX_SSL_NONE_SCACHE);
 
