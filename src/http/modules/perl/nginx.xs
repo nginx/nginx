@@ -419,7 +419,7 @@ request_body(r)
 
     p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
-        return XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     data = p;
