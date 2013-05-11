@@ -152,7 +152,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
             cl = ngx_chain_get_free_buf(r->pool, &rb->free);
             if (cl == NULL) {
-                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                goto done;
             }
 
             b = cl->buf;
