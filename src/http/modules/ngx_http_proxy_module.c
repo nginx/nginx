@@ -615,7 +615,8 @@ static ngx_http_variable_t  ngx_http_proxy_vars[] = {
 #endif
 
     { ngx_string("proxy_internal_body_length"), NULL,
-      ngx_http_proxy_internal_body_length_variable, 0, NGX_HTTP_VAR_NOHASH, 0 },
+      ngx_http_proxy_internal_body_length_variable, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
