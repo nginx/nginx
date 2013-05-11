@@ -202,6 +202,8 @@ typedef struct {
     &((ngx_http_mp4_trak_t *) mp4->trak.elts)[mp4->trak.nelts - 1]
 
 
+static ngx_int_t ngx_http_mp4_handler(ngx_http_request_t *r);
+
 static ngx_int_t ngx_http_mp4_process(ngx_http_mp4_file_t *mp4);
 static ngx_int_t ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_atom_handler_t *atom, uint64_t atom_data_size);
@@ -280,9 +282,11 @@ static ngx_int_t ngx_http_mp4_update_co64_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
 static void ngx_http_mp4_adjust_co64_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak, off_t adjustment);
+
 static char *ngx_http_mp4(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void *ngx_http_mp4_create_conf(ngx_conf_t *cf);
 static char *ngx_http_mp4_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+
 
 static ngx_command_t  ngx_http_mp4_commands[] = {
 
@@ -518,47 +522,51 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
             ngx_set_errno(0);
             start = (int) (strtod((char *) value.data, NULL) * 1000);
 
-            if (ngx_errno == 0 && start >= 0) {
-                r->allow_ranges = 0;
-
-                mp4 = ngx_pcalloc(r->pool, sizeof(ngx_http_mp4_file_t));
-                if (mp4 == NULL) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                }
-
-                mp4->file.fd = of.fd;
-                mp4->file.name = path;
-                mp4->file.log = r->connection->log;;
-                mp4->end = of.size;
-                mp4->start = (ngx_uint_t) start;
-                mp4->request = r;
-
-                switch (ngx_http_mp4_process(mp4)) {
-
-                case NGX_DECLINED:
-                    if (mp4->buffer) {
-                        ngx_pfree(r->pool, mp4->buffer);
-                    }
-
-                    ngx_pfree(r->pool, mp4);
-                    mp4 = NULL;
-
-                    break;
-
-                case NGX_OK:
-                    r->headers_out.content_length_n = mp4->content_length;
-                    break;
-
-                default: /* NGX_ERROR */
-                    if (mp4->buffer) {
-                        ngx_pfree(r->pool, mp4->buffer);
-                    }
-
-                    ngx_pfree(r->pool, mp4);
-
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                }
+            if (ngx_errno != 0) {
+                start = -1;
             }
+        }
+    }
+
+    if (start >= 0) {
+        r->allow_ranges = 0;
+
+        mp4 = ngx_pcalloc(r->pool, sizeof(ngx_http_mp4_file_t));
+        if (mp4 == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        mp4->file.fd = of.fd;
+        mp4->file.name = path;
+        mp4->file.log = r->connection->log;;
+        mp4->end = of.size;
+        mp4->start = (ngx_uint_t) start;
+        mp4->request = r;
+
+        switch (ngx_http_mp4_process(mp4)) {
+
+        case NGX_DECLINED:
+            if (mp4->buffer) {
+                ngx_pfree(r->pool, mp4->buffer);
+            }
+
+            ngx_pfree(r->pool, mp4);
+            mp4 = NULL;
+
+            break;
+
+        case NGX_OK:
+            r->headers_out.content_length_n = mp4->content_length;
+            break;
+
+        default: /* NGX_ERROR */
+            if (mp4->buffer) {
+                ngx_pfree(r->pool, mp4->buffer);
+            }
+
+            ngx_pfree(r->pool, mp4);
+
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
 
