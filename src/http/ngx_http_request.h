@@ -420,6 +420,7 @@ struct ngx_http_request_s {
 #endif
 
     size_t                            limit_rate;
+    size_t                            limit_rate_after;
 
     /* used to learn the Apache compatible response length without a header */
     size_t                            header_size;
