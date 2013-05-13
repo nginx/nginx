@@ -3166,8 +3166,8 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
         return;
     }
 
-    timer = (ngx_msec_t) (r->lingering_time - ngx_time());
-    if (timer <= 0) {
+    timer = (ngx_msec_t) r->lingering_time - (ngx_msec_t) ngx_time();
+    if ((ngx_msec_int_t) timer <= 0) {
         ngx_http_close_request(r, 0);
         return;
     }
