@@ -1660,7 +1660,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* rc == NGX_OK */
 
-    if (u->headers_in.status_n > NGX_HTTP_SPECIAL_RESPONSE) {
+    if (u->headers_in.status_n >= NGX_HTTP_SPECIAL_RESPONSE) {
 
         if (r->subrequest_in_memory) {
             u->buffer.last = u->buffer.pos;
