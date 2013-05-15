@@ -993,6 +993,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     len += uri_len;
 
+    ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
+
     ngx_http_script_flush_no_cacheable_variables(r, plcf->flushes);
 
     if (plcf->body_set_len) {
