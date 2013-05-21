@@ -70,8 +70,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if 0
         /* TODO: SSI may pass NULL */
         ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                      "http postpone filter NULL inactive request",
-                      &r->uri, &r->args);
+                      "http postpone filter NULL inactive request");
 #endif
 
         return NGX_OK;
@@ -108,8 +107,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (pr->out == NULL) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "http postpone filter NULL output",
-                          &r->uri, &r->args);
+                          "http postpone filter NULL output");
 
         } else {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,

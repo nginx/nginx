@@ -357,7 +357,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     if (ngx_close_dir(&dir) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                      ngx_close_dir_n " \"%s\" failed", &path);
+                      ngx_close_dir_n " \"%V\" failed", &path);
     }
 
     escape_html = ngx_escape_html(NULL, r->uri.data, r->uri.len);
