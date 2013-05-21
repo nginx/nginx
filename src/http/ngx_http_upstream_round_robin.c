@@ -523,7 +523,10 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
     rrp->tried[n] |= m;
 
     best->current_weight -= total;
-    best->checked = now;
+
+    if (now - best->checked > best->fail_timeout) {
+        best->checked = now;
+    }
 
     return best;
 }
