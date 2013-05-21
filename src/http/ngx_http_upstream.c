@@ -1709,11 +1709,11 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
+    }
 
-        if (u->length == 0) {
-            ngx_http_upstream_finalize_request(r, u, 0);
-            return;
-        }
+    if (u->length == 0) {
+        ngx_http_upstream_finalize_request(r, u, 0);
+        return;
     }
 
     u->read_event_handler = ngx_http_upstream_process_body_in_memory;
