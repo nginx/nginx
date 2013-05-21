@@ -282,7 +282,10 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     }
 
     best->current_weight -= total;
-    best->checked = now;
+
+    if (now - best->checked > best->fail_timeout) {
+        best->checked = now;
+    }
 
     pc->sockaddr = best->sockaddr;
     pc->socklen = best->socklen;
