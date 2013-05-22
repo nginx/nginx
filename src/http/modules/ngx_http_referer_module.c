@@ -396,8 +396,7 @@ ngx_http_valid_referers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_set(&name, "invalid_referer");
 
-    var = ngx_http_add_variable(cf, &name,
-                                NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOHASH);
+    var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
     if (var == NULL) {
         return NGX_CONF_ERROR;
     }
