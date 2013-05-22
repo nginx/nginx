@@ -5,8 +5,8 @@
  */
 
 
-#ifndef _NGX_HTTP_CONF_FILE_H_INCLUDED_
-#define _NGX_HTTP_CONF_FILE_H_INCLUDED_
+#ifndef _NGX_CONF_FILE_H_INCLUDED_
+#define _NGX_CONF_FILE_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -337,4 +337,4 @@ extern ngx_uint_t     ngx_max_module;
 extern ngx_module_t  *ngx_modules[];
 
 
-#endif /* _NGX_HTTP_CONF_FILE_H_INCLUDED_ */
+#endif /* _NGX_CONF_FILE_H_INCLUDED_ */

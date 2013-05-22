@@ -181,7 +181,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 } else {
                     c->tcp_nodelay = NGX_TCP_NODELAY_UNSET;
 
-                    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                    "no tcp_nodelay");
                 }
             }
