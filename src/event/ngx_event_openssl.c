@@ -517,7 +517,8 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 
 
 RSA *
-ngx_ssl_rsa512_key_callback(SSL *ssl, int is_export, int key_length)
+ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
+    int key_length)
 {
     static RSA  *key;
 
