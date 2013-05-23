@@ -186,7 +186,7 @@ ngx_http_spdy_queue_blocked_frame(ngx_http_spdy_connection_t *sc,
 
 
 void ngx_http_spdy_init(ngx_event_t *rev);
-void ngx_http_spdy_request_headers_init();
+void ngx_http_spdy_request_headers_init(void);
 
 ngx_int_t ngx_http_spdy_read_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler);

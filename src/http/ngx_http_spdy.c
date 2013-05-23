@@ -2176,7 +2176,7 @@ ngx_http_spdy_handle_request_header(ngx_http_request_t *r)
 
 
 void
-ngx_http_spdy_request_headers_init()
+ngx_http_spdy_request_headers_init(void)
 {
     ngx_uint_t                       i;
     ngx_http_spdy_request_header_t  *h;

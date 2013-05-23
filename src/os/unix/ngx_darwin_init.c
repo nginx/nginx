@@ -59,7 +59,7 @@ sysctl_t sysctls[] = {
 
 
 void
-ngx_debug_init()
+ngx_debug_init(void)
 {
 #if (NGX_DEBUG_MALLOC)
 

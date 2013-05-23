@@ -271,7 +271,7 @@ ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
 
 ngx_tid_t
-ngx_thread_self()
+ngx_thread_self(void)
 {
     ngx_int_t  tid;
 
