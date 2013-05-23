@@ -197,7 +197,6 @@ ngx_http_memcached_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ctx->rest = NGX_HTTP_MEMCACHED_END;
     ctx->request = r;
 
     ngx_http_set_ctx(r, ctx, ngx_http_memcached_module);
@@ -309,10 +308,15 @@ ngx_http_memcached_process_header(ngx_http_request_t *r)
 
 found:
 
-    *p = '\0';
-
-    line.len = p - u->buffer.pos - 1;
     line.data = u->buffer.pos;
+    line.len = p - u->buffer.pos;
+
+    if (line.len == 0 || *(p - 1) != CR) {
+        goto no_valid;
+    }
+
+    *p = '\0';
+    line.len--;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "memcached: \"%V\"", &line);
@@ -387,10 +391,9 @@ found:
     length:
 
         start = p;
+        p = line.data + line.len;
 
-        while (*p && *p++ != CR) { /* void */ }
-
-        u->headers_in.content_length_n = ngx_atoof(start, p - start - 1);
+        u->headers_in.content_length_n = ngx_atoof(start, p - start);
         if (u->headers_in.content_length_n == -1) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "memcached sent invalid length in response \"%V\" "
@@ -401,7 +404,7 @@ found:
 
         u->headers_in.status_n = 200;
         u->state->status = 200;
-        u->buffer.pos = p + 1;
+        u->buffer.pos = p + sizeof(CRLF) - 1;
 
         return NGX_OK;
     }
@@ -410,8 +413,10 @@ found:
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "key: \"%V\" was not found by memcached", &ctx->key);
 
+        u->headers_in.content_length_n = 0;
         u->headers_in.status_n = 404;
         u->state->status = 404;
+        u->buffer.pos = p + sizeof("END" CRLF) - 1;
         u->keepalive = 1;
 
         return NGX_OK;
@@ -435,7 +440,10 @@ ngx_http_memcached_filter_init(void *data)
 
     u = ctx->request->upstream;
 
-    u->length += NGX_HTTP_MEMCACHED_END;
+    if (u->headers_in.status_n != 404) {
+        u->length += NGX_HTTP_MEMCACHED_END;
+        ctx->rest = NGX_HTTP_MEMCACHED_END;
+    }
 
     return NGX_OK;
 }
