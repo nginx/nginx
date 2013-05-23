@@ -225,6 +225,11 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
              * "types { ... }" directive
              */
 
+            if (rc == NGX_CONF_BLOCK_START) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unexpected \"{\"");
+                goto failed;
+            }
+
             rv = (*cf->handler)(cf, NULL, cf->handler_conf);
             if (rv == NGX_CONF_OK) {
                 continue;
