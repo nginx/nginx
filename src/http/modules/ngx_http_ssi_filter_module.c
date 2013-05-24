@@ -21,6 +21,7 @@ typedef struct {
     ngx_flag_t    enable;
     ngx_flag_t    silent_errors;
     ngx_flag_t    ignore_recycled_buffers;
+    ngx_flag_t    last_modified;
 
     ngx_hash_t    types;
 
@@ -161,6 +162,13 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_ssi_loc_conf_t, types_keys),
       &ngx_http_html_default_types[0] },
+
+    { ngx_string("ssi_last_modified"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_ssi_loc_conf_t, last_modified),
+      NULL },
 
       ngx_null_command
 };
@@ -359,9 +367,12 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
 
     if (r == r->main) {
         ngx_http_clear_content_length(r);
-        ngx_http_clear_last_modified(r);
         ngx_http_clear_accept_ranges(r);
         ngx_http_clear_etag(r);
+
+        if (!slcf->last_modified) {
+            ngx_http_clear_last_modified(r);
+        }
     }
 
     return ngx_http_next_header_filter(r);
@@ -2878,6 +2889,7 @@ ngx_http_ssi_create_loc_conf(ngx_conf_t *cf)
     slcf->enable = NGX_CONF_UNSET;
     slcf->silent_errors = NGX_CONF_UNSET;
     slcf->ignore_recycled_buffers = NGX_CONF_UNSET;
+    slcf->last_modified = NGX_CONF_UNSET;
 
     slcf->min_file_chunk = NGX_CONF_UNSET_SIZE;
     slcf->value_len = NGX_CONF_UNSET_SIZE;
@@ -2896,6 +2908,7 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->silent_errors, prev->silent_errors, 0);
     ngx_conf_merge_value(conf->ignore_recycled_buffers,
                          prev->ignore_recycled_buffers, 0);
+    ngx_conf_merge_value(conf->last_modified, prev->last_modified, 0);
 
     ngx_conf_merge_size_value(conf->min_file_chunk, prev->min_file_chunk, 1024);
     ngx_conf_merge_size_value(conf->value_len, prev->value_len, 255);
