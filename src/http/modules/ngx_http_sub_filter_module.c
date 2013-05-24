@@ -17,6 +17,7 @@ typedef struct {
     ngx_hash_t                 types;
 
     ngx_flag_t                 once;
+    ngx_flag_t                 last_modified;
 
     ngx_array_t               *types_keys;
 } ngx_http_sub_loc_conf_t;
@@ -87,6 +88,13 @@ static ngx_command_t  ngx_http_sub_filter_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_sub_loc_conf_t, once),
+      NULL },
+
+    { ngx_string("sub_filter_last_modified"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_sub_loc_conf_t, last_modified),
       NULL },
 
       ngx_null_command
@@ -167,8 +175,11 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
 
     if (r == r->main) {
         ngx_http_clear_content_length(r);
-        ngx_http_clear_last_modified(r);
         ngx_http_clear_etag(r);
+
+        if (!slcf->last_modified) {
+            ngx_http_clear_last_modified(r);
+        }
     }
 
     return ngx_http_next_header_filter(r);
@@ -674,6 +685,7 @@ ngx_http_sub_create_conf(ngx_conf_t *cf)
      */
 
     slcf->once = NGX_CONF_UNSET;
+    slcf->last_modified = NGX_CONF_UNSET;
 
     return slcf;
 }
@@ -687,6 +699,7 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->once, prev->once, 1);
     ngx_conf_merge_str_value(conf->match, prev->match, "");
+    ngx_conf_merge_value(conf->last_modified, prev->last_modified, 0);
 
     if (conf->value.value.data == NULL) {
         conf->value = prev->value;
