@@ -822,7 +822,7 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
     ngx_uint_t           i;
     struct sockaddr_in  *sin;
 
-    ngx_log_debug0(NGX_LOG_ALERT, ctx->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp resolve handler");
 
     if (resolve->state) {
