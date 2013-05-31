@@ -607,6 +607,17 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         ngx_use_accept_mutex = 0;
     }
 
+#if (NGX_WIN32)
+
+    /*
+     * disable accept mutex on win32 as it may cause deadlock if
+     * grabbed by a process which can't accept connections
+     */
+
+    ngx_use_accept_mutex = 0;
+
+#endif
+
 #if (NGX_THREADS)
     ngx_posted_events_mutex = ngx_mutex_init(cycle->log, 0);
     if (ngx_posted_events_mutex == NULL) {
