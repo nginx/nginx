@@ -1228,16 +1228,13 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         file[i].fd = fd;
     }
 
-#if !(NGX_WIN32)
+    if (cycle->log->file->fd != ngx_stderr) {
 
-    if (cycle->log->file->fd != STDERR_FILENO) {
-        if (dup2(cycle->log->file->fd, STDERR_FILENO) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "dup2(STDERR) failed");
+        if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_set_stderr_n " failed");
         }
     }
-
-#endif
 }
 
 
