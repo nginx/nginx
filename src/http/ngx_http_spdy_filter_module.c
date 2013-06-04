@@ -304,7 +304,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     last = ngx_http_spdy_nv_write_val(last, "HTTP/1.1");
 
     last = ngx_http_spdy_nv_write_name(last, "status");
-    last = ngx_spdy_frame_write_uint16(last, 3);
+    last = ngx_http_spdy_nv_write_vlen(last, 3);
     last = ngx_sprintf(last, "%03ui", r->headers_out.status);
 
     count = 2;
@@ -500,7 +500,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
         count++;
     }
 
-    (void) ngx_spdy_frame_write_uint16(buf, count);
+    (void) ngx_http_spdy_nv_write_num(buf, count);
 
     stream = r->spdy_stream;
     sc = stream->connection;
