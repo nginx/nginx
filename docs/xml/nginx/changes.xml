@@ -5,6 +5,129 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.1" date="04.06.2013">
+
+<change type="feature">
+<para lang="ru">
+директивы ssi_last_modified, sub_filter_last_modified и 
+xslt_last_modified.<br/>
+Спасибо Алексею Колпакову.
+</para>
+<para lang="en">
+the "ssi_last_modified", "sub_filter_last_modified", and
+"xslt_last_modified" directives.<br/>
+Thanks to Alexey Kolpakov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр http_403 в директивах proxy_next_upstream, fastcgi_next_upstream,
+scgi_next_upstream и uwsgi_next_upstream.
+</para>
+<para lang="en">
+the "http_403" parameter of the "proxy_next_upstream", "fastcgi_next_upstream",
+"scgi_next_upstream", and "uwsgi_next_upstream" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы allow и deny теперь поддерживают unix domain сокеты.
+</para>
+<para lang="en">
+the "allow" and "deny" directives now support unix domain sockets.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с модулем ngx_mail_ssl_module,
+но без модуля ngx_http_ssl_module;
+ошибка появилась в 1.3.14.
+</para>
+<para lang="en">
+nginx could not be built with the ngx_mail_ssl_module,
+but without ngx_http_ssl_module;
+the bug had appeared in 1.3.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_set_body.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+in the "proxy_set_body" directive.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве lingering_time.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+in the "lingering_time" directive.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр fail_timeout директивы server
+в блоке upstream мог не работать,
+если использовался параметр max_fails;
+ошибка появилась в 1.3.0.
+</para>
+<para lang="en">
+the "fail_timeout" parameter of the "server" directive
+in the "upstream" context might not work
+if "max_fails" parameter was used;
+the bug had appeared in 1.3.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалась директива ssl_stapling.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "ssl_stapling" directive was used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.<br/>
+Спасибо Filipe Da Silva.
+</para>
+<para lang="en">
+in the mail proxy server.<br/>
+Thanks to Filipe Da Silva.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows мог перестать принимать соединения,
+если использовалось несколько рабочих процессов.
+</para>
+<para lang="en">
+nginx/Windows might stop accepting connections
+if several worker processes were used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.0" date="07.05.2013">
 
 <change type="security">
