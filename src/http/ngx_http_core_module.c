@@ -4898,6 +4898,7 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strcmp(value[1].data, "stderr") == 0) {
         ngx_str_null(&name);
+        cf->cycle->log_use_stderr = 1;
 
     } else {
         name = value[1];

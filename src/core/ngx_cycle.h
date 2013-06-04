@@ -41,6 +41,8 @@ struct ngx_cycle_s {
     ngx_log_t                *log;
     ngx_log_t                 new_log;
 
+    ngx_uint_t                log_use_stderr;  /* unsigned  log_use_stderr:1; */
+
     ngx_connection_t        **files;
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;

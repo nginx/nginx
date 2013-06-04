@@ -582,8 +582,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* commit the new cycle configuration */
 
-    if (!ngx_use_stderr && cycle->log->file->fd != ngx_stderr) {
-
+    if (!ngx_use_stderr && !cycle->log_use_stderr
+        && cycle->log->file->fd != ngx_stderr)
+    {
         if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           ngx_set_stderr_n " failed");
@@ -1228,7 +1229,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         file[i].fd = fd;
     }
 
-    if (cycle->log->file->fd != ngx_stderr) {
+    if (!cycle->log_use_stderr && cycle->log->file->fd != ngx_stderr) {
 
         if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,

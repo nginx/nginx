@@ -387,7 +387,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    if (cycle->log->file->fd != ngx_stderr) {
+    if (!cycle->log_use_stderr && cycle->log->file->fd != ngx_stderr) {
 
         if (ngx_set_stderr(cycle->log->file->fd) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
