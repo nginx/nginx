@@ -875,6 +875,8 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 
     c = r->cache;
 
+    ngx_memzero(h, sizeof(ngx_http_file_cache_header_t));
+
     h->valid_sec = c->valid_sec;
     h->last_modified = c->last_modified;
     h->date = c->date;
