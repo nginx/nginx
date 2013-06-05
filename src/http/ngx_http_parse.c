@@ -1256,8 +1256,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
          * the line feed
          */
 
-        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "s:%d in:'%Xd:%c', out:'%c'", state, ch, ch, *u);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "s:%d in:'%Xd:%c'", state, ch, ch);
 
         switch (state) {
 
