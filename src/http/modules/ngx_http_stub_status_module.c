@@ -145,6 +145,7 @@ static ngx_int_t ngx_http_status_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = b->last - b->pos;
 
     b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
 
     rc = ngx_http_send_header(r);
 
