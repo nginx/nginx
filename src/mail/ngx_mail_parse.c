@@ -842,6 +842,10 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 #endif
 
+    if (s->args.nelts == 0) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
     arg = s->args.elts;
 
     if (arg[0].len == 5) {
