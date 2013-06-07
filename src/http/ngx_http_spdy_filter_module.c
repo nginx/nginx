@@ -162,7 +162,9 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
           + ngx_http_spdy_nv_nsize("version")
           + ngx_http_spdy_nv_vsize("HTTP/1.1")
           + ngx_http_spdy_nv_nsize("status")
-          + ngx_http_spdy_nv_vsize("418");
+          + (r->headers_out.status_line.len
+             ? NGX_SPDY_NV_VLEN_SIZE + r->headers_out.status_line.len
+             : ngx_http_spdy_nv_vsize("418"));
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -304,8 +306,15 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     last = ngx_http_spdy_nv_write_val(last, "HTTP/1.1");
 
     last = ngx_http_spdy_nv_write_name(last, "status");
-    last = ngx_http_spdy_nv_write_vlen(last, 3);
-    last = ngx_sprintf(last, "%03ui", r->headers_out.status);
+
+    if (r->headers_out.status_line.len) {
+        last = ngx_http_spdy_nv_write_vlen(last, r->headers_out.status_line.len);
+        last = ngx_cpymem(last, r->headers_out.status_line.data,
+                          r->headers_out.status_line.len);
+    } else {
+        last = ngx_http_spdy_nv_write_vlen(last, 3);
+        last = ngx_sprintf(last, "%03ui", r->headers_out.status);
+    }
 
     count = 2;
 
