@@ -222,10 +222,11 @@ header_in(r, key)
     dXSTARG;
     ngx_http_request_t         *r;
     SV                         *key;
-    u_char                     *p, *lowcase_key, *cookie;
+    u_char                     *p, *lowcase_key, *value, sep;
     STRLEN                      len;
     ssize_t                     size;
     ngx_uint_t                  i, n, hash;
+    ngx_array_t                *a;
     ngx_list_part_t            *part;
     ngx_table_elt_t            *h, **ph;
     ngx_http_header_t          *hh;
@@ -255,6 +256,19 @@ header_in(r, key)
     hh = ngx_hash_find(&cmcf->headers_in_hash, hash, lowcase_key, len);
 
     if (hh) {
+
+        if (hh->offset == offsetof(ngx_http_headers_in_t, cookies)) {
+            sep = ';';
+            goto multi;
+        }
+
+    #if (NGX_HTTP_X_FORWARDED_FOR)
+        if (hh->offset == offsetof(ngx_http_headers_in_t, x_forwarded_for)) {
+            sep = ',';
+            goto multi;
+        }
+    #endif
+
         if (hh->offset) {
 
             ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
@@ -268,15 +282,19 @@ header_in(r, key)
             XSRETURN_UNDEF;
         }
 
-        /* Cookie */
+    multi:
 
-        n = r->headers_in.cookies.nelts;
+        /* Cookie, X-Forwarded-For */
+
+        a = (ngx_array_t *) ((char *) &r->headers_in + hh->offset);
+
+        n = a->nelts;
 
         if (n == 0) {
             XSRETURN_UNDEF;
         }
 
-        ph = r->headers_in.cookies.elts;
+        ph = a->elts;
 
         if (n == 1) {
             ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
@@ -290,12 +308,12 @@ header_in(r, key)
             size += ph[i]->value.len + sizeof("; ") - 1;
         }
 
-        cookie = ngx_pnalloc(r->pool, size);
-        if (cookie == NULL) {
+        value = ngx_pnalloc(r->pool, size);
+        if (value == NULL) {
             XSRETURN_UNDEF;
         }
 
-        p = cookie;
+        p = value;
 
         for (i = 0; /* void */ ; i++) {
             p = ngx_copy(p, ph[i]->value.data, ph[i]->value.len);
@@ -304,10 +322,10 @@ header_in(r, key)
                 break;
             }
 
-            *p++ = ';'; *p++ = ' ';
+            *p++ = sep; *p++ = ' ';
         }
 
-        ngx_http_perl_set_targ(cookie, size);
+        ngx_http_perl_set_targ(value, size);
 
         goto done;
     }
