@@ -1472,22 +1472,10 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     ngx_add_timer(c->read, u->conf->read_timeout);
 
-#if 1
     if (c->read->ready) {
-
-        /* post aio operation */
-
-        /*
-         * TODO comment
-         * although we can post aio operation just in the end
-         * of ngx_http_upstream_connect() CHECK IT !!!
-         * it's better to do here because we postpone header buffer allocation
-         */
-
         ngx_http_upstream_process_header(r, u);
         return;
     }
-#endif
 
     u->write_event_handler = ngx_http_upstream_dummy_handler;
 
