@@ -454,7 +454,5 @@ ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    cf->cycle->new_log.log_level = 0;
-
     return ngx_log_set_levels(cf, &cf->cycle->new_log);
 }

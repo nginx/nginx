@@ -84,7 +84,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     cycle->pool = pool;
     cycle->log = log;
-    cycle->new_log.log_level = NGX_LOG_ERR;
     cycle->old_cycle = old_cycle;
 
     cycle->conf_prefix.len = old_cycle->conf_prefix.len;
@@ -344,6 +343,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         if (cycle->new_log.file == NULL) {
             goto failed;
         }
+
+        cycle->new_log.log_level = NGX_LOG_ERR;
     }
 
     /* open the new files */
