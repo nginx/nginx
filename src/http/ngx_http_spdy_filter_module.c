@@ -308,7 +308,8 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     last = ngx_http_spdy_nv_write_name(last, "status");
 
     if (r->headers_out.status_line.len) {
-        last = ngx_http_spdy_nv_write_vlen(last, r->headers_out.status_line.len);
+        last = ngx_http_spdy_nv_write_vlen(last,
+                                           r->headers_out.status_line.len);
         last = ngx_cpymem(last, r->headers_out.status_line.data,
                           r->headers_out.status_line.len);
     } else {
