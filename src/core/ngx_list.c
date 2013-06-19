@@ -19,17 +19,9 @@ ngx_list_create(ngx_pool_t *pool, ngx_uint_t n, size_t size)
         return NULL;
     }
 
-    list->part.elts = ngx_palloc(pool, n * size);
-    if (list->part.elts == NULL) {
+    if (ngx_list_init(list, pool, n, size) != NGX_OK) {
         return NULL;
     }
-
-    list->part.nelts = 0;
-    list->part.next = NULL;
-    list->last = &list->part;
-    list->size = size;
-    list->nalloc = n;
-    list->pool = pool;
 
     return list;
 }
