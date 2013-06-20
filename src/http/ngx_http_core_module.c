@@ -4888,33 +4888,7 @@ ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf = conf;
 
-    ngx_str_t  *value, name;
-
-    if (clcf->error_log) {
-        return "is duplicate";
-    }
-
-    value = cf->args->elts;
-
-    if (ngx_strcmp(value[1].data, "stderr") == 0) {
-        ngx_str_null(&name);
-        cf->cycle->log_use_stderr = 1;
-
-    } else {
-        name = value[1];
-    }
-
-    clcf->error_log = ngx_log_create(cf->cycle, &name);
-    if (clcf->error_log == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    if (cf->args->nelts == 2) {
-        clcf->error_log->log_level = NGX_LOG_ERR;
-        return NGX_CONF_OK;
-    }
-
-    return ngx_log_set_levels(cf, clcf->error_log);
+    return ngx_log_set_log(cf, &clcf->error_log);
 }
 
 

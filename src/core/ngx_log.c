@@ -10,6 +10,8 @@
 
 
 static char *ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log);
+static void ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log);
 
 
 static ngx_command_t  ngx_errlog_commands[] = {
@@ -86,14 +88,11 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 #endif
 {
 #if (NGX_HAVE_VARIADIC_MACROS)
-    va_list  args;
+    va_list      args;
 #endif
-    u_char  *p, *last, *msg;
-    u_char   errstr[NGX_MAX_ERROR_STR];
-
-    if (log->file->fd == NGX_INVALID_FILE) {
-        return;
-    }
+    u_char      *p, *last, *msg;
+    u_char       errstr[NGX_MAX_ERROR_STR];
+    ngx_uint_t   wrote_stderr, debug_connection;
 
     last = errstr + NGX_MAX_ERROR_STR;
 
@@ -140,11 +139,27 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     ngx_linefeed(p);
 
-    (void) ngx_write_fd(log->file->fd, errstr, p - errstr);
+    wrote_stderr = 0;
+    debug_connection = (log->log_level & NGX_LOG_DEBUG_CONNECTION) != 0;
+
+    while (log) {
+
+        if (log->log_level < level && !debug_connection) {
+            break;
+        }
+
+        (void) ngx_write_fd(log->file->fd, errstr, p - errstr);
+
+        if (log->file->fd == ngx_stderr) {
+            wrote_stderr = 1;
+        }
+
+        log = log->next;
+    }
 
     if (!ngx_use_stderr
         || level > NGX_LOG_WARN
-        || log->file->fd == ngx_stderr)
+        || wrote_stderr)
     {
         return;
     }
@@ -348,30 +363,16 @@ ngx_log_init(u_char *prefix)
 }
 
 
-ngx_log_t *
-ngx_log_create(ngx_cycle_t *cycle, ngx_str_t *name)
-{
-    ngx_log_t  *log;
-
-    log = ngx_pcalloc(cycle->pool, sizeof(ngx_log_t));
-    if (log == NULL) {
-        return NULL;
-    }
-
-    log->file = ngx_conf_open_file(cycle, name);
-    if (log->file == NULL) {
-        return NULL;
-    }
-
-    return log;
-}
-
-
-char *
+static char *
 ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
     ngx_uint_t   i, n, d, found;
     ngx_str_t   *value;
+
+    if (cf->args->nelts == 2) {
+        log->log_level = NGX_LOG_ERR;
+        return NGX_CONF_OK;
+    }
 
     value = cf->args->elts;
 
@@ -428,10 +429,33 @@ ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 static char *
 ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    ngx_log_t  *dummy;
+
+    dummy = &cf->cycle->new_log;
+
+    return ngx_log_set_log(cf, &dummy);
+}
+
+
+char *
+ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
+{
+    ngx_log_t  *new_log;
     ngx_str_t  *value, name;
 
-    if (cf->cycle->new_log.file) {
-        return "is duplicate";
+    if (*head != NULL && (*head)->log_level == 0) {
+        new_log = *head;
+
+    } else {
+
+        new_log = ngx_pcalloc(cf->pool, sizeof(ngx_log_t));
+        if (new_log == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (*head == NULL) {
+            *head = new_log;
+        }
     }
 
     value = cf->args->elts;
@@ -444,15 +468,52 @@ ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         name = value[1];
     }
 
-    cf->cycle->new_log.file = ngx_conf_open_file(cf->cycle, &name);
-    if (cf->cycle->new_log.file == NULL) {
-        return NULL;
+    new_log->file = ngx_conf_open_file(cf->cycle, &name);
+    if (new_log->file == NULL) {
+        return NGX_CONF_ERROR;
     }
 
-    if (cf->args->nelts == 2) {
-        cf->cycle->new_log.log_level = NGX_LOG_ERR;
-        return NGX_CONF_OK;
+    if (ngx_log_set_levels(cf, new_log) != NGX_CONF_OK) {
+        return NGX_CONF_ERROR;
     }
 
-    return ngx_log_set_levels(cf, &cf->cycle->new_log);
+    if (*head != new_log) {
+        ngx_log_insert(*head, new_log);
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static void
+ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log)
+{
+    ngx_log_t  tmp;
+
+    if (new_log->log_level > log->log_level) {
+
+        /*
+         * list head address is permanent, insert new log after
+         * head and swap its contents with head
+         */
+
+        tmp = *log;
+        *log = *new_log;
+        *new_log = tmp;
+
+        log->next = new_log;
+        return;
+    }
+
+    while (log->next) {
+        if (new_log->log_level > log->next->log_level) {
+            new_log->next = log->next;
+            log->next = new_log;
+            return;
+        }
+
+        log = log->next;
+    }
+
+    log->next = new_log;
 }
