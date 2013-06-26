@@ -51,7 +51,6 @@
 #include <malloc.h>             /* memalign() */
 #include <limits.h>             /* IOV_MAX */
 #include <sys/ioctl.h>
-#include <sys/sysctl.h>
 #include <crypt.h>
 #include <sys/utsname.h>        /* uname() */
 
@@ -77,8 +76,14 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
-#if (NGX_HAVE_POLL || NGX_HAVE_RTSIG)
+#if (NGX_HAVE_POLL)
 #include <poll.h>
+#endif
+
+
+#if (NGX_HAVE_RTSIG)
+#include <poll.h>
+#include <sys/sysctl.h>
 #endif
 
 
