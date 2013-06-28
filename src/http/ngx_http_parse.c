@@ -2180,8 +2180,9 @@ data:
         ctx->length = 3 /* "0" LF LF */;
         break;
     case sw_chunk_size:
-        ctx->length = 2 /* LF LF */
-                      + (ctx->size ? ctx->size + 4 /* LF "0" LF LF */ : 0);
+        ctx->length = 1 /* LF */
+                      + (ctx->size ? ctx->size + 4 /* LF "0" LF LF */
+                                   : 1 /* LF */);
         break;
     case sw_chunk_extension:
     case sw_chunk_extension_almost_done:
