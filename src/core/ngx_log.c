@@ -363,6 +363,48 @@ ngx_log_init(u_char *prefix)
 }
 
 
+ngx_int_t
+ngx_log_open_default(ngx_cycle_t *cycle)
+{
+    static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
+
+    if (cycle->new_log.file == NULL) {
+        cycle->new_log.file = ngx_conf_open_file(cycle, &error_log);
+        if (cycle->new_log.file == NULL) {
+            return NGX_ERROR;
+        }
+
+        cycle->new_log.log_level = NGX_LOG_ERR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_log_redirect_stderr(ngx_cycle_t *cycle)
+{
+    ngx_fd_t  fd;
+
+    if (cycle->log_use_stderr) {
+        return NGX_OK;
+    }
+
+    fd = cycle->log->file->fd;
+
+    if (fd != ngx_stderr) {
+        if (ngx_set_stderr(fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          ngx_set_stderr_n " failed");
+
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 static char *
 ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 {
