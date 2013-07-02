@@ -9,8 +9,8 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define nginx_version      1005002
-#define NGINX_VERSION      "1.5.2"
+#define nginx_version      1005003
+#define NGINX_VERSION      "1.5.3"
 #define NGINX_VER          "nginx/" NGINX_VERSION
 
 #define NGINX_VAR          "NGINX"
