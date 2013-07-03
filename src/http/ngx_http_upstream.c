@@ -1181,7 +1181,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
-    /* rc == NGX_OK || rc == NGX_AGAIN */
+    /* rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DONE */
 
     c = u->peer.connection;
 
