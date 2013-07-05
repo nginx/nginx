@@ -72,8 +72,8 @@ typedef struct {
 #define NGX_FILE_RDWR            O_RDWR
 #define NGX_FILE_CREATE_OR_OPEN  O_CREAT
 #define NGX_FILE_OPEN            0
-#define NGX_FILE_TRUNCATE        O_CREAT|O_TRUNC
-#define NGX_FILE_APPEND          O_WRONLY|O_APPEND
+#define NGX_FILE_TRUNCATE        (O_CREAT|O_TRUNC)
+#define NGX_FILE_APPEND          (O_WRONLY|O_APPEND)
 #define NGX_FILE_NONBLOCK        O_NONBLOCK
 
 #if (NGX_HAVE_OPENAT)
@@ -86,13 +86,13 @@ typedef struct {
 #endif
 
 #if defined(O_SEARCH)
-#define NGX_FILE_SEARCH          O_SEARCH|NGX_FILE_DIRECTORY
+#define NGX_FILE_SEARCH          (O_SEARCH|NGX_FILE_DIRECTORY)
 
 #elif defined(O_EXEC)
-#define NGX_FILE_SEARCH          O_EXEC|NGX_FILE_DIRECTORY
+#define NGX_FILE_SEARCH          (O_EXEC|NGX_FILE_DIRECTORY)
 
 #else
-#define NGX_FILE_SEARCH          O_RDONLY|NGX_FILE_DIRECTORY
+#define NGX_FILE_SEARCH          (O_RDONLY|NGX_FILE_DIRECTORY)
 #endif
 
 #endif /* NGX_HAVE_OPENAT */
