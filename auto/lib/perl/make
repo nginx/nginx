@@ -18,6 +18,7 @@ $NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.$ngx_perl_dlext: \\
 
 
 $NGX_OBJS/src/http/modules/perl/Makefile: \\
+		$NGX_AUTO_CONFIG_H \\
 		src/core/nginx.h \\
 		src/http/modules/perl/Makefile.PL \\
 		src/http/modules/perl/nginx.pm \\
