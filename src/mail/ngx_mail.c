@@ -465,7 +465,7 @@ ngx_mail_add_addrs(ngx_conf_t *cf, ngx_mail_port_t *mport,
         addrs[i].conf.ssl = addr[i].ssl;
 #endif
 
-        len = ngx_sock_ntop(addr[i].sockaddr, addr[i].socklen , buf,
+        len = ngx_sock_ntop(addr[i].sockaddr, addr[i].socklen, buf,
                             NGX_SOCKADDR_STRLEN, 1);
 
         p = ngx_pnalloc(cf->pool, len);

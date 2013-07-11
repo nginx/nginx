@@ -4469,7 +4469,7 @@ static ngx_http_method_name_t  ngx_methods_names[] = {
    { (u_char *) "COPY",      (uint32_t) ~NGX_HTTP_COPY },
    { (u_char *) "MOVE",      (uint32_t) ~NGX_HTTP_MOVE },
    { (u_char *) "OPTIONS",   (uint32_t) ~NGX_HTTP_OPTIONS },
-   { (u_char *) "PROPFIND" , (uint32_t) ~NGX_HTTP_PROPFIND },
+   { (u_char *) "PROPFIND",  (uint32_t) ~NGX_HTTP_PROPFIND },
    { (u_char *) "PROPPATCH", (uint32_t) ~NGX_HTTP_PROPPATCH },
    { (u_char *) "LOCK",      (uint32_t) ~NGX_HTTP_LOCK },
    { (u_char *) "UNLOCK",    (uint32_t) ~NGX_HTTP_UNLOCK },
