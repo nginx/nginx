@@ -174,7 +174,8 @@ ngx_inet6_addr(u_char *p, size_t len, u_char *addr)
 
 
 size_t
-ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len, ngx_uint_t port)
+ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text, size_t len,
+    ngx_uint_t port)
 {
     u_char               *p;
     struct sockaddr_in   *sin;
@@ -230,9 +231,18 @@ ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len, ngx_uint_t port)
     case AF_UNIX:
         saun = (struct sockaddr_un *) sa;
 
+        /* on Linux sockaddr might not include sun_path at all */
+
+        if (socklen <= offsetof(struct sockaddr_un, sun_path)) {
+            p = ngx_snprintf(text, len, "unix:%Z");
+
+        } else {
+            p = ngx_snprintf(text, len, "unix:%s%Z", saun->sun_path);
+        }
+
         /* we do not include trailing zero in address length */
 
-        return ngx_snprintf(text, len, "unix:%s%Z", saun->sun_path) - text - 1;
+        return (p - text - 1);
 
 #endif
 
@@ -1020,7 +1030,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
             goto failed;
         }
 
-        len = ngx_sock_ntop((struct sockaddr *) sin, p, len, 1);
+        len = ngx_sock_ntop((struct sockaddr *) sin, rp->ai_addrlen, p, len, 1);
 
         u->addrs[i].name.len = len;
         u->addrs[i].name.data = p;
@@ -1053,7 +1063,8 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
             goto failed;
         }
 
-        len = ngx_sock_ntop((struct sockaddr *) sin6, p, len, 1);
+        len = ngx_sock_ntop((struct sockaddr *) sin6, rp->ai_addrlen, p,
+                            len, 1);
 
         u->addrs[i].name.len = len;
         u->addrs[i].name.data = p;
@@ -1138,7 +1149,8 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
                 return NGX_ERROR;
             }
 
-            len = ngx_sock_ntop((struct sockaddr *) sin, p, len, 1);
+            len = ngx_sock_ntop((struct sockaddr *) sin,
+                                sizeof(struct sockaddr_in), p, len, 1);
 
             u->addrs[i].name.len = len;
             u->addrs[i].name.data = p;

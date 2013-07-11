@@ -878,7 +878,8 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
             goto failed;
         }
 
-        len = ngx_sock_ntop((struct sockaddr *) sin, p, len, 1);
+        len = ngx_sock_ntop((struct sockaddr *) sin, sizeof(struct sockaddr_in),
+                            p, len, 1);
 
         ctx->addrs[i].name.len = len;
         ctx->addrs[i].name.data = p;

@@ -41,7 +41,7 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
     ls->sockaddr = sa;
     ls->socklen = socklen;
 
-    len = ngx_sock_ntop(sa, text, NGX_SOCKADDR_STRLEN, 1);
+    len = ngx_sock_ntop(sa, socklen, text, NGX_SOCKADDR_STRLEN, 1);
     ls->addr_text.len = len;
 
     switch (ls->sockaddr->sa_family) {
@@ -152,7 +152,8 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].addr_text.data, len, 1);
+        len = ngx_sock_ntop(ls[i].sockaddr, ls[i].socklen,
+                            ls[i].addr_text.data, len, 1);
         if (len == 0) {
             return NGX_ERROR;
         }
@@ -1068,7 +1069,7 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
         return NGX_OK;
     }
 
-    s->len = ngx_sock_ntop(c->local_sockaddr, s->data, s->len, port);
+    s->len = ngx_sock_ntop(c->local_sockaddr, len, s->data, s->len, port);
 
     return NGX_OK;
 }

@@ -107,8 +107,8 @@ in_addr_t ngx_inet_addr(u_char *text, size_t len);
 ngx_int_t ngx_inet6_addr(u_char *p, size_t len, u_char *addr);
 size_t ngx_inet6_ntop(u_char *p, u_char *text, size_t len);
 #endif
-size_t ngx_sock_ntop(struct sockaddr *sa, u_char *text, size_t len,
-    ngx_uint_t port);
+size_t ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text,
+    size_t len, ngx_uint_t port);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr);
 ngx_int_t ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,

@@ -230,7 +230,8 @@ ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
 
     c = r->connection;
 
-    len = ngx_sock_ntop(addr->sockaddr, text, NGX_SOCKADDR_STRLEN, 0);
+    len = ngx_sock_ntop(addr->sockaddr, addr->socklen, text,
+                        NGX_SOCKADDR_STRLEN, 0);
     if (len == 0) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
