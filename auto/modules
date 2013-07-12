@@ -42,6 +42,7 @@ fi
 
 if [ $NGX_TEST_BUILD_EPOLL = YES ]; then
     have=NGX_HAVE_EPOLL . auto/have
+    have=NGX_HAVE_EPOLLRDHUP . auto/have
     have=NGX_HAVE_EVENTFD . auto/have
     have=NGX_TEST_BUILD_EPOLL . auto/have
     EVENT_MODULES="$EVENT_MODULES $EPOLL_MODULE"
