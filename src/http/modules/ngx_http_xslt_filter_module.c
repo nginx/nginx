@@ -104,6 +104,7 @@ static void *ngx_http_xslt_filter_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_xslt_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_http_xslt_filter_preconfiguration(ngx_conf_t *cf);
 static ngx_int_t ngx_http_xslt_filter_init(ngx_conf_t *cf);
 static void ngx_http_xslt_filter_exit(ngx_cycle_t *cycle);
 
@@ -163,7 +164,7 @@ static ngx_command_t  ngx_http_xslt_filter_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_xslt_filter_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_xslt_filter_preconfiguration, /* preconfiguration */
     ngx_http_xslt_filter_init,             /* postconfiguration */
 
     ngx_http_xslt_filter_create_main_conf, /* create main configuration */
@@ -1111,7 +1112,7 @@ ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_xslt_filter_init(ngx_conf_t *cf)
+ngx_http_xslt_filter_preconfiguration(ngx_conf_t *cf)
 {
     xmlInitParser();
 
@@ -1119,6 +1120,13 @@ ngx_http_xslt_filter_init(ngx_conf_t *cf)
     exsltRegisterAll();
 #endif
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_xslt_filter_init(ngx_conf_t *cf)
+{
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_xslt_header_filter;
 
