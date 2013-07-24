@@ -2529,13 +2529,6 @@ ngx_http_spdy_init_request_body(ngx_http_request_t *r)
             return NGX_ERROR;
         }
 
-        if (rb->rest == 0) {
-            buf->in_file = 1;
-            buf->file = &tf->file;
-        } else {
-            rb->buf = buf;
-        }
-
     } else {
 
         if (rb->rest == 0) {
@@ -2546,9 +2539,9 @@ ngx_http_spdy_init_request_body(ngx_http_request_t *r)
         if (buf == NULL) {
             return NGX_ERROR;
         }
-
-        rb->buf = buf;
     }
+
+    rb->buf = buf;
 
     rb->bufs = ngx_alloc_chain_link(r->pool);
     if (rb->bufs == NULL) {
