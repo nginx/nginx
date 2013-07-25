@@ -2985,6 +2985,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                 tf = p->temp_file;
 
                 if (u->headers_in.status_n == NGX_HTTP_OK
+                    && (p->upstream_done || p->length == -1)
                     && (u->headers_in.content_length_n == -1
                         || u->headers_in.content_length_n == tf->offset))
                 {
@@ -3005,9 +3006,10 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
                 tf = p->temp_file;
 
-                if (u->headers_in.content_length_n == -1
-                    || u->headers_in.content_length_n
-                       == tf->offset - (off_t) r->cache->body_start)
+                if (p->length == -1
+                    && (u->headers_in.content_length_n == -1
+                        || u->headers_in.content_length_n
+                           == tf->offset - (off_t) r->cache->body_start))
                 {
                     ngx_http_file_cache_update(r, tf);
 
