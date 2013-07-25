@@ -2144,7 +2144,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         r->limit_rate = 0;
 
         if (u->input_filter_init(u->input_filter_ctx) == NGX_ERROR) {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
 
@@ -2158,7 +2158,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             {
                 ngx_connection_error(c, ngx_socket_errno,
                                      "setsockopt(TCP_NODELAY) failed");
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2173,7 +2173,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             u->state->response_length += n;
 
             if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2184,7 +2184,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             u->buffer.last = u->buffer.start;
 
             if (ngx_http_send_special(r, NGX_HTTP_FLUSH) == NGX_ERROR) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2208,7 +2208,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     switch (ngx_http_test_predicates(r, u->conf->no_cache)) {
 
     case NGX_ERROR:
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
 
     case NGX_DECLINED:
@@ -2224,7 +2224,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             r->cache->file_cache = u->conf->cache->data;
 
             if (ngx_http_file_cache_create(r) != NGX_OK) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
         }
@@ -2285,7 +2285,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     p->temp_file = ngx_pcalloc(r->pool, sizeof(ngx_temp_file_t));
     if (p->temp_file == NULL) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2308,7 +2308,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     p->preread_bufs = ngx_alloc_chain_link(r->pool);
     if (p->preread_bufs == NULL) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2322,7 +2322,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         p->buf_to_file = ngx_calloc_buf(r->pool);
         if (p->buf_to_file == NULL) {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
 
@@ -2370,7 +2370,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (u->input_filter_init
         && u->input_filter_init(p->input_ctx) != NGX_OK)
     {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2412,7 +2412,7 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
             {
                 ngx_connection_error(c, ngx_socket_errno,
                                      "setsockopt(TCP_NODELAY) failed");
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2428,7 +2428,7 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
             {
                 ngx_connection_error(u->peer.connection, ngx_socket_errno,
                                      "setsockopt(TCP_NODELAY) failed");
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2437,7 +2437,7 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (ngx_http_send_special(r, NGX_HTTP_FLUSH) == NGX_ERROR) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2537,7 +2537,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
         if (b->start == NULL) {
             b->start = ngx_palloc(r->pool, u->conf->buffer_size);
             if (b->start == NULL) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2560,7 +2560,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
                 n = dst->send(dst, b->pos, size);
 
                 if (n == NGX_ERROR) {
-                    ngx_http_upstream_finalize_request(r, u, 0);
+                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                     return;
                 }
 
@@ -2615,7 +2615,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     if (ngx_handle_write_event(upstream->write, u->conf->send_lowat)
         != NGX_OK)
     {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2627,7 +2627,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     }
 
     if (ngx_handle_read_event(upstream->read, 0) != NGX_OK) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2641,12 +2641,12 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     if (ngx_handle_write_event(downstream->write, clcf->send_lowat)
         != NGX_OK)
     {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
     if (ngx_handle_read_event(downstream->read, 0) != NGX_OK) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2737,7 +2737,7 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
                 rc = ngx_http_output_filter(r, u->out_bufs);
 
                 if (rc == NGX_ERROR) {
-                    ngx_http_upstream_finalize_request(r, u, 0);
+                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                     return;
                 }
 
@@ -2774,7 +2774,7 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
                 u->state->response_length += n;
 
                 if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
-                    ngx_http_upstream_finalize_request(r, u, 0);
+                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                     return;
                 }
             }
@@ -2793,7 +2793,7 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
         if (ngx_handle_write_event(downstream->write, clcf->send_lowat)
             != NGX_OK)
         {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
     }
@@ -2806,7 +2806,7 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
     }
 
     if (ngx_handle_read_event(upstream->read, 0) != NGX_OK) {
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         return;
     }
 
@@ -2897,7 +2897,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
                 ngx_add_timer(wev, p->send_timeout);
 
                 if (ngx_handle_write_event(wev, p->send_lowat) != NGX_OK) {
-                    ngx_http_upstream_finalize_request(r, u, 0);
+                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 }
 
                 return;
@@ -2922,7 +2922,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
                            "http downstream delayed");
 
             if (ngx_handle_write_event(wev, p->send_lowat) != NGX_OK) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             }
 
             return;
