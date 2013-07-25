@@ -677,9 +677,6 @@ ngx_http_sub_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->match = { 0, NULL };
-     *     conf->sub = { 0, NULL };
-     *     conf->sub_lengths = NULL;
-     *     conf->sub_values = NULL;
      *     conf->types = { NULL };
      *     conf->types_keys = NULL;
      */
