@@ -2982,11 +2982,11 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
 
             if (p->upstream_eof || p->upstream_done) {
 
-                tf = u->pipe->temp_file;
+                tf = p->temp_file;
 
                 if (u->headers_in.status_n == NGX_HTTP_OK
                     && (u->headers_in.content_length_n == -1
-                        || (u->headers_in.content_length_n == tf->offset)))
+                        || u->headers_in.content_length_n == tf->offset))
                 {
                     ngx_http_upstream_store(r, u);
                     u->store = 0;
@@ -2999,11 +2999,11 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
         if (u->cacheable) {
 
             if (p->upstream_done) {
-                ngx_http_file_cache_update(r, u->pipe->temp_file);
+                ngx_http_file_cache_update(r, p->temp_file);
 
             } else if (p->upstream_eof) {
 
-                tf = u->pipe->temp_file;
+                tf = p->temp_file;
 
                 if (u->headers_in.content_length_n == -1
                     || u->headers_in.content_length_n
@@ -3016,7 +3016,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                 }
 
             } else if (p->upstream_error) {
-                ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
+                ngx_http_file_cache_free(r->cache, p->temp_file);
             }
         }
 
