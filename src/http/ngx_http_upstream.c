@@ -2904,7 +2904,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
             }
 
             if (ngx_event_pipe(p, wev->write) == NGX_ABORT) {
-                ngx_http_upstream_finalize_request(r, u, 0);
+                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
 
@@ -2929,7 +2929,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
         }
 
         if (ngx_event_pipe(p, 1) == NGX_ABORT) {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
     }
@@ -2957,7 +2957,7 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 
     } else {
         if (ngx_event_pipe(u->pipe, 0) == NGX_ABORT) {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
     }
@@ -3035,7 +3035,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                        "http upstream downstream error");
 
         if (!u->cacheable && !u->store && u->peer.connection) {
-            ngx_http_upstream_finalize_request(r, u, 0);
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
         }
     }
 }
