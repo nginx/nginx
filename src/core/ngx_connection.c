@@ -464,15 +464,12 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 void
 ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 {
-    int                        keepalive;
+    int                        value;
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     struct accept_filter_arg   af;
-#endif
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-    int                        timeout;
 #endif
 
     ls = cycle->listening.elts;
@@ -503,15 +500,15 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
         }
 
         if (ls[i].keepalive) {
-            keepalive = (ls[i].keepalive == 1) ? 1 : 0;
+            value = (ls[i].keepalive == 1) ? 1 : 0;
 
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_KEEPALIVE,
-                           (const void *) &keepalive, sizeof(int))
+                           (const void *) &value, sizeof(int))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(SO_KEEPALIVE, %d) %V failed, ignored",
-                              keepalive, &ls[i].addr_text);
+                              value, &ls[i].addr_text);
             }
         }
 
@@ -648,20 +645,20 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
         if (ls[i].add_deferred || ls[i].delete_deferred) {
 
             if (ls[i].add_deferred) {
-                timeout = (int) (ls[i].post_accept_timeout / 1000);
+                value = (int) (ls[i].post_accept_timeout / 1000);
 
             } else {
-                timeout = 0;
+                value = 0;
             }
 
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT,
-                           &timeout, sizeof(int))
+                           &value, sizeof(int))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                               "setsockopt(TCP_DEFER_ACCEPT, %d) for %V failed, "
                               "ignored",
-                              timeout, &ls[i].addr_text);
+                              value, &ls[i].addr_text);
 
                 continue;
             }
