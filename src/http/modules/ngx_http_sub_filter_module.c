@@ -369,6 +369,26 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             continue;
         }
 
+        if (ctx->buf->last_buf && ctx->looked.len) {
+            cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+            if (cl == NULL) {
+                return NGX_ERROR;
+            }
+
+            b = cl->buf;
+
+            ngx_memzero(b, sizeof(ngx_buf_t));
+
+            b->pos = ctx->looked.data;
+            b->last = b->pos + ctx->looked.len;
+            b->memory = 1;
+
+            *ctx->last_out = cl;
+            ctx->last_out = &cl->next;
+
+            ctx->looked.len = 0;
+        }
+
         if (ctx->buf->last_buf || ctx->buf->flush
             || ngx_buf_in_memory(ctx->buf))
         {
