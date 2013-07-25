@@ -3403,27 +3403,30 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
 #endif
 
-    if (u->header_sent
-        && rc != NGX_HTTP_REQUEST_TIME_OUT
-        && rc != NGX_HTTP_CLIENT_CLOSED_REQUEST
-        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
-    {
-        rc = 0;
-    }
-
     if (rc == NGX_DECLINED) {
         return;
     }
 
     r->connection->log->action = "sending to client";
 
-    if (rc == 0
-        && !r->header_only
-#if (NGX_HTTP_CACHE)
-        && !r->cached
-#endif
-       )
+    if (!u->header_sent
+        || rc == NGX_HTTP_REQUEST_TIME_OUT
+        || rc == NGX_HTTP_CLIENT_CLOSED_REQUEST)
     {
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
+    if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        rc = 0;
+    }
+
+    if (r->header_only) {
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
+    if (rc == 0) {
         rc = ngx_http_send_special(r, NGX_HTTP_LAST);
     }
 
