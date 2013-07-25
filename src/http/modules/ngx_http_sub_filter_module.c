@@ -261,36 +261,36 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 return rc;
             }
 
-            if (ctx->copy_start != ctx->copy_end) {
+            if (ctx->saved.len) {
 
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "saved: \"%V\"", &ctx->saved);
 
-                if (ctx->saved.len) {
-
-                    cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
-                    if (cl == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    b = cl->buf;
-
-                    ngx_memzero(b, sizeof(ngx_buf_t));
-
-                    b->pos = ngx_pnalloc(r->pool, ctx->saved.len);
-                    if (b->pos == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    ngx_memcpy(b->pos, ctx->saved.data, ctx->saved.len);
-                    b->last = b->pos + ctx->saved.len;
-                    b->memory = 1;
-
-                    *ctx->last_out = cl;
-                    ctx->last_out = &cl->next;
-
-                    ctx->saved.len = 0;
+                cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+                if (cl == NULL) {
+                    return NGX_ERROR;
                 }
+
+                b = cl->buf;
+
+                ngx_memzero(b, sizeof(ngx_buf_t));
+
+                b->pos = ngx_pnalloc(r->pool, ctx->saved.len);
+                if (b->pos == NULL) {
+                    return NGX_ERROR;
+                }
+
+                ngx_memcpy(b->pos, ctx->saved.data, ctx->saved.len);
+                b->last = b->pos + ctx->saved.len;
+                b->memory = 1;
+
+                *ctx->last_out = cl;
+                ctx->last_out = &cl->next;
+
+                ctx->saved.len = 0;
+            }
+
+            if (ctx->copy_start != ctx->copy_end) {
 
                 cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
                 if (cl == NULL) {
@@ -323,6 +323,11 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             } else {
                 ctx->copy_start = NULL;
                 ctx->copy_end = NULL;
+            }
+
+            if (ctx->looked.len > (size_t) (ctx->pos - ctx->buf->pos)) {
+                ctx->saved.len = ctx->looked.len - (ctx->pos - ctx->buf->pos);
+                ngx_memcpy(ctx->saved.data, ctx->looked.data, ctx->saved.len);
             }
 
             if (rc == NGX_AGAIN) {
@@ -502,7 +507,7 @@ static ngx_int_t
 ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 {
     u_char                *p, *last, *copy_end, ch, match;
-    size_t                 looked;
+    size_t                 looked, i;
     ngx_http_sub_state_e   state;
 
     if (ctx->once) {
@@ -573,13 +578,11 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
             looked++;
 
             if (looked == ctx->match.len) {
-                if ((size_t) (p - ctx->pos) < looked) {
-                    ctx->saved.len = 0;
-                }
 
                 ctx->state = sub_start_state;
                 ctx->pos = p + 1;
                 ctx->looked.len = 0;
+                ctx->saved.len = 0;
                 ctx->copy_end = copy_end;
 
                 if (ctx->copy_start == NULL && copy_end) {
@@ -589,17 +592,52 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
                 return NGX_OK;
             }
 
-        } else if (ch == ctx->match.data[0]) {
-            copy_end = p;
-            ctx->looked.data[0] = *p;
-            looked = 1;
-
         } else {
-            copy_end = p;
-            looked = 0;
-            state = sub_start_state;
+            /*
+             * check if there is another partial match in previously
+             * matched substring to catch cases like "aab" in "aaab"
+             */
+
+            ctx->looked.data[looked] = *p;
+            looked++;
+
+            for (i = 1; i < looked; i++) {
+                if (ngx_strncasecmp(ctx->looked.data + i,
+                                    ctx->match.data, looked - i)
+                    == 0)
+                {
+                    break;
+                }
+            }
+
+            if (i < looked) {
+                if (ctx->saved.len > i) {
+                    ctx->saved.len = i;
+                }
+
+                if ((size_t) (p + 1 - ctx->buf->pos) >= looked - i) {
+                    copy_end = p + 1 - (looked - i);
+                }
+
+                ngx_memmove(ctx->looked.data, ctx->looked.data + i, looked - i);
+                looked = looked - i;
+
+            } else {
+                copy_end = p;
+                looked = 0;
+                state = sub_start_state;
+            }
+
+            if (ctx->saved.len) {
+                p++;
+                goto out;
+            }
         }
     }
+
+    ctx->saved.len = 0;
+
+out:
 
     ctx->state = state;
     ctx->pos = p;
