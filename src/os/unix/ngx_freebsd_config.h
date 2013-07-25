@@ -94,6 +94,11 @@ typedef struct aiocb  ngx_aiocb_t;
 #define NGX_LISTEN_BACKLOG        -1
 
 
+#ifdef __DragonFly__
+#define NGX_KEEPALIVE_FACTOR      1000
+#endif
+
+
 #if (__FreeBSD_version < 430000 || __FreeBSD_version < 500012)
 
 pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);

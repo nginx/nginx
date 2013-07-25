@@ -515,24 +515,36 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
 
         if (ls[i].keepidle) {
+            value = ls[i].keepidle;
+
+#if (NGX_KEEPALIVE_FACTOR)
+            value *= NGX_KEEPALIVE_FACTOR;
+#endif
+
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_KEEPIDLE,
-                           (const void *) &ls[i].keepidle, sizeof(int))
+                           (const void *) &value, sizeof(int))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(TCP_KEEPIDLE, %d) %V failed, ignored",
-                              ls[i].keepidle, &ls[i].addr_text);
+                              value, &ls[i].addr_text);
             }
         }
 
         if (ls[i].keepintvl) {
+            value = ls[i].keepintvl;
+
+#if (NGX_KEEPALIVE_FACTOR)
+            value *= NGX_KEEPALIVE_FACTOR;
+#endif
+
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_KEEPINTVL,
-                           (const void *) &ls[i].keepintvl, sizeof(int))
+                           (const void *) &value, sizeof(int))
                 == -1)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                              "setsockopt(TCP_KEEPINTVL, %d) %V failed, ignored",
-                             ls[i].keepintvl, &ls[i].addr_text);
+                             value, &ls[i].addr_text);
             }
         }
 
