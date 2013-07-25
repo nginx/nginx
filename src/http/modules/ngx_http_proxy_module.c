@@ -1542,7 +1542,7 @@ ngx_http_proxy_input_filter_init(void *data)
         u->pipe->length = 3; /* "0" LF LF */
 
         u->input_filter = ngx_http_proxy_non_buffered_chunked_filter;
-        u->length = -1;
+        u->length = 1;
 
     } else if (u->headers_in.content_length_n == 0) {
         /* empty body: special case as filter won't be called */
