@@ -3297,6 +3297,7 @@ static void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
+    ngx_uint_t   flush;
     ngx_time_t  *tp;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -3417,8 +3418,11 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         return;
     }
 
-    if (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-        rc = 0;
+    flush = 0;
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        rc = NGX_ERROR;
+        flush = 1;
     }
 
     if (r->header_only) {
@@ -3428,6 +3432,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (rc == 0) {
         rc = ngx_http_send_special(r, NGX_HTTP_LAST);
+
+    } else if (flush) {
+        r->keepalive = 0;
+        rc = ngx_http_send_special(r, NGX_HTTP_FLUSH);
     }
 
     ngx_http_finalize_request(r, rc);
