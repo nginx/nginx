@@ -3026,9 +3026,6 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
         if (p->upstream_done || p->upstream_eof || p->upstream_error) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http upstream exit: %p", p->out);
-#if 0
-            ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
-#endif
             ngx_http_upstream_finalize_request(r, u, 0);
             return;
         }
@@ -3138,10 +3135,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
-
-#if 0
-    ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
-#endif
 
     if (u->peer.sockaddr) {
 
@@ -3255,13 +3248,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         ngx_close_connection(u->peer.connection);
         u->peer.connection = NULL;
     }
-
-#if 0
-    if (u->conf->busy_lock && !u->busy_locked) {
-        ngx_http_upstream_busy_lock(p);
-        return;
-    }
-#endif
 
     ngx_http_upstream_connect(r, u);
 }
