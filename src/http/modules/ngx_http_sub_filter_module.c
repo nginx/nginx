@@ -369,7 +369,9 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             continue;
         }
 
-        if (ctx->buf->last_buf || ngx_buf_in_memory(ctx->buf)) {
+        if (ctx->buf->last_buf || ctx->buf->flush
+            || ngx_buf_in_memory(ctx->buf))
+        {
             if (b == NULL) {
                 cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
                 if (cl == NULL) {
@@ -387,6 +389,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             b->last_buf = ctx->buf->last_buf;
+            b->flush = ctx->buf->flush;
             b->shadow = ctx->buf;
 
             b->recycled = ctx->buf->recycled;
