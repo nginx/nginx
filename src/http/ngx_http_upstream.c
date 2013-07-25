@@ -2018,7 +2018,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
 
     if (rev->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
-        ngx_http_upstream_finalize_request(r, u, NGX_ETIMEDOUT);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
         return;
     }
 
@@ -2514,7 +2514,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
     if (upstream->read->timedout || upstream->write->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
         return;
     }
 
@@ -2701,7 +2701,7 @@ ngx_http_upstream_process_non_buffered_upstream(ngx_http_request_t *r,
 
     if (c->read->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
-        ngx_http_upstream_finalize_request(r, u, 0);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
         return;
     }
 
