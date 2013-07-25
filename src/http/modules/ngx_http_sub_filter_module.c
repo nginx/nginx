@@ -268,25 +268,14 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 if (ctx->saved.len) {
 
-                    if (ctx->free) {
-                        cl = ctx->free;
-                        ctx->free = ctx->free->next;
-                        b = cl->buf;
-                        ngx_memzero(b, sizeof(ngx_buf_t));
-
-                    } else {
-                        b = ngx_calloc_buf(r->pool);
-                        if (b == NULL) {
-                            return NGX_ERROR;
-                        }
-
-                        cl = ngx_alloc_chain_link(r->pool);
-                        if (cl == NULL) {
-                            return NGX_ERROR;
-                        }
-
-                        cl->buf = b;
+                    cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+                    if (cl == NULL) {
+                        return NGX_ERROR;
                     }
+
+                    b = cl->buf;
+
+                    ngx_memzero(b, sizeof(ngx_buf_t));
 
                     b->pos = ngx_pnalloc(r->pool, ctx->saved.len);
                     if (b->pos == NULL) {
@@ -303,24 +292,12 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     ctx->saved.len = 0;
                 }
 
-                if (ctx->free) {
-                    cl = ctx->free;
-                    ctx->free = ctx->free->next;
-                    b = cl->buf;
-
-                } else {
-                    b = ngx_alloc_buf(r->pool);
-                    if (b == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl = ngx_alloc_chain_link(r->pool);
-                    if (cl == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl->buf = b;
+                cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+                if (cl == NULL) {
+                    return NGX_ERROR;
                 }
+
+                b = cl->buf;
 
                 ngx_memcpy(b, ctx->buf, sizeof(ngx_buf_t));
 
@@ -335,7 +312,6 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     b->file_pos += b->pos - ctx->buf->pos;
                 }
 
-                cl->next = NULL;
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
             }
@@ -356,15 +332,14 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             /* rc == NGX_OK */
 
-            b = ngx_calloc_buf(r->pool);
-            if (b == NULL) {
-                return NGX_ERROR;
-            }
-
-            cl = ngx_alloc_chain_link(r->pool);
+            cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
             if (cl == NULL) {
                 return NGX_ERROR;
             }
+
+            b = cl->buf;
+
+            ngx_memzero(b, sizeof(ngx_buf_t));
 
             slcf = ngx_http_get_module_loc_conf(r, ngx_http_sub_filter_module);
 
@@ -386,8 +361,6 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 b->sync = 1;
             }
 
-            cl->buf = b;
-            cl->next = NULL;
             *ctx->last_out = cl;
             ctx->last_out = &cl->next;
 
@@ -398,29 +371,17 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (ctx->buf->last_buf || ngx_buf_in_memory(ctx->buf)) {
             if (b == NULL) {
-                if (ctx->free) {
-                    cl = ctx->free;
-                    ctx->free = ctx->free->next;
-                    b = cl->buf;
-                    ngx_memzero(b, sizeof(ngx_buf_t));
-
-                } else {
-                    b = ngx_calloc_buf(r->pool);
-                    if (b == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl = ngx_alloc_chain_link(r->pool);
-                    if (cl == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    cl->buf = b;
+                cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+                if (cl == NULL) {
+                    return NGX_ERROR;
                 }
+
+                b = cl->buf;
+
+                ngx_memzero(b, sizeof(ngx_buf_t));
 
                 b->sync = 1;
 
-                cl->next = NULL;
                 *ctx->last_out = cl;
                 ctx->last_out = &cl->next;
             }
