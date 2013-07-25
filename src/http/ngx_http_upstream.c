@@ -3405,6 +3405,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (u->header_sent
         && rc != NGX_HTTP_REQUEST_TIME_OUT
+        && rc != NGX_HTTP_CLIENT_CLOSED_REQUEST
         && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
     {
         rc = 0;
