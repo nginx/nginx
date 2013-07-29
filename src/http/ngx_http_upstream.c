@@ -1282,6 +1282,11 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
 {
     ngx_int_t   rc;
 
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) {
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+        return;
+    }
+
     if (ngx_ssl_create_connection(u->conf->ssl, c,
                                   NGX_SSL_BUFFER|NGX_SSL_CLIENT)
         != NGX_OK)
