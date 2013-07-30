@@ -388,7 +388,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
     }
 
     if (entries.nelts > 1) {
@@ -649,7 +649,7 @@ ngx_http_autoindex_error(ngx_http_request_t *r, ngx_dir_t *dir, ngx_str_t *name)
                       ngx_close_dir_n " \"%V\" failed", name);
     }
 
-    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    return r->header_sent ? NGX_ERROR : NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
 
