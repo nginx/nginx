@@ -49,10 +49,10 @@ typedef int               ngx_err_t;
 #define NGX_ECANCELED     ECANCELED
 #define NGX_EILSEQ        EILSEQ
 #define NGX_ENOMOREFILES  0
+#define NGX_ELOOP         ELOOP
 
 #if (NGX_HAVE_OPENAT)
 #define NGX_EMLINK        EMLINK
-#define NGX_ELOOP         ELOOP
 #endif
 
 #if (__hpux__)
