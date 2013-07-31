@@ -33,7 +33,7 @@ else
     echo $ngx_n " uintptr_t not found" $ngx_c
 fi
 
-rm $NGX_AUTOTEST*
+rm -rf $NGX_AUTOTEST*
 
 
 if [ $found = no ]; then

@@ -49,7 +49,7 @@ END
         fi
     fi
 
-    rm -f $NGX_AUTOTEST
+    rm -rf $NGX_AUTOTEST*
 
     if [ $ngx_found = no ]; then
         echo $ngx_n " $ngx_try not found$ngx_c"

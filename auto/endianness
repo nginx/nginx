@@ -34,10 +34,10 @@ if [ -x $NGX_AUTOTEST ]; then
         echo " big endian"
     fi
 
-    rm $NGX_AUTOTEST*
+    rm -rf $NGX_AUTOTEST*
 
 else
-    rm $NGX_AUTOTEST*
+    rm -rf $NGX_AUTOTEST*
 
     echo
     echo "$0: error: cannot detect system byte ordering"

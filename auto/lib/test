@@ -37,4 +37,4 @@ else
     echo " not found"
 fi
 
-rm $NGX_AUTOTEST*
+rm -rf $NGX_AUTOTEST*

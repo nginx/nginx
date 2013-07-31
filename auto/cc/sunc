@@ -30,7 +30,7 @@ if [ -x $NGX_AUTOTEST ]; then
     ngx_sunc_ver=`$NGX_AUTOTEST`
 fi
 
-rm $NGX_AUTOTEST*
+rm -rf $NGX_AUTOTEST*
 
 # 1424 == 0x590, Sun Studio 12
 
