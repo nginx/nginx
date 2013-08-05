@@ -233,7 +233,7 @@ ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text, size_t len,
 
         /* on Linux sockaddr might not include sun_path at all */
 
-        if (socklen <= offsetof(struct sockaddr_un, sun_path)) {
+        if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)) {
             p = ngx_snprintf(text, len, "unix:%Z");
 
         } else {
