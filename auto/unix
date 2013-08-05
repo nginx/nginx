@@ -788,11 +788,7 @@ ngx_feature_incs="#include <sys/types.h>
                   #include <netdb.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test='struct addrinfo hints, *res;
-                  hints.ai_family = AF_UNSPEC;
-                  hints.ai_socktype = SOCK_STREAM;
-                  hints.ai_flags = AI_ADDRCONFIG;
-                  if (getaddrinfo("localhost", NULL, &hints, &res) != 0)
-                      return 1;
+ngx_feature_test='struct addrinfo *res;
+                  if (getaddrinfo("localhost", NULL, NULL, &res) != 0) return 1;
                   freeaddrinfo(res)'
 . auto/feature

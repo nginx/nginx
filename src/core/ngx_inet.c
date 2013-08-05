@@ -963,7 +963,9 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
     ngx_memzero(&hints, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
+#ifdef AI_ADDRCONFIG
     hints.ai_flags = AI_ADDRCONFIG;
+#endif
 
     if (getaddrinfo((char *) host, NULL, &hints, &res) != 0) {
         u->err = "host not found";
