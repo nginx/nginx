@@ -2016,7 +2016,9 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             return NULL;
         }
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, path, 0) != NGX_OK) {
+        if (ngx_get_full_name(r->pool, (ngx_str_t *) &ngx_cycle->prefix, path)
+            != NGX_OK)
+        {
             return NULL;
         }
 

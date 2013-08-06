@@ -122,6 +122,9 @@ struct ngx_tree_ctx_s {
 };
 
 
+ngx_int_t ngx_get_full_name(ngx_pool_t *pool, ngx_str_t *prefix,
+    ngx_str_t *name);
+
 ssize_t ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain);
 ngx_int_t ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path,
     ngx_pool_t *pool, ngx_uint_t persistent, ngx_uint_t clean,

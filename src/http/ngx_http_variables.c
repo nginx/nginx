@@ -1374,7 +1374,9 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path, 0) != NGX_OK) {
+        if (ngx_get_full_name(r->pool, (ngx_str_t *) &ngx_cycle->prefix, &path)
+            != NGX_OK)
+        {
             return NGX_ERROR;
         }
 
@@ -1416,7 +1418,9 @@ ngx_http_variable_realpath_root(ngx_http_request_t *r,
 
         path.data[path.len - 1] = '\0';
 
-        if (ngx_conf_full_name((ngx_cycle_t *) ngx_cycle, &path, 0) != NGX_OK) {
+        if (ngx_get_full_name(r->pool, (ngx_str_t *) &ngx_cycle->prefix, &path)
+            != NGX_OK)
+        {
             return NGX_ERROR;
         }
     }
