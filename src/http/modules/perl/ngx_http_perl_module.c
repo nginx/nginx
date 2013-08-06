@@ -485,7 +485,9 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
     if (pmcf->modules != NGX_CONF_UNSET_PTR) {
         m = pmcf->modules->elts;
         for (i = 0; i < pmcf->modules->nelts; i++) {
-            if (ngx_conf_full_name(cf->cycle, &m[i], 0) != NGX_OK) {
+            if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &m[i])
+                != NGX_OK)
+            {
                 return NGX_CONF_ERROR;
             }
         }

@@ -197,7 +197,7 @@ ngx_ssl_stapling_file(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 
     staple = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_stapling_index);
 
-    if (ngx_conf_full_name(cf->cycle, file, 1) != NGX_OK) {
+    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, file) != NGX_OK) {
         return NGX_ERROR;
     }
 

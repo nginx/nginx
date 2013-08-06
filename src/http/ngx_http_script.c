@@ -131,7 +131,12 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
     if ((v->len == 0 || v->data[0] != '$')
         && (ccv->conf_prefix || ccv->root_prefix))
     {
-        if (ngx_conf_full_name(ccv->cf->cycle, v, ccv->conf_prefix) != NGX_OK) {
+        if (ngx_get_full_name(ccv->cf->pool,
+                              ccv->conf_prefix ? &ccv->cf->cycle->conf_prefix:
+                                                 &ccv->cf->cycle->prefix,
+                              v)
+            != NGX_OK)
+        {
             return NGX_ERROR;
         }
 

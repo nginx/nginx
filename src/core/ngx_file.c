@@ -355,7 +355,9 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         path->name.len--;
     }
 
-    if (ngx_conf_full_name(cf->cycle, &path->name, 0) != NGX_OK) {
+    if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &path->name)
+        != NGX_OK)
+    {
         return NULL;
     }
 
@@ -409,7 +411,9 @@ ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
 
     (*path)->name = init->name;
 
-    if (ngx_conf_full_name(cf->cycle, &(*path)->name, 0) != NGX_OK) {
+    if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &(*path)->name)
+        != NGX_OK)
+    {
         return NGX_CONF_ERROR;
     }
 
