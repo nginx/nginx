@@ -147,10 +147,12 @@ ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
         if (ngx_strncasecmp(ref, (u_char *) "http://", 7) == 0) {
             ref += 7;
+            len -= 7;
             goto valid_scheme;
 
         } else if (ngx_strncasecmp(ref, (u_char *) "https://", 8) == 0) {
             ref += 8;
+            len -= 8;
             goto valid_scheme;
         }
     }
@@ -191,7 +193,7 @@ valid_scheme:
         ngx_int_t  rc;
         ngx_str_t  referer;
 
-        referer.len = len - 7;
+        referer.len = len;
         referer.data = ref;
 
         rc = ngx_regex_exec_array(rlcf->regex, &referer, r->connection->log);
