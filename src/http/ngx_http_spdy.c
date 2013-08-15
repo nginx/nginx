@@ -809,6 +809,8 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     sc->zstream_in.next_in = pos;
     sc->zstream_in.avail_in = size;
     sc->zstream_in.next_out = buf->last;
+
+    /* one byte is reserved for null-termination of the last header value */
     sc->zstream_in.avail_out = buf->end - buf->last - 1;
 
     z = inflate(&sc->zstream_in, Z_NO_FLUSH);
@@ -912,9 +914,14 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                     return ngx_http_spdy_state_headers_error(sc, pos, end);
                 }
 
+                /* null-terminate the last processed header name or value */
+                *buf->pos = '\0';
+
                 buf = r->header_in;
 
                 sc->zstream_in.next_out = buf->last;
+
+                /* one byte is reserved for null-termination */
                 sc->zstream_in.avail_out = buf->end - buf->last - 1;
 
                 z = inflate(&sc->zstream_in, Z_NO_FLUSH);
@@ -995,6 +1002,9 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         return ngx_http_spdy_state_save(sc, pos, end,
                                         ngx_http_spdy_state_headers);
     }
+
+    /* null-terminate the last header value */
+    *buf->pos = '\0';
 
     ngx_http_spdy_run_request(r);
 
@@ -1936,6 +1946,9 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
             return NGX_HTTP_PARSE_INVALID_HEADER;
         }
 
+        /* null-terminate the previous header value */
+        *p = '\0';
+
         p += NGX_SPDY_NV_NLEN_SIZE;
 
         r->header_name_end = p + len;
@@ -2004,6 +2017,9 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
         if (!len) {
             return NGX_ERROR;
         }
+
+        /* null-terminate header name */
+        *p = '\0';
 
         p += NGX_SPDY_NV_VLEN_SIZE;
 
@@ -2163,11 +2179,9 @@ ngx_http_spdy_handle_request_header(ngx_http_request_t *r)
 
     h->key.len = r->lowcase_index;
     h->key.data = r->header_name_start;
-    h->key.data[h->key.len] = '\0';
 
     h->value.len = r->header_size;
     h->value.data = r->header_start;
-    h->value.data[h->value.len] = '\0';
 
     h->lowcase_key = h->key.data;
 
