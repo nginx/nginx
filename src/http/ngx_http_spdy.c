@@ -2663,7 +2663,8 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
     ev = fc->read;
 
     if (ev->active || ev->disabled) {
-        ngx_del_event(ev, NGX_READ_EVENT, 0);
+        ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
+                      "spdy fake read event was activated");
     }
 
     if (ev->timer_set) {
@@ -2677,7 +2678,8 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
     ev = fc->write;
 
     if (ev->active || ev->disabled) {
-        ngx_del_event(ev, NGX_WRITE_EVENT, 0);
+        ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
+                      "spdy fake write event was activated");
     }
 
     if (ev->timer_set) {
