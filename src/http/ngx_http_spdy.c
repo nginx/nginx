@@ -2014,10 +2014,6 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
 
         len = ngx_spdy_frame_parse_uint16(p);
 
-        if (!len) {
-            return NGX_ERROR;
-        }
-
         /* null-terminate header name */
         *p = '\0';
 
