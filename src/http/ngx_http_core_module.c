@@ -3686,9 +3686,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         if (prev->root.data == NULL) {
             ngx_str_set(&conf->root, "html");
 
-            if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &conf->root)
-                != NGX_OK)
-            {
+            if (ngx_conf_full_name(cf->cycle, &conf->root, 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -4430,9 +4428,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (clcf->root.data[0] != '$') {
-        if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &clcf->root)
-            != NGX_OK)
-        {
+        if (ngx_conf_full_name(cf->cycle, &clcf->root, 0) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }

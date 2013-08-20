@@ -1327,7 +1327,7 @@ ngx_http_geo_include(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     ngx_sprintf(file.data, "%V.bin%Z", name);
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, &file) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

@@ -1626,9 +1626,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         cache->path->name.len--;
     }
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->prefix, &cache->path->name)
-        != NGX_OK)
-    {
+    if (ngx_conf_full_name(cf->cycle, &cache->path->name, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

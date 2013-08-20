@@ -240,7 +240,7 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     X509    *x509;
     u_long   n;
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, cert) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -319,7 +319,7 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
     BIO_free(bio);
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, key) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, key, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -350,7 +350,7 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, cert) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -394,7 +394,7 @@ ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, cert) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -421,7 +421,7 @@ ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
         return NGX_OK;
     }
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, crl) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, crl, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -587,7 +587,7 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
         return NGX_OK;
     }
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, file) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, file, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 

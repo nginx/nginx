@@ -747,7 +747,7 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0, "include %s", file.data);
 
-    if (ngx_get_full_name(cf->pool, &cf->cycle->conf_prefix, &file) != NGX_OK) {
+    if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -797,6 +797,16 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+ngx_int_t
+ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
+{
+    return ngx_get_full_name(cycle->pool,
+                             conf_prefix ? &cycle->conf_prefix:
+                                           &cycle->prefix,
+                             name);
+}
+
+
 ngx_open_file_t *
 ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
 {
@@ -812,7 +822,7 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
     if (name->len) {
         full = *name;
 
-        if (ngx_get_full_name(cycle->pool, &cycle->prefix, &full) != NGX_OK) {
+        if (ngx_conf_full_name(cycle, &full, 0) != NGX_OK) {
             return NULL;
         }
 

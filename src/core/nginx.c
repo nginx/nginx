@@ -897,9 +897,7 @@ ngx_process_options(ngx_cycle_t *cycle)
         ngx_str_set(&cycle->conf_file, NGX_CONF_PATH);
     }
 
-    if (ngx_get_full_name(cycle->pool, &cycle->prefix, &cycle->conf_file)
-        != NGX_OK)
-    {
+    if (ngx_conf_full_name(cycle, &cycle->conf_file, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1015,7 +1013,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ngx_str_set(&ccf->pid, NGX_PID_PATH);
     }
 
-    if (ngx_get_full_name(cycle->pool, &cycle->prefix, &ccf->pid) != NGX_OK) {
+    if (ngx_conf_full_name(cycle, &ccf->pid, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -1063,9 +1061,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ngx_str_set(&ccf->lock_file, NGX_LOCK_PATH);
     }
 
-    if (ngx_get_full_name(cycle->pool, &cycle->prefix, &ccf->lock_file)
-        != NGX_OK)
-    {
+    if (ngx_conf_full_name(cycle, &ccf->lock_file, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
