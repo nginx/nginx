@@ -425,7 +425,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
             case -1:
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                    "ioctl(DP_ISPOLLED) failed for socket %d, event",
+                    "ioctl(DP_ISPOLLED) failed for socket %d, event %04Xd",
                     fd, revents);
                 break;
 
@@ -449,7 +449,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                     != (ssize_t) sizeof(struct pollfd))
                 {
                     ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                                  "write(/dev/poll) for %d failed, fd");
+                                  "write(/dev/poll) for %d failed", fd);
                 }
 
                 if (close(fd) == -1) {
