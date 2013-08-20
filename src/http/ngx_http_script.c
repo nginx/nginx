@@ -1327,20 +1327,17 @@ ngx_http_script_full_name_code(ngx_http_script_engine_t *e)
 {
     ngx_http_script_full_name_code_t  *code;
 
-    ngx_str_t  value;
+    ngx_str_t  value, *prefix;
 
     code = (ngx_http_script_full_name_code_t *) e->ip;
 
     value.data = e->buf.data;
     value.len = e->pos - e->buf.data;
 
-    if (ngx_get_full_name(e->request->pool,
-                          code->conf_prefix
-                                       ? (ngx_str_t *) &ngx_cycle->conf_prefix:
-                                         (ngx_str_t *) &ngx_cycle->prefix,
-                          &value)
-        != NGX_OK)
-    {
+    prefix = code->conf_prefix ? (ngx_str_t *) &ngx_cycle->conf_prefix:
+                                 (ngx_str_t *) &ngx_cycle->prefix;
+
+    if (ngx_get_full_name(e->request->pool, prefix, &value) != NGX_OK) {
         e->ip = ngx_http_script_exit;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return;
