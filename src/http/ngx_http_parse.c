@@ -212,14 +212,17 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 case 5:
                     if (ngx_str5cmp(m, 'M', 'K', 'C', 'O', 'L')) {
                         r->method = NGX_HTTP_MKCOL;
+                        break;
                     }
 
                     if (ngx_str5cmp(m, 'P', 'A', 'T', 'C', 'H')) {
                         r->method = NGX_HTTP_PATCH;
+                        break;
                     }
 
                     if (ngx_str5cmp(m, 'T', 'R', 'A', 'C', 'E')) {
                         r->method = NGX_HTTP_TRACE;
+                        break;
                     }
 
                     break;
