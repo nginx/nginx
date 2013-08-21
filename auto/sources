@@ -386,6 +386,10 @@ HTTP_AUTH_BASIC_MODULE=ngx_http_auth_basic_module
 HTTP_AUTH_BASIC_SRCS=src/http/modules/ngx_http_auth_basic_module.c
 
 
+HTTP_AUTH_REQUEST_MODULE=ngx_http_auth_request_module
+HTTP_AUTH_REQUEST_SRCS=src/http/modules/ngx_http_auth_request_module.c
+
+
 HTTP_AUTOINDEX_MODULE=ngx_http_autoindex_module
 HTTP_AUTOINDEX_SRCS=src/http/modules/ngx_http_autoindex_module.c
 

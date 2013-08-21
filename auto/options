@@ -71,6 +71,7 @@ HTTP_ADDITION=NO
 HTTP_DAV=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
+HTTP_AUTH_REQUEST=NO
 HTTP_USERID=YES
 HTTP_AUTOINDEX=YES
 HTTP_RANDOM_INDEX=NO
@@ -215,6 +216,7 @@ do
         --with-http_mp4_module)          HTTP_MP4=YES               ;;
         --with-http_gunzip_module)       HTTP_GUNZIP=YES            ;;
         --with-http_gzip_static_module)  HTTP_GZIP_STATIC=YES       ;;
+        --with-http_auth_request_module) HTTP_AUTH_REQUEST=YES      ;;
         --with-http_random_index_module) HTTP_RANDOM_INDEX=YES      ;;
         --with-http_secure_link_module)  HTTP_SECURE_LINK=YES       ;;
         --with-http_degradation_module)  HTTP_DEGRADATION=YES       ;;
@@ -363,6 +365,7 @@ cat << END
   --with-http_mp4_module             enable ngx_http_mp4_module
   --with-http_gunzip_module          enable ngx_http_gunzip_module
   --with-http_gzip_static_module     enable ngx_http_gzip_static_module
+  --with-http_auth_request_module    enable ngx_http_auth_request_module
   --with-http_random_index_module    enable ngx_http_random_index_module
   --with-http_secure_link_module     enable ngx_http_secure_link_module
   --with-http_degradation_module     enable ngx_http_degradation_module
