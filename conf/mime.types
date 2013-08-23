@@ -32,6 +32,7 @@ types {
     application/postscript                ps eps ai;
     application/rtf                       rtf;
     application/vnd.ms-excel              xls;
+    application/vnd.ms-fontobject         eot;
     application/vnd.ms-powerpoint         ppt;
     application/vnd.wap.wmlc              wmlc;
     application/vnd.google-earth.kml+xml  kml;
@@ -57,7 +58,6 @@ types {
     application/octet-stream              bin exe dll;
     application/octet-stream              deb;
     application/octet-stream              dmg;
-    application/octet-stream              eot;
     application/octet-stream              iso img;
     application/octet-stream              msi msp msm;
 
