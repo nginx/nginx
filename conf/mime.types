@@ -61,6 +61,10 @@ types {
     application/octet-stream              iso img;
     application/octet-stream              msi msp msm;
 
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document    docx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet          xlsx;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation  pptx;
+
     audio/midi                            mid midi kar;
     audio/mpeg                            mp3;
     audio/ogg                             ogg;
