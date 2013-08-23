@@ -32,7 +32,8 @@ case "$NGX_PLATFORM" in
 
         cat << END                                            >> $NGX_MAKEFILE
 
-`echo "$PCRE/pcre.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+`echo "$PCRE/pcre.lib:	$PCRE/pcre.h $NGX_MAKEFILE"			\
+	| sed -e "s/\//$ngx_regex_dirsep/g"`
 	\$(MAKE) -f auto/lib/pcre/$ngx_makefile $ngx_pcre $ngx_opt
 
 `echo "$PCRE/pcre.h:" | sed -e "s/\//$ngx_regex_dirsep/g"`
