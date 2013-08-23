@@ -4766,7 +4766,9 @@ ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         tf[i].name = value[i + 1];
 
-        if (tf[i].name.data[tf[i].name.len - 1] == '/') {
+        if (tf[i].name.len > 0
+            && tf[i].name.data[tf[i].name.len - 1] == '/')
+        {
             tf[i].test_dir = 1;
             tf[i].name.len--;
             tf[i].name.data[tf[i].name.len] = '\0';
