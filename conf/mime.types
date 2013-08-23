@@ -24,6 +24,7 @@ types {
     image/svg+xml                         svg svgz;
     image/webp                            webp;
 
+    application/font-woff                 woff;
     application/java-archive              jar war ear;
     application/mac-binhex40              hqx;
     application/msword                    doc;
