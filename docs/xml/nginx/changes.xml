@@ -5,6 +5,108 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.4" date="27.08.2013">
+
+<change type="change">
+<para lang="ru">
+MIME-тип для расширения js изменён на "application/javascript";
+значение по умолчанию директивы charset_types изменено соответственно.
+</para>
+<para lang="en">
+the "js" extension MIME type has been changed to "application/javascript";
+default value of the "charset_types" directive was changed accordingly.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь директива image_filter с параметром size
+возвращает ответ с MIME-типом "application/json".
+</para>
+<para lang="en">
+now the "image_filter" directive with the "size" parameter
+returns responses with the "application/json" MIME type.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_auth_request_module.
+</para>
+<para lang="en">
+the ngx_http_auth_request_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации мог произойти segmentation fault,
+если использовалась директива try_files с пустым параметром.
+</para>
+<para lang="en">
+a segmentation fault might occur on start or during reconfiguration
+if the "try_files" directive was used with an empty parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании в директивах root и auth_basic_user_file
+относительных путей, заданных с помощью переменных.
+</para>
+<para lang="en">
+memory leak if relative paths were specified using variables
+in the "root" or "auth_basic_user_file" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива valid_referers неправильно выполняла регулярные выражения,
+если заголовок Referer начинался с "https://".<br/>
+Спасибо Liangbin Li.
+</para>
+<para lang="en">
+the "valid_referers" directive incorrectly executed regular expressions
+if a "Referer" header started with "https://".<br/>
+Thanks to Liangbin Li.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы могли зависать, если использовались подзапросы и при обработке подзапроса
+происходила ошибка во время SSL handshake с бэкендом.<br/>
+Спасибо Aviram Cohen.
+</para>
+<para lang="en">
+responses might hang if subrequests were used
+and an SSL handshake error happened during subrequest processing.<br/>
+Thanks to Aviram Cohen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.3" date="30.07.2013">
 
 <change>
