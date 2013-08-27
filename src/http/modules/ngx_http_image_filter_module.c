@@ -478,7 +478,12 @@ ngx_http_image_read(ngx_http_request_t *r, ngx_chain_t *in)
                        "image buf: %uz", size);
 
         rest = ctx->image + ctx->length - p;
-        size = (rest < size) ? rest : size;
+
+        if (size > rest) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "image filter: too big response");
+            return NGX_ERROR;
+        }
 
         p = ngx_cpymem(p, b->pos, size);
         b->pos += size;
