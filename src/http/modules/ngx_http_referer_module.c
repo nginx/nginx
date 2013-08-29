@@ -178,12 +178,12 @@ valid_scheme:
             break;
         }
 
-        buf[i] = ngx_tolower(*p);
-        key = ngx_hash(key, buf[i++]);
-
         if (i == 256) {
             goto invalid;
         }
+
+        buf[i] = ngx_tolower(*p);
+        key = ngx_hash(key, buf[i++]);
     }
 
     uri = ngx_hash_find_combined(&rlcf->hash, key, buf, p - ref);
