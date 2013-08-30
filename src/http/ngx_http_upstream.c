@@ -2105,6 +2105,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
+    u->header_sent = 1;
+
     if (u->upgrade) {
         ngx_http_upstream_upgrade(r, u);
         return;
@@ -2130,8 +2132,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
     }
-
-    u->header_sent = 1;
 
     if (r->request_body && r->request_body->temp_file) {
         ngx_pool_run_cleanup_file(r->pool, r->request_body->temp_file->file.fd);
