@@ -571,6 +571,7 @@ ngx_http_create_request(ngx_connection_t *c)
     r->start_msec = tp->msec;
 
     r->method = NGX_HTTP_UNKNOWN;
+    r->http_version = NGX_HTTP_VERSION_10;
 
     r->headers_in.content_length_n = -1;
     r->headers_in.keep_alive_n = -1;
