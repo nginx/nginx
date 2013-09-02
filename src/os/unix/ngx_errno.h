@@ -50,6 +50,7 @@ typedef int               ngx_err_t;
 #define NGX_EILSEQ        EILSEQ
 #define NGX_ENOMOREFILES  0
 #define NGX_ELOOP         ELOOP
+#define NGX_EBADF         EBADF
 
 #if (NGX_HAVE_OPENAT)
 #define NGX_EMLINK        EMLINK

@@ -288,7 +288,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
         ngx_log_error(level, cycle->log, err, "select() failed");
 
-        if (err == EBADF) {
+        if (err == NGX_EBADF) {
             ngx_select_repair_fd_sets(cycle);
         }
 
