@@ -91,6 +91,9 @@ typedef struct {
 #elif defined(O_EXEC)
 #define NGX_FILE_SEARCH          (O_EXEC|NGX_FILE_DIRECTORY)
 
+#elif (NGX_HAVE_O_PATH)
+#define NGX_FILE_SEARCH          (O_PATH|O_RDONLY|NGX_FILE_DIRECTORY)
+
 #else
 #define NGX_FILE_SEARCH          (O_RDONLY|NGX_FILE_DIRECTORY)
 #endif

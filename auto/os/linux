@@ -68,6 +68,22 @@ if [ $ngx_found = yes ]; then
 fi
 
 
+# O_PATH and AT_EMPTY_PATH were introduced in 2.6.39, glibc 2.14
+
+ngx_feature="O_PATH"
+ngx_feature_name="NGX_HAVE_O_PATH"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/types.h>
+                  #include <sys/stat.h>
+                  #include <fcntl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="int fd; struct stat sb;
+                  fd = openat(AT_FDCWD, \".\", O_PATH|O_DIRECTORY|O_NOFOLLOW);
+                  if (fstatat(fd, \"\", &sb, AT_EMPTY_PATH) != 0) return 1"
+. auto/feature
+
+
 # sendfile()
 
 CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE"

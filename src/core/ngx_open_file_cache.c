@@ -25,6 +25,10 @@ static void ngx_open_file_cache_cleanup(void *data);
 #if (NGX_HAVE_OPENAT)
 static ngx_fd_t ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
     ngx_int_t mode, ngx_int_t create, ngx_int_t access, ngx_log_t *log);
+#if (NGX_HAVE_O_PATH)
+static ngx_int_t ngx_file_o_path_info(ngx_fd_t fd, ngx_file_info_t *fi,
+    ngx_log_t *log);
+#endif
 #endif
 static ngx_fd_t ngx_open_file_wrapper(ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_int_t mode, ngx_int_t create,
@@ -517,10 +521,17 @@ ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
         goto failed;
     }
 
+#if (NGX_HAVE_O_PATH)
+    if (ngx_file_o_path_info(fd, &fi, log) == NGX_ERROR) {
+        err = ngx_errno;
+        goto failed;
+    }
+#else
     if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
         goto failed;
     }
+#endif
 
     if (fi.st_uid != atfi.st_uid) {
         err = NGX_ELOOP;
@@ -541,7 +552,63 @@ failed:
     return NGX_INVALID_FILE;
 }
 
+
+#if (NGX_HAVE_O_PATH)
+
+static ngx_int_t
+ngx_file_o_path_info(ngx_fd_t fd, ngx_file_info_t *fi, ngx_log_t *log)
+{
+    static ngx_uint_t  use_fstat = 1;
+
+    /*
+     * In Linux 2.6.39 the O_PATH flag was introduced that allows to obtain
+     * a descriptor without actually opening file or directory.  It requires
+     * less permissions for path components, but till Linux 3.6 fstat() returns
+     * EBADF on such descriptors, and fstatat() with the AT_EMPTY_PATH flag
+     * should be used instead.
+     *
+     * Three scenarios are handled in this function:
+     *
+     * 1) The kernel is newer than 3.6 or fstat() with O_PATH support was
+     *    backported by vendor.  Then fstat() is used.
+     *
+     * 2) The kernel is newer than 2.6.39 but older than 3.6.  In this case
+     *    the first call of fstat() returns EBADF and we fallback to fstatat()
+     *    with AT_EMPTY_PATH which was introduced at the same time as O_PATH.
+     *
+     * 3) The kernel is older than 2.6.39 but nginx was build with O_PATH
+     *    support.  Since descriptors are opened with O_PATH|O_RDONLY flags
+     *    and O_PATH is ignored by the kernel then the O_RDONLY flag is
+     *    actually used.  In this case fstat() just works.
+     */
+
+    if (use_fstat) {
+        if (ngx_fd_info(fd, fi) != NGX_FILE_ERROR) {
+            return NGX_OK;
+        }
+
+        if (ngx_errno != NGX_EBADF) {
+            return NGX_ERROR;
+        }
+
+        ngx_log_error(NGX_LOG_NOTICE, log, 0,
+                      "fstat(O_PATH) failed with EBADF, "
+                      "switching to fstatat(AT_EMPTY_PATH)");
+
+        use_fstat = 0;
+        return ngx_file_o_path_info(fd, fi, log);
+    }
+
+    if (ngx_file_at_info(fd, "", fi, AT_EMPTY_PATH) != NGX_FILE_ERROR) {
+        return NGX_OK;
+    }
+
+    return NGX_ERROR;
+}
+
 #endif
+
+#endif /* NGX_HAVE_OPENAT */
 
 
 static ngx_fd_t
