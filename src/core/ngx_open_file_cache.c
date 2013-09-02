@@ -596,7 +596,6 @@ ngx_file_o_path_info(ngx_fd_t fd, ngx_file_info_t *fi, ngx_log_t *log)
                       "switching to fstatat(AT_EMPTY_PATH)");
 
         use_fstat = 0;
-        return ngx_file_o_path_info(fd, fi, log);
     }
 
     if (ngx_file_at_info(fd, "", fi, AT_EMPTY_PATH) != NGX_FILE_ERROR) {
