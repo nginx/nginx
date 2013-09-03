@@ -92,10 +92,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("411 Length Required"),
     ngx_string("412 Precondition Failed"),
     ngx_string("413 Request Entity Too Large"),
-    ngx_null_string,  /* "414 Request-URI Too Large", but we never send it
-                       * because we treat such requests as the HTTP/0.9
-                       * requests and send only a body without a header
-                       */
+    ngx_string("414 Request-URI Too Large"),
     ngx_string("415 Unsupported Media Type"),
     ngx_string("416 Requested Range Not Satisfiable"),
 
