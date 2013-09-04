@@ -330,7 +330,7 @@ ngx_feature_test="setsockopt(0, IPPROTO_TCP, TCP_DEFER_ACCEPT, NULL, 0)"
 . auto/feature
 
 
-ngx_feature="TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT"
+ngx_feature="TCP_KEEPIDLE"
 ngx_feature_name="NGX_HAVE_KEEPALIVE_TUNABLE"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/socket.h>
