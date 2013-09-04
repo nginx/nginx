@@ -148,8 +148,8 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
-    if ((event == NGX_READ_EVENT) && (max_read >= FD_SETSIZE)
-        || (event == NGX_WRITE_EVENT) && (max_write >= FD_SETSIZE))
+    if ((event == NGX_READ_EVENT && max_read >= FD_SETSIZE)
+        || (event == NGX_WRITE_EVENT && max_write >= FD_SETSIZE))
     {
         ngx_log_error(NGX_LOG_ERR, ev->log, 0,
                       "maximum number of descriptors "

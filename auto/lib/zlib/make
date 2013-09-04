@@ -24,6 +24,10 @@ case "$NGX_CC_NAME" in
         ngx_zlib=`echo \-DZLIB=\"$ZLIB\" | sed -e "s/\//$ngx_regex_dirsep/g"`
     ;;
 
+    *)
+        ngx_makefile=
+    ;;
+
 esac
 
 
@@ -33,12 +37,29 @@ done=NO
 case "$NGX_PLATFORM" in
 
     win32)
-        cat << END                                            >> $NGX_MAKEFILE
+
+        if [ -n "$ngx_makefile" ]; then
+            cat << END                                        >> $NGX_MAKEFILE
 
 `echo "$ZLIB/zlib.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
 	\$(MAKE) -f auto/lib/zlib/$ngx_makefile $ngx_opt $ngx_zlib
 
 END
+
+        else
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$ZLIB/libz.a:	$NGX_MAKEFILE
+	cd $ZLIB \\
+	&& \$(MAKE) distclean \\
+	&& \$(MAKE) -f win32/Makefile.gcc \\
+		CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
+		libz.a
+
+END
+
+        fi
 
         done=YES
     ;;

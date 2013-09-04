@@ -815,7 +815,7 @@ ngx_worker_thread(void *data)
 
                 /* THREAD: lock */
 
-                if (c[i].fd != -1 && c[i].idle) {
+                if (c[i].fd != (ngx_socket_t) -1 && c[i].idle) {
                     c[i].close = 1;
                     c[i].read->handler(c[i].read);
                 }
@@ -874,7 +874,7 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     if (ngx_exiting) {
         c = cycle->connections;
         for (i = 0; i < cycle->connection_n; i++) {
-            if (c[i].fd != -1
+            if (c[i].fd != (ngx_socket_t) -1
                 && c[i].read
                 && !c[i].read->accept
                 && !c[i].read->channel

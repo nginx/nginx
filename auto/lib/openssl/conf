@@ -33,6 +33,10 @@ if [ $OPENSSL != NONE ]; then
             CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
             CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
             CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+
+            if [ "$NGX_PLATFORM" = win32 ]; then
+                CORE_LIBS="$CORE_LIBS -lgdi32 -lcrypt32 -lws2_32"
+            fi
         ;;
     esac
 

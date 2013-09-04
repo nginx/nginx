@@ -73,6 +73,11 @@ if [ $PCRE != NONE ]; then
 
         *)
             have=NGX_PCRE . auto/have
+
+            if [ "$NGX_PLATFORM" = win32 ]; then
+                have=PCRE_STATIC . auto/have
+            fi
+
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
             LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
             CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre.a"

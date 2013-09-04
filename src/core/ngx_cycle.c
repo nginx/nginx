@@ -543,7 +543,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 }
             }
 
-            if (nls[n].fd == -1) {
+            if (nls[n].fd == (ngx_socket_t) -1) {
                 nls[n].open = 1;
             }
         }
@@ -649,7 +649,7 @@ old_shm_zone_done:
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
 
-        if (ls[i].remain || ls[i].fd == -1) {
+        if (ls[i].remain || ls[i].fd == (ngx_socket_t) -1) {
             continue;
         }
 
@@ -813,7 +813,7 @@ failed:
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        if (ls[i].fd == -1 || !ls[i].open) {
+        if (ls[i].fd == (ngx_socket_t) -1 || !ls[i].open) {
             continue;
         }
 

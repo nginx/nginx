@@ -70,7 +70,7 @@ ngx_event_accept(ngx_event_t *ev)
         s = accept(lc->fd, (struct sockaddr *) sa, &socklen);
 #endif
 
-        if (s == -1) {
+        if (s == (ngx_socket_t) -1) {
             err = ngx_socket_errno;
 
             if (err == NGX_EAGAIN) {

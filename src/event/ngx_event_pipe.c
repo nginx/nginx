@@ -57,7 +57,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         do_write = 1;
     }
 
-    if (p->upstream->fd != -1) {
+    if (p->upstream->fd != (ngx_socket_t) -1) {
         rev = p->upstream->read;
 
         flags = (rev->eof || rev->error) ? NGX_CLOSE_EVENT : 0;
@@ -74,7 +74,9 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         }
     }
 
-    if (p->downstream->fd != -1 && p->downstream->data == p->output_ctx) {
+    if (p->downstream->fd != (ngx_socket_t) -1
+        && p->downstream->data == p->output_ctx)
+    {
         wev = p->downstream->write;
         if (ngx_handle_write_event(wev, p->send_lowat) != NGX_OK) {
             return NGX_ABORT;

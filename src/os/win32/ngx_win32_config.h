@@ -9,6 +9,7 @@
 #define _NGX_WIN32_CONFIG_H_INCLUDED_
 
 
+#undef  WIN32
 #define WIN32         0x0400
 #define _WIN32_WINNT  0x0501
 
@@ -35,6 +36,12 @@
 #include <mswsock.h>
 #include <shellapi.h>
 #include <stddef.h>    /* offsetof() */
+
+#ifdef __GNUC__
+/* GCC MinGW's stdio.h includes sys/types.h */
+#define _OFF_T_
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
