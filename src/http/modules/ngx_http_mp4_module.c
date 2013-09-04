@@ -157,7 +157,11 @@ typedef struct {
 #define ngx_mp4_atom_header(mp4)   (mp4->buffer_pos - 8)
 #define ngx_mp4_atom_data(mp4)     mp4->buffer_pos
 #define ngx_mp4_atom_data_size(t)  (uint64_t) (sizeof(t) - 8)
-#define ngx_mp4_atom_next(mp4, n)  mp4->buffer_pos += n; mp4->offset += n
+
+
+#define ngx_mp4_atom_next(mp4, n)                                             \
+    mp4->buffer_pos += (size_t) n;                                            \
+    mp4->offset += n
 
 
 #define ngx_mp4_set_atom_name(p, n1, n2, n3, n4)                              \
@@ -956,7 +960,7 @@ ngx_http_mp4_read_ftyp_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0, "mp4 ftyp atom");
 
     if (atom_data_size > 1024
-        || ngx_mp4_atom_data(mp4) + atom_data_size > mp4->buffer_end)
+        || ngx_mp4_atom_data(mp4) + (size_t) atom_data_size > mp4->buffer_end)
     {
         ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
                       "\"%s\" mp4 ftyp atom is too large:%uL",
@@ -1304,7 +1308,7 @@ ngx_http_mp4_read_trak_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 
     trak->out[NGX_HTTP_MP4_TRAK_ATOM].buf = atom;
 
-    atom_end = mp4->buffer_pos + atom_data_size;
+    atom_end = mp4->buffer_pos + (size_t) atom_data_size;
     atom_file_end = mp4->offset + atom_data_size;
 
     rc = ngx_http_mp4_read_atom(mp4, ngx_http_mp4_trak_atoms, atom_data_size);

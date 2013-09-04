@@ -146,6 +146,14 @@ typedef __int64             off_t;
 typedef int                 dev_t;
 typedef unsigned int        ino_t;
 
+#elif __BORLANDC__
+
+/* off_t is redefined by sys/types.h used by zlib.h */
+#define __TYPES_H
+
+typedef int                 dev_t;
+typedef unsigned int        ino_t;
+
 #endif
 
 

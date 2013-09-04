@@ -297,7 +297,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         cidr = ecf->debug_connection.elts;
         for (i = 0; i < ecf->debug_connection.nelts; i++) {
-            if (cidr[i].family != c->sockaddr->sa_family) {
+            if (cidr[i].family != (ngx_uint_t) c->sockaddr->sa_family) {
                 goto next;
             }
 

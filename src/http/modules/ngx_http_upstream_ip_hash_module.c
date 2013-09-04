@@ -174,7 +174,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     for ( ;; ) {
 
-        for (i = 0; i < iphp->addrlen; i++) {
+        for (i = 0; i < (ngx_uint_t) iphp->addrlen; i++) {
             hash = (hash * 113 + iphp->addr[i]) % 6271;
         }
 

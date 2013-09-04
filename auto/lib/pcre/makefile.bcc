@@ -13,8 +13,8 @@ pcre.lib:
 
 	bcc32 -c $(CFLAGS) -I. $(PCREFLAGS) pcre_*.c
 
-	> pcre.lst
-	for %n in (*.obj) do @echo +%n & >> pcre.lst
+	copy /y nul pcre.lst
+	for %n in (*.obj) do @echo +%n ^^& >> pcre.lst
 	echo + >> pcre.lst
 
 	tlib pcre.lib @pcre.lst
