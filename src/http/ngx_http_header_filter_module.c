@@ -270,6 +270,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
             len += NGX_INT_T_LEN;
             status_line = NULL;
         }
+
+        if (status_line && status_line->len == 0) {
+            status = r->headers_out.status;
+            len += NGX_INT_T_LEN;
+            status_line = NULL;
+        }
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
