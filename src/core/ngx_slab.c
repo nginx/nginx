@@ -440,7 +440,8 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
         n = ((uintptr_t) p & (ngx_pagesize - 1)) >> shift;
         m = (uintptr_t) 1 << (n & (sizeof(uintptr_t) * 8 - 1));
         n /= (sizeof(uintptr_t) * 8);
-        bitmap = (uintptr_t *) ((uintptr_t) p & ~(ngx_pagesize - 1));
+        bitmap = (uintptr_t *)
+                             ((uintptr_t) p & ~((uintptr_t) ngx_pagesize - 1));
 
         if (bitmap[n] & m) {
 
