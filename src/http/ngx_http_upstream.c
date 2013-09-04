@@ -4309,7 +4309,7 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
             ms = (ngx_msec_int_t)
                      (state[i].response_sec * 1000 + state[i].response_msec);
             ms = ngx_max(ms, 0);
-            p = ngx_sprintf(p, "%d.%03d", ms / 1000, ms % 1000);
+            p = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000);
 
         } else {
             *p++ = '-';
