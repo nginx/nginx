@@ -65,10 +65,10 @@ have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 
 
 # the precompiled headers
-CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
-NGX_PCH="$NGX_OBJS/ngx_config.pch"
-NGX_BUILD_PCH="-fhq=$NGX_OBJS/ngx_config.pch"
-NGX_USE_PCH="-fh=$NGX_OBJS/ngx_config.pch"
+#CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
+#NGX_PCH="$NGX_OBJS/ngx_config.pch"
+#NGX_BUILD_PCH="-fhq=$NGX_OBJS/ngx_config.pch"
+#NGX_USE_PCH="-fh=$NGX_OBJS/ngx_config.pch"
 
 
 # the link flags, built target is NT GUI mode application

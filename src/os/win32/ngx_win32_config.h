@@ -128,12 +128,26 @@ typedef unsigned short int  uint16_t;
 
 typedef __int64             int64_t;
 typedef unsigned __int64    uint64_t;
+
+#ifndef __WATCOMC__
 typedef int                 intptr_t;
 typedef u_int               uintptr_t;
+#endif
+
 
 /* Windows defines off_t as long, which is 32-bit */
 typedef __int64             off_t;
 #define _OFF_T_DEFINED
+
+#ifdef __WATCOMC__
+
+/* off_t is redefined by sys/types.h used by zlib.h */
+#define __TYPES_H_INCLUDED
+typedef int                 dev_t;
+typedef unsigned int        ino_t;
+
+#endif
+
 
 typedef int                 ssize_t;
 typedef uint32_t            in_addr_t;

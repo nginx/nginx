@@ -486,7 +486,7 @@ ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero,
 
     if (hexadecimal == 0) {
 
-        if (ui64 <= NGX_MAX_UINT32_VALUE) {
+        if (ui64 <= (uint64_t) NGX_MAX_UINT32_VALUE) {
 
             /*
              * To divide 64-bit numbers and to find remainders
