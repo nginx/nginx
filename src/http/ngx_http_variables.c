@@ -1988,7 +1988,7 @@ ngx_http_variable_request_time(ngx_http_request_t *r,
              ((tp->sec - r->start_sec) * 1000 + (tp->msec - r->start_msec));
     ms = ngx_max(ms, 0);
 
-    v->len = ngx_sprintf(p, "%T.%03M", ms / 1000, ms % 1000) - p;
+    v->len = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000) - p;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
