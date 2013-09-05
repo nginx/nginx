@@ -69,10 +69,6 @@ struct ngx_event_s {
 
     unsigned         delayed:1;
 
-    unsigned         read_discarded:1;
-
-    unsigned         unexpected_eof:1;
-
     unsigned         deferred_accept:1;
 
     /* the pending eof reported by kqueue or in aio chain operation */
