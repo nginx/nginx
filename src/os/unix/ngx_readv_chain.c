@@ -129,6 +129,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
                                   "%d available bytes", rev->available);
 #endif
 
+                    rev->ready = 0;
                     rev->eof = 1;
                     rev->available = 0;
                 }
