@@ -402,7 +402,7 @@ ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
         return NGX_CONF_OK;
     }
 
-    *path = ngx_palloc(cf->pool, sizeof(ngx_path_t));
+    *path = ngx_pcalloc(cf->pool, sizeof(ngx_path_t));
     if (*path == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -420,10 +420,6 @@ ngx_conf_merge_path_value(ngx_conf_t *cf, ngx_path_t **path, ngx_path_t *prev,
     (*path)->len = init->level[0] + (init->level[0] ? 1 : 0)
                    + init->level[1] + (init->level[1] ? 1 : 0)
                    + init->level[2] + (init->level[2] ? 1 : 0);
-
-    (*path)->manager = NULL;
-    (*path)->loader = NULL;
-    (*path)->conf_file = NULL;
 
     if (ngx_add_path(cf, path) != NGX_OK) {
         return NGX_CONF_ERROR;
