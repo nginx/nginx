@@ -2694,6 +2694,33 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
 #endif
 
+#if (NGX_HAVE_EPOLLRDHUP)
+
+    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && rev->pending_eof) {
+        socklen_t  len;
+
+        rev->eof = 1;
+        c->error = 1;
+
+        err = 0;
+        len = sizeof(ngx_err_t);
+
+        /*
+         * BSDs and Linux return 0 and set a pending error in err
+         * Solaris returns -1 and sets errno
+         */
+
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
+            == -1)
+        {
+            err = ngx_errno;
+        }
+
+        goto closed;
+    }
+
+#endif
+
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
     if (n == 0) {
