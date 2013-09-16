@@ -501,6 +501,14 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
         if (p[i]->name.len == path->name.len
             && ngx_strcmp(p[i]->name.data, path->name.data) == 0)
         {
+            if (p[i]->data != path->data) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "the same path name \"%V\" "
+                                   "used in %s:%ui and",
+                                   &p[i]->name, p[i]->conf_file, p[i]->line);
+                return NGX_ERROR;
+            }
+
             for (n = 0; n < 3; n++) {
                 if (p[i]->level[n] != path->level[n]) {
                     if (path->conf_file == NULL) {
