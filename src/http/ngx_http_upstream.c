@@ -1070,6 +1070,55 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 
 #endif
 
+#if (NGX_HAVE_EPOLLRDHUP)
+
+    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && ev->pending_eof) {
+        socklen_t  len;
+
+        ev->eof = 1;
+        c->error = 1;
+
+        err = 0;
+        len = sizeof(ngx_err_t);
+
+        /*
+         * BSDs and Linux return 0 and set a pending error in err
+         * Solaris returns -1 and sets errno
+         */
+
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
+            == -1)
+        {
+            err = ngx_errno;
+        }
+
+        if (err) {
+            ev->error = 1;
+        }
+
+        if (!u->cacheable && u->peer.connection) {
+            ngx_log_error(NGX_LOG_INFO, ev->log, err,
+                        "epoll_wait() reported that client prematurely closed "
+                        "connection, so upstream connection is closed too");
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_CLIENT_CLOSED_REQUEST);
+            return;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, ev->log, err,
+                      "epoll_wait() reported that client prematurely closed "
+                      "connection");
+
+        if (u->peer.connection == NULL) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        }
+
+        return;
+    }
+
+#endif
+
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
     err = ngx_socket_errno;
