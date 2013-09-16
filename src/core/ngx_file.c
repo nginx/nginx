@@ -359,9 +359,6 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NULL;
     }
 
-    path->len = 0;
-    path->manager = NULL;
-    path->loader = NULL;
     path->conf_file = cf->conf_file->file.name.data;
     path->line = cf->conf_file->line;
 
