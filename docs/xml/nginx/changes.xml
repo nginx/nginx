@@ -5,6 +5,85 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.5" date="17.09.2013">
+
+<change type="change">
+<para lang="ru">
+теперь nginx по умолчанию использует HTTP/1.0,
+если точно определить протокол не удалось.
+</para>
+<para lang="en">
+now nginx assumes HTTP/1.0 by default
+if it is not able to detect protocol reliably.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива disable_symlinks теперь использует O_PATH на Linux.
+</para>
+<para lang="en">
+the "disable_symlinks" directive now uses O_PATH on Linux.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+для определения того, что клиент закрыл соединение,
+при использовании метода epoll
+теперь используются события EPOLLRDHUP.
+</para>
+<para lang="en">
+now nginx uses EPOLLRDHUP events
+to detect premature connection close by clients
+if the "epoll" method is used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве valid_referers при использовании параметра server_names.
+</para>
+<para lang="en">
+in the "valid_referers" directive if the "server_names" parameter was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $request_time не работала в nginx/Windows.
+</para>
+<para lang="en">
+the $request_time variable did not work in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве image_filter.<br/>
+Спасибо Lanshun Zhou.
+</para>
+<para lang="en">
+in the "image_filter" directive.<br/>
+Thanks to Lanshun Zhou.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с OpenSSL 1.0.1f.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+OpenSSL 1.0.1f compatibility.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+
+</changes>
+
+
 <changes ver="1.5.4" date="27.08.2013">
 
 <change type="change">
