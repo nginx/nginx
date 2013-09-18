@@ -26,6 +26,7 @@ types {
 
     application/font-woff                 woff;
     application/java-archive              jar war ear;
+    application/json                      json;
     application/mac-binhex40              hqx;
     application/msword                    doc;
     application/pdf                       pdf;
