@@ -280,6 +280,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set_ex_data() failed");
+        X509_free(x509);
+        BIO_free(bio);
         return NGX_ERROR;
     }
 
