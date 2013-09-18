@@ -264,13 +264,13 @@ ngx_http_header_filter(ngx_http_request_t *r)
             len += ngx_http_status_lines[status].len;
 
         } else {
-            len += NGX_INT_T_LEN;
+            len += NGX_INT_T_LEN + 1 /* SP */;
             status_line = NULL;
         }
 
         if (status_line && status_line->len == 0) {
             status = r->headers_out.status;
-            len += NGX_INT_T_LEN;
+            len += NGX_INT_T_LEN + 1 /* SP */;
             status_line = NULL;
         }
     }
@@ -451,7 +451,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_copy(b->last, status_line->data, status_line->len);
 
     } else {
-        b->last = ngx_sprintf(b->last, "%03ui", status);
+        b->last = ngx_sprintf(b->last, "%03ui ", status);
     }
     *b->last++ = CR; *b->last++ = LF;
 
