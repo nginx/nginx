@@ -137,7 +137,7 @@ ngx_crypt_apr1(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
     /* output */
 
-    *encrypted = ngx_pnalloc(pool, sizeof("$apr1$") - 1 + saltlen + 16 + 1);
+    *encrypted = ngx_pnalloc(pool, sizeof("$apr1$") - 1 + saltlen + 1 + 22 + 1);
     if (*encrypted == NULL) {
         return NGX_ERROR;
     }
