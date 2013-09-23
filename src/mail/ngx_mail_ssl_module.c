@@ -287,15 +287,14 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->ciphers.len) {
-        if (SSL_CTX_set_cipher_list(conf->ssl.ctx,
-                                   (const char *) conf->ciphers.data)
-            == 0)
-        {
-            ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                          "SSL_CTX_set_cipher_list(\"%V\") failed",
-                          &conf->ciphers);
-        }
+    if (SSL_CTX_set_cipher_list(conf->ssl.ctx,
+                                (const char *) conf->ciphers.data)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                      "SSL_CTX_set_cipher_list(\"%V\") failed",
+                      &conf->ciphers);
+        return NGX_CONF_ERROR;
     }
 
     if (conf->prefer_server_ciphers) {

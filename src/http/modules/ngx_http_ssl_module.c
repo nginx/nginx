@@ -561,6 +561,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "SSL_CTX_set_cipher_list(\"%V\") failed",
                       &conf->ciphers);
+        return NGX_CONF_ERROR;
     }
 
     if (conf->verify) {
