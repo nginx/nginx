@@ -949,7 +949,8 @@ ngx_http_cmp_locations(const ngx_queue_t *one, const ngx_queue_t *two)
 
 #endif
 
-    rc = ngx_strcmp(first->name.data, second->name.data);
+    rc = ngx_filename_cmp(first->name.data, second->name.data,
+                          ngx_min(first->name.len, second->name.len) + 1);
 
     if (rc == 0 && !first->exact_match && second->exact_match) {
         /* an exact match must be before the same inclusive one */
@@ -975,8 +976,10 @@ ngx_http_join_exact_locations(ngx_conf_t *cf, ngx_queue_t *locations)
         lq = (ngx_http_location_queue_t *) q;
         lx = (ngx_http_location_queue_t *) x;
 
-        if (ngx_strcmp(lq->name->data, lx->name->data) == 0) {
-
+        if (lq->name->len == lx->name->len
+            && ngx_filename_cmp(lq->name->data, lx->name->data, lx->name->len)
+               == 0)
+        {
             if ((lq->exact && lx->exact) || (lq->inclusive && lx->inclusive)) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "duplicate location \"%V\" in %s:%ui",
@@ -1028,7 +1031,7 @@ ngx_http_create_locations_list(ngx_queue_t *locations, ngx_queue_t *q)
         lx = (ngx_http_location_queue_t *) x;
 
         if (len > lx->name->len
-            || (ngx_strncmp(name, lx->name->data, len) != 0))
+            || ngx_filename_cmp(name, lx->name->data, len) != 0)
         {
             break;
         }
