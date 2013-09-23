@@ -80,6 +80,7 @@ typedef struct {
 #if (NGX_HTTP_SSL)
     ngx_uint_t                     ssl;
     ngx_uint_t                     ssl_protocols;
+    ngx_str_t                      ssl_ciphers;
 #endif
 } ngx_http_proxy_loc_conf_t;
 
@@ -537,6 +538,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, ssl_protocols),
       &ngx_http_proxy_ssl_protocols },
+
+    { ngx_string("proxy_ssl_ciphers"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_ciphers),
+      NULL },
 
 #endif
 
@@ -2414,6 +2422,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->redirects = NULL;
      *     conf->ssl = 0;
      *     conf->ssl_protocols = 0;
+     *     conf->ssl_ciphers = { 0, NULL };
      */
 
     conf->upstream.store = NGX_CONF_UNSET;
@@ -2734,6 +2743,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                                  (NGX_CONF_BITMASK_SET|NGX_SSL_SSLv3
                                   |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
                                   |NGX_SSL_TLSv1_2));
+
+    ngx_conf_merge_str_value(conf->ssl_ciphers, prev->ssl_ciphers,
+                             "DEFAULT");
 
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -3781,6 +3793,16 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     if (ngx_ssl_create(plcf->upstream.ssl, plcf->ssl_protocols, NULL)
         != NGX_OK)
     {
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_cipher_list(plcf->upstream.ssl->ctx,
+                                (const char *) plcf->ssl_ciphers.data)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                      "SSL_CTX_set_cipher_list(\"%V\") failed",
+                      &plcf->ssl_ciphers);
         return NGX_ERROR;
     }
 
