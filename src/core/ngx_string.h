@@ -167,6 +167,7 @@ ngx_int_t ngx_rstrncmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n);
 ngx_int_t ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2);
 ngx_int_t ngx_dns_strcmp(u_char *s1, u_char *s2);
+ngx_int_t ngx_filename_cmp(u_char *s1, u_char *s2, size_t n);
 
 ngx_int_t ngx_atoi(u_char *line, size_t n);
 ngx_int_t ngx_atofp(u_char *line, size_t n, size_t point);

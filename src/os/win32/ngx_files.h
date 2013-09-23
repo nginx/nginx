@@ -172,11 +172,6 @@ ngx_int_t ngx_create_file_mapping(ngx_file_mapping_t *fm);
 void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 
 
-#define NGX_HAVE_CASELESS_FILESYSTEM  1
-
-#define ngx_filename_cmp(s1, s2, n) _strnicmp((char *) s1, (char *) s2, n)
-
-
 u_char *ngx_realpath(u_char *path, u_char *resolved);
 #define ngx_realpath_n              ""
 #define ngx_getcwd(buf, size)       GetCurrentDirectory(size, (char *) buf)

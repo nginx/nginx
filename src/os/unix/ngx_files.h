@@ -192,17 +192,6 @@ ngx_int_t ngx_create_file_mapping(ngx_file_mapping_t *fm);
 void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 
 
-#if (NGX_HAVE_CASELESS_FILESYSTEM)
-
-#define ngx_filename_cmp(s1, s2, n)  strncasecmp((char *) s1, (char *) s2, n)
-
-#else
-
-#define ngx_filename_cmp         ngx_memcmp
-
-#endif
-
-
 #define ngx_realpath(p, r)       (u_char *) realpath((char *) p, (char *) r)
 #define ngx_realpath_n           "realpath()"
 #define ngx_getcwd(buf, size)    (getcwd((char *) buf, size) != NULL)

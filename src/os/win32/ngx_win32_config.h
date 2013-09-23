@@ -45,6 +45,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <locale.h>
 
 #ifdef __WATCOMC__
@@ -123,7 +124,6 @@ typedef unsigned __int32    uint32_t;
 typedef __int32             int32_t;
 typedef unsigned __int16    uint16_t;
 #define ngx_libc_cdecl      __cdecl
-#define _strnicmp           strnicmp
 
 #else /* __WATCOMC__ */
 typedef unsigned int        uint32_t;
@@ -194,6 +194,10 @@ typedef int                 sig_atomic_t;
 
 #ifndef NGX_HAVE_INHERITED_NONBLOCK
 #define NGX_HAVE_INHERITED_NONBLOCK  1
+#endif
+
+#ifndef NGX_HAVE_CASELESS_FILESYSTEM
+#define NGX_HAVE_CASELESS_FILESYSTEM  1
 #endif
 
 #ifndef NGX_HAVE_WIN32_TRANSMITPACKETS
