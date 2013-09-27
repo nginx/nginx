@@ -2347,12 +2347,6 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->upstream.no_cache,
                              prev->upstream.no_cache, NULL);
 
-    if (conf->upstream.no_cache && conf->upstream.cache_bypass == NULL) {
-        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
-             "\"fastcgi_no_cache\" functionality has been changed in 0.8.46, "
-             "now it should be used together with \"fastcgi_cache_bypass\"");
-    }
-
     ngx_conf_merge_ptr_value(conf->upstream.cache_valid,
                              prev->upstream.cache_valid, NULL);
 
