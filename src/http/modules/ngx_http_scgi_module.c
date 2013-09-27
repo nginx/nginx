@@ -394,13 +394,6 @@ ngx_http_scgi_handler(ngx_http_request_t *r)
     ngx_http_upstream_t       *u;
     ngx_http_scgi_loc_conf_t  *scf;
 
-    if (r->subrequest_in_memory) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      "ngx_http_scgi_module does not support "
-                      "subrequests in memory");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
