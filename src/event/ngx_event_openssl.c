@@ -521,6 +521,7 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
 static void
 ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 {
+    BIO               *rbio, *wbio;
     ngx_connection_t  *c;
 
     if (where & SSL_CB_HANDSHAKE_START) {
@@ -529,6 +530,31 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
         if (c->ssl->handshaked) {
             c->ssl->renegotiation = 1;
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL renegotiation");
+        }
+    }
+
+    if ((where & SSL_CB_ACCEPT_LOOP) == SSL_CB_ACCEPT_LOOP) {
+        c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+        if (!c->ssl->handshake_buffer_set) {
+            /*
+             * By default OpenSSL uses 4k buffer during a handshake,
+             * which is too low for long certificate chains and might
+             * result in extra round-trips.
+             *
+             * To adjust a buffer size we detect that buffering was added
+             * to write side of the connection by comparing rbio and wbio.
+             * If they are different, we assume that it's due to buffering
+             * added to wbio, and set buffer size.
+             */
+
+            rbio = SSL_get_rbio(ssl_conn);
+            wbio = SSL_get_wbio(ssl_conn);
+
+            if (rbio != wbio) {
+                (void) BIO_set_write_buffer_size(wbio, NGX_SSL_BUFSIZE);
+                c->ssl->handshake_buffer_set = 1;
+            }
         }
     }
 }

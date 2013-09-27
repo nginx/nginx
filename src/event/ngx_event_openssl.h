@@ -48,6 +48,7 @@ typedef struct {
     unsigned                    buffer:1;
     unsigned                    no_wait_shutdown:1;
     unsigned                    no_send_shutdown:1;
+    unsigned                    handshake_buffer_set:1;
 } ngx_ssl_connection_t;
 
 
