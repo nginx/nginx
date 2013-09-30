@@ -1214,6 +1214,7 @@ ngx_http_spdy_state_data(ngx_http_spdy_connection_t *sc, u_char *pos,
         }
 
         if (rb->post_handler) {
+            r->read_event_handler = ngx_http_block_reading;
             rb->post_handler(r);
         }
     }
@@ -2606,6 +2607,9 @@ ngx_http_spdy_read_request_body(ngx_http_request_t *r,
     }
 
     r->request_body->post_handler = post_handler;
+
+    r->read_event_handler = ngx_http_test_reading;
+    r->write_event_handler = ngx_http_request_empty_handler;
 
     return NGX_AGAIN;
 }
