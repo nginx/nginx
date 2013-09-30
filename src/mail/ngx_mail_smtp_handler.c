@@ -321,6 +321,7 @@ ngx_mail_smtp_invalid_pipelining(ngx_event_t *rev)
         }
 
         ngx_str_set(&s->out, smtp_invalid_pipelining);
+        s->quit = 1;
     }
 
     ngx_mail_send(c->write);
