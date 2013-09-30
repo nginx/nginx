@@ -145,6 +145,8 @@ static ngx_int_t ngx_http_spdy_construct_request_line(ngx_http_request_t *r);
 static void ngx_http_spdy_run_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_spdy_init_request_body(ngx_http_request_t *r);
 
+static void ngx_http_spdy_close_stream_handler(ngx_event_t *ev);
+
 static void ngx_http_spdy_handle_connection_handler(ngx_event_t *rev);
 static void ngx_http_spdy_keepalive_handler(ngx_event_t *rev);
 static void ngx_http_spdy_finalize_connection(ngx_http_spdy_connection_t *sc,
@@ -1825,7 +1827,7 @@ ngx_http_spdy_create_stream(ngx_http_spdy_connection_t *sc, ngx_uint_t id,
 
     rev->data = fc;
     rev->ready = 1;
-    rev->handler = ngx_http_empty_handler;
+    rev->handler = ngx_http_spdy_close_stream_handler;
     rev->log = log;
 
     ngx_memcpy(wev, rev, sizeof(ngx_event_t));
@@ -2612,6 +2614,22 @@ ngx_http_spdy_read_request_body(ngx_http_request_t *r,
     r->write_event_handler = ngx_http_request_empty_handler;
 
     return NGX_AGAIN;
+}
+
+
+static void
+ngx_http_spdy_close_stream_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *fc;
+    ngx_http_request_t  *r;
+
+    fc = ev->data;
+    r = fc->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "spdy close stream handler");
+
+    ngx_http_spdy_close_stream(r->spdy_stream, 0);
 }
 
 
