@@ -707,7 +707,7 @@ ngx_mail_proxy_dummy_handler(ngx_event_t *wev)
 static ngx_int_t
 ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
 {
-    u_char                 *p;
+    u_char                 *p, *m;
     ssize_t                 n;
     ngx_buf_t              *b;
     ngx_mail_proxy_conf_t  *pcf;
@@ -784,6 +784,25 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
         break;
 
     default: /* NGX_MAIL_SMTP_PROTOCOL */
+
+        if (p[3] == '-') {
+            /* multiline reply, check if we got last line */
+
+            m = b->last - (sizeof(CRLF "200" CRLF) - 1);
+
+            while (m > p) {
+                if (m[0] == CR && m[1] == LF) {
+                    break;
+                }
+
+                m--;
+            }
+
+            if (m <= p || m[5] == '-') {
+                return NGX_AGAIN;
+            }
+        }
+
         switch (state) {
 
         case ngx_smtp_start:
