@@ -173,9 +173,9 @@ ngx_http_spdy_queue_blocked_frame(ngx_http_spdy_connection_t *sc,
 {
     ngx_http_spdy_out_frame_t  **out;
 
-    for (out = &sc->last_out; *out && !(*out)->blocked; out = &(*out)->next)
+    for (out = &sc->last_out; *out; out = &(*out)->next)
     {
-        if (frame->priority >= (*out)->priority) {
+        if ((*out)->blocked) {
             break;
         }
     }
