@@ -234,6 +234,8 @@ typedef struct {
     ngx_str_t               smtp_from;
     ngx_str_t               smtp_to;
 
+    ngx_str_t               cmd;
+
     ngx_uint_t              command;
     ngx_array_t             args;
 

@@ -657,7 +657,12 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
 
-        ngx_mail_proxy_handler(s->connection->write);
+        if (s->buffer->pos == s->buffer->last) {
+            ngx_mail_proxy_handler(s->connection->write);
+
+        } else {
+            ngx_mail_proxy_handler(c->write);
+        }
 
         return;
 

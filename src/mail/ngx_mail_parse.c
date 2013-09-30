@@ -626,6 +626,8 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
     ngx_str_t  *arg;
     enum {
         sw_start = 0,
+        sw_command,
+        sw_invalid,
         sw_spaces_before_argument,
         sw_argument,
         sw_almost_done
@@ -640,8 +642,14 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
 
         /* SMTP command */
         case sw_start:
+            s->cmd_start = p;
+            state = sw_command;
+
+            /* fall through */
+
+        case sw_command:
             if (ch == ' ' || ch == CR || ch == LF) {
-                c = s->buffer->start;
+                c = s->cmd_start;
 
                 if (p - c == 4) {
 
@@ -719,6 +727,9 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
                     goto invalid;
                 }
 
+                s->cmd.data = s->cmd_start;
+                s->cmd.len = p - s->cmd_start;
+
                 switch (ch) {
                 case ' ':
                     state = sw_spaces_before_argument;
@@ -737,6 +748,9 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
             }
 
             break;
+
+        case sw_invalid:
+            goto invalid;
 
         case sw_spaces_before_argument:
             switch (ch) {
@@ -824,8 +838,20 @@ done:
 
 invalid:
 
-    s->state = sw_start;
+    s->state = sw_invalid;
     s->arg_start = NULL;
+
+    /* skip invalid command till LF */
+
+    for (p = s->buffer->pos; p < s->buffer->last; p++) {
+        if (*p == LF) {
+            s->state = sw_start;
+            p++;
+            break;
+        }
+    }
+
+    s->buffer->pos = p;
 
     return NGX_MAIL_PARSE_INVALID_COMMAND;
 }
