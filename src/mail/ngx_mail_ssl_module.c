@@ -235,6 +235,11 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
        mode = "";
     }
 
+    if (conf->file == NULL) {
+        conf->file = prev->file;
+        conf->line = prev->line;
+    }
+
     if (*mode) {
 
         if (conf->certificate.len == 0) {
