@@ -2832,6 +2832,7 @@ ngx_http_spdy_finalize_connection(ngx_http_spdy_connection_t *sc,
 
     c->error = 1;
     c->read->handler = ngx_http_empty_handler;
+    c->write->handler = ngx_http_empty_handler;
 
     sc->last_out = NULL;
 
