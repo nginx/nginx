@@ -5,6 +5,104 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.6" date="01.10.2013">
+
+<change type="feature">
+<para lang="ru">
+директива fastcgi_buffering.
+</para>
+<para lang="en">
+the "fastcgi_buffering" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_ssl_protocols и proxy_ssl_ciphers.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "proxy_ssl_protocols" and "proxy_ssl_ciphers" directives.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+оптимизация SSL handshake при использовании длинных цепочек сертификатов.
+</para>
+<para lang="en">
+optimization of SSL handshakes when using long certificate chains.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает SMTP pipelining.
+</para>
+<para lang="en">
+the mail proxy supports SMTP pipelining.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_auth_basic_module
+при использовании метода шифрования паролей "$apr1$".<br/>
+Спасибо Markus Linnala.
+</para>
+<para lang="en">
+in the ngx_http_auth_basic_module
+when using "$apr1$" password encryption method.<br/>
+Thanks to Markus Linnala.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на MacOSX, Cygwin и nginx/Windows
+для обработки запроса мог использоваться неверный location,
+если для задания location'ов использовались символы разных регистров.
+</para>
+<para lang="en">
+in MacOSX, Cygwin, and nginx/Windows
+incorrect location might be used to process a request
+if locations were given using characters in different cases.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+автоматическое перенаправление с добавлением завершающего слэша
+для проксированных location'ов могло не работать.
+</para>
+<para lang="en">
+automatic redirect with appended trailing slash
+for proxied locations might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+in the mail proxy server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.5" date="17.09.2013">
 
 <change type="change">
