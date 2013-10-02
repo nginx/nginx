@@ -10,8 +10,6 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_DAV_COPY_BLOCK      65536
-
 #define NGX_HTTP_DAV_OFF             2
 
 
