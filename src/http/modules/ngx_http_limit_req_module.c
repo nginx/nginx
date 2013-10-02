@@ -912,7 +912,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[i].data, "nodelay", 7) == 0) {
+        if (ngx_strcmp(value[i].data, "nodelay") == 0) {
             nodelay = 1;
             continue;
         }
