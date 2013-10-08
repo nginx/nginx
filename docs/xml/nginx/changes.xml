@@ -5,6 +5,75 @@
 <change_log title="nginx">
 
 
+<changes ver="1.4.3" date="08.10.2013">
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_spdy_module
+и директива client_body_in_file_only.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_spdy_module was used
+with the "client_body_in_file_only" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации мог произойти segmentation fault,
+если использовалась директива try_files с пустым параметром.
+</para>
+<para lang="en">
+a segmentation fault might occur on start or during reconfiguration
+if the "try_files" directive was used with an empty parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $request_time не работала в nginx/Windows.
+</para>
+<para lang="en">
+the $request_time variable did not work in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_auth_basic_module
+при использовании метода шифрования паролей "$apr1$".<br/>
+Спасибо Markus Linnala.
+</para>
+<para lang="en">
+in the ngx_http_auth_basic_module
+when using "$apr1$" password encryption method.<br/>
+Thanks to Markus Linnala.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+in the mail proxy server.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.4.2" date="17.07.2013">
 
 <change type="bugfix">
