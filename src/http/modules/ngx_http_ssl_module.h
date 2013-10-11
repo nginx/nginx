@@ -42,6 +42,8 @@ typedef struct {
 
     ngx_shm_zone_t                 *shm_zone;
 
+    ngx_array_t                    *session_ticket_keys;
+
     ngx_flag_t                      stapling;
     ngx_flag_t                      stapling_verify;
     ngx_str_t                       stapling_file;

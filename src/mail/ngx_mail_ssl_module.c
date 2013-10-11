@@ -116,6 +116,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       0,
       NULL },
 
+    { ngx_string("ssl_session_ticket_key"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_array_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, session_ticket_keys),
+      NULL },
+
     { ngx_string("ssl_session_timeout"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
@@ -184,6 +191,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->builtin_session_cache = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
+    scf->session_ticket_keys = NGX_CONF_UNSET_PTR;
 
     return scf;
 }
@@ -326,6 +334,15 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_session_cache(&conf->ssl, &ngx_mail_ssl_sess_id_ctx,
                               conf->builtin_session_cache,
                               conf->shm_zone, conf->session_timeout)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_conf_merge_ptr_value(conf->session_ticket_keys,
+                         prev->session_ticket_keys, NULL);
+
+    if (ngx_ssl_session_ticket_keys(cf, &conf->ssl, conf->session_ticket_keys)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;

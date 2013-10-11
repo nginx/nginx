@@ -41,6 +41,8 @@ typedef struct {
 
     ngx_shm_zone_t  *shm_zone;
 
+    ngx_array_t     *session_ticket_keys;
+
     u_char          *file;
     ngx_uint_t       line;
 } ngx_mail_ssl_conf_t;
