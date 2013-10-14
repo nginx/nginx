@@ -1704,6 +1704,8 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 {
     long  cache_mode;
 
+    SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
+
     if (builtin_session_cache == NGX_SSL_NO_SCACHE) {
         SSL_CTX_set_session_cache_mode(ssl->ctx, SSL_SESS_CACHE_OFF);
         return NGX_OK;
@@ -1748,8 +1750,6 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
             SSL_CTX_sess_set_cache_size(ssl->ctx, builtin_session_cache);
         }
     }
-
-    SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
 
     if (shm_zone) {
         SSL_CTX_sess_set_new_cb(ssl->ctx, ngx_ssl_new_session);
