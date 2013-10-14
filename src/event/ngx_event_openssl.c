@@ -548,8 +548,8 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
              * added to wbio, and set buffer size.
              */
 
-            rbio = SSL_get_rbio(ssl_conn);
-            wbio = SSL_get_wbio(ssl_conn);
+            rbio = SSL_get_rbio((ngx_ssl_conn_t *) ssl_conn);
+            wbio = SSL_get_wbio((ngx_ssl_conn_t *) ssl_conn);
 
             if (rbio != wbio) {
                 (void) BIO_set_write_buffer_size(wbio, NGX_SSL_BUFSIZE);
