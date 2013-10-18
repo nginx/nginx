@@ -1144,7 +1144,9 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         }
 
         if (rc == NGX_HTTP_FORBIDDEN || rc == NGX_HTTP_UNAUTHORIZED) {
-            r->access_code = rc;
+            if (r->access_code != NGX_HTTP_UNAUTHORIZED) {
+                r->access_code = rc;
+            }
 
             r->phase_handler++;
             return NGX_AGAIN;
