@@ -339,6 +339,10 @@ ngx_http_add_cache_control(ngx_http_request_t *r, ngx_http_header_val_t *hv,
 {
     ngx_table_elt_t  *cc, **ccp;
 
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
     ccp = r->headers_out.cache_control.elts;
 
     if (ccp == NULL) {
