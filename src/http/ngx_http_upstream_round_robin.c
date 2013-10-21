@@ -71,11 +71,11 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         n = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
-            for (j = 0; j < server[i].naddrs; j++) {
-                if (server[i].backup) {
-                    continue;
-                }
+            if (server[i].backup) {
+                continue;
+            }
 
+            for (j = 0; j < server[i].naddrs; j++) {
                 peers->peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peers->peer[n].socklen = server[i].addrs[j].socklen;
                 peers->peer[n].name = server[i].addrs[j].name;
@@ -125,11 +125,11 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         n = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
-            for (j = 0; j < server[i].naddrs; j++) {
-                if (!server[i].backup) {
-                    continue;
-                }
+            if (!server[i].backup) {
+                continue;
+            }
 
+            for (j = 0; j < server[i].naddrs; j++) {
                 backup->peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 backup->peer[n].socklen = server[i].addrs[j].socklen;
                 backup->peer[n].name = server[i].addrs[j].name;
