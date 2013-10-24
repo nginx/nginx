@@ -545,6 +545,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
             if (nls[n].fd == (ngx_socket_t) -1) {
                 nls[n].open = 1;
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+                if (nls[n].accept_filter) {
+                    nls[n].add_deferred = 1;
+                }
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
+                if (nls[n].deferred_accept) {
+                    nls[n].add_deferred = 1;
+                }
+#endif
             }
         }
 
