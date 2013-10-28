@@ -199,7 +199,7 @@ ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-    if (ctx->nomem) {
+    if (ctx->nomem || in == NULL) {
 
         /* flush busy buffers */
 
