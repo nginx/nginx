@@ -137,7 +137,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
 
     if (rc == NGX_DECLINED) {
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "no user/password was provided for basic authentication");
 
         return ngx_http_auth_basic_set_realm(r, &realm);
