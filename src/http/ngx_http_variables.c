@@ -1744,8 +1744,7 @@ ngx_http_variable_sent_last_modified(ngx_http_request_t *r,
     }
 
     if (r->headers_out.last_modified_time >= 0) {
-        p = ngx_pnalloc(r->pool,
-                   sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT") - 1);
+        p = ngx_pnalloc(r->pool, sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
         if (p == NULL) {
             return NGX_ERROR;
         }
