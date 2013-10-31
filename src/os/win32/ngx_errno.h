@@ -38,6 +38,7 @@ typedef DWORD                      ngx_err_t;
 #define NGX_EPIPE                  EPIPE
 #define NGX_EAGAIN                 WSAEWOULDBLOCK
 #define NGX_EINPROGRESS            WSAEINPROGRESS
+#define NGX_EOPNOTSUPP             WSAEOPNOTSUPP
 #define NGX_EADDRINUSE             WSAEADDRINUSE
 #define NGX_ECONNABORTED           WSAECONNABORTED
 #define NGX_ECONNRESET             WSAECONNRESET

@@ -93,8 +93,10 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
     socklen_t                  olen;
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+#if (NGX_HAVE_DEFERRED_ACCEPT)
     ngx_err_t                  err;
+#endif
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     struct accept_filter_arg   af;
 #endif
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
@@ -248,7 +250,13 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, &olen)
             == -1)
         {
-            ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
+            err = ngx_errno;
+
+            if (err == NGX_EOPNOTSUPP) {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
                           "getsockopt(TCP_DEFER_ACCEPT) for %V failed, ignored",
                           &ls[i].addr_text);
             continue;
