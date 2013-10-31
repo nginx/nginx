@@ -422,7 +422,7 @@ ngx_http_gunzip_filter_inflate(ngx_http_request_t *r,
     rc = inflate(&ctx->zstream, ctx->flush);
 
     if (rc != Z_OK && rc != Z_STREAM_END && rc != Z_BUF_ERROR) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "inflate() failed: %d, %d", ctx->flush, rc);
         return NGX_ERROR;
     }
