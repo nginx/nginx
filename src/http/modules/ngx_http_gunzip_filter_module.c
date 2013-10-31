@@ -500,9 +500,13 @@ ngx_http_gunzip_filter_inflate(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (rc == Z_STREAM_END && ctx->flush == Z_FINISH
-        && ctx->zstream.avail_in == 0)
-    {
+    if (ctx->flush == Z_FINISH && ctx->zstream.avail_in == 0) {
+
+        if (rc != Z_STREAM_END) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "inflate() returned %d on response end", rc);
+            return NGX_ERROR;
+        }
 
         if (ngx_http_gunzip_filter_inflate_end(r, ctx) != NGX_OK) {
             return NGX_ERROR;
