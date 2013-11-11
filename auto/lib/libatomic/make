@@ -9,6 +9,8 @@ $NGX_LIBATOMIC/src/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
 	cd $NGX_LIBATOMIC && \$(MAKE)
 
 $NGX_LIBATOMIC/Makefile:	$NGX_MAKEFILE
-	cd $NGX_LIBATOMIC && ./configure
+	cd $NGX_LIBATOMIC \\
+	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
+	&& ./configure
 
 END
