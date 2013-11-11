@@ -43,7 +43,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     r->main->count++;
 
 #if (NGX_HTTP_SPDY)
-    if (r->spdy_stream) {
+    if (r->spdy_stream && r == r->main) {
         rc = ngx_http_spdy_read_request_body(r, post_handler);
         goto done;
     }
