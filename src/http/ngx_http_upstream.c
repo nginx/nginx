@@ -17,6 +17,8 @@ static ngx_int_t ngx_http_upstream_cache_send(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_cache_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 #endif
 
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
@@ -357,6 +359,10 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
     { ngx_string("upstream_cache_status"), NULL,
       ngx_http_upstream_cache_status, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_cache_last_modified"), NULL,
+      ngx_http_upstream_cache_last_modified, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
 #endif
 
@@ -1805,6 +1811,56 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
 #endif
     }
+
+#if (NGX_HTTP_CACHE)
+
+    if (status == NGX_HTTP_NOT_MODIFIED
+        && u->cache_status == NGX_HTTP_CACHE_EXPIRED
+        && u->conf->cache_revalidate)
+    {
+        time_t     now, valid;
+        ngx_int_t  rc;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http upstream not modified");
+
+        now = ngx_time();
+        valid = r->cache->valid_sec;
+
+        rc = u->reinit_request(r);
+
+        if (rc != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u, rc);
+            return NGX_OK;
+        }
+
+        u->cache_status = NGX_HTTP_CACHE_REVALIDATED;
+        rc = ngx_http_upstream_cache_send(r, u);
+
+        if (valid == 0) {
+            valid = r->cache->valid_sec;
+        }
+
+        if (valid == 0) {
+            valid = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                              u->headers_in.status_n);
+            if (valid) {
+                valid = now + valid;
+            }
+        }
+
+        if (valid) {
+            r->cache->valid_sec = valid;
+            r->cache->date = now;
+
+            ngx_http_file_cache_update_header(r);
+        }
+
+        ngx_http_upstream_finalize_request(r, u, rc);
+        return NGX_OK;
+    }
+
+#endif
 
     return NGX_DECLINED;
 }
@@ -4488,6 +4544,35 @@ ngx_http_upstream_cache_status(ngx_http_request_t *r,
     v->not_found = 0;
     v->len = ngx_http_cache_status[n].len;
     v->data = ngx_http_cache_status[n].data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    if (!r->upstream->conf->cache_revalidate
+        || r->upstream->cache_status != NGX_HTTP_CACHE_EXPIRED
+        || r->cache->last_modified == -1)
+    {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    p = ngx_pnalloc(r->pool, sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_http_time(p, r->cache->last_modified) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
 
     return NGX_OK;
 }

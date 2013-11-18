@@ -53,6 +53,7 @@ ngx_str_t  ngx_http_cache_status[] = {
     ngx_string("EXPIRED"),
     ngx_string("STALE"),
     ngx_string("UPDATING"),
+    ngx_string("REVALIDATED"),
     ngx_string("HIT")
 };
 
@@ -968,6 +969,116 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     c->node->updating = 0;
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
+}
+
+
+void
+ngx_http_file_cache_update_header(ngx_http_request_t *r)
+{
+    ssize_t                        n;
+    ngx_err_t                      err;
+    ngx_file_t                     file;
+    ngx_file_info_t                fi;
+    ngx_http_cache_t              *c;
+    ngx_http_file_cache_header_t   h;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http file cache update header");
+
+    c = r->cache;
+
+    ngx_memzero(&file, sizeof(ngx_file_t));
+
+    file.name = c->file.name;
+    file.log = r->connection->log;
+    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDWR, NGX_FILE_OPEN, 0);
+
+    if (file.fd == NGX_INVALID_FILE) {
+        err = ngx_errno;
+
+        /* cache file may have been deleted */
+
+        if (err == NGX_ENOENT) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http file cache \"%s\" not found",
+                           file.name.data);
+            return;
+        }
+
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
+                      ngx_open_file_n " \"%s\" failed", file.name.data);
+        return;
+    }
+
+    /*
+     * make sure cache file wasn't replaced;
+     * if it was, do nothing
+     */
+
+    if (ngx_fd_info(file.fd, &fi) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                      ngx_fd_info_n " \"%s\" failed", file.name.data);
+        goto done;
+    }
+
+    if (c->uniq != ngx_file_uniq(&fi)
+        || c->length != ngx_file_size(&fi))
+    {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http file cache \"%s\" changed",
+                       file.name.data);
+        goto done;
+    }
+
+    n = ngx_read_file(&file, (u_char *) &h,
+                      sizeof(ngx_http_file_cache_header_t), 0);
+
+    if (n == NGX_ERROR) {
+        goto done;
+    }
+
+    if ((size_t) n != sizeof(ngx_http_file_cache_header_t)) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      ngx_read_file_n " read only %z of %z from \"%s\"",
+                      n, sizeof(ngx_http_file_cache_header_t), file.name.data);
+        goto done;
+    }
+
+    if (h.last_modified != c->last_modified
+        || h.crc32 != c->crc32
+        || h.header_start != c->header_start
+        || h.body_start != c->body_start)
+    {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http file cache \"%s\" content changed",
+                       file.name.data);
+        goto done;
+    }
+
+    /*
+     * update cache file header with new data,
+     * notably h.valid_sec and h.date
+     */
+
+    ngx_memzero(&h, sizeof(ngx_http_file_cache_header_t));
+
+    h.valid_sec = c->valid_sec;
+    h.last_modified = c->last_modified;
+    h.date = c->date;
+    h.crc32 = c->crc32;
+    h.valid_msec = (u_short) c->valid_msec;
+    h.header_start = (u_short) c->header_start;
+    h.body_start = (u_short) c->body_start;
+
+    (void) ngx_write_file(&file, (u_char *) &h,
+                          sizeof(ngx_http_file_cache_header_t), 0);
+
+done:
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", file.name.data);
+    }
 }
 
 

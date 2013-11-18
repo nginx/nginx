@@ -19,8 +19,9 @@
 #define NGX_HTTP_CACHE_EXPIRED       3
 #define NGX_HTTP_CACHE_STALE         4
 #define NGX_HTTP_CACHE_UPDATING      5
-#define NGX_HTTP_CACHE_HIT           6
-#define NGX_HTTP_CACHE_SCARCE        7
+#define NGX_HTTP_CACHE_REVALIDATED   6
+#define NGX_HTTP_CACHE_HIT           7
+#define NGX_HTTP_CACHE_SCARCE        8
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 
@@ -143,6 +144,7 @@ void ngx_http_file_cache_create_key(ngx_http_request_t *r);
 ngx_int_t ngx_http_file_cache_open(ngx_http_request_t *r);
 void ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf);
 void ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf);
+void ngx_http_file_cache_update_header(ngx_http_request_t *r);
 ngx_int_t ngx_http_cache_send(ngx_http_request_t *);
 void ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf);
 time_t ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status);
