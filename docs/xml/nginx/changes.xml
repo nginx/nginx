@@ -5,6 +5,142 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.7" date="19.11.2013">
+
+<change type="security">
+<para lang="ru">
+символ, следующий за незакодированным пробелом в строке запроса,
+обрабатывался неправильно (CVE-2013-4547);
+ошибка появилась в 0.8.41.<br/>
+Спасибо Ivan Fratric из Google Security Team.
+</para>
+<para lang="en">
+a character following an unescaped space in a request line
+was handled incorrectly (CVE-2013-4547);
+the bug had appeared in 0.8.41.<br/>
+Thanks to Ivan Fratric of the Google Security Team.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок auth_basic об отсутствии пароля
+понижен с уровня error до info.
+</para>
+<para lang="en">
+a logging level of auth_basic errors about no user/password provided
+has been lowered from "error" to "info".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache_revalidate, fastcgi_cache_revalidate,
+scgi_cache_revalidate и uwsgi_cache_revalidate.
+</para>
+<para lang="en">
+the "proxy_cache_revalidate", "fastcgi_cache_revalidate",
+"scgi_cache_revalidate", and "uwsgi_cache_revalidate" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_session_ticket_key.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "ssl_session_ticket_key" directive.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "add_header Cache-Control ''"
+добавляла строку заголовка ответа "Cache-Control" с пустым значением.
+</para>
+<para lang="en">
+the directive "add_header Cache-Control ''"
+added a "Cache-Control" response header line with an empty value.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "satisfy any" могла вернуть ошибку 403 вместо 401
+при использовании директив auth_request и auth_basic.<br/>
+Спасибо Jan Marc Hoffmann.
+</para>
+<para lang="en">
+the "satisfy any" directive might return 403 error instead of 401
+if auth_request and auth_basic directives were used.<br/>
+Thanks to Jan Marc Hoffmann.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметры accept_filter и deferred директивы listen игнорировались
+для listen-сокетов, создаваемых в процессе обновления исполняемого файла.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "accept_filter" and "deferred" parameters of the "listen" directive
+were ignored for listen sockets created during binary upgrade.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+часть данных, полученных от бэкенда при небуферизированном проксировании,
+могла не отправляться клиенту сразу,
+если использовались директивы gzip или gunzip.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+some data received from a backend with unbufferred proxy
+might not be sent to a client immediately
+if "gzip" or "gunzip" directives were used.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок в модуле ngx_http_gunzip_filter_module.
+</para>
+<para lang="en">
+in error handling in ngx_http_gunzip_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответы могли зависать
+если использовался модуль ngx_http_spdy_module
+и директива auth_request.
+</para>
+<para lang="en">
+responses might hang
+if the ngx_http_spdy_module was used
+with the "auth_request" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в nginx/Windows.
+</para>
+<para lang="en">
+memory leak in nginx/Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.6" date="01.10.2013">
 
 <change type="feature">
