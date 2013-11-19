@@ -5,6 +5,26 @@
 <change_log title="nginx">
 
 
+<changes ver="1.4.4" date="19.11.2013">
+
+<change type="security">
+<para lang="ru">
+символ, следующий за незакодированным пробелом в строке запроса,
+обрабатывался неправильно (CVE-2013-4547);
+ошибка появилась в 0.8.41.<br/>
+Спасибо Ivan Fratric из Google Security Team.
+</para>
+<para lang="en">
+a character following an unescaped space in a request line
+was handled incorrectly (CVE-2013-4547);
+the bug had appeared in 0.8.41.<br/>
+Thanks to Ivan Fratric of the Google Security Team.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.4.3" date="08.10.2013">
 
 <change type="bugfix">
