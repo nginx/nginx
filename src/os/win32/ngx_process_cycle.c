@@ -1022,17 +1022,7 @@ ngx_cache_loader_thread(void *data)
 void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
-    ngx_int_t  i;
     ngx_tid_t  tid;
-
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_process) {
-            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
-                /* fatal */
-                exit(2);
-            }
-        }
-    }
 
     ngx_process_init(cycle);
 
