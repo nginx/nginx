@@ -1548,7 +1548,7 @@ ngx_http_uwsgi_merge_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
 
             s->key = h->key;
             s->value = h->value;
-            s->skip_empty = 0;
+            s->skip_empty = 1;
 
         next:
 

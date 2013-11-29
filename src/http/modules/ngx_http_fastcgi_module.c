@@ -2769,7 +2769,7 @@ ngx_http_fastcgi_merge_params(ngx_conf_t *cf,
 
             s->key = h->key;
             s->value = h->value;
-            s->skip_empty = 0;
+            s->skip_empty = 1;
 
         next:
 
