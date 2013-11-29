@@ -1025,6 +1025,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
             size -= n;
 
             if (size == 0) {
+                c->read->ready = 1;
                 return bytes;
             }
 
@@ -1034,6 +1035,10 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
         }
 
         if (bytes) {
+            if (c->ssl->last != NGX_AGAIN) {
+                c->read->ready = 1;
+            }
+
             return bytes;
         }
 
