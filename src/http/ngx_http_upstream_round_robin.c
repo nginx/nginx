@@ -79,12 +79,12 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peers->peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peers->peer[n].socklen = server[i].addrs[j].socklen;
                 peers->peer[n].name = server[i].addrs[j].name;
-                peers->peer[n].max_fails = server[i].max_fails;
-                peers->peer[n].fail_timeout = server[i].fail_timeout;
-                peers->peer[n].down = server[i].down;
                 peers->peer[n].weight = server[i].weight;
                 peers->peer[n].effective_weight = server[i].weight;
                 peers->peer[n].current_weight = 0;
+                peers->peer[n].max_fails = server[i].max_fails;
+                peers->peer[n].fail_timeout = server[i].fail_timeout;
+                peers->peer[n].down = server[i].down;
                 n++;
             }
         }
