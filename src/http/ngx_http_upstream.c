@@ -4555,7 +4555,8 @@ ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
 {
     u_char  *p;
 
-    if (!r->upstream->conf->cache_revalidate
+    if (r->upstream == NULL
+        || !r->upstream->conf->cache_revalidate
         || r->upstream->cache_status != NGX_HTTP_CACHE_EXPIRED
         || r->cache->last_modified == -1)
     {
