@@ -344,6 +344,18 @@ ngx_feature_test="setsockopt(0, IPPROTO_TCP, TCP_KEEPIDLE, NULL, 0);
 . auto/feature
 
 
+ngx_feature="TCP_FASTOPEN"
+ngx_feature_name="NGX_HAVE_TCP_FASTOPEN"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>
+                  #include <netinet/tcp.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_TCP, TCP_FASTOPEN, NULL, 0)"
+. auto/feature
+
+
 ngx_feature="TCP_INFO"
 ngx_feature_name="NGX_HAVE_TCP_INFO"
 ngx_feature_run=no

@@ -82,6 +82,10 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
     ls->setfib = -1;
 #endif
 
+#if (NGX_HAVE_TCP_FASTOPEN)
+    ls->fastopen = -1;
+#endif
+
     return ls;
 }
 
@@ -207,6 +211,21 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
 #endif
+#endif
+
+#if (NGX_HAVE_TCP_FASTOPEN)
+
+        if (getsockopt(ls[i].fastopen, IPPROTO_TCP, TCP_FASTOPEN,
+                       (void *) &ls[i].fastopen, &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "getsockopt(TCP_FASTOPEN) %V failed, ignored",
+                          &ls[i].addr_text);
+
+            ls[i].fastopen = -1;
+        }
+
 #endif
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
@@ -578,6 +597,19 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(SO_SETFIB, %d) %V failed, ignored",
                               ls[i].setfib, &ls[i].addr_text);
+            }
+        }
+#endif
+
+#if (NGX_HAVE_TCP_FASTOPEN)
+        if (ls[i].fastopen != -1) {
+            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,
+                           (const void *) &ls[i].fastopen, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "setsockopt(TCP_FASTOPEN, %d) %V failed, ignored",
+                              ls[i].fastopen, &ls[i].addr_text);
             }
         }
 #endif

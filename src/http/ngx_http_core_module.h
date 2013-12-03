@@ -89,6 +89,9 @@ typedef struct {
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
 #endif
+#if (NGX_HAVE_TCP_FASTOPEN)
+    int                        fastopen;
+#endif
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                        tcp_keepidle;
     int                        tcp_keepintvl;

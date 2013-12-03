@@ -80,6 +80,10 @@ struct ngx_listening_s {
     int                 setfib;
 #endif
 
+#if (NGX_HAVE_TCP_FASTOPEN)
+    int                 fastopen;
+#endif
+
 };
 
 
