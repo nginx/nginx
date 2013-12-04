@@ -584,9 +584,9 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
         add = 9;
         r->upstream->ssl = 1;
 #else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "suwsgi protocol requires SSL support");
-        return NGX_CONF_ERROR;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "suwsgi protocol requires SSL support");
+        return NGX_ERROR;
 #endif
 
     } else {
