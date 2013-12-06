@@ -1589,7 +1589,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     i += sizeof("\7in-addr\4arpa") + sizeof(ngx_resolver_qs_t);
 
-    if (i + 2 + sizeof(ngx_resolver_an_t) > (ngx_uint_t) n) {
+    if (i + 2 + sizeof(ngx_resolver_an_t) > n) {
         goto short_response;
     }
 
@@ -1617,7 +1617,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     i += 2 + sizeof(ngx_resolver_an_t);
 
-    if (i + len > (ngx_uint_t) n) {
+    if (i + len > n) {
         goto short_response;
     }
 
