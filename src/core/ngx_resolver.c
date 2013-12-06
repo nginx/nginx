@@ -1022,7 +1022,6 @@ static void
 ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
 {
     char                 *err;
-    size_t                len;
     ngx_uint_t            i, times, ident, qident, flags, code, nqs, nan,
                           qtype, qclass;
     ngx_queue_t          *q;
@@ -1047,13 +1046,14 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
                    (response->nns_hi << 8) + response->nns_lo,
                    (response->nar_hi << 8) + response->nar_lo);
 
-    if (!(flags & 0x8000)) {
+    /* response to a standard query */
+    if ((flags & 0xf870) != 0x8000) {
         ngx_log_error(r->log_level, r->log, 0,
                       "invalid DNS response %ui fl:%04Xui", ident, flags);
         return;
     }
 
-    code = flags & 0x7f;
+    code = flags & 0xf;
 
     if (code == NGX_RESOLVE_FORMERR) {
 
@@ -1094,15 +1094,14 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
             goto found;
         }
 
-        len = buf[i];
-        i += 1 + len;
+        i += 1 + buf[i];
     }
 
     goto short_response;
 
 found:
 
-    if (i++ == 0) {
+    if (i++ == sizeof(ngx_resolver_hdr_t)) {
         err = "zero-length domain name in DNS response";
         goto done;
     }
