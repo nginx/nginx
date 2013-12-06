@@ -92,6 +92,13 @@ static ngx_addr_t *ngx_resolver_export(ngx_resolver_t *r, in_addr_t *src,
     ngx_uint_t n, ngx_uint_t rotate);
 static u_char *ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
+#if (NGX_HAVE_INET6)
+static void ngx_resolver_rbtree_insert_addr6_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
+static ngx_resolver_node_t *ngx_resolver_lookup_addr6(ngx_resolver_t *r,
+    struct in6_addr *addr, uint32_t hash);
+#endif
+
 
 ngx_resolver_t *
 ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
@@ -133,6 +140,15 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 
     ngx_queue_init(&r->name_expire_queue);
     ngx_queue_init(&r->addr_expire_queue);
+
+#if (NGX_HAVE_INET6)
+    ngx_rbtree_init(&r->addr6_rbtree, &r->addr6_sentinel,
+                    ngx_resolver_rbtree_insert_addr6_value);
+
+    ngx_queue_init(&r->addr6_resend_queue);
+
+    ngx_queue_init(&r->addr6_expire_queue);
+#endif
 
     r->event->handler = ngx_resolver_resend_handler;
     r->event->data = r;
@@ -219,6 +235,10 @@ ngx_resolver_cleanup(void *data)
         ngx_resolver_cleanup_tree(r, &r->name_rbtree);
 
         ngx_resolver_cleanup_tree(r, &r->addr_rbtree);
+
+#if (NGX_HAVE_INET6)
+        ngx_resolver_cleanup_tree(r, &r->addr6_rbtree);
+#endif
 
         if (r->event) {
             ngx_free(r->event);
@@ -640,29 +660,61 @@ failed:
 }
 
 
-/* AF_INET only */
-
 ngx_int_t
 ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 {
     u_char               *name;
     in_addr_t             addr;
+    ngx_queue_t          *resend_queue, *expire_queue;
+    ngx_rbtree_t         *tree;
     ngx_resolver_t       *r;
     struct sockaddr_in   *sin;
     ngx_resolver_node_t  *rn;
+#if (NGX_HAVE_INET6)
+    uint32_t              hash;
+    struct sockaddr_in6  *sin6;
+#endif
+
+#if (NGX_SUPPRESS_WARN)
+    addr = 0;
+#if (NGX_HAVE_INET6)
+    hash = 0;
+    sin6 = NULL;
+#endif
+#endif
 
     r = ctx->resolver;
 
-    if (ctx->addr.sockaddr->sa_family != AF_INET) {
-        return NGX_ERROR;
+    switch (ctx->addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) ctx->addr.sockaddr;
+        hash = ngx_crc32_short(sin6->sin6_addr.s6_addr, 16);
+
+        /* lock addr mutex */
+
+        rn = ngx_resolver_lookup_addr6(r, &sin6->sin6_addr, hash);
+
+        tree = &r->addr6_rbtree;
+        resend_queue = &r->addr6_resend_queue;
+        expire_queue = &r->addr6_expire_queue;
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+        addr = ntohl(sin->sin_addr.s_addr);
+
+        /* lock addr mutex */
+
+        rn = ngx_resolver_lookup_addr(r, addr);
+
+        tree = &r->addr_rbtree;
+        resend_queue = &r->addr_resend_queue;
+        expire_queue = &r->addr_expire_queue;
     }
-
-    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
-    addr = ntohl(sin->sin_addr.s_addr);
-
-    /* lock addr mutex */
-
-    rn = ngx_resolver_lookup_addr(r, addr);
 
     if (rn) {
 
@@ -674,7 +726,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             rn->expire = ngx_time() + r->expire;
 
-            ngx_queue_insert_head(&r->addr_expire_queue, &rn->queue);
+            ngx_queue_insert_head(expire_queue, &rn->queue);
 
             name = ngx_resolver_dup(r, rn->name, rn->nlen);
             if (name == NULL) {
@@ -717,10 +769,22 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             goto failed;
         }
 
-        rn->node.key = addr;
+        switch (ctx->addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            rn->addr6 = sin6->sin6_addr;
+            rn->node.key = hash;
+            break;
+#endif
+
+        default: /* AF_INET */
+            rn->node.key = addr;
+        }
+
         rn->query = NULL;
 
-        ngx_rbtree_insert(&r->addr_rbtree, &rn->node);
+        ngx_rbtree_insert(tree, &rn->node);
     }
 
     if (ngx_resolver_create_addr_query(rn, ctx) != NGX_OK) {
@@ -743,13 +807,13 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
     ngx_add_timer(ctx->event, ctx->timeout);
 
-    if (ngx_queue_empty(&r->addr_resend_queue)) {
+    if (ngx_queue_empty(resend_queue)) {
         ngx_add_timer(r->event, (ngx_msec_t) (r->resend_timeout * 1000));
     }
 
     rn->expire = ngx_time() + r->resend_timeout;
 
-    ngx_queue_insert_head(&r->addr_resend_queue, &rn->queue);
+    ngx_queue_insert_head(resend_queue, &rn->queue);
 
     rn->cnlen = 0;
     rn->naddrs = 0;
@@ -767,7 +831,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 failed:
 
     if (rn) {
-        ngx_rbtree_delete(&r->addr_rbtree, &rn->node);
+        ngx_rbtree_delete(tree, &rn->node);
 
         if (rn->query) {
             ngx_resolver_free(r, rn->query);
@@ -788,25 +852,36 @@ failed:
 }
 
 
-/* AF_INET only */
-
 void
 ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
 {
     in_addr_t             addr;
+    ngx_queue_t          *expire_queue;
+    ngx_rbtree_t         *tree;
     ngx_resolver_t       *r;
     ngx_resolver_ctx_t   *w, **p;
     struct sockaddr_in   *sin;
     ngx_resolver_node_t  *rn;
-
-    if (ctx->addr.sockaddr->sa_family != AF_INET) {
-        return;
-    }
-
-    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
-    addr = ntohl(sin->sin_addr.s_addr);
+#if (NGX_HAVE_INET6)
+    uint32_t              hash;
+    struct sockaddr_in6  *sin6;
+#endif
 
     r = ctx->resolver;
+
+    switch (ctx->addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        tree = &r->addr6_rbtree;
+        expire_queue = &r->addr6_expire_queue;
+        break;
+#endif
+
+    default: /* AF_INET */
+        tree = &r->addr_rbtree;
+        expire_queue = &r->addr_expire_queue;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
                    "resolve addr done: %i", ctx->state);
@@ -819,7 +894,21 @@ ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
 
     if (ctx->state == NGX_AGAIN || ctx->state == NGX_RESOLVE_TIMEDOUT) {
 
-        rn = ngx_resolver_lookup_addr(r, addr);
+        switch (ctx->addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) ctx->addr.sockaddr;
+            hash = ngx_crc32_short(sin6->sin6_addr.s6_addr, 16);
+            rn = ngx_resolver_lookup_addr6(r, &sin6->sin6_addr, hash);
+            break;
+#endif
+
+        default: /* AF_INET */
+            sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+            addr = ntohl(sin->sin_addr.s_addr);
+            rn = ngx_resolver_lookup_addr(r, addr);
+        }
 
         if (rn) {
             p = &rn->waiting;
@@ -837,15 +926,22 @@ ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
             }
         }
 
-        ngx_log_error(NGX_LOG_ALERT, r->log, 0,
-                      "could not cancel %ud.%ud.%ud.%ud resolving",
-                      (addr >> 24) & 0xff, (addr >> 16) & 0xff,
-                      (addr >> 8) & 0xff, addr & 0xff);
+        {
+            u_char     text[NGX_SOCKADDR_STRLEN];
+            ngx_str_t  addrtext;
+
+            addrtext.data = text;
+            addrtext.len = ngx_sock_ntop(ctx->addr.sockaddr, ctx->addr.socklen,
+                                         text, NGX_SOCKADDR_STRLEN, 0);
+
+            ngx_log_error(NGX_LOG_ALERT, r->log, 0,
+                          "could not cancel %V resolving", &addrtext);
+        }
     }
 
 done:
 
-    ngx_resolver_expire(r, &r->addr_rbtree, &r->addr_expire_queue);
+    ngx_resolver_expire(r, tree, expire_queue);
 
     /* unlock addr mutex */
 
@@ -946,6 +1042,9 @@ static void
 ngx_resolver_resend_handler(ngx_event_t *ev)
 {
     time_t           timer, atimer, ntimer;
+#if (NGX_HAVE_INET6)
+    time_t           a6timer;
+#endif
     ngx_resolver_t  *r;
 
     r = ev->data;
@@ -965,15 +1064,35 @@ ngx_resolver_resend_handler(ngx_event_t *ev)
 
     /* unlock addr mutex */
 
-    if (ntimer == 0) {
+#if (NGX_HAVE_INET6)
+
+    /* lock addr6 mutex */
+
+    a6timer = ngx_resolver_resend(r, &r->addr6_rbtree, &r->addr6_resend_queue);
+
+    /* unlock addr6 mutex */
+
+#endif
+
+    timer = ntimer;
+
+    if (timer == 0) {
         timer = atimer;
 
-    } else if (atimer == 0) {
-        timer = ntimer;
-
-    } else {
-        timer = (atimer < ntimer) ? atimer : ntimer;
+    } else if (atimer) {
+        timer = ngx_min(timer, atimer);
     }
+
+#if (NGX_HAVE_INET6)
+
+    if (timer == 0) {
+        timer = a6timer;
+
+    } else if (a6timer) {
+        timer = ngx_min(timer, a6timer);
+    }
+
+#endif
 
     if (timer) {
         ngx_add_timer(r->event, (ngx_msec_t) (timer * 1000));
@@ -1555,14 +1674,22 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 {
     char                 *err;
     size_t                len;
+    u_char                text[NGX_SOCKADDR_STRLEN];
     in_addr_t             addr;
     int32_t               ttl;
     ngx_int_t             octet;
     ngx_str_t             name;
     ngx_uint_t            i, mask, qident, class;
+    ngx_queue_t          *expire_queue;
+    ngx_rbtree_t         *tree;
     ngx_resolver_an_t    *an;
     ngx_resolver_ctx_t   *ctx, *next;
     ngx_resolver_node_t  *rn;
+#if (NGX_HAVE_INET6)
+    uint32_t              hash;
+    ngx_int_t             digit;
+    struct in6_addr       addr6;
+#endif
 
     if (ngx_resolver_copy(r, NULL, buf,
                           buf + sizeof(ngx_resolver_hdr_t), buf + n)
@@ -1570,6 +1697,8 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     {
         return;
     }
+
+    /* AF_INET */
 
     addr = 0;
     i = sizeof(ngx_resolver_hdr_t);
@@ -1586,19 +1715,82 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         i += len;
     }
 
-    if (ngx_strcmp(&buf[i], "\7in-addr\4arpa") != 0) {
-        goto invalid_in_addr_arpa;
+    if (ngx_strcmp(&buf[i], "\7in-addr\4arpa") == 0) {
+        i += sizeof("\7in-addr\4arpa");
+
+        /* lock addr mutex */
+
+        rn = ngx_resolver_lookup_addr(r, addr);
+
+        tree = &r->addr_rbtree;
+        expire_queue = &r->addr_expire_queue;
+
+        addr = htonl(addr);
+        name.len = ngx_inet_ntop(AF_INET, &addr, text, NGX_SOCKADDR_STRLEN);
+        name.data = text;
+
+        goto valid;
     }
 
-    /* lock addr mutex */
+invalid_in_addr_arpa:
 
-    rn = ngx_resolver_lookup_addr(r, addr);
+#if (NGX_HAVE_INET6)
+
+    i = sizeof(ngx_resolver_hdr_t);
+
+    for (octet = 15; octet >= 0; octet--) {
+        if (buf[i++] != '\1') {
+            goto invalid_ip6_arpa;
+        }
+
+        digit = ngx_hextoi(&buf[i++], 1);
+        if (digit == NGX_ERROR) {
+            goto invalid_ip6_arpa;
+        }
+
+        addr6.s6_addr[octet] = (u_char) digit;
+
+        if (buf[i++] != '\1') {
+            goto invalid_ip6_arpa;
+        }
+
+        digit = ngx_hextoi(&buf[i++], 1);
+        if (digit == NGX_ERROR) {
+            goto invalid_ip6_arpa;
+        }
+
+        addr6.s6_addr[octet] += (u_char) (digit * 16);
+    }
+
+    if (ngx_strcmp(&buf[i], "\3ip6\4arpa") == 0) {
+        i += sizeof("\3ip6\4arpa");
+
+        /* lock addr mutex */
+
+        hash = ngx_crc32_short(addr6.s6_addr, 16);
+        rn = ngx_resolver_lookup_addr6(r, &addr6, hash);
+
+        tree = &r->addr6_rbtree;
+        expire_queue = &r->addr6_expire_queue;
+
+        name.len = ngx_inet6_ntop(addr6.s6_addr, text, NGX_SOCKADDR_STRLEN);
+        name.data = text;
+
+        goto valid;
+    }
+
+invalid_ip6_arpa:
+#endif
+
+    ngx_log_error(r->log_level, r->log, 0,
+                  "invalid in-addr.arpa or ip6.arpa name in DNS response");
+    return;
+
+valid:
 
     if (rn == NULL || rn->query == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "unexpected response for %ud.%ud.%ud.%ud",
-                      (addr >> 24) & 0xff, (addr >> 16) & 0xff,
-                      (addr >> 8) & 0xff, addr & 0xff);
+                      "unexpected response for %V", &name);
         goto failed;
     }
 
@@ -1606,9 +1798,8 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                    "wrong ident %ui response for %ud.%ud.%ud.%ud, expect %ui",
-                    ident, (addr >> 24) & 0xff, (addr >> 16) & 0xff,
-                    (addr >> 8) & 0xff, addr & 0xff, qident);
+                      "wrong ident %ui response for %V, expect %ui",
+                      ident, &name, qident);
         goto failed;
     }
 
@@ -1622,7 +1813,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
         ngx_queue_remove(&rn->queue);
 
-        ngx_rbtree_delete(&r->addr_rbtree, &rn->node);
+        ngx_rbtree_delete(tree, &rn->node);
 
         ngx_resolver_free_node(r, rn);
 
@@ -1639,16 +1830,16 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         return;
     }
 
-    i += sizeof("\7in-addr\4arpa") + sizeof(ngx_resolver_qs_t);
+    i += sizeof(ngx_resolver_qs_t);
 
     if (i + 2 + sizeof(ngx_resolver_an_t) >= n) {
         goto short_response;
     }
 
-    /* compression pointer to "XX.XX.XX.XX.in-addr.arpa */
+    /* compression pointer to *.arpa */
 
     if (buf[i] != 0xc0 || buf[i + 1] != sizeof(ngx_resolver_hdr_t)) {
-        err = "invalid in-addr.arpa name in DNS response";
+        err = "invalid in-addr.arpa or ip6.arpa name in DNS response";
         goto invalid;
     }
 
@@ -1707,7 +1898,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     rn->valid = ngx_time() + (r->valid ? r->valid : ttl);
     rn->expire = ngx_time() + r->expire;
 
-    ngx_queue_insert_head(&r->addr_expire_queue, &rn->queue);
+    ngx_queue_insert_head(expire_queue, &rn->queue);
 
     next = rn->waiting;
     rn->waiting = NULL;
@@ -1725,12 +1916,6 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     ngx_resolver_free(r, name.data);
 
-    return;
-
-invalid_in_addr_arpa:
-
-    ngx_log_error(r->log_level, r->log, 0,
-                  "invalid in-addr.arpa name in DNS response");
     return;
 
 short_response:
@@ -1825,6 +2010,52 @@ ngx_resolver_lookup_addr(ngx_resolver_t *r, in_addr_t addr)
 }
 
 
+#if (NGX_HAVE_INET6)
+
+static ngx_resolver_node_t *
+ngx_resolver_lookup_addr6(ngx_resolver_t *r, struct in6_addr *addr,
+    uint32_t hash)
+{
+    ngx_int_t             rc;
+    ngx_rbtree_node_t    *node, *sentinel;
+    ngx_resolver_node_t  *rn;
+
+    node = r->addr6_rbtree.root;
+    sentinel = r->addr6_rbtree.sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        /* hash == node->key */
+
+        rn = (ngx_resolver_node_t *) node;
+
+        rc = ngx_memcmp(addr, &rn->addr6, 16);
+
+        if (rc == 0) {
+            return rn;
+        }
+
+        node = (rc < 0) ? node->left : node->right;
+    }
+
+    /* not found */
+
+    return NULL;
+}
+
+#endif
+
+
 static void
 ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
@@ -1864,6 +2095,51 @@ ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
     node->right = sentinel;
     ngx_rbt_red(node);
 }
+
+
+#if (NGX_HAVE_INET6)
+
+static void
+ngx_resolver_rbtree_insert_addr6_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
+{
+    ngx_rbtree_node_t    **p;
+    ngx_resolver_node_t   *rn, *rn_temp;
+
+    for ( ;; ) {
+
+        if (node->key < temp->key) {
+
+            p = &temp->left;
+
+        } else if (node->key > temp->key) {
+
+            p = &temp->right;
+
+        } else { /* node->key == temp->key */
+
+            rn = (ngx_resolver_node_t *) node;
+            rn_temp = (ngx_resolver_node_t *) temp;
+
+            p = (ngx_memcmp(&rn->addr6, &rn_temp->addr6, 16)
+                 < 0) ? &temp->left : &temp->right;
+        }
+
+        if (*p == sentinel) {
+            break;
+        }
+
+        temp = *p;
+    }
+
+    *p = node;
+    node->parent = temp;
+    node->left = sentinel;
+    node->right = sentinel;
+    ngx_rbt_red(node);
+}
+
+#endif
 
 
 static ngx_int_t
@@ -1953,26 +2229,36 @@ ngx_resolver_create_name_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 }
 
 
-/* AF_INET only */
-
 static ngx_int_t
 ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 {
-    u_char              *p, *d;
-    size_t               len;
-    in_addr_t            addr;
-    ngx_int_t            n;
-    ngx_uint_t           ident;
-    ngx_resolver_hdr_t  *query;
-    struct sockaddr_in  *sin;
+    u_char               *p, *d;
+    size_t                len;
+    in_addr_t             addr;
+    ngx_int_t             n;
+    ngx_uint_t            ident;
+    ngx_resolver_hdr_t   *query;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
 
-    if (ctx->addr.sockaddr->sa_family != AF_INET) {
-        return NGX_ERROR;
+    switch (ctx->addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        len = sizeof(ngx_resolver_hdr_t)
+              + 64 + sizeof(".ip6.arpa.") - 1
+              + sizeof(ngx_resolver_qs_t);
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        len = sizeof(ngx_resolver_hdr_t)
+              + sizeof(".255.255.255.255.in-addr.arpa.") - 1
+              + sizeof(ngx_resolver_qs_t);
     }
-
-    len = sizeof(ngx_resolver_hdr_t)
-          + sizeof(".255.255.255.255.in-addr.arpa.") - 1
-          + sizeof(ngx_resolver_qs_t);
 
     p = ngx_resolver_alloc(ctx->resolver, len);
     if (p == NULL) {
@@ -1998,21 +2284,41 @@ ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 
     p += sizeof(ngx_resolver_hdr_t);
 
-    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
-    addr = ntohl(sin->sin_addr.s_addr);
+    switch (ctx->addr.sockaddr->sa_family) {
 
-    for (n = 0; n < 32; n += 8) {
-        d = ngx_sprintf(&p[1], "%ud", (addr >> n) & 0xff);
-        *p = (u_char) (d - &p[1]);
-        p = d;
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) ctx->addr.sockaddr;
+
+        for (n = 15; n >= 0; n--) {
+            p = ngx_sprintf(p, "\1%xd\1%xd",
+                            sin6->sin6_addr.s6_addr[n] & 0xf,
+                            (sin6->sin6_addr.s6_addr[n] >> 4) & 0xf);
+        }
+
+        p = ngx_cpymem(p, "\3ip6\4arpa\0", 10);
+
+        break;
+#endif
+
+    default: /* AF_INET */
+
+        sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+        addr = ntohl(sin->sin_addr.s_addr);
+
+        for (n = 0; n < 32; n += 8) {
+            d = ngx_sprintf(&p[1], "%ud", (addr >> n) & 0xff);
+            *p = (u_char) (d - &p[1]);
+            p = d;
+        }
+
+        p = ngx_cpymem(p, "\7in-addr\4arpa\0", 14);
     }
 
     /* query type "PTR", IN query class */
-    ngx_memcpy(p, "\7in-addr\4arpa\0\0\14\0\1", 18);
+    p = ngx_cpymem(p, "\0\14\0\1", 4);
 
-    rn->qlen = (u_short)
-                  (p + sizeof("\7in-addr\4arpa") + sizeof(ngx_resolver_qs_t)
-                   - rn->query);
+    rn->qlen = (u_short) (p - rn->query);
 
     return NGX_OK;
 }

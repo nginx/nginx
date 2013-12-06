@@ -54,6 +54,11 @@ typedef struct {
     /* PTR: resolved name, A: name to resolve */
     u_char                   *name;
 
+#if (NGX_HAVE_INET6)
+    /* PTR: IPv6 address to resolve (IPv4 address is in rbtree node key) */
+    struct in6_addr           addr6;
+#endif
+
     u_short                   nlen;
     u_short                   qlen;
 
@@ -99,6 +104,13 @@ typedef struct {
 
     ngx_queue_t               name_expire_queue;
     ngx_queue_t               addr_expire_queue;
+
+#if (NGX_HAVE_INET6)
+    ngx_rbtree_t              addr6_rbtree;
+    ngx_rbtree_node_t         addr6_sentinel;
+    ngx_queue_t               addr6_resend_queue;
+    ngx_queue_t               addr6_expire_queue;
+#endif
 
     time_t                    resend_timeout;
     time_t                    expire;
