@@ -55,7 +55,6 @@ static ngx_str_t  smtp_tempunavail = ngx_string("[TEMPUNAVAIL]");
 void
 ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 {
-    struct sockaddr_in        *sin;
     ngx_resolver_ctx_t        *ctx;
     ngx_mail_core_srv_conf_t  *cscf;
 
@@ -67,11 +66,13 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
         return;
     }
 
-    if (c->sockaddr->sa_family != AF_INET) {
+#if (NGX_HAVE_UNIX_DOMAIN)
+    if (c->sockaddr->sa_family == AF_UNIX) {
         s->host = smtp_tempunavail;
         ngx_mail_smtp_greeting(s, c);
         return;
     }
+#endif
 
     c->log->action = "in resolving client address";
 
@@ -81,11 +82,8 @@ ngx_mail_smtp_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
         return;
     }
 
-    /* AF_INET only */
-
-    sin = (struct sockaddr_in *) c->sockaddr;
-
-    ctx->addr = sin->sin_addr.s_addr;
+    ctx->addr.sockaddr = c->sockaddr;
+    ctx->addr.socklen = c->socklen;
     ctx->handler = ngx_mail_smtp_resolve_addr_handler;
     ctx->data = s;
     ctx->timeout = cscf->resolver_timeout;
@@ -181,10 +179,8 @@ ngx_mail_smtp_resolve_name(ngx_event_t *rev)
 static void
 ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx)
 {
-    in_addr_t            addr;
     ngx_uint_t           i;
     ngx_connection_t    *c;
-    struct sockaddr_in  *sin;
     ngx_mail_session_t  *s;
 
     s = ctx->data;
@@ -205,22 +201,29 @@ ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx)
 
     } else {
 
-        /* AF_INET only */
+#if (NGX_DEBUG)
+        {
+        u_char     text[NGX_SOCKADDR_STRLEN];
+        ngx_str_t  addr;
 
-        sin = (struct sockaddr_in *) c->sockaddr;
+        addr.data = text;
 
         for (i = 0; i < ctx->naddrs; i++) {
+            addr.len = ngx_sock_ntop(ctx->addrs[i].sockaddr,
+                                     ctx->addrs[i].socklen,
+                                     text, NGX_SOCKADDR_STRLEN, 0);
 
-            addr = ctx->addrs[i];
+            ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                           "name was resolved to %V", &addr);
+        }
+        }
+#endif
 
-            ngx_log_debug4(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                           "name was resolved to %ud.%ud.%ud.%ud",
-                           (ntohl(addr) >> 24) & 0xff,
-                           (ntohl(addr) >> 16) & 0xff,
-                           (ntohl(addr) >> 8) & 0xff,
-                           ntohl(addr) & 0xff);
-
-            if (addr == sin->sin_addr.s_addr) {
+        for (i = 0; i < ctx->naddrs; i++) {
+            if (ngx_cmp_sockaddr(ctx->addrs[i].sockaddr, ctx->addrs[i].socklen,
+                                 c->sockaddr, c->socklen, 0)
+                == NGX_OK)
+            {
                 goto found;
             }
         }

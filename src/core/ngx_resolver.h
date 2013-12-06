@@ -121,8 +121,9 @@ struct ngx_resolver_ctx_s {
     ngx_str_t                 name;
 
     ngx_uint_t                naddrs;
-    in_addr_t                *addrs;
-    in_addr_t                 addr;
+    ngx_addr_t               *addrs;
+    ngx_addr_t                addr;
+    struct sockaddr_in        sin;
 
     ngx_resolver_handler_pt   handler;
     void                     *data;

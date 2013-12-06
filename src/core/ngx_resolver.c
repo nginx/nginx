@@ -88,8 +88,8 @@ static void *ngx_resolver_calloc(ngx_resolver_t *r, size_t size);
 static void ngx_resolver_free(ngx_resolver_t *r, void *p);
 static void ngx_resolver_free_locked(ngx_resolver_t *r, void *p);
 static void *ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size);
-static in_addr_t *ngx_resolver_rotate(ngx_resolver_t *r, in_addr_t *src,
-    ngx_uint_t n);
+static ngx_addr_t *ngx_resolver_export(ngx_resolver_t *r, in_addr_t *src,
+    ngx_uint_t n, ngx_uint_t rotate);
 static u_char *ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
 
@@ -281,7 +281,11 @@ ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
             temp->state = NGX_OK;
             temp->naddrs = 1;
             temp->addrs = &temp->addr;
-            temp->addr = addr;
+            temp->addr.sockaddr = (struct sockaddr *) &temp->sin;
+            temp->addr.socklen = sizeof(struct sockaddr_in);
+            ngx_memzero(&temp->sin, sizeof(struct sockaddr_in));
+            temp->sin.sin_family = AF_INET;
+            temp->sin.sin_addr.s_addr = addr;
             temp->quick = 1;
 
             return temp;
@@ -417,9 +421,9 @@ static ngx_int_t
 ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 {
     uint32_t              hash;
-    in_addr_t             addr, *addrs;
     ngx_int_t             rc;
     ngx_uint_t            naddrs;
+    ngx_addr_t           *addrs;
     ngx_resolver_ctx_t   *next;
     ngx_resolver_node_t  *rn;
 
@@ -445,16 +449,14 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 
                 /* NGX_RESOLVE_A answer */
 
-                if (naddrs != 1) {
-                    addr = 0;
-                    addrs = ngx_resolver_rotate(r, rn->u.addrs, naddrs);
+                if (naddrs == 1) {
+                    addrs = NULL;
+
+                } else {
+                    addrs = ngx_resolver_export(r, rn->u.addrs, naddrs, 1);
                     if (addrs == NULL) {
                         return NGX_ERROR;
                     }
-
-                } else {
-                    addr = rn->u.addr;
-                    addrs = NULL;
                 }
 
                 ctx->next = rn->waiting;
@@ -465,8 +467,19 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
                 do {
                     ctx->state = NGX_OK;
                     ctx->naddrs = naddrs;
-                    ctx->addrs = (naddrs == 1) ? &ctx->addr : addrs;
-                    ctx->addr = addr;
+
+                    if (addrs == NULL) {
+                        ctx->addrs = &ctx->addr;
+                        ctx->addr.sockaddr = (struct sockaddr *) &ctx->sin;
+                        ctx->addr.socklen = sizeof(struct sockaddr_in);
+                        ngx_memzero(&ctx->sin, sizeof(struct sockaddr_in));
+                        ctx->sin.sin_family = AF_INET;
+                        ctx->sin.sin_addr.s_addr = rn->u.addr;
+
+                    } else {
+                        ctx->addrs = addrs;
+                    }
+
                     next = ctx->next;
 
                     ctx->handler(ctx);
@@ -474,7 +487,8 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
                     ctx = next;
                 } while (ctx);
 
-                if (addrs) {
+                if (addrs != NULL) {
+                    ngx_resolver_free(r, addrs->sockaddr);
                     ngx_resolver_free(r, addrs);
                 }
 
@@ -626,20 +640,29 @@ failed:
 }
 
 
+/* AF_INET only */
+
 ngx_int_t
 ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 {
     u_char               *name;
+    in_addr_t             addr;
     ngx_resolver_t       *r;
+    struct sockaddr_in   *sin;
     ngx_resolver_node_t  *rn;
 
     r = ctx->resolver;
 
-    ctx->addr = ntohl(ctx->addr);
+    if (ctx->addr.sockaddr->sa_family != AF_INET) {
+        return NGX_ERROR;
+    }
+
+    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+    addr = ntohl(sin->sin_addr.s_addr);
 
     /* lock addr mutex */
 
-    rn = ngx_resolver_lookup_addr(r, ctx->addr);
+    rn = ngx_resolver_lookup_addr(r, addr);
 
     if (rn) {
 
@@ -694,7 +717,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             goto failed;
         }
 
-        rn->node.key = ctx->addr;
+        rn->node.key = addr;
         rn->query = NULL;
 
         ngx_rbtree_insert(&r->addr_rbtree, &rn->node);
@@ -765,13 +788,23 @@ failed:
 }
 
 
+/* AF_INET only */
+
 void
 ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
 {
     in_addr_t             addr;
     ngx_resolver_t       *r;
     ngx_resolver_ctx_t   *w, **p;
+    struct sockaddr_in   *sin;
     ngx_resolver_node_t  *rn;
+
+    if (ctx->addr.sockaddr->sa_family != AF_INET) {
+        return;
+    }
+
+    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+    addr = ntohl(sin->sin_addr.s_addr);
 
     r = ctx->resolver;
 
@@ -786,7 +819,7 @@ ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
 
     if (ctx->state == NGX_AGAIN || ctx->state == NGX_RESOLVE_TIMEDOUT) {
 
-        rn = ngx_resolver_lookup_addr(r, ctx->addr);
+        rn = ngx_resolver_lookup_addr(r, addr);
 
         if (rn) {
             p = &rn->waiting;
@@ -803,8 +836,6 @@ ngx_resolve_addr_done(ngx_resolver_ctx_t *ctx)
                 w = w->next;
             }
         }
-
-        addr = ntohl(ctx->addr);
 
         ngx_log_error(NGX_LOG_ALERT, r->log, 0,
                       "could not cancel %ud.%ud.%ud.%ud resolving",
@@ -1177,8 +1208,9 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     size_t                len;
     int32_t               ttl;
     uint32_t              hash;
-    in_addr_t             addr, *addrs;
+    in_addr_t            *addr;
     ngx_str_t             name;
+    ngx_addr_t           *addrs;
     ngx_uint_t            type, class, qident, naddrs, a, i, n, start;
     ngx_resolver_an_t    *an;
     ngx_resolver_ctx_t   *ctx, *next;
@@ -1247,8 +1279,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
     i = ans;
     naddrs = 0;
-    addr = 0;
-    addrs = NULL;
     cname = NULL;
     ttl = 0;
 
@@ -1319,9 +1349,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
                 goto short_response;
             }
 
-            addr = htonl((buf[i] << 24) + (buf[i + 1] << 16)
-                         + (buf[i + 2] << 8) + (buf[i + 3]));
-
             naddrs++;
 
             break;
@@ -1352,65 +1379,68 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     if (naddrs) {
 
         if (naddrs == 1) {
-            rn->u.addr = addr;
+            addr = &rn->u.addr;
+            rn->naddrs = 1;
 
         } else {
-
-            addrs = ngx_resolver_alloc(r, naddrs * sizeof(in_addr_t));
-            if (addrs == NULL) {
+            addr = ngx_resolver_alloc(r, naddrs * sizeof(in_addr_t));
+            if (addr == NULL) {
                 goto failed;
             }
 
-            n = 0;
-            i = ans;
+            rn->u.addrs = addr;
+            rn->naddrs = (u_short) naddrs;
+        }
 
-            for (a = 0; a < nan; a++) {
+        n = 0;
+        i = ans;
 
-                for ( ;; ) {
+        for (a = 0; a < nan; a++) {
 
-                    if (buf[i] & 0xc0) {
-                        i += 2;
-                        break;
-                    }
+            for ( ;; ) {
 
-                    if (buf[i] == 0) {
-                        i++;
-                        break;
-                    }
-
-                    i += 1 + buf[i];
+                if (buf[i] & 0xc0) {
+                    i += 2;
+                    break;
                 }
 
-                an = (ngx_resolver_an_t *) &buf[i];
-
-                type = (an->type_hi << 8) + an->type_lo;
-                len = (an->len_hi << 8) + an->len_lo;
-
-                i += sizeof(ngx_resolver_an_t);
-
-                if (type == NGX_RESOLVE_A) {
-
-                    addrs[n++] = htonl((buf[i] << 24) + (buf[i + 1] << 16)
-                                       + (buf[i + 2] << 8) + (buf[i + 3]));
-
-                    if (n == naddrs) {
-                        break;
-                    }
+                if (buf[i] == 0) {
+                    i++;
+                    break;
                 }
 
-                i += len;
+                i += 1 + buf[i];
             }
 
-            rn->u.addrs = addrs;
+            an = (ngx_resolver_an_t *) &buf[i];
 
-            addrs = ngx_resolver_dup(r, rn->u.addrs,
-                                     naddrs * sizeof(in_addr_t));
+            type = (an->type_hi << 8) + an->type_lo;
+            len = (an->len_hi << 8) + an->len_lo;
+
+            i += sizeof(ngx_resolver_an_t);
+
+            if (type == NGX_RESOLVE_A) {
+
+                addr[n] = htonl((buf[i] << 24) + (buf[i + 1] << 16)
+                                + (buf[i + 2] << 8) + (buf[i + 3]));
+
+                if (++n == naddrs) {
+                    break;
+                }
+            }
+
+            i += len;
+        }
+
+        if (naddrs == 1) {
+            addrs = NULL;
+
+        } else {
+            addrs = ngx_resolver_export(r, rn->u.addrs, naddrs, 0);
             if (addrs == NULL) {
                 goto failed;
             }
         }
-
-        rn->naddrs = (u_short) naddrs;
 
         ngx_queue_remove(&rn->queue);
 
@@ -1428,14 +1458,26 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             ctx = next;
             ctx->state = NGX_OK;
             ctx->naddrs = naddrs;
-            ctx->addrs = (naddrs == 1) ? &ctx->addr : addrs;
-            ctx->addr = addr;
+
+            if (addrs == NULL) {
+                ctx->addrs = &ctx->addr;
+                ctx->addr.sockaddr = (struct sockaddr *) &ctx->sin;
+                ctx->addr.socklen = sizeof(struct sockaddr_in);
+                ngx_memzero(&ctx->sin, sizeof(struct sockaddr_in));
+                ctx->sin.sin_family = AF_INET;
+                ctx->sin.sin_addr.s_addr = rn->u.addr;
+
+            } else {
+                ctx->addrs = addrs;
+            }
+
             next = ctx->next;
 
             ctx->handler(ctx);
         }
 
-        if (naddrs > 1) {
+        if (addrs != NULL) {
+            ngx_resolver_free(r, addrs->sockaddr);
             ngx_resolver_free(r, addrs);
         }
 
@@ -1918,9 +1960,15 @@ ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 {
     u_char              *p, *d;
     size_t               len;
+    in_addr_t            addr;
     ngx_int_t            n;
     ngx_uint_t           ident;
     ngx_resolver_hdr_t  *query;
+    struct sockaddr_in  *sin;
+
+    if (ctx->addr.sockaddr->sa_family != AF_INET) {
+        return NGX_ERROR;
+    }
 
     len = sizeof(ngx_resolver_hdr_t)
           + sizeof(".255.255.255.255.in-addr.arpa.") - 1
@@ -1950,8 +1998,11 @@ ngx_resolver_create_addr_query(ngx_resolver_node_t *rn, ngx_resolver_ctx_t *ctx)
 
     p += sizeof(ngx_resolver_hdr_t);
 
+    sin = (struct sockaddr_in *) ctx->addr.sockaddr;
+    addr = ntohl(sin->sin_addr.s_addr);
+
     for (n = 0; n < 32; n += 8) {
-        d = ngx_sprintf(&p[1], "%ud", (ctx->addr >> n) & 0xff);
+        d = ngx_sprintf(&p[1], "%ud", (addr >> n) & 0xff);
         *p = (u_char) (d - &p[1]);
         p = d;
     }
@@ -2167,27 +2218,38 @@ ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size)
 }
 
 
-static in_addr_t *
-ngx_resolver_rotate(ngx_resolver_t *r, in_addr_t *src, ngx_uint_t n)
+static ngx_addr_t *
+ngx_resolver_export(ngx_resolver_t *r, in_addr_t *src, ngx_uint_t n,
+    ngx_uint_t rotate)
 {
-    void        *dst, *p;
-    ngx_uint_t   j;
+    ngx_addr_t          *dst;
+    ngx_uint_t           i, j;
+    struct sockaddr_in  *sin;
 
-    dst = ngx_resolver_alloc(r, n * sizeof(in_addr_t));
-
+    dst = ngx_resolver_calloc(r, n * sizeof(ngx_addr_t));
     if (dst == NULL) {
-        return dst;
+        return NULL;
     }
 
-    j = ngx_random() % n;
+    sin = ngx_resolver_calloc(r, n * sizeof(struct sockaddr_in));
 
-    if (j == 0) {
-        ngx_memcpy(dst, src, n * sizeof(in_addr_t));
-        return dst;
+    if (sin == NULL) {
+        ngx_resolver_free(r, dst);
+        return NULL;
     }
 
-    p = ngx_cpymem(dst, &src[j], (n - j) * sizeof(in_addr_t));
-    ngx_memcpy(p, src, j * sizeof(in_addr_t));
+    j = rotate ? ngx_random() % n : 0;
+
+    for (i = 0; i < n; i++) {
+        dst[i].sockaddr = (struct sockaddr *) &sin[i];
+        dst[i].socklen = sizeof(struct sockaddr_in);
+        sin[i].sin_family = AF_INET;
+        sin[i].sin_addr.s_addr = src[j++];
+
+        if (j == n) {
+            j = 0;
+        }
+    }
 
     return dst;
 }
