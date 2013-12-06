@@ -1517,7 +1517,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     int32_t               ttl;
     ngx_int_t             octet;
     ngx_str_t             name;
-    ngx_uint_t            i, mask, qident;
+    ngx_uint_t            i, mask, qident, class;
     ngx_resolver_an_t    *an;
     ngx_resolver_ctx_t   *ctx, *next;
     ngx_resolver_node_t  *rn;
@@ -1526,7 +1526,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
                           buf + sizeof(ngx_resolver_hdr_t), buf + n)
         != NGX_OK)
     {
-        goto invalid_in_addr_arpa;
+        return;
     }
 
     addr = 0;
@@ -1599,7 +1599,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     i += sizeof("\7in-addr\4arpa") + sizeof(ngx_resolver_qs_t);
 
-    if (i + 2 + sizeof(ngx_resolver_an_t) > n) {
+    if (i + 2 + sizeof(ngx_resolver_an_t) >= n) {
         goto short_response;
     }
 
@@ -1612,9 +1612,16 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
     an = (ngx_resolver_an_t *) &buf[i + 2];
 
+    class = (an->class_hi << 8) + an->class_lo;
     len = (an->len_hi << 8) + an->len_lo;
     ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
         + (an->ttl[2] << 8) + (an->ttl[3]);
+
+    if (class != 1) {
+        ngx_log_error(r->log_level, r->log, 0,
+                      "unexpected RR class %ui", class);
+        goto failed;
+    }
 
     if (ttl < 0) {
         ttl = 0;
@@ -1623,7 +1630,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
                   "resolver qt:%ui cl:%ui len:%uz",
                   (an->type_hi << 8) + an->type_lo,
-                  (an->class_hi << 8) + an->class_lo, len);
+                  class, len);
 
     i += 2 + sizeof(ngx_resolver_an_t);
 
@@ -1632,7 +1639,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     }
 
     if (ngx_resolver_copy(r, &name, buf, buf + i, buf + n) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0, "resolver an:%V", &name);
