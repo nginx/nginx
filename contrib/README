@@ -13,3 +13,9 @@ unicode2nginx		by Maxim Dounin
 	configuration file format.
 	Two generated full maps for windows-1251 and koi8-r.
 
+
+vim			by Evan Miller
+
+	Syntax highlighting of nginx configuration for vim, to be
+	placed into ~/.vim/.
+
