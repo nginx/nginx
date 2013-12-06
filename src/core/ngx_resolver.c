@@ -1179,7 +1179,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     uint32_t              hash;
     in_addr_t             addr, *addrs;
     ngx_str_t             name;
-    ngx_uint_t            type, qident, naddrs, a, i, n, start;
+    ngx_uint_t            type, class, qident, naddrs, a, i, n, start;
     ngx_resolver_an_t    *an;
     ngx_resolver_ctx_t   *ctx, *next;
     ngx_resolver_node_t  *rn;
@@ -1202,6 +1202,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     if (rn == NULL || rn->query == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
                       "unexpected response for %V", &name);
+        ngx_resolver_free(r, name.data);
         goto failed;
     }
 
@@ -1211,6 +1212,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         ngx_log_error(r->log_level, r->log, 0,
                       "wrong ident %ui response for %V, expect %ui",
                       ident, &name, qident);
+        ngx_resolver_free(r, name.data);
         goto failed;
     }
 
@@ -1287,21 +1289,33 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         an = (ngx_resolver_an_t *) &buf[i];
 
         type = (an->type_hi << 8) + an->type_lo;
+        class = (an->class_hi << 8) + an->class_lo;
         len = (an->len_hi << 8) + an->len_lo;
         ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
             + (an->ttl[2] << 8) + (an->ttl[3]);
+
+        if (class != 1) {
+            ngx_log_error(r->log_level, r->log, 0,
+                          "unexpected RR class %ui", class);
+            goto failed;
+        }
 
         if (ttl < 0) {
             ttl = 0;
         }
 
+        i += sizeof(ngx_resolver_an_t);
+
         switch (type) {
 
         case NGX_RESOLVE_A:
 
-            i += sizeof(ngx_resolver_an_t);
+            if (len != 4) {
+                err = "invalid A record in DNS response";
+                goto invalid;
+            }
 
-            if (i + len > last) {
+            if (i + 4 > last) {
                 goto short_response;
             }
 
@@ -1310,20 +1324,15 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             naddrs++;
 
-            i += len;
-
             break;
 
         case NGX_RESOLVE_CNAME:
 
-            cname = &buf[i] + sizeof(ngx_resolver_an_t);
-            i += sizeof(ngx_resolver_an_t) + len;
+            cname = &buf[i];
 
             break;
 
         case NGX_RESOLVE_DNAME:
-
-            i += sizeof(ngx_resolver_an_t) + len;
 
             break;
 
@@ -1332,6 +1341,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             ngx_log_error(r->log_level, r->log, 0,
                           "unexpected RR type %ui", type);
         }
+
+        i += len;
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
@@ -1347,7 +1358,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             addrs = ngx_resolver_alloc(r, naddrs * sizeof(in_addr_t));
             if (addrs == NULL) {
-                return;
+                goto failed;
             }
 
             n = 0;
@@ -1395,7 +1406,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             addrs = ngx_resolver_dup(r, rn->u.addrs,
                                      naddrs * sizeof(in_addr_t));
             if (addrs == NULL) {
-                return;
+                goto failed;
             }
         }
 
@@ -1439,7 +1450,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         /* CNAME only */
 
         if (ngx_resolver_copy(r, &name, buf, cname, buf + last) != NGX_OK) {
-            return;
+            goto failed;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
@@ -1467,6 +1478,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         ngx_resolver_free(r, rn->query);
         rn->query = NULL;
 
+        /* unlock name mutex */
+
         return;
     }
 
@@ -1489,8 +1502,6 @@ invalid:
 failed:
 
     /* unlock name mutex */
-
-    ngx_resolver_free(r, name.data);
 
     return;
 }
