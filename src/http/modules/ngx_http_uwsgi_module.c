@@ -603,7 +603,7 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
         url.url.len -= add;
 
     } else {
-        ngx_str_set(&u->schema, (u_char *) "uwsgi://");
+        ngx_str_set(&u->schema, "uwsgi://");
     }
 
     url.no_resolve = 1;
