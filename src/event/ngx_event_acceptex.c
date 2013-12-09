@@ -18,7 +18,6 @@ ngx_event_acceptex(ngx_event_t *rev)
 {
     ngx_listening_t   *ls;
     ngx_connection_t  *c;
-    socklen_t          len;
 
     c = rev->data;
     ls = c->listening;
@@ -50,7 +49,7 @@ ngx_event_acceptex(ngx_event_t *rev)
                              ls->post_accept_buffer_size,
                              ls->socklen + 16,
                              ls->socklen + 16,
-                             &c->local_sockaddr, &len,
+                             &c->local_sockaddr, &c->local_socklen,
                              &c->sockaddr, &c->socklen);
 
     if (ls->post_accept_buffer_size) {

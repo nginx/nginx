@@ -212,6 +212,7 @@ ngx_event_accept(ngx_event_t *ev)
         c->socklen = socklen;
         c->listening = ls;
         c->local_sockaddr = ls->sockaddr;
+        c->local_socklen = ls->socklen;
 
         c->unexpected_eof = 1;
 

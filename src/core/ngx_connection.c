@@ -1078,12 +1078,15 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     struct sockaddr_in6  *sin6;
 #endif
 
+    if (c->local_socklen == 0) {
+        return NGX_ERROR;
+    }
+
     switch (c->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
         sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
-        len = sizeof(struct sockaddr_in6);
 
         for (addr = 0, i = 0; addr == 0 && i < 16; i++) {
             addr |= sin6->sin6_addr.s6_addr[i];
@@ -1094,7 +1097,6 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
 
     default: /* AF_INET */
         sin = (struct sockaddr_in *) c->local_sockaddr;
-        len = sizeof(struct sockaddr_in);
         addr = sin->sin_addr.s_addr;
         break;
     }
@@ -1114,13 +1116,16 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
         }
 
         ngx_memcpy(c->local_sockaddr, &sa, len);
+
+        c->local_socklen = len;
     }
 
     if (s == NULL) {
         return NGX_OK;
     }
 
-    s->len = ngx_sock_ntop(c->local_sockaddr, len, s->data, s->len, port);
+    s->len = ngx_sock_ntop(c->local_sockaddr, c->local_socklen,
+                           s->data, s->len, port);
 
     return NGX_OK;
 }
