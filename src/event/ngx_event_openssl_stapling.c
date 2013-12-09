@@ -792,7 +792,6 @@ ngx_ssl_ocsp_request(ngx_ssl_ocsp_ctx_t *ctx)
         }
 
         resolve->name = ctx->host;
-        resolve->type = NGX_RESOLVE_A;
         resolve->handler = ngx_ssl_ocsp_resolve_handler;
         resolve->data = ctx;
         resolve->timeout = ctx->resolver_timeout;

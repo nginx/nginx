@@ -644,7 +644,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         }
 
         ctx->name = *host;
-        ctx->type = NGX_RESOLVE_A;
         ctx->handler = ngx_http_upstream_resolve_handler;
         ctx->data = r;
         ctx->timeout = clcf->resolver_timeout;

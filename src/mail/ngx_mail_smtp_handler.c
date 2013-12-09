@@ -165,7 +165,6 @@ ngx_mail_smtp_resolve_name(ngx_event_t *rev)
     }
 
     ctx->name = s->host;
-    ctx->type = NGX_RESOLVE_A;
     ctx->handler = ngx_mail_smtp_resolve_name_handler;
     ctx->data = s;
     ctx->timeout = cscf->resolver_timeout;

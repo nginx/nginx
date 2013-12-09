@@ -18,6 +18,9 @@
 #define NGX_RESOLVE_PTR       12
 #define NGX_RESOLVE_MX        15
 #define NGX_RESOLVE_TXT       16
+#if (NGX_HAVE_INET6)
+#define NGX_RESOLVE_AAAA      28
+#endif
 #define NGX_RESOLVE_DNAME     39
 
 #define NGX_RESOLVE_FORMERR   1
@@ -63,6 +66,9 @@ typedef struct {
     u_short                   qlen;
 
     u_char                   *query;
+#if (NGX_HAVE_INET6)
+    u_char                   *query6;
+#endif
 
     union {
         in_addr_t             addr;
@@ -70,11 +76,22 @@ typedef struct {
         u_char               *cname;
     } u;
 
+    u_char                    code;
     u_short                   naddrs;
     u_short                   cnlen;
 
+#if (NGX_HAVE_INET6)
+    union {
+        struct in6_addr       addr6;
+        struct in6_addr      *addrs6;
+    } u6;
+
+    u_short                   naddrs6;
+#endif
+
     time_t                    expire;
     time_t                    valid;
+    uint32_t                  ttl;
 
     ngx_resolver_ctx_t       *waiting;
 } ngx_resolver_node_t;
@@ -129,7 +146,6 @@ struct ngx_resolver_ctx_s {
     ngx_int_t                 ident;
 
     ngx_int_t                 state;
-    ngx_int_t                 type;
     ngx_str_t                 name;
 
     ngx_uint_t                naddrs;
