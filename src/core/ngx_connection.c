@@ -1095,6 +1095,12 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        addr = 1;
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) c->local_sockaddr;
         addr = sin->sin_addr.s_addr;

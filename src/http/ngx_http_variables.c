@@ -1185,6 +1185,12 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        port = 0;
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) r->connection->sockaddr;
         port = ntohs(sin->sin_port);
@@ -1260,6 +1266,12 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
     case AF_INET6:
         sin6 = (struct sockaddr_in6 *) r->connection->local_sockaddr;
         port = ntohs(sin6->sin6_port);
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        port = 0;
         break;
 #endif
 
