@@ -123,6 +123,7 @@ typedef struct {
     ngx_queue_t               addr_expire_queue;
 
 #if (NGX_HAVE_INET6)
+    ngx_uint_t                ipv6;                 /* unsigned  ipv6:1; */
     ngx_rbtree_t              addr6_rbtree;
     ngx_rbtree_node_t         addr6_sentinel;
     ngx_queue_t               addr6_resend_queue;
