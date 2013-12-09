@@ -197,33 +197,39 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         n = p / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
 
-        if (!(iphp->rrp.tried[n] & m)) {
-
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                           "get ip hash peer, hash: %ui %04XA", p, m);
-
-            peer = &iphp->rrp.peers->peer[p];
-
-            /* ngx_lock_mutex(iphp->rrp.peers->mutex); */
-
-            if (!peer->down) {
-
-                if (peer->max_fails == 0 || peer->fails < peer->max_fails) {
-                    break;
-                }
-
-                if (now - peer->checked > peer->fail_timeout) {
-                    peer->checked = now;
-                    break;
-                }
-            }
-
-            iphp->rrp.tried[n] |= m;
-
-            /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
-
-            pc->tries--;
+        if (iphp->rrp.tried[n] & m) {
+            goto next;
         }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                       "get ip hash peer, hash: %ui %04XA", p, m);
+
+        peer = &iphp->rrp.peers->peer[p];
+
+        /* ngx_lock_mutex(iphp->rrp.peers->mutex); */
+
+        if (peer->down) {
+            goto next_try;
+        }
+
+        if (peer->max_fails
+            && peer->fails >= peer->max_fails
+            && now - peer->checked <= peer->fail_timeout)
+        {
+            goto next_try;
+        }
+
+        break;
+
+    next_try:
+
+        iphp->rrp.tried[n] |= m;
+
+        /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
+
+        pc->tries--;
+
+    next:
 
         if (++iphp->tries >= 20) {
             return iphp->get_rr_peer(pc, &iphp->rrp);
@@ -235,6 +241,10 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
+
+    if (now - peer->checked > peer->fail_timeout) {
+        peer->checked = now;
+    }
 
     /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
 
