@@ -2855,7 +2855,9 @@ ngx_http_spdy_finalize_connection(ngx_http_spdy_connection_t *sc,
             if (stream->waiting) {
                 r->blocked -= stream->waiting;
                 stream->waiting = 0;
+
                 ev = fc->write;
+                ev->delayed = 0;
 
             } else {
                 ev = fc->read;
