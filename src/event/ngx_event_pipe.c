@@ -857,18 +857,12 @@ ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
-    if (p->free) {
-        cl = p->free;
-        b = cl->buf;
-        p->free = cl->next;
-        ngx_free_chain(p->pool, cl);
-
-    } else {
-        b = ngx_alloc_buf(p->pool);
-        if (b == NULL) {
-            return NGX_ERROR;
-        }
+    cl = ngx_chain_get_free_buf(p->pool, &p->free);
+    if (cl == NULL) {
+        return NGX_ERROR;
     }
+
+    b = cl->buf;
 
     ngx_memcpy(b, buf, sizeof(ngx_buf_t));
     b->shadow = buf;
@@ -876,14 +870,6 @@ ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     b->last_shadow = 1;
     b->recycled = 1;
     buf->shadow = b;
-
-    cl = ngx_alloc_chain_link(p->pool);
-    if (cl == NULL) {
-        return NGX_ERROR;
-    }
-
-    cl->buf = b;
-    cl->next = NULL;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0, "input buf #%d", b->num);
 
