@@ -510,7 +510,7 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
 
         } else {
             ngx_str_set(&u->schema, "uwsgi://");
-        }   
+        }
 #else
         ngx_str_set(&u->schema, "uwsgi://");
 #endif
