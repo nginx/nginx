@@ -1235,11 +1235,11 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         /* unlock name mutex */
 
         while (next) {
-             ctx = next;
-             ctx->state = code;
-             next = ctx->next;
+            ctx = next;
+            ctx->state = code;
+            next = ctx->next;
 
-             ctx->handler(ctx);
+            ctx->handler(ctx);
         }
 
         return;
@@ -1425,14 +1425,14 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         /* unlock name mutex */
 
         while (next) {
-             ctx = next;
-             ctx->state = NGX_OK;
-             ctx->naddrs = naddrs;
-             ctx->addrs = (naddrs == 1) ? &ctx->addr : addrs;
-             ctx->addr = addr;
-             next = ctx->next;
+            ctx = next;
+            ctx->state = NGX_OK;
+            ctx->naddrs = naddrs;
+            ctx->addrs = (naddrs == 1) ? &ctx->addr : addrs;
+            ctx->addr = addr;
+            next = ctx->next;
 
-             ctx->handler(ctx);
+            ctx->handler(ctx);
         }
 
         if (naddrs > 1) {
@@ -1587,11 +1587,11 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         /* unlock addr mutex */
 
         while (next) {
-             ctx = next;
-             ctx->state = code;
-             next = ctx->next;
+            ctx = next;
+            ctx->state = code;
+            next = ctx->next;
 
-             ctx->handler(ctx);
+            ctx->handler(ctx);
         }
 
         return;
@@ -1673,12 +1673,12 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     /* unlock addr mutex */
 
     while (next) {
-         ctx = next;
-         ctx->state = NGX_OK;
-         ctx->name = name;
-         next = ctx->next;
+        ctx = next;
+        ctx->state = NGX_OK;
+        ctx->name = name;
+        next = ctx->next;
 
-         ctx->handler(ctx);
+        ctx->handler(ctx);
     }
 
     ngx_resolver_free(r, name.data);
