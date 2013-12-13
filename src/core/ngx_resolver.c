@@ -467,6 +467,8 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
     ngx_resolver_ctx_t   *next;
     ngx_resolver_node_t  *rn;
 
+    ngx_strlow(ctx->name.data, ctx->name.data, ctx->name.len);
+
     hash = ngx_crc32_short(ctx->name.data, ctx->name.len);
 
     rn = ngx_resolver_lookup_name(r, &ctx->name, hash);
@@ -2011,7 +2013,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
         i += len;
     }
 
-    if (ngx_strcmp(&buf[i], "\7in-addr\4arpa") == 0) {
+    if (ngx_strcasecmp(&buf[i], (u_char *) "\7in-addr\4arpa") == 0) {
         i += sizeof("\7in-addr\4arpa");
 
         /* lock addr mutex */
@@ -2058,7 +2060,7 @@ invalid_in_addr_arpa:
         addr6.s6_addr[octet] += (u_char) (digit * 16);
     }
 
-    if (ngx_strcmp(&buf[i], "\3ip6\4arpa") == 0) {
+    if (ngx_strcasecmp(&buf[i], (u_char *) "\3ip6\4arpa") == 0) {
         i += sizeof("\3ip6\4arpa");
 
         /* lock addr mutex */
@@ -2737,7 +2739,7 @@ done:
             n = *src++;
 
         } else {
-            ngx_memcpy(dst, src, n);
+            ngx_strlow(dst, src, n);
             dst += n;
             src += n;
 
