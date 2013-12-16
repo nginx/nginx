@@ -678,6 +678,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
     rn->code = 0;
     rn->cnlen = 0;
     rn->valid = 0;
+    rn->ttl = NGX_MAX_UINT32_VALUE;
     rn->waiting = ctx;
 
     ctx->state = NGX_AGAIN;
@@ -871,6 +872,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
     rn->name = NULL;
     rn->nlen = 0;
     rn->valid = 0;
+    rn->ttl = NGX_MAX_UINT32_VALUE;
     rn->waiting = ctx;
 
     /* unlock addr mutex */
@@ -1574,7 +1576,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     i = ans;
     naddrs = 0;
     cname = NULL;
-    ttl = 0;
 
     for (a = 0; a < nan; a++) {
 
@@ -1627,6 +1628,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         if (ttl < 0) {
             ttl = 0;
         }
+
+        rn->ttl = ngx_min(rn->ttl, (uint32_t) ttl);
 
         i += sizeof(ngx_resolver_an_t);
 
@@ -1694,8 +1697,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver naddrs:%ui cname:%p ttl:%d",
-                   naddrs, cname, ttl);
+                   "resolver naddrs:%ui cname:%p ttl:%uD",
+                   naddrs, cname, rn->ttl);
 
     if (naddrs) {
 
@@ -1745,8 +1748,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             addr6 = NULL;
 #endif
         }
-
-        rn->ttl = ttl;
 
         n = 0;
         i = ans;
@@ -1915,7 +1916,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         rn->cnlen = (u_short) name.len;
         rn->u.cname = name.data;
 
-        rn->valid = ngx_time() + (r->valid ? r->valid : ttl);
+        rn->valid = ngx_time() + (r->valid ? r->valid : (time_t) rn->ttl);
         rn->expire = ngx_time() + r->expire;
 
         ngx_queue_insert_head(&r->name_expire_queue, &rn->queue);
