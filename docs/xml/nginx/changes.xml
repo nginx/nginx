@@ -5,6 +5,91 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.8" date="17.12.2013">
+
+<change type="feature">
+<para lang="ru">
+теперь resolver поддерживает IPv6.
+</para>
+<para lang="en">
+IPv6 support in resolver.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива listen поддерживает параметр fastopen.<br/>
+Спасибо Mathew Rodley.
+</para>
+<para lang="en">
+the "listen" directive supports the "fastopen" parameter.<br/>
+Thanks to Mathew Rodley.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка SSL в модуле ngx_http_uwsgi_module.<br/>
+Спасибо Roberto De Ioris.
+</para>
+<para lang="en">
+SSL support in the ngx_http_uwsgi_module.<br/>
+Thanks to Roberto De Ioris.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+скрипты подсветки синтаксиса для vim добавлены в contrib.<br/>
+Спасибо Evan Miller.
+</para>
+<para lang="en">
+vim syntax highlighting scripts were added to contrib.<br/>
+Thanks to Evan Miller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при чтении тела запроса с использованием chunked transfer encoding
+по SSL-соединению мог произойти таймаут.
+</para>
+<para lang="en">
+a timeout might occur while reading client request body
+in an SSL connection using chunked transfer encoding.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива master_process работала неправильно в nginx/Windows.
+</para>
+<para lang="en">
+the "master_process" directive did not work correctly in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр setfib директивы listen мог не работать.
+</para>
+<para lang="en">
+the "setfib" parameter of the "listen" directive might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.7" date="19.11.2013">
 
 <change type="security">
