@@ -751,7 +751,7 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
             p = buf->start;
             buf->pos = p;
 
-            p += sizeof(uint32_t);
+            p += NGX_SPDY_SID_SIZE;
 
             (void) ngx_spdy_frame_write_flags_and_len(p, flags, len);
 
