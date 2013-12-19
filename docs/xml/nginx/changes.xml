@@ -20336,11 +20336,11 @@ the compressed response encrypted by SSL may not transferred complete.
 
 <change type="bugfix">
 <para lang="ru">
-опции TCP_NODELAY, TCP_NOPSUH и TCP_CORK, специфичные для TCP сокетов,
+опции TCP_NODELAY, TCP_NOPUSH и TCP_CORK, специфичные для TCP сокетов,
 не используются для unix domain сокетов.
 </para>
 <para lang="en">
-the TCP-specific TCP_NODELAY, TCP_NOPSUH, and TCP_CORK options,
+the TCP-specific TCP_NODELAY, TCP_NOPUSH, and TCP_CORK options,
 are not used for the unix domain sockets.
 </para>
 </change>
