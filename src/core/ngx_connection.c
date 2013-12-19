@@ -199,7 +199,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_SETFIB)
 
-        if (getsockopt(ls[i].setfib, SOL_SOCKET, SO_SETFIB,
+        olen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_SETFIB,
                        (void *) &ls[i].setfib, &olen)
             == -1)
         {
@@ -215,7 +217,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_TCP_FASTOPEN)
 
-        if (getsockopt(ls[i].fastopen, IPPROTO_TCP, TCP_FASTOPEN,
+        olen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_FASTOPEN,
                        (void *) &ls[i].fastopen, &olen)
             == -1)
         {
