@@ -190,6 +190,8 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
         return NGX_ERROR;
     }
 
+    ssl->buffer_size = NGX_SSL_BUFSIZE;
+
     /* client side options */
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_MICROSOFT_SESS_ID_BUG);
@@ -726,6 +728,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     }
 
     sc->buffer = ((flags & NGX_SSL_BUFFER) != 0);
+    sc->buffer_size = ssl->buffer_size;
 
     sc->connection = SSL_new(ssl->ctx);
 
@@ -1222,7 +1225,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     buf = c->ssl->buf;
 
     if (buf == NULL) {
-        buf = ngx_create_temp_buf(c->pool, NGX_SSL_BUFSIZE);
+        buf = ngx_create_temp_buf(c->pool, c->ssl->buffer_size);
         if (buf == NULL) {
             return NGX_CHAIN_ERROR;
         }
@@ -1231,14 +1234,14 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
     if (buf->start == NULL) {
-        buf->start = ngx_palloc(c->pool, NGX_SSL_BUFSIZE);
+        buf->start = ngx_palloc(c->pool, c->ssl->buffer_size);
         if (buf->start == NULL) {
             return NGX_CHAIN_ERROR;
         }
 
         buf->pos = buf->start;
         buf->last = buf->start;
-        buf->end = buf->start + NGX_SSL_BUFSIZE;
+        buf->end = buf->start + c->ssl->buffer_size;
     }
 
     send = buf->last - buf->pos;

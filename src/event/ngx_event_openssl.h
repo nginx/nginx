@@ -29,6 +29,7 @@
 typedef struct {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
+    size_t                      buffer_size;
 } ngx_ssl_t;
 
 
@@ -37,6 +38,7 @@ typedef struct {
 
     ngx_int_t                   last;
     ngx_buf_t                  *buf;
+    size_t                      buffer_size;
 
     ngx_connection_handler_pt   handler;
 
