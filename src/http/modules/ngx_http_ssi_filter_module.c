@@ -1982,8 +1982,6 @@ static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    u_char                      *dst, *src;
-    size_t                       len;
     ngx_int_t                    rc, key;
     ngx_str_t                   *uri, *file, *wait, *set, *stub, args;
     ngx_buf_t                   *b;
@@ -2053,18 +2051,6 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     if (rc != NGX_OK) {
         return rc;
     }
-
-    dst = uri->data;
-    src = uri->data;
-
-    ngx_unescape_uri(&dst, &src, uri->len, NGX_UNESCAPE_URI);
-
-    len = (uri->data + uri->len) - src;
-    if (len) {
-        dst = ngx_movemem(dst, src, len);
-    }
-
-    uri->len = dst - uri->data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi include: \"%V\"", uri);
