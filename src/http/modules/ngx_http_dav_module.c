@@ -604,7 +604,7 @@ destination_done:
 
     duri.len = last - p;
     duri.data = p;
-    flags = 0;
+    flags = NGX_HTTP_LOG_UNSAFE;
 
     if (ngx_http_parse_unsafe_uri(r, &duri, &args, &flags) != NGX_OK) {
         goto invalid_destination;
