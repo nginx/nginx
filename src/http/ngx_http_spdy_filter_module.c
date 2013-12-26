@@ -618,7 +618,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     off_t                       size;
     ngx_buf_t                  *b;
-    ngx_chain_t                *cl, *ll, *out, **ln;
+    ngx_chain_t                *cl, *out, **ln;
     ngx_http_spdy_stream_t     *stream;
     ngx_http_spdy_out_frame_t  *frame;
 
@@ -644,10 +644,9 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     size = 0;
     ln = &out;
-    ll = in;
 
-    for ( ;; ) {
-        b = ll->buf;
+    do {
+        b = in->buf;
 #if 1
         if (ngx_buf_size(b) == 0 && !ngx_buf_special(b)) {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
@@ -678,12 +677,9 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         *ln = cl;
         ln = &cl->next;
 
-        if (ll->next == NULL) {
-            break;
-        }
+        in = in->next;
 
-        ll = ll->next;
-    }
+    } while (in);
 
     if (size > NGX_SPDY_MAX_FRAME_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
