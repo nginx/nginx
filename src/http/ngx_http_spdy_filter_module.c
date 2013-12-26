@@ -795,10 +795,14 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
 static ngx_inline ngx_int_t
 ngx_http_spdy_filter_send(ngx_connection_t *fc, ngx_http_spdy_stream_t *stream)
 {
+    stream->blocked = 1;
+
     if (ngx_http_spdy_send_output_queue(stream->connection) == NGX_ERROR) {
         fc->error = 1;
         return NGX_ERROR;
     }
+
+    stream->blocked = 0;
 
     if (stream->waiting) {
         fc->buffered |= NGX_SPDY_WRITE_BUFFERED;
@@ -946,16 +950,14 @@ ngx_http_spdy_handle_stream(ngx_http_spdy_connection_t *sc,
 
     fc->write->delayed = 0;
 
-    if (stream->handled) {
+    if (stream->handled || stream->blocked) {
         return;
     }
 
-    if (sc->blocked == 2) {
-        stream->handled = 1;
+    stream->handled = 1;
 
-        stream->next = sc->last_stream;
-        sc->last_stream = stream;
-    }
+    stream->next = sc->last_stream;
+    sc->last_stream = stream;
 }
 
 

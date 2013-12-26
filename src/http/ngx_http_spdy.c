@@ -411,7 +411,7 @@ ngx_http_spdy_write_handler(ngx_event_t *wev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "spdy write handler");
 
-    sc->blocked = 2;
+    sc->blocked = 1;
 
     rc = ngx_http_spdy_send_output_queue(sc);
 
@@ -429,8 +429,6 @@ ngx_http_spdy_write_handler(ngx_event_t *wev)
     }
 
     sc->last_stream = NULL;
-
-    sc->blocked = 1;
 
     for ( /* void */ ; stream; stream = sn) {
         sn = stream->next;
@@ -2658,6 +2656,15 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
         }
     }
 
+    if (stream->handled) {
+        for (s = sc->last_stream; s; s = s->next) {
+            if (s->next == stream) {
+                s->next = stream->next;
+                break;
+            }
+        }
+    }
+
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
                                         ngx_http_spdy_module);
 
@@ -2847,9 +2854,11 @@ ngx_http_spdy_finalize_connection(ngx_http_spdy_connection_t *sc,
         stream = sc->streams_index[i];
 
         while (stream) {
-            r = stream->request;
+            stream->handled = 0;
 
+            r = stream->request;
             fc = r->connection;
+
             fc->error = 1;
 
             if (stream->waiting) {
