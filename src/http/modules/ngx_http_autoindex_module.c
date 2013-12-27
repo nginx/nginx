@@ -233,6 +233,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.content_type_len = sizeof("text/html") - 1;
     ngx_str_set(&r->headers_out.content_type, "text/html");
+    r->headers_out.content_type_lowcase = NULL;
 
     rc = ngx_http_send_header(r);
 
