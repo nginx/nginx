@@ -542,7 +542,7 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
 
         mp4->file.fd = of.fd;
         mp4->file.name = path;
-        mp4->file.log = r->connection->log;;
+        mp4->file.log = r->connection->log;
         mp4->end = of.size;
         mp4->start = (ngx_uint_t) start;
         mp4->request = r;
