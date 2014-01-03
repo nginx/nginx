@@ -799,11 +799,23 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len)
             continue;
         }
 
+        if (u + 1 == last) {
+            *len = u - utf16;
+            break;
+        }
+
         n = ngx_utf8_decode(&p, 4);
 
-        if (n > 0xffff) {
+        if (n > 0x10ffff) {
             ngx_set_errno(NGX_EILSEQ);
             return NULL;
+        }
+
+        if (n > 0xffff) {
+            n -= 0x10000;
+            *u++ = (u_short) (0xd800 + (n >> 10));
+            *u++ = (u_short) (0xdc00 + (n & 0x03ff));
+            continue;
         }
 
         *u++ = (u_short) n;
@@ -838,10 +850,17 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len)
 
         n = ngx_utf8_decode(&p, 4);
 
-        if (n > 0xffff) {
+        if (n > 0x10ffff) {
             free(utf16);
             ngx_set_errno(NGX_EILSEQ);
             return NULL;
+        }
+
+        if (n > 0xffff) {
+            n -= 0x10000;
+            *u++ = (u_short) (0xd800 + (n >> 10));
+            *u++ = (u_short) (0xdc00 + (n & 0x03ff));
+            continue;
         }
 
         *u++ = (u_short) n;
