@@ -150,21 +150,27 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
                 goto done;
             }
 
-            cl = ngx_chain_get_free_buf(r->pool, &rb->free);
-            if (cl == NULL) {
-                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-                goto done;
+            if (rb->temp_file->file.offset != 0) {
+
+                cl = ngx_chain_get_free_buf(r->pool, &rb->free);
+                if (cl == NULL) {
+                    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                    goto done;
+                }
+
+                b = cl->buf;
+
+                ngx_memzero(b, sizeof(ngx_buf_t));
+
+                b->in_file = 1;
+                b->file_last = rb->temp_file->file.offset;
+                b->file = &rb->temp_file->file;
+
+                rb->bufs = cl;
+
+            } else {
+                rb->bufs = NULL;
             }
-
-            b = cl->buf;
-
-            ngx_memzero(b, sizeof(ngx_buf_t));
-
-            b->in_file = 1;
-            b->file_last = rb->temp_file->file.offset;
-            b->file = &rb->temp_file->file;
-
-            rb->bufs = cl;
         }
 
         post_handler(r);
@@ -375,20 +381,26 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        cl = ngx_chain_get_free_buf(r->pool, &rb->free);
-        if (cl == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        if (rb->temp_file->file.offset != 0) {
+
+            cl = ngx_chain_get_free_buf(r->pool, &rb->free);
+            if (cl == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            b = cl->buf;
+
+            ngx_memzero(b, sizeof(ngx_buf_t));
+
+            b->in_file = 1;
+            b->file_last = rb->temp_file->file.offset;
+            b->file = &rb->temp_file->file;
+
+            rb->bufs = cl;
+
+        } else {
+            rb->bufs = NULL;
         }
-
-        b = cl->buf;
-
-        ngx_memzero(b, sizeof(ngx_buf_t));
-
-        b->in_file = 1;
-        b->file_last = rb->temp_file->file.offset;
-        b->file = &rb->temp_file->file;
-
-        rb->bufs = cl;
     }
 
     r->read_event_handler = ngx_http_block_reading;
@@ -842,6 +854,10 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ll = &out;
 
     for (cl = in; cl; cl = cl->next) {
+
+        if (rb->rest == 0) {
+            break;
+        }
 
         tl = ngx_chain_get_free_buf(r->pool, &rb->free);
         if (tl == NULL) {
