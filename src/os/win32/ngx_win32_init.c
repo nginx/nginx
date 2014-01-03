@@ -228,7 +228,7 @@ ngx_os_init(ngx_log_t *log)
         ngx_sprintf((u_char *) ngx_unique, "%P%Z", ngx_pid);
     }
 
-    srand((unsigned) ngx_time());
+    srand((ngx_pid << 16) ^ (unsigned) ngx_time());
 
     return NGX_OK;
 }

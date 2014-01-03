@@ -959,6 +959,8 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
                       "sigprocmask() failed");
     }
 
+    srandom((ngx_pid << 16) ^ ngx_time());
+
     /*
      * disable deleting previous events for the listening sockets because
      * in the worker processes there are no events at all at this point
