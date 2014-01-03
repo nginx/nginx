@@ -3656,7 +3656,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (r->cache->valid_sec != 0) {
+    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
         return NGX_OK;
     }
 
