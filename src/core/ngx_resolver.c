@@ -356,6 +356,10 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
 
     r = ctx->resolver;
 
+    if (ctx->name.len > 0 && ctx->name.data[ctx->name.len - 1] == '.') {
+        ctx->name.len--;
+    }
+
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
                    "resolve: \"%V\"", &ctx->name);
 
