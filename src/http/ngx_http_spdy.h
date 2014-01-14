@@ -123,6 +123,7 @@ struct ngx_http_spdy_stream_s {
 
     ngx_http_spdy_out_frame_t       *free_frames;
     ngx_chain_t                     *free_data_headers;
+    ngx_chain_t                     *free_bufs;
 
     unsigned                         priority:2;
     unsigned                         handled:1;
