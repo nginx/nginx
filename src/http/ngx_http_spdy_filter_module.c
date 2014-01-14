@@ -617,6 +617,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     off_t                       size;
     ngx_buf_t                  *b;
     ngx_chain_t                *cl, *out, **ln;
+    ngx_connection_t           *fc;
     ngx_http_spdy_stream_t     *stream;
     ngx_http_spdy_out_frame_t  *frame;
 
@@ -626,7 +627,9 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return ngx_http_next_body_filter(r, in);
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    fc = r->connection;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "spdy body filter \"%V?%V\"", &r->uri, &r->args);
 
     if (in == NULL || r->header_only) {
@@ -635,7 +638,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_AGAIN;
         }
 
-        r->connection->buffered &= ~NGX_SPDY_WRITE_BUFFERED;
+        fc->buffered &= ~NGX_SPDY_WRITE_BUFFERED;
 
         return NGX_OK;
     }
@@ -647,7 +650,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         b = in->buf;
 #if 1
         if (ngx_buf_size(b) == 0 && !ngx_buf_special(b)) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ALERT, fc->log, 0,
                           "zero size buf in spdy body filter "
                           "t:%d r:%d f:%d %p %p-%p %p %O-%O",
                           b->temporary,
@@ -680,7 +683,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     } while (in);
 
     if (size > NGX_SPDY_MAX_FRAME_SIZE) {
-        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, fc->log, 0,
                       "FIXME: chain too big in spdy filter: %O", size);
         return NGX_ERROR;
     }
@@ -695,7 +698,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     stream->queued++;
 
-    return ngx_http_spdy_filter_send(r->connection, stream);
+    return ngx_http_spdy_filter_send(fc, stream);
 }
 
 
