@@ -484,7 +484,7 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
         out = frame;
 
         ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "spdy frame out: %p sid:%ui prio:%ui bl:%ui size:%uz",
+                       "spdy frame out: %p sid:%ui prio:%ui bl:%d size:%uz",
                        out, out->stream ? out->stream->id : 0, out->priority,
                        out->blocked, out->size);
     }
@@ -525,7 +525,7 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
         }
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "spdy frame sent: %p sid:%ui bl:%ui size:%uz",
+                       "spdy frame sent: %p sid:%ui bl:%d size:%uz",
                        out, out->stream ? out->stream->id : 0,
                        out->blocked, out->size);
     }
@@ -659,7 +659,7 @@ ngx_http_spdy_state_head(ngx_http_spdy_connection_t *sc, u_char *pos,
     pos += sizeof(uint32_t);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
-                   "spdy process frame head:%08Xd f:%ui l:%ui",
+                   "spdy process frame head:%08XD f:%Xd l:%uz",
                    head, sc->flags, sc->length);
 
     if (ngx_spdy_ctl_frame_check(head)) {
@@ -1480,7 +1480,7 @@ ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
     if (end - pos > NGX_SPDY_STATE_BUFFER_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
                       "spdy state buffer overflow: "
-                      "%i bytes required", end - pos);
+                      "%z bytes required", end - pos);
         return ngx_http_spdy_state_internal_error(sc);
     }
 #endif
@@ -1729,7 +1729,7 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
 #if (NGX_DEBUG)
     if (size > NGX_SPDY_CTL_FRAME_BUFFER_SIZE - NGX_SPDY_FRAME_HEADER_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, sc->pool->log, 0,
-                      "requested control frame is too big: %z", size);
+                      "requested control frame is too big: %uz", size);
         return NULL;
     }
 
@@ -2104,7 +2104,7 @@ ngx_http_spdy_alloc_large_header_buffer(ngx_http_request_t *r)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "spdy large header alloc: %p %uz",
+                   "spdy large header alloc: %p %z",
                    buf->pos, buf->end - buf->last);
 
     old = r->header_in->pos;
