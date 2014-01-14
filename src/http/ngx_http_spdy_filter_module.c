@@ -607,7 +607,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     cln->handler = ngx_http_spdy_filter_cleanup;
     cln->data = stream;
 
-    stream->waiting = 1;
+    stream->queued = 1;
 
     return ngx_http_spdy_filter_send(c, stream);
 }
@@ -633,7 +633,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (in == NULL || r->header_only) {
 
-        if (stream->waiting) {
+        if (stream->queued) {
             return NGX_AGAIN;
         }
 
@@ -695,7 +695,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ngx_http_spdy_queue_frame(stream->connection, frame);
 
-    stream->waiting++;
+    stream->queued++;
 
     r->main->blocked++;
 
@@ -800,7 +800,7 @@ ngx_http_spdy_filter_send(ngx_connection_t *fc, ngx_http_spdy_stream_t *stream)
 
     stream->blocked = 0;
 
-    if (stream->waiting) {
+    if (stream->queued) {
         fc->buffered |= NGX_SPDY_WRITE_BUFFERED;
         fc->write->delayed = 1;
         return NGX_AGAIN;
@@ -932,7 +932,7 @@ ngx_http_spdy_handle_frame(ngx_http_spdy_stream_t *stream,
     frame->free = stream->free_frames;
     stream->free_frames = frame;
 
-    stream->waiting--;
+    stream->queued--;
 }
 
 
@@ -965,7 +965,7 @@ ngx_http_spdy_filter_cleanup(void *data)
     ngx_http_request_t         *r;
     ngx_http_spdy_out_frame_t  *frame, **fn;
 
-    if (stream->waiting == 0) {
+    if (stream->queued == 0) {
         return;
     }
 
@@ -982,7 +982,7 @@ ngx_http_spdy_filter_cleanup(void *data)
 
         if (frame->stream == stream && !frame->blocked) {
 
-            stream->waiting--;
+            stream->queued--;
             r->blocked--;
 
             *fn = frame->next;

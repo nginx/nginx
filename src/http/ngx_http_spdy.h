@@ -119,7 +119,8 @@ struct ngx_http_spdy_stream_s {
     ngx_http_spdy_stream_t          *next;
 
     ngx_uint_t                       header_buffers;
-    ngx_uint_t                       waiting;
+    ngx_uint_t                       queued;
+
     ngx_http_spdy_out_frame_t       *free_frames;
     ngx_chain_t                     *free_data_headers;
 
