@@ -184,7 +184,10 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_AGAIN;
     }
 
-    if (size == 0 && !(c->buffered & NGX_LOWLEVEL_BUFFERED)) {
+    if (size == 0
+        && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
+        && !(last && c->need_last_buf))
+    {
         if (last || flush) {
             for (cl = r->out; cl; /* void */) {
                 ln = cl;

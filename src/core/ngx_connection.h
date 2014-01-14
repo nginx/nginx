@@ -112,6 +112,7 @@ typedef enum {
 
 #define NGX_LOWLEVEL_BUFFERED  0x0f
 #define NGX_SSL_BUFFERED       0x01
+#define NGX_SPDY_BUFFERED      0x02
 
 
 struct ngx_connection_s {
@@ -170,6 +171,8 @@ struct ngx_connection_s {
     unsigned            sndlowat:1;
     unsigned            tcp_nodelay:2;   /* ngx_connection_tcp_nodelay_e */
     unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
+
+    unsigned            need_last_buf:1;
 
 #if (NGX_HAVE_IOCP)
     unsigned            accept_context_updated:1;
