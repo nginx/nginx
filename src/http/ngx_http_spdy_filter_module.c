@@ -635,6 +635,7 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (in == NULL || r->header_only) {
 
         if (stream->queued) {
+            fc->write->delayed = 1;
             return NGX_AGAIN;
         }
 
