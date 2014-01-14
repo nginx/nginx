@@ -346,7 +346,7 @@ ngx_http_spdy_read_handler(ngx_event_t *rev)
             break;
         }
 
-        if (n == 0 && (sc->waiting || sc->processing)) {
+        if (n == 0 && (sc->incomplete || sc->processing)) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client closed prematurely connection");
         }
@@ -360,7 +360,7 @@ ngx_http_spdy_read_handler(ngx_event_t *rev)
         end += n;
 
         sc->buffer_used = 0;
-        sc->waiting = 0;
+        sc->incomplete = 0;
 
         do {
             p = sc->handler(sc, p, end);
@@ -567,7 +567,7 @@ ngx_http_spdy_handle_connection(ngx_http_spdy_connection_t *sc)
 
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
                                         ngx_http_spdy_module);
-    if (sc->waiting) {
+    if (sc->incomplete) {
         ngx_add_timer(c->read, sscf->recv_timeout);
         return;
     }
@@ -1489,7 +1489,7 @@ ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
 
     sc->buffer_used = end - pos;
     sc->handler = handler;
-    sc->waiting = 1;
+    sc->incomplete = 1;
 
     return end;
 }

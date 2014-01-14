@@ -107,7 +107,7 @@ struct ngx_http_spdy_connection_s {
     ngx_uint_t                       last_sid;
 
     unsigned                         blocked:1;
-    unsigned                         waiting:1; /* FIXME better name */
+    unsigned                         incomplete:1;
 };
 
 
