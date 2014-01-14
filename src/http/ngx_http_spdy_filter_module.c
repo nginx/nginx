@@ -626,6 +626,7 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     ngx_chain_t                *cl, *out, **ln;
     ngx_http_request_t         *r;
     ngx_http_spdy_stream_t     *stream;
+    ngx_http_spdy_loc_conf_t   *slcf;
     ngx_http_spdy_out_frame_t  *frame;
 
     r = fc->data;
@@ -664,8 +665,11 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
         offset = 0;
     }
 
-    frame_size = (limit && limit < NGX_SPDY_MAX_FRAME_SIZE)
-                 ? limit : NGX_SPDY_MAX_FRAME_SIZE;
+    slcf = ngx_http_get_module_loc_conf(r, ngx_http_spdy_module);
+
+    frame_size = (limit && limit <= (off_t) slcf->chunk_size)
+                 ? (size_t) limit
+                 : slcf->chunk_size;
 
     for ( ;; ) {
         ln = &out;
@@ -743,7 +747,7 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
                 break;
             }
 
-            if (limit < NGX_SPDY_MAX_FRAME_SIZE) {
+            if (limit < (off_t) slcf->chunk_size) {
                 frame_size = limit;
             }
         }

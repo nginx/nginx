@@ -22,9 +22,11 @@ static ngx_int_t ngx_http_spdy_module_init(ngx_cycle_t *cycle);
 
 static void *ngx_http_spdy_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_spdy_init_main_conf(ngx_conf_t *cf, void *conf);
-
 static void *ngx_http_spdy_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_spdy_merge_srv_conf(ngx_conf_t *cf, void *parent,
+    void *child);
+static void *ngx_http_spdy_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_http_spdy_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
 
 static char *ngx_http_spdy_recv_buffer_size(ngx_conf_t *cf, void *post,
@@ -32,6 +34,7 @@ static char *ngx_http_spdy_recv_buffer_size(ngx_conf_t *cf, void *post,
 static char *ngx_http_spdy_pool_size(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_spdy_streams_index_mask(ngx_conf_t *cf, void *post,
     void *data);
+static char *ngx_http_spdy_chunk_size(ngx_conf_t *cf, void *post, void *data);
 
 
 static ngx_conf_num_bounds_t  ngx_http_spdy_headers_comp_bounds = {
@@ -44,6 +47,8 @@ static ngx_conf_post_t  ngx_http_spdy_pool_size_post =
     { ngx_http_spdy_pool_size };
 static ngx_conf_post_t  ngx_http_spdy_streams_index_mask_post =
     { ngx_http_spdy_streams_index_mask };
+static ngx_conf_post_t  ngx_http_spdy_chunk_size_post =
+    { ngx_http_spdy_chunk_size };
 
 
 static ngx_command_t  ngx_http_spdy_commands[] = {
@@ -97,6 +102,13 @@ static ngx_command_t  ngx_http_spdy_commands[] = {
       offsetof(ngx_http_spdy_srv_conf_t, headers_comp),
       &ngx_http_spdy_headers_comp_bounds },
 
+    { ngx_string("spdy_chunk_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_spdy_loc_conf_t, chunk_size),
+      &ngx_http_spdy_chunk_size_post },
+
       ngx_null_command
 };
 
@@ -111,8 +123,8 @@ static ngx_http_module_t  ngx_http_spdy_module_ctx = {
     ngx_http_spdy_create_srv_conf,         /* create server configuration */
     ngx_http_spdy_merge_srv_conf,          /* merge server configuration */
 
-    NULL,                                  /* create location configuration */
-    NULL                                   /* merge location configuration */
+    ngx_http_spdy_create_loc_conf,         /* create location configuration */
+    ngx_http_spdy_merge_loc_conf           /* merge location configuration */
 };
 
 
@@ -296,6 +308,34 @@ ngx_http_spdy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 }
 
 
+static void *
+ngx_http_spdy_create_loc_conf(ngx_conf_t *cf)
+{
+    ngx_http_spdy_loc_conf_t  *slcf;
+
+    slcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_spdy_loc_conf_t));
+    if (slcf == NULL) {
+        return NULL;
+    }
+
+    slcf->chunk_size = NGX_CONF_UNSET_SIZE;
+
+    return slcf;
+}
+
+
+static char *
+ngx_http_spdy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
+{
+    ngx_http_spdy_loc_conf_t *prev = parent;
+    ngx_http_spdy_loc_conf_t *conf = child;
+
+    ngx_conf_merge_size_value(conf->chunk_size, prev->chunk_size, 8 * 1024);
+
+    return NGX_CONF_OK;
+}
+
+
 static char *
 ngx_http_spdy_recv_buffer_size(ngx_conf_t *cf, void *post, void *data)
 {
@@ -346,6 +386,25 @@ ngx_http_spdy_streams_index_mask(ngx_conf_t *cf, void *post, void *data)
     }
 
     *np = mask;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_spdy_chunk_size(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the spdy chunk size cannot be zero");
+        return NGX_CONF_ERROR;
+    }
+
+    if (*sp > NGX_SPDY_MAX_FRAME_SIZE) {
+        *sp = NGX_SPDY_MAX_FRAME_SIZE;
+    }
 
     return NGX_CONF_OK;
 }

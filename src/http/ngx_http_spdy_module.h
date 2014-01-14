@@ -30,6 +30,11 @@ typedef struct {
 } ngx_http_spdy_srv_conf_t;
 
 
+typedef struct {
+    size_t                          chunk_size;
+} ngx_http_spdy_loc_conf_t;
+
+
 extern ngx_module_t  ngx_http_spdy_module;
 
 
