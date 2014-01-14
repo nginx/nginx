@@ -597,8 +597,6 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
 
     ngx_http_spdy_queue_blocked_frame(sc, frame);
 
-    r->blocked++;
-
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
         return NGX_ERROR;
@@ -696,8 +694,6 @@ ngx_http_spdy_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_spdy_queue_frame(stream->connection, frame);
 
     stream->queued++;
-
-    r->main->blocked++;
 
     return ngx_http_spdy_filter_send(r->connection, stream);
 }
@@ -923,7 +919,6 @@ ngx_http_spdy_handle_frame(ngx_http_spdy_stream_t *stream,
     r = stream->request;
 
     r->connection->sent += frame->size;
-    r->blocked--;
 
     if (frame->fin) {
         stream->out_closed = 1;
@@ -962,14 +957,11 @@ ngx_http_spdy_filter_cleanup(void *data)
 {
     ngx_http_spdy_stream_t *stream = data;
 
-    ngx_http_request_t         *r;
     ngx_http_spdy_out_frame_t  *frame, **fn;
 
     if (stream->queued == 0) {
         return;
     }
-
-    r = stream->request;
 
     fn = &stream->connection->last_out;
 
@@ -981,9 +973,7 @@ ngx_http_spdy_filter_cleanup(void *data)
         }
 
         if (frame->stream == stream && !frame->blocked) {
-
             stream->queued--;
-            r->blocked--;
 
             *fn = frame->next;
             continue;

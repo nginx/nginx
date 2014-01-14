@@ -2642,9 +2642,16 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
 
     sc = stream->connection;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
-                   "spdy close stream %ui, processing %ui",
-                   stream->id, sc->processing);
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
+                   "spdy close stream %ui, queued %ui, processing %ui",
+                   stream->id, stream->queued, sc->processing);
+
+    fc = stream->request->connection;
+
+    if (stream->queued) {
+        fc->write->handler = ngx_http_spdy_close_stream_handler;
+        return;
+    }
 
     if (!stream->out_closed) {
         if (ngx_http_spdy_send_rst_stream(sc, stream->id,
@@ -2684,8 +2691,6 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
 
         index = &s->index;
     }
-
-    fc = stream->request->connection;
 
     ngx_http_free_request(stream->request, rc);
 
@@ -2862,7 +2867,6 @@ ngx_http_spdy_finalize_connection(ngx_http_spdy_connection_t *sc,
             fc->error = 1;
 
             if (stream->queued) {
-                r->blocked -= stream->queued;
                 stream->queued = 0;
 
                 ev = fc->write;
