@@ -665,6 +665,10 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
         offset = 0;
     }
 
+#if (NGX_SUPPRESS_WARN)
+    cl = NULL;
+#endif
+
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_spdy_module);
 
     frame_size = (limit && limit <= (off_t) slcf->chunk_size)
