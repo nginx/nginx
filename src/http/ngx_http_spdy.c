@@ -1598,7 +1598,6 @@ ngx_http_spdy_send_settings(ngx_http_spdy_connection_t *sc)
 {
     u_char                     *p;
     ngx_buf_t                  *buf;
-    ngx_pool_t                 *pool;
     ngx_chain_t                *cl;
     ngx_http_spdy_srv_conf_t   *sscf;
     ngx_http_spdy_out_frame_t  *frame;
@@ -1606,21 +1605,19 @@ ngx_http_spdy_send_settings(ngx_http_spdy_connection_t *sc)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy create SETTINGS frame");
 
-    pool = sc->connection->pool;
-
-    frame = ngx_palloc(pool, sizeof(ngx_http_spdy_out_frame_t));
+    frame = ngx_palloc(sc->pool, sizeof(ngx_http_spdy_out_frame_t));
     if (frame == NULL) {
         return NGX_ERROR;
     }
 
-    cl = ngx_alloc_chain_link(pool);
+    cl = ngx_alloc_chain_link(sc->pool);
     if (cl == NULL) {
         return NGX_ERROR;
     }
 
-    buf = ngx_create_temp_buf(pool, NGX_SPDY_FRAME_HEADER_SIZE
-                                    + NGX_SPDY_SETTINGS_NUM_SIZE
-                                    + NGX_SPDY_SETTINGS_PAIR_SIZE);
+    buf = ngx_create_temp_buf(sc->pool, NGX_SPDY_FRAME_HEADER_SIZE
+                                        + NGX_SPDY_SETTINGS_NUM_SIZE
+                                        + NGX_SPDY_SETTINGS_PAIR_SIZE);
     if (buf == NULL) {
         return NGX_ERROR;
     }
