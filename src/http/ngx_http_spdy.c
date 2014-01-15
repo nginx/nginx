@@ -1633,8 +1633,8 @@ ngx_http_spdy_send_settings(ngx_http_spdy_connection_t *sc)
     frame->first = cl;
     frame->last = cl;
     frame->handler = ngx_http_spdy_settings_frame_handler;
-#if (NGX_DEBUG)
     frame->stream = NULL;
+#if (NGX_DEBUG)
     frame->size = NGX_SPDY_FRAME_HEADER_SIZE
                   + NGX_SPDY_SETTINGS_NUM_SIZE
                   + NGX_SPDY_SETTINGS_PAIR_SIZE;
@@ -1722,6 +1722,7 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
         frame->first = cl;
         frame->last = cl;
         frame->handler = ngx_http_spdy_ctl_frame_handler;
+        frame->stream = NULL;
     }
 
     frame->free = NULL;
@@ -1733,7 +1734,6 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
         return NULL;
     }
 
-    frame->stream = NULL;
     frame->size = size;
 #endif
 
