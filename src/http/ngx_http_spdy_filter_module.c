@@ -35,8 +35,7 @@ static ngx_inline ngx_int_t ngx_http_spdy_filter_send(
     ngx_connection_t *fc, ngx_http_spdy_stream_t *stream);
 
 static ngx_chain_t *ngx_http_spdy_filter_get_shadow(
-    ngx_http_spdy_stream_t *stream, ngx_buf_t *buf, size_t offset,
-    size_t size);
+    ngx_http_spdy_stream_t *stream, ngx_buf_t *buf, off_t offset, off_t size);
 static ngx_http_spdy_out_frame_t *ngx_http_spdy_filter_get_data_frame(
     ngx_http_spdy_stream_t *stream, size_t len, ngx_chain_t *first,
     ngx_chain_t *last);
@@ -702,7 +701,7 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
             *ln = cl;
             ln = &cl->next;
 
-            rest -= size;
+            rest -= (size_t) size;
             in = in->next;
 
             if (in == NULL) {
@@ -752,7 +751,7 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
             }
 
             if (limit < (off_t) slcf->chunk_size) {
-                frame_size = limit;
+                frame_size = (size_t) limit;
             }
         }
     }
@@ -777,7 +776,7 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
 
 static ngx_chain_t *
 ngx_http_spdy_filter_get_shadow(ngx_http_spdy_stream_t *stream, ngx_buf_t *buf,
-    size_t offset, size_t size)
+    off_t offset, off_t size)
 {
     ngx_buf_t    *chunk;
     ngx_chain_t  *cl;
