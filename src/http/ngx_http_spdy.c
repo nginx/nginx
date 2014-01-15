@@ -378,6 +378,11 @@ ngx_http_spdy_read_handler(ngx_event_t *rev)
         return;
     }
 
+    if (sc->last_out && ngx_http_spdy_send_output_queue(sc) == NGX_ERROR) {
+        ngx_http_spdy_finalize_connection(sc, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
+
     sc->blocked = 0;
 
     if (sc->processing) {
