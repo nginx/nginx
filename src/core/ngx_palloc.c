@@ -105,11 +105,14 @@ ngx_reset_pool(ngx_pool_t *pool)
         }
     }
 
-    pool->large = NULL;
-
     for (p = pool; p; p = p->d.next) {
         p->d.last = (u_char *) p + sizeof(ngx_pool_t);
+        p->d.failed = 0;
     }
+
+    pool->current = pool;
+    pool->chain = NULL;
+    pool->large = NULL;
 }
 
 
