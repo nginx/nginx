@@ -542,17 +542,40 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
                           CRLF) - 1
                    + s->connection->addr_text.len + s->login.len + s->host.len;
 
+#if (NGX_HAVE_INET6)
+        if (s->connection->sockaddr->sa_family == AF_INET6) {
+            line.len += sizeof("IPV6:") - 1;
+        }
+#endif
+
         line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
             ngx_mail_proxy_internal_server_error(s);
             return;
         }
 
-        line.len = ngx_sprintf(line.data,
-                       "XCLIENT ADDR=%V%s%V NAME=%V" CRLF,
-                       &s->connection->addr_text,
-                       (s->login.len ? " LOGIN=" : ""), &s->login, &s->host)
-                   - line.data;
+        p = ngx_cpymem(line.data, "XCLIENT ADDR=", sizeof("XCLIENT ADDR=") - 1);
+
+#if (NGX_HAVE_INET6)
+        if (s->connection->sockaddr->sa_family == AF_INET6) {
+            p = ngx_cpymem(p, "IPV6:", sizeof("IPV6:") - 1);
+        }
+#endif
+
+        p = ngx_copy(p, s->connection->addr_text.data,
+                     s->connection->addr_text.len);
+
+        if (s->login.len) {
+            p = ngx_cpymem(p, " LOGIN=", sizeof(" LOGIN=") - 1);
+            p = ngx_copy(p, s->login.data, s->login.len);
+        }
+
+        p = ngx_cpymem(p, " NAME=", sizeof(" NAME=") - 1);
+        p = ngx_copy(p, s->host.data, s->host.len);
+
+        *p++ = CR; *p++ = LF;
+
+        line.len = p - line.data;
 
         if (s->smtp_helo.len) {
             s->mail_state = ngx_smtp_xclient_helo;
