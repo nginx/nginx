@@ -1073,9 +1073,7 @@ ngx_http_spdy_handle_stream(ngx_http_spdy_connection_t *sc,
         wev->delayed = 0;
 
         stream->handled = 1;
-
-        stream->next = sc->last_stream;
-        sc->last_stream = stream;
+        ngx_queue_insert_tail(&sc->posted, &stream->queue);
     }
 }
 

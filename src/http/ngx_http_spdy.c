@@ -302,6 +302,8 @@ ngx_http_spdy_init(ngx_event_t *rev)
         return;
     }
 
+    ngx_queue_init(&sc->posted);
+
     c->data = sc;
 
     rev->handler = ngx_http_spdy_read_handler;
@@ -405,8 +407,9 @@ static void
 ngx_http_spdy_write_handler(ngx_event_t *wev)
 {
     ngx_int_t                    rc;
+    ngx_queue_t                 *q;
     ngx_connection_t            *c;
-    ngx_http_spdy_stream_t      *stream, *s, *sn;
+    ngx_http_spdy_stream_t      *stream;
     ngx_http_spdy_connection_t  *sc;
 
     c = wev->data;
@@ -430,18 +433,13 @@ ngx_http_spdy_write_handler(ngx_event_t *wev)
         return;
     }
 
-    stream = NULL;
+    while (!ngx_queue_empty(&sc->posted)) {
+        q = ngx_queue_head(&sc->posted);
 
-    for (s = sc->last_stream; s; s = sn) {
-         sn = s->next;
-         s->next = stream;
-         stream = s;
-    }
+        ngx_queue_remove(q);
 
-    sc->last_stream = NULL;
+        stream = ngx_queue_data(q, ngx_http_spdy_stream_t, queue);
 
-    for ( /* void */ ; stream; stream = sn) {
-        sn = stream->next;
         stream->handled = 0;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -2593,6 +2591,11 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
                    "spdy close stream %ui, queued %ui, processing %ui",
                    stream->id, stream->queued, sc->processing);
 
+    if (stream->handled) {
+        stream->handled = 0;
+        ngx_queue_remove(&stream->queue);
+    }
+
     fc = stream->request->connection;
 
     if (stream->queued) {
@@ -2612,15 +2615,6 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
 
     if (sc->stream == stream) {
         sc->stream = NULL;
-    }
-
-    if (stream->handled) {
-        for (s = sc->last_stream; s; s = s->next) {
-            if (s->next == stream) {
-                s->next = stream->next;
-                break;
-            }
-        }
     }
 
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,

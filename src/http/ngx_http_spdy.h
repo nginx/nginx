@@ -96,7 +96,8 @@ struct ngx_http_spdy_connection_s {
     ngx_http_spdy_stream_t         **streams_index;
 
     ngx_http_spdy_out_frame_t       *last_out;
-    ngx_http_spdy_stream_t          *last_stream;
+
+    ngx_queue_t                      posted;
 
     ngx_http_spdy_stream_t          *stream;
 
@@ -116,7 +117,6 @@ struct ngx_http_spdy_stream_s {
     ngx_http_request_t              *request;
     ngx_http_spdy_connection_t      *connection;
     ngx_http_spdy_stream_t          *index;
-    ngx_http_spdy_stream_t          *next;
 
     ngx_uint_t                       header_buffers;
     ngx_uint_t                       queued;
@@ -124,6 +124,8 @@ struct ngx_http_spdy_stream_s {
     ngx_http_spdy_out_frame_t       *free_frames;
     ngx_chain_t                     *free_data_headers;
     ngx_chain_t                     *free_bufs;
+
+    ngx_queue_t                      queue;
 
     unsigned                         priority:2;
     unsigned                         handled:1;
