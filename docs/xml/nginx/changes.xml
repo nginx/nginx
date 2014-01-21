@@ -9174,7 +9174,7 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-при проксировании SMPT nginx выдавал сообщение
+при проксировании SMTP nginx выдавал сообщение
 <nobr>"250 2.0.0 OK"</nobr> вместо "235 2.0.0 OK";
 ошибка появилась в 0.7.22.<br/>
 Спасибо Максиму Дунину.
