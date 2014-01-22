@@ -5,6 +5,148 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.9" date="22.01.2014">
+
+<change type="change">
+<para lang="ru">
+теперь в заголовке X-Accel-Redirect nginx ожидает закодированный URI.
+</para>
+<para lang="en">
+now nginx expects escaped URIs in "X-Accel-Redirect" headers.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_buffer_size.
+</para>
+<para lang="en">
+the "ssl_buffer_size" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву limit_rate теперь можно использовать для
+ограничения скорости передачи ответов клиенту в SPDY-соединениях.
+</para>
+<para lang="en">
+the "limit_rate" directive can now be used to
+rate limit responses sent in SPDY connections.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива spdy_chunk_size.
+</para>
+<para lang="en">
+the "spdy_chunk_size" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_session_tickets.<br/>
+Спасибо Dirkjan Bussink.
+</para>
+<para lang="en">
+the "ssl_session_tickets" directive.<br/>
+Thanks to Dirkjan Bussink.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $ssl_session_id содержала всю сессию в сериализованном виде
+вместо её идентификатора.<br/>
+Спасибо Ivan Ristić.
+</para>
+<para lang="en">
+the $ssl_session_id variable contained full session serialized
+instead of just a session id.<br/>
+Thanks to Ivan Ristić.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx неправильно обрабатывал закодированный символ "?" в команде SSI include.
+</para>
+<para lang="en">
+nginx incorrectly handled escaped "?" character in the "include" SSI command.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module не раскодировал целевой URI при 
+обработке методов COPY и MOVE.
+</para>
+<para lang="en">
+the ngx_http_dav_module did not unescape destination URI
+of the COPY and MOVE methods.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+resolver не понимал доменные имена с точкой в конце.
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+resolver did not understand domain names with a trailing dot.
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании в логах могли появляться сообщения "zero size buf in output";
+ошибка появилась в 1.3.9.
+</para>
+<para lang="en">
+alerts "zero size buf in output" might appear in logs while proxying;
+the bug had appeared in 1.3.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_spdy_module.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_spdy_module was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании методов обработки соединений select, poll и /dev/poll
+проксируемые WebSocket-соединения могли зависать сразу после открытия.
+</para>
+<para lang="en">
+proxied WebSocket connections might hang right after handshake
+if the select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива xclient почтового прокси-сервера
+некорректно передавала IPv6-адреса.
+</para>
+<para lang="en">
+the "xclient" directive of the mail proxy module
+incorrectly handled IPv6 client addresses.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.8" date="17.12.2013">
 
 <change type="feature">
