@@ -862,14 +862,15 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                                             ngx_http_spdy_state_headers);
         }
 
-        sc->headers = ngx_spdy_frame_parse_uint16(buf->pos);
+        sc->entries = ngx_spdy_frame_parse_uint16(buf->pos);
 
         buf->pos += NGX_SPDY_NV_NUM_SIZE;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "spdy headers count: %ui", sc->headers);
+                       "spdy HEADERS block consists of %ui entries",
+                       sc->entries);
 
-        if (ngx_list_init(&r->headers_in.headers, r->pool, sc->headers + 3,
+        if (ngx_list_init(&r->headers_in.headers, r->pool, sc->entries + 3,
                           sizeof(ngx_table_elt_t))
             != NGX_OK)
         {
@@ -888,14 +889,14 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         }
     }
 
-    while (sc->headers) {
+    while (sc->entries) {
 
         rc = ngx_http_spdy_parse_header(r);
 
         switch (rc) {
 
         case NGX_DONE:
-            sc->headers--;
+            sc->entries--;
 
         case NGX_OK:
             break;
@@ -1401,35 +1402,35 @@ ngx_http_spdy_state_settings(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_uint_t                 v;
     ngx_http_spdy_srv_conf_t  *sscf;
 
-    if (sc->headers == 0) {
+    if (sc->entries == 0) {
 
         if (end - pos < NGX_SPDY_SETTINGS_NUM_SIZE) {
             return ngx_http_spdy_state_save(sc, pos, end,
                                             ngx_http_spdy_state_settings);
         }
 
-        sc->headers = ngx_spdy_frame_parse_uint32(pos);
+        sc->entries = ngx_spdy_frame_parse_uint32(pos);
 
         pos += NGX_SPDY_SETTINGS_NUM_SIZE;
         sc->length -= NGX_SPDY_SETTINGS_NUM_SIZE;
 
-        if (sc->length < sc->headers * NGX_SPDY_SETTINGS_PAIR_SIZE) {
+        if (sc->length < sc->entries * NGX_SPDY_SETTINGS_PAIR_SIZE) {
             /* TODO logging */
             return ngx_http_spdy_state_protocol_error(sc);
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                        "spdy SETTINGS frame consists of %ui entries",
-                       sc->headers);
+                       sc->entries);
     }
 
-    while (sc->headers) {
+    while (sc->entries) {
         if (end - pos < NGX_SPDY_SETTINGS_PAIR_SIZE) {
             return ngx_http_spdy_state_save(sc, pos, end,
                                             ngx_http_spdy_state_settings);
         }
 
-        sc->headers--;
+        sc->entries--;
 
         if (pos[0] != NGX_SPDY_SETTINGS_MAX_STREAMS) {
             pos += NGX_SPDY_SETTINGS_PAIR_SIZE;

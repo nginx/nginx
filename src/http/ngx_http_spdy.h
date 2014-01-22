@@ -100,7 +100,7 @@ struct ngx_http_spdy_connection_s {
 
     ngx_http_spdy_stream_t          *stream;
 
-    ngx_uint_t                       headers;
+    ngx_uint_t                       entries;
     size_t                           length;
     u_char                           flags;
 
