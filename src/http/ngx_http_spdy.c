@@ -1227,7 +1227,6 @@ ngx_http_spdy_state_rst_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_uint_t               sid, status;
     ngx_event_t             *ev;
     ngx_connection_t        *fc;
-    ngx_http_request_t      *r;
     ngx_http_spdy_stream_t  *stream;
 
     if (end - pos < NGX_SPDY_RST_STREAM_SIZE) {
@@ -1236,7 +1235,10 @@ ngx_http_spdy_state_rst_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     }
 
     if (sc->length != NGX_SPDY_RST_STREAM_SIZE) {
-        /* TODO logging */
+        ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
+                      "client sent RST_STREAM frame with incorrect length %uz",
+                      sc->length);
+
         return ngx_http_spdy_state_protocol_error(sc);
     }
 
@@ -1251,54 +1253,41 @@ ngx_http_spdy_state_rst_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy RST_STREAM sid:%ui st:%ui", sid, status);
 
+    stream = ngx_http_spdy_get_stream_by_id(sc, sid);
+    if (stream == NULL) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
+                       "unknown stream, probably it has been closed already");
+        return ngx_http_spdy_state_complete(sc, pos, end);
+    }
+
+    stream->in_closed = 1;
+    stream->out_closed = 1;
+
+    fc = stream->request->connection;
+    fc->error = 1;
 
     switch (status) {
 
-    case NGX_SPDY_PROTOCOL_ERROR:
-        /* TODO logging */
-        return ngx_http_spdy_state_protocol_error(sc);
-
-    case NGX_SPDY_INVALID_STREAM:
-        /* TODO */
-        break;
-
-    case NGX_SPDY_REFUSED_STREAM:
-        /* TODO */
-        break;
-
-    case NGX_SPDY_UNSUPPORTED_VERSION:
-        /* TODO logging */
-        return ngx_http_spdy_state_protocol_error(sc);
-
     case NGX_SPDY_CANCEL:
-    case NGX_SPDY_INTERNAL_ERROR:
-        stream = ngx_http_spdy_get_stream_by_id(sc, sid);
-        if (stream == NULL) {
-            /* TODO false cancel */
-            break;
-        }
-
-        stream->in_closed = 1;
-        stream->out_closed = 1;
-
-        r = stream->request;
-
-        fc = r->connection;
-        fc->error = 1;
-
-        ev = fc->read;
-        ev->handler(ev);
-
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client canceled stream %ui", sid);
         break;
 
-    case NGX_SPDY_FLOW_CONTROL_ERROR:
-        /* TODO logging */
-        return ngx_http_spdy_state_protocol_error(sc);
+    case NGX_SPDY_INTERNAL_ERROR:
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client terminated stream %ui because of internal error",
+                      sid);
+        break;
 
     default:
-        /* TODO */
-        return ngx_http_spdy_state_protocol_error(sc);
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client terminated stream %ui with status %ui",
+                      sid, status);
+        break;
     }
+
+    ev = fc->read;
+    ev->handler(ev);
 
     return ngx_http_spdy_state_complete(sc, pos, end);
 }
