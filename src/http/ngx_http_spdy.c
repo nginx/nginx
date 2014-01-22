@@ -2626,6 +2626,10 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
         }
     }
 
+    if (sc->stream == stream) {
+        sc->stream = NULL;
+    }
+
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
                                         ngx_http_spdy_module);
 
