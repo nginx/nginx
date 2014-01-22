@@ -81,8 +81,6 @@ static void ngx_http_spdy_read_handler(ngx_event_t *rev);
 static void ngx_http_spdy_write_handler(ngx_event_t *wev);
 static void ngx_http_spdy_handle_connection(ngx_http_spdy_connection_t *sc);
 
-static u_char *ngx_http_spdy_state_detect_settings(
-    ngx_http_spdy_connection_t *sc, u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_head(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc,
@@ -101,8 +99,10 @@ static u_char *ngx_http_spdy_state_ping(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_skip(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
+#if 0
 static u_char *ngx_http_spdy_state_settings(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
+#endif
 static u_char *ngx_http_spdy_state_noop(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_complete(ngx_http_spdy_connection_t *sc,
@@ -235,7 +235,7 @@ ngx_http_spdy_init(ngx_event_t *rev)
     sc->connection = c;
     sc->http_connection = hc;
 
-    sc->handler = ngx_http_spdy_state_detect_settings;
+    sc->handler = ngx_http_spdy_state_head;
 
     sc->zstream_in.zalloc = ngx_http_spdy_zalloc;
     sc->zstream_in.zfree = ngx_http_spdy_zfree;
@@ -293,6 +293,11 @@ ngx_http_spdy_init(ngx_event_t *rev)
                                     ngx_http_spdy_streams_index_size(sscf)
                                     * sizeof(ngx_http_spdy_stream_t *));
     if (sc->streams_index == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (ngx_http_spdy_send_settings(sc) == NGX_ERROR) {
         ngx_http_close_connection(c);
         return;
     }
@@ -606,38 +611,6 @@ ngx_http_spdy_handle_connection(ngx_http_spdy_connection_t *sc)
     }
 
     ngx_add_timer(c->read, sscf->keepalive_timeout);
-}
-
-
-static u_char *
-ngx_http_spdy_state_detect_settings(ngx_http_spdy_connection_t *sc,
-    u_char *pos, u_char *end)
-{
-    if (end - pos < NGX_SPDY_FRAME_HEADER_SIZE) {
-        return ngx_http_spdy_state_save(sc, pos, end,
-                                        ngx_http_spdy_state_detect_settings);
-    }
-
-    /*
-     * Since this is the first frame in a buffer,
-     * then it is properly aligned
-     */
-
-    if (*(uint32_t *) pos == htonl(ngx_spdy_ctl_frame_head(NGX_SPDY_SETTINGS)))
-    {
-        sc->length = ngx_spdy_frame_length(htonl(((uint32_t *) pos)[1]));
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
-                       "spdy SETTINGS frame received, size: %uz", sc->length);
-
-        pos += NGX_SPDY_FRAME_HEADER_SIZE;
-
-        return ngx_http_spdy_state_settings(sc, pos, end);
-    }
-
-    ngx_http_spdy_send_settings(sc);
-
-    return ngx_http_spdy_state_head(sc, pos, end);
 }
 
 
@@ -1395,13 +1368,12 @@ ngx_http_spdy_state_skip(ngx_http_spdy_connection_t *sc, u_char *pos,
 }
 
 
+#if 0
+
 static u_char *
 ngx_http_spdy_state_settings(ngx_http_spdy_connection_t *sc, u_char *pos,
     u_char *end)
 {
-    ngx_uint_t                 v;
-    ngx_http_spdy_srv_conf_t  *sscf;
-
     if (sc->entries == 0) {
 
         if (end - pos < NGX_SPDY_SETTINGS_NUM_SIZE) {
@@ -1432,28 +1404,14 @@ ngx_http_spdy_state_settings(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         sc->entries--;
 
-        if (pos[0] != NGX_SPDY_SETTINGS_MAX_STREAMS) {
-            pos += NGX_SPDY_SETTINGS_PAIR_SIZE;
-            sc->length -= NGX_SPDY_SETTINGS_PAIR_SIZE;
-            continue;
-        }
-
-        v = ngx_spdy_frame_parse_uint32(pos + NGX_SPDY_SETTINGS_IDF_SIZE);
-
-        sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
-                                            ngx_http_spdy_module);
-
-        if (v != sscf->concurrent_streams) {
-            ngx_http_spdy_send_settings(sc);
-        }
-
-        return ngx_http_spdy_state_skip(sc, pos, end);
+        pos += NGX_SPDY_SETTINGS_PAIR_SIZE;
+        sc->length -= NGX_SPDY_SETTINGS_PAIR_SIZE;
     }
-
-    ngx_http_spdy_send_settings(sc);
 
     return ngx_http_spdy_state_complete(sc, pos, end);
 }
+
+#endif
 
 
 static u_char *
@@ -1654,8 +1612,7 @@ ngx_http_spdy_send_settings(ngx_http_spdy_connection_t *sc)
 
     p = ngx_spdy_frame_aligned_write_uint32(p, 1);
     p = ngx_spdy_frame_aligned_write_uint32(p,
-                                            NGX_SPDY_SETTINGS_MAX_STREAMS << 24
-                                            | NGX_SPDY_SETTINGS_FLAG_PERSIST);
+                                          NGX_SPDY_SETTINGS_MAX_STREAMS << 24);
 
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
                                         ngx_http_spdy_module);
