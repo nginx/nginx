@@ -142,7 +142,7 @@ struct ngx_http_spdy_out_frame_s {
                                         ngx_http_spdy_out_frame_t *frame);
 
     ngx_http_spdy_stream_t          *stream;
-    size_t                           size;
+    size_t                           length;
 
     ngx_uint_t                       priority;
     unsigned                         blocked:1;

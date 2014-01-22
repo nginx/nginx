@@ -494,9 +494,9 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
         out = frame;
 
         ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "spdy frame out: %p sid:%ui prio:%ui bl:%d size:%uz",
+                       "spdy frame out: %p sid:%ui prio:%ui bl:%d len:%uz",
                        out, out->stream ? out->stream->id : 0, out->priority,
-                       out->blocked, out->size);
+                       out->blocked, out->length);
     }
 
     cl = c->send_chain(c, cl, 0);
@@ -537,9 +537,9 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
         }
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "spdy frame sent: %p sid:%ui bl:%d size:%uz",
+                       "spdy frame sent: %p sid:%ui bl:%d len:%uz",
                        out, out->stream ? out->stream->id : 0,
-                       out->blocked, out->size);
+                       out->blocked, out->length);
     }
 
     frame = NULL;
@@ -1587,9 +1587,7 @@ ngx_http_spdy_send_settings(ngx_http_spdy_connection_t *sc)
     frame->handler = ngx_http_spdy_settings_frame_handler;
     frame->stream = NULL;
 #if (NGX_DEBUG)
-    frame->size = NGX_SPDY_FRAME_HEADER_SIZE
-                  + NGX_SPDY_SETTINGS_NUM_SIZE
-                  + NGX_SPDY_SETTINGS_PAIR_SIZE;
+    frame->length = NGX_SPDY_SETTINGS_NUM_SIZE + NGX_SPDY_SETTINGS_PAIR_SIZE;
 #endif
     frame->priority = NGX_SPDY_HIGHEST_PRIORITY;
     frame->blocked = 0;
@@ -1637,7 +1635,7 @@ ngx_http_spdy_settings_frame_handler(ngx_http_spdy_connection_t *sc,
 
 
 static ngx_http_spdy_out_frame_t *
-ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
+ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t length,
     ngx_uint_t priority)
 {
     ngx_chain_t                *cl;
@@ -1677,13 +1675,13 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
     }
 
 #if (NGX_DEBUG)
-    if (size > NGX_SPDY_CTL_FRAME_BUFFER_SIZE - NGX_SPDY_FRAME_HEADER_SIZE) {
+    if (length > NGX_SPDY_CTL_FRAME_BUFFER_SIZE - NGX_SPDY_FRAME_HEADER_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, sc->pool->log, 0,
-                      "requested control frame is too big: %uz", size);
+                      "requested control frame is too big: %uz", length);
         return NULL;
     }
 
-    frame->size = size;
+    frame->length = length;
 #endif
 
     frame->priority = priority;

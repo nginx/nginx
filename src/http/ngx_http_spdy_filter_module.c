@@ -560,13 +560,14 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
 
     r->header_size = len;
 
+    len -= NGX_SPDY_FRAME_HEADER_SIZE;
+
     if (r->header_only) {
         b->last_buf = 1;
-        p = ngx_spdy_frame_write_flags_and_len(p, NGX_SPDY_FLAG_FIN,
-                                             len - NGX_SPDY_FRAME_HEADER_SIZE);
+        p = ngx_spdy_frame_write_flags_and_len(p, NGX_SPDY_FLAG_FIN, len);
+
     } else {
-        p = ngx_spdy_frame_write_flags_and_len(p, 0,
-                                             len - NGX_SPDY_FRAME_HEADER_SIZE);
+        p = ngx_spdy_frame_write_flags_and_len(p, 0, len);
     }
 
     (void) ngx_spdy_frame_write_sid(p, stream->id);
@@ -588,14 +589,14 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     frame->last = cl;
     frame->handler = ngx_http_spdy_syn_frame_handler;
     frame->stream = stream;
-    frame->size = len;
+    frame->length = len;
     frame->priority = stream->priority;
     frame->blocked = 1;
     frame->fin = r->header_only;
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, stream->request->connection->log, 0,
-                   "spdy:%ui create SYN_REPLY frame %p: size:%uz",
-                   stream->id, frame, frame->size);
+                   "spdy:%ui create SYN_REPLY frame %p: len:%uz",
+                   stream->id, frame, frame->length);
 
     ngx_http_spdy_queue_blocked_frame(sc, frame);
 
@@ -881,7 +882,7 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
     frame->last = last;
     frame->handler = ngx_http_spdy_data_frame_handler;
     frame->stream = stream;
-    frame->size = NGX_SPDY_FRAME_HEADER_SIZE + len;
+    frame->length = len;
     frame->priority = stream->priority;
     frame->blocked = 0;
     frame->fin = last->buf->last_buf;
@@ -1043,7 +1044,7 @@ ngx_http_spdy_handle_frame(ngx_http_spdy_stream_t *stream,
 
     r = stream->request;
 
-    r->connection->sent += frame->size;
+    r->connection->sent += NGX_SPDY_FRAME_HEADER_SIZE + frame->length;
 
     if (frame->fin) {
         stream->out_closed = 1;
