@@ -141,8 +141,6 @@ struct ngx_http_spdy_out_frame_s {
     ngx_int_t                      (*handler)(ngx_http_spdy_connection_t *sc,
                                         ngx_http_spdy_out_frame_t *frame);
 
-    ngx_http_spdy_out_frame_t       *free;
-
     ngx_http_spdy_stream_t          *stream;
     size_t                           size;
 

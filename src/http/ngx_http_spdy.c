@@ -527,7 +527,9 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
         }
     }
 
-    for ( /* void */ ; out; out = out->next) {
+    for ( /* void */ ; out; out = fn) {
+        fn = out->next;
+
         if (out->handler(sc, out) != NGX_OK) {
             out->blocked = 1;
             out->priority = NGX_SPDY_HIGHEST_PRIORITY;
@@ -1644,7 +1646,7 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
     frame = sc->free_ctl_frames;
 
     if (frame) {
-        sc->free_ctl_frames = frame->free;
+        sc->free_ctl_frames = frame->next;
 
         cl = frame->first;
         cl->buf->pos = cl->buf->start;
@@ -1673,8 +1675,6 @@ ngx_http_spdy_get_ctl_frame(ngx_http_spdy_connection_t *sc, size_t size,
         frame->handler = ngx_http_spdy_ctl_frame_handler;
         frame->stream = NULL;
     }
-
-    frame->free = NULL;
 
 #if (NGX_DEBUG)
     if (size > NGX_SPDY_CTL_FRAME_BUFFER_SIZE - NGX_SPDY_FRAME_HEADER_SIZE) {
@@ -1705,7 +1705,7 @@ ngx_http_spdy_ctl_frame_handler(ngx_http_spdy_connection_t *sc,
         return NGX_AGAIN;
     }
 
-    frame->free = sc->free_ctl_frames;
+    frame->next = sc->free_ctl_frames;
     sc->free_ctl_frames = frame;
 
     return NGX_OK;

@@ -587,7 +587,6 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     frame->first = cl;
     frame->last = cl;
     frame->handler = ngx_http_spdy_syn_frame_handler;
-    frame->free = NULL;
     frame->stream = stream;
     frame->size = len;
     frame->priority = stream->priority;
@@ -821,7 +820,7 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
     frame = stream->free_frames;
 
     if (frame) {
-        stream->free_frames = frame->free;
+        stream->free_frames = frame->next;
 
     } else {
         frame = ngx_palloc(stream->request->pool,
@@ -881,7 +880,6 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
     frame->first = first;
     frame->last = last;
     frame->handler = ngx_http_spdy_data_frame_handler;
-    frame->free = NULL;
     frame->stream = stream;
     frame->size = NGX_SPDY_FRAME_HEADER_SIZE + len;
     frame->priority = stream->priority;
@@ -1051,7 +1049,7 @@ ngx_http_spdy_handle_frame(ngx_http_spdy_stream_t *stream,
         stream->out_closed = 1;
     }
 
-    frame->free = stream->free_frames;
+    frame->next = stream->free_frames;
     stream->free_frames = frame;
 
     stream->queued--;
