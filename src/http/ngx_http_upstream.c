@@ -2459,11 +2459,7 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_http_upstream_process_upgraded(r, 1, 1);
     }
 
-    if (c->read->ready
-        || r->header_in->pos != r->header_in->last)
-    {
-        ngx_http_upstream_process_upgraded(r, 0, 1);
-    }
+    ngx_http_upstream_process_upgraded(r, 0, 1);
 }
 
 
