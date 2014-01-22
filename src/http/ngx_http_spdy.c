@@ -2665,6 +2665,10 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
         }
     }
 
+    if (sc->stream == stream) {
+        sc->stream = NULL;
+    }
+
     if (stream->handled) {
         for (s = sc->last_stream; s; s = s->next) {
             if (s->next == stream) {
