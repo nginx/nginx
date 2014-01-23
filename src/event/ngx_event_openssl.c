@@ -2233,6 +2233,10 @@ ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     SSL_SESSION  *sess;
 
     sess = SSL_get0_session(c->ssl->connection);
+    if (sess == NULL) {
+        s->len = 0;
+        return NGX_OK;
+    }
 
     buf = sess->session_id;
     len = sess->session_id_length;
