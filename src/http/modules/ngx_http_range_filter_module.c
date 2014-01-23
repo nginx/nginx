@@ -22,7 +22,7 @@
  * ... data ...
  *
  *
- * the mutlipart format:
+ * the multipart format:
  *
  * "HTTP/1.0 206 Partial Content" CRLF
  * ... header ...
