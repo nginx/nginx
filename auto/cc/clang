@@ -89,7 +89,7 @@ CFLAGS="$CFLAGS -Wconditional-uninitialized"
 CFLAGS="$CFLAGS -Wno-unused-parameter"
 
 # stop on warning
-#CFLAGS="$CFLAGS -Werror"
+CFLAGS="$CFLAGS -Werror"
 
 # debug
 CFLAGS="$CFLAGS -g"
