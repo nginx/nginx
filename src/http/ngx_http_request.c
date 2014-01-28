@@ -423,20 +423,6 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     if (n == NGX_AGAIN) {
 
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-        if (c->listening->deferred_accept
-#if (NGX_HTTP_SSL)
-            && c->ssl == NULL
-#endif
-            )
-        {
-            ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
-                          "client timed out in deferred accept");
-            ngx_http_close_connection(c);
-            return;
-        }
-#endif
-
         if (!rev->timer_set) {
             ngx_add_timer(rev, c->listening->post_accept_timeout);
             ngx_reusable_connection(c, 1);
@@ -634,15 +620,6 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
 
     if (n == -1) {
         if (err == NGX_EAGAIN) {
-
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
-            if (c->listening->deferred_accept) {
-                ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
-                              "client timed out in deferred accept");
-                ngx_http_close_connection(c);
-                return;
-            }
-#endif
 
             if (!rev->timer_set) {
                 ngx_add_timer(rev, c->listening->post_accept_timeout);

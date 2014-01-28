@@ -647,7 +647,13 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
         if (ls[i].add_deferred || ls[i].delete_deferred) {
 
             if (ls[i].add_deferred) {
-                timeout = (int) (ls[i].post_accept_timeout / 1000);
+                /*
+                 * There is no way to find out how long a connection was
+                 * in queue (and a connection may bypass deferred queue at all
+                 * if syncookies were used), hence we use 1 second timeout
+                 * here.
+                 */
+                timeout = 1;
 
             } else {
                 timeout = 0;
