@@ -213,6 +213,7 @@ static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static u_char ngx_http_ssi_string[] = "<!--";
 
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
+static ngx_str_t ngx_http_ssi_timefmt = ngx_string("%A, %d-%b-%Y %H:%M:%S %Z");
 static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
 
 
@@ -359,7 +360,7 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
     ctx->params.pool = r->pool;
 
-    ngx_str_set(&ctx->timefmt, "%A, %d-%b-%Y %H:%M:%S %Z");
+    ctx->timefmt = ngx_http_ssi_timefmt;
     ngx_str_set(&ctx->errmsg,
                 "[an error occurred while processing the directive]");
 
@@ -2720,6 +2721,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
 {
     ngx_http_ssi_ctx_t  *ctx;
     ngx_time_t          *tp;
+    ngx_str_t           *timefmt;
     struct tm            tm;
     char                 buf[NGX_HTTP_SSI_DATE_LEN];
 
@@ -2731,9 +2733,10 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
-    if (ctx == NULL
-        || (ctx->timefmt.len == sizeof("%s") - 1
-            && ctx->timefmt.data[0] == '%' && ctx->timefmt.data[1] == 's'))
+    timefmt = ctx ? &ctx->timefmt : &ngx_http_ssi_timefmt;
+
+    if (timefmt->len == sizeof("%s") - 1
+        && timefmt->data[0] == '%' && timefmt->data[1] == 's')
     {
         v->data = ngx_pnalloc(r->pool, NGX_TIME_T_LEN);
         if (v->data == NULL) {
@@ -2752,7 +2755,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     }
 
     v->len = strftime(buf, NGX_HTTP_SSI_DATE_LEN,
-                      (char *) ctx->timefmt.data, &tm);
+                      (char *) timefmt->data, &tm);
     if (v->len == 0) {
         return NGX_ERROR;
     }
