@@ -17,10 +17,8 @@
 
 #define NGX_SPDY_VERSION              2
 
-#ifdef TLSEXT_TYPE_next_proto_neg
 #define NGX_SPDY_NPN_ADVERTISE        "\x06spdy/2"
 #define NGX_SPDY_NPN_NEGOTIATED       "spdy/2"
-#endif
 
 #define NGX_SPDY_STATE_BUFFER_SIZE    16
 

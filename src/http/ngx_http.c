@@ -1349,11 +1349,13 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
     }
 
-#if (NGX_HTTP_SPDY && NGX_HTTP_SSL && !defined TLSEXT_TYPE_next_proto_neg)
+#if (NGX_HTTP_SPDY && NGX_HTTP_SSL                                            \
+     && !defined TLSEXT_TYPE_application_layer_protocol_negotiation           \
+     && !defined TLSEXT_TYPE_next_proto_neg)
     if (lsopt->spdy && lsopt->ssl) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "nginx was built without OpenSSL NPN support, "
-                           "SPDY is not enabled for %s", lsopt->addr);
+                           "nginx was built without OpenSSL ALPN or NPN "
+                           "support, SPDY is not enabled for %s", lsopt->addr);
     }
 #endif
 
