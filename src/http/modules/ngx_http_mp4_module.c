@@ -1208,7 +1208,7 @@ ngx_http_mp4_read_mvhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     u_char                 *atom_header;
     size_t                  atom_size;
     uint32_t                timescale;
-    uint64_t                duration;
+    uint64_t                duration, start_time;
     ngx_buf_t              *atom;
     ngx_mp4_mvhd_atom_t    *mvhd_atom;
     ngx_mp4_mvhd64_atom_t  *mvhd64_atom;
@@ -1251,7 +1251,16 @@ ngx_http_mp4_read_mvhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                    "mvhd timescale:%uD, duration:%uL, time:%.3fs",
                    timescale, duration, (double) duration / timescale);
 
-    duration -= (uint64_t) mp4->start * timescale / 1000;
+    start_time = (uint64_t) mp4->start * timescale / 1000;
+
+    if (duration < start_time) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "\"%s\" mp4 start time exceeds file duration",
+                      mp4->file.name.data);
+        return NGX_ERROR;
+    }
+
+    duration -= start_time;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "mvhd new duration:%uL, time:%.3fs",
@@ -1398,7 +1407,7 @@ ngx_http_mp4_read_tkhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 {
     u_char                 *atom_header;
     size_t                  atom_size;
-    uint64_t                duration;
+    uint64_t                duration, start_time;
     ngx_buf_t              *atom;
     ngx_http_mp4_trak_t    *trak;
     ngx_mp4_tkhd_atom_t    *tkhd_atom;
@@ -1438,7 +1447,15 @@ ngx_http_mp4_read_tkhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                    "tkhd duration:%uL, time:%.3fs",
                    duration, (double) duration / mp4->timescale);
 
-    duration -= (uint64_t) mp4->start * mp4->timescale / 1000;
+    start_time = (uint64_t) mp4->start * mp4->timescale / 1000;
+
+    if (duration < start_time) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                       "tkhd duration is less than start time");
+        return NGX_DECLINED;
+    }
+
+    duration -= start_time;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "tkhd new duration:%uL, time:%.3fs",
@@ -1541,7 +1558,7 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     u_char                 *atom_header;
     size_t                  atom_size;
     uint32_t                timescale;
-    uint64_t                duration;
+    uint64_t                duration, start_time;
     ngx_buf_t              *atom;
     ngx_http_mp4_trak_t    *trak;
     ngx_mp4_mdhd_atom_t    *mdhd_atom;
@@ -1583,7 +1600,15 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
                    "mdhd timescale:%uD, duration:%uL, time:%.3fs",
                    timescale, duration, (double) duration / timescale);
 
-    duration -= (uint64_t) mp4->start * timescale / 1000;
+    start_time = (uint64_t) mp4->start * timescale / 1000;
+
+    if (duration < start_time) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                       "mdhd duration is less than start time");
+        return NGX_DECLINED;
+    }
+
+    duration -= start_time;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "mdhd new duration:%uL, time:%.3fs",
