@@ -2494,7 +2494,7 @@ ngx_http_mp4_update_stsc_atom(ngx_http_mp4_file_t *mp4,
         entry++;
     }
 
-    next_chunk = trak->chunks;
+    next_chunk = trak->chunks + 1;
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "start_sample:%uD, chunk:%uD, chunks:%uD, samples:%uD",
