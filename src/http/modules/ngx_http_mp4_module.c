@@ -2153,11 +2153,8 @@ ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
         entry++;
     }
 
-    ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
-                  "start sample is out of mp4 stss atom in \"%s\"",
-                  mp4->file.name.data);
-
-    return NGX_ERROR;
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                   "start sample is out of mp4 stss atom");
 
 found:
 
