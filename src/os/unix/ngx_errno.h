@@ -34,6 +34,7 @@ typedef int               ngx_err_t;
 #define NGX_ENOSPC        ENOSPC
 #define NGX_EPIPE         EPIPE
 #define NGX_EINPROGRESS   EINPROGRESS
+#define NGX_ENOPROTOOPT   ENOPROTOOPT
 #define NGX_EOPNOTSUPP    EOPNOTSUPP
 #define NGX_EADDRINUSE    EADDRINUSE
 #define NGX_ECONNABORTED  ECONNABORTED

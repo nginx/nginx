@@ -97,7 +97,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     ngx_uint_t                 i;
     ngx_listening_t           *ls;
     socklen_t                  olen;
-#if (NGX_HAVE_DEFERRED_ACCEPT)
+#if (NGX_HAVE_DEFERRED_ACCEPT || NGX_HAVE_TCP_FASTOPEN)
     ngx_err_t                  err;
 #endif
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
@@ -223,9 +223,13 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
                        (void *) &ls[i].fastopen, &olen)
             == -1)
         {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
-                          "getsockopt(TCP_FASTOPEN) %V failed, ignored",
-                          &ls[i].addr_text);
+            err = ngx_socket_errno;
+
+            if (err != NGX_EOPNOTSUPP && err != NGX_ENOPROTOOPT) {
+                ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
+                              "getsockopt(TCP_FASTOPEN) %V failed, ignored",
+                              &ls[i].addr_text);
+            }
 
             ls[i].fastopen = -1;
         }
