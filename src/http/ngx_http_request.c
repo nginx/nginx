@@ -713,16 +713,17 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
         const unsigned char     *data;
         static const ngx_str_t   spdy = ngx_string(NGX_SPDY_NPN_NEGOTIATED);
 
-        len = 0;
-
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
         SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
-#endif
 
 #ifdef TLSEXT_TYPE_next_proto_neg
         if (len == 0) {
             SSL_get0_next_proto_negotiated(c->ssl->connection, &data, &len);
         }
+#endif
+
+#else /* TLSEXT_TYPE_next_proto_neg */
+        SSL_get0_next_proto_negotiated(c->ssl->connection, &data, &len);
 #endif
 
         if (len == spdy.len && ngx_strncmp(data, spdy.data, spdy.len) == 0) {
