@@ -1944,6 +1944,10 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
+#if (NGX_SUPPRESS_WARN)
+    cscf = NULL;
+#endif
+
     hc = r->http_connection;
 
 #if (NGX_HTTP_SSL && defined SSL_CTRL_SET_TLSEXT_HOSTNAME)
