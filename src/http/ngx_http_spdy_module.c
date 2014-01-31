@@ -180,11 +180,11 @@ ngx_http_spdy_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     if (r->spdy_stream) {
-        v->len = 1;
+        v->len = sizeof("3.1") - 1;
         v->valid = 1;
         v->no_cacheable = 0;
         v->not_found = 0;
-        v->data = (u_char *) "2";
+        v->data = (u_char *) "3.1";
 
         return NGX_OK;
     }

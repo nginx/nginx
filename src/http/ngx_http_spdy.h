@@ -15,10 +15,10 @@
 #include <zlib.h>
 
 
-#define NGX_SPDY_VERSION              2
+#define NGX_SPDY_VERSION              3
 
-#define NGX_SPDY_NPN_ADVERTISE        "\x06spdy/2"
-#define NGX_SPDY_NPN_NEGOTIATED       "spdy/2"
+#define NGX_SPDY_NPN_ADVERTISE        "\x08spdy/3.1"
+#define NGX_SPDY_NPN_NEGOTIATED       "spdy/3.1"
 
 #define NGX_SPDY_STATE_BUFFER_SIZE    16
 
@@ -28,32 +28,34 @@
 #define NGX_SPDY_SYN_REPLY            2
 #define NGX_SPDY_RST_STREAM           3
 #define NGX_SPDY_SETTINGS             4
-#define NGX_SPDY_NOOP                 5
 #define NGX_SPDY_PING                 6
 #define NGX_SPDY_GOAWAY               7
 #define NGX_SPDY_HEADERS              8
+#define NGX_SPDY_WINDOW_UPDATE        9
 
 #define NGX_SPDY_FRAME_HEADER_SIZE    8
 
 #define NGX_SPDY_SID_SIZE             4
+#define NGX_SPDY_DELTA_SIZE           4
 
 #define NGX_SPDY_SYN_STREAM_SIZE      10
-#define NGX_SPDY_SYN_REPLY_SIZE       6
+#define NGX_SPDY_SYN_REPLY_SIZE       4
 #define NGX_SPDY_RST_STREAM_SIZE      8
 #define NGX_SPDY_PING_SIZE            4
-#define NGX_SPDY_GOAWAY_SIZE          4
-#define NGX_SPDY_NV_NUM_SIZE          2
-#define NGX_SPDY_NV_NLEN_SIZE         2
-#define NGX_SPDY_NV_VLEN_SIZE         2
+#define NGX_SPDY_GOAWAY_SIZE          8
+#define NGX_SPDY_WINDOW_UPDATE_SIZE   8
+#define NGX_SPDY_NV_NUM_SIZE          4
+#define NGX_SPDY_NV_NLEN_SIZE         4
+#define NGX_SPDY_NV_VLEN_SIZE         4
 #define NGX_SPDY_SETTINGS_NUM_SIZE    4
-#define NGX_SPDY_SETTINGS_IDF_SIZE    4
+#define NGX_SPDY_SETTINGS_FID_SIZE    4
 #define NGX_SPDY_SETTINGS_VAL_SIZE    4
 
 #define NGX_SPDY_SETTINGS_PAIR_SIZE                                           \
-    (NGX_SPDY_SETTINGS_IDF_SIZE + NGX_SPDY_SETTINGS_VAL_SIZE)
+    (NGX_SPDY_SETTINGS_FID_SIZE + NGX_SPDY_SETTINGS_VAL_SIZE)
 
 #define NGX_SPDY_HIGHEST_PRIORITY     0
-#define NGX_SPDY_LOWEST_PRIORITY      3
+#define NGX_SPDY_LOWEST_PRIORITY      7
 
 #define NGX_SPDY_FLAG_FIN             0x01
 #define NGX_SPDY_FLAG_UNIDIRECTIONAL  0x02
@@ -78,6 +80,12 @@ struct ngx_http_spdy_connection_s {
     ngx_http_connection_t           *http_connection;
 
     ngx_uint_t                       processing;
+
+    size_t                           send_window;
+    size_t                           recv_window;
+    size_t                           init_window;
+
+    ngx_queue_t                      waiting;
 
     u_char                           buffer[NGX_SPDY_STATE_BUFFER_SIZE];
     size_t                           buffer_used;
@@ -119,15 +127,23 @@ struct ngx_http_spdy_stream_s {
     ngx_uint_t                       header_buffers;
     ngx_uint_t                       queued;
 
+    /*
+     * A change to SETTINGS_INITIAL_WINDOW_SIZE could cause the
+     * send_window to become negative, hence it's signed.
+     */
+    ssize_t                          send_window;
+    size_t                           recv_window;
+
     ngx_http_spdy_out_frame_t       *free_frames;
     ngx_chain_t                     *free_data_headers;
     ngx_chain_t                     *free_bufs;
 
     ngx_queue_t                      queue;
 
-    unsigned                         priority:2;
+    unsigned                         priority:3;
     unsigned                         handled:1;
     unsigned                         blocked:1;
+    unsigned                         exhausted:1;
     unsigned                         in_closed:1;
     unsigned                         out_closed:1;
     unsigned                         skip_data:2;
@@ -230,7 +246,10 @@ ngx_int_t ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc);
 
 #define ngx_spdy_frame_write_flags_and_len(p, f, l)                           \
     ngx_spdy_frame_aligned_write_uint32(p, (f) << 24 | (l))
+#define ngx_spdy_frame_write_flags_and_id(p, f, i)                            \
+    ngx_spdy_frame_aligned_write_uint32(p, (f) << 24 | (i))
 
-#define ngx_spdy_frame_write_sid  ngx_spdy_frame_aligned_write_uint32
+#define ngx_spdy_frame_write_sid     ngx_spdy_frame_aligned_write_uint32
+#define ngx_spdy_frame_write_window  ngx_spdy_frame_aligned_write_uint32
 
 #endif /* _NGX_HTTP_SPDY_H_INCLUDED_ */
