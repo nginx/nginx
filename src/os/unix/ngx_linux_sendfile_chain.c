@@ -163,7 +163,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
                                (const void *) &tcp_nodelay, sizeof(int)) == -1)
                 {
-                    err = ngx_errno;
+                    err = ngx_socket_errno;
 
                     /*
                      * there is a tiny chance to be interrupted, however,
@@ -189,7 +189,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             if (c->tcp_nodelay == NGX_TCP_NODELAY_UNSET) {
 
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
-                    err = ngx_errno;
+                    err = ngx_socket_errno;
 
                     /*
                      * there is a tiny chance to be interrupted, however,

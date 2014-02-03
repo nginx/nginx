@@ -244,7 +244,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         if (getsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, &af, &olen)
             == -1)
         {
-            err = ngx_errno;
+            err = ngx_socket_errno;
 
             if (err == NGX_EINVAL) {
                 continue;
@@ -277,7 +277,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         if (getsockopt(ls[i].fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, &olen)
             == -1)
         {
-            err = ngx_errno;
+            err = ngx_socket_errno;
 
             if (err == NGX_EOPNOTSUPP) {
                 continue;
@@ -661,7 +661,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)
                 == -1)
             {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(SO_ACCEPTFILTER, NULL) "
                               "for %V failed, ignored",
                               &ls[i].addr_text);
@@ -688,7 +688,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                            &af, sizeof(struct accept_filter_arg))
                 == -1)
             {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(SO_ACCEPTFILTER, \"%s\") "
                               "for %V failed, ignored",
                               ls[i].accept_filter, &ls[i].addr_text);
@@ -721,7 +721,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                            &value, sizeof(int))
                 == -1)
             {
-                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                               "setsockopt(TCP_DEFER_ACCEPT, %d) for %V failed, "
                               "ignored",
                               value, &ls[i].addr_text);

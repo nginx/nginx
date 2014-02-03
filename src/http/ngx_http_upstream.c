@@ -1096,7 +1096,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
             == -1)
         {
-            err = ngx_errno;
+            err = ngx_socket_errno;
         }
 
         if (err) {
@@ -1977,7 +1977,7 @@ ngx_http_upstream_test_connect(ngx_connection_t *c)
         if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
             == -1)
         {
-            err = ngx_errno;
+            err = ngx_socket_errno;
         }
 
         if (err) {

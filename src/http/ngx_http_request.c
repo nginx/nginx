@@ -2707,7 +2707,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
         if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
             == -1)
         {
-            err = ngx_errno;
+            err = ngx_socket_errno;
         }
 
         goto closed;

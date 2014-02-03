@@ -231,7 +231,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 && c->tcp_nopush == NGX_TCP_NOPUSH_UNSET)
             {
                 if (ngx_tcp_nopush(c->fd) == NGX_ERROR) {
-                    err = ngx_errno;
+                    err = ngx_socket_errno;
 
                     /*
                      * there is a tiny chance to be interrupted, however,
