@@ -902,7 +902,7 @@ ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     sc->length -= NGX_SPDY_SYN_STREAM_SIZE;
 
     sid = ngx_spdy_frame_parse_sid(pos);
-    prio = pos[8] >> 6;
+    prio = pos[8] >> 5;
 
     pos += NGX_SPDY_SYN_STREAM_SIZE;
 
