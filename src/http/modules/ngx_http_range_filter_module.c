@@ -432,7 +432,9 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
           + r->headers_out.content_type.len
           + sizeof(CRLF "Content-Range: bytes ") - 1;
 
-    if (r->headers_out.charset.len) {
+    if (r->headers_out.content_type_len == r->headers_out.content_type.len
+        && r->headers_out.charset.len)
+    {
         len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
     }
 
@@ -451,7 +453,9 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
      * "Content-Range: bytes "
      */
 
-    if (r->headers_out.charset.len) {
+    if (r->headers_out.content_type_len == r->headers_out.content_type.len
+        && r->headers_out.charset.len)
+    {
         ctx->boundary_header.len = ngx_sprintf(ctx->boundary_header.data,
                                            CRLF "--%0muA" CRLF
                                            "Content-Type: %V; charset=%V" CRLF
@@ -460,8 +464,6 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
                                            &r->headers_out.content_type,
                                            &r->headers_out.charset)
                                    - ctx->boundary_header.data;
-
-        r->headers_out.charset.len = 0;
 
     } else if (r->headers_out.content_type.len) {
         ctx->boundary_header.len = ngx_sprintf(ctx->boundary_header.data,
@@ -500,6 +502,8 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
                            - r->headers_out.content_type.data;
 
     r->headers_out.content_type_len = r->headers_out.content_type.len;
+
+    r->headers_out.charset.len = 0;
 
     /* the size of the last boundary CRLF "--0123456789--" CRLF */
 
