@@ -5,6 +5,85 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.10" date="04.02.2014">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_spdy_module теперь использует протокол SPDY 3.1.<br/>
+Спасибо Automattic и MaxCDN за спонсирование разработки.
+</para>
+<para lang="en">
+the ngx_http_spdy_module now uses SPDY 3.1 protocol.<br/>
+Thanks to Automattic and MaxCDN for sponsoring this work.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_mp4_module теперь пропускает дорожки,
+имеющие меньшую длину, чем запрошенная перемотка.
+</para>
+<para lang="en">
+the ngx_http_mp4_module now skips tracks
+too short for a seek requested.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если переменная $ssl_session_id использовалась при логгировании;
+ошибка появилась в 1.5.9.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the $ssl_session_id variable was used in logs;
+the bug had appeared in 1.5.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные $date_local и $date_gmt использовали неверный формат
+вне модуля ngx_http_ssi_filter_module.
+</para>
+<para lang="en">
+the $date_local and $date_gmt variables used wrong format
+outside of the ngx_http_ssi_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+клиентские соединения могли сразу закрываться,
+если использовался отложенный accept;
+ошибка появилась в 1.3.15.
+</para>
+<para lang="en">
+client connections might be immediately closed
+if deferred accept was used;
+the bug had appeared in 1.3.15.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения "getsockopt(TCP_FASTOPEN) ... failed" записывались в лог
+в процессе обновления исполняемого файла на Linux;
+ошибка появилась в 1.5.8.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+alerts "getsockopt(TCP_FASTOPEN) ... failed" appeared in logs
+during binary upgrade on Linux;
+the bug had appeared in 1.5.8.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.9" date="22.01.2014">
 
 <change type="change">
