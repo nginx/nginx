@@ -11,6 +11,8 @@
 
 static u_char *ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64,
     u_char zero, ngx_uint_t hexadecimal, ngx_uint_t width);
+static void ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
+    const u_char *basis, ngx_uint_t padding);
 static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis);
 
@@ -1100,38 +1102,61 @@ ngx_hex_dump(u_char *dst, u_char *src, size_t len)
 void
 ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
-    u_char         *d, *s;
-    size_t          len;
     static u_char   basis64[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    ngx_encode_base64_internal(dst, src, basis64, 1);
+}
+
+
+void
+ngx_encode_base64url(ngx_str_t *dst, ngx_str_t *src)
+{
+    static u_char   basis64[] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+    ngx_encode_base64_internal(dst, src, basis64, 0);
+}
+
+
+static void
+ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis,
+    ngx_uint_t padding)
+{
+    u_char         *d, *s;
+    size_t          len;
 
     len = src->len;
     s = src->data;
     d = dst->data;
 
     while (len > 2) {
-        *d++ = basis64[(s[0] >> 2) & 0x3f];
-        *d++ = basis64[((s[0] & 3) << 4) | (s[1] >> 4)];
-        *d++ = basis64[((s[1] & 0x0f) << 2) | (s[2] >> 6)];
-        *d++ = basis64[s[2] & 0x3f];
+        *d++ = basis[(s[0] >> 2) & 0x3f];
+        *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];
+        *d++ = basis[((s[1] & 0x0f) << 2) | (s[2] >> 6)];
+        *d++ = basis[s[2] & 0x3f];
 
         s += 3;
         len -= 3;
     }
 
     if (len) {
-        *d++ = basis64[(s[0] >> 2) & 0x3f];
+        *d++ = basis[(s[0] >> 2) & 0x3f];
 
         if (len == 1) {
-            *d++ = basis64[(s[0] & 3) << 4];
-            *d++ = '=';
+            *d++ = basis[(s[0] & 3) << 4];
+            if (padding) {
+                *d++ = '=';
+            }
 
         } else {
-            *d++ = basis64[((s[0] & 3) << 4) | (s[1] >> 4)];
-            *d++ = basis64[(s[1] & 0x0f) << 2];
+            *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];
+            *d++ = basis[(s[1] & 0x0f) << 2];
         }
 
-        *d++ = '=';
+        if (padding) {
+            *d++ = '=';
+        }
     }
 
     dst->len = d - dst->data;
