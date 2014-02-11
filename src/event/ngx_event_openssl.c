@@ -2529,6 +2529,20 @@ ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_session_reused(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    if (SSL_session_reused(c->ssl->connection)) {
+        ngx_str_set(s, "r");
+
+    } else {
+        ngx_str_set(s, ".");
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     size_t   len;
