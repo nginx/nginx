@@ -967,7 +967,10 @@ ngx_http_spdy_waiting_queue(ngx_http_spdy_connection_t *sc,
     {
         s = ngx_queue_data(q, ngx_http_spdy_stream_t, queue);
 
-        if (s->priority >= stream->priority) {
+        /*
+         * NB: higher values represent lower priorities.
+         */
+        if (stream->priority >= s->priority) {
             break;
         }
     }

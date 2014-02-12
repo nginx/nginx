@@ -174,6 +174,9 @@ ngx_http_spdy_queue_frame(ngx_http_spdy_connection_t *sc,
 
     for (out = &sc->last_out; *out; out = &(*out)->next)
     {
+        /*
+         * NB: higher values represent lower priorities.
+         */
         if (frame->priority >= (*out)->priority) {
             break;
         }
