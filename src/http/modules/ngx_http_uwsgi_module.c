@@ -1017,7 +1017,7 @@ ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
         return ngx_http_uwsgi_process_header(r);
     }
 
-    if (u->state) {
+    if (u->state && u->state->status == 0) {
         u->state->status = status->code;
     }
 
@@ -1145,7 +1145,7 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
                 ngx_str_set(&u->headers_in.status_line, "200 OK");
             }
 
-            if (u->state) {
+            if (u->state && u->state->status == 0) {
                 u->state->status = u->headers_in.status_n;
             }
 

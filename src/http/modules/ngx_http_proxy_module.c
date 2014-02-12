@@ -1362,7 +1362,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    if (u->state) {
+    if (u->state && u->state->status == 0) {
         u->state->status = ctx->status.code;
     }
 
