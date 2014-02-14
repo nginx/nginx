@@ -2481,7 +2481,7 @@ ngx_http_mp4_update_stsc_atom(ngx_http_mp4_file_t *mp4,
 
         n = (next_chunk - chunk) * samples;
 
-        if (start_sample <= n) {
+        if (start_sample < n) {
             goto found;
         }
 
