@@ -319,6 +319,7 @@ ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     u.no_port = 1;
 
     uscf = ngx_stream_upstream_add(cf, &u, NGX_STREAM_UPSTREAM_CREATE
+                                           |NGX_STREAM_UPSTREAM_MODIFY
                                            |NGX_STREAM_UPSTREAM_WEIGHT
                                            |NGX_STREAM_UPSTREAM_MAX_CONNS
                                            |NGX_STREAM_UPSTREAM_MAX_FAILS
@@ -408,6 +409,9 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_url_t                      u;
     ngx_int_t                      weight, max_conns, max_fails;
     ngx_uint_t                     i;
+#if (NGX_STREAM_UPSTREAM_ZONE)
+    ngx_uint_t                     resolve;
+#endif
     ngx_stream_upstream_server_t  *us;
 
     us = ngx_array_push(uscf->servers);
@@ -423,6 +427,9 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
+#if (NGX_STREAM_UPSTREAM_ZONE)
+    resolve = 0;
+#endif
 
     for (i = 2; i < cf->args->nelts; i++) {
 
@@ -511,12 +518,26 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+#if (NGX_STREAM_UPSTREAM_ZONE)
+        if (ngx_strcmp(value[i].data, "resolve") == 0) {
+            resolve = 1;
+            continue;
+        }
+#endif
+
         goto invalid;
     }
 
     ngx_memzero(&u, sizeof(ngx_url_t));
 
     u.url = value[1];
+
+#if (NGX_STREAM_UPSTREAM_ZONE)
+    if (resolve) {
+        /* resolve at run time */
+        u.no_resolve = 1;
+    }
+#endif
 
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
         if (u.err) {
@@ -534,8 +555,45 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     us->name = u.url;
+
+#if (NGX_STREAM_UPSTREAM_ZONE)
+
+    if (resolve && u.naddrs == 0) {
+        ngx_addr_t  *addr;
+
+        /* save port */
+
+        addr = ngx_pcalloc(cf->pool, sizeof(ngx_addr_t));
+        if (addr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        addr->sockaddr = ngx_palloc(cf->pool, u.socklen);
+        if (addr->sockaddr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(addr->sockaddr, &u.sockaddr, u.socklen);
+
+        addr->socklen = u.socklen;
+
+        us->addrs = addr;
+        us->naddrs = 1;
+
+        us->host = u.host;
+
+    } else {
+        us->addrs = u.addrs;
+        us->naddrs = u.naddrs;
+    }
+
+#else
+
     us->addrs = u.addrs;
     us->naddrs = u.naddrs;
+
+#endif
+
     us->weight = weight;
     us->max_conns = max_conns;
     us->max_fails = max_fails;
