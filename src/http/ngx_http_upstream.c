@@ -1565,6 +1565,26 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->state->peer = u->peer.name;
 
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    if (u->upstream && u->upstream->shm_zone
+        && (u->upstream->flags & NGX_HTTP_UPSTREAM_MODIFY))
+    {
+        u->state->peer = ngx_palloc(r->pool,
+                                    sizeof(ngx_str_t) + u->peer.name->len);
+        if (u->state->peer == NULL) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        u->state->peer->len = u->peer.name->len;
+        u->state->peer->data = (u_char *) (u->state->peer + 1);
+        ngx_memcpy(u->state->peer->data, u->peer.name->data, u->peer.name->len);
+
+        u->peer.name = u->state->peer;
+    }
+#endif
+
     if (rc == NGX_BUSY) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no live upstreams");
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_NOLIVE);
@@ -6066,6 +6086,7 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     u.no_port = 1;
 
     uscf = ngx_http_upstream_add(cf, &u, NGX_HTTP_UPSTREAM_CREATE
+                                         |NGX_HTTP_UPSTREAM_MODIFY
                                          |NGX_HTTP_UPSTREAM_WEIGHT
                                          |NGX_HTTP_UPSTREAM_MAX_CONNS
                                          |NGX_HTTP_UPSTREAM_MAX_FAILS
@@ -6171,6 +6192,9 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_url_t                    u;
     ngx_int_t                    weight, max_conns, max_fails;
     ngx_uint_t                   i;
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ngx_uint_t                   resolve;
+#endif
     ngx_http_upstream_server_t  *us;
 
     us = ngx_array_push(uscf->servers);
@@ -6186,6 +6210,9 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    resolve = 0;
+#endif
 
     for (i = 2; i < cf->args->nelts; i++) {
 
@@ -6274,6 +6301,13 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+#if (NGX_HTTP_UPSTREAM_ZONE)
+        if (ngx_strcmp(value[i].data, "resolve") == 0) {
+            resolve = 1;
+            continue;
+        }
+#endif
+
         goto invalid;
     }
 
@@ -6281,6 +6315,13 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u.url = value[1];
     u.default_port = 80;
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    if (resolve) {
+        /* resolve at run time */
+        u.no_resolve = 1;
+    }
+#endif
 
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
         if (u.err) {
@@ -6292,8 +6333,45 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     us->name = u.url;
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+
+    if (resolve && u.naddrs == 0) {
+        ngx_addr_t  *addr;
+
+        /* save port */
+
+        addr = ngx_pcalloc(cf->pool, sizeof(ngx_addr_t));
+        if (addr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        addr->sockaddr = ngx_palloc(cf->pool, u.socklen);
+        if (addr->sockaddr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(addr->sockaddr, &u.sockaddr, u.socklen);
+
+        addr->socklen = u.socklen;
+
+        us->addrs = addr;
+        us->naddrs = 1;
+
+        us->host = u.host;
+
+    } else {
+        us->addrs = u.addrs;
+        us->naddrs = u.naddrs;
+    }
+
+#else
+
     us->addrs = u.addrs;
     us->naddrs = u.naddrs;
+
+#endif
+
     us->weight = weight;
     us->max_conns = max_conns;
     us->max_fails = max_fails;
