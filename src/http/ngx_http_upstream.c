@@ -715,7 +715,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         if (r->cache->header_start + 256 >= u->conf->buffer_size) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "%V_buffer_size %uz is not enough for cache key, "
-                          "it should increased at least to %uz",
+                          "it should be increased to at least %uz",
                           &u->conf->module, u->conf->buffer_size,
                           ngx_align(r->cache->header_start + 256, 1024));
 
