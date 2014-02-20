@@ -3037,14 +3037,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
         ngx_log_error(NGX_LOG_ALERT, &uc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
 
-        ngx_free_connection(c);
-
-        if (ngx_close_socket(s) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, &uc->log, ngx_socket_errno,
-                          ngx_close_socket_n " failed");
-        }
-
-        return NGX_ERROR;
+        goto failed;
     }
 
     rev = c->read;
@@ -3079,7 +3072,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
         ngx_log_error(NGX_LOG_CRIT, &uc->log, ngx_socket_errno,
                       "connect() failed");
 
-        return NGX_ERROR;
+        goto failed;
     }
 
     /* UDP sockets are always ready to write */
@@ -3093,16 +3086,23 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
                     /* eventport event type has no meaning: oneshot only */
 
         if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
-            return NGX_ERROR;
+            goto failed;
         }
 
     } else {
         /* rtsig */
 
         if (ngx_add_conn(c) == NGX_ERROR) {
-            return NGX_ERROR;
+            goto failed;
         }
     }
 
     return NGX_OK;
+
+failed:
+
+    ngx_close_connection(c);
+    uc->connection = NULL;
+
+    return NGX_ERROR;
 }
