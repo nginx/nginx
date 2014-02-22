@@ -129,7 +129,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #if (NGX_HAVE_INET6)
         case AF_INET6:
              ls[i].addr_text_max_len = NGX_INET6_ADDRSTRLEN;
-             len = NGX_INET6_ADDRSTRLEN + sizeof(":65535") - 1;
+             len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1;
              break;
 #endif
 
