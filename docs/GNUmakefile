@@ -3,7 +3,7 @@ VER=	$(shell grep 'define NGINX_VERSION' src/core/nginx.h		\
 		| sed -e 's/^.*"\(.*\)".*/\1/')
 NGINX=	nginx-$(VER)
 TEMP=	tmp
-CP=	$(HOME)/java
+XSLS?=	xslscript.pl
 
 
 all:		changes
@@ -36,12 +36,6 @@ $(TEMP)/$(NGINX)/CHANGES:	docs/dtd/changes.dtd			\
 		-o $@ docs/xslt/changes.xslt docs/xml/nginx/changes.xml
 
 
-docs/xslt/changes.xslt:		docs/xsls/changes.xsls docs/xsls/dump.xsls
+docs/xslt/changes.xslt:		docs/xsls/changes.xsls
 
-	java -cp $(CP)/xsls/saxon.jar:$(CP)/xsls/xsls.jar		\
-		com.pault.StyleSheet					\
-		-x com.pault.XX -y com.pault.XX				\
-		$< docs/xsls/dump.xsls					\
-	| sed 's/ *$$//;/^ *$$/N;/\n *$$/D' > $@
-
-	if [ ! -s $@ ]; then rm $@; fi; test -s $@
+	$(XSLS) -o $@ $<
