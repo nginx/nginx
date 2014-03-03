@@ -953,13 +953,13 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 if (clcf->client_max_body_size
                     && clcf->client_max_body_size
-                       < r->headers_in.content_length_n + rb->chunked->size)
+                       - r->headers_in.content_length_n < rb->chunked->size)
                 {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "client intended to send too large chunked "
-                                  "body: %O bytes",
-                                  r->headers_in.content_length_n
-                                  + rb->chunked->size);
+                                  "body: %O+%O bytes",
+                                  r->headers_in.content_length_n,
+                                  rb->chunked->size);
 
                     r->lingering_close = 1;
 
