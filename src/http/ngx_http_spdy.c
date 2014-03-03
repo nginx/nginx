@@ -1038,7 +1038,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                        "spdy HEADERS block consists of %ui entries",
                        sc->entries);
 
-        if (ngx_list_init(&r->headers_in.headers, r->pool, sc->entries + 3,
+        if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
                           sizeof(ngx_table_elt_t))
             != NGX_OK)
         {
