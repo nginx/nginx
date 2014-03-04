@@ -5,6 +5,116 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.11" date="04.03.2014">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса модулем ngx_http_spdy_module
+на 32-битных платформах могла повреждаться память рабочего процесса,
+что потенциально могло приводить к выполнению произвольного кода
+(CVE-2014-0088);
+ошибка появилась в 1.5.10.<br/>
+Спасибо Lucas Molas из Programa STIC, Fundación Dr. Manuel
+Sadosky, Buenos Aires, Argentina.
+</para>
+<para lang="en">
+memory corruption might occur in a worker process on 32-bit platforms
+while handling a specially crafted request by ngx_http_spdy_module,
+potentially resulting in arbitrary code execution (CVE-2014-0088);
+the bug had appeared in 1.5.10.<br/>
+Thanks to Lucas Molas, researcher at Programa STIC, Fundación Dr. Manuel
+Sadosky, Buenos Aires, Argentina.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_session_reused.
+</para>
+<para lang="en">
+the $ssl_session_reused variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива client_max_body_size могла не работать
+при чтении тела запроса с использованием chunked transfer encoding;
+ошибка появилась в 1.3.9.<br/>
+Спасибо Lucas Molas.
+</para>
+<para lang="en">
+the "client_max_body_size" directive might not work
+when reading a request body using chunked transfer encoding;
+the bug had appeared in 1.3.9.<br/>
+Thanks to Lucas Molas.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании WebSocket-соединений
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when proxying WebSocket connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_spdy_module на 32-битных платформах;
+ошибка появилась в 1.5.10.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_spdy_module was used on 32-bit platforms;
+the bug had appeared in 1.5.10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+значение переменной $upstream_status могло быть неверным,
+если использовались директивы proxy_cache_use_stale
+или proxy_cache_revalidate.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the $upstream_status variable might contain wrong data
+if the "proxy_cache_use_stale" or "proxy_cache_revalidate" directives
+were used.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если ошибки с кодом 400 с помощью директивы error_page
+перенаправлялись в именованный location.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if errors with code 400 were redirected to a named location
+using the "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с Visual Studio 2013.
+</para>
+<para lang="en">
+nginx/Windows could not be built with Visual Studio 2013.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.10" date="04.02.2014">
 
 <change type="feature">
