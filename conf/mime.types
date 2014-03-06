@@ -55,6 +55,7 @@ types {
     application/x-x509-ca-cert            der pem crt;
     application/x-xpinstall               xpi;
     application/xhtml+xml                 xhtml;
+    application/xspf+xml                  xspf;
     application/zip                       zip;
 
     application/octet-stream              bin exe dll;
