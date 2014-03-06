@@ -344,7 +344,7 @@ ngx_event_accept(ngx_event_t *ev)
 #endif
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "*%d accept: %V fd:%d", c->number, &c->addr_text, s);
+                       "*%uA accept: %V fd:%d", c->number, &c->addr_text, s);
 
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {

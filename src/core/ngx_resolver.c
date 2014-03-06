@@ -3062,7 +3062,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
 #endif
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, &uc->log, 0,
-                   "connect to %V, fd:%d #%d", &uc->server, s, c->number);
+                   "connect to %V, fd:%d #%uA", &uc->server, s, c->number);
 
     rc = connect(s, uc->sockaddr, uc->socklen);
 

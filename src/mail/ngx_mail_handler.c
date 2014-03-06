@@ -127,7 +127,7 @@ ngx_mail_init_connection(ngx_connection_t *c)
     c->data = s;
     s->connection = c;
 
-    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%ui client %V connected to %V",
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%uA client %V connected to %V",
                   c->number, &c->addr_text, s->addr_text);
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_mail_log_ctx_t));
