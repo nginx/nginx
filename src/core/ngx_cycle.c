@@ -494,14 +494,14 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 }
 
                 if (ngx_cmp_sockaddr(nls[n].sockaddr, nls[n].socklen,
-                                     ls[i].sockaddr, ls[n].socklen, 1)
+                                     ls[i].sockaddr, ls[i].socklen, 1)
                     == NGX_OK)
                 {
                     nls[n].fd = ls[i].fd;
                     nls[n].previous = &ls[i];
                     ls[i].remain = 1;
 
-                    if (ls[n].backlog != nls[i].backlog) {
+                    if (ls[i].backlog != nls[n].backlog) {
                         nls[n].listen = 1;
                     }
 
@@ -532,7 +532,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
 
-                    if (ls[n].deferred_accept && !nls[n].deferred_accept) {
+                    if (ls[i].deferred_accept && !nls[n].deferred_accept) {
                         nls[n].delete_deferred = 1;
 
                     } else if (ls[i].deferred_accept != nls[n].deferred_accept)
