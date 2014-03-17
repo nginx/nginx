@@ -309,8 +309,9 @@ typedef struct {
     ngx_int_t                         nfree;
 
 #if (NGX_HTTP_SSL)
-    ngx_uint_t                        ssl;    /* unsigned  ssl:1; */
+    unsigned                          ssl:1;
 #endif
+    unsigned                          proxy_protocol:1;
 } ngx_http_connection_t;
 
 

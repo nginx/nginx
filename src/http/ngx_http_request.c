@@ -343,6 +343,11 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 #endif
 
+    if (hc->addr_conf->proxy_protocol) {
+        hc->proxy_protocol = 1;
+        c->log->action = "reading PROXY protocol";
+    }
+
     if (rev->ready) {
         /* the deferred accept(), rtsig, aio, iocp */
 
@@ -368,6 +373,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 static void
 ngx_http_wait_request_handler(ngx_event_t *rev)
 {
+    u_char                    *p;
     size_t                     size;
     ssize_t                    n;
     ngx_buf_t                 *b;
@@ -457,6 +463,27 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     }
 
     b->last += n;
+
+    if (hc->proxy_protocol) {
+        hc->proxy_protocol = 0;
+
+        p = ngx_proxy_protocol_parse(c, b->pos, b->last);
+
+        if (p == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        b->pos = p;
+
+        if (b->pos == b->last) {
+            c->log->action = "waiting for request";
+            b->pos = b->start;
+            b->last = b->start;
+            ngx_post_event(rev, &ngx_posted_events);
+            return;
+        }
+    }
 
     c->log->action = "reading client request line";
 
@@ -589,7 +616,8 @@ ngx_http_create_request(ngx_connection_t *c)
 static void
 ngx_http_ssl_handshake(ngx_event_t *rev)
 {
-    u_char                    buf[1];
+    u_char                   *p, buf[NGX_PROXY_PROTOCOL_MAX_HEADER + 1];
+    size_t                    size;
     ssize_t                   n;
     ngx_err_t                 err;
     ngx_int_t                 rc;
@@ -598,6 +626,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     ngx_http_ssl_srv_conf_t  *sscf;
 
     c = rev->data;
+    hc = c->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "http check ssl handshake");
@@ -613,7 +642,9 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         return;
     }
 
-    n = recv(c->fd, (char *) buf, 1, MSG_PEEK);
+    size = hc->proxy_protocol ? sizeof(buf) : 1;
+
+    n = recv(c->fd, (char *) buf, size, MSG_PEEK);
 
     err = ngx_socket_errno;
 
@@ -640,12 +671,39 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
         return;
     }
 
+    if (hc->proxy_protocol) {
+        hc->proxy_protocol = 0;
+
+        p = ngx_proxy_protocol_parse(c, buf, buf + n);
+
+        if (p == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        size = p - buf;
+
+        if (c->recv(c, buf, size) != (ssize_t) size) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        c->log->action = "SSL handshaking";
+
+        if (n == (ssize_t) size) {
+            ngx_post_event(rev, &ngx_posted_events);
+            return;
+        }
+
+        n = 1;
+        buf[0] = *p;
+    }
+
     if (n == 1) {
         if (buf[0] & 0x80 /* SSLv2 */ || buf[0] == 0x16 /* SSLv3/TLSv1 */) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                            "https ssl handshake: 0x%02Xd", buf[0]);
 
-            hc = c->data;
             sscf = ngx_http_get_module_srv_conf(hc->conf_ctx,
                                                 ngx_http_ssl_module);
 

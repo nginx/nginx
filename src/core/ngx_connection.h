@@ -139,6 +139,8 @@ struct ngx_connection_s {
     socklen_t           socklen;
     ngx_str_t           addr_text;
 
+    ngx_str_t           proxy_protocol_addr;
+
 #if (NGX_SSL)
     ngx_ssl_connection_t  *ssl;
 #endif

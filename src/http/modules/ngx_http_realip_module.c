@@ -13,6 +13,7 @@
 #define NGX_HTTP_REALIP_XREALIP  0
 #define NGX_HTTP_REALIP_XFWD     1
 #define NGX_HTTP_REALIP_HEADER   2
+#define NGX_HTTP_REALIP_PROXY    3
 
 
 typedef struct {
@@ -153,6 +154,18 @@ ngx_http_realip_handler(ngx_http_request_t *r)
         }
 
         value = NULL;
+
+        break;
+
+    case NGX_HTTP_REALIP_PROXY:
+
+        value = &r->connection->proxy_protocol_addr;
+
+        if (value->len == 0) {
+            return NGX_DECLINED;
+        }
+
+        xfwd = NULL;
 
         break;
 
@@ -340,6 +353,11 @@ ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strcmp(value[1].data, "X-Forwarded-For") == 0) {
         rlcf->type = NGX_HTTP_REALIP_XFWD;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "proxy_protocol") == 0) {
+        rlcf->type = NGX_HTTP_REALIP_PROXY;
         return NGX_CONF_OK;
     }
 
