@@ -5,6 +5,52 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.12" date="18.03.2014">
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного запроса модулем ngx_http_spdy_module
+могло происходить переполнение буфера в рабочем процессе,
+что потенциально могло приводить к выполнению произвольного кода
+(CVE-2014-0133).<br/>
+Спасибо Lucas Molas из Programa STIC, Fundación Dr. Manuel
+Sadosky, Buenos Aires, Argentina.
+</para>
+<para lang="en">
+a heap memory buffer overflow might occur in a worker process 
+while handling a specially crafted request by ngx_http_spdy_module,
+potentially resulting in arbitrary code execution
+(CVE-2014-0133).<br/>
+Thanks to Lucas Molas, researcher at Programa STIC, Fundación Dr. Manuel
+Sadosky, Buenos Aires, Argentina.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy_protocol в директивах listen и real_ip_header,
+переменная $proxy_protocol_addr.
+</para>
+<para lang="en">
+the "proxy_protocol" parameters of the "listen" and "real_ip_header" directives,
+the $proxy_protocol_addr variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве fastcgi_next_upstream.<br/>
+Спасибо Lucas Molas.
+</para>
+<para lang="en">
+in the "fastcgi_next_upstream" directive.<br/>
+Thanks to Lucas Molas.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.11" date="04.03.2014">
 
 <change type="security">
