@@ -1872,14 +1872,16 @@ static u_char *
 ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end, ngx_http_spdy_handler_pt handler)
 {
-#if 1
-    if (end - pos > NGX_SPDY_STATE_BUFFER_SIZE) {
+    size_t  size;
+
+    size = end - pos;
+
+    if (size > NGX_SPDY_STATE_BUFFER_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
                       "spdy state buffer overflow: "
                       "%z bytes required", end - pos);
         return ngx_http_spdy_state_internal_error(sc);
     }
-#endif
 
     ngx_memcpy(sc->buffer, pos, NGX_SPDY_STATE_BUFFER_SIZE);
 
