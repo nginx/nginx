@@ -1879,13 +1879,13 @@ ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
     if (size > NGX_SPDY_STATE_BUFFER_SIZE) {
         ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
                       "spdy state buffer overflow: "
-                      "%z bytes required", end - pos);
+                      "%uz bytes required", size);
         return ngx_http_spdy_state_internal_error(sc);
     }
 
     ngx_memcpy(sc->buffer, pos, NGX_SPDY_STATE_BUFFER_SIZE);
 
-    sc->buffer_used = end - pos;
+    sc->buffer_used = size;
     sc->handler = handler;
     sc->incomplete = 1;
 
