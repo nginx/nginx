@@ -251,9 +251,7 @@ ngx_http_spdy_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_spdy_main_conf_t *smcf = conf;
 
-    if (smcf->recv_buffer_size == NGX_CONF_UNSET_SIZE) {
-        smcf->recv_buffer_size = 256 * 1024;
-    }
+    ngx_conf_init_size_value(smcf->recv_buffer_size, 256 * 1024);
 
     return NGX_CONF_OK;
 }
