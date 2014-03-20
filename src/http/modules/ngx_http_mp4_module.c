@@ -258,17 +258,25 @@ static ngx_int_t ngx_http_mp4_read_stts_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
 static ngx_int_t ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
+static ngx_int_t ngx_http_mp4_crop_stts_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_stss_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
 static ngx_int_t ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
+static void ngx_http_mp4_crop_stss_data(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_ctts_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
 static void ngx_http_mp4_update_ctts_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
+static void ngx_http_mp4_crop_ctts_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_stsc_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
 static ngx_int_t ngx_http_mp4_update_stsc_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
+static ngx_int_t ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_stsz_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
@@ -1981,13 +1989,9 @@ static ngx_int_t
 ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak)
 {
-    size_t                 atom_size;
-    uint32_t               entries, count, duration;
-    uint64_t               start_time;
-    ngx_buf_t             *atom, *data;
-    ngx_uint_t             start_sample;
-    ngx_mp4_stts_atom_t   *stts_atom;
-    ngx_mp4_stts_entry_t  *entry, *end;
+    size_t                atom_size;
+    ngx_buf_t            *atom, *data;
+    ngx_mp4_stts_atom_t  *stts_atom;
 
     /*
      * mdia.minf.stbl.stts updating requires trak->timescale
@@ -2006,12 +2010,40 @@ ngx_http_mp4_update_stts_atom(ngx_http_mp4_file_t *mp4,
         return NGX_ERROR;
     }
 
-    entries = trak->time_to_sample_entries;
+    if (ngx_http_mp4_crop_stts_data(mp4, trak) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    atom_size = sizeof(ngx_mp4_stts_atom_t) + (data->last - data->pos);
+    trak->size += atom_size;
+
+    atom = trak->out[NGX_HTTP_MP4_STTS_ATOM].buf;
+    stts_atom = (ngx_mp4_stts_atom_t *) atom->pos;
+    ngx_mp4_set_32value(stts_atom->size, atom_size);
+    ngx_mp4_set_32value(stts_atom->entries, trak->time_to_sample_entries);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_mp4_crop_stts_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak)
+{
+    uint32_t               count, duration;
+    uint64_t               start_time;
+    ngx_buf_t             *data;
+    ngx_uint_t             start_sample, entries;
+    ngx_mp4_stts_entry_t  *entry, *end;
+
+    data = trak->out[NGX_HTTP_MP4_STTS_DATA].buf;
+
     start_time = (uint64_t) mp4->start * trak->timescale / 1000;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "time-to-sample start_time:%uL", start_time);
 
+    entries = trak->time_to_sample_entries;
     start_sample = 0;
     entry = (ngx_mp4_stts_entry_t *) data->pos;
     end = (ngx_mp4_stts_entry_t *) data->last;
@@ -2047,16 +2079,9 @@ found:
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "start_sample:%ui, new count:%uD", start_sample, count);
 
+    trak->time_to_sample_entries = entries;
     trak->start_sample = start_sample;
-
     data->pos = (u_char *) entry;
-    atom_size = sizeof(ngx_mp4_stts_atom_t) + (data->last - data->pos);
-    trak->size += atom_size;
-
-    atom = trak->out[NGX_HTTP_MP4_STTS_ATOM].buf;
-    stts_atom = (ngx_mp4_stts_atom_t *) atom->pos;
-    ngx_mp4_set_32value(stts_atom->size, atom_size);
-    ngx_mp4_set_32value(stts_atom->entries, entries);
 
     return NGX_OK;
 }
@@ -2138,7 +2163,7 @@ ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak)
 {
     size_t                     atom_size;
-    uint32_t                   entries, sample, start_sample, *entry, *end;
+    uint32_t                   sample, start_sample, *entry, *end;
     ngx_buf_t                 *atom, *data;
     ngx_http_mp4_stss_atom_t  *stss_atom;
 
@@ -2156,6 +2181,43 @@ ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
     if (data == NULL) {
         return NGX_OK;
     }
+
+    ngx_http_mp4_crop_stss_data(mp4, trak);
+
+    entry = (uint32_t *) data->pos;
+    end = (uint32_t *) data->last;
+
+    start_sample = trak->start_sample;
+
+    while (entry < end) {
+        sample = ngx_mp4_get_32value(entry);
+        sample -= start_sample;
+        ngx_mp4_set_32value(entry, sample);
+        entry++;
+    }
+
+    atom_size = sizeof(ngx_http_mp4_stss_atom_t) + (data->last - data->pos);
+    trak->size += atom_size;
+
+    atom = trak->out[NGX_HTTP_MP4_STSS_ATOM].buf;
+    stss_atom = (ngx_http_mp4_stss_atom_t *) atom->pos;
+
+    ngx_mp4_set_32value(stss_atom->size, atom_size);
+    ngx_mp4_set_32value(stss_atom->entries, trak->sync_samples_entries);
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_mp4_crop_stss_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak)
+{
+    uint32_t     sample, start_sample, *entry, *end;
+    ngx_buf_t   *data;
+    ngx_uint_t   entries;
+
+    data = trak->out[NGX_HTTP_MP4_STSS_DATA].buf;
 
     /* sync samples starts from 1 */
     start_sample = trak->start_sample + 1;
@@ -2184,26 +2246,7 @@ ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
 found:
 
     data->pos = (u_char *) entry;
-
-    start_sample = trak->start_sample;
-
-    while (entry < end) {
-        sample = ngx_mp4_get_32value(entry);
-        sample -= start_sample;
-        ngx_mp4_set_32value(entry, sample);
-        entry++;
-    }
-
-    atom_size = sizeof(ngx_http_mp4_stss_atom_t) + (data->last - data->pos);
-    trak->size += atom_size;
-
-    atom = trak->out[NGX_HTTP_MP4_STSS_ATOM].buf;
-    stss_atom = (ngx_http_mp4_stss_atom_t *) atom->pos;
-
-    ngx_mp4_set_32value(stss_atom->size, atom_size);
-    ngx_mp4_set_32value(stss_atom->entries, entries);
-
-    return NGX_OK;
+    trak->sync_samples_entries = entries;
 }
 
 
@@ -2287,11 +2330,9 @@ static void
 ngx_http_mp4_update_ctts_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak)
 {
-    size_t                 atom_size;
-    uint32_t               entries, count, start_sample;
-    ngx_buf_t             *atom, *data;
-    ngx_mp4_ctts_atom_t   *ctts_atom;
-    ngx_mp4_ctts_entry_t  *entry, *end;
+    size_t                atom_size;
+    ngx_buf_t            *atom, *data;
+    ngx_mp4_ctts_atom_t  *ctts_atom;
 
     /*
      * mdia.minf.stbl.ctts updating requires trak->start_sample
@@ -2307,6 +2348,38 @@ ngx_http_mp4_update_ctts_atom(ngx_http_mp4_file_t *mp4,
     if (data == NULL) {
         return;
     }
+
+    ngx_http_mp4_crop_ctts_data(mp4, trak);
+
+    if (trak->composition_offset_entries == 0) {
+        trak->out[NGX_HTTP_MP4_CTTS_ATOM].buf = NULL;
+        trak->out[NGX_HTTP_MP4_CTTS_DATA].buf = NULL;
+        return;
+    }
+
+    atom_size = sizeof(ngx_mp4_ctts_atom_t) + (data->last - data->pos);
+    trak->size += atom_size;
+
+    atom = trak->out[NGX_HTTP_MP4_CTTS_ATOM].buf;
+    ctts_atom = (ngx_mp4_ctts_atom_t *) atom->pos;
+
+    ngx_mp4_set_32value(ctts_atom->size, atom_size);
+    ngx_mp4_set_32value(ctts_atom->entries, trak->composition_offset_entries);
+
+    return;
+}
+
+
+static void
+ngx_http_mp4_crop_ctts_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak)
+{
+    uint32_t               count, start_sample;
+    ngx_buf_t             *data;
+    ngx_uint_t             entries;
+    ngx_mp4_ctts_entry_t  *entry, *end;
+
+    data = trak->out[NGX_HTTP_MP4_CTTS_DATA].buf;
 
     /* sync samples starts from 1 */
     start_sample = trak->start_sample + 1;
@@ -2332,24 +2405,15 @@ ngx_http_mp4_update_ctts_atom(ngx_http_mp4_file_t *mp4,
          entry++;
     }
 
-    trak->out[NGX_HTTP_MP4_CTTS_ATOM].buf = NULL;
-    trak->out[NGX_HTTP_MP4_CTTS_DATA].buf = NULL;
+    data->pos = (u_char *) end;
+    trak->composition_offset_entries = 0;
 
     return;
 
 found:
 
     data->pos = (u_char *) entry;
-    atom_size = sizeof(ngx_mp4_ctts_atom_t) + (data->last - data->pos);
-    trak->size += atom_size;
-
-    atom = trak->out[NGX_HTTP_MP4_CTTS_ATOM].buf;
-    ctts_atom = (ngx_mp4_ctts_atom_t *) atom->pos;
-
-    ngx_mp4_set_32value(ctts_atom->size, atom_size);
-    ngx_mp4_set_32value(ctts_atom->entries, entries);
-
-    return;
+    trak->composition_offset_entries = entries;
 }
 
 
@@ -2428,11 +2492,10 @@ ngx_http_mp4_update_stsc_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak)
 {
     size_t                 atom_size;
-    uint32_t               start_sample, entries, chunk, samples, id,
-                           next_chunk, n;
-    ngx_buf_t             *atom, *data, *buf;
+    uint32_t               chunk;
+    ngx_buf_t             *atom, *data;
     ngx_mp4_stsc_atom_t   *stsc_atom;
-    ngx_mp4_stsc_entry_t  *entry, *first, *end;
+    ngx_mp4_stsc_entry_t  *entry, *end;
 
     /*
      * mdia.minf.stbl.stsc updating requires trak->start_sample
@@ -2458,6 +2521,46 @@ ngx_http_mp4_update_stsc_atom(ngx_http_mp4_file_t *mp4,
                       mp4->file.name.data);
         return NGX_ERROR;
     }
+
+    if (ngx_http_mp4_crop_stsc_data(mp4, trak) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    entry = (ngx_mp4_stsc_entry_t *) data->pos;
+    end = (ngx_mp4_stsc_entry_t *) data->last;
+
+    while (entry < end) {
+        chunk = ngx_mp4_get_32value(entry->chunk);
+        chunk -= trak->start_chunk;
+        ngx_mp4_set_32value(entry->chunk, chunk);
+        entry++;
+    }
+
+    atom_size = sizeof(ngx_mp4_stsc_atom_t)
+                + trak->sample_to_chunk_entries * sizeof(ngx_mp4_stsc_entry_t);
+
+    trak->size += atom_size;
+
+    atom = trak->out[NGX_HTTP_MP4_STSC_ATOM].buf;
+    stsc_atom = (ngx_mp4_stsc_atom_t *) atom->pos;
+
+    ngx_mp4_set_32value(stsc_atom->size, atom_size);
+    ngx_mp4_set_32value(stsc_atom->entries, trak->sample_to_chunk_entries);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak)
+{
+    uint32_t               start_sample, chunk, samples, id, next_chunk, n;
+    ngx_buf_t             *data, *buf;
+    ngx_uint_t             entries, target_chunk, chunk_samples;
+    ngx_mp4_stsc_entry_t  *entry, *end, *first;
+
+    data = trak->out[NGX_HTTP_MP4_STSC_DATA].buf;
 
     start_sample = (uint32_t) trak->start_sample;
     entries = trak->sample_to_chunk_entries - 1;
@@ -2521,31 +2624,32 @@ found:
         return NGX_ERROR;
     }
 
-    trak->start_chunk = chunk - 1;
-
-    trak->start_chunk += start_sample / samples;
-    trak->chunk_samples = start_sample % samples;
+    target_chunk = chunk - 1;
+    target_chunk += start_sample / samples;
+    chunk_samples = start_sample % samples;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "start chunk:%ui, samples:%uD",
-                   trak->start_chunk, trak->chunk_samples);
+                   target_chunk, chunk_samples);
 
     data->pos = (u_char *) entry;
-    atom_size = sizeof(ngx_mp4_stsc_atom_t) + (data->last - data->pos);
 
-    ngx_mp4_set_32value(entry->chunk, 1);
+    trak->start_chunk = target_chunk;
+    trak->chunk_samples = chunk_samples;
 
-    if (trak->chunk_samples && next_chunk - trak->start_chunk == 2) {
+    ngx_mp4_set_32value(entry->chunk, trak->start_chunk + 1);
 
-        /* last chunk in the entry */
+    samples -= chunk_samples;
 
-        ngx_mp4_set_32value(entry->samples, samples - trak->chunk_samples);
+    if (chunk_samples && next_chunk - target_chunk == 2) {
 
-    } else if (trak->chunk_samples) {
+        ngx_mp4_set_32value(entry->samples, samples);
+
+    } else if (chunk_samples) {
 
         first = &trak->stsc_chunk_entry;
         ngx_mp4_set_32value(first->chunk, 1);
-        ngx_mp4_set_32value(first->samples, samples - trak->chunk_samples);
+        ngx_mp4_set_32value(first->samples, samples);
         ngx_mp4_set_32value(first->id, id);
 
         buf = &trak->stsc_chunk_buf;
@@ -2555,25 +2659,12 @@ found:
 
         trak->out[NGX_HTTP_MP4_STSC_CHUNK].buf = buf;
 
-        ngx_mp4_set_32value(entry->chunk, 2);
+        ngx_mp4_set_32value(entry->chunk, trak->start_chunk + 2);
 
         entries++;
-        atom_size += sizeof(ngx_mp4_stsc_entry_t);
     }
 
-    while (++entry < end) {
-        chunk = ngx_mp4_get_32value(entry->chunk);
-        chunk -= trak->start_chunk;
-        ngx_mp4_set_32value(entry->chunk, chunk);
-    }
-
-    trak->size += atom_size;
-
-    atom = trak->out[NGX_HTTP_MP4_STSC_ATOM].buf;
-    stsc_atom = (ngx_mp4_stsc_atom_t *) atom->pos;
-
-    ngx_mp4_set_32value(stsc_atom->size, atom_size);
-    ngx_mp4_set_32value(stsc_atom->entries, entries);
+    trak->sample_to_chunk_entries = entries;
 
     return NGX_OK;
 }
