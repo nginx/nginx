@@ -4183,7 +4183,12 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     if (r->cached) {
         r->allow_ranges = 1;
         return NGX_OK;
+    }
 
+    if (r->upstream->cacheable) {
+        r->allow_ranges = 1;
+        r->single_range = 1;
+        return NGX_OK;
     }
 
 #endif

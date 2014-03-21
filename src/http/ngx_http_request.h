@@ -528,6 +528,7 @@ struct ngx_http_request_s {
     unsigned                          filter_need_in_memory:1;
     unsigned                          filter_need_temporary:1;
     unsigned                          allow_ranges:1;
+    unsigned                          single_range:1;
 
 #if (NGX_STAT_STUB)
     unsigned                          stat_reading:1;
