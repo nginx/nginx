@@ -886,6 +886,19 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
+                if (ch == '_') {
+                    if (allow_underscores) {
+                        hash = ngx_hash(0, ch);
+                        r->lowcase_header[0] = ch;
+                        i = 1;
+
+                    } else {
+                        r->invalid_header = 1;
+                    }
+
+                    break;
+                }
+
                 if (ch == '\0') {
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
