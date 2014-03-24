@@ -2273,16 +2273,21 @@ ngx_http_mp4_update_stss_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_crop_stss_data(mp4, trak, 1);
     ngx_http_mp4_crop_stss_data(mp4, trak, 0);
 
-    entry = (uint32_t *) data->pos;
-    end = (uint32_t *) data->last;
+    if (trak->sync_samples_entries) {
+        entry = (uint32_t *) data->pos;
+        end = (uint32_t *) data->last;
 
-    start_sample = trak->start_sample;
+        start_sample = trak->start_sample;
 
-    while (entry < end) {
-        sample = ngx_mp4_get_32value(entry);
-        sample -= start_sample;
-        ngx_mp4_set_32value(entry, sample);
-        entry++;
+        while (entry < end) {
+            sample = ngx_mp4_get_32value(entry);
+            sample -= start_sample;
+            ngx_mp4_set_32value(entry, sample);
+            entry++;
+        }
+
+    } else {
+        trak->out[NGX_HTTP_MP4_STSS_DATA].buf = NULL;
     }
 
     atom_size = sizeof(ngx_http_mp4_stss_atom_t) + (data->last - data->pos);
