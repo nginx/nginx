@@ -1049,6 +1049,15 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     if (r->headers_in.headers.part.elts == NULL) {
 
         if (buf->last - buf->pos < NGX_SPDY_NV_NUM_SIZE) {
+
+            if (complete) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent SYN_STREAM frame "
+                              "with invalid HEADERS block");
+                ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+                return ngx_http_spdy_state_protocol_error(sc);
+            }
+
             return ngx_http_spdy_state_save(sc, pos, end,
                                             ngx_http_spdy_state_headers);
         }
