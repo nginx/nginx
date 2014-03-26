@@ -1196,10 +1196,10 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         }
     }
 
-    if (buf->pos != buf->last) {
-        /* TODO: improve error message */
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "end %ui %p %p", complete, buf->pos, buf->last);
+    if (buf->pos != buf->last || sc->zstream_in.avail_in) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent SYN_STREAM frame "
+                      "with invalid HEADERS block");
         ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
         return ngx_http_spdy_state_protocol_error(sc);
     }
