@@ -1609,6 +1609,19 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         stream->in_closed = 1;
 
+        if (r->headers_in.content_length_n < 0) {
+            r->headers_in.content_length_n = rb->rest;
+
+        } else if (r->headers_in.content_length_n != rb->rest) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client prematurely closed stream: "
+                          "%O of %O bytes of request body received",
+                          rb->rest, r->headers_in.content_length_n);
+
+            stream->skip_data = NGX_SPDY_DATA_ERROR;
+            goto error;
+        }
+
         if (tf) {
             ngx_memzero(buf, sizeof(ngx_buf_t));
 
@@ -1617,10 +1630,6 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
             buf->file = &tf->file;
 
             rb->buf = NULL;
-        }
-
-        if (r->headers_in.content_length_n < 0) {
-            r->headers_in.content_length_n = rb->rest;
         }
 
         if (rb->post_handler) {
