@@ -1528,7 +1528,6 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
         complete = 1;
 
     } else {
-        sc->length -= size;
         complete = 0;
     }
 
@@ -1570,6 +1569,8 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
                 goto error;
             }
         }
+
+        sc->length -= size;
 
         if (tf) {
             buf->start = pos;
