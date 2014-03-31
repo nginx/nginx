@@ -312,15 +312,12 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         continue;
     }
 
-    ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
-                  "could not build the %s, you should increase "
-                  "either %s_max_size: %i or %s_bucket_size: %i",
+    ngx_log_error(NGX_LOG_WARN, hinit->pool->log, 0,
+                  "could not build optimal %s, you should increase "
+                  "either %s_max_size: %i or %s_bucket_size: %i; "
+                  "ignoring %s_bucket_size",
                   hinit->name, hinit->name, hinit->max_size,
-                  hinit->name, hinit->bucket_size);
-
-    ngx_free(test);
-
-    return NGX_ERROR;
+                  hinit->name, hinit->bucket_size, hinit->name);
 
 found:
 
