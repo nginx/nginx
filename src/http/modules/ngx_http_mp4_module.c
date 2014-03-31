@@ -1507,7 +1507,7 @@ ngx_http_mp4_read_tkhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 
     start_time = (uint64_t) mp4->start * mp4->timescale / 1000;
 
-    if (duration < start_time) {
+    if (duration <= start_time) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "tkhd duration is less than start time");
         return NGX_DECLINED;
@@ -1668,7 +1668,7 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
 
     start_time = (uint64_t) mp4->start * timescale / 1000;
 
-    if (duration < start_time) {
+    if (duration <= start_time) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "mdhd duration is less than start time");
         return NGX_DECLINED;
