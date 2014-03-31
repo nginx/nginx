@@ -129,6 +129,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
         pool->pages->slab = pages;
     }
 
+    pool->log_nomem = 1;
     pool->log_ctx = &pool->zero;
     pool->zero = '\0';
 }
@@ -658,7 +659,10 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
         }
     }
 
-    ngx_slab_error(pool, NGX_LOG_CRIT, "ngx_slab_alloc() failed: no memory");
+    if (pool->log_nomem) {
+        ngx_slab_error(pool, NGX_LOG_CRIT,
+                       "ngx_slab_alloc() failed: no memory");
+    }
 
     return NULL;
 }

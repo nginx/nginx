@@ -39,6 +39,8 @@ typedef struct {
     u_char           *log_ctx;
     u_char            zero;
 
+    unsigned          log_nomem:1;
+
     void             *data;
     void             *addr;
 } ngx_slab_pool_t;
