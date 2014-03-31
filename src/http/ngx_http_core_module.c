@@ -3710,8 +3710,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->types_hash_max_size, 1024);
 
     ngx_conf_merge_uint_value(conf->types_hash_bucket_size,
-                              prev->types_hash_bucket_size,
-                              ngx_cacheline_size);
+                              prev->types_hash_bucket_size, 64);
 
     conf->types_hash_bucket_size = ngx_align(conf->types_hash_bucket_size,
                                              ngx_cacheline_size);
