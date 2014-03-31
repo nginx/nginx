@@ -282,7 +282,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         start = hinit->max_size - 1000;
     }
 
-    for (size = start; size < hinit->max_size; size++) {
+    for (size = start; size <= hinit->max_size; size++) {
 
         ngx_memzero(test, size * sizeof(u_short));
 
