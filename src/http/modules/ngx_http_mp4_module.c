@@ -2154,11 +2154,21 @@ ngx_http_mp4_crop_stts_data(ngx_http_mp4_file_t *mp4,
         entry++;
     }
 
-    ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
-                  "%s time is out mp4 stts samples in \"%s\"",
-                  start ? "start" : "end", mp4->file.name.data);
+    if (start) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "start time is out mp4 stts samples in \"%s\"",
+                      mp4->file.name.data);
 
-    return NGX_ERROR;
+        return NGX_ERROR;
+
+    } else {
+        trak->end_sample = trak->start_sample + start_sample;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
+                       "end_sample:%ui", trak->end_sample);
+
+        return NGX_OK;
+    }
 
 found:
 
