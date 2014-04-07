@@ -625,6 +625,20 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     r = fc->data;
     stream = r->spdy_stream;
 
+#if (NGX_SUPPRESS_WARN)
+    size = 0;
+#endif
+
+    while (in) {
+        size = ngx_buf_size(in->buf);
+
+        if (size || in->buf->last_buf) {
+            break;
+        }
+
+        in = in->next;
+    }
+
     if (in == NULL) {
 
         if (stream->queued) {
@@ -637,8 +651,6 @@ ngx_http_spdy_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     }
 
     sc = stream->connection;
-
-    size = ngx_buf_size(in->buf);
 
     if (size && ngx_http_spdy_flow_control(sc, stream) == NGX_DECLINED) {
         fc->write->delayed = 1;
@@ -850,48 +862,45 @@ ngx_http_spdy_filter_get_data_frame(ngx_http_spdy_stream_t *stream,
                    "spdy:%ui create DATA frame %p: len:%uz flags:%ui",
                    stream->id, frame, len, flags);
 
-    if (len || flags) {
+    cl = ngx_chain_get_free_buf(stream->request->pool,
+                                &stream->free_data_headers);
+    if (cl == NULL) {
+        return NULL;
+    }
 
-        cl = ngx_chain_get_free_buf(stream->request->pool,
-                                    &stream->free_data_headers);
-        if (cl == NULL) {
+    buf = cl->buf;
+
+    if (buf->start) {
+        p = buf->start;
+        buf->pos = p;
+
+        p += NGX_SPDY_SID_SIZE;
+
+        (void) ngx_spdy_frame_write_flags_and_len(p, flags, len);
+
+    } else {
+        p = ngx_palloc(stream->request->pool, NGX_SPDY_FRAME_HEADER_SIZE);
+        if (p == NULL) {
             return NULL;
         }
 
-        buf = cl->buf;
+        buf->pos = p;
+        buf->start = p;
 
-        if (buf->start) {
-            p = buf->start;
-            buf->pos = p;
+        p = ngx_spdy_frame_write_sid(p, stream->id);
+        p = ngx_spdy_frame_write_flags_and_len(p, flags, len);
 
-            p += NGX_SPDY_SID_SIZE;
+        buf->last = p;
+        buf->end = p;
 
-            (void) ngx_spdy_frame_write_flags_and_len(p, flags, len);
-
-        } else {
-            p = ngx_palloc(stream->request->pool, NGX_SPDY_FRAME_HEADER_SIZE);
-            if (p == NULL) {
-                return NULL;
-            }
-
-            buf->pos = p;
-            buf->start = p;
-
-            p = ngx_spdy_frame_write_sid(p, stream->id);
-            p = ngx_spdy_frame_write_flags_and_len(p, flags, len);
-
-            buf->last = p;
-            buf->end = p;
-
-            buf->tag = (ngx_buf_tag_t) &ngx_http_spdy_filter_get_data_frame;
-            buf->memory = 1;
-        }
-
-        cl->next = first;
-        first = cl;
-
-        last->buf->flush = 1;
+        buf->tag = (ngx_buf_tag_t) &ngx_http_spdy_filter_get_data_frame;
+        buf->memory = 1;
     }
+
+    cl->next = first;
+    first = cl;
+
+    last->buf->flush = 1;
 
     frame->first = first;
     frame->last = last;
