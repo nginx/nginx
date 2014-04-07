@@ -106,7 +106,7 @@ fi
 
 # precompiled headers
 CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
-CORE_LINK="$NGX_OBJS/ngx_pch.obj"
+CORE_LINK="$CORE_LINK $NGX_OBJS/ngx_pch.obj"
 NGX_PCH="$NGX_OBJS/ngx_config.pch"
 NGX_BUILD_PCH="-Ycngx_config.h -Fp$NGX_OBJS/ngx_config.pch"
 NGX_USE_PCH="-Yungx_config.h -Fp$NGX_OBJS/ngx_config.pch"
