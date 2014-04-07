@@ -1498,7 +1498,6 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
     ssize_t                    n;
     ngx_buf_t                 *buf;
     ngx_int_t                  rc;
-    ngx_uint_t                 complete;
     ngx_temp_file_t           *tf;
     ngx_http_request_t        *r;
     ngx_http_spdy_stream_t    *stream;
@@ -1523,12 +1522,8 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
 
     size = end - pos;
 
-    if (size >= sc->length) {
+    if (size > sc->length) {
         size = sc->length;
-        complete = 1;
-
-    } else {
-        complete = 0;
     }
 
     r = stream->request;
@@ -1600,7 +1595,7 @@ ngx_http_spdy_state_read_data(ngx_http_spdy_connection_t *sc, u_char *pos,
         r->request_length += size;
     }
 
-    if (!complete) {
+    if (sc->length) {
         return ngx_http_spdy_state_save(sc, pos, end,
                                         ngx_http_spdy_state_read_data);
     }
