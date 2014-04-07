@@ -2962,6 +2962,16 @@ ngx_http_spdy_run_request(ngx_http_request_t *r)
         return;
     }
 
+    if (r->headers_in.content_length_n > 0 && r->spdy_stream->in_closed) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client prematurely closed stream");
+
+        r->spdy_stream->skip_data = NGX_SPDY_DATA_ERROR;
+
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return;
+    }
+
     ngx_http_process_request(r);
 }
 
