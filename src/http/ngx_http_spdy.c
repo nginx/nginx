@@ -47,11 +47,11 @@
 
 
 #define ngx_spdy_ctl_frame_check(h)                                           \
-    (((h) & 0xffffff00) == ngx_spdy_ctl_frame_head(0))
+    (((h) & 0xffff0000) == ngx_spdy_ctl_frame_head(0))
 #define ngx_spdy_data_frame_check(h)                                          \
     (!((h) & (uint32_t) NGX_SPDY_CTL_BIT << 31))
 
-#define ngx_spdy_ctl_frame_type(h)   ((h) & 0x000000ff)
+#define ngx_spdy_ctl_frame_type(h)   ((h) & 0x0000ffff)
 #define ngx_spdy_frame_flags(p)      ((p) >> 24)
 #define ngx_spdy_frame_length(p)     ((p) & 0x00ffffff)
 #define ngx_spdy_frame_id(p)         ((p) & 0x00ffffff)
@@ -836,7 +836,8 @@ static u_char *
 ngx_http_spdy_state_head(ngx_http_spdy_connection_t *sc, u_char *pos,
     u_char *end)
 {
-    uint32_t  head, flen;
+    uint32_t    head, flen;
+    ngx_uint_t  type;
 
     if (end - pos < NGX_SPDY_FRAME_HEADER_SIZE) {
         return ngx_http_spdy_state_save(sc, pos, end,
@@ -859,7 +860,9 @@ ngx_http_spdy_state_head(ngx_http_spdy_connection_t *sc, u_char *pos,
                    head, sc->flags, sc->length);
 
     if (ngx_spdy_ctl_frame_check(head)) {
-        switch (ngx_spdy_ctl_frame_type(head)) {
+        type = ngx_spdy_ctl_frame_type(head);
+
+        switch (type) {
 
         case NGX_SPDY_SYN_STREAM:
             return ngx_http_spdy_state_syn_stream(sc, pos, end);
@@ -885,7 +888,9 @@ ngx_http_spdy_state_head(ngx_http_spdy_connection_t *sc, u_char *pos,
         case NGX_SPDY_WINDOW_UPDATE:
             return ngx_http_spdy_state_window_update(sc, pos, end);
 
-        default: /* TODO logging */
+        default:
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
+                           "spdy control frame with unknown type %ui", type);
             return ngx_http_spdy_state_skip(sc, pos, end);
         }
     }
