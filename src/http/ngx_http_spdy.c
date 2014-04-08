@@ -1421,7 +1421,7 @@ ngx_http_spdy_state_data(ngx_http_spdy_connection_t *sc, u_char *pos,
         ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
                       "client violated connection flow control: length of "
                       "received DATA frame %uz, while available window %uz",
-                      stream->id, sc->length, sc->recv_window);
+                      sc->length, sc->recv_window);
 
         return ngx_http_spdy_state_protocol_error(sc);
     }
