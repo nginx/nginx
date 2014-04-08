@@ -5,6 +5,99 @@
 <change_log title="nginx">
 
 
+<changes ver="1.5.13" date="08.04.2014">
+
+<change type="change">
+<para lang="ru">
+улучшена обработка хэш-таблиц;
+в директивах variables_hash_max_size и types_hash_bucket_size
+значения по умолчанию изменены на 1024 и 64 соответственно.
+</para>
+<para lang="en">
+improved hash table handling;
+the default values of the "variables_hash_max_size" and
+"types_hash_bucket_size" were changed to 1024 and 64 respectively.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_mp4_module теперь понимает аргумент end.
+</para>
+<para lang="en">
+the ngx_http_mp4_module now supports the "end" argument.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка byte ranges модулем ngx_http_mp4_module и при сохранении
+ответов в кэш.
+</para>
+<para lang="en">
+byte ranges support in the ngx_http_mp4_module and while saving responses
+to cache.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx не пишет в лог сообщения "ngx_slab_alloc() failed: no memory"
+при использовании разделяемой памяти в ssl_session_cache
+и в модуле ngx_http_limit_req_module.
+</para>
+<para lang="en">
+alerts "ngx_slab_alloc() failed: no memory" no longer logged
+when using shared memory in the "ssl_session_cache" directive
+and in the ngx_http_limit_req_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива underscores_in_headers
+не разрешала подчёркивание в первом символе заголовка.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "underscores_in_headers" directive
+did not allow underscore as a first character of a header.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+cache manager мог нагружать процессор при выходе в nginx/Windows.
+</para>
+<para lang="en">
+cache manager might hog CPU on exit in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании ssl_session_cache с параметром shared
+рабочий процесс nginx/Windows завершался аварийно.
+</para>
+<para lang="en">
+nginx/Windows terminated abnormally
+if the "ssl_session_cache" directive was used with the "shared" parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.12" date="18.03.2014">
 
 <change type="security">
