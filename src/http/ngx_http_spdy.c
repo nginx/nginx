@@ -1412,8 +1412,6 @@ ngx_http_spdy_state_data(ngx_http_spdy_connection_t *sc, u_char *pos,
 {
     ngx_http_spdy_stream_t  *stream;
 
-    stream = sc->stream;
-
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy DATA frame");
 
@@ -1440,6 +1438,8 @@ ngx_http_spdy_state_data(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         sc->recv_window = NGX_SPDY_MAX_WINDOW;
     }
+
+    stream = sc->stream;
 
     if (stream == NULL) {
         return ngx_http_spdy_state_skip(sc, pos, end);
