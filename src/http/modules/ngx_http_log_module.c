@@ -67,6 +67,7 @@ typedef struct {
     time_t                      disk_full_time;
     time_t                      error_log_time;
     ngx_http_log_fmt_t         *format;
+    ngx_http_complex_value_t   *filter;
 } ngx_http_log_t;
 
 
@@ -240,6 +241,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
 {
     u_char                   *line, *p;
     size_t                    len;
+    ngx_str_t                 val;
     ngx_uint_t                i, l;
     ngx_http_log_t           *log;
     ngx_http_log_op_t        *op;
@@ -257,6 +259,16 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
     log = lcf->logs->elts;
     for (l = 0; l < lcf->logs->nelts; l++) {
+
+        if (log[l].filter) {
+            if (ngx_http_complex_value(r, log[l].filter, &val) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            if (val.len == 0 || (val.len == 1 && val.data[0] == '0')) {
+                continue;
+            }
+        }
 
         if (ngx_time() == log[l].disk_full_time) {
 
@@ -1085,16 +1097,17 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_log_loc_conf_t *llcf = conf;
 
-    ssize_t                     size;
-    ngx_int_t                   gzip;
-    ngx_uint_t                  i, n;
-    ngx_msec_t                  flush;
-    ngx_str_t                  *value, name, s;
-    ngx_http_log_t             *log;
-    ngx_http_log_buf_t         *buffer;
-    ngx_http_log_fmt_t         *fmt;
-    ngx_http_log_main_conf_t   *lmcf;
-    ngx_http_script_compile_t   sc;
+    ssize_t                            size;
+    ngx_int_t                          gzip;
+    ngx_uint_t                         i, n;
+    ngx_msec_t                         flush;
+    ngx_str_t                         *value, name, s, filter;
+    ngx_http_log_t                    *log;
+    ngx_http_log_buf_t                *buffer;
+    ngx_http_log_fmt_t                *fmt;
+    ngx_http_log_main_conf_t          *lmcf;
+    ngx_http_script_compile_t          sc;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
@@ -1189,6 +1202,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     size = 0;
     flush = 0;
     gzip = 0;
+    filter.len = 0;
 
     for (i = 3; i < cf->args->nelts; i++) {
 
@@ -1253,6 +1267,12 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "nginx was built without zlib support");
             return NGX_CONF_ERROR;
 #endif
+        }
+
+        if (ngx_strncmp(value[i].data, "if=", 3) == 0) {
+            filter.len = value[i].len - 3;
+            filter.data = value[i].data + 3;
+            continue;
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1322,6 +1342,23 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         log->file->flush = ngx_http_log_flush;
         log->file->data = buffer;
+    }
+
+    if (filter.len) {
+        log->filter = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+        if (log->filter == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &filter;
+        ccv.complex_value = log->filter;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     return NGX_CONF_OK;
