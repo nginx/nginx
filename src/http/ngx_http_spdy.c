@@ -943,7 +943,7 @@ ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     if (sc->processing >= sscf->concurrent_streams) {
 
         ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
-                      "spdy concurrent streams excessed %ui", sc->processing);
+                      "spdy concurrent streams exceeded %ui", sc->processing);
 
         if (ngx_http_spdy_send_rst_stream(sc, sid, NGX_SPDY_REFUSED_STREAM,
                                           prio)
