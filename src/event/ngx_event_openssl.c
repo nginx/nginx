@@ -2418,7 +2418,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     if (enc == 1) {
         /* encrypt session ticket */
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "ssl session ticket encrypt, key: \"%*s\" (%s session)",
                        ngx_hex_dump(buf, key[0].name, 16) - buf, buf,
                        SSL_session_reused(ssl_conn) ? "reused" : "new");
@@ -2440,7 +2440,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
             }
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "ssl session ticket decrypt, key: \"%*s\" not found",
                        ngx_hex_dump(buf, name, 16) - buf, buf);
 
@@ -2448,7 +2448,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
     found:
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "ssl session ticket decrypt, key: \"%*s\"%s",
                        ngx_hex_dump(buf, key[i].name, 16) - buf, buf,
                        (i == 0) ? " (default)" : "");
