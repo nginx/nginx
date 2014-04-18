@@ -273,6 +273,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_session_reused"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_reused, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_server_name"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_server_name, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_cert"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_certificate, NGX_HTTP_VAR_CHANGEABLE, 0 },
 

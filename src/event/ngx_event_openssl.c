@@ -2545,6 +2545,28 @@ ngx_ssl_get_session_reused(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+
+    const char  *servername;
+
+    servername = SSL_get_servername(c->ssl->connection,
+                                    TLSEXT_NAMETYPE_host_name);
+    if (servername) {
+        s->data = (u_char *) servername;
+        s->len = ngx_strlen(servername);
+        return NGX_OK;
+    }
+
+#endif
+
+    s->len = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     size_t   len;
