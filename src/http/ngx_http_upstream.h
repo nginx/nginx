@@ -195,6 +195,9 @@ typedef struct {
 #if (NGX_HTTP_SSL)
     ngx_ssl_t                       *ssl;
     ngx_flag_t                       ssl_session_reuse;
+
+    ngx_http_complex_value_t        *ssl_name;
+    ngx_flag_t                       ssl_server_name;
 #endif
 
     ngx_str_t                        module;
@@ -322,6 +325,10 @@ struct ngx_http_upstream_s {
     ngx_str_t                        method;
     ngx_str_t                        schema;
     ngx_str_t                        uri;
+
+#if (NGX_HTTP_SSL)
+    ngx_str_t                        ssl_name;
+#endif
 
     ngx_http_cleanup_pt             *cleanup;
 
