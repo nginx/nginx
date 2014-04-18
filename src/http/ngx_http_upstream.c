@@ -1364,7 +1364,7 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     c->sendfile = 0;
     u->output.sendfile = 0;
 
-    if (u->conf->ssl_server_name) {
+    if (u->conf->ssl_server_name || u->conf->ssl_verify) {
         if (ngx_http_upstream_ssl_name(r, u, c) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1396,6 +1396,7 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
 static void
 ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
 {
+    long                  rc;
     ngx_http_request_t   *r;
     ngx_http_upstream_t  *u;
 
@@ -1403,6 +1404,24 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
     u = r->upstream;
 
     if (c->ssl->handshaked) {
+
+        if (u->conf->ssl_verify) {
+            rc = SSL_get_verify_result(c->ssl->connection);
+
+            if (rc != X509_V_OK) {
+                ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                              "upstream SSL certificate verify error: (%l:%s)",
+                              rc, X509_verify_cert_error_string(rc));
+                goto failed;
+            }
+
+            if (ngx_ssl_check_host(c, &u->ssl_name) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                              "upstream SSL certificate does not match \"%V\"",
+                              &u->ssl_name);
+                goto failed;
+            }
+        }
 
         if (u->conf->ssl_session_reuse) {
             u->peer.save_session(&u->peer, u->peer.data);
@@ -1418,6 +1437,8 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
         ngx_http_run_posted_requests(c);
         return;
     }
+
+failed:
 
     c = r->connection;
 
@@ -1467,6 +1488,10 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     if (p != NULL) {
         name.len = p - name.data;
+    }
+
+    if (!u->conf->ssl_server_name) {
+        goto done;
     }
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME

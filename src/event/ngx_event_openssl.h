@@ -150,6 +150,8 @@ ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
      || n == X509_V_ERR_CERT_UNTRUSTED                                        \
      || n == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)
 
+ngx_int_t ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name);
+
 
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);

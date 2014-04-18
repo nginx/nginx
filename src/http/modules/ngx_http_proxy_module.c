@@ -81,6 +81,9 @@ typedef struct {
     ngx_uint_t                     ssl;
     ngx_uint_t                     ssl_protocols;
     ngx_str_t                      ssl_ciphers;
+    ngx_uint_t                     ssl_verify_depth;
+    ngx_str_t                      ssl_trusted_certificate;
+    ngx_str_t                      ssl_crl;
 #endif
 } ngx_http_proxy_loc_conf_t;
 
@@ -565,6 +568,34 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.ssl_server_name),
+      NULL },
+
+    { ngx_string("proxy_ssl_verify"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ssl_verify),
+      NULL },
+
+    { ngx_string("proxy_ssl_verify_depth"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_verify_depth),
+      NULL },
+
+    { ngx_string("proxy_ssl_trusted_certificate"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_trusted_certificate),
+      NULL },
+
+    { ngx_string("proxy_ssl_crl"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_crl),
       NULL },
 
 #endif
@@ -2418,6 +2449,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->ssl = 0;
      *     conf->ssl_protocols = 0;
      *     conf->ssl_ciphers = { 0, NULL };
+     *     conf->ssl_trusted_certificate = { 0, NULL };
+     *     conf->ssl_crl = { 0, NULL };
      */
 
     conf->upstream.store = NGX_CONF_UNSET;
@@ -2460,6 +2493,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 #if (NGX_HTTP_SSL)
     conf->upstream.ssl_session_reuse = NGX_CONF_UNSET;
     conf->upstream.ssl_server_name = NGX_CONF_UNSET;
+    conf->upstream.ssl_verify = NGX_CONF_UNSET;
+    conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
 #endif
 
     /* "proxy_cyclic_temp_file" is disabled */
@@ -2749,6 +2784,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.ssl_server_name,
                               prev->upstream.ssl_server_name, 0);
+    ngx_conf_merge_value(conf->upstream.ssl_verify,
+                              prev->upstream.ssl_verify, 0);
+    ngx_conf_merge_uint_value(conf->ssl_verify_depth,
+                              prev->ssl_verify_depth, 1);
+    ngx_conf_merge_str_value(conf->ssl_trusted_certificate,
+                              prev->ssl_trusted_certificate, "");
+    ngx_conf_merge_str_value(conf->ssl_crl, prev->ssl_crl, "");
 
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -3816,6 +3858,26 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
                       "SSL_CTX_set_cipher_list(\"%V\") failed",
                       &plcf->ssl_ciphers);
         return NGX_ERROR;
+    }
+
+    if (plcf->upstream.ssl_verify) {
+        if (plcf->ssl_trusted_certificate.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no proxy_ssl_trusted_certificate for proxy_ssl_verify");
+            return NGX_ERROR;
+        }
+
+        if (ngx_ssl_trusted_certificate(cf, plcf->upstream.ssl,
+                                        &plcf->ssl_trusted_certificate,
+                                        plcf->ssl_verify_depth)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        if (ngx_ssl_crl(cf, plcf->upstream.ssl, &plcf->ssl_crl) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
