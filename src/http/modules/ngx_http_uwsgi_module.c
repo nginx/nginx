@@ -2012,6 +2012,14 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
         return NGX_ERROR;
     }
 
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_ERROR;
+    }
+
+    cln->handler = ngx_ssl_cleanup_ctx;
+    cln->data = uwcf->upstream.ssl;
+
     if (SSL_CTX_set_cipher_list(uwcf->upstream.ssl->ctx,
                                 (const char *) uwcf->ssl_ciphers.data)
         == 0)
@@ -2021,14 +2029,6 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
                       &uwcf->ssl_ciphers);
         return NGX_ERROR;
     }
-
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
-    if (cln == NULL) {
-        return NGX_ERROR;
-    }
-
-    cln->handler = ngx_ssl_cleanup_ctx;
-    cln->data = uwcf->upstream.ssl;
 
     return NGX_OK;
 }

@@ -3774,6 +3774,14 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
         return NGX_ERROR;
     }
 
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_ERROR;
+    }
+
+    cln->handler = ngx_ssl_cleanup_ctx;
+    cln->data = plcf->upstream.ssl;
+
     if (SSL_CTX_set_cipher_list(plcf->upstream.ssl->ctx,
                                 (const char *) plcf->ssl_ciphers.data)
         == 0)
@@ -3783,14 +3791,6 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
                       &plcf->ssl_ciphers);
         return NGX_ERROR;
     }
-
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
-    if (cln == NULL) {
-        return NGX_ERROR;
-    }
-
-    cln->handler = ngx_ssl_cleanup_ctx;
-    cln->data = plcf->upstream.ssl;
 
     return NGX_OK;
 }
