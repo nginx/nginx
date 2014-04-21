@@ -3,7 +3,7 @@ make -f misc/GNUmakefile release
 
 the required tools:
 *) xsltproc to build CHANGES,
-*) java and XSLScript ( http://pault.com/pault/XSLScript/ ) to build XSLTs
+*) xslscript.pl ( http://hg.nginx.org/xslscript ) to build XSLTs
    from XSLScript sources.
 
 
