@@ -1341,16 +1341,8 @@ ngx_http_spdy_state_window_update(ngx_http_spdy_connection_t *sc, u_char *pos,
         stream = ngx_http_spdy_get_stream_by_id(sc, sid);
 
         if (stream == NULL) {
-            ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
-                          "client sent WINDOW_UPDATE frame "
-                          "for unknown stream %ui", sid);
-
-            if (ngx_http_spdy_send_rst_stream(sc, sid, NGX_SPDY_INVALID_STREAM,
-                                              NGX_SPDY_LOWEST_PRIORITY)
-                == NGX_ERROR)
-            {
-                return ngx_http_spdy_state_internal_error(sc);
-            }
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
+                           "unknown spdy stream");
 
             return ngx_http_spdy_state_complete(sc, pos, end);
         }
