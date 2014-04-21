@@ -937,6 +937,27 @@ ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy SYN_STREAM frame sid:%ui prio:%ui", sid, prio);
 
+    if (sid % 2 == 0 || sid <= sc->last_sid) {
+        ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
+                      "client sent SYN_STREAM frame "
+                      "with invalid Stream-ID %ui", sid);
+
+        stream = ngx_http_spdy_get_stream_by_id(sc, sid);
+
+        if (stream) {
+            if (ngx_http_spdy_terminate_stream(sc, stream,
+                                               NGX_SPDY_PROTOCOL_ERROR)
+                != NGX_OK)
+            {
+                return ngx_http_spdy_state_internal_error(sc);
+            }
+        }
+
+        return ngx_http_spdy_state_protocol_error(sc);
+    }
+
+    sc->last_sid = sid;
+
     sscf = ngx_http_get_module_srv_conf(sc->http_connection->conf_ctx,
                                         ngx_http_spdy_module);
 
@@ -967,8 +988,6 @@ ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc, u_char *pos,
                                       + sc->length;
 
     sc->stream = stream;
-
-    sc->last_sid = sid;
 
     return ngx_http_spdy_state_headers(sc, pos, end);
 }
