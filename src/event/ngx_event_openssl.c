@@ -2637,6 +2637,11 @@ ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *pattern)
 
         end = s + slen;
         s = ngx_strlchr(s, end, '.');
+
+        if (s == NULL) {
+            return NGX_ERROR;
+        }
+
         slen = end - s;
 
         if (plen == slen && ngx_strncasecmp(s, p, plen) == 0) {
