@@ -1511,7 +1511,7 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
      * hence we explicitly null-terminate name here
      */
 
-    p = ngx_palloc(r->pool, name.len + 1);
+    p = ngx_pnalloc(r->pool, name.len + 1);
     if (p == NULL) {
         return NGX_ERROR;
     }
