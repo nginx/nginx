@@ -2504,6 +2504,10 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 
     /* X509_check_host() is only available in OpenSSL 1.0.2+ */
 
+    if (name->len == 0) {
+        goto failed;
+    }
+
     if (X509_check_host(cert, name->data, name->len, 0) != 1) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "X509_check_host(): no match");
