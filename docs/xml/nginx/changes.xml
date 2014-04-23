@@ -673,7 +673,7 @@ in error handling in ngx_http_gunzip_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-ответы могли зависать
+ответы могли зависать,
 если использовался модуль ngx_http_spdy_module
 и директива auth_request.
 </para>
@@ -2293,7 +2293,7 @@ the "single" parameter of the "keepalive" directive is now ignored.
 <change type="change">
 <para lang="ru">
 сжатие SSL теперь отключено
-в том числе при использовании OpenSSL cтарее 1.0.0.
+в том числе при использовании OpenSSL старее 1.0.0.
 </para>
 <para lang="en">
 SSL compression is now disabled when using all versions of OpenSSL,
@@ -21030,7 +21030,7 @@ the %3F symbol in the URI was considered as the argument string start.
 
 <change type="feature">
 <para lang="ru">
-поддержка unix domain сoкетов в модуле ngx_http_proxy_module.
+поддержка unix domain сокетов в модуле ngx_http_proxy_module.
 </para>
 <para lang="en">
 the unix domain sockets support in the ngx_http_proxy_module.
