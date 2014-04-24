@@ -5,6 +5,47 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.0" date="24.04.2014">
+
+<change type="feature">
+<para lang="ru">
+проверка SSL-сертификатов бэкендов.
+</para>
+<para lang="en">
+backend SSL certificate verification.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка SNI при работе с бэкендами по SSL.
+</para>
+<para lang="en">
+support for SNI while working with SSL backends.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_server_name.
+</para>
+<para lang="en">
+the $ssl_server_name variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр if директивы access_log.
+</para>
+<para lang="en">
+the "if" parameter of the "access_log" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.5.13" date="08.04.2014">
 
 <change type="change">
