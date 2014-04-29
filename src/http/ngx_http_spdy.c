@@ -2900,7 +2900,8 @@ ngx_http_spdy_construct_request_line(ngx_http_request_t *r)
 
     p = ngx_pnalloc(r->pool, r->request_line.len + 1);
     if (p == NULL) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_http_spdy_close_stream(r->spdy_stream,
+                                   NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
