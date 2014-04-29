@@ -1195,6 +1195,8 @@ ngx_ssl_ocsp_create_request(ngx_ssl_ocsp_ctx_t *ctx)
     b->last = p;
     ctx->request = b;
 
+    OCSP_REQUEST_free(ocsp);
+
     return NGX_OK;
 
 failed:
