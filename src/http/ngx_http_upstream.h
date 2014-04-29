@@ -248,6 +248,7 @@ typedef struct {
     off_t                            content_length_n;
 
     ngx_array_t                      cache_control;
+    ngx_array_t                      cookies;
 
     unsigned                         connection_close:1;
     unsigned                         chunked:1;
@@ -363,6 +364,8 @@ typedef struct {
 } ngx_http_upstream_param_t;
 
 
+ngx_int_t ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 ngx_int_t ngx_http_upstream_header_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
