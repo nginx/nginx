@@ -533,8 +533,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     ngx_free(buf);
 
     if (rc != Z_OK) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                      "spdy deflate() failed: %d", rc);
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "deflate() failed: %d", rc);
         return NGX_ERROR;
     }
 
