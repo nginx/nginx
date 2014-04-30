@@ -105,6 +105,8 @@ static u_char *ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_headers_skip(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
+static u_char *ngx_http_spdy_state_headers_error(ngx_http_spdy_connection_t *sc,
+    u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_window_update(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_data(ngx_http_spdy_connection_t *sc,
@@ -1083,11 +1085,10 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         if (buf->last - buf->pos < NGX_SPDY_NV_NUM_SIZE) {
 
             if (complete) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent SYN_STREAM frame "
-                              "with invalid HEADERS block");
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "premature end of spdy header block");
 
-                return ngx_http_spdy_state_protocol_error(sc);
+                return ngx_http_spdy_state_headers_error(sc, pos, end);
             }
 
             return ngx_http_spdy_state_save(sc, pos, end,
@@ -1181,13 +1182,13 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "spdy again while last chunk");
 
-                return ngx_http_spdy_state_protocol_error(sc);
+                return ngx_http_spdy_state_headers_error(sc, pos, end);
             }
 
             return ngx_http_spdy_state_save(sc, pos, end,
                                             ngx_http_spdy_state_headers);
 
-        case NGX_HTTP_PARSE_INVALID_REQUEST:
+        case NGX_HTTP_PARSE_INVALID_HEADER:
 
             /* TODO: improve error message */
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -1197,12 +1198,8 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
 
             return ngx_http_spdy_state_headers_skip(sc, pos, end);
 
-        default: /* NGX_HTTP_PARSE_INVALID_HEADER */
-
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid HEADERS spdy frame");
-
-            return ngx_http_spdy_state_protocol_error(sc);
+        default: /* NGX_ERROR */
+            return ngx_http_spdy_state_headers_error(sc, pos, end);
         }
 
         /* a header line has been parsed successfully */
@@ -1211,14 +1208,13 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         if (rc != NGX_OK) {
             if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent invalid HEADERS spdy frame");
-
-                return ngx_http_spdy_state_protocol_error(sc);
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                return ngx_http_spdy_state_headers_skip(sc, pos, end);
             }
 
-            if (rc == NGX_HTTP_PARSE_INVALID_REQUEST) {
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            if (rc != NGX_ABORT) {
+                ngx_http_spdy_close_stream(sc->stream,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
             }
 
             return ngx_http_spdy_state_headers_skip(sc, pos, end);
@@ -1226,11 +1222,10 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     }
 
     if (buf->pos != buf->last || sc->zstream_in.avail_in) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent SYN_STREAM frame "
-                      "with invalid HEADERS block");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "incorrect number of spdy header block entries");
 
-        return ngx_http_spdy_state_protocol_error(sc);
+        return ngx_http_spdy_state_headers_error(sc, pos, end);
     }
 
     if (!complete) {
@@ -1289,6 +1284,33 @@ ngx_http_spdy_state_headers_skip(ngx_http_spdy_connection_t *sc, u_char *pos,
     }
 
     return ngx_http_spdy_state_complete(sc, pos, end);
+}
+
+
+static u_char *
+ngx_http_spdy_state_headers_error(ngx_http_spdy_connection_t *sc, u_char *pos,
+    u_char *end)
+{
+    ngx_http_spdy_stream_t  *stream;
+
+    stream = sc->stream;
+
+    ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
+                  "client sent SYN_STREAM frame for stream %ui "
+                  "with invalid header block", stream->id);
+
+    if (ngx_http_spdy_send_rst_stream(sc, stream->id, NGX_SPDY_PROTOCOL_ERROR,
+                                      stream->priority)
+        != NGX_OK)
+    {
+        return ngx_http_spdy_state_internal_error(sc);
+    }
+
+    stream->out_closed = 1;
+
+    ngx_http_spdy_close_stream(stream, NGX_HTTP_BAD_REQUEST);
+
+    return ngx_http_spdy_state_headers_skip(sc, pos, end);
 }
 
 
@@ -2425,7 +2447,7 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
         r->lowcase_index = ngx_spdy_frame_parse_uint32(p);
 
         if (r->lowcase_index == 0) {
-            return NGX_HTTP_PARSE_INVALID_HEADER;
+            return NGX_ERROR;
         }
 
         /* null-terminate the previous header value */
@@ -2475,11 +2497,11 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
             case LF:
             case CR:
             case ':':
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
 
             if (ch >= 'A' && ch <= 'Z') {
-                return NGX_HTTP_PARSE_INVALID_HEADER;
+                return NGX_ERROR;
             }
 
             r->invalid_header = 1;
@@ -2642,13 +2664,11 @@ ngx_http_spdy_handle_request_header(ngx_http_request_t *r)
             return sh->handler(r);
         }
 
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     h = ngx_list_push(&r->headers_in.headers);
     if (h == NULL) {
-        ngx_http_spdy_close_stream(r->spdy_stream,
-                                   NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
@@ -2752,7 +2772,7 @@ ngx_http_spdy_parse_method(ngx_http_request_t *r)
         if ((*p < 'A' || *p > 'Z') && *p != '_') {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent invalid method");
-            return NGX_HTTP_PARSE_INVALID_REQUEST;
+            return NGX_HTTP_PARSE_INVALID_HEADER;
         }
 
         p++;
@@ -2788,8 +2808,6 @@ ngx_http_spdy_parse_host(ngx_http_request_t *r)
 
     h = ngx_list_push(&r->headers_in.headers);
     if (h == NULL) {
-        ngx_http_spdy_close_stream(r->spdy_stream,
-                                   NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
@@ -2820,11 +2838,15 @@ ngx_http_spdy_parse_path(ngx_http_request_t *r)
     r->uri_end = r->header_end;
 
     if (ngx_http_parse_uri(r) != NGX_OK) {
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     if (ngx_http_process_request_uri(r) != NGX_OK) {
-        return NGX_ERROR;
+        /*
+         * request has been finalized already
+         * in ngx_http_process_request_uri()
+         */
+        return NGX_ABORT;
     }
 
     return NGX_OK;
@@ -2843,13 +2865,13 @@ ngx_http_spdy_parse_version(ngx_http_request_t *r)
     p = r->header_start;
 
     if (r->header_end - p < 8 || !(ngx_str5cmp(p, 'H', 'T', 'T', 'P', '/'))) {
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     ch = *(p + 5);
 
     if (ch < '1' || ch > '9') {
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     r->http_major = ch - '0';
@@ -2863,20 +2885,20 @@ ngx_http_spdy_parse_version(ngx_http_request_t *r)
         }
 
         if (ch < '0' || ch > '9') {
-            return NGX_HTTP_PARSE_INVALID_REQUEST;
+            return NGX_HTTP_PARSE_INVALID_HEADER;
         }
 
         r->http_major = r->http_major * 10 + ch - '0';
     }
 
     if (*p != '.') {
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     ch = *(p + 1);
 
     if (ch < '0' || ch > '9') {
-        return NGX_HTTP_PARSE_INVALID_REQUEST;
+        return NGX_HTTP_PARSE_INVALID_HEADER;
     }
 
     r->http_minor = ch - '0';
@@ -2886,7 +2908,7 @@ ngx_http_spdy_parse_version(ngx_http_request_t *r)
         ch = *p;
 
         if (ch < '0' || ch > '9') {
-            return NGX_HTTP_PARSE_INVALID_REQUEST;
+            return NGX_HTTP_PARSE_INVALID_HEADER;
         }
 
         r->http_minor = r->http_minor * 10 + ch - '0';
