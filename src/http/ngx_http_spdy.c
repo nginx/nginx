@@ -1921,6 +1921,14 @@ ngx_http_spdy_state_complete(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy frame complete pos:%p end:%p", pos, end);
 
+    if (pos > end) {
+        ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
+                      "receive buffer overrun");
+
+        ngx_debug_point();
+        return ngx_http_spdy_state_internal_error(sc);
+    }
+
     sc->handler = ngx_http_spdy_state_head;
     sc->stream = NULL;
 
