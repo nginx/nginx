@@ -1944,6 +1944,7 @@ ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
         ngx_log_error(NGX_LOG_ALERT, sc->connection->log, 0,
                       "state buffer overflow: %uz bytes required", size);
 
+        ngx_debug_point();
         return ngx_http_spdy_state_internal_error(sc);
     }
 
