@@ -103,8 +103,6 @@ static u_char *ngx_http_spdy_state_syn_stream(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
-static u_char *ngx_http_spdy_state_headers_error(ngx_http_spdy_connection_t *sc,
-    u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_headers_skip(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_window_update(ngx_http_spdy_connection_t *sc,
@@ -1100,7 +1098,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         {
             ngx_http_spdy_close_stream(sc->stream,
                                        NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return ngx_http_spdy_state_headers_error(sc, pos, end);
+            return ngx_http_spdy_state_headers_skip(sc, pos, end);
         }
 
         if (ngx_array_init(&r->headers_in.cookies, r->pool, 2,
@@ -1109,7 +1107,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         {
             ngx_http_spdy_close_stream(sc->stream,
                                        NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return ngx_http_spdy_state_headers_error(sc, pos, end);
+            return ngx_http_spdy_state_headers_skip(sc, pos, end);
         }
     }
 
@@ -1135,13 +1133,13 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                     /* TODO logging */
                     ngx_http_finalize_request(r,
                                             NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
-                    return ngx_http_spdy_state_headers_error(sc, pos, end);
+                    return ngx_http_spdy_state_headers_skip(sc, pos, end);
                 }
 
                 if (rc != NGX_OK) {
                     ngx_http_spdy_close_stream(sc->stream,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-                    return ngx_http_spdy_state_headers_error(sc, pos, end);
+                    return ngx_http_spdy_state_headers_skip(sc, pos, end);
                 }
 
                 /* null-terminate the last processed header name or value */
@@ -1190,7 +1188,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
 
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
 
-            return ngx_http_spdy_state_headers_error(sc, pos, end);
+            return ngx_http_spdy_state_headers_skip(sc, pos, end);
 
         default: /* NGX_HTTP_PARSE_INVALID_HEADER */
 
@@ -1216,7 +1214,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             }
 
-            return ngx_http_spdy_state_headers_error(sc, pos, end);
+            return ngx_http_spdy_state_headers_skip(sc, pos, end);
         }
     }
 
@@ -1239,18 +1237,6 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     ngx_http_spdy_run_request(r);
 
     return ngx_http_spdy_state_complete(sc, pos, end);
-}
-
-
-static u_char *
-ngx_http_spdy_state_headers_error(ngx_http_spdy_connection_t *sc, u_char *pos,
-    u_char *end)
-{
-    if (sc->connection->error) {
-        return ngx_http_spdy_state_internal_error(sc);
-    }
-
-    return ngx_http_spdy_state_headers_skip(sc, pos, end);
 }
 
 
