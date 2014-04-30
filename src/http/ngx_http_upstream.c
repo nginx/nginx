@@ -584,9 +584,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     if (u->resolved == NULL) {
 
         uscf = u->conf->upstream;
-#if (NGX_HTTP_SSL)
-        u->ssl_name = uscf->host;
-#endif
 
     } else {
 
@@ -679,6 +676,10 @@ found:
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
+
+#if (NGX_HTTP_SSL)
+    u->ssl_name = uscf->host;
+#endif
 
     if (uscf->peer.init(r, uscf) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
