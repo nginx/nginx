@@ -1313,6 +1313,11 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
 
     for ( ;; ) {
 
+        if (ngx_quit || ngx_terminate) {
+            wait = 1;
+            break;
+        }
+
         if (ngx_queue_empty(&cache->sh->queue)) {
             wait = 10;
             break;
