@@ -266,7 +266,7 @@ done:
             ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
                           ngx_close_file_n " %s failed",
                           filename->data);
-            return NGX_CONF_ERROR;
+            rc = NGX_ERROR;
         }
 
         cf->conf_file = prev;
