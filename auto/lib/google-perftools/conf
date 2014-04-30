@@ -52,7 +52,7 @@ else
 
 cat << END
 
-$0: error: the Google perftool module requires the Google perftools
+$0: error: the Google perftools module requires the Google perftools
 library. You can either do not enable the module or install the library.
 
 END
