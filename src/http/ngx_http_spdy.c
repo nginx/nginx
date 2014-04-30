@@ -123,6 +123,9 @@ static u_char *ngx_http_spdy_state_complete(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end);
 static u_char *ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
     u_char *pos, u_char *end, ngx_http_spdy_handler_pt handler);
+
+static u_char *ngx_http_spdy_state_inflate_error(
+    ngx_http_spdy_connection_t *sc, int rc);
 static u_char *ngx_http_spdy_state_protocol_error(
     ngx_http_spdy_connection_t *sc);
 static u_char *ngx_http_spdy_state_internal_error(
@@ -1036,11 +1039,21 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     if (z == Z_NEED_DICT) {
         z = inflateSetDictionary(&sc->zstream_in, ngx_http_spdy_dict,
                                  sizeof(ngx_http_spdy_dict));
-        if (z != Z_OK) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "spdy inflateSetDictionary() failed: %d", z);
 
-            return ngx_http_spdy_state_protocol_error(sc);
+        if (z != Z_OK) {
+            if (z == Z_DATA_ERROR) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent SYN_STREAM frame with header "
+                              "block encoded using wrong dictionary: %ul",
+                              (u_long) sc->zstream_in.adler);
+
+                return ngx_http_spdy_state_protocol_error(sc);
+            }
+
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "inflateSetDictionary() failed: %d", z);
+
+            return ngx_http_spdy_state_internal_error(sc);
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1051,10 +1064,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     }
 
     if (z != Z_OK) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "spdy inflate() failed: %d", z);
-
-        return ngx_http_spdy_state_protocol_error(sc);
+        return ngx_http_spdy_state_inflate_error(sc, z);
     }
 
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1155,10 +1165,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 z = inflate(&sc->zstream_in, Z_NO_FLUSH);
 
                 if (z != Z_OK) {
-                    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                                  "spdy inflate() failed: %d", z);
-
-                    return ngx_http_spdy_state_protocol_error(sc);
+                    return ngx_http_spdy_state_inflate_error(sc, z);
                 }
 
                 sc->length -= sc->zstream_in.next_in - pos;
@@ -1268,12 +1275,8 @@ ngx_http_spdy_state_headers_skip(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         n = inflate(&sc->zstream_in, Z_NO_FLUSH);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
-                       "spdy inflate(): %d", n);
-
         if (n != Z_OK) {
-            /* TODO: logging */
-            return ngx_http_spdy_state_protocol_error(sc);
+            return ngx_http_spdy_state_inflate_error(sc, n);
         }
     }
 
@@ -1912,6 +1915,24 @@ ngx_http_spdy_state_save(ngx_http_spdy_connection_t *sc,
 
 
 static u_char *
+ngx_http_spdy_state_inflate_error(ngx_http_spdy_connection_t *sc, int rc)
+{
+    if (rc == Z_DATA_ERROR || rc == Z_STREAM_END) {
+        ngx_log_error(NGX_LOG_INFO, sc->connection->log, 0,
+                      "client sent SYN_STREAM frame with "
+                      "corrupted header block, inflate() failed: %d", rc);
+
+        return ngx_http_spdy_state_protocol_error(sc);
+    }
+
+    ngx_log_error(NGX_LOG_ERR, sc->connection->log, 0,
+                  "inflate() failed: %d", rc);
+
+    return ngx_http_spdy_state_internal_error(sc);
+}
+
+
+static u_char *
 ngx_http_spdy_state_protocol_error(ngx_http_spdy_connection_t *sc)
 {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
@@ -1934,8 +1955,13 @@ ngx_http_spdy_state_internal_error(ngx_http_spdy_connection_t *sc)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy state internal error");
 
-    /* TODO */
+    if (sc->stream) {
+        sc->stream->out_closed = 1;
+        ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    }
+
     ngx_http_spdy_finalize_connection(sc, NGX_HTTP_INTERNAL_SERVER_ERROR);
+
     return NULL;
 }
 
