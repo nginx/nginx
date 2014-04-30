@@ -1009,7 +1009,6 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     size_t               size;
     ngx_buf_t           *buf;
     ngx_int_t            rc;
-    ngx_uint_t           complete;
     ngx_http_request_t  *r;
 
     size = end - pos;
@@ -1019,12 +1018,8 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                                         ngx_http_spdy_state_headers);
     }
 
-    if (size >= sc->length) {
+    if (size > sc->length) {
         size = sc->length;
-        complete = 1;
-
-    } else {
-        complete = 0;
     }
 
     r = sc->stream->request;
@@ -1089,7 +1084,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
 
         if (buf->last - buf->pos < NGX_SPDY_NV_NUM_SIZE) {
 
-            if (complete) {
+            if (sc->length == 0) {
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "premature end of spdy header block");
 
@@ -1181,7 +1176,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 continue;
             }
 
-            if (complete) {
+            if (sc->length == 0) {
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "premature end of spdy header block");
 
@@ -1225,7 +1220,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         return ngx_http_spdy_state_headers_error(sc, pos, end);
     }
 
-    if (!complete) {
+    if (sc->length) {
         return ngx_http_spdy_state_save(sc, pos, end,
                                         ngx_http_spdy_state_headers);
     }
