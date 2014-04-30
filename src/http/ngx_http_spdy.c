@@ -1041,7 +1041,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         if (z != Z_OK) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "spdy inflateSetDictionary() failed: %d", z);
-            ngx_http_spdy_close_stream(sc->stream, 0);
+
             return ngx_http_spdy_state_protocol_error(sc);
         }
 
@@ -1055,7 +1055,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
     if (z != Z_OK) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "spdy inflate() failed: %d", z);
-        ngx_http_spdy_close_stream(sc->stream, 0);
+
         return ngx_http_spdy_state_protocol_error(sc);
     }
 
@@ -1078,7 +1078,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                               "client sent SYN_STREAM frame "
                               "with invalid HEADERS block");
-                ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+
                 return ngx_http_spdy_state_protocol_error(sc);
             }
 
@@ -1159,7 +1159,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 if (z != Z_OK) {
                     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                                   "spdy inflate() failed: %d", z);
-                    ngx_http_spdy_close_stream(sc->stream, 0);
+
                     return ngx_http_spdy_state_protocol_error(sc);
                 }
 
@@ -1175,7 +1175,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 /* TODO: improve error message */
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "spdy again while last chunk");
-                ngx_http_spdy_close_stream(sc->stream, 0);
+
                 return ngx_http_spdy_state_protocol_error(sc);
             }
 
@@ -1196,7 +1196,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
 
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent invalid HEADERS spdy frame");
-            ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+
             return ngx_http_spdy_state_protocol_error(sc);
         }
 
@@ -1208,7 +1208,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
             if (rc == NGX_HTTP_PARSE_INVALID_HEADER) {
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                               "client sent invalid HEADERS spdy frame");
-                ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+
                 return ngx_http_spdy_state_protocol_error(sc);
             }
 
@@ -1224,7 +1224,7 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent SYN_STREAM frame "
                       "with invalid HEADERS block");
-        ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+
         return ngx_http_spdy_state_protocol_error(sc);
     }
 
@@ -1894,6 +1894,8 @@ ngx_http_spdy_state_complete(ngx_http_spdy_connection_t *sc, u_char *pos,
     u_char *end)
 {
     sc->handler = ngx_http_spdy_state_head;
+    sc->stream = NULL;
+
     return pos;
 }
 
@@ -1929,8 +1931,12 @@ ngx_http_spdy_state_protocol_error(ngx_http_spdy_connection_t *sc)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
                    "spdy state protocol error");
 
-    /* TODO */
+    if (sc->stream) {
+        ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
+    }
+
     ngx_http_spdy_finalize_connection(sc, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+
     return NULL;
 }
 
