@@ -12,6 +12,52 @@
 
 #define NGX_HTTP_STICKY_COOKIE_MAX_EXPIRES  2145916555
 
+#define ngx_http_upstream_sticky_sess_node(rbn, mb)                           \
+    (ngx_http_upstream_sticky_sess_node_t *)                                  \
+        ((char *) (rbn) - offsetof(ngx_http_upstream_sticky_sess_node_t, mb))
+
+
+typedef union {
+    u_char                                      md5[16];
+    ngx_uint_t                                  hash;
+} ngx_http_upstream_sticky_sess_key_t;
+
+
+typedef struct {
+    ngx_rbtree_t                                rbtree;
+    ngx_rbtree_node_t                           sentinel;
+
+    ngx_rbtree_t                                exp_rbtree;
+    ngx_rbtree_node_t                           exp_sentinel;
+} ngx_http_upstream_sticky_sess_shared_t;
+
+
+typedef struct {
+    ngx_http_upstream_sticky_sess_shared_t     *sh;
+    ngx_slab_pool_t                            *shpool;
+    ngx_str_t                                  *host;
+
+    ngx_msec_t                                  timeout;
+    ngx_event_t                                 event;
+} ngx_http_upstream_sticky_sess_t;
+
+
+/* session data: mapping of session ID hash to server ID */
+typedef struct {
+    ngx_rbtree_node_t                           rbnode;
+    ngx_rbtree_node_t                           enode;
+
+    union {
+        u_char                                  md5[16];
+        ngx_uint_t                              hash;
+    } u;
+
+    ngx_msec_t                                  last;
+
+    u_char                                      sid_len;
+    u_char                                      sid[NGX_HTTP_UPSTREAM_SID_LEN];
+} ngx_http_upstream_sticky_sess_node_t;
+
 
 /* per-upstream sticky configuration */
 typedef struct {
@@ -19,6 +65,8 @@ typedef struct {
     ngx_http_upstream_init_peer_pt              original_init_peer;
 
     ngx_array_t                                *lookup_vars; /* of ngx_int_t */
+    ngx_array_t                                *create_vars; /* of ngx_int_t */
+    ngx_shm_zone_t                             *shm_zone;    /* sessions */
 
     ngx_str_t                                   cookie_name;
     ngx_str_t                                   cookie_domain;
@@ -52,7 +100,9 @@ static ngx_int_t ngx_http_upstream_sticky_init_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us);
 static ngx_int_t ngx_http_upstream_sticky_get_id(
     ngx_http_upstream_sticky_srv_conf_t *stcf, ngx_http_request_t *r,
-    ngx_str_t *id);
+    ngx_array_t *vars, ngx_str_t *id);
+static void ngx_http_upstream_sticky_sess_init_key(ngx_str_t *sess_id,
+    ngx_http_upstream_sticky_sess_key_t *key);
 static ngx_int_t ngx_http_upstream_sticky_get_peer(ngx_peer_connection_t *pc,
     void *data);
 static void ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc,
@@ -71,9 +121,30 @@ static ngx_int_t ngx_http_upstream_sticky_cookie_insert(
     ngx_peer_connection_t *pc, ngx_http_upstream_sticky_peer_data_t *stp);
 
 
+static ngx_http_upstream_sticky_sess_node_t *
+    ngx_http_upstream_sticky_sess_lookup(ngx_http_upstream_sticky_sess_t *sess,
+    ngx_http_upstream_sticky_sess_key_t *key);
+static ngx_http_upstream_sticky_sess_node_t *
+    ngx_http_upstream_sticky_sess_create(ngx_http_upstream_sticky_sess_t *sess,
+    ngx_http_upstream_sticky_sess_key_t *key, ngx_str_t *sid);
+static void ngx_http_upstream_sticky_sess_rbtree_insert_value(
+    ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
+    ngx_rbtree_node_t *sentinel);
+static void ngx_http_upstream_sticky_sess_timer_handler(ngx_event_t *ev);
+static ngx_msec_t ngx_http_upstream_sticky_sess_expire(
+    ngx_http_upstream_sticky_sess_t *sess, ngx_uint_t force);
+static ngx_int_t ngx_http_upstream_sticky_sess_init_zone(
+    ngx_shm_zone_t *shm_zone, void *data);
+
+
 static void *ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_sticky(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
+    ngx_http_upstream_sticky_srv_conf_t *stcf);
+static char *ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
+    ngx_http_upstream_sticky_srv_conf_t *stcf,
+    ngx_http_upstream_srv_conf_t *us);
 
 
 static u_char expires[] = "; expires=Thu, 31-Dec-37 23:55:55 GMT";
@@ -193,7 +264,7 @@ ngx_http_upstream_sticky_init_peer(ngx_http_request_t *r,
     u->peer.save_session = ngx_http_upstream_sticky_save_session;
 #endif
 
-    ngx_http_upstream_sticky_get_id(stcf, r, &stp->id);
+    ngx_http_upstream_sticky_get_id(stcf, r, stcf->lookup_vars, &stp->id);
 
     return NGX_OK;
 }
@@ -201,15 +272,15 @@ ngx_http_upstream_sticky_init_peer(ngx_http_request_t *r,
 
 static ngx_int_t
 ngx_http_upstream_sticky_get_id(ngx_http_upstream_sticky_srv_conf_t *stcf,
-    ngx_http_request_t *r, ngx_str_t *id)
+    ngx_http_request_t *r, ngx_array_t *vars, ngx_str_t *id)
 {
     ngx_int_t                  *index;
     ngx_uint_t                  i;
     ngx_http_variable_value_t  *v;
 
-    index = stcf->lookup_vars->elts;
+    index = vars->elts;
 
-    for (i = 0; i < stcf->lookup_vars->nelts; i++) {
+    for (i = 0; i < vars->nelts; i++) {
 
         v = ngx_http_get_flushed_variable(r, index[i]);
 
@@ -232,14 +303,62 @@ ngx_http_upstream_sticky_get_id(ngx_http_upstream_sticky_srv_conf_t *stcf,
 }
 
 
+static ngx_inline void
+ngx_http_upstream_sticky_sess_init_key(ngx_str_t *sess_id,
+    ngx_http_upstream_sticky_sess_key_t *key)
+{
+    ngx_md5_t  md5;
+
+    ngx_md5_init(&md5);
+    ngx_md5_update(&md5, sess_id->data, sess_id->len);
+    ngx_md5_final(key->md5, &md5);
+}
+
+
 static ngx_int_t
 ngx_http_upstream_sticky_get_peer(ngx_peer_connection_t *pc, void *data)
 {
     ngx_http_upstream_sticky_peer_data_t  *stp = data;
 
-    ngx_int_t  rc;
+    ngx_int_t                              rc;
+    ngx_str_t                              sid;
+    ngx_http_upstream_sticky_sess_t       *sess;
+    ngx_http_upstream_sticky_sess_key_t    key;
+    ngx_http_upstream_sticky_sess_node_t  *sn;
+    u_char                                 sid_data[NGX_HTTP_UPSTREAM_SID_LEN];
 
-    if (pc->hint == NULL && stp->id.len) {
+    if (pc->hint == NULL && stp->conf->shm_zone && stp->id.len) {
+
+        /* request holds session ID, extract server ID from session */
+
+        sess = stp->conf->shm_zone->data;
+
+        ngx_http_upstream_sticky_sess_init_key(&stp->id, &key);
+
+        ngx_shmtx_lock(&sess->shpool->mutex);
+
+        sn = ngx_http_upstream_sticky_sess_lookup(sess, &key);
+        if (sn == NULL) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                           "sticky: session \"%V\" not found", &stp->id);
+
+        } else {
+            ngx_memcpy(sid_data, sn->sid, sn->sid_len);
+            sid.len = sn->sid_len;
+            sid.data = sid_data;
+            pc->hint = &sid;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                           "sticky: session \"%V\", SID \"%V\"",
+                           &stp->id, &sid);
+        }
+
+        ngx_shmtx_unlock(&sess->shpool->mutex);
+
+    } else if (pc->hint == NULL && stp->id.len) {
+
+        /* request holds server ID */
+
         pc->hint = &stp->id;
     }
 
@@ -268,6 +387,101 @@ ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
 {
     ngx_http_upstream_sticky_peer_data_t  *stp = data;
+
+    ngx_str_t                              sess_id;
+    ngx_msec_t                             now;
+    ngx_time_t                            *tp;
+    ngx_uint_t                             create;
+    ngx_http_request_t                    *r;
+    ngx_http_upstream_sticky_sess_t       *sess;
+    ngx_http_upstream_sticky_sess_key_t    key;
+    ngx_http_upstream_sticky_srv_conf_t   *stcf;
+    ngx_http_upstream_sticky_sess_node_t  *sn;
+
+    if (state & (NGX_PEER_FAILED|NGX_PEER_NEXT)) {
+        goto done;
+    }
+
+    stcf = stp->conf;
+
+    if (stcf->shm_zone == NULL) {
+        goto done;
+    }
+
+    if (pc->sid == NULL) {
+        ngx_log_error(NGX_LOG_WARN, pc->log, 0,
+                      "balancer does not support sticky");
+        goto done;
+    }
+
+    r = stp->request;
+
+    sess = stcf->shm_zone->data;
+
+    if (ngx_http_upstream_sticky_get_id(stcf, r, stcf->create_vars, &sess_id)
+        == NGX_OK)
+    {
+        create = 1;
+
+    } else if (stp->id.len) {
+        sess_id = stp->id;
+        create = 0;
+
+    } else {
+        return;
+    }
+
+    tp = ngx_timeofday();
+    now = tp->sec * 1000 + tp->msec;
+
+    ngx_http_upstream_sticky_sess_init_key(&sess_id, &key);
+
+    ngx_shmtx_lock(&sess->shpool->mutex);
+
+    sn = ngx_http_upstream_sticky_sess_lookup(sess, &key);
+
+    if (sn) {
+        if (pc->sid->len != sn->sid_len
+            || ngx_memcmp(pc->sid->data, sn->sid, sn->sid_len) != 0)
+        {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                           "sticky: session \"%V\" reused for SID \"%V\"",
+                           &sess_id, pc->sid);
+
+            sn->sid_len = pc->sid->len;
+            ngx_memcpy(sn->sid, pc->sid->data, pc->sid->len);
+        }
+
+        ngx_rbtree_delete(&sess->sh->exp_rbtree, &sn->enode);
+        sn->last = now;
+        sn->enode.key = sn->last;
+        ngx_rbtree_insert(&sess->sh->exp_rbtree, &sn->enode);
+
+        ngx_shmtx_unlock(&sess->shpool->mutex);
+        return;
+    }
+
+    if (create) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+                       "sticky: creating session \"%V\", SID \"%V\"",
+                       &sess_id, pc->sid);
+
+        sn = ngx_http_upstream_sticky_sess_create(sess, &key, pc->sid);
+
+        if (sn) {
+            sn->last = now;
+            sn->enode.key = sn->last;
+            ngx_rbtree_insert(&sess->sh->exp_rbtree, &sn->enode);
+
+            if (!sess->event.timer_set) {
+                ngx_add_timer(&sess->event, sess->timeout);
+            }
+        }
+    }
+
+    ngx_shmtx_unlock(&sess->shpool->mutex);
+
+done:
 
     stp->original_free_peer(pc, stp->original_data, state);
 }
@@ -386,6 +600,275 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
 }
 
 
+static ngx_http_upstream_sticky_sess_node_t *
+ngx_http_upstream_sticky_sess_lookup(ngx_http_upstream_sticky_sess_t *sess,
+    ngx_http_upstream_sticky_sess_key_t *key)
+{
+    ngx_int_t                              rc;
+    ngx_uint_t                             hash;
+    ngx_rbtree_node_t                     *node, *sentinel;
+    ngx_http_upstream_sticky_sess_node_t  *sn;
+
+    hash = key->hash;
+    node = sess->sh->rbtree.root;
+    sentinel = sess->sh->rbtree.sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        /* hash == node->key */
+
+        do {
+
+            sn = (ngx_http_upstream_sticky_sess_node_t *) node;
+
+            rc = ngx_memcmp(key->md5, sn->u.md5, 16);
+
+            if (rc == 0) {
+                return sn;
+            }
+
+            node = (rc < 0) ? node->left : node->right;
+
+        } while (node != sentinel && hash == node->key);
+
+        break;
+    }
+
+    return NULL;
+}
+
+
+static ngx_http_upstream_sticky_sess_node_t *
+ngx_http_upstream_sticky_sess_create(ngx_http_upstream_sticky_sess_t *sess,
+    ngx_http_upstream_sticky_sess_key_t *key, ngx_str_t *sid)
+{
+    size_t                                 n;
+    ngx_rbtree_node_t                     *node;
+    ngx_http_upstream_sticky_sess_node_t  *sn;
+
+    n = sizeof(ngx_http_upstream_sticky_sess_node_t);
+
+    sn = ngx_slab_alloc_locked(sess->shpool, n);
+    if (sn == NULL) {
+
+        ngx_log_error(NGX_LOG_WARN, ngx_cycle->log, 0,
+                      "could not allocate node%s, expiring least "
+                      "recently used session", sess->shpool->log_ctx);
+
+        (void) ngx_http_upstream_sticky_sess_expire(sess, 1);
+
+        sn = ngx_slab_alloc_locked(sess->shpool, n);
+        if (sn == NULL) {
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "could not allocate node%s", sess->shpool->log_ctx);
+            return NULL;
+        }
+    }
+
+    ngx_memcpy(sn->u.md5, key->md5, 16);
+
+    sn->sid_len = sid->len;
+    ngx_memcpy(sn->sid, sid->data, sid->len);
+
+    node = &sn->rbnode;
+    node->key = sn->u.hash;
+
+    ngx_rbtree_insert(&sess->sh->rbtree, node);
+
+    return sn;
+}
+
+
+static void
+ngx_http_upstream_sticky_sess_rbtree_insert_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
+{
+    ngx_rbtree_node_t                     **p;
+    ngx_http_upstream_sticky_sess_node_t  *sn, *snt;
+
+    for ( ;; ) {
+
+        if (node->key < temp->key) {
+
+            p = &temp->left;
+
+        } else if (node->key > temp->key) {
+
+            p = &temp->right;
+
+        } else { /* node->key == temp->key */
+
+            sn = (ngx_http_upstream_sticky_sess_node_t *) node;
+            snt = (ngx_http_upstream_sticky_sess_node_t *) temp;
+
+            p = (ngx_memcmp(sn->u.md5, snt->u.md5, 16) < 0)
+                ? &temp->left : &temp->right;
+        }
+
+        if (*p == sentinel) {
+            break;
+        }
+
+        temp = *p;
+    }
+
+    *p = node;
+    node->parent = temp;
+    node->left = sentinel;
+    node->right = sentinel;
+    ngx_rbt_red(node);
+}
+
+
+static void
+ngx_http_upstream_sticky_sess_timer_handler(ngx_event_t *ev)
+{
+    ngx_msec_t                        wait;
+    ngx_http_upstream_sticky_sess_t  *sess;
+
+    sess = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "sticky: session timer");
+
+    ngx_shmtx_lock(&sess->shpool->mutex);
+
+    wait = ngx_http_upstream_sticky_sess_expire(sess, 0);
+
+    ngx_shmtx_unlock(&sess->shpool->mutex);
+
+    if (wait > 0) {
+        ngx_add_timer(&sess->event, wait);
+    }
+}
+
+
+static ngx_msec_t
+ngx_http_upstream_sticky_sess_expire(ngx_http_upstream_sticky_sess_t *sess,
+    ngx_uint_t force)
+{
+    ngx_msec_t                             now, wait;
+    ngx_time_t                            *tp;
+    ngx_rbtree_node_t                     *node, *next;
+    ngx_http_upstream_sticky_sess_node_t  *sn;
+
+    wait = 0;
+
+    tp = ngx_timeofday();
+    now = tp->sec * 1000 + tp->msec;
+
+    if (sess->sh->exp_rbtree.root == sess->sh->exp_rbtree.sentinel) {
+        return 0;
+    }
+
+#if (NGX_SUPPRESS_WARN)
+    next = NULL;
+#endif
+
+    for (node = ngx_rbtree_min(sess->sh->exp_rbtree.root,
+                               sess->sh->exp_rbtree.sentinel);
+         node;
+         node = next)
+    {
+
+        sn = ngx_http_upstream_sticky_sess_node(node, enode);
+        wait = sn->last + sess->timeout - now;
+
+        if (!force && (ngx_msec_int_t) wait > 0) {
+            break;
+        }
+
+        force = 0;
+
+        next = ngx_rbtree_next(&sess->sh->exp_rbtree, node);
+
+        /* remove node */
+        node = &sn->enode;
+        ngx_rbtree_delete(&sess->sh->exp_rbtree, node);
+
+        node = &sn->rbnode;
+        ngx_rbtree_delete(&sess->sh->rbtree, node);
+        ngx_slab_free_locked(sess->shpool, node);
+    }
+
+    return wait;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_sticky_sess_init_zone(ngx_shm_zone_t *shm_zone, void *data)
+{
+    ngx_http_upstream_sticky_sess_t  *old_sess = data;
+
+    size_t                            len;
+    ngx_http_upstream_sticky_sess_t  *sess;
+
+    sess = shm_zone->data;
+
+    if (old_sess) {
+
+        if (ngx_strcmp(sess->host->data, old_sess->host->data) != 0) {
+
+            ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
+                          "sticky zone \"%V\" is used in upstream \"%V\" "
+                          "while previously it was used in upstream \"%V\"",
+                          &shm_zone->shm.name, sess->host, old_sess->host);
+
+            return NGX_ERROR;
+        }
+
+        sess->sh = old_sess->sh;
+        sess->shpool = old_sess->shpool;
+        return NGX_OK;
+    }
+
+    sess->shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    if (shm_zone->shm.exists) {
+        sess->sh = sess->shpool->data;
+        return NGX_OK;
+    }
+
+    sess->sh = ngx_slab_alloc(sess->shpool,
+                              sizeof(ngx_http_upstream_sticky_sess_shared_t));
+    if (sess->sh == NULL) {
+        return NGX_ERROR;
+    }
+
+    sess->shpool->data = sess->sh;
+
+    ngx_rbtree_init(&sess->sh->rbtree, &sess->sh->sentinel,
+                    ngx_http_upstream_sticky_sess_rbtree_insert_value);
+
+    ngx_rbtree_init(&sess->sh->exp_rbtree, &sess->sh->exp_sentinel,
+                    ngx_rbtree_insert_timer_value);
+
+    len = sizeof(" in sticky session zone \"\"") + shm_zone->shm.name.len;
+
+    sess->shpool->log_ctx = ngx_slab_alloc(sess->shpool, len);
+    if (sess->shpool->log_ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_sprintf(sess->shpool->log_ctx, " in sticky session zone \"%V\"%Z",
+                &shm_zone->shm.name);
+
+    sess->shpool->log_nomem = 0;
+
+    return NGX_OK;
+}
+
+
 static void *
 ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
 {
@@ -403,6 +886,8 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
      *     stcf->original_init_peer = NULL;
      *
      *     stcf->lookup_vars = NULL;
+     *     stcf->create_vars = NULL;
+     *     stcf->shm_zone = NULL;
      *
      *     stcf->cookie_name = { 0, NULL };
      *     stcf->cookie_domain = { 0, NULL };
@@ -418,9 +903,8 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
 static char *
 ngx_http_upstream_sticky(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    u_char                               *p;
-    ngx_str_t                            *value, varname;
-    ngx_int_t                             index, *indexp;
+    ngx_str_t                            *value;
+    ngx_int_t                            *indexp, index;
     ngx_uint_t                            i;
     ngx_http_upstream_srv_conf_t         *us;
     ngx_http_upstream_sticky_srv_conf_t  *stcf;
@@ -437,9 +921,18 @@ ngx_http_upstream_sticky(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    stcf->original_init_upstream = us->peer.init_upstream
+                                   ? us->peer.init_upstream
+                                   : ngx_http_upstream_init_round_robin;
+
+    us->peer.init_upstream = ngx_http_upstream_sticky_init_upstream;
+
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "route") == 0) {
+    if (ngx_strcmp(value[1].data, "cookie") == 0) {
+        return ngx_http_upstream_sticky_cookie(cf, stcf);
+
+    } else if (ngx_strcmp(value[1].data, "route") == 0) {
 
         for (i = 2; i < cf->args->nelts; i++) {
 
@@ -465,128 +958,310 @@ ngx_http_upstream_sticky(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             *indexp = index;
         }
 
-        /*
-         * stcf->stick = NULL;
-         */
+        return NGX_CONF_OK;
 
-    } else if (ngx_strcmp(value[1].data, "cookie") == 0) {
+    } else if (ngx_strcmp(value[1].data, "learn") == 0) {
+        return ngx_http_upstream_sticky_learn(cf, stcf, us);
+    }
 
-        if (value[2].len == 0) {
-            return "empty cookie name";
-        }
-
-        stcf->cookie_name = value[2];
-
-        for (i = 3; i < cf->args->nelts; i++) {
-
-            if (ngx_strncmp(value[i].data, "domain=", 7) == 0) {
-
-                if (stcf->cookie_domain.data != NULL) {
-                    return "parameter \"domain\" is duplicate";
-                }
-
-                value[i].data += 7;
-                value[i].len -= 7;
-
-                if (value[i].len == 0) {
-                    return "no value for \"domain\"";
-                }
-
-                stcf->cookie_domain.len = sizeof("; domain=") - 1
-                                          + value[i].len;
-
-                stcf->cookie_domain.data = ngx_pnalloc(cf->pool,
-                                                       stcf->cookie_domain.len);
-                if (stcf->cookie_domain.data == NULL) {
-                    return NGX_CONF_ERROR;
-                }
-
-                p = ngx_cpymem(stcf->cookie_domain.data,
-                               "; domain=", sizeof("; domain=") - 1);
-                ngx_memcpy(p, value[i].data, value[i].len);
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unknown parameter \"%V\"",
+                       &value[1]);
+    return NGX_CONF_ERROR;
+}
 
 
-            } else if (ngx_strncmp(value[i].data, "path=", 5) == 0) {
+static char *
+ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
+    ngx_http_upstream_sticky_srv_conf_t *stcf)
+{
+    u_char      *p;
+    ngx_str_t    name, *value;
+    ngx_int_t    index, *indexp;
+    ngx_uint_t   i;
 
-                if (stcf->cookie_path.data != NULL) {
-                    return "parameter \"path\" is duplicate";
-                }
+    value = cf->args->elts;
 
-                value[i].data += 5;
-                value[i].len -= 5;
+    if (value[2].len == 0) {
+        return "empty cookie name";
+    }
 
-                if (value[i].len == 0) {
-                    return "no value for \"path\"";
-                }
+    stcf->cookie_name = value[2];
 
-                stcf->cookie_path.len = sizeof("; path=") - 1 + value[i].len;
+    for (i = 3; i < cf->args->nelts; i++) {
 
-                stcf->cookie_path.data = ngx_pnalloc(cf->pool,
-                                                     stcf->cookie_path.len);
-                if (stcf->cookie_path.data == NULL) {
-                    return NGX_CONF_ERROR;
-                }
+        if (ngx_strncmp(value[i].data, "domain=", 7) == 0) {
 
-                p = ngx_cpymem(stcf->cookie_path.data,
-                               "; path=", sizeof("; path=") - 1);
-                ngx_memcpy(p, value[i].data, value[i].len);
+            if (stcf->cookie_domain.data != NULL) {
+                return "parameter \"domain\" is duplicate";
+            }
+
+            value[i].data += 7;
+            value[i].len -= 7;
+
+            if (value[i].len == 0) {
+                return "no value for \"domain\"";
+            }
+
+            stcf->cookie_domain.len = sizeof("; domain=") - 1
+                                      + value[i].len;
+
+            stcf->cookie_domain.data = ngx_pnalloc(cf->pool,
+                                                   stcf->cookie_domain.len);
+            if (stcf->cookie_domain.data == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            p = ngx_cpymem(stcf->cookie_domain.data,
+                           "; domain=", sizeof("; domain=") - 1);
+            ngx_memcpy(p, value[i].data, value[i].len);
 
 
-            } else if (ngx_strncmp(value[i].data, "expires=", 8) == 0) {
+        } else if (ngx_strncmp(value[i].data, "path=", 5) == 0) {
 
-                if (stcf->cookie_expires != (time_t) NGX_CONF_UNSET) {
-                    return "parameter \"expires\" is duplicate";
-                }
+            if (stcf->cookie_path.data != NULL) {
+                return "parameter \"path\" is duplicate";
+            }
 
-                value[i].data += 8;
-                value[i].len -= 8;
+            value[i].data += 5;
+            value[i].len -= 5;
 
-                if (ngx_strcmp(value[i].data, "max") == 0) {
-                    stcf->cookie_expires = NGX_HTTP_STICKY_COOKIE_MAX_EXPIRES;
+            if (value[i].len == 0) {
+                return "no value for \"path\"";
+            }
 
-                } else {
-                    stcf->cookie_expires = ngx_parse_time(&value[i], 1);
-                    if (stcf->cookie_expires == (time_t) NGX_ERROR) {
-                        return "invalid \"expires\" parameter value";
-                    }
-                }
+            stcf->cookie_path.len = sizeof("; path=") - 1 + value[i].len;
+
+            stcf->cookie_path.data = ngx_pnalloc(cf->pool,
+                                                 stcf->cookie_path.len);
+            if (stcf->cookie_path.data == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            p = ngx_cpymem(stcf->cookie_path.data,
+                           "; path=", sizeof("; path=") - 1);
+            ngx_memcpy(p, value[i].data, value[i].len);
+
+
+        } else if (ngx_strncmp(value[i].data, "expires=", 8) == 0) {
+
+            if (stcf->cookie_expires != (time_t) NGX_CONF_UNSET) {
+                return "parameter \"expires\" is duplicate";
+            }
+
+            value[i].data += 8;
+            value[i].len -= 8;
+
+            if (ngx_strcmp(value[i].data, "max") == 0) {
+                stcf->cookie_expires = NGX_HTTP_STICKY_COOKIE_MAX_EXPIRES;
 
             } else {
-                return "unknown parameter";
+                stcf->cookie_expires = ngx_parse_time(&value[i], 1);
+                if (stcf->cookie_expires == (time_t) NGX_ERROR) {
+                    return "invalid \"expires\" parameter value";
+                }
             }
-        }
 
-        varname.len = sizeof("cookie_") - 1  + stcf->cookie_name.len;
-        varname.data = ngx_pnalloc(cf->pool, varname.len);
-        if (varname.data == NULL) {
-             return NGX_CONF_ERROR;
-        }
-
-        ngx_sprintf(varname.data, "cookie_%V", &stcf->cookie_name);
-
-        index = ngx_http_get_variable_index(cf, &varname);
-        if (index == NGX_ERROR) {
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "unknown parameter \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
+    }
 
-        indexp = ngx_array_push(stcf->lookup_vars);
-        if (indexp == NULL) {
-            return NGX_CONF_ERROR;
-        }
+    name.len = sizeof("cookie_") - 1  + stcf->cookie_name.len;
+    name.data = ngx_pnalloc(cf->pool, name.len);
+    if (name.data == NULL) {
+         return NGX_CONF_ERROR;
+    }
 
-        *indexp = index;
+    ngx_sprintf(name.data, "cookie_%V", &stcf->cookie_name);
 
-    } else {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "unknown parameter \"%V\"",
-                           &value[1]);
+    index = ngx_http_get_variable_index(cf, &name);
+    if (index == NGX_ERROR) {
         return NGX_CONF_ERROR;
     }
 
-    stcf->original_init_upstream = us->peer.init_upstream
-                                   ? us->peer.init_upstream
-                                   : ngx_http_upstream_init_round_robin;
+    indexp = ngx_array_push(stcf->lookup_vars);
+    if (indexp == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
-    us->peer.init_upstream = ngx_http_upstream_sticky_init_upstream;
+    *indexp = index;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
+    ngx_http_upstream_sticky_srv_conf_t *stcf, ngx_http_upstream_srv_conf_t *us)
+{
+    u_char                           *p;
+    ssize_t                           zone_size;
+    ngx_str_t                        *value, name, size;
+    ngx_int_t                         index, *indexp;
+    ngx_uint_t                        i;
+    ngx_msec_t                        timeout;
+    ngx_shm_zone_t                   *shm_zone;
+    ngx_http_upstream_sticky_sess_t  *sess;
+
+    zone_size = 0;
+    timeout = NGX_CONF_UNSET_MSEC;
+
+    stcf->create_vars = ngx_array_create(cf->pool, 1, sizeof(ngx_int_t));
+    if (stcf->create_vars == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    for (i = 2; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "zone=", 5) == 0) {
+
+            if (zone_size != 0) {
+                return "duplicate zone";
+            }
+
+            name.data = value[i].data + 5;
+
+            p = (u_char *) ngx_strchr(name.data, ':');
+
+            if (p == NULL) {
+                return "zone size is not specified";
+            }
+
+            name.len = p - name.data;
+
+            if (name.len == 0) {
+                return "zone name is not specified";
+            }
+
+            size.data = ++p;
+            size.len = value[i].data + value[i].len - p;
+
+            zone_size = ngx_parse_size(&size);
+            if (zone_size == NGX_ERROR) {
+                return "invalid zone size";
+            }
+
+            /* 32k ~ 200 sessions, 1m ~ 8000 sessions */
+            if (zone_size < (ssize_t) (8 * ngx_pagesize)) {
+                return "zone is too small";
+            }
+
+        } else if (ngx_strncmp(value[i].data, "timeout=", 8) == 0) {
+
+            if (timeout != NGX_CONF_UNSET_MSEC) {
+                return "duplicate timeout";
+            }
+
+            value[i].data += 8;
+            value[i].len -= 8;
+
+            timeout = ngx_parse_time(&value[i], 0);
+            if (timeout == (ngx_msec_t) NGX_ERROR || timeout == 0) {
+                return "invalid timeout";
+            }
+
+        } else if (ngx_strncmp(value[i].data, "create=", 7) == 0) {
+
+            if (value[i].data[7] != '$') {
+                return "missing variable in the \"create\" parameter";
+            }
+
+            value[i].data += 8;
+            value[i].len -= 8;
+
+            index = ngx_http_get_variable_index(cf, &value[i]);
+            if (index == NGX_ERROR) {
+                return NGX_CONF_ERROR;
+            }
+
+            indexp = ngx_array_push(stcf->create_vars);
+            if (indexp == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *indexp = index;
+
+        } else if (ngx_strncmp(value[i].data, "lookup=", 7) == 0) {
+
+            if (value[i].data[7] != '$') {
+                return "missing variable in the \"lookup\" parameter";
+            }
+
+            value[i].data += 8;
+            value[i].len -= 8;
+
+            index = ngx_http_get_variable_index(cf, &value[i]);
+            if (index == NGX_ERROR) {
+                return NGX_CONF_ERROR;
+            }
+
+            indexp = ngx_array_push(stcf->lookup_vars);
+            if (indexp == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *indexp = index;
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "unknown parameter \"%V\"", &value[i]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (stcf->lookup_vars->nelts == 0) {
+        return "\"lookup\" parameter is not specified";
+    }
+
+    if (stcf->create_vars->nelts == 0) {
+        return "\"create\" parameter is not specified";
+    }
+
+    if (zone_size == 0) {
+        return "\"zone\" parameter is not specified";
+    }
+
+    if (timeout == NGX_CONF_UNSET_MSEC) {
+        timeout = 600000; /* 10m */
+    }
+
+    shm_zone = ngx_shared_memory_add(cf, &name, zone_size,
+                                     &ngx_http_upstream_sticky_module);
+    if (shm_zone == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (shm_zone->data) {
+        sess = shm_zone->data;
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "sticky zone \"%V\" is already used in "
+                           "upstream \"%V\"", &name, sess->host);
+
+        return NGX_CONF_ERROR;
+    }
+
+    sess = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_sticky_sess_t));
+    if (sess == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    sess->timeout = timeout;
+    sess->host = &us->host;
+
+    sess->event.data = sess;
+    sess->event.log = &cf->cycle->new_log;
+    sess->event.handler = ngx_http_upstream_sticky_sess_timer_handler;
+    sess->event.cancelable = 1;
+
+    shm_zone->init = ngx_http_upstream_sticky_sess_init_zone;
+    shm_zone->data = sess;
+
+    stcf->shm_zone = shm_zone;
 
     return NGX_CONF_OK;
 }
