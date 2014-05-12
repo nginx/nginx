@@ -587,6 +587,8 @@ extern ngx_http_header_out_t   ngx_http_headers_out[];
                                                                               \
     c->log->file = l->file;                                                   \
     c->log->next = l->next;                                                   \
+    c->log->writer = l->writer;                                               \
+    c->log->wdata = l->wdata;                                                 \
     if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {                    \
         c->log->log_level = l->log_level;                                     \
     }

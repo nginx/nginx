@@ -66,6 +66,7 @@ typedef struct {
     ngx_http_log_script_t      *script;
     time_t                      disk_full_time;
     time_t                      error_log_time;
+    ngx_syslog_peer_t          *syslog_peer;
     ngx_http_log_fmt_t         *format;
     ngx_http_complex_value_t   *filter;
 } ngx_http_log_t;
@@ -240,7 +241,8 @@ static ngx_int_t
 ngx_http_log_handler(ngx_http_request_t *r)
 {
     u_char                   *line, *p;
-    size_t                    len;
+    size_t                    len, size;
+    ssize_t                   n;
     ngx_str_t                 val;
     ngx_uint_t                i, l;
     ngx_http_log_t           *log;
@@ -294,6 +296,16 @@ ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
+        if (log[l].syslog_peer) {
+
+            /* length of syslog's PRI and HEADER message parts */
+            len += sizeof("<255>Jan 01 00:00:00 ") - 1
+                   + ngx_cycle->hostname.len + 1
+                   + log[l].syslog_peer->tag.len + 2;
+
+            goto alloc_line;
+        }
+
         len += NGX_LINEFEED_SIZE;
 
         buffer = log[l].file ? log[l].file->data : NULL;
@@ -332,6 +344,8 @@ ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
+    alloc_line:
+
         line = ngx_pnalloc(r->pool, len);
         if (line == NULL) {
             return NGX_ERROR;
@@ -339,8 +353,31 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
         p = line;
 
+        if (log[l].syslog_peer) {
+            p = ngx_syslog_add_header(log[l].syslog_peer, line);
+        }
+
         for (i = 0; i < log[l].format->ops->nelts; i++) {
             p = op[i].run(r, p, &op[i]);
+        }
+
+        if (log[l].syslog_peer) {
+
+            size = p - line;
+
+            n = ngx_syslog_send(log[l].syslog_peer, line, size);
+
+            if (n < 0) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "send() to syslog failed");
+
+            } else if ((size_t) n != size) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "send() to syslog has written only %z of %uz",
+                              n, size);
+            }
+
+            continue;
         }
 
         ngx_linefeed(p);
@@ -1080,6 +1117,7 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     log->script = NULL;
     log->disk_full_time = 0;
     log->error_log_time = 0;
+    log->syslog_peer = NULL;
 
     lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
     fmt = lmcf->formats.elts;
@@ -1103,6 +1141,7 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_msec_t                         flush;
     ngx_str_t                         *value, name, s, filter;
     ngx_http_log_t                    *log;
+    ngx_syslog_peer_t                 *peer;
     ngx_http_log_buf_t                *buffer;
     ngx_http_log_fmt_t                *fmt;
     ngx_http_log_main_conf_t          *lmcf;
@@ -1138,6 +1177,23 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(log, sizeof(ngx_http_log_t));
 
+
+    if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
+
+        peer = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
+        if (peer == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_syslog_process_conf(cf, peer) != NGX_CONF_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        log->syslog_peer = peer;
+
+        goto process_formats;
+    }
+
     n = ngx_http_script_variables_count(&value[1]);
 
     if (n == 0) {
@@ -1171,6 +1227,8 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+process_formats:
+
     if (cf->args->nelts >= 3) {
         name = value[2];
 
@@ -1197,6 +1255,17 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "unknown log format \"%V\"", &name);
         return NGX_CONF_ERROR;
+    }
+
+    if (log->syslog_peer != NULL) {
+        if (cf->args->nelts > 3) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "parameter \"%V\" is not supported by syslog",
+                               &value[3]);
+            return NGX_CONF_ERROR;
+        }
+
+        return NGX_CONF_OK;
     }
 
     size = 0;

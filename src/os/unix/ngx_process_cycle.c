@@ -710,11 +710,13 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
      * ngx_cycle->pool is already destroyed.
      */
 
-    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
 
-    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log = *ngx_log_get_file_log(ngx_cycle->log);
+
+    ngx_exit_log_file.fd = ngx_exit_log.file->fd;
     ngx_exit_log.file = &ngx_exit_log_file;
     ngx_exit_log.next = NULL;
+    ngx_exit_log.writer = NULL;
 
     ngx_exit_cycle.log = &ngx_exit_log;
     ngx_exit_cycle.files = ngx_cycle->files;
@@ -1065,11 +1067,12 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
      * ngx_cycle->pool is already destroyed.
      */
 
-    ngx_exit_log_file.fd = ngx_cycle->log->file->fd;
+    ngx_exit_log = *ngx_log_get_file_log(ngx_cycle->log);
 
-    ngx_exit_log = *ngx_cycle->log;
+    ngx_exit_log_file.fd = ngx_exit_log.file->fd;
     ngx_exit_log.file = &ngx_exit_log_file;
     ngx_exit_log.next = NULL;
+    ngx_exit_log.writer = NULL;
 
     ngx_exit_cycle.log = &ngx_exit_log;
     ngx_exit_cycle.files = ngx_cycle->files;

@@ -37,7 +37,8 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_resolver.h \
            src/core/ngx_open_file_cache.h \
            src/core/ngx_crypt.h \
-           src/core/ngx_proxy_protocol.h"
+           src/core/ngx_proxy_protocol.h \
+           src/core/ngx_syslog.h"
 
 
 CORE_SRCS="src/core/nginx.c \
@@ -69,7 +70,8 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_resolver.c \
            src/core/ngx_open_file_cache.c \
            src/core/ngx_crypt.c \
-           src/core/ngx_proxy_protocol.c"
+           src/core/ngx_proxy_protocol.c \
+           src/core/ngx_syslog.c"
 
 
 REGEX_MODULE=ngx_regex_module
