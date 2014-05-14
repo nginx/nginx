@@ -80,9 +80,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_proxy_protocol.h>
 
 
-#define LF     (u_char) 10
-#define CR     (u_char) 13
-#define CRLF   "\x0d\x0a"
+#define LF     (u_char) '\n'
+#define CR     (u_char) '\r'
+#define CRLF   "\r\n"
 
 
 #define ngx_abs(value)       (((value) >= 0) ? (value) : - (value))
