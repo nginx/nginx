@@ -424,12 +424,8 @@ ngx_http_spdy_init(ngx_event_t *rev)
 
     sc->init_window = NGX_SPDY_INIT_STREAM_WINDOW;
 
-    sc->handler = ngx_http_spdy_state_head;
-
-    if (hc->proxy_protocol) {
-        c->log->action = "reading PROXY protocol";
-        sc->handler = ngx_http_spdy_proxy_protocol;
-    }
+    sc->handler = hc->proxy_protocol ? ngx_http_spdy_proxy_protocol
+                                     : ngx_http_spdy_state_head;
 
     sc->zstream_in.zalloc = ngx_http_spdy_zalloc;
     sc->zstream_in.zfree = ngx_http_spdy_zfree;
@@ -823,13 +819,18 @@ static u_char *
 ngx_http_spdy_proxy_protocol(ngx_http_spdy_connection_t *sc, u_char *pos,
     u_char *end)
 {
+    ngx_log_t  *log;
+
+    log = sc->connection->log;
+    log->action = "reading PROXY protocol";
+
     pos = ngx_proxy_protocol_parse(sc->connection, pos, end);
+
+    log->action = "processing SPDY";
 
     if (pos == NULL) {
         return ngx_http_spdy_state_protocol_error(sc);
     }
-
-    sc->connection->log->action = "processing SPDY";
 
     return ngx_http_spdy_state_complete(sc, pos, end);
 }
