@@ -1932,6 +1932,7 @@ ngx_http_spdy_state_protocol_error(ngx_http_spdy_connection_t *sc)
                    "spdy state protocol error");
 
     if (sc->stream) {
+        sc->stream->out_closed = 1;
         ngx_http_spdy_close_stream(sc->stream, NGX_HTTP_BAD_REQUEST);
     }
 
