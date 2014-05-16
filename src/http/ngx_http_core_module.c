@@ -1245,10 +1245,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         if (!alias) {
             reserve = len > r->uri.len ? len - r->uri.len : 0;
 
-#if (NGX_PCRE)
-        } else if (clcf->regex) {
+        } else if (alias == NGX_MAX_SIZE_T_VALUE) {
             reserve = len;
-#endif
 
         } else {
             reserve = len > r->uri.len - alias ? len - (r->uri.len - alias) : 0;
@@ -1365,13 +1363,12 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
         if (!alias) {
             r->uri = path;
 
-#if (NGX_PCRE)
-        } else if (clcf->regex) {
+        } else if (alias == NGX_MAX_SIZE_T_VALUE) {
             if (!test_dir) {
                 r->uri = path;
                 r->add_uri_to_alias = 1;
             }
-#endif
+
         } else {
             r->uri.len = alias + path.len;
             r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
@@ -2006,16 +2003,12 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     } else {
 
-#if (NGX_PCRE)
-        ngx_uint_t  captures;
+        if (alias == NGX_MAX_SIZE_T_VALUE) {
+            reserved += r->add_uri_to_alias ? r->uri.len + 1 : 1;
 
-        captures = alias && clcf->regex;
-
-        reserved += captures ? r->add_uri_to_alias ? r->uri.len + 1 : 1
-                             : r->uri.len - alias + 1;
-#else
-        reserved += r->uri.len - alias + 1;
-#endif
+        } else {
+            reserved += r->uri.len - alias + 1;
+        }
 
         if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
                                 clcf->root_values->elts)
@@ -2033,8 +2026,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         *root_length = path->len - reserved;
         last = path->data + *root_length;
 
-#if (NGX_PCRE)
-        if (captures) {
+        if (alias == NGX_MAX_SIZE_T_VALUE) {
             if (!r->add_uri_to_alias) {
                 *last = '\0';
                 return last;
@@ -2042,7 +2034,6 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
             alias = 0;
         }
-#endif
     }
 
     last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
@@ -4476,6 +4467,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_PCRE)
     if (alias && clcf->regex) {
+        clcf->alias = NGX_MAX_SIZE_T_VALUE;
         n = 1;
     }
 #endif
