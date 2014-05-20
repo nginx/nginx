@@ -217,7 +217,7 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_show_version) {
-        ngx_write_stderr("nginx version: " NGINX_VER NGX_LINEFEED);
+        ngx_write_stderr("nginx version: " NGINX_VER_BUILD NGX_LINEFEED);
 
         if (ngx_show_help) {
             ngx_write_stderr(

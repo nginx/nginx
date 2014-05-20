@@ -108,4 +108,8 @@ have=NGX_HTTP_SCGI_TEMP_PATH value="\"$NGX_HTTP_SCGI_TEMP_PATH\""
 have=NGX_USER value="\"$NGX_USER\"" . auto/define
 have=NGX_GROUP value="\"$NGX_GROUP\"" . auto/define
 
+if [ ".$NGX_BUILD" != "." ]; then
+    have=NGX_BUILD value="\"$NGX_BUILD\"" . auto/define
+fi
+
 . auto/summary

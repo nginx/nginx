@@ -14,6 +14,7 @@ NGX_PID_PATH=
 NGX_LOCK_PATH=
 NGX_USER=
 NGX_GROUP=
+NGX_BUILD=
 
 CC=${CC:-cc}
 CPP=
@@ -178,6 +179,7 @@ do
 
         --crossbuild=*)                  NGX_PLATFORM="$value"      ;;
 
+        --build=*)                       NGX_BUILD="$value"         ;;
         --builddir=*)                    NGX_OBJS="$value"          ;;
 
         --with-rtsig_module)             EVENT_RTSIG=YES            ;;
@@ -341,6 +343,7 @@ cat << END
   --group=GROUP                      set non-privileged group for
                                      worker processes
 
+  --build=NAME                       set build name
   --builddir=DIR                     set build directory
 
   --with-rtsig_module                enable rtsig module
