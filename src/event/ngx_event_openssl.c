@@ -2957,6 +2957,40 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_fingerprint(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    X509          *cert;
+    unsigned int   len;
+    u_char         buf[EVP_MAX_MD_SIZE];
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    if (!X509_digest(cert, EVP_sha1(), buf, &len)) {
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    s->len = 2 * len;
+    s->data = ngx_pnalloc(pool, 2 * len);
+    if (s->data == NULL) {
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    ngx_hex_dump(s->data, buf, len);
+
+    X509_free(cert);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     X509  *cert;
