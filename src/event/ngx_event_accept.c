@@ -288,9 +288,11 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_DEBUG)
         {
 
+        ngx_str_t             addr;
         struct sockaddr_in   *sin;
         ngx_cidr_t           *cidr;
         ngx_uint_t            i;
+        u_char                text[NGX_SOCKADDR_STRLEN];
 #if (NGX_HAVE_INET6)
         struct sockaddr_in6  *sin6;
         ngx_uint_t            n;
@@ -340,11 +342,17 @@ ngx_event_accept(ngx_event_t *ev)
             continue;
         }
 
+        if (log->log_level & NGX_LOG_DEBUG_EVENT) {
+            addr.data = text;
+            addr.len = ngx_sock_ntop(c->sockaddr, c->socklen, text,
+                                     NGX_SOCKADDR_STRLEN, 1);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
+                           "*%uA accept: %V fd:%d", c->number, &addr, s);
+        }
+
         }
 #endif
-
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                       "*%uA accept: %V fd:%d", c->number, &c->addr_text, s);
 
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
