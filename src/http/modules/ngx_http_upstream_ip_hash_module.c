@@ -231,7 +231,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     next:
 
-        if (++iphp->tries >= 20) {
+        if (++iphp->tries > 20) {
             return iphp->get_rr_peer(pc, &iphp->rrp);
         }
     }
