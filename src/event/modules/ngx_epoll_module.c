@@ -193,10 +193,6 @@ ngx_module_t  ngx_epoll_module = {
  * We call io_setup(), io_destroy() io_submit(), and io_getevents() directly
  * as syscalls instead of libaio usage, because the library header file
  * supports eventfd() since 0.3.107 version only.
- *
- * Also we do not use eventfd() in glibc, because glibc supports it
- * since 2.8 version and glibc maps two syscalls eventfd() and eventfd2()
- * into single eventfd() function with different number of parameters.
  */
 
 static int
@@ -227,7 +223,11 @@ ngx_epoll_aio_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
     int                 n;
     struct epoll_event  ee;
 
+#if (NGX_HAVE_SYS_EVENTFD_H)
+    ngx_eventfd = eventfd(0, 0);
+#else
     ngx_eventfd = syscall(SYS_eventfd, 0);
+#endif
 
     if (ngx_eventfd == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,

@@ -398,16 +398,36 @@ if [ $NGX_FILE_AIO = YES ]; then
 
     if [ $ngx_found = yes ]; then
         CORE_SRCS="$CORE_SRCS $FILE_AIO_SRCS"
+    fi
 
-    elif [ $ngx_found = no ]; then
+    if [ $ngx_found = no ]; then
 
         ngx_feature="Linux AIO support"
         ngx_feature_name="NGX_HAVE_FILE_AIO"
         ngx_feature_run=no
         ngx_feature_incs="#include <linux/aio_abi.h>
-                          #include <sys/syscall.h>"
+                          #include <sys/eventfd.h>"
         ngx_feature_path=
         ngx_feature_libs=
+        ngx_feature_test="struct iocb  iocb;
+                          iocb.aio_lio_opcode = IOCB_CMD_PREAD;
+                          iocb.aio_flags = IOCB_FLAG_RESFD;
+                          iocb.aio_resfd = -1;
+                          (void) eventfd(0, 0)"
+        . auto/feature
+
+        if [ $ngx_found = yes ]; then
+            have=NGX_HAVE_EVENTFD . auto/have
+            have=NGX_HAVE_SYS_EVENTFD_H . auto/have
+            CORE_SRCS="$CORE_SRCS $LINUX_AIO_SRCS"
+        fi
+    fi
+
+    if [ $ngx_found = no ]; then
+
+        ngx_feature="Linux AIO support (SYS_eventfd)"
+        ngx_feature_incs="#include <linux/aio_abi.h>
+                          #include <sys/syscall.h>"
         ngx_feature_test="int  n = SYS_eventfd;
                           struct iocb  iocb;
                           iocb.aio_lio_opcode = IOCB_CMD_PREAD;
@@ -418,16 +438,17 @@ if [ $NGX_FILE_AIO = YES ]; then
         if [ $ngx_found = yes ]; then
             have=NGX_HAVE_EVENTFD . auto/have
             CORE_SRCS="$CORE_SRCS $LINUX_AIO_SRCS"
+        fi
+    fi
 
-        else
-            cat << END
+    if [ $ngx_found = no ]; then
+        cat << END
 
 $0: no supported file AIO was found
 Currently file AIO is supported on FreeBSD 4.3+ and Linux 2.6.22+ only
 
 END
-           exit 1
-        fi
+        exit 1
     fi
 fi
 
