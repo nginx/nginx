@@ -317,6 +317,10 @@ ngx_syslog_init_peer(ngx_syslog_peer_t *peer)
     cln->handler = ngx_syslog_cleanup;
 
     peer->conn.fd = fd;
+
+    /* UDP sockets are always ready to write */
+    peer->conn.write->ready = 1;
+
     return NGX_OK;
 
 failed:
