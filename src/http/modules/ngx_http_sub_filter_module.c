@@ -305,6 +305,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 b->last = ctx->copy_end;
                 b->shadow = NULL;
                 b->last_buf = 0;
+                b->last_in_chain = 0;
                 b->recycled = 0;
 
                 if (b->in_file) {
@@ -374,7 +375,9 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             continue;
         }
 
-        if (ctx->buf->last_buf && ctx->looked.len) {
+        if (ctx->looked.len
+            && (ctx->buf->last_buf || ctx->buf->last_in_chain))
+        {
             cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
             if (cl == NULL) {
                 return NGX_ERROR;
@@ -394,7 +397,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->looked.len = 0;
         }
 
-        if (ctx->buf->last_buf || ctx->buf->flush
+        if (ctx->buf->last_buf || ctx->buf->flush || ctx->buf->sync
             || ngx_buf_in_memory(ctx->buf))
         {
             if (b == NULL) {
@@ -414,6 +417,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             b->last_buf = ctx->buf->last_buf;
+            b->last_in_chain = ctx->buf->last_in_chain;
             b->flush = ctx->buf->flush;
             b->shadow = ctx->buf;
 
