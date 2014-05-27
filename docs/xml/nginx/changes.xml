@@ -5,6 +5,124 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.1" date="27.05.2014">
+
+<change type="feature">
+<para lang="ru">
+переменные "$upstream_cookie_...".
+</para>
+<para lang="en">
+the "$upstream_cookie_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_fingerprint.
+</para>
+<para lang="en">
+the $ssl_client_fingerprint variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы error_log и access_log теперь поддерживают логгирование в syslog.
+</para>
+<para lang="en">
+the "error_log" and "access_log" directives now support logging to syslog.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер теперь логгирует порт клиента при соединении.
+</para>
+<para lang="en">
+the mail proxy now logs client port on connect.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании директивы "ssl_stapling".<br/>
+Спасибо Filipe da Silva.
+</para>
+<para lang="en">
+memory leak if the "ssl_stapling" directive was used.<br/>
+Thanks to Filipe da Silva.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива alias внутри location'а, заданного регулярным выражением,
+работала неправильно, если использовались директивы if или limit_except.
+</para>
+<para lang="en">
+the "alias" directive used inside a location given by a regular expression
+worked incorrectly if the "if" or "limit_except" directives were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива charset не ставила кодировку для сжатых ответов бэкендов.
+</para>
+<para lang="en">
+the "charset" directive did not set a charset to encoded backend responses.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_pass без URI могла использовать оригинальный запрос
+после установки переменной $args.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+a "proxy_pass" directive without URI part might use original request
+after the $args variable was set.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в работе параметра none директивы smtp_auth;
+ошибка появилась в 1.5.6.<br/>
+Спасибо Святославу Никольскому.
+</para>
+<para lang="en">
+in the "none" parameter in the "smtp_auth" directive;
+the bug had appeared in 1.5.6.<br/>
+Thanks to Svyatoslav Nikolsky.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при совместном использовании sub_filter и SSI
+ответы могли передаваться неверно.
+</para>
+<para lang="en">
+if sub_filter and SSI were used together,
+then responses might be transferred incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с параметром --with-file-aio на Linux/aarch64.
+</para>
+<para lang="en">
+nginx could not be built with the --with-file-aio option on Linux/aarch64.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.0" date="24.04.2014">
 
 <change type="feature">
