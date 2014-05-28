@@ -88,6 +88,11 @@ CFLAGS="$CFLAGS -Wconditional-uninitialized"
 # we have a lot of unused function arguments
 CFLAGS="$CFLAGS -Wno-unused-parameter"
 
+# deprecated system OpenSSL library on OS X
+if [ "$NGX_SYSTEM" = "Darwin" ]; then
+    CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+fi
+
 # stop on warning
 CFLAGS="$CFLAGS -Werror"
 
