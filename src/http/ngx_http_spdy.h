@@ -230,13 +230,16 @@ ngx_int_t ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc);
 #else
 
 #define ngx_spdy_frame_write_uint16(p, s)                                     \
-    ((p)[0] = (u_char) (s) >> 8, (p)[1] = (u_char) (s), (p) + sizeof(uint16_t))
+    ((p)[0] = (u_char) ((s) >> 8),                                            \
+     (p)[1] = (u_char)  (s),                                                  \
+     (p) + sizeof(uint16_t))
 
 #define ngx_spdy_frame_write_uint32(p, s)                                     \
-    ((p)[0] = (u_char) (s) >> 24,                                             \
-    (p)[1] = (u_char) (s) >> 16,                                              \
-    (p)[2] = (u_char) (s) >> 8,                                               \
-    (p)[3] = (u_char) (s), (p) + sizeof(uint32_t))
+    ((p)[0] = (u_char) ((s) >> 24),                                           \
+     (p)[1] = (u_char) ((s) >> 16),                                           \
+     (p)[2] = (u_char) ((s) >> 8),                                            \
+     (p)[3] = (u_char)  (s),                                                  \
+     (p) + sizeof(uint32_t))
 
 #endif
 
