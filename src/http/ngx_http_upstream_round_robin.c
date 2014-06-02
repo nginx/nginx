@@ -85,6 +85,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peers->peer[n].max_fails = server[i].max_fails;
                 peers->peer[n].fail_timeout = server[i].fail_timeout;
                 peers->peer[n].down = server[i].down;
+                peers->peer[n].server = server[i].name;
                 n++;
             }
         }
@@ -139,6 +140,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 backup->peer[n].max_fails = server[i].max_fails;
                 backup->peer[n].fail_timeout = server[i].fail_timeout;
                 backup->peer[n].down = server[i].down;
+                backup->peer[n].server = server[i].name;
                 n++;
             }
         }

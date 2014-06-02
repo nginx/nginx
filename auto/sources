@@ -497,6 +497,10 @@ HTTP_GZIP_STATIC_MODULE=ngx_http_gzip_static_module
 HTTP_GZIP_STATIC_SRCS=src/http/modules/ngx_http_gzip_static_module.c
 
 
+HTTP_UPSTREAM_HASH_MODULE=ngx_http_upstream_hash_module
+HTTP_UPSTREAM_HASH_SRCS=src/http/modules/ngx_http_upstream_hash_module.c
+
+
 HTTP_UPSTREAM_IP_HASH_MODULE=ngx_http_upstream_ip_hash_module
 HTTP_UPSTREAM_IP_HASH_SRCS=src/http/modules/ngx_http_upstream_ip_hash_module.c
 
