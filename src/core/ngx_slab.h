@@ -29,6 +29,7 @@ typedef struct {
     size_t            min_shift;
 
     ngx_slab_page_t  *pages;
+    ngx_slab_page_t  *last;
     ngx_slab_page_t   free;
 
     u_char           *start;
