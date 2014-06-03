@@ -1109,15 +1109,12 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    ngx_memzero(log, sizeof(ngx_http_log_t));
+
     log->file = ngx_conf_open_file(cf->cycle, &ngx_http_access_log);
     if (log->file == NULL) {
         return NGX_CONF_ERROR;
     }
-
-    log->script = NULL;
-    log->disk_full_time = 0;
-    log->error_log_time = 0;
-    log->syslog_peer = NULL;
 
     lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
     fmt = lmcf->formats.elts;
