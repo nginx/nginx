@@ -678,8 +678,8 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         goto done;
     }
 
-    fcn = ngx_slab_alloc_locked(cache->shpool,
-                                sizeof(ngx_http_file_cache_node_t));
+    fcn = ngx_slab_calloc_locked(cache->shpool,
+                                 sizeof(ngx_http_file_cache_node_t));
     if (fcn == NULL) {
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
@@ -687,8 +687,8 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
         ngx_shmtx_lock(&cache->shpool->mutex);
 
-        fcn = ngx_slab_alloc_locked(cache->shpool,
-                                    sizeof(ngx_http_file_cache_node_t));
+        fcn = ngx_slab_calloc_locked(cache->shpool,
+                                     sizeof(ngx_http_file_cache_node_t));
         if (fcn == NULL) {
             rc = NGX_ERROR;
             goto failed;
@@ -704,8 +704,6 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
     fcn->uses = 1;
     fcn->count = 1;
-    fcn->updating = 0;
-    fcn->deleting = 0;
 
 renew:
 
@@ -1618,8 +1616,8 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 
     if (fcn == NULL) {
 
-        fcn = ngx_slab_alloc_locked(cache->shpool,
-                                    sizeof(ngx_http_file_cache_node_t));
+        fcn = ngx_slab_calloc_locked(cache->shpool,
+                                     sizeof(ngx_http_file_cache_node_t));
         if (fcn == NULL) {
             ngx_shmtx_unlock(&cache->shpool->mutex);
             return NGX_ERROR;
@@ -1633,15 +1631,7 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         ngx_rbtree_insert(&cache->sh->rbtree, &fcn->node);
 
         fcn->uses = 1;
-        fcn->count = 0;
-        fcn->valid_msec = 0;
-        fcn->error = 0;
         fcn->exists = 1;
-        fcn->updating = 0;
-        fcn->deleting = 0;
-        fcn->uniq = 0;
-        fcn->valid_sec = 0;
-        fcn->body_start = 0;
         fcn->fs_size = c->fs_size;
 
         cache->sh->size += c->fs_size;
