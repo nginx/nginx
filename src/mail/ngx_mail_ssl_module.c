@@ -21,6 +21,8 @@ static char *ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_mail_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -72,6 +74,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, certificate_key),
+      NULL },
+
+    { ngx_string("ssl_password_file"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_mail_ssl_password_file,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("ssl_dhparam"),
@@ -195,6 +204,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
 
     scf->enable = NGX_CONF_UNSET;
     scf->starttls = NGX_CONF_UNSET_UINT;
+    scf->passwords = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->builtin_session_cache = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
@@ -230,6 +240,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate, "");
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key, "");
+
+    ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
@@ -302,7 +314,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->data = &conf->ssl;
 
     if (ngx_ssl_certificate(cf, &conf->ssl, &conf->certificate,
-                            &conf->certificate_key)
+                            &conf->certificate_key, conf->passwords)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -416,6 +428,29 @@ ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     scf->file = cf->conf_file->file.name.data;
     scf->line = cf->conf_file->line;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_ssl_conf_t  *scf = conf;
+
+    ngx_str_t  *value;
+
+    if (scf->passwords != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    scf->passwords = ngx_ssl_read_password_file(cf, &value[1]);
+
+    if (scf->passwords == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

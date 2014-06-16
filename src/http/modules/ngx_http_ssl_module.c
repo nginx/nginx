@@ -43,6 +43,8 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
 
 static char *ngx_http_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -89,6 +91,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, certificate_key),
+      NULL },
+
+    { ngx_string("ssl_password_file"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_http_ssl_password_file,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("ssl_dhparam"),
@@ -514,6 +523,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->buffer_size = NGX_CONF_UNSET_SIZE;
     sscf->verify = NGX_CONF_UNSET_UINT;
     sscf->verify_depth = NGX_CONF_UNSET_UINT;
+    sscf->passwords = NGX_CONF_UNSET_PTR;
     sscf->builtin_session_cache = NGX_CONF_UNSET;
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->session_tickets = NGX_CONF_UNSET;
@@ -562,6 +572,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate, "");
     ngx_conf_merge_str_value(conf->certificate_key, prev->certificate_key, "");
+
+    ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
@@ -652,7 +664,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->data = &conf->ssl;
 
     if (ngx_ssl_certificate(cf, &conf->ssl, &conf->certificate,
-                            &conf->certificate_key)
+                            &conf->certificate_key, conf->passwords)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
@@ -776,6 +788,29 @@ ngx_http_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     sscf->file = cf->conf_file->file.name.data;
     sscf->line = cf->conf_file->line;
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_ssl_srv_conf_t *sscf = conf;
+
+    ngx_str_t  *value;
+
+    if (sscf->passwords != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    sscf->passwords = ngx_ssl_read_password_file(cf, &value[1]);
+
+    if (sscf->passwords == NULL) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }
