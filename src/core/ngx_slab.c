@@ -160,7 +160,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
     ngx_uint_t        i, slot, shift, map;
     ngx_slab_page_t  *page, *prev, *slots;
 
-    if (size >= ngx_slab_max_size) {
+    if (size > ngx_slab_max_size) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
                        "slab alloc: %uz", size);
