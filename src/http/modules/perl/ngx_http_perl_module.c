@@ -577,7 +577,7 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
 
     n = (pmcf->modules != NGX_CONF_UNSET_PTR) ? pmcf->modules->nelts * 2 : 0;
 
-    embedding = ngx_palloc(cf->pool, (4 + n) * sizeof(char *));
+    embedding = ngx_palloc(cf->pool, (5 + n) * sizeof(char *));
     if (embedding == NULL) {
         goto fail;
     }
@@ -595,6 +595,7 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
     embedding[n++] = "-Mnginx";
     embedding[n++] = "-e";
     embedding[n++] = "0";
+    embedding[n] = NULL;
 
     n = perl_parse(perl, ngx_http_perl_xs_init, n, embedding, NULL);
 
