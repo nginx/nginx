@@ -13,7 +13,7 @@
 /*
  * It seems that Darwin 9.4 (Mac OS X 1.5) sendfile() has the same
  * old bug as early FreeBSD sendfile() syscall:
- * http://www.freebsd.org/cgi/query-pr.cgi?pr=33771
+ * http://bugs.freebsd.org/33771
  *
  * Besides sendfile() has another bug: if one calls sendfile()
  * with both a header and a trailer, then sendfile() ignores a file part
