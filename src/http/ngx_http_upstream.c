@@ -4851,6 +4851,12 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         }
     }
 
+    uscf->servers = ngx_array_create(cf->pool, 4,
+                                     sizeof(ngx_http_upstream_server_t));
+    if (uscf->servers == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
 
     /* parse inside upstream{} */
 
@@ -4866,7 +4872,7 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return rv;
     }
 
-    if (uscf->servers == NULL) {
+    if (uscf->servers->nelts == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "no servers are inside upstream");
         return NGX_CONF_ERROR;
@@ -4888,14 +4894,6 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                   i;
     ngx_http_upstream_server_t  *us;
 
-    if (uscf->servers == NULL) {
-        uscf->servers = ngx_array_create(cf->pool, 4,
-                                         sizeof(ngx_http_upstream_server_t));
-        if (uscf->servers == NULL) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
     us = ngx_array_push(uscf->servers);
     if (us == NULL) {
         return NGX_CONF_ERROR;
@@ -4904,20 +4902,6 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(us, sizeof(ngx_http_upstream_server_t));
 
     value = cf->args->elts;
-
-    ngx_memzero(&u, sizeof(ngx_url_t));
-
-    u.url = value[1];
-    u.default_port = 80;
-
-    if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
-        if (u.err) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "%s in upstream \"%V\"", u.err, &u.url);
-        }
-
-        return NGX_CONF_ERROR;
-    }
 
     weight = 1;
     max_fails = 1;
@@ -4996,6 +4980,20 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         goto invalid;
+    }
+
+    ngx_memzero(&u, sizeof(ngx_url_t));
+
+    u.url = value[1];
+    u.default_port = 80;
+
+    if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%s in upstream \"%V\"", u.err, &u.url);
+        }
+
+        return NGX_CONF_ERROR;
     }
 
     us->name = u.url;
