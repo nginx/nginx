@@ -41,6 +41,7 @@ if test -n "$NGX_PERL_VER"; then
     ngx_perl_ldopts=`$NGX_PERL -MExtUtils::Embed -e ldopts`
 
     ngx_perl_dlext=`$NGX_PERL -MConfig -e 'print $Config{dlext}'`
+    ngx_perl_module="src/http/modules/perl/blib/arch/auto/nginx.$ngx_perl_dlext"
 
     if $NGX_PERL -V:usemultiplicity | grep define > /dev/null; then
         have=NGX_HAVE_PERL_MULTIPLICITY . auto/have
@@ -54,11 +55,12 @@ if test -n "$NGX_PERL_VER"; then
 
     if [ "$NGX_SYSTEM" = "Darwin" ]; then
         # OS X system perl wants to link universal binaries
-        ngx_perl_ldopts=`echo $ngx_perl_ldopts | sed -e 's/-arch x86_64 -arch i386//'`
+        ngx_perl_ldopts=`echo $ngx_perl_ldopts \
+                         | sed -e 's/-arch x86_64 -arch i386//'`
     fi
 
     CORE_LINK="$CORE_LINK $ngx_perl_ldopts"
-    LINK_DEPS="$LINK_DEPS $NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.$ngx_perl_dlext"
+    LINK_DEPS="$LINK_DEPS $NGX_OBJS/$ngx_perl_module"
 
     if test -n "$NGX_PERL_MODULES"; then
         have=NGX_PERL_MODULES value="(u_char *) \"$NGX_PERL_MODULES\""
