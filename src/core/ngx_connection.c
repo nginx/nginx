@@ -411,12 +411,10 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (bind(s, ls[i].sockaddr, ls[i].socklen) == -1) {
                 err = ngx_socket_errno;
 
-                if (err == NGX_EADDRINUSE && ngx_test_config) {
-                    continue;
+                if (err != NGX_EADDRINUSE || !ngx_test_config) {
+                    ngx_log_error(NGX_LOG_EMERG, log, err,
+                                  "bind() to %V failed", &ls[i].addr_text);
                 }
-
-                ngx_log_error(NGX_LOG_EMERG, log, err,
-                              "bind() to %V failed", &ls[i].addr_text);
 
                 if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -428,7 +426,9 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                     return NGX_ERROR;
                 }
 
-                failed = 1;
+                if (!ngx_test_config) {
+                    failed = 1;
+                }
 
                 continue;
             }
