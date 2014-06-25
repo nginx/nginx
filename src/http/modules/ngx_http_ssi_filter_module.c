@@ -369,10 +369,13 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     if (r == r->main) {
         ngx_http_clear_content_length(r);
         ngx_http_clear_accept_ranges(r);
-        ngx_http_clear_etag(r);
 
         if (!slcf->last_modified) {
             ngx_http_clear_last_modified(r);
+            ngx_http_clear_etag(r);
+
+        } else {
+            ngx_http_weak_etag(r);
         }
     }
 

@@ -337,12 +337,14 @@ ngx_http_xslt_send(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
             r->headers_out.content_length = NULL;
         }
 
-        ngx_http_clear_etag(r);
-
         conf = ngx_http_get_module_loc_conf(r, ngx_http_xslt_filter_module);
 
         if (!conf->last_modified) {
             ngx_http_clear_last_modified(r);
+            ngx_http_clear_etag(r);
+
+        } else {
+            ngx_http_weak_etag(r);
         }
     }
 

@@ -501,6 +501,7 @@ void *ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash);
 ngx_int_t ngx_http_set_content_type(ngx_http_request_t *r);
 void ngx_http_set_exten(ngx_http_request_t *r);
 ngx_int_t ngx_http_set_etag(ngx_http_request_t *r);
+void ngx_http_weak_etag(ngx_http_request_t *r);
 ngx_int_t ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
     ngx_str_t *ct, ngx_http_complex_value_t *cv);
 u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,

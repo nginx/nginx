@@ -1851,6 +1851,46 @@ ngx_http_set_etag(ngx_http_request_t *r)
 }
 
 
+void
+ngx_http_weak_etag(ngx_http_request_t *r)
+{
+    size_t            len;
+    u_char           *p;
+    ngx_table_elt_t  *etag;
+
+    etag = r->headers_out.etag;
+
+    if (etag == NULL) {
+        return;
+    }
+
+    if (etag->value.len > 2
+        && etag->value.data[0] == 'W'
+        && etag->value.data[1] == '/')
+    {
+        return;
+    }
+
+    if (etag->value.len < 1 || etag->value.data[0] != '"') {
+        r->headers_out.etag->hash = 0;
+        r->headers_out.etag = NULL;
+        return;
+    }
+
+    p = ngx_pnalloc(r->pool, etag->value.len + 2);
+    if (p == NULL) {
+        r->headers_out.etag->hash = 0;
+        r->headers_out.etag = NULL;
+        return;
+    }
+
+    len = ngx_sprintf(p, "W/%V", &etag->value) - p;
+
+    etag->value.data = p;
+    etag->value.len = len;
+}
+
+
 ngx_int_t
 ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
     ngx_str_t *ct, ngx_http_complex_value_t *cv)
