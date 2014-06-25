@@ -25,6 +25,8 @@
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
 
+#define NGX_HTTP_CACHE_VERSION       1
+
 
 typedef struct {
     ngx_uint_t                       status;
@@ -97,6 +99,7 @@ struct ngx_http_cache_s {
 
 
 typedef struct {
+    ngx_uint_t                       version;
     time_t                           valid_sec;
     time_t                           last_modified;
     time_t                           date;

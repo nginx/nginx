@@ -498,6 +498,12 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     h = (ngx_http_file_cache_header_t *) c->buf->pos;
 
+    if (h->version != NGX_HTTP_CACHE_VERSION) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "cache file \"%s\" version mismatch", c->file.name.data);
+        return NGX_DECLINED;
+    }
+
     if (h->crc32 != c->crc32) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" has md5 collision", c->file.name.data);
@@ -875,6 +881,7 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 
     ngx_memzero(h, sizeof(ngx_http_file_cache_header_t));
 
+    h->version = NGX_HTTP_CACHE_VERSION;
     h->valid_sec = c->valid_sec;
     h->last_modified = c->last_modified;
     h->date = c->date;
@@ -1042,7 +1049,8 @@ ngx_http_file_cache_update_header(ngx_http_request_t *r)
         goto done;
     }
 
-    if (h.last_modified != c->last_modified
+    if (h.version != NGX_HTTP_CACHE_VERSION
+        || h.last_modified != c->last_modified
         || h.crc32 != c->crc32
         || h.header_start != c->header_start
         || h.body_start != c->body_start)
@@ -1060,6 +1068,7 @@ ngx_http_file_cache_update_header(ngx_http_request_t *r)
 
     ngx_memzero(&h, sizeof(ngx_http_file_cache_header_t));
 
+    h.version = NGX_HTTP_CACHE_VERSION;
     h.valid_sec = c->valid_sec;
     h.last_modified = c->last_modified;
     h.date = c->date;
