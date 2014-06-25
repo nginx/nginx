@@ -742,7 +742,7 @@ ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
     if (named) {
         clcfp = ngx_palloc(cf->pool,
-                           (n + 1) * sizeof(ngx_http_core_loc_conf_t **));
+                           (n + 1) * sizeof(ngx_http_core_loc_conf_t *));
         if (clcfp == NULL) {
             return NGX_ERROR;
         }
@@ -768,7 +768,7 @@ ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     if (regex) {
 
         clcfp = ngx_palloc(cf->pool,
-                           (r + 1) * sizeof(ngx_http_core_loc_conf_t **));
+                           (r + 1) * sizeof(ngx_http_core_loc_conf_t *));
         if (clcfp == NULL) {
             return NGX_ERROR;
         }
