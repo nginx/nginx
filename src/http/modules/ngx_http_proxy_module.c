@@ -677,7 +677,7 @@ static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
     { ngx_string("If-Modified-Since"),
       ngx_string("$upstream_cache_last_modified") },
     { ngx_string("If-Unmodified-Since"), ngx_string("") },
-    { ngx_string("If-None-Match"), ngx_string("") },
+    { ngx_string("If-None-Match"), ngx_string("$upstream_cache_etag") },
     { ngx_string("If-Match"), ngx_string("") },
     { ngx_string("Range"), ngx_string("") },
     { ngx_string("If-Range"), ngx_string("") },

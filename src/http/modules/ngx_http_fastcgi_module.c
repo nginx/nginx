@@ -573,7 +573,7 @@ static ngx_keyval_t  ngx_http_fastcgi_cache_headers[] = {
     { ngx_string("HTTP_IF_MODIFIED_SINCE"),
       ngx_string("$upstream_cache_last_modified") },
     { ngx_string("HTTP_IF_UNMODIFIED_SINCE"), ngx_string("") },
-    { ngx_string("HTTP_IF_NONE_MATCH"), ngx_string("") },
+    { ngx_string("HTTP_IF_NONE_MATCH"), ngx_string("$upstream_cache_etag") },
     { ngx_string("HTTP_IF_MATCH"), ngx_string("") },
     { ngx_string("HTTP_RANGE"), ngx_string("") },
     { ngx_string("HTTP_IF_RANGE"), ngx_string("") },
