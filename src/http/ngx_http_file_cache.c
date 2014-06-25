@@ -525,6 +525,8 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     c->valid_msec = h->valid_msec;
     c->header_start = h->header_start;
     c->body_start = h->body_start;
+    c->etag.len = h->etag_len;
+    c->etag.data = h->etag;
 
     r->cached = 1;
 
@@ -890,6 +892,11 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
     h->header_start = (u_short) c->header_start;
     h->body_start = (u_short) c->body_start;
 
+    if (c->etag.len <= NGX_HTTP_CACHE_ETAG_LEN) {
+        h->etag_len = (u_char) c->etag.len;
+        ngx_memcpy(h->etag, c->etag.data, c->etag.len);
+    }
+
     p = buf + sizeof(ngx_http_file_cache_header_t);
 
     p = ngx_cpymem(p, ngx_http_file_cache_key, sizeof(ngx_http_file_cache_key));
@@ -1076,6 +1083,11 @@ ngx_http_file_cache_update_header(ngx_http_request_t *r)
     h.valid_msec = (u_short) c->valid_msec;
     h.header_start = (u_short) c->header_start;
     h.body_start = (u_short) c->body_start;
+
+    if (c->etag.len <= NGX_HTTP_CACHE_ETAG_LEN) {
+        h.etag_len = (u_char) c->etag.len;
+        ngx_memcpy(h.etag, c->etag.data, c->etag.len);
+    }
 
     (void) ngx_write_file(&file, (u_char *) &h,
                           sizeof(ngx_http_file_cache_header_t), 0);

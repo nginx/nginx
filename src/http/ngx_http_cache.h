@@ -24,8 +24,9 @@
 #define NGX_HTTP_CACHE_SCARCE        8
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
+#define NGX_HTTP_CACHE_ETAG_LEN      42
 
-#define NGX_HTTP_CACHE_VERSION       1
+#define NGX_HTTP_CACHE_VERSION       2
 
 
 typedef struct {
@@ -69,6 +70,8 @@ struct ngx_http_cache_s {
     time_t                           last_modified;
     time_t                           date;
 
+    ngx_str_t                        etag;
+
     size_t                           header_start;
     size_t                           body_start;
     off_t                            length;
@@ -107,6 +110,8 @@ typedef struct {
     u_short                          valid_msec;
     u_short                          header_start;
     u_short                          body_start;
+    u_char                           etag_len;
+    u_char                           etag[NGX_HTTP_CACHE_ETAG_LEN];
 } ngx_http_file_cache_header_t;
 
 
