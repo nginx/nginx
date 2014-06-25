@@ -246,10 +246,11 @@ typedef struct {
     ngx_table_elt_t                 *content_encoding;
 #endif
 
-    off_t                            content_length_n;
-
     ngx_array_t                      cache_control;
     ngx_array_t                      cookies;
+
+    off_t                            content_length_n;
+    time_t                           last_modified_time;
 
     unsigned                         connection_close:1;
     unsigned                         chunked:1;
