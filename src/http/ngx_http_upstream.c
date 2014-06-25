@@ -174,8 +174,7 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_content_type, 0, 1 },
 
     { ngx_string("Content-Length"),
-                 ngx_http_upstream_process_content_length,
-                 offsetof(ngx_http_upstream_headers_in_t, content_length),
+                 ngx_http_upstream_process_content_length, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
     { ngx_string("Date"),
