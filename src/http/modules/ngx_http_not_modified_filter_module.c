@@ -13,7 +13,7 @@
 static ngx_uint_t ngx_http_test_if_unmodified(ngx_http_request_t *r);
 static ngx_uint_t ngx_http_test_if_modified(ngx_http_request_t *r);
 static ngx_uint_t ngx_http_test_if_match(ngx_http_request_t *r,
-    ngx_table_elt_t *header);
+    ngx_table_elt_t *header, ngx_uint_t weak);
 static ngx_int_t ngx_http_not_modified_filter_init(ngx_conf_t *cf);
 
 
@@ -69,7 +69,7 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_in.if_match
-        && !ngx_http_test_if_match(r, r->headers_in.if_match))
+        && !ngx_http_test_if_match(r, r->headers_in.if_match, 0))
     {
         return ngx_http_filter_finalize_request(r, NULL,
                                                 NGX_HTTP_PRECONDITION_FAILED);
@@ -84,7 +84,7 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
         }
 
         if (r->headers_in.if_none_match
-            && !ngx_http_test_if_match(r, r->headers_in.if_none_match))
+            && !ngx_http_test_if_match(r, r->headers_in.if_none_match, 1))
         {
             return ngx_http_next_header_filter(r);
         }
@@ -161,10 +161,11 @@ ngx_http_test_if_modified(ngx_http_request_t *r)
 
 
 static ngx_uint_t
-ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header)
+ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header,
+    ngx_uint_t weak)
 {
     u_char     *start, *end, ch;
-    ngx_str_t  *etag, *list;
+    ngx_str_t   etag, *list;
 
     list = &header->value;
 
@@ -176,25 +177,42 @@ ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header)
         return 0;
     }
 
-    etag = &r->headers_out.etag->value;
+    etag = r->headers_out.etag->value;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http im:\"%V\" etag:%V", list, etag);
+                   "http im:\"%V\" etag:%V", list, &etag);
+
+    if (weak
+        && etag.len > 2
+        && etag.data[0] == 'W'
+        && etag.data[1] == '/')
+    {
+        etag.len -= 2;
+        etag.data += 2;
+    }
 
     start = list->data;
     end = list->data + list->len;
 
     while (start < end) {
 
-        if (etag->len > (size_t) (end - start)) {
+        if (weak
+            && end - start > 2
+            && start[0] == 'W'
+            && start[1] == '/')
+        {
+            start += 2;
+        }
+
+        if (etag.len > (size_t) (end - start)) {
             return 0;
         }
 
-        if (ngx_strncmp(start, etag->data, etag->len) != 0) {
+        if (ngx_strncmp(start, etag.data, etag.len) != 0) {
             goto skip;
         }
 
-        start += etag->len;
+        start += etag.len;
 
         while (start < end) {
             ch = *start;
