@@ -118,7 +118,7 @@ ngx_http_test_if_unmodified(ngx_http_request_t *r)
                                r->headers_in.if_unmodified_since->value.len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http iums:%d lm:%d", iums, r->headers_out.last_modified_time);
+                 "http iums:%T lm:%T", iums, r->headers_out.last_modified_time);
 
     if (iums >= r->headers_out.last_modified_time) {
         return 1;
@@ -144,7 +144,7 @@ ngx_http_test_if_modified(ngx_http_request_t *r)
                               r->headers_in.if_modified_since->value.len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http ims:%d lm:%d", ims, r->headers_out.last_modified_time);
+                   "http ims:%T lm:%T", ims, r->headers_out.last_modified_time);
 
     if (ims == r->headers_out.last_modified_time) {
         return 0;
