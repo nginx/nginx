@@ -2238,6 +2238,8 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     r->headers_out.content_length_n = u->headers_in.content_length_n;
 
+    r->disable_not_modified = !u->cacheable;
+
     u->length = -1;
 
     return NGX_OK;

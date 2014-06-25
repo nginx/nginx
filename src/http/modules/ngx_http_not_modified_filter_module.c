@@ -56,7 +56,7 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 {
     if (r->headers_out.status != NGX_HTTP_OK
         || r != r->main
-        || r->headers_out.last_modified_time == -1)
+        || r->disable_not_modified)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -114,6 +114,10 @@ ngx_http_test_if_unmodified(ngx_http_request_t *r)
 {
     time_t  iums;
 
+    if (r->headers_out.last_modified_time == (time_t) -1) {
+        return 0;
+    }
+
     iums = ngx_http_parse_time(r->headers_in.if_unmodified_since->value.data,
                                r->headers_in.if_unmodified_since->value.len);
 
@@ -133,6 +137,10 @@ ngx_http_test_if_modified(ngx_http_request_t *r)
 {
     time_t                     ims;
     ngx_http_core_loc_conf_t  *clcf;
+
+    if (r->headers_out.last_modified_time == (time_t) -1) {
+        return 1;
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
