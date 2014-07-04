@@ -439,7 +439,11 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         }
     }
 
-    if (p->cacheable && p->in) {
+    if (p->cacheable && (p->in || p->buf_to_file)) {
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "pipe write chain");
+
         if (ngx_event_pipe_write_chain_to_temp_file(p) == NGX_ABORT) {
             return NGX_ABORT;
         }
@@ -513,15 +517,6 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 }
 
                 p->in = NULL;
-            }
-
-            if (p->cacheable && p->buf_to_file) {
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                               "pipe write chain");
-
-                if (ngx_event_pipe_write_chain_to_temp_file(p) == NGX_ABORT) {
-                    return NGX_ABORT;
-                }
             }
 
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
