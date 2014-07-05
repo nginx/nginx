@@ -193,7 +193,7 @@ ngx_int_t ngx_read_dir(ngx_dir_t *dir);
 #define ngx_read_dir_n              "FindNextFile()"
 
 
-#define ngx_close_dir(d)            FindClose((d)->dir)
+ngx_int_t ngx_close_dir(ngx_dir_t *dir);
 #define ngx_close_dir_n             "FindClose()"
 
 
