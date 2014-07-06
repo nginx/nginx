@@ -2078,9 +2078,10 @@ static int
 ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 {
     int                       len;
-    u_char                   *p, *id, *cached_sess;
+    u_char                   *p, *id, *cached_sess, *session_id;
     uint32_t                  hash;
     SSL_CTX                  *ssl_ctx;
+    unsigned int              session_id_length;
     ngx_shm_zone_t           *shm_zone;
     ngx_connection_t         *c;
     ngx_slab_pool_t          *shpool;
@@ -2143,13 +2144,24 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
         }
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+
+    session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
+
+#else
+
+    session_id = sess->session_id;
+    session_id_length = sess->session_id_length;
+
+#endif
+
 #if (NGX_PTR_SIZE == 8)
 
     id = sess_id->sess_id;
 
 #else
 
-    id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+    id = ngx_slab_alloc_locked(shpool, session_id_length);
 
     if (id == NULL) {
 
@@ -2157,7 +2169,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
         ngx_ssl_expire_sessions(cache, shpool, 0);
 
-        id = ngx_slab_alloc_locked(shpool, sess->session_id_length);
+        id = ngx_slab_alloc_locked(shpool, session_id_length);
 
         if (id == NULL) {
             goto failed;
@@ -2168,16 +2180,16 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     ngx_memcpy(cached_sess, buf, len);
 
-    ngx_memcpy(id, sess->session_id, sess->session_id_length);
+    ngx_memcpy(id, session_id, session_id_length);
 
-    hash = ngx_crc32_short(sess->session_id, sess->session_id_length);
+    hash = ngx_crc32_short(session_id, session_id_length);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ssl new session: %08XD:%d:%d",
-                   hash, sess->session_id_length, len);
+                   "ssl new session: %08XD:%ud:%d",
+                   hash, session_id_length, len);
 
     sess_id->node.key = hash;
-    sess_id->node.data = (u_char) sess->session_id_length;
+    sess_id->node.data = (u_char) session_id_length;
     sess_id->id = id;
     sess_id->len = len;
     sess_id->session = cached_sess;
@@ -2325,10 +2337,10 @@ ngx_ssl_remove_cached_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 static void
 ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 {
-    size_t                    len;
     u_char                   *id;
     uint32_t                  hash;
     ngx_int_t                 rc;
+    unsigned int              len;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
     ngx_rbtree_node_t        *node, *sentinel;
@@ -2343,13 +2355,21 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 
     cache = shm_zone->data;
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+
+    id = (u_char *) SSL_SESSION_get_id(sess, &len);
+
+#else
+
     id = sess->session_id;
-    len = (size_t) sess->session_id_length;
+    len = sess->session_id_length;
+
+#endif
 
     hash = ngx_crc32_short(id, len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                   "ssl remove session: %08XD:%uz", hash, len);
+                   "ssl remove session: %08XD:%ud", hash, len);
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
@@ -2891,9 +2911,9 @@ ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 ngx_int_t
 ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    int           len;
-    u_char       *buf;
-    SSL_SESSION  *sess;
+    u_char        *buf;
+    SSL_SESSION   *sess;
+    unsigned int   len;
 
     sess = SSL_get0_session(c->ssl->connection);
     if (sess == NULL) {
@@ -2901,8 +2921,16 @@ ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         return NGX_OK;
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+
+    buf = (u_char *) SSL_SESSION_get_id(sess, &len);
+
+#else
+
     buf = sess->session_id;
     len = sess->session_id_length;
+
+#endif
 
     s->len = 2 * len;
     s->data = ngx_pnalloc(pool, 2 * len);
