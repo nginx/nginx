@@ -14,10 +14,17 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/bn.h>
 #include <openssl/conf.h>
+#include <openssl/crypto.h>
+#include <openssl/dh.h>
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ocsp.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #define NGX_SSL_NAME     "OpenSSL"
 
