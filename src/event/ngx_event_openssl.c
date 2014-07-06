@@ -652,10 +652,12 @@ ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
 {
     static RSA  *key;
 
-    if (key_length == 512) {
-        if (key == NULL) {
-            key = RSA_generate_key(512, RSA_F4, NULL, NULL);
-        }
+    if (key_length != 512) {
+        return NULL;
+    }
+
+    if (key == NULL) {
+        key = RSA_generate_key(512, RSA_F4, NULL, NULL);
     }
 
     return key;
