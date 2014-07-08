@@ -5,6 +5,86 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.3" date="08.07.2014">
+
+<change type="feature">
+<para lang="ru">
+weak entity tags теперь не удаляются при изменениях ответа,
+а strong entity tags преобразуются в weak.
+</para>
+<para lang="en">
+weak entity tags are now preserved on response modifications,
+and strong ones are changed to weak.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ревалидация элементов кэша теперь, если это возможно,
+использует заголовок If-None-Match.
+</para>
+<para lang="en">
+cache revalidation now uses If-None-Match header
+if possible.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_password_file.
+</para>
+<para lang="en">
+the "ssl_password_file" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при возврате ответа из кэша
+заголовок запроса If-None-Match игнорировался,
+если в ответе не было заголовка Last-Modified.
+</para>
+<para lang="en">
+the If-None-Match request header line was ignored
+if there was no Last-Modified header
+in a response returned from cache.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения "peer closed connection in SSL handshake"
+при соединении с бэкендами логгировались на уровне info вместо error.
+</para>
+<para lang="en">
+"peer closed connection in SSL handshake" messages
+were logged at "info" level instead of "error" while connecting to backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_dav_module в nginx/Windows.
+</para>
+<para lang="en">
+in the ngx_http_dav_module module in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SPDY-соединения могли неожиданно закрываться,
+если использовалось кэширование.
+</para>
+<para lang="en">
+SPDY connections might be closed prematurely
+if caching was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.2" date="17.06.2014">
 
 <change type="feature">
