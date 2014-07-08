@@ -1868,7 +1868,7 @@ ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    clcf = ngx_http_conf_get_module_loc_conf (cf, ngx_http_core_module);
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_uwsgi_handler;
 
     value = cf->args->elts;
