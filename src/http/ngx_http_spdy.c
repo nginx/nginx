@@ -2584,6 +2584,8 @@ ngx_http_spdy_parse_header(ngx_http_request_t *r)
                 r->header_end = p;
                 r->header_in->pos = p + 1;
 
+                r->state = sw_value;
+
                 return NGX_OK;
             }
 
