@@ -1,5 +1,5 @@
 
-// stub module to test header files' C++ compatibilty
+// stub module to test header files' C++ compatibility
 
 extern "C" {
   #include <ngx_config.h>
