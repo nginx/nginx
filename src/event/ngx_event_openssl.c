@@ -2664,7 +2664,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
         EVP_EncryptInit_ex(ectx, EVP_aes_128_cbc(), NULL, key[0].aes_key, iv);
         HMAC_Init_ex(hctx, key[0].hmac_key, 16,
                      ngx_ssl_session_ticket_md(), NULL);
-        memcpy(name, key[0].name, 16);
+        ngx_memcpy(name, key[0].name, 16);
 
         return 0;
 
