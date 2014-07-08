@@ -2355,7 +2355,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
     p += 4;
 
     while (p < last) {
-        switch(*p++) {
+        switch (*p++) {
         case ',':
             return NGX_OK;
         case ';':
@@ -2372,7 +2372,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
 quantity:
 
     while (p < last) {
-        switch(*p++) {
+        switch (*p++) {
         case 'q':
         case 'Q':
             goto equal;

@@ -1287,7 +1287,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
             }
 
-            switch(ch) {
+            switch (ch) {
 #if (NGX_WIN32)
             case '\\':
                 if (u - 2 >= r->uri.data
@@ -1357,7 +1357,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
             }
 
-            switch(ch) {
+            switch (ch) {
 #if (NGX_WIN32)
             case '\\':
                 break;
@@ -1400,7 +1400,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
             }
 
-            switch(ch) {
+            switch (ch) {
 #if (NGX_WIN32)
             case '\\':
 #endif
@@ -1441,7 +1441,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 break;
             }
 
-            switch(ch) {
+            switch (ch) {
 #if (NGX_WIN32)
             case '\\':
 #endif

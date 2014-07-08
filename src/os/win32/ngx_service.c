@@ -89,7 +89,7 @@ u_int service_handler(u_int control, u_int type, void *data, void *ctx)
 {
     /* primary thread */
 
-    switch(control) {
+    switch (control) {
 
     case SERVICE_CONTROL_INTERROGATE:
         status = NGX_IOCP_INTERROGATE;

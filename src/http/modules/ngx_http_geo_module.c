@@ -1470,7 +1470,7 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     vv = (ngx_http_variable_value_t *) (base + sizeof(ngx_http_geo_header_t));
 
-    while(vv->data) {
+    while (vv->data) {
         len = ngx_align(sizeof(ngx_http_variable_value_t) + vv->len,
                         sizeof(void *));
         ngx_crc32_update(&crc32, (u_char *) vv, len);
