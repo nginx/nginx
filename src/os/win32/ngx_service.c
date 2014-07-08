@@ -16,7 +16,8 @@ SERVICE_TABLE_ENTRY st[] = {
 };
 
 
-ngx_int_t ngx_service(ngx_log_t *log)
+ngx_int_t
+ngx_service(ngx_log_t *log)
 {
     /* primary thread */
 
@@ -32,7 +33,8 @@ ngx_int_t ngx_service(ngx_log_t *log)
 }
 
 
-void service_main(u_int argc, char **argv)
+void
+service_main(u_int argc, char **argv)
 {
     SERVICE_STATUS         status;
     SERVICE_STATUS_HANDLE  service;
@@ -85,7 +87,8 @@ void service_main(u_int argc, char **argv)
 }
 
 
-u_int service_handler(u_int control, u_int type, void *data, void *ctx)
+u_int
+service_handler(u_int control, u_int type, void *data, void *ctx)
 {
     /* primary thread */
 
