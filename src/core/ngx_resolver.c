@@ -2722,8 +2722,7 @@ done:
     }
 
     if (len == -1) {
-        name->len = 0;
-        name->data = NULL;
+        ngx_str_null(name);
         return NGX_OK;
     }
 
