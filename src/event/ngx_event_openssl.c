@@ -656,9 +656,13 @@ ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
         return NULL;
     }
 
+#ifndef OPENSSL_NO_DEPRECATED
+
     if (key == NULL) {
         key = RSA_generate_key(512, RSA_F4, NULL, NULL);
     }
+
+#endif
 
     return key;
 }
