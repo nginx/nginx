@@ -3253,7 +3253,6 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                         || u->headers_in.content_length_n == tf->offset))
                 {
                     ngx_http_upstream_store(r, u);
-                    u->store = 0;
                 }
             }
         }
@@ -3375,7 +3374,9 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (u->conf->store_lengths == NULL) {
 
-        ngx_http_map_uri_to_path(r, &path, &root, 0);
+        if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+            return;
+        }
 
     } else {
         if (ngx_http_script_run(r, &path, u->conf->store_lengths->elts, 0,
@@ -3393,6 +3394,8 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
                    tf->file.name.data, path.data);
 
     (void) ngx_ext_rename_file(&tf->file.name, &path, &ext);
+
+    u->store = 0;
 }
 
 
