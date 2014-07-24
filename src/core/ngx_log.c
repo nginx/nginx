@@ -387,18 +387,20 @@ ngx_log_open_default(ngx_cycle_t *cycle)
             return NGX_ERROR;
         }
 
-        log->log_level = NGX_LOG_ERR;
-        ngx_log_insert(&cycle->new_log, log);
-
     } else {
         /* no error logs at all */
         log = &cycle->new_log;
-        log->log_level = NGX_LOG_ERR;
     }
+
+    log->log_level = NGX_LOG_ERR;
 
     log->file = ngx_conf_open_file(cycle, &error_log);
     if (log->file == NULL) {
         return NGX_ERROR;
+    }
+
+    if (log != &cycle->new_log) {
+        ngx_log_insert(&cycle->new_log, log);
     }
 
     return NGX_OK;
