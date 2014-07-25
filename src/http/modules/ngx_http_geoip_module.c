@@ -553,6 +553,9 @@ ngx_http_geoip_city_float_variable(ngx_http_request_t *r,
     val = *(float *) ((char *) gr + data);
 
     v->len = ngx_sprintf(v->data, "%.4f", val) - v->data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     GeoIPRecord_delete(gr);
 
@@ -582,6 +585,9 @@ ngx_http_geoip_city_int_variable(ngx_http_request_t *r,
     val = *(int *) ((char *) gr + data);
 
     v->len = ngx_sprintf(v->data, "%d", val) - v->data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     GeoIPRecord_delete(gr);
 
