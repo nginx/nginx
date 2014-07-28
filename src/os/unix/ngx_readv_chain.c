@@ -10,7 +10,11 @@
 #include <ngx_event.h>
 
 
-#define NGX_IOVS  16
+#if (IOV_MAX > 64)
+#define NGX_IOVS  64
+#else
+#define NGX_IOVS  IOV_MAX
+#endif
 
 
 #if (NGX_HAVE_KQUEUE)
