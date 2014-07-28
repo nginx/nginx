@@ -1393,6 +1393,11 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
     rc = ngx_ssl_handshake(c);
 
     if (rc == NGX_AGAIN) {
+
+        if (!c->write->timer_set) {
+            ngx_add_timer(c->write, u->conf->connect_timeout);
+        }
+
         c->ssl->handler = ngx_http_upstream_ssl_handshake;
         return;
     }
