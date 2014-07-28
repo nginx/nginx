@@ -11,7 +11,7 @@
 #include <ngx_event_connect.h>
 
 
-#ifdef SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB
+#if (!defined OPENSSL_NO_OCSP && defined SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB)
 
 
 typedef struct {

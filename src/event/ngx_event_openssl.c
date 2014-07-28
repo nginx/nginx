@@ -3279,6 +3279,8 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
 static char *
 ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+#ifndef OPENSSL_NO_ENGINE
+
     ngx_openssl_conf_t *oscf = conf;
 
     ENGINE     *engine;
@@ -3313,6 +3315,12 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ENGINE_free(engine);
 
     return NGX_CONF_OK;
+
+#else
+
+    return "is not supported";
+
+#endif
 }
 
 
@@ -3320,5 +3328,7 @@ static void
 ngx_openssl_exit(ngx_cycle_t *cycle)
 {
     EVP_cleanup();
+#ifndef OPENSSL_NO_ENGINE
     ENGINE_cleanup();
+#endif
 }
