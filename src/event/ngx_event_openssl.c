@@ -588,7 +588,7 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
 
     ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "verify:%d, error:%d, depth:%d, "
-                   "subject:\"%s\",issuer: \"%s\"",
+                   "subject:\"%s\", issuer:\"%s\"",
                    ok, err, depth, subject, issuer);
 
     if (sname) {
