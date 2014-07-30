@@ -212,7 +212,10 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
         return;
     }
 
-    ngx_http_map_uri_to_path(r, &path, &root, 0);
+    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
 
     path.len--;
 
@@ -320,7 +323,9 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
 
 ok:
 
-    ngx_http_map_uri_to_path(r, &path, &root, 0);
+    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http delete filename: \"%s\"", path.data);
@@ -488,6 +493,9 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
     }
 
     p = ngx_http_map_uri_to_path(r, &path, &root, 0);
+    if (p == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     *(p - 1) = '\0';
     r->uri.len--;
@@ -666,7 +674,9 @@ destination_done:
 
 overwrite_done:
 
-    ngx_http_map_uri_to_path(r, &path, &root, 0);
+    if (ngx_http_map_uri_to_path(r, &path, &root, 0) == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http copy from: \"%s\"", path.data);
@@ -674,7 +684,9 @@ overwrite_done:
     uri = r->uri;
     r->uri = duri;
 
-    ngx_http_map_uri_to_path(r, &copy.path, &root, 0);
+    if (ngx_http_map_uri_to_path(r, &copy.path, &root, 0) == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     r->uri = uri;
 
