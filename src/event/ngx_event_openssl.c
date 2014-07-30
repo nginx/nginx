@@ -106,7 +106,9 @@ int  ngx_ssl_stapling_index;
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
+#ifndef OPENSSL_IS_BORINGSSL
     OPENSSL_config(NULL);
+#endif
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -217,7 +219,10 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_MSIE_SSLV2_RSA_PADDING);
 #endif
 
+#ifdef SSL_OP_SSLEAY_080_CLIENT_DH_BUG
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SSLEAY_080_CLIENT_DH_BUG);
+#endif
+
     SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_D5_BUG);
     SSL_CTX_set_options(ssl->ctx, SSL_OP_TLS_BLOCK_PADDING_BUG);
 
@@ -382,8 +387,13 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         if (--tries) {
             n = ERR_peek_error();
 
+#ifdef OPENSSL_IS_BORINGSSL
+            if (ERR_GET_LIB(n) == ERR_LIB_CIPHER
+                && ERR_GET_REASON(n) == CIPHER_R_BAD_DECRYPT)
+#else
             if (ERR_GET_LIB(n) == ERR_LIB_EVP
                 && ERR_GET_REASON(n) == EVP_R_BAD_DECRYPT)
+#endif
             {
                 ERR_clear_error();
                 SSL_CTX_set_default_passwd_cb_userdata(ssl->ctx, ++pwd);
