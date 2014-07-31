@@ -5329,7 +5329,7 @@ the bug had appeared in 0.9.0.
 
 <change type="feature">
 <para lang="ru">
-поддержка строки "If-Unmodified-Since" в заголовке запросе клиента.
+поддержка строки "If-Unmodified-Since" в заголовке запроса клиента.
 </para>
 <para lang="en">
 the "If-Unmodified-Since" client request header line support.
@@ -11560,7 +11560,7 @@ if keepalive was enabled.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не обрабатывал ответ FastCGI-сервера, если строка заголовка ответ была
+nginx не обрабатывал ответ FastCGI-сервера, если строка заголовка ответа была
 в конце записи FastCGI;
 ошибка появилась в 0.6.2.<br/>
 Спасибо Сергею Серову.
@@ -14974,7 +14974,7 @@ the "ip_hash" directive inside the "upstream" block.
 
 <change type="feature">
 <para lang="ru">
-статус WAIT в строке "Auth-Status" в заголовка ответа сервера аутентификации
+статус WAIT в строке "Auth-Status" в заголовке ответа сервера аутентификации
 IMAP/POP3 прокси.
 </para>
 <para lang="en">
@@ -19701,7 +19701,7 @@ then nginx started to request all backends again.
 
 <change type="change">
 <para lang="ru">
-если в заголовке запросе есть дублирующиеся строки "Host", "Connection",
+если в заголовке запроса есть дублирующиеся строки "Host", "Connection",
 "Content-Length" и "Authorization", то nginx теперь выдаёт ошибку 400.
 </para>
 <para lang="en">
