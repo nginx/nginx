@@ -864,7 +864,7 @@ ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len)
         n = ngx_utf8_decode(&p, 4);
 
         if (n > 0x10ffff) {
-            free(utf16);
+            ngx_free(utf16);
             ngx_set_errno(NGX_EILSEQ);
             return NULL;
         }
