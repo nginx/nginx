@@ -5,6 +5,52 @@
 <change_log title="nginx">
 
 
+<changes ver="1.6.1" date="05.08.2014">
+
+<change type="security">
+<para lang="ru">
+pipelined-команды не отбрасывались
+после команды STARTTLS в SMTP прокси-сервере (CVE-2014-3556);
+ошибка появилась в 1.5.6.<br/>
+Спасибо Chris Boulton.
+</para>
+<para lang="en">
+pipelined commands were not discarded
+after STARTTLS command in SMTP proxy (CVE-2014-3556);
+the bug had appeared in 1.5.6.<br/>
+Thanks to Chris Boulton.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $uri могла содержать мусор
+при возврате ошибок с кодом 400.<br/>
+Спасибо Сергею Боброву.
+</para>
+<para lang="en">
+the $uri variable might contain garbage
+when returning errors with code 400.<br/>
+Thanks to Sergey Bobrov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в работе параметра none директивы smtp_auth;
+ошибка появилась в 1.5.6.<br/>
+Спасибо Святославу Никольскому.
+</para>
+<para lang="en">
+in the "none" parameter in the "smtp_auth" directive;
+the bug had appeared in 1.5.6.<br/>
+Thanks to Svyatoslav Nikolsky.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.6.0" date="24.04.2014">
 
 <change>
