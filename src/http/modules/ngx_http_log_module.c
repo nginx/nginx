@@ -1254,17 +1254,6 @@ process_formats:
         return NGX_CONF_ERROR;
     }
 
-    if (log->syslog_peer != NULL) {
-        if (cf->args->nelts > 3) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "parameter \"%V\" is not supported by syslog",
-                               &value[3]);
-            return NGX_CONF_ERROR;
-        }
-
-        return NGX_CONF_OK;
-    }
-
     size = 0;
     flush = 0;
     gzip = 0;
@@ -1358,6 +1347,12 @@ process_formats:
         if (log->script) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "buffered logs cannot have variables in name");
+            return NGX_CONF_ERROR;
+        }
+
+        if (log->syslog_peer) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "logs to syslog cannot be buffered");
             return NGX_CONF_ERROR;
         }
 
