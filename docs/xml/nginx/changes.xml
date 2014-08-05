@@ -5,6 +5,135 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.4" date="05.08.2014">
+
+<change type="security">
+<para lang="ru">
+pipelined-команды не отбрасывались
+после команды STARTTLS в SMTP прокси-сервере (CVE-2014-3556);
+ошибка появилась в 1.5.6.<br/>
+Спасибо Chris Boulton.
+</para>
+<para lang="en">
+pipelined commands were not discarded
+after STARTTLS command in SMTP proxy (CVE-2014-3556);
+the bug had appeared in 1.5.6.<br/>
+Thanks to Chris Boulton.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+экранирование символов в URI теперь использует
+шестнадцатеричные цифры в верхнем регистре.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+URI escaping now uses
+uppercase hexadecimal digits.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx можно собрать с BoringSSL и LibreSSL.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+now nginx can be build with BoringSSL and LibreSSL.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+запросы могли зависать, если использовался resolver
+и DNS-сервер возвращал некорректный ответ;
+ошибка появилась в 1.5.8.
+</para>
+<para lang="en">
+requests might hang if resolver was used
+and a DNS server returned a malformed response;
+the bug had appeared in 1.5.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $uri могла содержать мусор
+при возврате ошибок с кодом 400.<br/>
+Спасибо Сергею Боброву.
+</para>
+<para lang="en">
+the $uri variable might contain garbage
+when returning errors with code 400.<br/>
+Thanks to Sergey Bobrov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок в директиве proxy_store
+и в модуле ngx_http_dav_module.<br/>
+Спасибо Feng Gu.
+</para>
+<para lang="en">
+in error handling in the "proxy_store" directive
+and the ngx_http_dav_module.<br/>
+Thanks to Feng Gu.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при логгировании ошибок в syslog мог происходить segmentation fault;
+ошибка появилась в 1.7.1.
+</para>
+<para lang="en">
+a segmentation fault might occur if logging of errors to syslog was used;
+the bug had appeared in 1.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные $geoip_latitude, $geoip_longitude, $geoip_dma_code
+и $geoip_area_code могли не работать.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+the $geoip_latitude, $geoip_longitude, $geoip_dma_code,
+and $geoip_area_code variables might not work.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.<br/>
+Спасибо Tatsuhiko Kubo и Piotr Sikora.
+</para>
+<para lang="en">
+in memory allocation error handling.<br/>
+Thanks to Tatsuhiko Kubo and Piotr Sikora.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.3" date="08.07.2014">
 
 <change type="feature">
