@@ -227,7 +227,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "change max_fd: %d", max_fd);
+                       "change max_fd: %i", max_fd);
     }
 
 #if (NGX_DEBUG)
@@ -240,7 +240,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "max_fd: %d", max_fd);
+                       "max_fd: %i", max_fd);
     }
 #endif
 

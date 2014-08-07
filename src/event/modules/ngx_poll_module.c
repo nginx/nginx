@@ -251,7 +251,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     if (cycle->log->log_level & NGX_LOG_DEBUG_ALL) {
         for (i = 0; i < nevents; i++) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "poll: %d: fd:%d ev:%04Xd",
+                           "poll: %ui: fd:%d ev:%04Xd",
                            i, event_list[i].fd, event_list[i].events);
         }
     }
@@ -268,7 +268,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "poll ready %d of %d", ready, nevents);
+                   "poll ready %d of %ui", ready, nevents);
 
     if (err) {
         if (err == NGX_EINTR) {
@@ -308,12 +308,12 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
 #if 1
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                       "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
+                       "poll: %ui: fd:%d ev:%04Xd rev:%04Xd",
                        i, event_list[i].fd, event_list[i].events, revents);
 #else
         if (revents) {
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                           "poll: %d: fd:%d ev:%04Xd rev:%04Xd",
+                           "poll: %ui: fd:%d ev:%04Xd rev:%04Xd",
                            i, event_list[i].fd, event_list[i].events, revents);
         }
 #endif
