@@ -22,7 +22,7 @@ static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 static struct pollfd  *event_list;
-static ngx_int_t       nevents;
+static ngx_uint_t      nevents;
 
 
 static ngx_str_t    poll_name = ngx_string("poll");
@@ -198,7 +198,7 @@ ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
         nevents--;
 
-        if (ev->index < (ngx_uint_t) nevents) {
+        if (ev->index < nevents) {
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "index: copy event %ui to %i", nevents, ev->index);
@@ -212,11 +212,11 @@ ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                               "unexpected last event");
 
             } else {
-                if (c->read->index == (ngx_uint_t) nevents) {
+                if (c->read->index == nevents) {
                     c->read->index = ev->index;
                 }
 
-                if (c->write->index == (ngx_uint_t) nevents) {
+                if (c->write->index == nevents) {
                     c->write->index = ev->index;
                 }
             }
@@ -240,8 +240,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                 ready, revents;
     ngx_err_t           err;
-    ngx_int_t           i, nready;
-    ngx_uint_t          found, level;
+    ngx_int_t           nready;
+    ngx_uint_t          i, found, level;
     ngx_event_t        *ev, **queue;
     ngx_connection_t   *c;
 
