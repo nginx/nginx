@@ -240,7 +240,6 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                 ready, revents;
     ngx_err_t           err;
-    ngx_int_t           nready;
     ngx_uint_t          i, found, level;
     ngx_event_t        *ev, **queue;
     ngx_connection_t   *c;
@@ -299,8 +298,6 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     }
 
     ngx_mutex_lock(ngx_posted_events_mutex);
-
-    nready = 0;
 
     for (i = 0; i < nevents && ready; i++) {
 
@@ -414,7 +411,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "poll ready != events");
     }
 
-    return nready;
+    return NGX_OK;
 }
 
 
