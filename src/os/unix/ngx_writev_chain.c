@@ -143,29 +143,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         c->sent += sent;
 
-        for (cl = in; cl; cl = cl->next) {
-
-            if (ngx_buf_special(cl->buf)) {
-                continue;
-            }
-
-            if (sent == 0) {
-                break;
-            }
-
-            size = cl->buf->last - cl->buf->pos;
-
-            if (sent >= size) {
-                sent -= size;
-                cl->buf->pos = cl->buf->last;
-
-                continue;
-            }
-
-            cl->buf->pos += sent;
-
-            break;
-        }
+        cl = ngx_handle_sent_chain(in, sent);
 
         if (eintr) {
             continue;

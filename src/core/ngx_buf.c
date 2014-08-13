@@ -218,3 +218,49 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
         *free = cl;
     }
 }
+
+
+ngx_chain_t *
+ngx_handle_sent_chain(ngx_chain_t *in, off_t sent)
+{
+    off_t  size;
+
+    for ( /* void */ ; in; in = in->next) {
+
+        if (ngx_buf_special(in->buf)) {
+            continue;
+        }
+
+        if (sent == 0) {
+            break;
+        }
+
+        size = ngx_buf_size(in->buf);
+
+        if (sent >= size) {
+            sent -= size;
+
+            if (ngx_buf_in_memory(in->buf)) {
+                in->buf->pos = in->buf->last;
+            }
+
+            if (in->buf->in_file) {
+                in->buf->file_pos = in->buf->file_last;
+            }
+
+            continue;
+        }
+
+        if (ngx_buf_in_memory(in->buf)) {
+            in->buf->pos += (size_t) sent;
+        }
+
+        if (in->buf->in_file) {
+            in->buf->file_pos += sent;
+        }
+
+        break;
+    }
+
+    return in;
+}
