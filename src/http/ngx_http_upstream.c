@@ -519,6 +519,11 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             return;
         }
 
+        if (rc == NGX_ERROR) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
         if (rc != NGX_DECLINED) {
             ngx_http_finalize_request(r, rc);
             return;
