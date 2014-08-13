@@ -136,6 +136,8 @@ struct ngx_event_s {
     unsigned         channel:1;
     unsigned         resolver:1;
 
+    unsigned         cancelable:1;
+
 
 #if 0
 

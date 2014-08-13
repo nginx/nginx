@@ -22,6 +22,7 @@
 ngx_int_t ngx_event_timer_init(ngx_log_t *log);
 ngx_msec_t ngx_event_find_timer(void);
 void ngx_event_expire_timers(void);
+void ngx_event_cancel_timers(void);
 
 
 extern ngx_rbtree_t  ngx_event_timer_rbtree;
