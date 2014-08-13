@@ -285,7 +285,7 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             rc = writev(c->fd, header.elts, header.nelts);
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "writev: %d of %uz", rc, send);
+                           "writev: %d of %O", rc, header_size);
 
             if (rc == -1) {
                 err = ngx_errno;
