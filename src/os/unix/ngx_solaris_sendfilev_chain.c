@@ -51,7 +51,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     off_t           size, send, prev_send, aligned, fprev;
     size_t          sent;
     ssize_t         n;
-    ngx_int_t       eintr, complete;
+    ngx_int_t       eintr;
     ngx_err_t       err;
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
     ngx_array_t     vec;
@@ -89,7 +89,6 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         fprev = 0;
         sfv = NULL;
         eintr = 0;
-        complete = 0;
         sent = 0;
         prev_send = send;
 
@@ -201,10 +200,6 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "sendfilev: %z %z", n, sent);
 
-        if (send - prev_send == (off_t) sent) {
-            complete = 1;
-        }
-
         c->sent += sent;
 
         in = ngx_handle_sent_chain(in, sent);
@@ -213,7 +208,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             continue;
         }
 
-        if (!complete) {
+        if (send - prev_send != (off_t) sent) {
             wev->ready = 0;
             return in;
         }

@@ -23,7 +23,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     u_char        *prev;
     ssize_t        n, size, sent;
     off_t          send, prev_send;
-    ngx_uint_t     eintr, complete;
+    ngx_uint_t     eintr;
     ngx_err_t      err;
     ngx_array_t    vec;
     ngx_chain_t   *cl;
@@ -64,7 +64,6 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         prev = NULL;
         iov = NULL;
         eintr = 0;
-        complete = 0;
         prev_send = send;
 
         vec.nelts = 0;
@@ -137,10 +136,6 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %z", sent);
 
-        if (send - prev_send == sent) {
-            complete = 1;
-        }
-
         c->sent += sent;
 
         cl = ngx_handle_sent_chain(in, sent);
@@ -149,7 +144,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             continue;
         }
 
-        if (!complete) {
+        if (send - prev_send != sent) {
             wev->ready = 0;
             return cl;
         }

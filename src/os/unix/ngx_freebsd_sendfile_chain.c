@@ -45,7 +45,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     u_char          *prev;
     off_t            size, send, prev_send, aligned, sent, fprev;
     size_t           header_size, file_size;
-    ngx_uint_t       eintr, eagain, complete;
+    ngx_uint_t       eintr, eagain;
     ngx_err_t        err;
     ngx_buf_t       *file;
     ngx_array_t      header, trailer;
@@ -96,7 +96,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         file_size = 0;
         header_size = 0;
         eintr = 0;
-        complete = 0;
         prev_send = send;
 
         header.nelts = 0;
@@ -362,10 +361,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             sent = rc > 0 ? rc : 0;
         }
 
-        if (send - prev_send == sent) {
-            complete = 1;
-        }
-
         c->sent += sent;
 
         in = ngx_handle_sent_chain(in, sent);
@@ -393,7 +388,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             continue;
         }
 
-        if (!complete) {
+        if (send - prev_send != sent) {
             wev->ready = 0;
             return in;
         }
