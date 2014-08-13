@@ -79,8 +79,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     trailer.nalloc = NGX_IOVS_PREALLOCATE;
 
     for ( ;; ) {
-        file = NULL;
-        file_size = 0;
         eintr = 0;
         prev_send = send;
 
@@ -102,10 +100,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             file_size = (size_t) ngx_chain_coalesce_file(&cl, limit - send);
 
             send += file_size;
-        }
-
-
-        if (file) {
 
             /* create the trailer iovec and coalesce the neighbouring bufs */
 
@@ -116,9 +110,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             send += trailer.size;
-        }
-
-        if (file) {
 
             if (ngx_freebsd_use_tcp_nopush
                 && c->tcp_nopush == NGX_TCP_NOPUSH_UNSET)

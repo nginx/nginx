@@ -75,8 +75,6 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     trailer.nalloc = NGX_IOVS_PREALLOCATE;
 
     for ( ;; ) {
-        file = NULL;
-        file_size = 0;
         eintr = 0;
         prev_send = send;
 
@@ -98,22 +96,21 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             file_size = ngx_chain_coalesce_file(&cl, limit - send);
 
             send += file_size;
-        }
 
-        if (file && header.count == 0) {
+            if (header.count == 0) {
 
-            /* create the trailer iovec and coalesce the neighbouring bufs */
+                /*
+                 * create the trailer iovec and coalesce the neighbouring bufs
+                 */
 
-            cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send, c->log);
+                cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send, c->log);
 
-            if (cl == NGX_CHAIN_ERROR) {
-                return NGX_CHAIN_ERROR;
+                if (cl == NGX_CHAIN_ERROR) {
+                    return NGX_CHAIN_ERROR;
+                }
+
+                send += trailer.size;
             }
-
-            send += trailer.size;
-        }
-
-        if (file) {
 
             /*
              * sendfile() returns EINVAL if sf_hdtr's count is 0,

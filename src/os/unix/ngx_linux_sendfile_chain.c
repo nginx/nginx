@@ -66,8 +66,6 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     header.nalloc = NGX_IOVS_PREALLOCATE;
 
     for ( ;; ) {
-        file = NULL;
-        file_size = 0;
         eintr = 0;
         prev_send = send;
 
@@ -156,9 +154,6 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             file_size = (size_t) ngx_chain_coalesce_file(&cl, limit - send);
 
             send += file_size;
-        }
-
-        if (file) {
 #if 1
             if (file_size == 0) {
                 ngx_debug_point();
