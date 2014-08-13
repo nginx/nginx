@@ -27,15 +27,6 @@
  */
 
 
-#if (IOV_MAX > 64)
-#define NGX_HEADERS   64
-#define NGX_TRAILERS  64
-#else
-#define NGX_HEADERS   IOV_MAX
-#define NGX_TRAILERS  IOV_MAX
-#endif
-
-
 ngx_chain_t *
 ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
@@ -50,7 +41,9 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_event_t     *wev;
     ngx_chain_t     *cl;
     struct sf_hdtr   hdtr;
-    struct iovec    *iov, headers[NGX_HEADERS], trailers[NGX_TRAILERS];
+    struct iovec    *iov;
+    struct iovec     headers[NGX_IOVS_PREALLOCATE];
+    struct iovec     trailers[NGX_IOVS_PREALLOCATE];
 
     wev = c->write;
 
@@ -79,12 +72,12 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     header.elts = headers;
     header.size = sizeof(struct iovec);
-    header.nalloc = NGX_HEADERS;
+    header.nalloc = NGX_IOVS_PREALLOCATE;
     header.pool = c->pool;
 
     trailer.elts = trailers;
     trailer.size = sizeof(struct iovec);
-    trailer.nalloc = NGX_TRAILERS;
+    trailer.nalloc = NGX_IOVS_PREALLOCATE;
     trailer.pool = c->pool;
 
     for ( ;; ) {

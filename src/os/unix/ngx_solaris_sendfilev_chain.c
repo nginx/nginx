@@ -35,12 +35,7 @@ ngx_chain_t *ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in,
 #endif
 
 
-#if (IOV_MAX > 64)
-#define NGX_SENDFILEVECS  64
-#else
-#define NGX_SENDFILEVECS  IOV_MAX
-#endif
-
+#define NGX_SENDFILEVECS  NGX_IOVS_PREALLOCATE
 
 
 ngx_chain_t *

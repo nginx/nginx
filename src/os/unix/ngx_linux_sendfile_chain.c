@@ -27,13 +27,6 @@
 #define NGX_SENDFILE_MAXSIZE  2147483647L
 
 
-#if (IOV_MAX > 64)
-#define NGX_HEADERS  64
-#else
-#define NGX_HEADERS  IOV_MAX
-#endif
-
-
 ngx_chain_t *
 ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
@@ -47,7 +40,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_array_t    header;
     ngx_event_t   *wev;
     ngx_chain_t   *cl;
-    struct iovec  *iov, headers[NGX_HEADERS];
+    struct iovec  *iov, headers[NGX_IOVS_PREALLOCATE];
 #if (NGX_HAVE_SENDFILE64)
     off_t          offset;
 #else
@@ -72,7 +65,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     header.elts = headers;
     header.size = sizeof(struct iovec);
-    header.nalloc = NGX_HEADERS;
+    header.nalloc = NGX_IOVS_PREALLOCATE;
     header.pool = c->pool;
 
     for ( ;; ) {

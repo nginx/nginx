@@ -10,13 +10,6 @@
 #include <ngx_event.h>
 
 
-#if (IOV_MAX > 64)
-#define NGX_IOVS  64
-#else
-#define NGX_IOVS  IOV_MAX
-#endif
-
-
 ngx_chain_t *
 ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
@@ -28,7 +21,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_array_t    vec;
     ngx_chain_t   *cl;
     ngx_event_t   *wev;
-    struct iovec  *iov, iovs[NGX_IOVS];
+    struct iovec  *iov, iovs[NGX_IOVS_PREALLOCATE];
 
     wev = c->write;
 
@@ -57,7 +50,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     vec.elts = iovs;
     vec.size = sizeof(struct iovec);
-    vec.nalloc = NGX_IOVS;
+    vec.nalloc = NGX_IOVS_PREALLOCATE;
     vec.pool = c->pool;
 
     for ( ;; ) {

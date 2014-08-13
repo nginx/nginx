@@ -10,13 +10,6 @@
 #include <ngx_event.h>
 
 
-#if (IOV_MAX > 64)
-#define NGX_IOVS  64
-#else
-#define NGX_IOVS  IOV_MAX
-#endif
-
-
 ssize_t
 ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
 {
@@ -25,7 +18,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     ngx_err_t      err;
     ngx_array_t    vec;
     ngx_event_t   *rev;
-    struct iovec  *iov, iovs[NGX_IOVS];
+    struct iovec  *iov, iovs[NGX_IOVS_PREALLOCATE];
 
     rev = c->read;
 
@@ -67,7 +60,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     vec.elts = iovs;
     vec.nelts = 0;
     vec.size = sizeof(struct iovec);
-    vec.nalloc = NGX_IOVS;
+    vec.nalloc = NGX_IOVS_PREALLOCATE;
     vec.pool = c->pool;
 
     /* coalesce the neighbouring bufs */

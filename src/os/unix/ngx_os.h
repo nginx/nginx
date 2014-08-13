@@ -56,6 +56,13 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
 #endif
 
 
+#if (IOV_MAX > 64)
+#define NGX_IOVS_PREALLOCATE  64
+#else
+#define NGX_IOVS_PREALLOCATE  IOV_MAX
+#endif
+
+
 extern ngx_os_io_t  ngx_os_io;
 extern ngx_int_t    ngx_ncpu;
 extern ngx_int_t    ngx_max_sockets;
