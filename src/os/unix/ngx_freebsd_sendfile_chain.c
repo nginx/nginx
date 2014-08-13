@@ -33,7 +33,7 @@ ngx_chain_t *
 ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int              rc, flags;
-    off_t            size, send, prev_send, aligned, sent, fprev;
+    off_t            send, prev_send, sent;
     size_t           file_size;
     ngx_uint_t       eintr, eagain;
     ngx_err_t        err;
@@ -99,30 +99,9 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             /* coalesce the neighbouring file bufs */
 
-            do {
-                size = cl->buf->file_last - cl->buf->file_pos;
+            file_size = (size_t) ngx_chain_coalesce_file(&cl, limit - send);
 
-                if (send + size > limit) {
-                    size = limit - send;
-
-                    aligned = (cl->buf->file_pos + size + ngx_pagesize - 1)
-                               & ~((off_t) ngx_pagesize - 1);
-
-                    if (aligned <= cl->buf->file_last) {
-                        size = aligned - cl->buf->file_pos;
-                    }
-                }
-
-                file_size += (size_t) size;
-                send += size;
-                fprev = cl->buf->file_pos + size;
-                cl = cl->next;
-
-            } while (cl
-                     && cl->buf->in_file
-                     && send < limit
-                     && file->file->fd == cl->buf->file->fd
-                     && fprev == cl->buf->file_pos);
+            send += file_size;
         }
 
 
