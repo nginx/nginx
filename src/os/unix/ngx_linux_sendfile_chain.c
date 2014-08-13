@@ -33,6 +33,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     int            rc, tcp_nodelay;
     off_t          send, prev_send, sent;
     size_t         file_size;
+    ssize_t        n;
     ngx_err_t      err;
     ngx_buf_t     *file;
     ngx_uint_t     eintr;
@@ -199,32 +200,13 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                            rc, file->file_pos, sent, file_size);
 
         } else {
-            rc = writev(c->fd, header.iovs, header.count);
+            n = ngx_writev(c, &header);
 
-            if (rc == -1) {
-                err = ngx_errno;
-
-                switch (err) {
-                case NGX_EAGAIN:
-                    break;
-
-                case NGX_EINTR:
-                    eintr = 1;
-                    break;
-
-                default:
-                    wev->error = 1;
-                    ngx_connection_error(c, err, "writev() failed");
-                    return NGX_CHAIN_ERROR;
-                }
-
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
-                               "writev() not ready");
+            if (n == NGX_ERROR) {
+                return NGX_CHAIN_ERROR;
             }
 
-            sent = rc > 0 ? rc : 0;
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %O", sent);
+            sent = (n == NGX_AGAIN) ? 0 : n;
         }
 
         c->sent += sent;

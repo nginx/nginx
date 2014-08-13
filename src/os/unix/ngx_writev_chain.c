@@ -15,8 +15,6 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     ssize_t        n, sent;
     off_t          send, prev_send;
-    ngx_uint_t     eintr;
-    ngx_err_t      err;
     ngx_chain_t   *cl;
     ngx_event_t   *wev;
     ngx_iovec_t    vec;
@@ -51,7 +49,6 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     vec.nalloc = NGX_IOVS_PREALLOCATE;
 
     for ( ;; ) {
-        eintr = 0;
         prev_send = send;
 
         /* create the iovec and coalesce the neighbouring bufs */
@@ -83,41 +80,17 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         send += vec.size;
 
-        n = writev(c->fd, vec.iovs, vec.count);
+        n = ngx_writev(c, &vec);
 
-        if (n == -1) {
-            err = ngx_errno;
-
-            switch (err) {
-            case NGX_EAGAIN:
-                break;
-
-            case NGX_EINTR:
-                eintr = 1;
-                break;
-
-            default:
-                wev->error = 1;
-                (void) ngx_connection_error(c, err, "writev() failed");
-                return NGX_CHAIN_ERROR;
-            }
-
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
-                           "writev() not ready");
+        if (n == NGX_ERROR) {
+            return NGX_CHAIN_ERROR;
         }
 
-        sent = n > 0 ? n : 0;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "writev: %z", sent);
+        sent = (n == NGX_AGAIN) ? 0 : n;
 
         c->sent += sent;
 
         in = ngx_chain_update_sent(in, sent);
-
-        if (eintr) {
-            send = prev_send;
-            continue;
-        }
 
         if (send - prev_send != sent) {
             wev->ready = 0;
@@ -202,4 +175,42 @@ ngx_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in, size_t limit,
     vec->size = total;
 
     return in;
+}
+
+
+ssize_t
+ngx_writev(ngx_connection_t *c, ngx_iovec_t *vec)
+{
+    ssize_t    n;
+    ngx_err_t  err;
+
+eintr:
+
+    n = writev(c->fd, vec->iovs, vec->count);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "writev: %z of %uz", n, vec->size);
+
+    if (n == -1) {
+        err = ngx_errno;
+
+        switch (err) {
+        case NGX_EAGAIN:
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "writev() not ready");
+            return NGX_AGAIN;
+
+        case NGX_EINTR:
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "writev() was interrupted");
+            goto eintr;
+
+        default:
+            c->write->error = 1;
+            ngx_connection_error(c, err, "writev() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    return n;
 }

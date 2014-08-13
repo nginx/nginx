@@ -75,6 +75,9 @@ ngx_chain_t *ngx_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in,
     size_t limit, ngx_log_t *log);
 
 
+ssize_t ngx_writev(ngx_connection_t *c, ngx_iovec_t *vec);
+
+
 extern ngx_os_io_t  ngx_os_io;
 extern ngx_int_t    ngx_ncpu;
 extern ngx_int_t    ngx_max_sockets;
