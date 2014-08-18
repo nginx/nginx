@@ -1141,6 +1141,11 @@ ngx_http_spdy_handle_stream(ngx_http_spdy_connection_t *sc,
 
     wev = stream->request->connection->write;
 
+    /*
+     * This timer can only be set if the stream was delayed because of rate
+     * limit.  In that case the event should be triggered by the timer.
+     */
+
     if (!wev->timer_set) {
         wev->delayed = 0;
 
