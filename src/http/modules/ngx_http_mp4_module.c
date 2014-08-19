@@ -1840,7 +1840,7 @@ ngx_http_mp4_read_smhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     atom->pos = atom_header;
     atom->last = atom_header + atom_size;
 
-    trak->vmhd_size += atom_size;
+    trak->smhd_size += atom_size;
     trak->out[NGX_HTTP_MP4_SMHD_ATOM].buf = atom;
 
     ngx_mp4_atom_next(mp4, atom_data_size);
