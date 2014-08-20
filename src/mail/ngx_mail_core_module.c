@@ -41,7 +41,7 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       NULL },
 
     { ngx_string("listen"),
-      NGX_MAIL_SRV_CONF|NGX_CONF_TAKE12,
+      NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
       ngx_mail_core_listen,
       NGX_MAIL_SRV_CONF_OFFSET,
       0,
