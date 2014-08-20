@@ -131,8 +131,7 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     /*
-     * create the main_conf's, the null srv_conf's, and the null loc_conf's
-     * of the all mail modules
+     * create the main_conf's and the null srv_conf's of the all mail modules
      */
 
     for (m = 0; ngx_modules[m]; m++) {
