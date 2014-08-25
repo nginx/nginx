@@ -546,6 +546,14 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
             for ( ;; ) {
                 if (ch == match) {
+
+                    if (ctx->match.len == 1) {
+                        ctx->pos = p + 1;
+                        ctx->copy_end = p;
+
+                        return NGX_OK;
+                    }
+
                     copy_end = p;
                     ctx->looked.data[0] = *p;
                     looked = 1;
