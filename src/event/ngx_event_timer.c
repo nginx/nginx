@@ -67,32 +67,30 @@ ngx_event_expire_timers(void)
 
         node = ngx_rbtree_min(root, sentinel);
 
-        /* node->key <= ngx_current_time */
+        /* node->key > ngx_current_time */
 
-        if ((ngx_msec_int_t) (node->key - ngx_current_msec) <= 0) {
-            ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
-
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                           "event timer del: %d: %M",
-                           ngx_event_ident(ev->data), ev->timer.key);
-
-            ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
-
-#if (NGX_DEBUG)
-            ev->timer.left = NULL;
-            ev->timer.right = NULL;
-            ev->timer.parent = NULL;
-#endif
-
-            ev->timer_set = 0;
-
-            ev->timedout = 1;
-
-            ev->handler(ev);
-
-            continue;
+        if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {
+            return;
         }
 
-        break;
+        ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "event timer del: %d: %M",
+                       ngx_event_ident(ev->data), ev->timer.key);
+
+        ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
+
+#if (NGX_DEBUG)
+        ev->timer.left = NULL;
+        ev->timer.right = NULL;
+        ev->timer.parent = NULL;
+#endif
+
+        ev->timer_set = 0;
+
+        ev->timedout = 1;
+
+        ev->handler(ev);
     }
 }
