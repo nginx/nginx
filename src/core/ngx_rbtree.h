@@ -48,10 +48,8 @@ struct ngx_rbtree_s {
     (tree)->insert = i
 
 
-void ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
-    ngx_rbtree_node_t *node);
-void ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
-    ngx_rbtree_node_t *node);
+void ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node);
+void ngx_rbtree_delete(ngx_rbtree_t *tree, ngx_rbtree_node_t *node);
 void ngx_rbtree_insert_value(ngx_rbtree_node_t *root, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel);
 void ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *root,

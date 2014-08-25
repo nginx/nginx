@@ -24,12 +24,7 @@ ngx_msec_t ngx_event_find_timer(void);
 void ngx_event_expire_timers(void);
 
 
-#if (NGX_THREADS)
-extern ngx_mutex_t  *ngx_event_timer_mutex;
-#endif
-
-
-extern ngx_thread_volatile ngx_rbtree_t  ngx_event_timer_rbtree;
+extern ngx_rbtree_t  ngx_event_timer_rbtree;
 
 
 static ngx_inline void
@@ -39,11 +34,7 @@ ngx_event_del_timer(ngx_event_t *ev)
                    "event timer del: %d: %M",
                     ngx_event_ident(ev->data), ev->timer.key);
 
-    ngx_mutex_lock(ngx_event_timer_mutex);
-
     ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
-
-    ngx_mutex_unlock(ngx_event_timer_mutex);
 
 #if (NGX_DEBUG)
     ev->timer.left = NULL;
@@ -89,11 +80,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
                    "event timer add: %d: %M:%M",
                     ngx_event_ident(ev->data), timer, ev->timer.key);
 
-    ngx_mutex_lock(ngx_event_timer_mutex);
-
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
-
-    ngx_mutex_unlock(ngx_event_timer_mutex);
 
     ev->timer_set = 1;
 }

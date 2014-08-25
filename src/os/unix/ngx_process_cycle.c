@@ -1213,7 +1213,6 @@ ngx_wakeup_worker_threads(ngx_cycle_t *cycle)
 
             /* STUB */
             ngx_done_events(cycle);
-            ngx_mutex_destroy(ngx_event_timer_mutex);
 
             return;
         }

@@ -22,8 +22,7 @@ static ngx_inline void ngx_rbtree_right_rotate(ngx_rbtree_node_t **root,
 
 
 void
-ngx_rbtree_insert(ngx_thread_volatile ngx_rbtree_t *tree,
-    ngx_rbtree_node_t *node)
+ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 {
     ngx_rbtree_node_t  **root, *temp, *sentinel;
 
@@ -155,8 +154,7 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
 
 
 void
-ngx_rbtree_delete(ngx_thread_volatile ngx_rbtree_t *tree,
-    ngx_rbtree_node_t *node)
+ngx_rbtree_delete(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 {
     ngx_uint_t           red;
     ngx_rbtree_node_t  **root, *sentinel, *subst, *temp, *w;
