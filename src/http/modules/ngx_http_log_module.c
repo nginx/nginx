@@ -744,10 +744,23 @@ ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
 static void
 ngx_http_log_flush_handler(ngx_event_t *ev)
 {
+    ngx_open_file_t     *file;
+    ngx_http_log_buf_t  *buffer;
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "http log buffer flush handler");
 
-    ngx_http_log_flush(ev->data, ev->log);
+    if (ev->timedout) {
+        ngx_http_log_flush(ev->data, ev->log);
+        return;
+    }
+
+    /* cancel the flush timer for graceful shutdown */
+
+    file = ev->data;
+    buffer = file->data;
+
+    buffer->event = NULL;
 }
 
 
@@ -1411,6 +1424,7 @@ process_formats:
             buffer->event->data = log->file;
             buffer->event->handler = ngx_http_log_flush_handler;
             buffer->event->log = &cf->cycle->new_log;
+            buffer->event->cancelable = 1;
 
             buffer->flush = flush;
         }
