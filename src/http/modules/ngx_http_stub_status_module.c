@@ -21,7 +21,7 @@ static char *ngx_http_set_stub_status(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t  ngx_http_status_commands[] = {
 
     { ngx_string("stub_status"),
-      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS|NGX_CONF_TAKE1,
       ngx_http_set_stub_status,
       0,
       0,
