@@ -134,6 +134,7 @@ ngx_writev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         in = ngx_handle_sent_chain(in, sent);
 
         if (eintr) {
+            send = prev_send;
             continue;
         }
 

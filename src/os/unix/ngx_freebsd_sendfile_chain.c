@@ -378,6 +378,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         if (eintr) {
+            send = prev_send + sent;
             continue;
         }
 
