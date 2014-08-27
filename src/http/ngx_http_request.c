@@ -2656,6 +2656,12 @@ ngx_http_writer(ngx_http_request_t *r)
 
     if (r->buffered || r->postponed || (r == r->main && c->buffered)) {
 
+#if (NGX_HTTP_SPDY)
+        if (r->spdy_stream) {
+            return;
+        }
+#endif
+
         if (!wev->delayed) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
