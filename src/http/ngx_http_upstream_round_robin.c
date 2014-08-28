@@ -719,15 +719,23 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 #endif
 
     if (peers->single) {
-        peer = peers->peer;
+#if (NGX_HTTP_UPSTREAM_SID)
+        peer = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &i, 0);
 
-        if (peer->down) {
-            goto failed;
-        }
+        if (peer == NULL) {
+#endif
+            peer = peers->peer;
 
-        if (peer->max_conns && peer->conns >= peer->max_conns) {
-            goto failed;
+            if (peer->down) {
+                goto failed;
+            }
+
+            if (peer->max_conns && peer->conns >= peer->max_conns) {
+                goto failed;
+            }
+#if (NGX_HTTP_UPSTREAM_SID)
         }
+#endif
 
         rrp->current = peer;
         ngx_http_upstream_rr_peer_ref(peers, peer);
@@ -962,7 +970,11 @@ found:
         ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
     }
 
-    if (peer->down) {
+    if (peer->down
+#if (NGX_HTTP_UPSTREAM_STICKY)
+        & ~NGX_HTTP_UPSTREAM_DRAINING
+#endif
+    ) {
         goto failed;
     }
 
