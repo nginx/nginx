@@ -28,6 +28,7 @@ struct ngx_http_header_val_s {
     ngx_str_t                  key;
     ngx_http_set_header_pt     handler;
     ngx_uint_t                 offset;
+    ngx_uint_t                 always;  /* unsigned  always:1 */
 };
 
 
@@ -98,7 +99,7 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
 
     { ngx_string("add_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-                        |NGX_CONF_TAKE2,
+                        |NGX_CONF_TAKE23,
       ngx_http_headers_add,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -146,28 +147,38 @@ static ngx_int_t
 ngx_http_headers_filter(ngx_http_request_t *r)
 {
     ngx_str_t                 value;
-    ngx_uint_t                i;
+    ngx_uint_t                i, safe_status;
     ngx_http_header_val_t    *h;
     ngx_http_headers_conf_t  *conf;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_headers_filter_module);
 
     if ((conf->expires == NGX_HTTP_EXPIRES_OFF && conf->headers == NULL)
-        || r != r->main
-        || (r->headers_out.status != NGX_HTTP_OK
-            && r->headers_out.status != NGX_HTTP_CREATED
-            && r->headers_out.status != NGX_HTTP_NO_CONTENT
-            && r->headers_out.status != NGX_HTTP_PARTIAL_CONTENT
-            && r->headers_out.status != NGX_HTTP_MOVED_PERMANENTLY
-            && r->headers_out.status != NGX_HTTP_MOVED_TEMPORARILY
-            && r->headers_out.status != NGX_HTTP_SEE_OTHER
-            && r->headers_out.status != NGX_HTTP_NOT_MODIFIED
-            && r->headers_out.status != NGX_HTTP_TEMPORARY_REDIRECT))
+        || r != r->main)
     {
         return ngx_http_next_header_filter(r);
     }
 
-    if (conf->expires != NGX_HTTP_EXPIRES_OFF) {
+    switch (r->headers_out.status) {
+
+    case NGX_HTTP_OK:
+    case NGX_HTTP_CREATED:
+    case NGX_HTTP_NO_CONTENT:
+    case NGX_HTTP_PARTIAL_CONTENT:
+    case NGX_HTTP_MOVED_PERMANENTLY:
+    case NGX_HTTP_MOVED_TEMPORARILY:
+    case NGX_HTTP_SEE_OTHER:
+    case NGX_HTTP_NOT_MODIFIED:
+    case NGX_HTTP_TEMPORARY_REDIRECT:
+        safe_status = 1;
+        break;
+
+    default:
+        safe_status = 0;
+        break;
+    }
+
+    if (conf->expires != NGX_HTTP_EXPIRES_OFF && safe_status) {
         if (ngx_http_set_expires(r, conf) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -176,6 +187,10 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     if (conf->headers) {
         h = conf->headers->elts;
         for (i = 0; i < conf->headers->nelts; i++) {
+
+            if (!safe_status && !h[i].always) {
+                continue;
+            }
 
             if (ngx_http_complex_value(r, &h[i].value, &value) != NGX_OK) {
                 return NGX_ERROR;
@@ -603,6 +618,7 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     hv->key = value[1];
     hv->handler = ngx_http_add_header;
     hv->offset = 0;
+    hv->always = 0;
 
     set = ngx_http_set_headers;
     for (i = 0; set[i].name.len; i++) {
@@ -630,6 +646,18 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
+    if (cf->args->nelts == 3) {
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[3].data, "always") != 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[3]);
+        return NGX_CONF_ERROR;
+    }
+
+    hv->always = 1;
 
     return NGX_CONF_OK;
 }
