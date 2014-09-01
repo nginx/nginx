@@ -4973,7 +4973,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strncmp(value[i].data, "weight=", 7) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_WEIGHT)) {
-                goto invalid;
+                goto not_supported;
             }
 
             weight = ngx_atoi(&value[i].data[7], value[i].len - 7);
@@ -4988,7 +4988,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strncmp(value[i].data, "max_fails=", 10) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_MAX_FAILS)) {
-                goto invalid;
+                goto not_supported;
             }
 
             max_fails = ngx_atoi(&value[i].data[10], value[i].len - 10);
@@ -5003,7 +5003,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strncmp(value[i].data, "fail_timeout=", 13) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_FAIL_TIMEOUT)) {
-                goto invalid;
+                goto not_supported;
             }
 
             s.len = value[i].len - 13;
@@ -5021,7 +5021,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strcmp(value[i].data, "backup") == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_BACKUP)) {
-                goto invalid;
+                goto not_supported;
             }
 
             us->backup = 1;
@@ -5032,7 +5032,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strcmp(value[i].data, "down") == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_DOWN)) {
-                goto invalid;
+                goto not_supported;
             }
 
             us->down = 1;
@@ -5070,6 +5070,14 @@ invalid:
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "invalid parameter \"%V\"", &value[i]);
+
+    return NGX_CONF_ERROR;
+
+not_supported:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "balancing method does not support parameter \"%V\"",
+                       &value[i]);
 
     return NGX_CONF_ERROR;
 }
