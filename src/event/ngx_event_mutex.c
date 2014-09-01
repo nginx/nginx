@@ -62,7 +62,7 @@ ngx_int_t ngx_event_mutex_unlock(ngx_event_mutex_t *m, ngx_log_t *log)
         ev = m->events;
         m->events = ev->next;
 
-        ev->next = (ngx_event_t *) ngx_posted_events;
+        ev->next = ngx_posted_events;
         ngx_posted_events = ev;
     }
 

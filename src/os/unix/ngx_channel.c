@@ -216,13 +216,6 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     rev->log = cycle->log;
     wev->log = cycle->log;
 
-#if (NGX_THREADS)
-    rev->lock = &c->lock;
-    wev->lock = &c->lock;
-    rev->own_lock = &c->lock;
-    wev->own_lock = &c->lock;
-#endif
-
     rev->channel = 1;
     wev->channel = 1;
 

@@ -573,8 +573,6 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         return NGX_ERROR;
     }
 
-    ngx_mutex_lock(ngx_posted_events_mutex);
-
     for (i = 0; i < events; i++) {
 
         ngx_kqueue_dump_event(cycle->log, &event_list[i]);
@@ -626,24 +624,6 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                 ev->active = 0;
             }
 
-#if (NGX_THREADS)
-
-            if ((flags & NGX_POST_THREAD_EVENTS) && !ev->accept) {
-                ev->posted_ready = 1;
-                ev->posted_available = event_list[i].data;
-
-                if (event_list[i].flags & EV_EOF) {
-                    ev->posted_eof = 1;
-                    ev->posted_errno = event_list[i].fflags;
-                }
-
-                ngx_locked_post_event(ev, &ngx_posted_events);
-
-                continue;
-            }
-
-#endif
-
             ev->available = event_list[i].data;
 
             if (event_list[i].flags & EV_EOF) {
@@ -674,17 +654,16 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         }
 
         if (flags & NGX_POST_EVENTS) {
-            queue = (ngx_event_t **) (ev->accept ? &ngx_posted_accept_events:
-                                                   &ngx_posted_events);
-            ngx_locked_post_event(ev, queue);
+            queue = ev->accept ? &ngx_posted_accept_events
+                               : &ngx_posted_events;
+
+            ngx_post_event(ev, queue);
 
             continue;
         }
 
         ev->handler(ev);
     }
-
-    ngx_mutex_unlock(ngx_posted_events_mutex);
 
     return NGX_OK;
 }

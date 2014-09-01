@@ -98,24 +98,6 @@ ngx_event_expire_timers(void)
         if ((ngx_msec_int_t) (node->key - ngx_current_msec) <= 0) {
             ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
-#if (NGX_THREADS)
-
-            if (ngx_threaded && ngx_trylock(ev->lock) == 0) {
-
-                /*
-                 * We cannot change the timer of the event that is being
-                 * handled by another thread.  And we cannot easy walk
-                 * the rbtree to find next expired timer so we exit the loop.
-                 * However, it should be a rare case when the event that is
-                 * being handled has an expired timer.
-                 */
-
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                               "event %p is busy in expire timers", ev);
-                break;
-            }
-#endif
-
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "event timer del: %d: %M",
                            ngx_event_ident(ev->data), ev->timer.key);
@@ -131,18 +113,6 @@ ngx_event_expire_timers(void)
 #endif
 
             ev->timer_set = 0;
-
-#if (NGX_THREADS)
-            if (ngx_threaded) {
-                ev->posted_timedout = 1;
-
-                ngx_post_event(ev, &ngx_posted_events);
-
-                ngx_unlock(ev->lock);
-
-                continue;
-            }
-#endif
 
             ev->timedout = 1;
 

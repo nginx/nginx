@@ -951,39 +951,20 @@ ngx_close_connection(ngx_connection_t *c)
      * before we clean the connection
      */
 
-    ngx_mutex_lock(ngx_posted_events_mutex);
-
-    if (c->read->prev) {
-        ngx_delete_posted_event(c->read);
-    }
-
-    if (c->write->prev) {
-        ngx_delete_posted_event(c->write);
-    }
-
-    c->read->closed = 1;
-    c->write->closed = 1;
-
     ngx_unlock(&c->lock);
-    c->read->locked = 0;
-    c->write->locked = 0;
-
-    ngx_mutex_unlock(ngx_posted_events_mutex);
-
-#else
-
-    if (c->read->prev) {
-        ngx_delete_posted_event(c->read);
-    }
-
-    if (c->write->prev) {
-        ngx_delete_posted_event(c->write);
-    }
-
-    c->read->closed = 1;
-    c->write->closed = 1;
 
 #endif
+
+    if (c->read->prev) {
+        ngx_delete_posted_event(c->read);
+    }
+
+    if (c->write->prev) {
+        ngx_delete_posted_event(c->write);
+    }
+
+    c->read->closed = 1;
+    c->write->closed = 1;
 
     ngx_reusable_connection(c, 0);
 

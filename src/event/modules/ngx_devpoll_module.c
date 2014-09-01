@@ -404,8 +404,6 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         return NGX_ERROR;
     }
 
-    ngx_mutex_lock(ngx_posted_events_mutex);
-
     for (i = 0; i < events; i++) {
 
         fd = event_list[i].fd;
@@ -495,19 +493,13 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         rev = c->read;
 
         if ((revents & POLLIN) && rev->active) {
-
-            if ((flags & NGX_POST_THREAD_EVENTS) && !rev->accept) {
-                rev->posted_ready = 1;
-
-            } else {
-                rev->ready = 1;
-            }
+            rev->ready = 1;
 
             if (flags & NGX_POST_EVENTS) {
-                queue = (ngx_event_t **) (rev->accept ?
-                               &ngx_posted_accept_events : &ngx_posted_events);
+                queue = rev->accept ? &ngx_posted_accept_events
+                                    : &ngx_posted_events;
 
-                ngx_locked_post_event(rev, queue);
+                ngx_post_event(rev, queue);
 
             } else {
                 instance = rev->instance;
@@ -523,24 +515,16 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         wev = c->write;
 
         if ((revents & POLLOUT) && wev->active) {
-
-            if (flags & NGX_POST_THREAD_EVENTS) {
-                wev->posted_ready = 1;
-
-            } else {
-                wev->ready = 1;
-            }
+            wev->ready = 1;
 
             if (flags & NGX_POST_EVENTS) {
-                ngx_locked_post_event(wev, &ngx_posted_events);
+                ngx_post_event(wev, &ngx_posted_events);
 
             } else {
                 wev->handler(wev);
             }
         }
     }
-
-    ngx_mutex_unlock(ngx_posted_events_mutex);
 
     return NGX_OK;
 }

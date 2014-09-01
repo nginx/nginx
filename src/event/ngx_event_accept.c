@@ -262,13 +262,6 @@ ngx_event_accept(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_handled, 1);
 #endif
 
-#if (NGX_THREADS)
-        rev->lock = &c->lock;
-        wev->lock = &c->lock;
-        rev->own_lock = &c->lock;
-        wev->own_lock = &c->lock;
-#endif
-
         if (ls->addr_ntop) {
             c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
             if (c->addr_text.data == NULL) {
