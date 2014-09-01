@@ -955,11 +955,11 @@ ngx_close_connection(ngx_connection_t *c)
 
 #endif
 
-    if (c->read->prev) {
+    if (c->read->posted) {
         ngx_delete_posted_event(c->read);
     }
 
-    if (c->write->prev) {
+    if (c->write->posted) {
         ngx_delete_posted_event(c->write);
     }
 

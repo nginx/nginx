@@ -241,7 +241,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     int                 ready, revents;
     ngx_err_t           err;
     ngx_uint_t          i, found, level;
-    ngx_event_t        *ev, **queue;
+    ngx_event_t        *ev;
+    ngx_queue_t        *queue;
     ngx_connection_t   *c;
 
     /* NGX_TIMER_INFINITE == INFTIM */

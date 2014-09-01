@@ -10,25 +10,23 @@
 #include <ngx_event.h>
 
 
-ngx_event_t  *ngx_posted_accept_events;
-ngx_event_t  *ngx_posted_events;
+ngx_queue_t  ngx_posted_accept_events;
+ngx_queue_t  ngx_posted_events;
 
 
 void
-ngx_event_process_posted(ngx_cycle_t *cycle, ngx_event_t **posted)
+ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted)
 {
+    ngx_queue_t  *q;
     ngx_event_t  *ev;
 
-    for ( ;; ) {
+    while (!ngx_queue_empty(posted)) {
 
-        ev = *posted;
+        q = ngx_queue_head(posted);
+        ev = ngx_queue_data(q, ngx_event_t, queue);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                       "posted event %p", ev);
-
-        if (ev == NULL) {
-            return;
-        }
 
         ngx_delete_posted_event(ev);
 

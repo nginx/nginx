@@ -307,7 +307,8 @@ ngx_rtsig_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     ngx_int_t           instance;
     ngx_err_t           err;
     siginfo_t           si;
-    ngx_event_t        *rev, *wev, **queue;
+    ngx_event_t        *rev, *wev;
+    ngx_queue_t        *queue;
     struct timespec     ts, *tp;
     struct sigaction    sa;
     ngx_connection_t   *c;
@@ -480,7 +481,8 @@ ngx_rtsig_process_overflow(ngx_cycle_t *cycle, ngx_msec_t timer,
     size_t             len;
     ngx_err_t          err;
     ngx_uint_t         tested, n, i;
-    ngx_event_t       *rev, *wev, **queue;
+    ngx_event_t       *rev, *wev;
+    ngx_queue_t       *queue;
     ngx_connection_t  *c;
     ngx_rtsig_conf_t  *rtscf;
 

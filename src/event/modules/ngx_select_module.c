@@ -214,7 +214,8 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     int                ready, nready;
     ngx_err_t          err;
     ngx_uint_t         i, found;
-    ngx_event_t       *ev, **queue;
+    ngx_event_t       *ev;
+    ngx_queue_t       *queue;
     struct timeval     tv, *tp;
     ngx_connection_t  *c;
 

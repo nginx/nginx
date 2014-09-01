@@ -344,7 +344,8 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_err_t           err;
     ngx_int_t           i;
     ngx_uint_t          level, instance;
-    ngx_event_t        *rev, *wev, **queue;
+    ngx_event_t        *rev, *wev;
+    ngx_queue_t        *queue;
     ngx_connection_t   *c;
     struct pollfd       pfd;
     struct dvpoll       dvp;

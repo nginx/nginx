@@ -74,6 +74,8 @@ struct ngx_event_s {
     /* the pending eof reported by kqueue, epoll or in aio chain operation */
     unsigned         pending_eof:1;
 
+    unsigned         posted:1;
+
 #if (NGX_WIN32)
     /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was successful */
     unsigned         accept_context_updated:1;
@@ -125,15 +127,14 @@ struct ngx_event_s {
 
     ngx_rbtree_node_t   timer;
 
+    /* the posted queue */
+    ngx_queue_t      queue;
+
     unsigned         closed:1;
 
     /* to test on worker exit */
     unsigned         channel:1;
     unsigned         resolver:1;
-
-    /* the links of the posted queue */
-    ngx_event_t     *next;
-    ngx_event_t    **prev;
 
 
 #if 0

@@ -495,7 +495,8 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_int_t         i, instance;
     ngx_uint_t        level;
     ngx_err_t         err;
-    ngx_event_t      *ev, **queue;
+    ngx_event_t      *ev;
+    ngx_queue_t      *queue;
     struct timespec   ts, *tp;
 
     if (ngx_threaded) {

@@ -414,7 +414,8 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_err_t           err;
     ngx_int_t           instance;
     ngx_uint_t          i, level;
-    ngx_event_t        *ev, *rev, *wev, **queue;
+    ngx_event_t        *ev, *rev, *wev;
+    ngx_queue_t        *queue;
     ngx_connection_t   *c;
     struct timespec     ts, *tp;
 
