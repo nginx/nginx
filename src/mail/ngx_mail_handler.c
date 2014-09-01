@@ -121,6 +121,8 @@ ngx_mail_init_connection(ngx_connection_t *c)
         return;
     }
 
+    s->signature = NGX_MAIL_MODULE;
+
     s->main_conf = addr_conf->ctx->main_conf;
     s->srv_conf = addr_conf->ctx->srv_conf;
 
