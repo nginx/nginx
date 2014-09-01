@@ -16,7 +16,7 @@ typedef struct {
 
     ngx_addr_t        server;
     ngx_connection_t  conn;
-    ngx_uint_t        processing;  /* unsigned processing:1; */
+    ngx_uint_t        busy;  /* unsigned busy:1; */
 } ngx_syslog_peer_t;
 
 
