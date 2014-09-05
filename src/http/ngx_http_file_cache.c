@@ -145,6 +145,8 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     ngx_sprintf(cache->shpool->log_ctx, " in cache keys zone \"%V\"%Z",
                 &shm_zone->shm.name);
 
+    cache->shpool->log_nomem = 0;
+
     return NGX_OK;
 }
 
@@ -698,6 +700,8 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         fcn = ngx_slab_calloc_locked(cache->shpool,
                                      sizeof(ngx_http_file_cache_node_t));
         if (fcn == NULL) {
+            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                          "could not allocate node%s", cache->shpool->log_ctx);
             rc = NGX_ERROR;
             goto failed;
         }
