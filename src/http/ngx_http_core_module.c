@@ -1837,6 +1837,7 @@ ngx_http_set_etag(ngx_http_request_t *r)
 
     etag->value.data = ngx_pnalloc(r->pool, NGX_OFF_T_LEN + NGX_TIME_T_LEN + 3);
     if (etag->value.data == NULL) {
+        etag->hash = 0;
         return NGX_ERROR;
     }
 
