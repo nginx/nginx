@@ -149,7 +149,7 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
 
     rc->regex = ngx_pcalloc(rc->pool, sizeof(ngx_regex_t));
     if (rc->regex == NULL) {
-        return NGX_ERROR;
+        goto nomem;
     }
 
     rc->regex->code = re;
@@ -159,7 +159,7 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
     if (ngx_pcre_studies != NULL) {
         elt = ngx_list_push(ngx_pcre_studies);
         if (elt == NULL) {
-            return NGX_ERROR;
+            goto nomem;
         }
 
         elt->regex = rc->regex;
@@ -204,7 +204,15 @@ failed:
 
     rc->err.len = ngx_snprintf(rc->err.data, rc->err.len, p, &rc->pattern, n)
                   - rc->err.data;
-    return NGX_OK;
+    return NGX_ERROR;
+
+nomem:
+
+    rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
+                               "regex \"%V\" compilation failed: no memory",
+                               &rc->pattern)
+                  - rc->err.data;
+    return NGX_ERROR;
 }
 
 
