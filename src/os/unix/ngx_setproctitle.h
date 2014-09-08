@@ -13,7 +13,7 @@
 
 /* FreeBSD, NetBSD, OpenBSD */
 
-#define ngx_init_setproctitle(log)
+#define ngx_init_setproctitle(log) NGX_OK
 #define ngx_setproctitle(title)    setproctitle("%s", title)
 
 
@@ -39,7 +39,7 @@ void ngx_setproctitle(char *title);
 
 #else
 
-#define ngx_init_setproctitle(log)
+#define ngx_init_setproctitle(log) NGX_OK
 #define ngx_setproctitle(title)
 
 #endif /* OSes */
