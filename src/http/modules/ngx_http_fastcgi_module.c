@@ -2582,6 +2582,11 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->cache_key = prev->cache_key;
     }
 
+    if (conf->upstream.cache && conf->cache_key.value.data == NULL) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "no \"fastcgi_cache_key\" for \"fastcgi_cache\"");
+    }
+
     ngx_conf_merge_value(conf->upstream.cache_lock,
                               prev->upstream.cache_lock, 0);
 
