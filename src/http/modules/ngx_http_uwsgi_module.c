@@ -1435,7 +1435,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->upstream.max_temp_file_size != 0
-        && conf->upstream.max_temp_file_size < size) {
+        && conf->upstream.max_temp_file_size < size)
+    {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
             "\"uwsgi_max_temp_file_size\" must be equal to zero to disable "
             "temporary files usage or must be equal to or greater than "
