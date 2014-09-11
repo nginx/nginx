@@ -79,7 +79,7 @@ static char *ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t  ngx_http_upstream_keepalive_commands[] = {
 
     { ngx_string("keepalive"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
       ngx_http_upstream_keepalive,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
@@ -485,7 +485,6 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_int_t    n;
     ngx_str_t   *value;
-    ngx_uint_t   i;
 
     uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
 
@@ -514,23 +513,5 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     kcf->max_cached = n;
 
-    for (i = 2; i < cf->args->nelts; i++) {
-
-        if (ngx_strcmp(value[i].data, "single") == 0) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "the \"single\" parameter is deprecated");
-            continue;
-        }
-
-        goto invalid;
-    }
-
     return NGX_CONF_OK;
-
-invalid:
-
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "invalid parameter \"%V\"", &value[i]);
-
-    return NGX_CONF_ERROR;
 }
