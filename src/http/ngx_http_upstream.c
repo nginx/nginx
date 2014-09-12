@@ -698,6 +698,14 @@ found:
         return;
     }
 
+    u->peer.start_time = ngx_current_msec;
+
+    if (u->conf->next_upstream_tries
+        && u->peer.tries > u->conf->next_upstream_tries)
+    {
+        u->peer.tries = u->conf->next_upstream_tries;
+    }
+
     ngx_http_upstream_connect(r, u);
 }
 
@@ -3421,6 +3429,7 @@ static void
 ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
 {
+    ngx_msec_t  timeout;
     ngx_uint_t  status, state;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -3490,9 +3499,12 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     if (status) {
         u->state->status = status;
+        timeout = u->conf->next_upstream_timeout;
 
-        if (u->peer.tries == 0 || !(u->conf->next_upstream & ft_type)) {
-
+        if (u->peer.tries == 0
+            || !(u->conf->next_upstream & ft_type)
+            || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
+        {
 #if (NGX_HTTP_CACHE)
 
             if (u->cache_status == NGX_HTTP_CACHE_EXPIRED

@@ -354,6 +354,20 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.next_upstream),
       &ngx_http_uwsgi_next_upstream_masks },
 
+    { ngx_string("uwsgi_next_upstream_tries"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.next_upstream_tries),
+      NULL },
+
+    { ngx_string("uwsgi_next_upstream_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.next_upstream_timeout),
+      NULL },
+
     { ngx_string("uwsgi_param"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE23,
       ngx_http_upstream_param_set_slot,
@@ -1254,6 +1268,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.store = NGX_CONF_UNSET;
     conf->upstream.store_access = NGX_CONF_UNSET_UINT;
+    conf->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->upstream.buffering = NGX_CONF_UNSET;
     conf->upstream.ignore_client_abort = NGX_CONF_UNSET;
 
@@ -1262,6 +1277,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
+    conf->upstream.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
     conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
@@ -1329,6 +1345,9 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->upstream.store_access,
                               prev->upstream.store_access, 0600);
 
+    ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries,
+                              prev->upstream.next_upstream_tries, 0);
+
     ngx_conf_merge_value(conf->upstream.buffering,
                               prev->upstream.buffering, 1);
 
@@ -1346,6 +1365,9 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_msec_value(conf->upstream.read_timeout,
                               prev->upstream.read_timeout, 60000);
+
+    ngx_conf_merge_msec_value(conf->upstream.next_upstream_timeout,
+                              prev->upstream.next_upstream_timeout, 0);
 
     ngx_conf_merge_size_value(conf->upstream.send_lowat,
                               prev->upstream.send_lowat, 0);
