@@ -299,10 +299,6 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     lcp->rrp.tried[n] |= m;
     lcp->conns[p]++;
 
-    if (pc->tries == 1 && peers->next) {
-        pc->tries += peers->next->number;
-    }
-
     return NGX_OK;
 
 failed:
@@ -314,7 +310,6 @@ failed:
         lcp->conns += peers->number;
 
         lcp->rrp.peers = peers->next;
-        pc->tries = lcp->rrp.peers->number;
 
         n = (lcp->rrp.peers->number + (8 * sizeof(uintptr_t) - 1))
                 / (8 * sizeof(uintptr_t));
