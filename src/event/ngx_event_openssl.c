@@ -33,6 +33,8 @@ static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
     ngx_err_t err, char *text);
 static void ngx_ssl_clear_error(ngx_log_t *log);
 
+static ngx_int_t ngx_ssl_session_id_context(ngx_ssl_t *ssl,
+    ngx_str_t *sess_ctx);
 ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
@@ -1973,12 +1975,14 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 
     SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
 
+    if (ngx_ssl_session_id_context(ssl, sess_ctx) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (builtin_session_cache == NGX_SSL_NO_SCACHE) {
         SSL_CTX_set_session_cache_mode(ssl->ctx, SSL_SESS_CACHE_OFF);
         return NGX_OK;
     }
-
-    SSL_CTX_set_session_id_context(ssl->ctx, sess_ctx->data, sess_ctx->len);
 
     if (builtin_session_cache == NGX_SSL_NONE_SCACHE) {
 
@@ -2033,6 +2037,96 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
     }
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
+{
+    int                   n, i;
+    X509                 *cert;
+    X509_NAME            *name;
+    EVP_MD_CTX            md;
+    unsigned int          len;
+    STACK_OF(X509_NAME)  *list;
+    u_char                buf[EVP_MAX_MD_SIZE];
+
+    /*
+     * Session ID context is set based on the string provided,
+     * the server certificate, and the client CA list.
+     */
+
+    EVP_MD_CTX_init(&md);
+
+    if (EVP_DigestInit_ex(&md, EVP_sha1(), NULL) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_DigestInit_ex() failed");
+        goto failed;
+    }
+
+    if (EVP_DigestUpdate(&md, sess_ctx->data, sess_ctx->len) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_DigestUpdate() failed");
+        goto failed;
+    }
+
+    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+
+    if (X509_digest(cert, EVP_sha1(), buf, &len) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "X509_digest() failed");
+        goto failed;
+    }
+
+    if (EVP_DigestUpdate(&md, buf, len) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_DigestUpdate() failed");
+        goto failed;
+    }
+
+    list = SSL_CTX_get_client_CA_list(ssl->ctx);
+
+    if (list != NULL) {
+        n = sk_X509_NAME_num(list);
+
+        for (i = 0; i < n; i++) {
+            name = sk_X509_NAME_value(list, i);
+
+            if (X509_NAME_digest(name, EVP_sha1(), buf, &len) == 0) {
+                ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                              "X509_NAME_digest() failed");
+                goto failed;
+            }
+
+            if (EVP_DigestUpdate(&md, buf, len) == 0) {
+                ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                              "EVP_DigestUpdate() failed");
+                goto failed;
+            }
+        }
+    }
+
+    if (EVP_DigestFinal_ex(&md, buf, &len) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_DigestUpdate() failed");
+        goto failed;
+    }
+
+    EVP_MD_CTX_cleanup(&md);
+
+    if (SSL_CTX_set_session_id_context(ssl->ctx, buf, len) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_session_id_context() failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+
+failed:
+
+    EVP_MD_CTX_cleanup(&md);
+
+    return NGX_ERROR;
 }
 
 
