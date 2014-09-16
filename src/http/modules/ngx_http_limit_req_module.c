@@ -461,7 +461,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
     lr = (ngx_http_limit_req_node_t *) &node->color;
 
-    lr->len = (u_char) len;
+    lr->len = (u_short) len;
     lr->excess = 0;
 
     ngx_memcpy(lr->data, data, len);
