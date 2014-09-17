@@ -2005,7 +2005,7 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (ngx_strcmp(value[i].data, type[n].key.data) == 0) {
                 ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                                    "duplicate MIME type \"%V\"", &value[i]);
-                continue;
+                goto next;
             }
         }
 
@@ -2017,6 +2017,10 @@ ngx_http_types_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         type->key = value[i];
         type->key_hash = hash;
         type->value = (void *) 4;
+
+    next:
+
+        continue;
     }
 
     return NGX_CONF_OK;
