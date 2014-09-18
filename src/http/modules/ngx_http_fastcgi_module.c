@@ -1129,6 +1129,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
                 } else {
                     b->pos = pos;
+                    b->start = pos;
                     pos += 32 * 1024;
 
                     if (pos >= body->buf->last) {
