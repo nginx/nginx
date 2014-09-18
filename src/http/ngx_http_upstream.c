@@ -1570,6 +1570,7 @@ done:
 static ngx_int_t
 ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
+    off_t         file_pos;
     ngx_chain_t  *cl;
 
     if (u->reinit_request(r) != NGX_OK) {
@@ -1591,9 +1592,17 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* reinit the request chain */
 
+    file_pos = 0;
+
     for (cl = u->request_bufs; cl; cl = cl->next) {
         cl->buf->pos = cl->buf->start;
-        cl->buf->file_pos = 0;
+
+        /* there is at most one file */
+
+        if (cl->buf->in_file) {
+            cl->buf->file_pos = file_pos;
+            file_pos = cl->buf->file_last;
+        }
     }
 
     /* reinit the subrequest's ngx_output_chain() context */
