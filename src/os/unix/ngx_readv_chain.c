@@ -91,8 +91,6 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "readv: %d, last:%d", vec.nelts, iov->iov_len);
 
-    rev = c->read;
-
     do {
         n = readv(c->fd, (struct iovec *) vec.elts, vec.nelts);
 
