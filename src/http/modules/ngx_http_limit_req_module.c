@@ -35,8 +35,7 @@ typedef struct {
     ngx_slab_pool_t             *shpool;
     /* integer value, 1 corresponds to 0.001 r/s */
     ngx_uint_t                   rate;
-    ngx_int_t                    index;
-    ngx_str_t                    var;
+    ngx_http_complex_value_t     key;
     ngx_http_limit_req_node_t   *node;
 } ngx_http_limit_req_ctx_t;
 
@@ -158,12 +157,11 @@ ngx_module_t  ngx_http_limit_req_module = {
 static ngx_int_t
 ngx_http_limit_req_handler(ngx_http_request_t *r)
 {
-    size_t                       len;
     uint32_t                     hash;
+    ngx_str_t                    key;
     ngx_int_t                    rc;
     ngx_uint_t                   n, excess;
     ngx_msec_t                   delay;
-    ngx_http_variable_value_t   *vv;
     ngx_http_limit_req_ctx_t    *ctx;
     ngx_http_limit_req_conf_t   *lrcf;
     ngx_http_limit_req_limit_t  *limit, *limits;
@@ -189,31 +187,27 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         ctx = limit->shm_zone->data;
 
-        vv = ngx_http_get_indexed_variable(r, ctx->index);
+        if (ngx_http_complex_value(r, &ctx->key, &key) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
-        if (vv == NULL || vv->not_found) {
+        if (key.len == 0) {
             continue;
         }
 
-        len = vv->len;
-
-        if (len == 0) {
-            continue;
-        }
-
-        if (len > 65535) {
+        if (key.len > 65535) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "the value of the \"%V\" variable "
-                          "is more than 65535 bytes: \"%v\"",
-                          &ctx->var, vv);
+                          "the value of the \"%V\" key "
+                          "is more than 65535 bytes: \"%V\"",
+                          &ctx->key.value, &key);
             continue;
         }
 
-        hash = ngx_crc32_short(vv->data, len);
+        hash = ngx_crc32_short(key.data, key.len);
 
         ngx_shmtx_lock(&ctx->shpool->mutex);
 
-        rc = ngx_http_limit_req_lookup(limit, hash, vv->data, len, &excess,
+        rc = ngx_http_limit_req_lookup(limit, hash, key.data, key.len, &excess,
                                        (n == lrcf->limits.nelts - 1));
 
         ngx_shmtx_unlock(&ctx->shpool->mutex);
@@ -632,11 +626,16 @@ ngx_http_limit_req_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     ctx = shm_zone->data;
 
     if (octx) {
-        if (ngx_strcmp(ctx->var.data, octx->var.data) != 0) {
+        if (ctx->key.value.len != octx->key.value.len
+            || ngx_strncmp(ctx->key.value.data, octx->key.value.data,
+                           ctx->key.value.len)
+               != 0)
+        {
             ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
-                          "limit_req \"%V\" uses the \"%V\" variable "
-                          "while previously it used the \"%V\" variable",
-                          &shm_zone->shm.name, &ctx->var, &octx->var);
+                          "limit_req \"%V\" uses the \"%V\" key "
+                          "while previously it used the \"%V\" key",
+                          &shm_zone->shm.name, &ctx->key.value,
+                          &octx->key.value);
             return NGX_ERROR;
         }
 
@@ -731,24 +730,39 @@ ngx_http_limit_req_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 static char *
 ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    u_char                    *p;
-    size_t                     len;
-    ssize_t                    size;
-    ngx_str_t                 *value, name, s;
-    ngx_int_t                  rate, scale;
-    ngx_uint_t                 i;
-    ngx_shm_zone_t            *shm_zone;
-    ngx_http_limit_req_ctx_t  *ctx;
+    u_char                            *p;
+    size_t                             len;
+    ssize_t                            size;
+    ngx_str_t                         *value, name, s;
+    ngx_int_t                          rate, scale;
+    ngx_uint_t                         i;
+    ngx_shm_zone_t                    *shm_zone;
+    ngx_http_limit_req_ctx_t          *ctx;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
-    ctx = NULL;
+    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_limit_req_ctx_t));
+    if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &ctx->key;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     size = 0;
     rate = 1;
     scale = 1;
     name.len = 0;
 
-    for (i = 1; i < cf->args->nelts; i++) {
+    for (i = 2; i < cf->args->nelts; i++) {
 
         if (ngx_strncmp(value[i].data, "zone=", 5) == 0) {
 
@@ -808,26 +822,6 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (value[i].data[0] == '$') {
-
-            value[i].len--;
-            value[i].data++;
-
-            ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_limit_req_ctx_t));
-            if (ctx == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            ctx->index = ngx_http_get_variable_index(cf, &value[i]);
-            if (ctx->index == NGX_ERROR) {
-                return NGX_CONF_ERROR;
-            }
-
-            ctx->var = value[i];
-
-            continue;
-        }
-
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[i]);
         return NGX_CONF_ERROR;
@@ -837,13 +831,6 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"%V\" must have \"zone\" parameter",
                            &cmd->name);
-        return NGX_CONF_ERROR;
-    }
-
-    if (ctx == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "no variable is defined for %V \"%V\"",
-                           &cmd->name, &name);
         return NGX_CONF_ERROR;
     }
 
@@ -859,8 +846,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ctx = shm_zone->data;
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "%V \"%V\" is already bound to variable \"%V\"",
-                           &cmd->name, &name, &ctx->var);
+                           "%V \"%V\" is already bound to key \"%V\"",
+                           &cmd->name, &name, &ctx->key.value);
         return NGX_CONF_ERROR;
     }
 
