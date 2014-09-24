@@ -11,16 +11,16 @@
 
 
 typedef struct {
-    u_char              color;
-    u_char              len;
-    u_short             conn;
-    u_char              data[1];
+    u_char                     color;
+    u_char                     len;
+    u_short                    conn;
+    u_char                     data[1];
 } ngx_http_limit_conn_node_t;
 
 
 typedef struct {
-    ngx_shm_zone_t     *shm_zone;
-    ngx_rbtree_node_t  *node;
+    ngx_shm_zone_t            *shm_zone;
+    ngx_rbtree_node_t         *node;
 } ngx_http_limit_conn_cleanup_t;
 
 
@@ -31,15 +31,15 @@ typedef struct {
 
 
 typedef struct {
-    ngx_shm_zone_t     *shm_zone;
-    ngx_uint_t          conn;
+    ngx_shm_zone_t            *shm_zone;
+    ngx_uint_t                 conn;
 } ngx_http_limit_conn_limit_t;
 
 
 typedef struct {
-    ngx_array_t         limits;
-    ngx_uint_t          log_level;
-    ngx_uint_t          status_code;
+    ngx_array_t                limits;
+    ngx_uint_t                 log_level;
+    ngx_uint_t                 status_code;
 } ngx_http_limit_conn_conf_t;
 
 
