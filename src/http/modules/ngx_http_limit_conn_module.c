@@ -54,16 +54,9 @@ static char *ngx_http_limit_conn_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_http_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char *ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_http_limit_conn_init(ngx_conf_t *cf);
-
-
-static ngx_conf_deprecated_t  ngx_conf_deprecated_limit_zone = {
-    ngx_conf_deprecated, "limit_zone", "limit_conn_zone"
-};
 
 
 static ngx_conf_enum_t  ngx_http_limit_conn_log_levels[] = {
@@ -85,13 +78,6 @@ static ngx_command_t  ngx_http_limit_conn_commands[] = {
     { ngx_string("limit_conn_zone"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2,
       ngx_http_limit_conn_zone,
-      0,
-      0,
-      NULL },
-
-    { ngx_string("limit_zone"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE3,
-      ngx_http_limit_zone,
       0,
       0,
       NULL },
@@ -607,76 +593,6 @@ ngx_http_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "%V \"%V\" is already bound to variable \"%V\"",
                            &cmd->name, &name, &ctx->var);
-        return NGX_CONF_ERROR;
-    }
-
-    shm_zone->init = ngx_http_limit_conn_init_zone;
-    shm_zone->data = ctx;
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_limit_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ssize_t                     n;
-    ngx_str_t                  *value;
-    ngx_shm_zone_t             *shm_zone;
-    ngx_http_limit_conn_ctx_t  *ctx;
-
-    ngx_conf_deprecated(cf, &ngx_conf_deprecated_limit_zone, NULL);
-
-    value = cf->args->elts;
-
-    if (value[2].data[0] != '$') {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid variable name \"%V\"", &value[2]);
-        return NGX_CONF_ERROR;
-    }
-
-    value[2].len--;
-    value[2].data++;
-
-    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_limit_conn_ctx_t));
-    if (ctx == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    ctx->index = ngx_http_get_variable_index(cf, &value[2]);
-    if (ctx->index == NGX_ERROR) {
-        return NGX_CONF_ERROR;
-    }
-
-    ctx->var = value[2];
-
-    n = ngx_parse_size(&value[3]);
-
-    if (n == NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid size of limit_zone \"%V\"", &value[3]);
-        return NGX_CONF_ERROR;
-    }
-
-    if (n < (ngx_int_t) (8 * ngx_pagesize)) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "limit_zone \"%V\" is too small", &value[1]);
-        return NGX_CONF_ERROR;
-    }
-
-
-    shm_zone = ngx_shared_memory_add(cf, &value[1], n,
-                                     &ngx_http_limit_conn_module);
-    if (shm_zone == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    if (shm_zone->data) {
-        ctx = shm_zone->data;
-
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                        "limit_zone \"%V\" is already bound to variable \"%V\"",
-                        &value[1], &ctx->var);
         return NGX_CONF_ERROR;
     }
 
