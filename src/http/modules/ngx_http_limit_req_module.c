@@ -58,8 +58,7 @@ typedef struct {
 
 static void ngx_http_limit_req_delay(ngx_http_request_t *r);
 static ngx_int_t ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit,
-    ngx_uint_t hash, u_char *data, size_t len, ngx_uint_t *ep,
-    ngx_uint_t account);
+    ngx_uint_t hash, ngx_str_t *key, ngx_uint_t *ep, ngx_uint_t account);
 static ngx_msec_t ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits,
     ngx_uint_t n, ngx_uint_t *ep, ngx_http_limit_req_limit_t **limit);
 static void ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx,
@@ -207,7 +206,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         ngx_shmtx_lock(&ctx->shpool->mutex);
 
-        rc = ngx_http_limit_req_lookup(limit, hash, key.data, key.len, &excess,
+        rc = ngx_http_limit_req_lookup(limit, hash, &key, &excess,
                                        (n == lrcf->limits.nelts - 1));
 
         ngx_shmtx_unlock(&ctx->shpool->mutex);
@@ -359,7 +358,7 @@ ngx_http_limit_req_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
 static ngx_int_t
 ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
-    u_char *data, size_t len, ngx_uint_t *ep, ngx_uint_t account)
+    ngx_str_t *key, ngx_uint_t *ep, ngx_uint_t account)
 {
     size_t                      size;
     ngx_int_t                   rc, excess;
@@ -394,7 +393,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
         lr = (ngx_http_limit_req_node_t *) &node->color;
 
-        rc = ngx_memn2cmp(data, lr->data, len, (size_t) lr->len);
+        rc = ngx_memn2cmp(key->data, lr->data, key->len, (size_t) lr->len);
 
         if (rc == 0) {
             ngx_queue_remove(&lr->queue);
@@ -434,7 +433,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
     size = offsetof(ngx_rbtree_node_t, color)
            + offsetof(ngx_http_limit_req_node_t, data)
-           + len;
+           + key->len;
 
     ngx_http_limit_req_expire(ctx, 1);
 
@@ -455,10 +454,10 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
     lr = (ngx_http_limit_req_node_t *) &node->color;
 
-    lr->len = (u_short) len;
+    lr->len = (u_short) key->len;
     lr->excess = 0;
 
-    ngx_memcpy(lr->data, data, len);
+    ngx_memcpy(lr->data, key->data, key->len);
 
     ngx_rbtree_insert(&ctx->sh->rbtree, node);
 
