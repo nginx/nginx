@@ -248,6 +248,7 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
                            "get keepalive peer: using connection %p", c);
 
             c->idle = 0;
+            c->sent = 0;
             c->log = pc->log;
             c->read->log = pc->log;
             c->write->log = pc->log;
