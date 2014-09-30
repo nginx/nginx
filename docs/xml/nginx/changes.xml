@@ -5,6 +5,51 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.6" date="30.09.2014">
+
+<change type="change">
+<para lang="ru">
+устаревшая директива limit_zone больше не поддерживается.
+</para>
+<para lang="en">
+the deprecated "limit_zone" directive is not supported anymore.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+в директивах limit_conn_zone и limit_req_zone теперь можно использовать
+комбинации нескольких переменных.
+</para>
+<para lang="en">
+the "limit_conn_zone" and "limit_req_zone" directives now can be used
+with combinations of multiple variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при повторной отправке FastCGI-запроса на бэкенд
+тело запроса могло передаваться неправильно.
+</para>
+<para lang="en">
+request body might be transmitted incorrectly
+when retrying a FastCGI request to the next upstream server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логгировании в syslog.
+</para>
+<para lang="en">
+in logging to syslog.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.5" date="16.09.2014">
 
 <change type="security">
