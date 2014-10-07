@@ -31,17 +31,15 @@ ngx_chain_t *
 ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int              rc;
-    u_char          *prev;
     off_t            size, send, prev_send, aligned, sent, fprev;
-    off_t            header_size, file_size;
+    off_t            file_size;
     ngx_uint_t       eintr;
     ngx_err_t        err;
     ngx_buf_t       *file;
-    ngx_array_t      header, trailer;
     ngx_event_t     *wev;
     ngx_chain_t     *cl;
+    ngx_iovec_t      header, trailer;
     struct sf_hdtr   hdtr;
-    struct iovec    *iov;
     struct iovec     headers[NGX_IOVS_PREALLOCATE];
     struct iovec     trailers[NGX_IOVS_PREALLOCATE];
 
@@ -70,69 +68,27 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     send = 0;
 
-    header.elts = headers;
-    header.size = sizeof(struct iovec);
+    header.iovs = headers;
     header.nalloc = NGX_IOVS_PREALLOCATE;
-    header.pool = c->pool;
 
-    trailer.elts = trailers;
-    trailer.size = sizeof(struct iovec);
+    trailer.iovs = trailers;
     trailer.nalloc = NGX_IOVS_PREALLOCATE;
-    trailer.pool = c->pool;
 
     for ( ;; ) {
         file = NULL;
         file_size = 0;
-        header_size = 0;
         eintr = 0;
         prev_send = send;
 
-        header.nelts = 0;
-        trailer.nelts = 0;
-
         /* create the header iovec and coalesce the neighbouring bufs */
 
-        prev = NULL;
-        iov = NULL;
+        cl = ngx_output_chain_to_iovec(&header, in, limit - send, c->log);
 
-        for (cl = in; cl && send < limit; cl = cl->next) {
-
-            if (ngx_buf_special(cl->buf)) {
-                continue;
-            }
-
-            if (!ngx_buf_in_memory_only(cl->buf)) {
-                break;
-            }
-
-            size = cl->buf->last - cl->buf->pos;
-
-            if (send + size > limit) {
-                size = limit - send;
-            }
-
-            if (prev == cl->buf->pos) {
-                iov->iov_len += (size_t) size;
-
-            } else {
-                if (header.nelts >= IOV_MAX) {
-                    break;
-                }
-
-                iov = ngx_array_push(&header);
-                if (iov == NULL) {
-                    return NGX_CHAIN_ERROR;
-                }
-
-                iov->iov_base = (void *) cl->buf->pos;
-                iov->iov_len = (size_t) size;
-            }
-
-            prev = cl->buf->pos + (size_t) size;
-            header_size += size;
-            send += size;
+        if (cl == NGX_CHAIN_ERROR) {
+            return NGX_CHAIN_ERROR;
         }
 
+        send += header.size;
 
         if (cl && cl->buf->in_file && send < limit) {
             file = cl->buf;
@@ -165,51 +121,17 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                      && fprev == cl->buf->file_pos);
         }
 
-        if (file && header.nelts == 0) {
+        if (file && header.count == 0) {
 
             /* create the trailer iovec and coalesce the neighbouring bufs */
 
-            prev = NULL;
-            iov = NULL;
+            cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send, c->log);
 
-            while (cl && send < limit) {
-
-                if (ngx_buf_special(cl->buf)) {
-                    cl = cl->next;
-                    continue;
-                }
-
-                if (!ngx_buf_in_memory_only(cl->buf)) {
-                    break;
-                }
-
-                size = cl->buf->last - cl->buf->pos;
-
-                if (send + size > limit) {
-                    size = limit - send;
-                }
-
-                if (prev == cl->buf->pos) {
-                    iov->iov_len += (size_t) size;
-
-                } else {
-                    if (trailer.nelts >= IOV_MAX) {
-                        break;
-                    }
-
-                    iov = ngx_array_push(&trailer);
-                    if (iov == NULL) {
-                        return NGX_CHAIN_ERROR;
-                    }
-
-                    iov->iov_base = (void *) cl->buf->pos;
-                    iov->iov_len = (size_t) size;
-                }
-
-                prev = cl->buf->pos + (size_t) size;
-                send += size;
-                cl = cl->next;
+            if (cl == NGX_CHAIN_ERROR) {
+                return NGX_CHAIN_ERROR;
             }
+
+            send += trailer.size;
         }
 
         if (file) {
@@ -219,16 +141,16 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
              * but corresponding pointer is not NULL
              */
 
-            hdtr.headers = header.nelts ? (struct iovec *) header.elts: NULL;
-            hdtr.hdr_cnt = header.nelts;
-            hdtr.trailers = trailer.nelts ? (struct iovec *) trailer.elts: NULL;
-            hdtr.trl_cnt = trailer.nelts;
+            hdtr.headers = header.count ? header.iovs : NULL;
+            hdtr.hdr_cnt = header.count;
+            hdtr.trailers = trailer.count ? trailer.iovs : NULL;
+            hdtr.trl_cnt = trailer.count;
 
-            sent = header_size + file_size;
+            sent = header.size + file_size;
 
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: @%O %O h:%O",
-                           file->file_pos, sent, header_size);
+                           "sendfile: @%O %O h:%uz",
+                           file->file_pos, sent, header.size);
 
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
                           &sent, &hdtr, 0);
@@ -271,13 +193,13 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "sendfile: %d, @%O %O:%O",
-                           rc, file->file_pos, sent, file_size + header_size);
+                           rc, file->file_pos, sent, file_size + header.size);
 
         } else {
-            rc = writev(c->fd, header.elts, header.nelts);
+            rc = writev(c->fd, header.iovs, header.count);
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "writev: %d of %O", rc, header_size);
+                           "writev: %d of %uz", rc, header.size);
 
             if (rc == -1) {
                 err = ngx_errno;

@@ -32,15 +32,14 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     int            rc, tcp_nodelay;
     off_t          size, send, prev_send, aligned, sent, fprev;
-    u_char        *prev;
     size_t         file_size;
     ngx_err_t      err;
     ngx_buf_t     *file;
     ngx_uint_t     eintr;
-    ngx_array_t    header;
     ngx_event_t   *wev;
     ngx_chain_t   *cl;
-    struct iovec  *iov, headers[NGX_IOVS_PREALLOCATE];
+    ngx_iovec_t    header;
+    struct iovec   headers[NGX_IOVS_PREALLOCATE];
 #if (NGX_HAVE_SENDFILE64)
     off_t          offset;
 #else
@@ -63,10 +62,8 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     send = 0;
 
-    header.elts = headers;
-    header.size = sizeof(struct iovec);
+    header.iovs = headers;
     header.nalloc = NGX_IOVS_PREALLOCATE;
-    header.pool = c->pool;
 
     for ( ;; ) {
         file = NULL;
@@ -74,75 +71,20 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         eintr = 0;
         prev_send = send;
 
-        header.nelts = 0;
-
-        prev = NULL;
-        iov = NULL;
-
         /* create the iovec and coalesce the neighbouring bufs */
 
-        for (cl = in; cl && send < limit; cl = cl->next) {
+        cl = ngx_output_chain_to_iovec(&header, in, limit - send, c->log);
 
-            if (ngx_buf_special(cl->buf)) {
-                continue;
-            }
-
-#if 1
-            if (!ngx_buf_in_memory(cl->buf) && !cl->buf->in_file) {
-                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                              "zero size buf in sendfile "
-                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
-                              cl->buf->temporary,
-                              cl->buf->recycled,
-                              cl->buf->in_file,
-                              cl->buf->start,
-                              cl->buf->pos,
-                              cl->buf->last,
-                              cl->buf->file,
-                              cl->buf->file_pos,
-                              cl->buf->file_last);
-
-                ngx_debug_point();
-
-                return NGX_CHAIN_ERROR;
-            }
-#endif
-
-            if (!ngx_buf_in_memory_only(cl->buf)) {
-                break;
-            }
-
-            size = cl->buf->last - cl->buf->pos;
-
-            if (send + size > limit) {
-                size = limit - send;
-            }
-
-            if (prev == cl->buf->pos) {
-                iov->iov_len += (size_t) size;
-
-            } else {
-                if (header.nelts >= IOV_MAX) {
-                    break;
-                }
-
-                iov = ngx_array_push(&header);
-                if (iov == NULL) {
-                    return NGX_CHAIN_ERROR;
-                }
-
-                iov->iov_base = (void *) cl->buf->pos;
-                iov->iov_len = (size_t) size;
-            }
-
-            prev = cl->buf->pos + (size_t) size;
-            send += size;
+        if (cl == NGX_CHAIN_ERROR) {
+            return NGX_CHAIN_ERROR;
         }
+
+        send += header.size;
 
         /* set TCP_CORK if there is a header before a file */
 
         if (c->tcp_nopush == NGX_TCP_NOPUSH_UNSET
-            && header.nelts != 0
+            && header.count != 0
             && cl
             && cl->buf->in_file)
         {
@@ -206,7 +148,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         /* get the file buf */
 
-        if (header.nelts == 0 && cl && cl->buf->in_file && send < limit) {
+        if (header.count == 0 && cl && cl->buf->in_file && send < limit) {
             file = cl->buf;
 
             /* coalesce the neighbouring file bufs */
@@ -283,7 +225,7 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                            rc, file->file_pos, sent, file_size);
 
         } else {
-            rc = writev(c->fd, header.elts, header.nelts);
+            rc = writev(c->fd, header.iovs, header.count);
 
             if (rc == -1) {
                 err = ngx_errno;

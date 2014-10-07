@@ -64,6 +64,17 @@ ngx_chain_t *ngx_aio_write_chain(ngx_connection_t *c, ngx_chain_t *in,
 #endif
 
 
+typedef struct {
+    struct iovec  *iovs;
+    ngx_uint_t     count;
+    size_t         size;
+    ngx_uint_t     nalloc;
+} ngx_iovec_t;
+
+ngx_chain_t *ngx_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in,
+    size_t limit, ngx_log_t *log);
+
+
 extern ngx_os_io_t  ngx_os_io;
 extern ngx_int_t    ngx_ncpu;
 extern ngx_int_t    ngx_max_sockets;
