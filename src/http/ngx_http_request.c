@@ -1227,12 +1227,11 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
                     if (len > NGX_MAX_ERROR_STR - 300) {
                         len = NGX_MAX_ERROR_STR - 300;
-                        p[len++] = '.'; p[len++] = '.'; p[len++] = '.';
                     }
 
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "client sent too long header line: \"%*s\"",
-                                  len, r->header_name_start);
+                                "client sent too long header line: \"%*s...\"",
+                                len, r->header_name_start);
 
                     ngx_http_finalize_request(r,
                                             NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
