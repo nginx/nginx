@@ -2432,7 +2432,7 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_hash_init_t               hash;
     ngx_http_core_loc_conf_t     *clcf;
 
-    if (conf->upstream.store != 0) {
+    if (conf->upstream.store == NGX_CONF_UNSET) {
         ngx_conf_merge_value(conf->upstream.store,
                               prev->upstream.store, 0);
 
