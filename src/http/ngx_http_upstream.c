@@ -2276,6 +2276,17 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     r->disable_not_modified = !u->cacheable;
 
+    if (u->conf->force_ranges) {
+        r->allow_ranges = 1;
+        r->single_range = 1;
+
+#if (NGX_HTTP_CACHE)
+        if (r->cached) {
+            r->single_range = 0;
+        }
+#endif
+    }
+
     u->length = -1;
 
     return NGX_OK;
@@ -4392,6 +4403,10 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
     ngx_table_elt_t  *ho;
+
+    if (r->upstream->conf->force_ranges) {
+        return NGX_OK;
+    }
 
 #if (NGX_HTTP_CACHE)
 
