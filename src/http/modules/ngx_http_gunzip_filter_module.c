@@ -175,6 +175,7 @@ static ngx_int_t
 ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     int                     rc;
+    ngx_uint_t              flush;
     ngx_chain_t            *cl;
     ngx_http_gunzip_ctx_t  *ctx;
 
@@ -199,7 +200,7 @@ ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-    if (ctx->nomem || in == NULL) {
+    if (ctx->nomem) {
 
         /* flush busy buffers */
 
@@ -212,6 +213,10 @@ ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ngx_chain_update_chains(r->pool, &ctx->free, &ctx->busy, &cl,
                                 (ngx_buf_tag_t) &ngx_http_gunzip_filter_module);
         ctx->nomem = 0;
+        flush = 0;
+
+    } else {
+        flush = ctx->busy ? 1 : 0;
     }
 
     for ( ;; ) {
@@ -258,7 +263,7 @@ ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             /* rc == NGX_AGAIN */
         }
 
-        if (ctx->out == NULL) {
+        if (ctx->out == NULL && !flush) {
             return ctx->busy ? NGX_AGAIN : NGX_OK;
         }
 
@@ -276,6 +281,7 @@ ngx_http_gunzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                        "gunzip out: %p", ctx->out);
 
         ctx->nomem = 0;
+        flush = 0;
 
         if (ctx->done) {
             return rc;
