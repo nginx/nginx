@@ -65,6 +65,7 @@ struct ngx_http_cache_s {
     ngx_array_t                      keys;
     uint32_t                         crc32;
     u_char                           key[NGX_HTTP_CACHE_KEY_LEN];
+    u_char                           main[NGX_HTTP_CACHE_KEY_LEN];
 
     ngx_file_uniq_t                  uniq;
     time_t                           valid_sec;
@@ -102,6 +103,7 @@ struct ngx_http_cache_s {
     unsigned                         exists:1;
     unsigned                         temp_file:1;
     unsigned                         reading:1;
+    unsigned                         secondary:1;
 };
 
 

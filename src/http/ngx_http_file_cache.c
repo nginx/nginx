@@ -33,6 +33,8 @@ static void ngx_http_file_cache_vary(ngx_http_request_t *r, u_char *vary,
     size_t len, u_char *hash);
 static void ngx_http_file_cache_vary_header(ngx_http_request_t *r,
     ngx_md5_t *md5, ngx_str_t *name);
+static ngx_int_t ngx_http_file_cache_reopen(ngx_http_request_t *r,
+    ngx_http_cache_t *c);
 static void ngx_http_file_cache_cleanup(void *data);
 static time_t ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache);
 static time_t ngx_http_file_cache_expire(ngx_http_file_cache_t *cache);
@@ -239,6 +241,8 @@ ngx_http_file_cache_create_key(ngx_http_request_t *r)
 
     ngx_crc32_final(c->crc32);
     ngx_md5_final(c->key, &md5);
+
+    ngx_memcpy(c->main, c->key, NGX_HTTP_CACHE_KEY_LEN);
 }
 
 
@@ -536,7 +540,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         if (ngx_memcmp(c->variant, h->variant, NGX_HTTP_CACHE_KEY_LEN) != 0) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http file cache vary mismatch");
-            return NGX_DECLINED;
+            return ngx_http_file_cache_reopen(r, c);
         }
     }
 
@@ -907,6 +911,7 @@ ngx_http_file_cache_vary(ngx_http_request_t *r, u_char *vary, size_t len,
                    "http file cache vary: \"%*s\"", len, vary);
 
     ngx_md5_init(&md5);
+    ngx_md5_update(&md5, r->cache->main, NGX_HTTP_CACHE_KEY_LEN);
 
     ngx_strlow(buf, vary, len);
 
@@ -982,6 +987,40 @@ ngx_http_file_cache_vary_header(ngx_http_request_t *r, ngx_md5_t *md5,
 }
 
 
+static ngx_int_t
+ngx_http_file_cache_reopen(ngx_http_request_t *r, ngx_http_cache_t *c)
+{
+    ngx_http_file_cache_t  *cache;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
+                   "http file cache reopen");
+
+    if (c->secondary) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "cache file \"%s\" has incorrect vary hash",
+                      c->file.name.data);
+        return NGX_DECLINED;
+    }
+
+    cache = c->file_cache;
+
+    ngx_shmtx_lock(&cache->shpool->mutex);
+
+    c->node->count--;
+    c->node = NULL;
+
+    ngx_shmtx_unlock(&cache->shpool->mutex);
+
+    c->secondary = 1;
+    c->file.name.len = 0;
+    c->body_start = c->buf->end - c->buf->start;
+
+    ngx_memcpy(c->key, c->variant, NGX_HTTP_CACHE_KEY_LEN);
+
+    return ngx_http_file_cache_open(r);
+}
+
+
 void
 ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 {
@@ -1024,6 +1063,9 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 
         ngx_http_file_cache_vary(r, c->vary.data, c->vary.len, c->variant);
         ngx_memcpy(h->variant, c->variant, NGX_HTTP_CACHE_KEY_LEN);
+
+    } else {
+        ngx_memzero(c->variant, NGX_HTTP_CACHE_KEY_LEN);
     }
 
     p = buf + sizeof(ngx_http_file_cache_header_t);
@@ -1059,10 +1101,42 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache update");
 
+    cache = c->file_cache;
+
+    if (c->secondary
+        && ngx_memcmp(c->variant, c->key, NGX_HTTP_CACHE_KEY_LEN) != 0)
+    {
+        /*
+         * if the variant hash doesn't match one we used as a secondary
+         * cache key, switch back to the original key
+         */
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http file cache main key");
+
+        ngx_shmtx_lock(&cache->shpool->mutex);
+
+        c->node->count--;
+        c->node->updating = 0;
+        c->node = NULL;
+
+        ngx_shmtx_unlock(&cache->shpool->mutex);
+
+        c->file.name.len = 0;
+
+        ngx_memcpy(c->key, c->main, NGX_HTTP_CACHE_KEY_LEN);
+
+        if (ngx_http_file_cache_exists(cache, c) == NGX_ERROR) {
+            return;
+        }
+
+        if (ngx_http_file_cache_name(r, cache->path) != NGX_OK) {
+            return;
+        }
+    }
+
     c->updated = 1;
     c->updating = 0;
-
-    cache = c->file_cache;
 
     uniq = 0;
     fs_size = 0;
