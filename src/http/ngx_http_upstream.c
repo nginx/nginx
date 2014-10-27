@@ -4160,7 +4160,17 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    u->cacheable = 0;
+    if (r->cache == NULL) {
+        return NGX_OK;
+    }
+
+    if (h->value.len > NGX_HTTP_CACHE_VARY_LEN
+        || (h->value.len == 1 && h->value.data[0] == '*'))
+    {
+        u->cacheable = 0;
+    }
+
+    r->cache->vary = h->value;
 
 #endif
 
