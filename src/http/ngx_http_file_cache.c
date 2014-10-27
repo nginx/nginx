@@ -259,7 +259,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         return NGX_AGAIN;
     }
 
-    if (c->buf) {
+    if (c->reading) {
         return ngx_http_file_cache_read(r, c);
     }
 
@@ -620,8 +620,11 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
 
     if (n != NGX_AGAIN) {
+        c->reading = 0;
         return n;
     }
+
+    c->reading = 1;
 
     c->file.aio->data = r;
     c->file.aio->handler = ngx_http_cache_aio_event_handler;

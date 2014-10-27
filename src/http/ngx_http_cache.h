@@ -101,6 +101,7 @@ struct ngx_http_cache_s {
     unsigned                         updating:1;
     unsigned                         exists:1;
     unsigned                         temp_file:1;
+    unsigned                         reading:1;
 };
 
 
