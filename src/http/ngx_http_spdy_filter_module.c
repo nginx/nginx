@@ -493,9 +493,13 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
                 continue;
             }
 
-            *last++ = '\0';
+            if (h[j].value.len) {
+                if (last != p) {
+                    *last++ = '\0';
+                }
 
-            last = ngx_cpymem(last, h[j].value.data, h[j].value.len);
+                last = ngx_cpymem(last, h[j].value.data, h[j].value.len);
+            }
 
             h[j].hash = 2;
         }
