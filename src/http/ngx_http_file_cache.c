@@ -951,9 +951,33 @@ static void
 ngx_http_file_cache_vary_header(ngx_http_request_t *r, ngx_md5_t *md5,
     ngx_str_t *name)
 {
-    ngx_uint_t        i;
+    size_t            len;
+    u_char           *p, *start, *last;
+    ngx_uint_t        i, multiple, normalize;
     ngx_list_part_t  *part;
     ngx_table_elt_t  *header;
+
+    multiple = 0;
+    normalize = 0;
+
+    if (name->len == sizeof("Accept-Charset") - 1
+        && ngx_strncasecmp(name->data, (u_char *) "Accept-Charset",
+                           sizeof("Accept-Charset") - 1) == 0)
+    {
+        normalize = 1;
+
+    } else if (name->len == sizeof("Accept-Encoding") - 1
+        && ngx_strncasecmp(name->data, (u_char *) "Accept-Encoding",
+                           sizeof("Accept-Encoding") - 1) == 0)
+    {
+        normalize = 1;
+
+    } else if (name->len == sizeof("Accept-Language") - 1
+        && ngx_strncasecmp(name->data, (u_char *) "Accept-Language",
+                           sizeof("Accept-Language") - 1) == 0)
+    {
+        normalize = 1;
+    }
 
     part = &r->headers_in.headers.part;
     header = part->elts;
@@ -982,7 +1006,47 @@ ngx_http_file_cache_vary_header(ngx_http_request_t *r, ngx_md5_t *md5,
             continue;
         }
 
-        ngx_md5_update(md5, header[i].value.data, header[i].value.len);
+        if (!normalize) {
+
+            if (multiple) {
+                ngx_md5_update(md5, (u_char *) ",", sizeof(",") - 1);
+            }
+
+            ngx_md5_update(md5, header[i].value.data, header[i].value.len);
+
+            multiple = 1;
+
+            continue;
+        }
+
+        /* normalize spaces */
+
+        p = header[i].value.data;
+        start = p;
+        last = p + header[i].value.len;
+
+        while (p < last) {
+
+            while (p < last && (*p == ' ' || *p == ',')) { p++; }
+
+            start = p;
+
+            while (p < last && *p != ',' && *p != ' ') { p++; }
+
+            len = p - start;
+
+            if (len == 0) {
+                break;
+            }
+
+            if (multiple) {
+                ngx_md5_update(md5, (u_char *) ",", sizeof(",") - 1);
+            }
+
+            ngx_md5_update(md5, start, len);
+
+            multiple = 1;
+        }
     }
 }
 
