@@ -50,6 +50,7 @@
 #define NGX_HTTP_UPSTREAM_IGN_XA_LIMIT_RATE  0x00000040
 #define NGX_HTTP_UPSTREAM_IGN_XA_BUFFERING   0x00000080
 #define NGX_HTTP_UPSTREAM_IGN_XA_CHARSET     0x00000100
+#define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
 
 
 typedef struct {
@@ -244,6 +245,7 @@ typedef struct {
     ngx_table_elt_t                 *accept_ranges;
     ngx_table_elt_t                 *www_authenticate;
     ngx_table_elt_t                 *transfer_encoding;
+    ngx_table_elt_t                 *vary;
 
 #if (NGX_HTTP_GZIP)
     ngx_table_elt_t                 *content_encoding;
