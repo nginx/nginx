@@ -1185,10 +1185,10 @@ ngx_ssl_handshake_handler(ngx_event_t *ev)
 
 
 ssize_t
-ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl)
+ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t limit)
 {
     u_char     *last;
-    ssize_t     n, bytes;
+    ssize_t     n, bytes, size;
     ngx_buf_t  *b;
 
     bytes = 0;
@@ -1197,8 +1197,19 @@ ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl)
     last = b->last;
 
     for ( ;; ) {
+        size = b->end - last;
 
-        n = ngx_ssl_recv(c, last, b->end - last);
+        if (limit) {
+            if (bytes >= limit) {
+                return bytes;
+            }
+
+            if (bytes + size > limit) {
+                size = (ssize_t) (limit - bytes);
+            }
+        }
+
+        n = ngx_ssl_recv(c, last, size);
 
         if (n > 0) {
             last += n;

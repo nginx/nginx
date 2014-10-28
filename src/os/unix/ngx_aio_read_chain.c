@@ -11,7 +11,7 @@
 
 
 ssize_t
-ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl)
+ngx_aio_read_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t limit)
 {
     int           n;
     u_char       *buf, *prev;

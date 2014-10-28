@@ -11,7 +11,7 @@
 
 
 ssize_t
-ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
+ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
 {
     u_char        *prev;
     ssize_t        n, size;
@@ -66,8 +66,20 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     /* coalesce the neighbouring bufs */
 
     while (chain) {
+        n = chain->buf->end - chain->buf->last;
+
+        if (limit) {
+            if (size >= limit) {
+                break;
+            }
+
+            if (size + n > limit) {
+                n = (ssize_t) (limit - size);
+            }
+        }
+
         if (prev == chain->buf->last) {
-            iov->iov_len += chain->buf->end - chain->buf->last;
+            iov->iov_len += n;
 
         } else {
             if (vec.nelts >= IOV_MAX) {
@@ -80,10 +92,10 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             }
 
             iov->iov_base = (void *) chain->buf->last;
-            iov->iov_len = chain->buf->end - chain->buf->last;
+            iov->iov_len = n;
         }
 
-        size += chain->buf->end - chain->buf->last;
+        size += n;
         prev = chain->buf->end;
         chain = chain->next;
     }

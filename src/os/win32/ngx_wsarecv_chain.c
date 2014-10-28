@@ -14,12 +14,12 @@
 
 
 ssize_t
-ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
+ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
 {
     int           rc;
     u_char       *prev;
     u_long        bytes, flags;
-    size_t        size;
+    size_t        n, size;
     ngx_err_t     err;
     ngx_array_t   vec;
     ngx_event_t  *rev;
@@ -41,8 +41,20 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
     /* coalesce the neighbouring bufs */
 
     while (chain) {
+        n = chain->buf->end - chain->buf->last;
+
+        if (limit) {
+            if (size >= (size_t) limit) {
+                break;
+            }
+
+            if (size + n > (size_t) limit) {
+                n = (size_t) limit - size;
+            }
+        }
+
         if (prev == chain->buf->last) {
-            wsabuf->len += chain->buf->end - chain->buf->last;
+            wsabuf->len += n;
 
         } else {
             wsabuf = ngx_array_push(&vec);
@@ -51,10 +63,10 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain)
             }
 
             wsabuf->buf = (char *) chain->buf->last;
-            wsabuf->len = chain->buf->end - chain->buf->last;
+            wsabuf->len = n;
         }
 
-        size += chain->buf->end - chain->buf->last;
+        size += n;
         prev = chain->buf->end;
         chain = chain->next;
     }
