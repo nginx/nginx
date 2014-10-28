@@ -219,8 +219,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (limit <= 0) {
             c->write->delayed = 1;
-            ngx_add_timer(c->write,
-                          (ngx_msec_t) (- limit * 1000 / r->limit_rate + 1));
+            delay = (ngx_msec_t) (- limit * 1000 / r->limit_rate + 1);
+            ngx_add_timer(c->write, delay);
 
             c->buffered |= NGX_HTTP_WRITE_BUFFERED;
 
