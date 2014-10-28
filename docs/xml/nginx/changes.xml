@@ -5,6 +5,116 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.7" date="28.10.2014">
+
+<change type="change">
+<para lang="ru">
+теперь nginx учитывает при кэшировании строку "Vary"
+в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+now nginx takes into account the "Vary"
+header line in a backend response while caching.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_force_ranges, fastcgi_force_ranges,
+scgi_force_ranges и uwsgi_force_ranges.
+</para>
+<para lang="en">
+the "proxy_force_ranges", "fastcgi_force_ranges",
+"scgi_force_ranges", and "uwsgi_force_ranges" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_limit_rate, fastcgi_limit_rate,
+scgi_limit_rate и uwsgi_limit_rate.
+</para>
+<para lang="en">
+the "proxy_limit_rate", "fastcgi_limit_rate",
+"scgi_limit_rate", and "uwsgi_limit_rate" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр Vary директив proxy_ignore_headers, fastcgi_ignore_headers,
+scgi_ignore_headers и uwsgi_ignore_headers.
+</para>
+<para lang="en">
+the "Vary" parameter of the "proxy_ignore_headers", "fastcgi_ignore_headers", 
+"scgi_ignore_headers", and "uwsgi_ignore_headers" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+последняя часть ответа, полученного от бэкенда
+при небуферизированном проксировании,
+могла не отправляться клиенту,
+если использовались директивы gzip или gunzip.
+</para>
+<para lang="en">
+the last part of a response received from a backend
+with unbufferred proxy
+might not be sent to a client
+if "gzip" or "gunzip" directives were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_revalidate.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the "proxy_cache_revalidate" directive.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок.<br/>
+Спасибо Yichun Zhang и Даниилу Бондареву.
+</para>
+<para lang="en">
+in error handling.<br/>
+Thanks to Yichun Zhang and Daniil Bondarev.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах 
+proxy_next_upstream_tries и proxy_next_upstream_timeout.<br/>
+Спасибо Feng Gu.
+</para>
+<para lang="en">
+in the "proxy_next_upstream_tries" and "proxy_next_upstream_timeout"
+directives.<br/>
+Thanks to Feng Gu.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с MinGW-w64 gcc.<br/>
+Спасибо Kouhei Sutou.
+</para>
+<para lang="en">
+nginx/Windows could not be built with MinGW-w64 gcc.<br/>
+Thanks to Kouhei Sutou.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.6" date="30.09.2014">
 
 <change type="change">
