@@ -80,6 +80,9 @@ struct ngx_event_pipe_s {
     size_t             preread_size;
     ngx_buf_t         *buf_to_file;
 
+    size_t             limit_rate;
+    time_t             start_sec;
+
     ngx_temp_file_t   *temp_file;
 
     /* STUB */ int     num;

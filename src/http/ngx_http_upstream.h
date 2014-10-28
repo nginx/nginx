@@ -141,6 +141,7 @@ typedef struct {
 
     size_t                           send_lowat;
     size_t                           buffer_size;
+    size_t                           limit_rate;
 
     size_t                           busy_buffers_size;
     size_t                           max_temp_file_size;
