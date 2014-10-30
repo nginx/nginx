@@ -42,6 +42,9 @@ typedef struct {
     ngx_uint_t                 ssl_verify_depth;
     ngx_str_t                  ssl_trusted_certificate;
     ngx_str_t                  ssl_crl;
+    ngx_str_t                  ssl_certificate;
+    ngx_str_t                  ssl_certificate_key;
+    ngx_array_t               *ssl_passwords;
 #endif
 } ngx_http_uwsgi_loc_conf_t;
 
@@ -76,6 +79,8 @@ static char *ngx_http_uwsgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd,
 #endif
 
 #if (NGX_HTTP_SSL)
+static char *ngx_http_uwsgi_ssl_password_file(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_uwsgi_set_ssl(ngx_conf_t *cf,
     ngx_http_uwsgi_loc_conf_t *uwcf);
 #endif
@@ -480,6 +485,27 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_uwsgi_loc_conf_t, ssl_crl),
+      NULL },
+
+    { ngx_string("uwsgi_ssl_certificate"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, ssl_certificate),
+      NULL },
+
+    { ngx_string("uwsgi_ssl_certificate_key"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, ssl_certificate_key),
+      NULL },
+
+    { ngx_string("uwsgi_ssl_password_file"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_uwsgi_ssl_password_file,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
 #endif
@@ -1326,6 +1352,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.ssl_server_name = NGX_CONF_UNSET;
     conf->upstream.ssl_verify = NGX_CONF_UNSET;
     conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
+    conf->ssl_passwords = NGX_CONF_UNSET_PTR;
 #endif
 
     /* "uwsgi_cyclic_temp_file" is disabled */
@@ -1618,6 +1645,12 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->ssl_trusted_certificate,
                               prev->ssl_trusted_certificate, "");
     ngx_conf_merge_str_value(conf->ssl_crl, prev->ssl_crl, "");
+
+    ngx_conf_merge_str_value(conf->ssl_certificate,
+                              prev->ssl_certificate, "");
+    ngx_conf_merge_str_value(conf->ssl_certificate_key,
+                              prev->ssl_certificate_key, "");
+    ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
 
     if (conf->ssl && ngx_http_uwsgi_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -2109,6 +2142,29 @@ ngx_http_uwsgi_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_HTTP_SSL)
 
+static char *
+ngx_http_uwsgi_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_uwsgi_loc_conf_t *uwcf = conf;
+
+    ngx_str_t  *value;
+
+    if (uwcf->ssl_passwords != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    uwcf->ssl_passwords = ngx_ssl_read_password_file(cf, &value[1]);
+
+    if (uwcf->ssl_passwords == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
 {
@@ -2134,6 +2190,23 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = uwcf->upstream.ssl;
+
+    if (uwcf->ssl_certificate.len) {
+
+        if (uwcf->ssl_certificate_key.len == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no \"uwsgi_ssl_certificate_key\" is defined "
+                          "for certificate \"%V\"", &uwcf->ssl_certificate);
+            return NGX_ERROR;
+        }
+
+        if (ngx_ssl_certificate(cf, uwcf->upstream.ssl, &uwcf->ssl_certificate,
+                                &uwcf->ssl_certificate_key, uwcf->ssl_passwords)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
 
     if (SSL_CTX_set_cipher_list(uwcf->upstream.ssl->ctx,
                                 (const char *) uwcf->ssl_ciphers.data)
