@@ -1022,7 +1022,6 @@ ngx_http_file_cache_vary_header(ngx_http_request_t *r, ngx_md5_t *md5,
         /* normalize spaces */
 
         p = header[i].value.data;
-        start = p;
         last = p + header[i].value.len;
 
         while (p < last) {
