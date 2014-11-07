@@ -1065,15 +1065,15 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                                     : Z_OK;
     }
 
-    if (z != Z_OK) {
-        return ngx_http_spdy_state_inflate_error(sc, z);
-    }
-
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "spdy inflate out: ni:%p no:%p ai:%ud ao:%ud rc:%d",
                    sc->zstream_in.next_in, sc->zstream_in.next_out,
                    sc->zstream_in.avail_in, sc->zstream_in.avail_out,
                    z);
+
+    if (z != Z_OK) {
+        return ngx_http_spdy_state_inflate_error(sc, z);
+    }
 
     sc->length -= sc->zstream_in.next_in - pos;
     pos = sc->zstream_in.next_in;
@@ -1163,6 +1163,12 @@ ngx_http_spdy_state_headers(ngx_http_spdy_connection_t *sc, u_char *pos,
                 sc->zstream_in.avail_out = buf->end - buf->last - 1;
 
                 z = inflate(&sc->zstream_in, Z_NO_FLUSH);
+
+                ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "spdy inflate out: ni:%p no:%p ai:%ud ao:%ud rc:%d",
+                           sc->zstream_in.next_in, sc->zstream_in.next_out,
+                           sc->zstream_in.avail_in, sc->zstream_in.avail_out,
+                           z);
 
                 if (z != Z_OK) {
                     return ngx_http_spdy_state_inflate_error(sc, z);
@@ -1264,6 +1270,12 @@ ngx_http_spdy_state_headers_skip(ngx_http_spdy_connection_t *sc, u_char *pos,
         sc->zstream_in.avail_out = NGX_SPDY_SKIP_HEADERS_BUFFER_SIZE;
 
         n = inflate(&sc->zstream_in, Z_NO_FLUSH);
+
+        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
+                       "spdy inflate out: ni:%p no:%p ai:%ud ao:%ud rc:%d",
+                       sc->zstream_in.next_in, sc->zstream_in.next_out,
+                       sc->zstream_in.avail_in, sc->zstream_in.avail_out,
+                       n);
 
         if (n != Z_OK) {
             return ngx_http_spdy_state_inflate_error(sc, n);
