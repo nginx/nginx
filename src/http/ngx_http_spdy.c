@@ -2656,11 +2656,10 @@ ngx_http_spdy_alloc_large_header_buffer(ngx_http_request_t *r)
 
         if (rest > NGX_MAX_ERROR_STR - 300) {
             rest = NGX_MAX_ERROR_STR - 300;
-            p[rest++] = '.'; p[rest++] = '.'; p[rest++] = '.';
         }
 
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent too long header name or value: \"%*s\"",
+                      "client sent too long header name or value: \"%*s...\"",
                       rest, p);
 
         return NGX_DECLINED;
