@@ -2660,10 +2660,10 @@ ngx_http_spdy_alloc_large_header_buffer(ngx_http_request_t *r)
     rest = r->header_in->last - r->header_in->pos;
 
     /*
-     * equality is prohibited since one more byte is needed
-     * for null-termination
+     * One more byte is needed for null-termination
+     * and another one for further progress.
      */
-    if (rest >= cscf->large_client_header_buffers.size) {
+    if (rest > cscf->large_client_header_buffers.size - 2) {
         p = r->header_in->pos;
 
         if (rest > NGX_MAX_ERROR_STR - 300) {
