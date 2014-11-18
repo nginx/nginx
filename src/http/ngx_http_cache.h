@@ -57,6 +57,7 @@ typedef struct {
     time_t                           valid_sec;
     size_t                           body_start;
     off_t                            fs_size;
+    ngx_msec_t                       lock_time;
 } ngx_http_file_cache_node_t;
 
 
@@ -91,6 +92,8 @@ struct ngx_http_cache_s {
     ngx_http_file_cache_node_t      *node;
 
     ngx_msec_t                       lock_timeout;
+    ngx_msec_t                       lock_age;
+    ngx_msec_t                       lock_time;
     ngx_msec_t                       wait_time;
 
     ngx_event_t                      wait_event;

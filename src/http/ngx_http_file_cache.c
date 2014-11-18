@@ -396,13 +396,19 @@ ngx_http_file_cache_lock(ngx_http_request_t *r, ngx_http_cache_t *c)
         return NGX_DECLINED;
     }
 
+    now = ngx_current_msec;
+
     cache = c->file_cache;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
-    if (!c->node->updating) {
+    timer = c->node->lock_time - now;
+
+    if (!c->node->updating || (ngx_msec_int_t) timer <= 0) {
         c->node->updating = 1;
+        c->node->lock_time = now + c->lock_age;
         c->updating = 1;
+        c->lock_time = c->node->lock_time;
     }
 
     ngx_shmtx_unlock(&cache->shpool->mutex);
@@ -415,9 +421,11 @@ ngx_http_file_cache_lock(ngx_http_request_t *r, ngx_http_cache_t *c)
         return NGX_DECLINED;
     }
 
-    c->waiting = 1;
+    if (c->lock_timeout == 0) {
+        return NGX_HTTP_CACHE_SCARCE;
+    }
 
-    now = ngx_current_msec;
+    c->waiting = 1;
 
     if (c->wait_time == 0) {
         c->wait_time = now + c->lock_timeout;
@@ -441,7 +449,7 @@ static void
 ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
 {
     ngx_uint_t                 wait;
-    ngx_msec_t                 timer;
+    ngx_msec_t                 now, timer;
     ngx_http_cache_t          *c;
     ngx_http_request_t        *r;
     ngx_http_file_cache_t     *cache;
@@ -449,15 +457,17 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
     r = ev->data;
     c = r->cache;
 
+    now = ngx_current_msec;
+
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                    "http file cache wait handler wt:%M cur:%M",
-                   c->wait_time, ngx_current_msec);
+                   c->wait_time, now);
 
-    timer = c->wait_time - ngx_current_msec;
+    timer = c->wait_time - now;
 
     if ((ngx_msec_int_t) timer <= 0) {
         ngx_log_error(NGX_LOG_INFO, ev->log, 0, "cache lock timeout");
-        c->lock = 0;
+        c->lock_timeout = 0;
         goto wakeup;
     }
 
@@ -466,7 +476,9 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
-    if (c->node->updating) {
+    timer = c->node->lock_time - now;
+
+    if (c->node->updating && (ngx_msec_int_t) timer > 0) {
         wait = 1;
     }
 
@@ -588,6 +600,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         } else {
             c->node->updating = 1;
             c->updating = 1;
+            c->lock_time = c->node->lock_time;
             rc = NGX_HTTP_CACHE_STALE;
         }
 
@@ -1453,7 +1466,7 @@ ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
     fcn = c->node;
     fcn->count--;
 
-    if (c->updating) {
+    if (c->updating && fcn->lock_time == c->lock_time) {
         fcn->updating = 0;
     }
 

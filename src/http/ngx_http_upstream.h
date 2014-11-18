@@ -183,6 +183,7 @@ typedef struct {
 
     ngx_flag_t                       cache_lock;
     ngx_msec_t                       cache_lock_timeout;
+    ngx_msec_t                       cache_lock_age;
 
     ngx_flag_t                       cache_revalidate;
 
