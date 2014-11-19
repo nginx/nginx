@@ -51,8 +51,9 @@ typedef struct {
     ngx_http_upstream_conf_t       upstream;
 
     ngx_array_t                   *body_flushes;
-    ngx_array_t                   *body_set_len;
-    ngx_array_t                   *body_set;
+    ngx_array_t                   *body_lengths;
+    ngx_array_t                   *body_values;
+    ngx_str_t                      body_source;
 
     ngx_http_proxy_headers_t       headers;
 #if (NGX_HTTP_CACHE)
@@ -66,8 +67,6 @@ typedef struct {
     ngx_array_t                   *redirects;
     ngx_array_t                   *cookie_domains;
     ngx_array_t                   *cookie_paths;
-
-    ngx_str_t                      body_source;
 
     ngx_str_t                      method;
     ngx_str_t                      location;
@@ -1166,8 +1165,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     ngx_http_script_flush_no_cacheable_variables(r, plcf->body_flushes);
     ngx_http_script_flush_no_cacheable_variables(r, headers->flushes);
 
-    if (plcf->body_set_len) {
-        le.ip = plcf->body_set_len->elts;
+    if (plcf->body_lengths) {
+        le.ip = plcf->body_lengths->elts;
         le.request = r;
         le.flushed = 1;
         body_len = 0;
@@ -1362,8 +1361,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     /* add "\r\n" at the header end */
     *b->last++ = CR; *b->last++ = LF;
 
-    if (plcf->body_set) {
-        e.ip = plcf->body_set->elts;
+    if (plcf->body_values) {
+        e.ip = plcf->body_values->elts;
         e.pos = b->last;
 
         while (*(uintptr_t *) e.ip) {
@@ -1378,7 +1377,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                    "http proxy header:%N\"%*s\"",
                    (size_t) (b->last - b->pos), b->pos);
 
-    if (plcf->body_set == NULL && plcf->upstream.pass_request_body) {
+    if (plcf->body_values == NULL && plcf->upstream.pass_request_body) {
 
         body = u->request_bufs;
         u->request_bufs = cl;
@@ -2526,8 +2525,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->headers_cache.lengths = NULL;
      *     conf->headers_cache.values = NULL;
      *     conf->headers_cache.hash = { NULL, 0 };
-     *     conf->body_set_len = NULL;
-     *     conf->body_set = NULL;
+     *     conf->body_lengths = NULL;
+     *     conf->body_values = NULL;
      *     conf->body_source = { 0, NULL };
      *     conf->redirects = NULL;
      *     conf->ssl = 0;
@@ -3017,19 +3016,19 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->body_source.data == NULL) {
         conf->body_flushes = prev->body_flushes;
         conf->body_source = prev->body_source;
-        conf->body_set_len = prev->body_set_len;
-        conf->body_set = prev->body_set;
+        conf->body_lengths = prev->body_lengths;
+        conf->body_values = prev->body_values;
     }
 
-    if (conf->body_source.data && conf->body_set_len == NULL) {
+    if (conf->body_source.data && conf->body_lengths == NULL) {
 
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
         sc.cf = cf;
         sc.source = &conf->body_source;
         sc.flushes = &conf->body_flushes;
-        sc.lengths = &conf->body_set_len;
-        sc.values = &conf->body_set;
+        sc.lengths = &conf->body_lengths;
+        sc.values = &conf->body_values;
         sc.complete_lengths = 1;
         sc.complete_values = 1;
 
