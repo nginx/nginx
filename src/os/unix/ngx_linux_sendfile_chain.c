@@ -30,7 +30,7 @@
 ngx_chain_t *
 ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    int            rc, tcp_nodelay;
+    int            tcp_nodelay;
     off_t          send, prev_send, sent;
     size_t         file_size;
     ssize_t        n;
@@ -170,9 +170,9 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "sendfile: @%O %uz", file->file_pos, file_size);
 
-            rc = sendfile(c->fd, file->file->fd, &offset, file_size);
+            n = sendfile(c->fd, file->file->fd, &offset, file_size);
 
-            if (rc == -1) {
+            if (n == -1) {
                 err = ngx_errno;
 
                 switch (err) {
@@ -193,11 +193,11 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                                "sendfile() is not ready");
             }
 
-            sent = rc > 0 ? rc : 0;
+            sent = n > 0 ? n : 0;
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: %d, @%O %O:%uz",
-                           rc, file->file_pos, sent, file_size);
+                           "sendfile: %z, @%O %O:%uz",
+                           n, file->file_pos, sent, file_size);
 
         } else {
             n = ngx_writev(c, &header);
