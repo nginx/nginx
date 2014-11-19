@@ -62,8 +62,8 @@ static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
 static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static ngx_int_t ngx_http_uwsgi_merge_params(ngx_conf_t *cf,
-    ngx_http_uwsgi_loc_conf_t *conf, ngx_http_uwsgi_loc_conf_t *prev);
+static ngx_int_t ngx_http_uwsgi_init_params(ngx_conf_t *cf,
+    ngx_http_uwsgi_loc_conf_t *conf);
 
 static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -1705,7 +1705,22 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->modifier1, prev->modifier1, 0);
     ngx_conf_merge_uint_value(conf->modifier2, prev->modifier2, 0);
 
-    if (ngx_http_uwsgi_merge_params(cf, conf, prev) != NGX_OK) {
+    if (conf->params_source == NULL) {
+        conf->params_source = prev->params_source;
+
+#if (NGX_HTTP_CACHE)
+        if ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
+#endif
+        {
+            conf->flushes = prev->flushes;
+            conf->params_len = prev->params_len;
+            conf->params = prev->params;
+            conf->headers_hash = prev->headers_hash;
+            conf->header_params = prev->header_params;
+        }
+    }
+
+    if (ngx_http_uwsgi_init_params(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -1714,8 +1729,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_uwsgi_merge_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
-    ngx_http_uwsgi_loc_conf_t *prev)
+ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf)
 {
     u_char                       *p;
     size_t                        size;
@@ -1731,24 +1745,8 @@ ngx_http_uwsgi_merge_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
-    if (conf->params_source == NULL) {
-        conf->params_source = prev->params_source;
-
-        if (prev->headers_hash.buckets
-#if (NGX_HTTP_CACHE)
-            && ((conf->upstream.cache == NULL)
-                == (prev->upstream.cache == NULL))
-#endif
-           )
-        {
-            conf->flushes = prev->flushes;
-            conf->params_len = prev->params_len;
-            conf->params = prev->params;
-            conf->headers_hash = prev->headers_hash;
-            conf->header_params = prev->header_params;
-
-            return NGX_OK;
-        }
+    if (conf->headers_hash.buckets) {
+        return NGX_OK;
     }
 
     if (conf->params_source == NULL

@@ -146,8 +146,8 @@ static ngx_int_t ngx_http_proxy_add_variables(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_int_t ngx_http_proxy_merge_headers(ngx_conf_t *cf,
-    ngx_http_proxy_loc_conf_t *conf, ngx_http_proxy_loc_conf_t *prev);
+static ngx_int_t ngx_http_proxy_init_headers(ngx_conf_t *cf,
+    ngx_http_proxy_loc_conf_t *conf);
 
 static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -3015,7 +3015,21 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (ngx_http_proxy_merge_headers(cf, conf, prev) != NGX_OK) {
+    if (conf->headers_source == NULL) {
+        conf->flushes = prev->flushes;
+        conf->headers_set_len = prev->headers_set_len;
+        conf->headers_set = prev->headers_set;
+        conf->headers_set_hash = prev->headers_set_hash;
+        conf->headers_source = prev->headers_source;
+    }
+
+#if (NGX_HTTP_CACHE)
+    if ((conf->upstream.cache == NULL) != (prev->upstream.cache == NULL)) {
+        conf->headers_set_hash.buckets = NULL;
+    }
+#endif
+
+    if (ngx_http_proxy_init_headers(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -3024,8 +3038,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
-    ngx_http_proxy_loc_conf_t *prev)
+ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
 {
     u_char                       *p;
     size_t                        size;
@@ -3038,23 +3051,9 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
-    if (conf->headers_source == NULL) {
-        conf->flushes = prev->flushes;
-        conf->headers_set_len = prev->headers_set_len;
-        conf->headers_set = prev->headers_set;
-        conf->headers_set_hash = prev->headers_set_hash;
-        conf->headers_source = prev->headers_source;
-    }
-
-    if (conf->headers_set_hash.buckets
-#if (NGX_HTTP_CACHE)
-        && ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
-#endif
-       )
-    {
+    if (conf->headers_set_hash.buckets) {
         return NGX_OK;
     }
-
 
     if (ngx_array_init(&headers_names, cf->temp_pool, 4, sizeof(ngx_hash_key_t))
         != NGX_OK)
