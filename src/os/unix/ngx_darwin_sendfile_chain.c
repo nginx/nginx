@@ -104,8 +104,8 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                  * create the trailer iovec and coalesce the neighbouring bufs
                  */
 
-                cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send, c->log);
-
+                cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send,
+                                               c->log);
                 if (cl == NGX_CHAIN_ERROR) {
                     return NGX_CHAIN_ERROR;
                 }
