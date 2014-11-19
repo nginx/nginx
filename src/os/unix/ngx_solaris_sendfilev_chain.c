@@ -48,8 +48,8 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t         n;
     ngx_int_t       eintr;
     ngx_err_t       err;
+    ngx_uint_t      nsfv;
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
-    ngx_array_t     vec;
     ngx_event_t    *wev;
     ngx_chain_t    *cl;
 
@@ -73,11 +73,6 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     send = 0;
 
-    vec.elts = sfvs;
-    vec.size = sizeof(sendfilevec_t);
-    vec.nalloc = NGX_SENDFILEVECS;
-    vec.pool = c->pool;
-
     for ( ;; ) {
         fd = SFV_FD_SELF;
         prev = NULL;
@@ -87,7 +82,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         sent = 0;
         prev_send = send;
 
-        vec.nelts = 0;
+        nsfv = 0;
 
         /* create the sendfilevec and coalesce the neighbouring bufs */
 
@@ -110,14 +105,11 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     sfv->sfv_len += (size_t) size;
 
                 } else {
-                    if (vec.nelts >= IOV_MAX) {
+                    if (nsfv == NGX_SENDFILEVECS) {
                         break;
                     }
 
-                    sfv = ngx_array_push(&vec);
-                    if (sfv == NULL) {
-                        return NGX_CHAIN_ERROR;
-                    }
+                    sfv = &sfvs[nsfv++];
 
                     sfv->sfv_fd = SFV_FD_SELF;
                     sfv->sfv_flag = 0;
@@ -148,14 +140,11 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     sfv->sfv_len += (size_t) size;
 
                 } else {
-                    if (vec.nelts >= IOV_MAX) {
+                    if (nsfv == NGX_SENDFILEVECS) {
                         break;
                     }
 
-                    sfv = ngx_array_push(&vec);
-                    if (sfv == NULL) {
-                        return NGX_CHAIN_ERROR;
-                    }
+                    sfv = &sfvs[nsfv++];
 
                     fd = cl->buf->file->fd;
                     sfv->sfv_fd = fd;
@@ -169,7 +158,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
         }
 
-        n = sendfilev(c->fd, vec.elts, vec.nelts, &sent);
+        n = sendfilev(c->fd, sfvs, nsfv, &sent);
 
         if (n == -1) {
             err = ngx_errno;
