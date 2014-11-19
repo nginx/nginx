@@ -1670,13 +1670,6 @@ ngx_http_scgi_merge_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
 
     *code = (uintptr_t) NULL;
 
-    code = ngx_array_push_n(conf->params, sizeof(uintptr_t));
-    if (code == NULL) {
-        return NGX_ERROR;
-    }
-
-    *code = (uintptr_t) NULL;
-
     conf->header_params = headers_names.nelts;
 
     hash.hash = &conf->headers_hash;
