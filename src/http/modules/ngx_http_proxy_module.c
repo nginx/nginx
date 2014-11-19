@@ -40,15 +40,21 @@ typedef struct {
 
 
 typedef struct {
+    ngx_array_t                   *flushes;
+    ngx_array_t                   *lengths;
+    ngx_array_t                   *values;
+    ngx_hash_t                     hash;
+} ngx_http_proxy_headers_t;
+
+
+typedef struct {
     ngx_http_upstream_conf_t       upstream;
 
-    ngx_array_t                   *flushes;
+    ngx_array_t                   *body_flushes;
     ngx_array_t                   *body_set_len;
     ngx_array_t                   *body_set;
-    ngx_array_t                   *headers_set_len;
-    ngx_array_t                   *headers_set;
-    ngx_hash_t                     headers_set_hash;
 
+    ngx_http_proxy_headers_t       headers;
     ngx_array_t                   *headers_source;
 
     ngx_array_t                   *proxy_lengths;
@@ -147,7 +153,7 @@ static void *ngx_http_proxy_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_proxy_init_headers(ngx_conf_t *cf,
-    ngx_http_proxy_loc_conf_t *conf);
+    ngx_http_proxy_loc_conf_t *conf, ngx_http_proxy_headers_t *headers);
 
 static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -1080,6 +1086,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     ngx_http_upstream_t          *u;
     ngx_http_proxy_ctx_t         *ctx;
     ngx_http_script_code_pt       code;
+    ngx_http_proxy_headers_t     *headers;
     ngx_http_script_engine_t      e, le;
     ngx_http_proxy_loc_conf_t    *plcf;
     ngx_http_script_len_code_pt   lcode;
@@ -1087,6 +1094,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     u = r->upstream;
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+    headers = &plcf->headers;
 
     if (u->method.len) {
         /* HEAD was changed to GET to cache response */
@@ -1146,7 +1155,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
-    ngx_http_script_flush_no_cacheable_variables(r, plcf->flushes);
+    ngx_http_script_flush_no_cacheable_variables(r, plcf->body_flushes);
+    ngx_http_script_flush_no_cacheable_variables(r, headers->flushes);
 
     if (plcf->body_set_len) {
         le.ip = plcf->body_set_len->elts;
@@ -1166,7 +1176,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         ctx->internal_body_length = r->headers_in.content_length_n;
     }
 
-    le.ip = plcf->headers_set_len->elts;
+    le.ip = headers->lengths->elts;
     le.request = r;
     le.flushed = 1;
 
@@ -1195,7 +1205,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            if (ngx_hash_find(&plcf->headers_set_hash, header[i].hash,
+            if (ngx_hash_find(&headers->hash, header[i].hash,
                               header[i].lowcase_key, header[i].key.len))
             {
                 continue;
@@ -1266,12 +1276,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
-    e.ip = plcf->headers_set->elts;
+    e.ip = headers->values->elts;
     e.pos = b->last;
     e.request = r;
     e.flushed = 1;
 
-    le.ip = plcf->headers_set_len->elts;
+    le.ip = headers->lengths->elts;
 
     while (*(uintptr_t *) le.ip) {
         lcode = *(ngx_http_script_len_code_pt *) le.ip;
@@ -1319,7 +1329,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            if (ngx_hash_find(&plcf->headers_set_hash, header[i].hash,
+            if (ngx_hash_find(&headers->hash, header[i].hash,
                               header[i].lowcase_key, header[i].key.len))
             {
                 continue;
@@ -2502,9 +2512,9 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *
      *     conf->method = { 0, NULL };
      *     conf->headers_source = NULL;
-     *     conf->headers_set_len = NULL;
-     *     conf->headers_set = NULL;
-     *     conf->headers_set_hash = NULL;
+     *     conf->headers.lengths = NULL;
+     *     conf->headers.values = NULL;
+     *     conf->headers.hash = { NULL, 0 };
      *     conf->body_set_len = NULL;
      *     conf->body_set = NULL;
      *     conf->body_source = { 0, NULL };
@@ -2993,6 +3003,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->body_source.data == NULL) {
+        conf->body_flushes = prev->body_flushes;
         conf->body_source = prev->body_source;
         conf->body_set_len = prev->body_set_len;
         conf->body_set = prev->body_set;
@@ -3004,7 +3015,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
         sc.cf = cf;
         sc.source = &conf->body_source;
-        sc.flushes = &conf->flushes;
+        sc.flushes = &conf->body_flushes;
         sc.lengths = &conf->body_set_len;
         sc.values = &conf->body_set;
         sc.complete_lengths = 1;
@@ -3016,20 +3027,17 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (conf->headers_source == NULL) {
-        conf->flushes = prev->flushes;
-        conf->headers_set_len = prev->headers_set_len;
-        conf->headers_set = prev->headers_set;
-        conf->headers_set_hash = prev->headers_set_hash;
+        conf->headers = prev->headers;
         conf->headers_source = prev->headers_source;
     }
 
 #if (NGX_HTTP_CACHE)
     if ((conf->upstream.cache == NULL) != (prev->upstream.cache == NULL)) {
-        conf->headers_set_hash.buckets = NULL;
+        conf->headers.hash.buckets = NULL;
     }
 #endif
 
-    if (ngx_http_proxy_init_headers(cf, conf) != NGX_OK) {
+    if (ngx_http_proxy_init_headers(cf, conf, &conf->headers) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -3038,7 +3046,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
+ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
+    ngx_http_proxy_headers_t *headers)
 {
     u_char                       *p;
     size_t                        size;
@@ -3051,7 +3060,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
-    if (conf->headers_set_hash.buckets) {
+    if (headers->hash.buckets) {
         return NGX_OK;
     }
 
@@ -3075,13 +3084,13 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
         }
     }
 
-    conf->headers_set_len = ngx_array_create(cf->pool, 64, 1);
-    if (conf->headers_set_len == NULL) {
+    headers->lengths = ngx_array_create(cf->pool, 64, 1);
+    if (headers->lengths == NULL) {
         return NGX_ERROR;
     }
 
-    conf->headers_set = ngx_array_create(cf->pool, 512, 1);
-    if (conf->headers_set == NULL) {
+    headers->values = ngx_array_create(cf->pool, 512, 1);
+    if (headers->values == NULL) {
         return NGX_ERROR;
     }
 
@@ -3146,7 +3155,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
         }
 
         if (ngx_http_script_variables_count(&src[i].value) == 0) {
-            copy = ngx_array_push_n(conf->headers_set_len,
+            copy = ngx_array_push_n(headers->lengths,
                                     sizeof(ngx_http_script_copy_code_t));
             if (copy == NULL) {
                 return NGX_ERROR;
@@ -3164,7 +3173,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
                        + sizeof(uintptr_t) - 1)
                     & ~(sizeof(uintptr_t) - 1);
 
-            copy = ngx_array_push_n(conf->headers_set, size);
+            copy = ngx_array_push_n(headers->values, size);
             if (copy == NULL) {
                 return NGX_ERROR;
             }
@@ -3181,7 +3190,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
             *p++ = CR; *p = LF;
 
         } else {
-            copy = ngx_array_push_n(conf->headers_set_len,
+            copy = ngx_array_push_n(headers->lengths,
                                     sizeof(ngx_http_script_copy_code_t));
             if (copy == NULL) {
                 return NGX_ERROR;
@@ -3196,7 +3205,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
                     + src[i].key.len + sizeof(": ") - 1 + sizeof(uintptr_t) - 1)
                     & ~(sizeof(uintptr_t) - 1);
 
-            copy = ngx_array_push_n(conf->headers_set, size);
+            copy = ngx_array_push_n(headers->values, size);
             if (copy == NULL) {
                 return NGX_ERROR;
             }
@@ -3213,16 +3222,16 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
 
             sc.cf = cf;
             sc.source = &src[i].value;
-            sc.flushes = &conf->flushes;
-            sc.lengths = &conf->headers_set_len;
-            sc.values = &conf->headers_set;
+            sc.flushes = &headers->flushes;
+            sc.lengths = &headers->lengths;
+            sc.values = &headers->values;
 
             if (ngx_http_script_compile(&sc) != NGX_OK) {
                 return NGX_ERROR;
             }
 
 
-            copy = ngx_array_push_n(conf->headers_set_len,
+            copy = ngx_array_push_n(headers->lengths,
                                     sizeof(ngx_http_script_copy_code_t));
             if (copy == NULL) {
                 return NGX_ERROR;
@@ -3237,7 +3246,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
                     + sizeof(CRLF) - 1 + sizeof(uintptr_t) - 1)
                     & ~(sizeof(uintptr_t) - 1);
 
-            copy = ngx_array_push_n(conf->headers_set, size);
+            copy = ngx_array_push_n(headers->values, size);
             if (copy == NULL) {
                 return NGX_ERROR;
             }
@@ -3249,14 +3258,14 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
             *p++ = CR; *p = LF;
         }
 
-        code = ngx_array_push_n(conf->headers_set_len, sizeof(uintptr_t));
+        code = ngx_array_push_n(headers->lengths, sizeof(uintptr_t));
         if (code == NULL) {
             return NGX_ERROR;
         }
 
         *code = (uintptr_t) NULL;
 
-        code = ngx_array_push_n(conf->headers_set, sizeof(uintptr_t));
+        code = ngx_array_push_n(headers->values, sizeof(uintptr_t));
         if (code == NULL) {
             return NGX_ERROR;
         }
@@ -3264,7 +3273,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
         *code = (uintptr_t) NULL;
     }
 
-    code = ngx_array_push_n(conf->headers_set_len, sizeof(uintptr_t));
+    code = ngx_array_push_n(headers->lengths, sizeof(uintptr_t));
     if (code == NULL) {
         return NGX_ERROR;
     }
@@ -3272,7 +3281,7 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf)
     *code = (uintptr_t) NULL;
 
 
-    hash.hash = &conf->headers_set_hash;
+    hash.hash = &headers->hash;
     hash.key = ngx_hash_key_lc;
     hash.max_size = conf->headers_hash_max_size;
     hash.bucket_size = conf->headers_hash_bucket_size;
