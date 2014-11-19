@@ -113,7 +113,7 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         c->sent += sent;
 
-        in = ngx_handle_sent_chain(in, sent);
+        in = ngx_chain_update_sent(in, sent);
 
         if (send - prev_send != sent) {
             wev->ready = 0;
@@ -279,7 +279,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     c->sent += sent;
 
-    in = ngx_handle_sent_chain(in, sent);
+    in = ngx_chain_update_sent(in, sent);
 
     if (in) {
         wev->ready = 0;

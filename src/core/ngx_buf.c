@@ -221,7 +221,7 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
 
 
 ngx_chain_t *
-ngx_handle_sent_chain(ngx_chain_t *in, off_t sent)
+ngx_chain_update_sent(ngx_chain_t *in, off_t sent)
 {
     off_t  size;
 
