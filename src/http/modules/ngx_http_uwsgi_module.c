@@ -25,6 +25,9 @@ typedef struct {
     ngx_http_upstream_conf_t   upstream;
 
     ngx_http_uwsgi_params_t    params;
+#if (NGX_HTTP_CACHE)
+    ngx_http_uwsgi_params_t    params_cache;
+#endif
     ngx_array_t               *params_source;
 
     ngx_array_t               *uwsgi_lengths;
@@ -67,7 +70,8 @@ static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static ngx_int_t ngx_http_uwsgi_init_params(ngx_conf_t *cf,
-    ngx_http_uwsgi_loc_conf_t *conf, ngx_http_uwsgi_params_t *params);
+    ngx_http_uwsgi_loc_conf_t *conf, ngx_http_uwsgi_params_t *params,
+    ngx_keyval_t *default_params);
 
 static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -795,7 +799,11 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
     uwcf = ngx_http_get_module_loc_conf(r, ngx_http_uwsgi_module);
 
+#if (NGX_HTTP_CACHE)
+    params = r->upstream->cacheable ? &uwcf->params_cache : &uwcf->params;
+#else
     params = &uwcf->params;
+#endif
 
     if (params->lengths) {
         ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
@@ -1388,6 +1396,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_uwsgi_loc_conf_t *conf = child;
 
     size_t                        size;
+    ngx_int_t                     rc;
     ngx_hash_init_t               hash;
     ngx_http_core_loc_conf_t     *clcf;
 
@@ -1713,19 +1722,29 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->modifier2, prev->modifier2, 0);
 
     if (conf->params_source == NULL) {
+        conf->params = prev->params;
+#if (NGX_HTTP_CACHE)
+        conf->params_cache = prev->params_cache;
+#endif
         conf->params_source = prev->params_source;
+    }
+
+    rc = ngx_http_uwsgi_init_params(cf, conf, &conf->params, NULL);
+    if (rc != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
 #if (NGX_HTTP_CACHE)
-        if ((conf->upstream.cache == NULL) == (prev->upstream.cache == NULL))
-#endif
-        {
-            conf->params = prev->params;
+
+    if (conf->upstream.cache) {
+        rc = ngx_http_uwsgi_init_params(cf, conf, &conf->params_cache,
+                                        ngx_http_uwsgi_cache_headers);
+        if (rc != NGX_OK) {
+            return NGX_CONF_ERROR;
         }
     }
 
-    if (ngx_http_uwsgi_init_params(cf, conf, &conf->params) != NGX_OK) {
-        return NGX_CONF_ERROR;
-    }
+#endif
 
     return NGX_CONF_OK;
 }
@@ -1733,19 +1752,17 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 static ngx_int_t
 ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
-    ngx_http_uwsgi_params_t *params)
+    ngx_http_uwsgi_params_t *params, ngx_keyval_t *default_params)
 {
     u_char                       *p;
     size_t                        size;
     uintptr_t                    *code;
     ngx_uint_t                    i, nsrc;
-    ngx_array_t                   headers_names;
-#if (NGX_HTTP_CACHE)
-    ngx_array_t                   params_merged;
-#endif
+    ngx_array_t                   headers_names, params_merged;
+    ngx_keyval_t                 *h;
     ngx_hash_key_t               *hk;
     ngx_hash_init_t               hash;
-    ngx_http_upstream_param_t    *src;
+    ngx_http_upstream_param_t    *src, *s;
     ngx_http_script_compile_t     sc;
     ngx_http_script_copy_code_t  *copy;
 
@@ -1753,12 +1770,7 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
         return NGX_OK;
     }
 
-    if (conf->params_source == NULL
-#if (NGX_HTTP_CACHE)
-        && (conf->upstream.cache == NULL)
-#endif
-       )
-    {
+    if (conf->params_source == NULL && default_params == NULL) {
         params->hash.buckets = (void *) 1;
         return NGX_OK;
     }
@@ -1788,12 +1800,7 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
         nsrc = 0;
     }
 
-#if (NGX_HTTP_CACHE)
-
-    if (conf->upstream.cache) {
-        ngx_keyval_t               *h;
-        ngx_http_upstream_param_t  *s;
-
+    if (default_params) {
         if (ngx_array_init(&params_merged, cf->temp_pool, 4,
                            sizeof(ngx_http_upstream_param_t))
             != NGX_OK)
@@ -1811,7 +1818,7 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
             *s = src[i];
         }
 
-        h = ngx_http_uwsgi_cache_headers;
+        h = default_params;
 
         while (h->key.len) {
 
@@ -1841,8 +1848,6 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
         src = params_merged.elts;
         nsrc = params_merged.nelts;
     }
-
-#endif
 
     for (i = 0; i < nsrc; i++) {
 
