@@ -1568,8 +1568,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
         ngx_rbtree_delete(&r->name_rbtree, &rn->node);
 
-        ngx_resolver_free_node(r, rn);
-
         /* unlock name mutex */
 
         while (next) {
@@ -1579,6 +1577,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             ctx->handler(ctx);
         }
+
+        ngx_resolver_free_node(r, rn);
 
         return;
     }
@@ -2143,8 +2143,6 @@ valid:
 
         ngx_rbtree_delete(tree, &rn->node);
 
-        ngx_resolver_free_node(r, rn);
-
         /* unlock addr mutex */
 
         while (next) {
@@ -2154,6 +2152,8 @@ valid:
 
             ctx->handler(ctx);
         }
+
+        ngx_resolver_free_node(r, rn);
 
         return;
     }
