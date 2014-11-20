@@ -48,6 +48,11 @@ typedef struct {
 } ngx_resolver_an_t;
 
 
+#define ngx_resolver_node(n)                                                 \
+    (ngx_resolver_node_t *)                                                  \
+        ((u_char *) (n) - offsetof(ngx_resolver_node_t, node))
+
+
 ngx_int_t ngx_udp_connect(ngx_udp_connection_t *uc);
 
 
@@ -288,7 +293,7 @@ ngx_resolver_cleanup_tree(ngx_resolver_t *r, ngx_rbtree_t *tree)
 
     while (tree->root != tree->sentinel) {
 
-        rn = (ngx_resolver_node_t *) ngx_rbtree_min(tree->root, tree->sentinel);
+        rn = ngx_resolver_node(ngx_rbtree_min(tree->root, tree->sentinel));
 
         ngx_queue_remove(&rn->queue);
 
@@ -666,7 +671,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
         ctx->event->handler = ngx_resolver_timeout_handler;
         ctx->event->data = rn;
         ctx->event->log = r->log;
-        ctx->ident = -1;
+        rn->ident = -1;
 
         ngx_add_timer(ctx->event, ctx->timeout);
     }
@@ -859,7 +864,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
     ctx->event->handler = ngx_resolver_timeout_handler;
     ctx->event->data = rn;
     ctx->event->log = r->log;
-    ctx->ident = -1;
+    rn->ident = -1;
 
     ngx_add_timer(ctx->event, ctx->timeout);
 
@@ -2290,7 +2295,7 @@ ngx_resolver_lookup_name(ngx_resolver_t *r, ngx_str_t *name, uint32_t hash)
 
         /* hash == node->key */
 
-        rn = (ngx_resolver_node_t *) node;
+        rn = ngx_resolver_node(node);
 
         rc = ngx_memn2cmp(name->data, rn->name, name->len, rn->nlen);
 
@@ -2329,7 +2334,7 @@ ngx_resolver_lookup_addr(ngx_resolver_t *r, in_addr_t addr)
 
         /* addr == node->key */
 
-        return (ngx_resolver_node_t *) node;
+        return ngx_resolver_node(node);
     }
 
     /* not found */
@@ -2365,7 +2370,7 @@ ngx_resolver_lookup_addr6(ngx_resolver_t *r, struct in6_addr *addr,
 
         /* hash == node->key */
 
-        rn = (ngx_resolver_node_t *) node;
+        rn = ngx_resolver_node(node);
 
         rc = ngx_memcmp(addr, &rn->addr6, 16);
 
@@ -2403,8 +2408,8 @@ ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
         } else { /* node->key == temp->key */
 
-            rn = (ngx_resolver_node_t *) node;
-            rn_temp = (ngx_resolver_node_t *) temp;
+            rn = ngx_resolver_node(node);
+            rn_temp = ngx_resolver_node(temp);
 
             p = (ngx_memn2cmp(rn->name, rn_temp->name, rn->nlen, rn_temp->nlen)
                  < 0) ? &temp->left : &temp->right;
@@ -2446,8 +2451,8 @@ ngx_resolver_rbtree_insert_addr6_value(ngx_rbtree_node_t *temp,
 
         } else { /* node->key == temp->key */
 
-            rn = (ngx_resolver_node_t *) node;
-            rn_temp = (ngx_resolver_node_t *) temp;
+            rn = ngx_resolver_node(node);
+            rn_temp = ngx_resolver_node(temp);
 
             p = (ngx_memcmp(&rn->addr6, &rn_temp->addr6, 16)
                  < 0) ? &temp->left : &temp->right;
