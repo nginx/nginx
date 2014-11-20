@@ -182,10 +182,11 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
             for (i = 4; i < len; i++) {
                 c = ngx_tolower(p[i]);
 
-                if (c < '0' || (c > '9' && c < 'a') || c > 'z') {
+                if (c < '0' || (c > '9' && c < 'a' && c != '_') || c > 'z') {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "syslog \"tag\" only allows "
-                                       "alphanumeric characters");
+                                       "alphanumeric characters "
+                                       "and underscore");
                     return NGX_CONF_ERROR;
                 }
             }
