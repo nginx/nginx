@@ -3156,8 +3156,10 @@ ngx_http_spdy_close_stream_handler(ngx_event_t *ev)
 void
 ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
 {
+    int                           tcp_nodelay;
     ngx_event_t                  *ev;
-    ngx_connection_t             *fc;
+    ngx_connection_t             *c, *fc;
+    ngx_http_core_loc_conf_t     *clcf;
     ngx_http_spdy_stream_t      **index, *s;
     ngx_http_spdy_srv_conf_t     *sscf;
     ngx_http_spdy_connection_t   *sc;
@@ -3182,6 +3184,54 @@ ngx_http_spdy_close_stream(ngx_http_spdy_stream_t *stream, ngx_int_t rc)
             != NGX_OK)
         {
             sc->connection->error = 1;
+        }
+
+    } else {
+        c = sc->connection;
+
+        if (c->tcp_nopush == NGX_TCP_NOPUSH_SET) {
+            if (ngx_tcp_push(c->fd) == -1) {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     ngx_tcp_push_n " failed");
+                c->error = 1;
+                tcp_nodelay = 0;
+
+            } else {
+                c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
+                tcp_nodelay = ngx_tcp_nodelay_and_tcp_nopush ? 1 : 0;
+            }
+
+        } else {
+            tcp_nodelay = 1;
+        }
+
+        clcf = ngx_http_get_module_loc_conf(stream->request,
+                                            ngx_http_core_module);
+
+        if (tcp_nodelay
+            && clcf->tcp_nodelay
+            && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
+        {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
+
+            if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                           (const void *) &tcp_nodelay, sizeof(int))
+                == -1)
+            {
+#if (NGX_SOLARIS)
+                /* Solaris returns EINVAL if a socket has been shut down */
+                c->log_error = NGX_ERROR_IGNORE_EINVAL;
+#endif
+
+                ngx_connection_error(c, ngx_socket_errno,
+                                     "setsockopt(TCP_NODELAY) failed");
+
+                c->log_error = NGX_ERROR_INFO;
+                c->error = 1;
+
+            } else {
+                c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+            }
         }
     }
 
