@@ -2565,12 +2565,17 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
 
         if (valid) {
-            r->cache->last_modified = u->headers_in.last_modified_time;
             r->cache->date = now;
             r->cache->body_start = (u_short) (u->buffer.pos - u->buffer.start);
 
-            if (u->headers_in.etag) {
-                r->cache->etag = u->headers_in.etag->value;
+            if (u->headers_in.status_n == NGX_HTTP_OK
+                || u->headers_in.status_n == NGX_HTTP_PARTIAL_CONTENT)
+            {
+                r->cache->last_modified = u->headers_in.last_modified_time;
+
+                if (u->headers_in.etag) {
+                    r->cache->etag = u->headers_in.etag->value;
+                }
             }
 
             ngx_http_file_cache_set_header(r, u->buffer.start);
