@@ -48,7 +48,7 @@ ngx_int_t
 ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     off_t                      size, sent, nsent, limit;
-    ngx_uint_t                 last, flush;
+    ngx_uint_t                 last, flush, sync;
     ngx_msec_t                 delay;
     ngx_chain_t               *cl, *ln, **ll, *chain;
     ngx_connection_t          *c;
@@ -62,6 +62,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     size = 0;
     flush = 0;
+    sync = 0;
     last = 0;
     ll = &r->out;
 
@@ -103,6 +104,10 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (cl->buf->flush || cl->buf->recycled) {
             flush = 1;
+        }
+
+        if (cl->buf->sync) {
+            sync = 1;
         }
 
         if (cl->buf->last_buf) {
@@ -157,6 +162,10 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             flush = 1;
         }
 
+        if (cl->buf->sync) {
+            sync = 1;
+        }
+
         if (cl->buf->last_buf) {
             last = 1;
         }
@@ -188,7 +197,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
         && !(last && c->need_last_buf))
     {
-        if (last || flush) {
+        if (last || flush || sync) {
             for (cl = r->out; cl; /* void */) {
                 ln = cl;
                 cl = cl->next;
