@@ -66,7 +66,7 @@ ngx_crypt_apr1(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     size_t             saltlen, keylen;
     ngx_md5_t          md5, ctx1;
 
-    /* Apache's apr1 crypt is Paul-Henning Kamp's md5 crypt with $apr1$ magic */
+    /* Apache's apr1 crypt is Poul-Henning Kamp's md5 crypt with $apr1$ magic */
 
     keylen = ngx_strlen(key);
 
