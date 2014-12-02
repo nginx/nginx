@@ -5,6 +5,172 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.8" date="02.12.2014">
+
+<change type="change">
+<para lang="ru">
+теперь строки "If-Modified-Since", "If-Range" и им подобные
+в заголовке запроса клиента передаются бэкенду при включённом кэшировании,
+если nginx заранее знает, что не будет кэшировать ответ
+(например, при использовании proxy_cache_min_uses).
+</para>
+<para lang="en">
+now the "If-Modified-Since", "If-Range", etc.
+client request header lines are passed to a backend while caching
+if nginx knows in advance that the response will not be cached
+(e.g., when using proxy_cache_min_uses).
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь после истечения proxy_cache_lock_timeout
+nginx отправляет запрос на бэкенд без кэширования;
+новые директивы proxy_cache_lock_age, fastcgi_cache_lock_age,
+scgi_cache_lock_age и uwsgi_cache_lock_age позволяют указать,
+через какое время блокировка будет принудительно снята
+и будет сделана ещё одна попытка закэшировать ответ.
+</para>
+<para lang="en">
+now after proxy_cache_lock_timeout
+nginx sends a request to a backend with caching disabled;
+the new directives "proxy_cache_lock_age", "fastcgi_cache_lock_age",
+"scgi_cache_lock_age", and "uwsgi_cache_lock_age" specify a time
+after which the lock will be released
+and another attempt to cache a response will be made.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директива log_format теперь может использоваться только на уровне http.
+</para>
+<para lang="en">
+the "log_format" directive can now be used only at http level.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_ssl_certificate, proxy_ssl_certificate_key,
+proxy_ssl_password_file, uwsgi_ssl_certificate,
+uwsgi_ssl_certificate_key и uwsgi_ssl_password_file.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "proxy_ssl_certificate", "proxy_ssl_certificate_key",
+"proxy_ssl_password_file", "uwsgi_ssl_certificate",
+"uwsgi_ssl_certificate_key", and "uwsgi_ssl_password_file" directives.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь с помощью X-Accel-Redirect
+можно перейти в именованный location.<br/>
+Спасибо Toshikuni Fukaya.
+</para>
+<para lang="en">
+it is now possible to switch to a named location
+using "X-Accel-Redirect".<br/>
+Thanks to Toshikuni Fukaya.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива tcp_nodelay работает для SPDY-соединений.
+</para>
+<para lang="en">
+now the "tcp_nodelay" directive works with SPDY connections.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Peter Wu.
+</para>
+<para lang="en">
+new directives in vim syntax highliting scripts.<br/>
+Thanks to Peter Wu.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx игнорировал значение "s-maxage"
+в строке "Cache-Control" в заголовке ответа бэкенда.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx ignored the "s-maxage" value
+in the "Cache-Control" backend response header line.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_spdy_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_spdy_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_password_file
+при использовании OpenSSL 0.9.8zc, 1.0.0o, 1.0.1j.
+</para>
+<para lang="en">
+in the "ssl_password_file" directive
+when using OpenSSL 0.9.8zc, 1.0.0o, 1.0.1j.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы post_action
+в лог писались сообщения "header already sent";
+ошибка появилась в nginx 1.5.4.
+</para>
+<para lang="en">
+alerts "header already sent" appeared in logs
+if the "post_action" directive was used;
+the bug had appeared in 1.5.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "postpone_output 0" с SSI-подзапросами
+в лог могли писаться сообщения "the http output chain is empty".
+</para>
+<para lang="en">
+alerts "the http output chain is empty" might appear in logs
+if the "postpone_output 0" directive was used with SSI includes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_lock при использовании SSI-подзапросов.<br/>
+Спасибо Yichun Zhang.
+</para>
+<para lang="en">
+in the "proxy_cache_lock" directive with SSI subrequests.<br/>
+Thanks to Yichun Zhang.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.7" date="28.10.2014">
 
 <change type="change">
