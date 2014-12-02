@@ -595,4 +595,8 @@ extern ngx_http_header_out_t   ngx_http_headers_out[];
     }
 
 
+#define ngx_http_set_log_request(log, r)                                      \
+    ((ngx_http_log_ctx_t *) log->data)->current_request = r
+
+
 #endif /* _NGX_HTTP_REQUEST_H_INCLUDED_ */

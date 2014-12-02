@@ -14,6 +14,8 @@
 static ngx_int_t ngx_http_file_cache_lock(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static void ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev);
+static void ngx_http_file_cache_lock_wait(ngx_http_request_t *r,
+    ngx_http_cache_t *c);
 static ngx_int_t ngx_http_file_cache_read(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static ssize_t ngx_http_file_cache_aio_read(ngx_http_request_t *r,
@@ -448,25 +450,35 @@ ngx_http_file_cache_lock(ngx_http_request_t *r, ngx_http_cache_t *c)
 static void
 ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
 {
-    ngx_uint_t                 wait;
-    ngx_msec_t                 now, timer;
-    ngx_http_cache_t          *c;
-    ngx_http_request_t        *r;
-    ngx_http_file_cache_t     *cache;
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
 
     r = ev->data;
-    c = r->cache;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http file cache wait: \"%V?%V\"", &r->uri, &r->args);
+
+    ngx_http_file_cache_lock_wait(r, r->cache);
+}
+
+
+static void
+ngx_http_file_cache_lock_wait(ngx_http_request_t *r, ngx_http_cache_t *c)
+{
+    ngx_uint_t              wait;
+    ngx_msec_t              now, timer;
+    ngx_http_file_cache_t  *cache;
 
     now = ngx_current_msec;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0,
-                   "http file cache wait handler wt:%M cur:%M",
-                   c->wait_time, now);
 
     timer = c->wait_time - now;
 
     if ((ngx_msec_int_t) timer <= 0) {
-        ngx_log_error(NGX_LOG_INFO, ev->log, 0, "cache lock timeout");
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "cache lock timeout");
         c->lock_timeout = 0;
         goto wakeup;
     }
@@ -485,7 +497,7 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
     if (wait) {
-        ngx_add_timer(ev, (timer > 500) ? 500 : timer);
+        ngx_add_timer(&c->wait_event, (timer > 500) ? 500 : timer);
         return;
     }
 
@@ -665,10 +677,17 @@ static void
 ngx_http_cache_aio_event_handler(ngx_event_t *ev)
 {
     ngx_event_aio_t     *aio;
+    ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
     aio = ev->data;
     r = aio->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http file cache aio: \"%V?%V\"", &r->uri, &r->args);
 
     r->main->blocked--;
     r->aio = 0;

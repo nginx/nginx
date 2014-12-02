@@ -2169,13 +2169,11 @@ ngx_http_request_handler(ngx_event_t *ev)
 {
     ngx_connection_t    *c;
     ngx_http_request_t  *r;
-    ngx_http_log_ctx_t  *ctx;
 
     c = ev->data;
     r = c->data;
 
-    ctx = c->log->data;
-    ctx->current_request = r;
+    ngx_http_set_log_request(c->log, r);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http run request: \"%V?%V\"", &r->uri, &r->args);
@@ -2195,7 +2193,6 @@ void
 ngx_http_run_posted_requests(ngx_connection_t *c)
 {
     ngx_http_request_t         *r;
-    ngx_http_log_ctx_t         *ctx;
     ngx_http_posted_request_t  *pr;
 
     for ( ;; ) {
@@ -2215,8 +2212,7 @@ ngx_http_run_posted_requests(ngx_connection_t *c)
 
         r = pr->request;
 
-        ctx = c->log->data;
-        ctx->current_request = r;
+        ngx_http_set_log_request(c->log, r);
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http posted request: \"%V?%V\"", &r->uri, &r->args);

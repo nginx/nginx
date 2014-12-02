@@ -942,6 +942,11 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     u = r->upstream;
     ur = u->resolved;
 
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream resolve: \"%V?%V\"", &r->uri, &r->args);
+
     if (ctx->state) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "%V could not be resolved (%i: %s)",
@@ -1003,7 +1008,6 @@ ngx_http_upstream_handler(ngx_event_t *ev)
 {
     ngx_connection_t     *c;
     ngx_http_request_t   *r;
-    ngx_http_log_ctx_t   *ctx;
     ngx_http_upstream_t  *u;
 
     c = ev->data;
@@ -1012,8 +1016,7 @@ ngx_http_upstream_handler(ngx_event_t *ev)
     u = r->upstream;
     c = r->connection;
 
-    ctx = c->log->data;
-    ctx->current_request = r;
+    ngx_http_set_log_request(c->log, r);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream request: \"%V?%V\"", &r->uri, &r->args);
@@ -1446,6 +1449,8 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
 
     r = c->data;
     u = r->upstream;
+
+    ngx_http_set_log_request(c->log, r);
 
     if (c->ssl->handshaked) {
 
