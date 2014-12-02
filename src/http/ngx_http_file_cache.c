@@ -462,6 +462,8 @@ ngx_http_file_cache_lock_wait_handler(ngx_event_t *ev)
                    "http file cache wait: \"%V?%V\"", &r->uri, &r->args);
 
     ngx_http_file_cache_lock_wait(r, r->cache);
+
+    ngx_http_run_posted_requests(c);
 }
 
 
@@ -505,7 +507,7 @@ wakeup:
 
     c->waiting = 0;
     r->main->blocked--;
-    r->connection->write->handler(r->connection->write);
+    r->write_event_handler(r);
 }
 
 
@@ -692,7 +694,9 @@ ngx_http_cache_aio_event_handler(ngx_event_t *ev)
     r->main->blocked--;
     r->aio = 0;
 
-    r->connection->write->handler(r->connection->write);
+    r->write_event_handler(r);
+
+    ngx_http_run_posted_requests(c);
 }
 
 #endif
