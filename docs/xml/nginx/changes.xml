@@ -46,7 +46,7 @@ the "proxy_limit_rate", "fastcgi_limit_rate",
 scgi_ignore_headers и uwsgi_ignore_headers.
 </para>
 <para lang="en">
-the "Vary" parameter of the "proxy_ignore_headers", "fastcgi_ignore_headers", 
+the "Vary" parameter of the "proxy_ignore_headers", "fastcgi_ignore_headers",
 "scgi_ignore_headers", and "uwsgi_ignore_headers" directives.
 </para>
 </change>
@@ -90,7 +90,7 @@ Thanks to Yichun Zhang and Daniil Bondarev.
 
 <change type="bugfix">
 <para lang="ru">
-в директивах 
+в директивах
 proxy_next_upstream_tries и proxy_next_upstream_timeout.<br/>
 Спасибо Feng Gu.
 </para>
@@ -847,7 +847,7 @@ in the ngx_http_spdy_module.
 Sadosky, Buenos Aires, Argentina.
 </para>
 <para lang="en">
-a heap memory buffer overflow might occur in a worker process 
+a heap memory buffer overflow might occur in a worker process
 while handling a specially crafted request by ngx_http_spdy_module,
 potentially resulting in arbitrary code execution
 (CVE-2014-0133).<br/>
@@ -1145,7 +1145,7 @@ nginx incorrectly handled escaped "?" character in the "include" SSI command.
 
 <change type="bugfix">
 <para lang="ru">
-модуль ngx_http_dav_module не раскодировал целевой URI при 
+модуль ngx_http_dav_module не раскодировал целевой URI при
 обработке методов COPY и MOVE.
 </para>
 <para lang="en">
@@ -1840,7 +1840,7 @@ Thanks to Serguei Ivantsov.
 
 <change type="feature">
 <para lang="ru">
-директивы ssi_last_modified, sub_filter_last_modified и 
+директивы ssi_last_modified, sub_filter_last_modified и
 xslt_last_modified.<br/>
 Спасибо Алексею Колпакову.
 </para>
@@ -2128,7 +2128,7 @@ the mail proxy module now supports IPv6 backends.
 <change type="bugfix">
 <para lang="ru">
 при повторной отправке запроса на бэкенд
-тело запроса могло передаваться неправильно; 
+тело запроса могло передаваться неправильно;
 ошибка появилась в 1.3.9.<br/>
 Спасибо Piotr Sikora.
 </para>
@@ -2280,7 +2280,7 @@ Thanks to Apcera and CloudBees for sponsoring this work.
 Спасибо Louis Opter.
 </para>
 <para lang="en">
-the "auth_basic_user_file" directive supports "{SHA}" 
+the "auth_basic_user_file" directive supports "{SHA}"
 password encryption method.<br/>
 Thanks to Louis Opter.
 </para>
@@ -3486,7 +3486,7 @@ if they were used with IPv6 addresses.
 могли наследоваться некорректно.
 </para>
 <para lang="en">
-the "modern_browser" and "ancient_browser" directives 
+the "modern_browser" and "ancient_browser" directives
 might be inherited incorrectly.
 </para>
 </change>
@@ -4190,8 +4190,8 @@ Thanks to Yichun Zhang.
 
 <change type="bugfix">
 <para lang="ru">
-директива read_ahead могла не работать при использовании совместно с 
-try_files и open_file_cache. 
+директива read_ahead могла не работать при использовании совместно с
+try_files и open_file_cache.
 </para>
 <para lang="en">
 the "read_ahead" directive might not work combined with "try_files"
@@ -4414,7 +4414,7 @@ nginx could not be built on AIX.
 </para>
 <para lang="en">
 the ngx_http_limit_zone_module was renamed to the ngx_http_limit_conn_module.
-</para>          
+</para>
 </change>
 
 <change type="change">
@@ -4521,7 +4521,7 @@ Thanks to Kirill A. Korinskiy.
 ssl_certificate.
 </para>
 <para lang="en">
-a segmentation fault occurred on start or during reconfiguration 
+a segmentation fault occurred on start or during reconfiguration
 if the "ssl" directive was used at http level and there was
 no "ssl_certificate" defined.
 </para>
@@ -4631,7 +4631,7 @@ Thanks to Alexey Kuts.
 
 <change type="bugfix">
 <para lang="ru">
-директивы модуля ngx_http_rewrite_module, заданные на уровне server, 
+директивы модуля ngx_http_rewrite_module, заданные на уровне server,
 применялись повторно, если для запроса не находилось ни одного location'а.
 </para>
 <para lang="en">
@@ -11289,7 +11289,7 @@ the "proxy_ssl_session_reuse" directive.
 </para>
 <para lang="en">
 a "proxy_pass" directive without URI part might use original request
-after the "X-Accel-Redirect" redirection was used;
+after the "X-Accel-Redirect" redirection was used.
 </para>
 </change>
 
