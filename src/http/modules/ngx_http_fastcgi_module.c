@@ -2697,17 +2697,20 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL && conf->fastcgi_lengths == NULL) {
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
+    if (clcf->noname
+        && conf->upstream.upstream == NULL && conf->fastcgi_lengths == NULL)
+    {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->fastcgi_lengths = prev->fastcgi_lengths;
         conf->fastcgi_values = prev->fastcgi_values;
     }
 
-    if (conf->upstream.upstream || conf->fastcgi_lengths) {
-        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-        if (clcf->handler == NULL && clcf->lmt_excpt) {
-            clcf->handler = ngx_http_fastcgi_handler;
-        }
+    if (clcf->lmt_excpt && clcf->handler == NULL
+        && (conf->upstream.upstream || conf->fastcgi_lengths))
+    {
+        clcf->handler = ngx_http_fastcgi_handler;
     }
 
 #if (NGX_PCRE)

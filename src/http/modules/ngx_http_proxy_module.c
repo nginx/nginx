@@ -2991,7 +2991,11 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL && conf->proxy_lengths == NULL) {
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
+    if (clcf->noname
+        && conf->upstream.upstream == NULL && conf->proxy_lengths == NULL)
+    {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->vars = prev->vars;
 
@@ -3003,12 +3007,11 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
     }
 
-    if (conf->upstream.upstream || conf->proxy_lengths) {
-        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-        if (clcf->handler == NULL && clcf->lmt_excpt) {
-            clcf->handler = ngx_http_proxy_handler;
-            conf->location = prev->location;
-        }
+    if (clcf->lmt_excpt && clcf->handler == NULL
+        && (conf->upstream.upstream || conf->proxy_lengths))
+    {
+        clcf->handler = ngx_http_proxy_handler;
+        conf->location = prev->location;
     }
 
     if (conf->body_source.data == NULL) {
