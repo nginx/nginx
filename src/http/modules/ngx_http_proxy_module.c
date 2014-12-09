@@ -2968,12 +2968,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->cookie_paths, prev->cookie_paths, NULL);
 
-#if (NGX_HTTP_SSL)
-    if (conf->upstream.ssl == NULL) {
-        conf->upstream.ssl = prev->upstream.ssl;
-    }
-#endif
-
     ngx_conf_merge_uint_value(conf->http_version, prev->http_version,
                               NGX_HTTP_VERSION_10);
 
@@ -2997,14 +2991,16 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL) {
+    if (conf->upstream.upstream == NULL && conf->proxy_lengths == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->vars = prev->vars;
-    }
 
-    if (conf->proxy_lengths == NULL) {
         conf->proxy_lengths = prev->proxy_lengths;
         conf->proxy_values = prev->proxy_values;
+
+#if (NGX_HTTP_SSL)
+        conf->upstream.ssl = prev->upstream.ssl;
+#endif
     }
 
     if (conf->upstream.upstream || conf->proxy_lengths) {

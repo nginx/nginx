@@ -2697,11 +2697,8 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL) {
+    if (conf->upstream.upstream == NULL && conf->fastcgi_lengths == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
-    }
-
-    if (conf->fastcgi_lengths == NULL) {
         conf->fastcgi_lengths = prev->fastcgi_lengths;
         conf->fastcgi_values = prev->fastcgi_values;
     }

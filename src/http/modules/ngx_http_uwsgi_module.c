@@ -1683,10 +1683,6 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.ssl == NULL) {
-        conf->upstream.ssl = prev->upstream.ssl;
-    }
-
 #endif
 
     ngx_conf_merge_str_value(conf->uwsgi_string, prev->uwsgi_string, "");
@@ -1702,13 +1698,15 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL) {
+    if (conf->upstream.upstream == NULL && conf->uwsgi_lengths == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
-    }
 
-    if (conf->uwsgi_lengths == NULL) {
         conf->uwsgi_lengths = prev->uwsgi_lengths;
         conf->uwsgi_values = prev->uwsgi_values;
+
+#if (NGX_HTTP_SSL)
+        conf->upstream.ssl = prev->upstream.ssl;
+#endif
     }
 
     if (conf->upstream.upstream || conf->uwsgi_lengths) {

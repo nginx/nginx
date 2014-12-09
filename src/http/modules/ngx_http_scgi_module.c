@@ -1443,11 +1443,8 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (conf->upstream.upstream == NULL) {
+    if (conf->upstream.upstream == NULL && conf->scgi_lengths == NULL) {
         conf->upstream.upstream = prev->upstream.upstream;
-    }
-
-    if (conf->scgi_lengths == NULL) {
         conf->scgi_lengths = prev->scgi_lengths;
         conf->scgi_values = prev->scgi_values;
     }
