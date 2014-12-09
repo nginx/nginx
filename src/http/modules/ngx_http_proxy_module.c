@@ -2997,6 +2997,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         && conf->upstream.upstream == NULL && conf->proxy_lengths == NULL)
     {
         conf->upstream.upstream = prev->upstream.upstream;
+        conf->location = prev->location;
         conf->vars = prev->vars;
 
         conf->proxy_lengths = prev->proxy_lengths;
@@ -3011,7 +3012,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         && (conf->upstream.upstream || conf->proxy_lengths))
     {
         clcf->handler = ngx_http_proxy_handler;
-        conf->location = prev->location;
     }
 
     if (conf->body_source.data == NULL) {
