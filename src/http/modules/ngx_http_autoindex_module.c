@@ -48,6 +48,7 @@ typedef struct {
 #define NGX_HTTP_AUTOINDEX_HTML         0
 #define NGX_HTTP_AUTOINDEX_JSON         1
 #define NGX_HTTP_AUTOINDEX_JSONP        2
+#define NGX_HTTP_AUTOINDEX_XML          3
 
 #define NGX_HTTP_AUTOINDEX_PREALLOCATE  50
 
@@ -60,6 +61,8 @@ static ngx_buf_t *ngx_http_autoindex_json(ngx_http_request_t *r,
     ngx_array_t *entries, ngx_str_t *callback);
 static ngx_int_t ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r,
     ngx_str_t *callback);
+static ngx_buf_t *ngx_http_autoindex_xml(ngx_http_request_t *r,
+    ngx_array_t *entries);
 
 static int ngx_libc_cdecl ngx_http_autoindex_cmp_entries(const void *one,
     const void *two);
@@ -76,6 +79,7 @@ static ngx_conf_enum_t  ngx_http_autoindex_format[] = {
     { ngx_string("html"), NGX_HTTP_AUTOINDEX_HTML },
     { ngx_string("json"), NGX_HTTP_AUTOINDEX_JSON },
     { ngx_string("jsonp"), NGX_HTTP_AUTOINDEX_JSONP },
+    { ngx_string("xml"), NGX_HTTP_AUTOINDEX_XML },
     { ngx_null_string, 0 }
 };
 
@@ -259,6 +263,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         ngx_str_set(&r->headers_out.content_type, "application/javascript");
         break;
 
+    case NGX_HTTP_AUTOINDEX_XML:
+        ngx_str_set(&r->headers_out.content_type, "text/xml");
+        ngx_str_set(&r->headers_out.charset, "utf-8");
+        break;
+
     default: /* NGX_HTTP_AUTOINDEX_HTML */
         ngx_str_set(&r->headers_out.content_type, "text/html");
         break;
@@ -386,6 +395,10 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     case NGX_HTTP_AUTOINDEX_JSONP:
         b = ngx_http_autoindex_json(r, &entries, &callback);
+        break;
+
+    case NGX_HTTP_AUTOINDEX_XML:
+        b = ngx_http_autoindex_xml(r, &entries);
         break;
 
     default: /* NGX_HTTP_AUTOINDEX_HTML */
@@ -818,6 +831,98 @@ ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r, ngx_str_t *callback)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_buf_t *
+ngx_http_autoindex_xml(ngx_http_request_t *r, ngx_array_t *entries)
+{
+    size_t                          len;
+    ngx_tm_t                        tm;
+    ngx_buf_t                      *b;
+    ngx_str_t                       type;
+    ngx_uint_t                      i;
+    ngx_http_autoindex_entry_t     *entry;
+
+    static u_char  head[] = "<?xml version=\"1.0\"?>" CRLF "<list>" CRLF;
+    static u_char  tail[] = "</list>" CRLF;
+
+    len = sizeof(head) - 1 + sizeof(tail) - 1;
+
+    entry = entries->elts;
+
+    for (i = 0; i < entries->nelts; i++) {
+        entry[i].escape = ngx_escape_html(NULL, entry[i].name.data,
+                                          entry[i].name.len);
+
+        len += sizeof("<directory></directory>" CRLF) - 1
+            + entry[i].name.len + entry[i].escape
+            + sizeof(" mtime=\"1986-12-31T10:00:00Z\"") - 1;
+
+        if (entry[i].file) {
+            len += sizeof(" size=\"\"") - 1 + NGX_OFF_T_LEN;
+        }
+    }
+
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
+        return NULL;
+    }
+
+    b->last = ngx_cpymem(b->last, head, sizeof(head) - 1);
+
+    for (i = 0; i < entries->nelts; i++) {
+        *b->last++ = '<';
+
+        if (entry[i].dir) {
+            ngx_str_set(&type, "directory");
+
+        } else if (entry[i].file) {
+            ngx_str_set(&type, "file");
+
+        } else {
+            ngx_str_set(&type, "other");
+        }
+
+        b->last = ngx_cpymem(b->last, type.data, type.len);
+
+        b->last = ngx_cpymem(b->last, " mtime=\"", sizeof(" mtime=\"") - 1);
+
+        ngx_gmtime(entry[i].mtime, &tm);
+
+        b->last = ngx_sprintf(b->last, "%4d-%02d-%02dT%02d:%02d:%02dZ",
+                              tm.ngx_tm_year, tm.ngx_tm_mon,
+                              tm.ngx_tm_mday, tm.ngx_tm_hour,
+                              tm.ngx_tm_min, tm.ngx_tm_sec);
+
+        if (entry[i].file) {
+            b->last = ngx_cpymem(b->last, "\" size=\"",
+                                 sizeof("\" size=\"") - 1);
+            b->last = ngx_sprintf(b->last, "%O", entry[i].size);
+        }
+
+        *b->last++ = '"'; *b->last++ = '>';
+
+        if (entry[i].escape) {
+            b->last = (u_char *) ngx_escape_html(b->last, entry[i].name.data,
+                                                 entry[i].name.len);
+        } else {
+            b->last = ngx_cpymem(b->last, entry[i].name.data,
+                                 entry[i].name.len);
+        }
+
+        *b->last++ = '<'; *b->last++ = '/';
+
+        b->last = ngx_cpymem(b->last, type.data, type.len);
+
+        *b->last++ = '>';
+
+        *b->last++ = CR; *b->last++ = LF;
+    }
+
+    b->last = ngx_cpymem(b->last, tail, sizeof(tail) - 1);
+
+    return b;
 }
 
 
