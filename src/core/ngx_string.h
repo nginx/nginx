@@ -207,6 +207,7 @@ uintptr_t ngx_escape_uri(u_char *dst, u_char *src, size_t size,
     ngx_uint_t type);
 void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
 uintptr_t ngx_escape_html(u_char *dst, u_char *src, size_t size);
+uintptr_t ngx_escape_json(u_char *dst, u_char *src, size_t size);
 
 
 typedef struct {

@@ -30,6 +30,7 @@ typedef struct {
     size_t         escape_html;
 
     unsigned       dir:1;
+    unsigned       file:1;
 
     time_t         mtime;
     off_t          size;
@@ -38,10 +39,15 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t     enable;
+    ngx_uint_t     format;
     ngx_flag_t     localtime;
     ngx_flag_t     exact_size;
 } ngx_http_autoindex_loc_conf_t;
 
+
+#define NGX_HTTP_AUTOINDEX_HTML         0
+#define NGX_HTTP_AUTOINDEX_JSON         1
+#define NGX_HTTP_AUTOINDEX_JSONP        2
 
 #define NGX_HTTP_AUTOINDEX_PREALLOCATE  50
 
@@ -50,14 +56,28 @@ typedef struct {
 
 static ngx_buf_t *ngx_http_autoindex_html(ngx_http_request_t *r,
     ngx_array_t *entries);
+static ngx_buf_t *ngx_http_autoindex_json(ngx_http_request_t *r,
+    ngx_array_t *entries, ngx_str_t *callback);
+static ngx_int_t ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r,
+    ngx_str_t *callback);
+
 static int ngx_libc_cdecl ngx_http_autoindex_cmp_entries(const void *one,
     const void *two);
 static ngx_int_t ngx_http_autoindex_error(ngx_http_request_t *r,
     ngx_dir_t *dir, ngx_str_t *name);
+
 static ngx_int_t ngx_http_autoindex_init(ngx_conf_t *cf);
 static void *ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
+
+
+static ngx_conf_enum_t  ngx_http_autoindex_format[] = {
+    { ngx_string("html"), NGX_HTTP_AUTOINDEX_HTML },
+    { ngx_string("json"), NGX_HTTP_AUTOINDEX_JSON },
+    { ngx_string("jsonp"), NGX_HTTP_AUTOINDEX_JSONP },
+    { ngx_null_string, 0 }
+};
 
 
 static ngx_command_t  ngx_http_autoindex_commands[] = {
@@ -68,6 +88,13 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_autoindex_loc_conf_t, enable),
       NULL },
+
+    { ngx_string("autoindex_format"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_autoindex_loc_conf_t, format),
+      &ngx_http_autoindex_format },
 
     { ngx_string("autoindex_localtime"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -126,9 +153,9 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     ngx_err_t                       err;
     ngx_buf_t                      *b;
     ngx_int_t                       rc;
-    ngx_str_t                       path;
+    ngx_str_t                       path, callback;
     ngx_dir_t                       dir;
-    ngx_uint_t                      level;
+    ngx_uint_t                      level, format;
     ngx_pool_t                     *pool;
     ngx_chain_t                     out;
     ngx_array_t                     entries;
@@ -166,6 +193,18 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http autoindex: \"%s\"", path.data);
+
+    format = alcf->format;
+
+    if (format == NGX_HTTP_AUTOINDEX_JSONP) {
+        if (ngx_http_autoindex_jsonp_callback(r, &callback) != NGX_OK) {
+            return NGX_HTTP_BAD_REQUEST;
+        }
+
+        if (callback.len == 0) {
+            format = NGX_HTTP_AUTOINDEX_JSON;
+        }
+    }
 
     if (ngx_open_dir(&path, &dir) == NGX_ERROR) {
         err = ngx_errno;
@@ -209,8 +248,23 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
     }
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_type_len = sizeof("text/html") - 1;
-    ngx_str_set(&r->headers_out.content_type, "text/html");
+
+    switch (format) {
+
+    case NGX_HTTP_AUTOINDEX_JSON:
+        ngx_str_set(&r->headers_out.content_type, "application/json");
+        break;
+
+    case NGX_HTTP_AUTOINDEX_JSONP:
+        ngx_str_set(&r->headers_out.content_type, "application/javascript");
+        break;
+
+    default: /* NGX_HTTP_AUTOINDEX_HTML */
+        ngx_str_set(&r->headers_out.content_type, "text/html");
+        break;
+    }
+
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
     r->headers_out.content_type_lowcase = NULL;
 
     rc = ngx_http_send_header(r);
@@ -308,6 +362,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         ngx_cpystrn(entry->name.data, ngx_de_name(&dir), len + 1);
 
         entry->dir = ngx_de_is_dir(&dir);
+        entry->file = ngx_de_is_file(&dir);
         entry->mtime = ngx_de_mtime(&dir);
         entry->size = ngx_de_size(&dir);
     }
@@ -323,7 +378,20 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                   ngx_http_autoindex_cmp_entries);
     }
 
-    b = ngx_http_autoindex_html(r, &entries);
+    switch (format) {
+
+    case NGX_HTTP_AUTOINDEX_JSON:
+        b = ngx_http_autoindex_json(r, &entries, NULL);
+        break;
+
+    case NGX_HTTP_AUTOINDEX_JSONP:
+        b = ngx_http_autoindex_json(r, &entries, &callback);
+        break;
+
+    default: /* NGX_HTTP_AUTOINDEX_HTML */
+        b = ngx_http_autoindex_html(r, &entries);
+        break;
+    }
 
     if (b == NULL) {
         return NGX_ERROR;
@@ -608,6 +676,151 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 }
 
 
+static ngx_buf_t *
+ngx_http_autoindex_json(ngx_http_request_t *r, ngx_array_t *entries,
+    ngx_str_t *callback)
+{
+    size_t                       len;
+    ngx_buf_t                   *b;
+    ngx_uint_t                   i;
+    ngx_http_autoindex_entry_t  *entry;
+
+    len = sizeof("[" CRLF CRLF "]") - 1;
+
+    if (callback) {
+        len += sizeof("/* callback */" CRLF "();") - 1 + callback->len;
+    }
+
+    entry = entries->elts;
+
+    for (i = 0; i < entries->nelts; i++) {
+        entry[i].escape = ngx_escape_json(NULL, entry[i].name.data,
+                                          entry[i].name.len);
+
+        len += sizeof("{  }," CRLF) - 1
+            + sizeof("\"name\":\"\"") - 1
+            + entry[i].name.len + entry[i].escape
+            + sizeof(", \"type\":\"directory\"") - 1
+            + sizeof(", \"mtime\":\"Wed, 31 Dec 1986 10:00:00 GMT\"") - 1;
+
+        if (entry[i].file) {
+            len += sizeof(", \"size\":") - 1 + NGX_OFF_T_LEN;
+        }
+    }
+
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
+        return NULL;
+    }
+
+    if (callback) {
+        b->last = ngx_cpymem(b->last, "/* callback */" CRLF,
+                             sizeof("/* callback */" CRLF) - 1);
+
+        b->last = ngx_cpymem(b->last, callback->data, callback->len);
+
+        *b->last++ = '(';
+    }
+
+    *b->last++ = '[';
+
+    for (i = 0; i < entries->nelts; i++) {
+        b->last = ngx_cpymem(b->last, CRLF "{ \"name\":\"",
+                             sizeof(CRLF "{ \"name\":\"") - 1);
+
+        if (entry[i].escape) {
+            b->last = (u_char *) ngx_escape_json(b->last, entry[i].name.data,
+                                                 entry[i].name.len);
+        } else {
+            b->last = ngx_cpymem(b->last, entry[i].name.data,
+                                 entry[i].name.len);
+        }
+
+        b->last = ngx_cpymem(b->last, "\", \"type\":\"",
+                             sizeof("\", \"type\":\"") - 1);
+
+        if (entry[i].dir) {
+            b->last = ngx_cpymem(b->last, "directory", sizeof("directory") - 1);
+
+        } else if (entry[i].file) {
+            b->last = ngx_cpymem(b->last, "file", sizeof("file") - 1);
+
+        } else {
+            b->last = ngx_cpymem(b->last, "other", sizeof("other") - 1);
+        }
+
+        b->last = ngx_cpymem(b->last, "\", \"mtime\":\"",
+                             sizeof("\", \"mtime\":\"") - 1);
+
+        b->last = ngx_http_time(b->last, entry[i].mtime);
+
+        if (entry[i].file) {
+            b->last = ngx_cpymem(b->last, "\", \"size\":",
+                                 sizeof("\", \"size\":") - 1);
+            b->last = ngx_sprintf(b->last, "%O", entry[i].size);
+
+        } else {
+            *b->last++ = '"';
+        }
+
+        b->last = ngx_cpymem(b->last, " },", sizeof(" },") - 1);
+    }
+
+    if (i > 0) {
+        b->last--;  /* strip last comma */
+    }
+
+    b->last = ngx_cpymem(b->last, CRLF "]", sizeof(CRLF "]") - 1);
+
+    if (callback) {
+        *b->last++ = ')'; *b->last++ = ';';
+    }
+
+    return b;
+}
+
+
+static ngx_int_t
+ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r, ngx_str_t *callback)
+{
+    u_char      *p, c, ch;
+    ngx_uint_t   i;
+
+    if (ngx_http_arg(r, (u_char *) "callback", 8, callback) != NGX_OK) {
+        callback->len = 0;
+        return NGX_OK;
+    }
+
+    if (callback->len > 128) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent too long callback name: \"%V\"", callback);
+        return NGX_DECLINED;
+    }
+
+    p = callback->data;
+
+    for (i = 0; i < callback->len; i++) {
+        ch = p[i];
+
+        c = (u_char) (ch | 0x20);
+        if (c >= 'a' && c <= 'z') {
+            continue;
+        }
+
+        if ((ch >= '0' && ch <= '9') || ch == '_' || ch == '.') {
+            continue;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid callback name: \"%V\"", callback);
+
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
 static int ngx_libc_cdecl
 ngx_http_autoindex_cmp_entries(const void *one, const void *two)
 {
@@ -689,6 +902,7 @@ ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
     }
 
     conf->enable = NGX_CONF_UNSET;
+    conf->format = NGX_CONF_UNSET_UINT;
     conf->localtime = NGX_CONF_UNSET;
     conf->exact_size = NGX_CONF_UNSET;
 
@@ -703,6 +917,8 @@ ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_autoindex_loc_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_uint_value(conf->format, prev->format,
+                              NGX_HTTP_AUTOINDEX_HTML);
     ngx_conf_merge_value(conf->localtime, prev->localtime, 0);
     ngx_conf_merge_value(conf->exact_size, prev->exact_size, 1);
 

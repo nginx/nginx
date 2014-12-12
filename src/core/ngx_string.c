@@ -1773,6 +1773,58 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 }
 
 
+uintptr_t
+ngx_escape_json(u_char *dst, u_char *src, size_t size)
+{
+    u_char      ch;
+    ngx_uint_t  len;
+
+    if (dst == NULL) {
+        len = 0;
+
+        while (size) {
+            ch = *src++;
+
+            if (ch == '\\' || ch == '"') {
+                len++;
+
+            } else if (ch <= 0x1f) {
+                len += sizeof("\\u001F") - 2;
+            }
+
+            size--;
+        }
+
+        return (uintptr_t) len;
+    }
+
+    while (size) {
+        ch = *src++;
+
+        if (ch > 0x1f) {
+
+            if (ch == '\\' || ch == '"') {
+                *dst++ = '\\';
+            }
+
+            *dst++ = ch;
+
+        } else {
+            *dst++ = '\\'; *dst++ = 'u'; *dst++ = '0'; *dst++ = '0';
+            *dst++ = '0' + (ch >> 4);
+
+            ch &= 0xf;
+
+            *dst++ = (ch < 10) ? ('0' + ch) : ('A' + ch - 10);
+        }
+
+        size--;
+    }
+
+    return (uintptr_t) dst;
+}
+
+
 void
 ngx_str_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
