@@ -1146,10 +1146,14 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
 
+#ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+
         /* initial handshake done, disable renegotiation (CVE-2009-3555) */
         if (c->ssl->connection->s3) {
             c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
         }
+
+#endif
 
         return NGX_OK;
     }
