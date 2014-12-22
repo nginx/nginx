@@ -540,7 +540,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
 #endif
 
-    u->store = (u->conf->store || u->conf->store_lengths);
+    u->store = u->conf->store;
 
     if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;

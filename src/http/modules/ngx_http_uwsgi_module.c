@@ -1403,10 +1403,8 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->upstream.store == NGX_CONF_UNSET) {
         ngx_conf_merge_value(conf->upstream.store, prev->upstream.store, 0);
 
-        if (conf->upstream.store_lengths == NULL) {
-            conf->upstream.store_lengths = prev->upstream.store_lengths;
-            conf->upstream.store_values = prev->upstream.store_values;
-        }
+        conf->upstream.store_lengths = prev->upstream.store_lengths;
+        conf->upstream.store_values = prev->upstream.store_values;
     }
 
     ngx_conf_merge_uint_value(conf->upstream.store_access,
@@ -2047,8 +2045,7 @@ ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value;
     ngx_http_script_compile_t   sc;
 
-    if (uwcf->upstream.store != NGX_CONF_UNSET || uwcf->upstream.store_lengths)
-    {
+    if (uwcf->upstream.store != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
@@ -2069,8 +2066,9 @@ ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #endif
 
+    uwcf->upstream.store = 1;
+
     if (ngx_strcmp(value[1].data, "on") == 0) {
-        uwcf->upstream.store = 1;
         return NGX_CONF_OK;
     }
 
@@ -2115,7 +2113,7 @@ ngx_http_uwsgi_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    if (uwcf->upstream.store > 0 || uwcf->upstream.store_lengths) {
+    if (uwcf->upstream.store > 0) {
         return "is incompatible with \"uwsgi_store\"";
     }
 
