@@ -1400,6 +1400,20 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_hash_init_t               hash;
     ngx_http_core_loc_conf_t     *clcf;
 
+#if (NGX_HTTP_CACHE)
+
+    if (conf->upstream.store > 0) {
+        conf->upstream.cache = NULL;
+    }
+
+    if (conf->upstream.cache != NGX_CONF_UNSET_PTR
+        && conf->upstream.cache != NULL)
+    {
+        conf->upstream.store = 0;
+    }
+
+#endif
+
     if (conf->upstream.store == NGX_CONF_UNSET) {
         ngx_conf_merge_value(conf->upstream.store, prev->upstream.store, 0);
 
