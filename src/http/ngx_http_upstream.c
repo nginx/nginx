@@ -780,7 +780,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         c->min_uses = u->conf->cache_min_uses;
         c->body_start = u->conf->buffer_size;
-        c->file_cache = u->conf->cache->data;
+        c->file_cache = u->conf->cache_zone->data;
 
         c->lock = u->conf->cache_lock;
         c->lock_timeout = u->conf->cache_lock_timeout;
@@ -2538,7 +2538,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
             r->cache->min_uses = u->conf->cache_min_uses;
             r->cache->body_start = u->conf->buffer_size;
-            r->cache->file_cache = u->conf->cache->data;
+            r->cache->file_cache = u->conf->cache_zone->data;
 
             if (ngx_http_file_cache_create(r) != NGX_OK) {
                 ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
@@ -5545,7 +5545,7 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
 
         if (conf->hide_headers_hash.buckets
 #if (NGX_HTTP_CACHE)
-            && ((conf->cache == NULL) == (prev->cache == NULL))
+            && ((conf->cache == 0) == (prev->cache == 0))
 #endif
            )
         {

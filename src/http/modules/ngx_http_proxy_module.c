@@ -2509,6 +2509,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.bufs.num = 0;
      *     conf->upstream.ignore_headers = 0;
      *     conf->upstream.next_upstream = 0;
+     *     conf->upstream.cache_zone = NULL;
      *     conf->upstream.cache_use_stale = 0;
      *     conf->upstream.cache_methods = 0;
      *     conf->upstream.temp_path = NULL;
@@ -2566,7 +2567,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
 
 #if (NGX_HTTP_CACHE)
-    conf->upstream.cache = NGX_CONF_UNSET_PTR;
+    conf->upstream.cache = NGX_CONF_UNSET;
     conf->upstream.cache_min_uses = NGX_CONF_UNSET_UINT;
     conf->upstream.cache_bypass = NGX_CONF_UNSET_PTR;
     conf->upstream.no_cache = NGX_CONF_UNSET_PTR;
@@ -2627,12 +2628,10 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_CACHE)
 
     if (conf->upstream.store > 0) {
-        conf->upstream.cache = NULL;
+        conf->upstream.cache = 0;
     }
 
-    if (conf->upstream.cache != NGX_CONF_UNSET_PTR
-        && conf->upstream.cache != NULL)
-    {
+    if (conf->upstream.cache > 0) {
         conf->upstream.store = 0;
     }
 
@@ -2804,13 +2803,17 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #if (NGX_HTTP_CACHE)
 
-    ngx_conf_merge_ptr_value(conf->upstream.cache,
-                              prev->upstream.cache, NULL);
+    if (conf->upstream.cache == NGX_CONF_UNSET) {
+        ngx_conf_merge_value(conf->upstream.cache,
+                              prev->upstream.cache, 0);
 
-    if (conf->upstream.cache && conf->upstream.cache->data == NULL) {
+        conf->upstream.cache_zone = prev->upstream.cache_zone;
+    }
+
+    if (conf->upstream.cache_zone && conf->upstream.cache_zone->data == NULL) {
         ngx_shm_zone_t  *shm_zone;
 
-        shm_zone = conf->upstream.cache;
+        shm_zone = conf->upstream.cache_zone;
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"proxy_cache\" zone \"%V\" is unknown",
@@ -3818,13 +3821,9 @@ ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 #if (NGX_HTTP_CACHE)
-
-    if (plcf->upstream.cache != NGX_CONF_UNSET_PTR
-        && plcf->upstream.cache != NULL)
-    {
+    if (plcf->upstream.cache > 0) {
         return "is incompatible with \"proxy_cache\"";
     }
-
 #endif
 
     plcf->upstream.store = 1;
@@ -3865,12 +3864,12 @@ ngx_http_proxy_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (plcf->upstream.cache != NGX_CONF_UNSET_PTR) {
+    if (plcf->upstream.cache != NGX_CONF_UNSET) {
         return "is duplicate";
     }
 
     if (ngx_strcmp(value[1].data, "off") == 0) {
-        plcf->upstream.cache = NULL;
+        plcf->upstream.cache = 0;
         return NGX_CONF_OK;
     }
 
@@ -3878,9 +3877,11 @@ ngx_http_proxy_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is incompatible with \"proxy_store\"";
     }
 
-    plcf->upstream.cache = ngx_shared_memory_add(cf, &value[1], 0,
-                                                 &ngx_http_proxy_module);
-    if (plcf->upstream.cache == NULL) {
+    plcf->upstream.cache = 1;
+
+    plcf->upstream.cache_zone = ngx_shared_memory_add(cf, &value[1], 0,
+                                                      &ngx_http_proxy_module);
+    if (plcf->upstream.cache_zone == NULL) {
         return NGX_CONF_ERROR;
     }
 
