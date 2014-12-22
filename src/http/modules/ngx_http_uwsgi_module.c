@@ -13,6 +13,11 @@
 
 
 typedef struct {
+    ngx_array_t                caches;  /* ngx_http_file_cache_t * */
+} ngx_http_uwsgi_main_conf_t;
+
+
+typedef struct {
     ngx_array_t               *flushes;
     ngx_array_t               *lengths;
     ngx_array_t               *values;
@@ -66,6 +71,7 @@ static void ngx_http_uwsgi_abort_request(ngx_http_request_t *r);
 static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
 
+static void *ngx_http_uwsgi_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -284,8 +290,8 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
     { ngx_string("uwsgi_cache_path"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_2MORE,
       ngx_http_file_cache_set_slot,
-      0,
-      0,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_main_conf_t, caches),
       &ngx_http_uwsgi_module },
 
     { ngx_string("uwsgi_cache_bypass"),
@@ -533,7 +539,7 @@ static ngx_http_module_t ngx_http_uwsgi_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
-    NULL,                                  /* create main configuration */
+    ngx_http_uwsgi_create_main_conf,       /* create main configuration */
     NULL,                                  /* init main configuration */
 
     NULL,                                  /* create server configuration */
@@ -594,10 +600,13 @@ static ngx_path_init_t ngx_http_uwsgi_temp_path = {
 static ngx_int_t
 ngx_http_uwsgi_handler(ngx_http_request_t *r)
 {
-    ngx_int_t                   rc;
-    ngx_http_status_t          *status;
-    ngx_http_upstream_t        *u;
-    ngx_http_uwsgi_loc_conf_t  *uwcf;
+    ngx_int_t                    rc;
+    ngx_http_status_t           *status;
+    ngx_http_upstream_t         *u;
+    ngx_http_uwsgi_loc_conf_t   *uwcf;
+#if (NGX_HTTP_CACHE)
+    ngx_http_uwsgi_main_conf_t  *uwmcf;
+#endif
 
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -640,8 +649,12 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
     u->conf = &uwcf->upstream;
 
 #if (NGX_HTTP_CACHE)
+    uwmcf = ngx_http_get_module_main_conf(r, ngx_http_uwsgi_module);
+
+    u->caches = &uwmcf->caches;
     u->create_key = ngx_http_uwsgi_create_key;
 #endif
+
     u->create_request = ngx_http_uwsgi_create_request;
     u->reinit_request = ngx_http_uwsgi_reinit_request;
     u->process_header = ngx_http_uwsgi_process_status_line;
@@ -1316,6 +1329,29 @@ ngx_http_uwsgi_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
 
 static void *
+ngx_http_uwsgi_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_uwsgi_main_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_uwsgi_main_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+#if (NGX_HTTP_CACHE)
+    if (ngx_array_init(&conf->caches, cf->pool, 4,
+                       sizeof(ngx_http_file_cache_t *))
+        != NGX_OK)
+    {
+        return NULL;
+    }
+#endif
+
+    return conf;
+}
+
+
+static void *
 ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_uwsgi_loc_conf_t  *conf;
@@ -1583,6 +1619,7 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.cache, 0);
 
         conf->upstream.cache_zone = prev->upstream.cache_zone;
+        conf->upstream.cache_value = prev->upstream.cache_value;
     }
 
     if (conf->upstream.cache_zone && conf->upstream.cache_zone->data == NULL) {
@@ -2114,7 +2151,9 @@ ngx_http_uwsgi_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_uwsgi_loc_conf_t *uwcf = conf;
 
-    ngx_str_t  *value;
+    ngx_str_t                         *value;
+    ngx_http_complex_value_t           cv;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
@@ -2132,6 +2171,29 @@ ngx_http_uwsgi_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     uwcf->upstream.cache = 1;
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cv.lengths != NULL) {
+
+        uwcf->upstream.cache_value = ngx_palloc(cf->pool,
+                                             sizeof(ngx_http_complex_value_t));
+        if (uwcf->upstream.cache_value == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *uwcf->upstream.cache_value = cv;
+
+        return NGX_CONF_OK;
+    }
 
     uwcf->upstream.cache_zone = ngx_shared_memory_add(cf, &value[1], 0,
                                                       &ngx_http_uwsgi_module);

@@ -176,6 +176,7 @@ typedef struct {
 
 #if (NGX_HTTP_CACHE)
     ngx_shm_zone_t                  *cache_zone;
+    ngx_http_complex_value_t        *cache_value;
 
     ngx_uint_t                       cache_min_uses;
     ngx_uint_t                       cache_use_stale;
@@ -300,6 +301,9 @@ struct ngx_http_upstream_s {
     ngx_chain_writer_ctx_t           writer;
 
     ngx_http_upstream_conf_t        *conf;
+#if (NGX_HTTP_CACHE)
+    ngx_array_t                     *caches;
+#endif
 
     ngx_http_upstream_headers_in_t   headers_in;
 
