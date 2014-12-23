@@ -5,6 +5,110 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.9" date="23.12.2014">
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache, fastcgi_cache, scgi_cache и uwsgi_cache
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support in the "proxy_cache", "fastcgi_cache", "scgi_cache",
+and "uwsgi_cache" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива expires поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "expires" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+возможность загрузки секретных ключей с аппаратных устройств
+с помощью OpenSSL engines.<br/>
+Спасибо Дмитрию Пичулину.
+</para>
+<para lang="en">
+loading of secret keys from hardware tokens
+with OpenSSL engines.<br/>
+Thanks to Dmitrii Pichulin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива autoindex_format.
+</para>
+<para lang="en">
+the "autoindex_format" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ревалидация элементов кэша теперь используется только для ответов
+с кодами 200 и 206.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+cache revalidation is now only used for responses
+with 200 and 206 status codes.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строка "TE" заголовка запроса клиента передавалась на бэкенд при проксировании.
+</para>
+<para lang="en">
+the "TE" client request header line was passed to backends while proxying.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_pass, fastcgi_pass, scgi_pass и uwsgi_pass
+могли неправильно работать внутри блоков if и limit_except.
+</para>
+<para lang="en">
+the "proxy_pass", "fastcgi_pass", "scgi_pass", and "uwsgi_pass" directives
+might not work correctly inside the "if" and "limit_except" blocks.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива proxy_store с параметром "on" игнорировалась, 
+если на предыдущем уровне использовалась директива proxy_store
+с явно заданным путём к файлам.
+</para>
+<para lang="en">
+the "proxy_store" directive with the "on" parameter was ignored
+if the "proxy_store" directive with an explicitly specified file path
+was used on a previous level.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с BoringSSL.<br/>
+Спасибо Lukas Tribus.
+</para>
+<para lang="en">
+nginx could not be built with BoringSSL.<br/>
+Thanks to Lukas Tribus.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.8" date="02.12.2014">
 
 <change type="change">
