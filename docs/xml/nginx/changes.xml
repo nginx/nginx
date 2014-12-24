@@ -84,7 +84,7 @@ might not work correctly inside the "if" and "limit_except" blocks.
 
 <change type="bugfix">
 <para lang="ru">
-директива proxy_store с параметром "on" игнорировалась, 
+директива proxy_store с параметром "on" игнорировалась,
 если на предыдущем уровне использовалась директива proxy_store
 с явно заданным путём к файлам.
 </para>
