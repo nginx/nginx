@@ -114,7 +114,7 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
         rc = ngx_create_temp_file(&tf->file, tf->path, tf->pool,
                                   tf->persistent, tf->clean, tf->access);
 
-        if (rc == NGX_ERROR || rc == NGX_AGAIN) {
+        if (rc != NGX_OK) {
             return rc;
         }
 
