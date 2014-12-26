@@ -155,6 +155,9 @@ struct ngx_http_file_cache_s {
     ngx_msec_t                       loader_threshold;
 
     ngx_shm_zone_t                  *shm_zone;
+
+    ngx_uint_t                       use_temp_path;
+                                     /* unsigned use_temp_path:1 */
 };
 
 

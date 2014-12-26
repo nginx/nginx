@@ -1935,6 +1935,17 @@ ngx_http_file_cache_add_file(ngx_tree_ctx_t *ctx, ngx_str_t *name)
         return NGX_ERROR;
     }
 
+    /*
+     * Temporary files in cache have a suffix consisting of a dot
+     * followed by 10 digits.
+     */
+
+    if (name->len >= 2 * NGX_HTTP_CACHE_KEY_LEN + 1 + 10
+        && name->data[name->len - 10 - 1] == '.')
+    {
+        return NGX_OK;
+    }
+
     if (ctx->size < (off_t) sizeof(ngx_http_file_cache_header_t)) {
         ngx_log_error(NGX_LOG_CRIT, ctx->log, 0,
                       "cache file \"%s\" is too small", name->data);
@@ -2063,7 +2074,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t               s, name, *value;
     ngx_int_t               loader_files;
     ngx_msec_t              loader_sleep, loader_threshold;
-    ngx_uint_t              i, n;
+    ngx_uint_t              i, n, use_temp_path;
     ngx_array_t            *caches;
     ngx_http_file_cache_t  *cache, **ce;
 
@@ -2076,6 +2087,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cache->path == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    use_temp_path = 1;
 
     inactive = 600;
     loader_files = 100;
@@ -2135,6 +2148,25 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid \"levels\" \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
+        }
+
+        if (ngx_strncmp(value[i].data, "use_temp_path=", 14) == 0) {
+
+            if (ngx_strcmp(&value[i].data[14], "on") == 0) {
+                use_temp_path = 1;
+
+            } else if (ngx_strcmp(&value[i].data[14], "off") == 0) {
+                use_temp_path = 0;
+
+            } else {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid use_temp_path value \"%V\", "
+                                   "it must be \"on\" or \"off\"",
+                                   &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
         }
 
         if (ngx_strncmp(value[i].data, "keys_zone=", 10) == 0) {
@@ -2273,6 +2305,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cache->shm_zone->init = ngx_http_file_cache_init;
     cache->shm_zone->data = cache;
+
+    cache->use_temp_path = use_temp_path;
 
     cache->inactive = inactive;
     cache->max_size = max_size;
