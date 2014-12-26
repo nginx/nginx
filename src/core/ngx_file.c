@@ -111,8 +111,9 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
     ngx_int_t  rc;
 
     if (tf->file.fd == NGX_INVALID_FILE) {
-        rc = ngx_create_temp_file(&tf->file, tf->path, tf->pool,
-                                  tf->persistent, tf->clean, tf->access);
+        rc = ngx_create_temp_file(&tf->file, tf->prefix ? NULL : tf->path,
+                                  tf->pool, tf->persistent, tf->clean,
+                                  tf->access);
 
         if (rc != NGX_OK) {
             return rc;
@@ -132,12 +133,15 @@ ngx_int_t
 ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     ngx_uint_t persistent, ngx_uint_t clean, ngx_uint_t access)
 {
+    u_char                   *p;
     uint32_t                  n;
     ngx_err_t                 err;
+    ngx_str_t                 prefix;
     ngx_pool_cleanup_t       *cln;
     ngx_pool_cleanup_file_t  *clnf;
 
-    file->name.len = path->name.len + 1 + path->len + 10;
+    prefix = path ? path->name : file->name;
+    file->name.len = prefix.len + 1 + (path ? path->len : 0) + 10;
 
     file->name.data = ngx_pnalloc(pool, file->name.len + 1);
     if (file->name.data == NULL) {
@@ -150,7 +154,14 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     }
 #endif
 
-    ngx_memcpy(file->name.data, path->name.data, path->name.len);
+    p = ngx_cpymem(file->name.data, prefix.data, prefix.len);
+
+    if (path) {
+        p += 1 + path->len;
+
+    } else {
+        *p++ = '.';
+    }
 
     n = (uint32_t) ngx_next_temp_number(0);
 
@@ -160,10 +171,11 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
     }
 
     for ( ;; ) {
-        (void) ngx_sprintf(file->name.data + path->name.len + 1 + path->len,
-                           "%010uD%Z", n);
+        (void) ngx_sprintf(p, "%010uD%Z", n);
 
-        ngx_create_hashed_filename(path, file->name.data, file->name.len);
+        if (path) {
+            ngx_create_hashed_filename(path, file->name.data, file->name.len);
+        }
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, file->log, 0,
                        "hashed path: %s", file->name.data);
@@ -192,7 +204,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
             continue;
         }
 
-        if ((path->level[0] == 0) || (err != NGX_ENOPATH)) {
+        if ((path == NULL) || (path->level[0] == 0) || (err != NGX_ENOPATH)) {
             ngx_log_error(NGX_LOG_CRIT, file->log, err,
                           ngx_open_tempfile_n " \"%s\" failed",
                           file->name.data);
