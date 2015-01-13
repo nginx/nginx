@@ -111,6 +111,9 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 }
 
                 send += trailer.size;
+
+            } else {
+                trailer.count = 0;
             }
 
             /*
