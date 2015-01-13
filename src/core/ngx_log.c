@@ -91,8 +91,9 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     va_list      args;
 #endif
     u_char      *p, *last, *msg;
-    u_char       errstr[NGX_MAX_ERROR_STR];
+    ssize_t      n;
     ngx_uint_t   wrote_stderr, debug_connection;
+    u_char       errstr[NGX_MAX_ERROR_STR];
 
     last = errstr + NGX_MAX_ERROR_STR;
 
@@ -150,15 +151,31 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
         if (log->writer) {
             log->writer(log, level, errstr, p - errstr);
-            log = log->next;
-            continue;
+            goto next;
         }
 
-        (void) ngx_write_fd(log->file->fd, errstr, p - errstr);
+        if (ngx_time() == log->disk_full_time) {
+
+            /*
+             * on FreeBSD writing to a full filesystem with enabled softupdates
+             * may block process for much longer time than writing to non-full
+             * filesystem, so we skip writing to a log for one second
+             */
+
+            goto next;
+        }
+
+        n = ngx_write_fd(log->file->fd, errstr, p - errstr);
+
+        if (n == -1 && ngx_errno == NGX_ENOSPC) {
+            log->disk_full_time = ngx_time();
+        }
 
         if (log->file->fd == ngx_stderr) {
             wrote_stderr = 1;
         }
+
+    next:
 
         log = log->next;
     }
