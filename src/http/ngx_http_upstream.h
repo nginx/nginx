@@ -60,6 +60,8 @@ typedef struct {
     ngx_uint_t                       status;
     time_t                           response_sec;
     ngx_uint_t                       response_msec;
+    time_t                           header_sec;
+    ngx_uint_t                       header_msec;
     off_t                            response_length;
 
     ngx_str_t                       *peer;
