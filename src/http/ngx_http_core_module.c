@@ -1353,7 +1353,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             continue;
         }
 
-        if (of.is_dir && !test_dir) {
+        if (of.is_dir != test_dir) {
             continue;
         }
 
