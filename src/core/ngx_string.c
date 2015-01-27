@@ -429,8 +429,12 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'N':
 #if (NGX_WIN32)
                 *buf++ = CR;
-#endif
+                if (buf < last) {
+                    *buf++ = LF;
+                }
+#else
                 *buf++ = LF;
+#endif
                 fmt++;
 
                 continue;
