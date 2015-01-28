@@ -45,8 +45,12 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     ngx_int_t     rc, last;
     ngx_chain_t  *cl, *out, **last_out;
 
-    if (ctx->in == NULL && ctx->busy == NULL) {
-
+    if (ctx->in == NULL && ctx->busy == NULL
+#if (NGX_HAVE_FILE_AIO)
+        && !ctx->aio
+#endif
+       )
+    {
         /*
          * the short path for the case when the ctx->in and ctx->busy chains
          * are empty, the incoming chain is empty too or has the single buf
