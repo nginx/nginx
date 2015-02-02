@@ -2688,10 +2688,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         p->temp_file->persistent = 1;
 
 #if (NGX_HTTP_CACHE)
-        if (r->cache && !r->cache->file_cache->use_temp_path) {
-            p->temp_file->file.name = r->cache->file.name;
-            p->temp_file->path = r->cache->file_cache->path;
-            p->temp_file->prefix = 1;
+        if (r->cache && r->cache->file_cache->temp_path) {
+            p->temp_file->path = r->cache->file_cache->temp_path;
         }
 #endif
 

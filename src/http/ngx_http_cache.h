@@ -142,6 +142,7 @@ struct ngx_http_file_cache_s {
     ngx_slab_pool_t                 *shpool;
 
     ngx_path_t                      *path;
+    ngx_path_t                      *temp_path;
 
     off_t                            max_size;
     size_t                           bsize;
@@ -155,9 +156,6 @@ struct ngx_http_file_cache_s {
     ngx_msec_t                       loader_threshold;
 
     ngx_shm_zone_t                  *shm_zone;
-
-    ngx_uint_t                       use_temp_path;
-                                     /* unsigned use_temp_path:1 */
 };
 
 
