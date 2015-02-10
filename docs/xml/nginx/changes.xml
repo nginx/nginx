@@ -5,6 +5,98 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.10" date="10.02.2015">
+
+<change type="feature">
+<para lang="ru">
+параметр use_temp_path директив proxy_cache_path, fastcgi_cache_path,
+scgi_cache_path и uwsgi_cache_path.
+</para>
+<para lang="en">
+the "use_temp_path" parameter of the "proxy_cache_path", "fastcgi_cache_path",
+"scgi_cache_path", and "uwsgi_cache_path" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_header_time.
+</para>
+<para lang="en">
+the $upstream_header_time variable.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+теперь при переполнении диска nginx пытается писать error_log'и только
+раз в секунду.
+</para>
+<para lang="en">
+now on disk overflow nginx tries to write error logs once a second only.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files при тестировании каталогов
+не игнорировала обычные файлы.<br/>
+Спасибо Damien Tournoud.
+</para>
+<para lang="en">
+the "try_files" directive did not ignore normal files
+while testing directories.<br/>
+Thanks to Damien Tournoud.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы sendfile на OS X
+возникали ошибки "sendfile() failed";
+ошибка появилась в nginx 1.7.8.
+</para>
+<para lang="en">
+alerts "sendfile() failed"
+if the "sendfile" directive was used on OS X;
+the bug had appeared in 1.7.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в лог могли писаться сообщения "sem_post() failed".
+</para>
+<para lang="en">
+alerts "sem_post() failed" might appear in logs.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с musl libc.<br/>
+Спасибо James Taylor.
+</para>
+<para lang="en">
+nginx could not be built with musl libc.<br/>
+Thanks to James Taylor.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Tru64 UNIX.<br/>
+Спасибо Goetz T. Fischer.
+</para>
+<para lang="en">
+nginx could not be built on Tru64 UNIX.<br/>
+Thanks to Goetz T. Fischer.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.9" date="23.12.2014">
 
 <change type="feature">
