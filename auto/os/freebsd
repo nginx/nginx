@@ -80,7 +80,7 @@ fi
 NGX_KQUEUE_CHECKED=YES
 
 
-# kqueue's NOTE_LAWAT
+# kqueue's NOTE_LOWAT
 
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
