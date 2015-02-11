@@ -44,10 +44,12 @@ if [ $osreldate -gt 300007 ]; then
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
 fi
 
-if [ $osreldate -gt 502103 ]; then
-    echo " + sendfile()'s SF_NODISKIO found"
+if [ $NGX_FILE_AIO = YES ]; then
+    if [ $osreldate -gt 502103 ]; then
+        echo " + sendfile()'s SF_NODISKIO found"
 
-    have=NGX_HAVE_AIO_SENDFILE . auto/have
+        have=NGX_HAVE_AIO_SENDFILE . auto/have
+    fi
 fi
 
 # POSIX semaphores
