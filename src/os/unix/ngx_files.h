@@ -375,6 +375,7 @@ size_t ngx_fs_bsize(u_char *name);
 
 #if (NGX_HAVE_FILE_AIO)
 
+ngx_int_t ngx_file_aio_init(ngx_file_t *file, ngx_pool_t *pool);
 ssize_t ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size,
     off_t offset, ngx_pool_t *pool);
 

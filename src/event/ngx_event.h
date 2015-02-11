@@ -168,6 +168,10 @@ struct ngx_event_aio_s {
     ngx_event_handler_pt       handler;
     ngx_file_t                *file;
 
+#if (NGX_HAVE_AIO_SENDFILE)
+    ssize_t                  (*preload_handler)(ngx_buf_t *file);
+#endif
+
     ngx_fd_t                   fd;
 
 #if (NGX_HAVE_EVENTFD)
@@ -179,10 +183,6 @@ struct ngx_event_aio_s {
 #else
     ngx_err_t                  err;
     size_t                     nbytes;
-#endif
-
-#if (NGX_HAVE_AIO_SENDFILE)
-    off_t                      last_offset;
 #endif
 
     ngx_aiocb_t                aiocb;

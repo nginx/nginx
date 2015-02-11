@@ -36,6 +36,28 @@ static ssize_t ngx_file_aio_result(ngx_file_t *file, ngx_event_aio_t *aio,
 static void ngx_file_aio_event_handler(ngx_event_t *ev);
 
 
+ngx_int_t
+ngx_file_aio_init(ngx_file_t *file, ngx_pool_t *pool)
+{
+    ngx_event_aio_t  *aio;
+
+    aio = ngx_pcalloc(pool, sizeof(ngx_event_aio_t));
+    if (aio == NULL) {
+        return NGX_ERROR;
+    }
+
+    aio->file = file;
+    aio->fd = file->fd;
+    aio->event.data = aio;
+    aio->event.ready = 1;
+    aio->event.log = file->log;
+
+    file->aio = aio;
+
+    return NGX_OK;
+}
+
+
 ssize_t
 ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     ngx_pool_t *pool)
@@ -48,25 +70,11 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
         return ngx_read_file(file, buf, size, offset);
     }
 
-    aio = file->aio;
-
-    if (aio == NULL) {
-        aio = ngx_pcalloc(pool, sizeof(ngx_event_aio_t));
-        if (aio == NULL) {
-            return NGX_ERROR;
-        }
-
-        aio->file = file;
-        aio->fd = file->fd;
-        aio->event.data = aio;
-        aio->event.ready = 1;
-        aio->event.log = file->log;
-#if (NGX_HAVE_AIO_SENDFILE)
-        aio->last_offset = -1;
-#endif
-        file->aio = aio;
+    if (file->aio == NULL && ngx_file_aio_init(file, pool) != NGX_OK) {
+        return NGX_ERROR;
     }
 
+    aio = file->aio;
     ev = &aio->event;
 
     if (!ev->ready) {

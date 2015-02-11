@@ -20,6 +20,7 @@ static void ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx,
     ngx_file_t *file);
 static void ngx_http_copy_aio_event_handler(ngx_event_t *ev);
 #if (NGX_HAVE_AIO_SENDFILE)
+static ssize_t ngx_http_copy_aio_sendfile_preload(ngx_buf_t *file);
 static void ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev);
 #endif
 #endif
@@ -125,7 +126,9 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->aio_handler = ngx_http_copy_aio_handler;
             }
 #if (NGX_HAVE_AIO_SENDFILE)
-            c->aio_sendfile = (clcf->aio == NGX_HTTP_AIO_SENDFILE);
+            if (clcf->aio == NGX_HTTP_AIO_SENDFILE) {
+                ctx->aio_preload = ngx_http_copy_aio_sendfile_preload;
+            }
 #endif
         }
 #endif
@@ -139,72 +142,19 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx->aio = r->aio;
 #endif
 
-    for ( ;; ) {
-        rc = ngx_output_chain(ctx, in);
+    rc = ngx_output_chain(ctx, in);
 
-        if (ctx->in == NULL) {
-            r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
+    if (ctx->in == NULL) {
+        r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
 
-        } else {
-            r->buffered |= NGX_HTTP_COPY_BUFFERED;
-        }
-
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
-
-#if (NGX_HAVE_FILE_AIO && NGX_HAVE_AIO_SENDFILE)
-
-        if (c->busy_sendfile) {
-            ssize_t                n;
-            off_t                  offset;
-            ngx_file_t            *file;
-            ngx_http_ephemeral_t  *e;
-
-            if (r->aio) {
-                c->busy_sendfile = NULL;
-                return rc;
-            }
-
-            file = c->busy_sendfile->file;
-            offset = c->busy_sendfile->file_pos;
-
-            if (file->aio) {
-                c->busy_count = (offset == file->aio->last_offset) ?
-                                c->busy_count + 1 : 0;
-                file->aio->last_offset = offset;
-
-                if (c->busy_count > 2) {
-                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                                  "sendfile(%V) returned busy again",
-                                  &file->name);
-                    c->aio_sendfile = 0;
-                }
-            }
-
-            c->busy_sendfile = NULL;
-            e = (ngx_http_ephemeral_t *) &r->uri_start;
-
-            n = ngx_file_aio_read(file, &e->aio_preload, 1, offset, r->pool);
-
-            if (n > 0) {
-                in = NULL;
-                continue;
-            }
-
-            rc = n;
-
-            if (rc == NGX_AGAIN) {
-                file->aio->data = r;
-                file->aio->handler = ngx_http_copy_aio_sendfile_event_handler;
-
-                r->main->blocked++;
-                r->aio = 1;
-            }
-        }
-#endif
-
-        return rc;
+    } else {
+        r->buffered |= NGX_HTTP_COPY_BUFFERED;
     }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
+
+    return rc;
 }
 
 
@@ -243,6 +193,29 @@ ngx_http_copy_aio_event_handler(ngx_event_t *ev)
 
 
 #if (NGX_HAVE_AIO_SENDFILE)
+
+static ssize_t
+ngx_http_copy_aio_sendfile_preload(ngx_buf_t *file)
+{
+    ssize_t              n;
+    static u_char        buf[1];
+    ngx_event_aio_t     *aio;
+    ngx_http_request_t  *r;
+
+    n = ngx_file_aio_read(file->file, buf, 1, file->file_pos, NULL);
+
+    if (n == NGX_AGAIN) {
+        aio = file->file->aio;
+        aio->handler = ngx_http_copy_aio_sendfile_event_handler;
+
+        r = aio->data;
+        r->main->blocked++;
+        r->aio = 1;
+    }
+
+    return n;
+}
+
 
 static void
 ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev)

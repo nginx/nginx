@@ -94,6 +94,9 @@ struct ngx_output_chain_ctx_s {
     unsigned                     aio:1;
 
     ngx_output_chain_aio_pt      aio_handler;
+#if (NGX_HAVE_FILE_AIO)
+    ssize_t                    (*aio_preload)(ngx_buf_t *file);
+#endif
 #endif
 
     off_t                        alignment;
