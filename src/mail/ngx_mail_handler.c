@@ -24,19 +24,20 @@ static ngx_int_t ngx_mail_verify_cert(ngx_mail_session_t *s,
 void
 ngx_mail_init_connection(ngx_connection_t *c)
 {
-    size_t                 len;
-    ngx_uint_t             i;
-    ngx_mail_port_t       *port;
-    struct sockaddr       *sa;
-    struct sockaddr_in    *sin;
-    ngx_mail_log_ctx_t    *ctx;
-    ngx_mail_in_addr_t    *addr;
-    ngx_mail_session_t    *s;
-    ngx_mail_addr_conf_t  *addr_conf;
-    u_char                 text[NGX_SOCKADDR_STRLEN];
+    size_t                     len;
+    ngx_uint_t                 i;
+    ngx_mail_port_t           *port;
+    struct sockaddr           *sa;
+    struct sockaddr_in        *sin;
+    ngx_mail_log_ctx_t        *ctx;
+    ngx_mail_in_addr_t        *addr;
+    ngx_mail_session_t        *s;
+    ngx_mail_addr_conf_t      *addr_conf;
+    ngx_mail_core_srv_conf_t  *cscf;
+    u_char                     text[NGX_SOCKADDR_STRLEN];
 #if (NGX_HAVE_INET6)
-    struct sockaddr_in6   *sin6;
-    ngx_mail_in6_addr_t   *addr6;
+    struct sockaddr_in6       *sin6;
+    ngx_mail_in6_addr_t       *addr6;
 #endif
 
 
@@ -132,6 +133,10 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
     c->data = s;
     s->connection = c;
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    ngx_set_connection_log(c, cscf->error_log);
 
     len = ngx_sock_ntop(c->sockaddr, c->socklen, text, NGX_SOCKADDR_STRLEN, 1);
 

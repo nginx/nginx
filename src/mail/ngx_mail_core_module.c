@@ -21,6 +21,8 @@ static char *ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_mail_core_protocol(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_mail_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -73,6 +75,13 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       ngx_conf_set_str_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_core_srv_conf_t, server_name),
+      NULL },
+
+    { ngx_string("error_log"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
+      ngx_mail_core_error_log,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("resolver"),
@@ -161,6 +170,7 @@ ngx_mail_core_create_srv_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     cscf->protocol = NULL;
+     *     cscf->error_log = NULL;
      */
 
     cscf->timeout = NGX_CONF_UNSET_MSEC;
@@ -200,6 +210,14 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                       "unknown mail protocol for server in %s:%ui",
                       conf->file_name, conf->line);
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->error_log == NULL) {
+        if (prev->error_log) {
+            conf->error_log = prev->error_log;
+        } else {
+            conf->error_log = &cf->cycle->new_log;
+        }
     }
 
     ngx_conf_merge_ptr_value(conf->resolver, prev->resolver, NULL);
@@ -597,6 +615,15 @@ ngx_mail_core_protocol(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "unknown protocol \"%V\"", &value[1]);
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_mail_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_core_srv_conf_t  *cscf = conf;
+
+    return ngx_log_set_log(cf, &cscf->error_log);
 }
 
 

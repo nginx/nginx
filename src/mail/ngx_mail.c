@@ -334,11 +334,12 @@ found:
 static char *
 ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 {
-    ngx_uint_t             i, p, last, bind_wildcard;
-    ngx_listening_t       *ls;
-    ngx_mail_port_t       *mport;
-    ngx_mail_conf_port_t  *port;
-    ngx_mail_conf_addr_t  *addr;
+    ngx_uint_t                 i, p, last, bind_wildcard;
+    ngx_listening_t           *ls;
+    ngx_mail_port_t           *mport;
+    ngx_mail_conf_port_t      *port;
+    ngx_mail_conf_addr_t      *addr;
+    ngx_mail_core_srv_conf_t  *cscf;
 
     port = ports->elts;
     for (p = 0; p < ports->nelts; p++) {
@@ -380,8 +381,9 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->handler = ngx_mail_init_connection;
             ls->pool_size = 256;
 
-            /* TODO: error_log directive */
-            ls->logp = &cf->cycle->new_log;
+            cscf = addr->ctx->srv_conf[ngx_mail_core_module.ctx_index];
+
+            ls->logp = cscf->error_log;
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
 
