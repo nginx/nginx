@@ -312,7 +312,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         continue;
     }
 
-    size--;
+    size = hinit->max_size;
 
     ngx_log_error(NGX_LOG_WARN, hinit->pool->log, 0,
                   "could not build optimal %s, you should increase "
