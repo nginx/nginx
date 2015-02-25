@@ -1173,6 +1173,9 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
           + sizeof("Auth-SMTP-Helo: ") - 1 + s->smtp_helo.len + sizeof(CRLF) - 1
           + sizeof("Auth-SMTP-From: ") - 1 + s->smtp_from.len + sizeof(CRLF) - 1
           + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len + sizeof(CRLF) - 1
+#if (NGX_MAIL_SSL)
+          + sizeof("Auth-SSL: on" CRLF) - 1
+#endif
           + ahcf->header.len
           + sizeof(CRLF) - 1;
 
@@ -1254,6 +1257,15 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
         *b->last++ = CR; *b->last++ = LF;
 
     }
+
+#if (NGX_MAIL_SSL)
+
+    if (s->connection->ssl) {
+        b->last = ngx_cpymem(b->last, "Auth-SSL: on" CRLF,
+                             sizeof("Auth-SSL: on" CRLF) - 1);
+    }
+
+#endif
 
     if (ahcf->header.len) {
         b->last = ngx_copy(b->last, ahcf->header.data, ahcf->header.len);
