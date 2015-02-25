@@ -336,6 +336,8 @@ struct ngx_mail_protocol_s {
     ngx_mail_auth_state_pt      auth_state;
 
     ngx_str_t                   internal_server_error;
+    ngx_str_t                   cert_error;
+    ngx_str_t                   no_cert;
 };
 
 

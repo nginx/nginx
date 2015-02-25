@@ -16,6 +16,7 @@ typedef struct {
     ngx_addr_t                     *peer;
 
     ngx_msec_t                      timeout;
+    ngx_flag_t                      pass_client_cert;
 
     ngx_str_t                       host_header;
     ngx_str_t                       uri;
@@ -104,6 +105,13 @@ static ngx_command_t  ngx_mail_auth_http_commands[] = {
       ngx_mail_auth_http_header,
       NGX_MAIL_SRV_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("auth_http_pass_client_cert"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_auth_http_conf_t, pass_client_cert),
       NULL },
 
       ngx_null_command
@@ -1143,6 +1151,11 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     size_t                     len;
     ngx_buf_t                 *b;
     ngx_str_t                  login, passwd;
+#if (NGX_MAIL_SSL)
+    ngx_str_t                  verify, subject, issuer, serial, fingerprint,
+                               raw_cert, cert;
+    ngx_connection_t          *c;
+#endif
     ngx_mail_core_srv_conf_t  *cscf;
 
     if (ngx_mail_auth_http_escape(pool, &s->login, &login) != NGX_OK) {
@@ -1152,6 +1165,61 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     if (ngx_mail_auth_http_escape(pool, &s->passwd, &passwd) != NGX_OK) {
         return NULL;
     }
+
+#if (NGX_MAIL_SSL)
+
+    c = s->connection;
+
+    if (c->ssl) {
+
+        /* certificate details */
+
+        if (ngx_ssl_get_client_verify(c, pool, &verify) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ngx_ssl_get_subject_dn(c, pool, &subject) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ngx_ssl_get_issuer_dn(c, pool, &issuer) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ngx_ssl_get_serial_number(c, pool, &serial) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ngx_ssl_get_fingerprint(c, pool, &fingerprint) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ahcf->pass_client_cert) {
+
+            /* certificate itself, if configured */
+
+            if (ngx_ssl_get_raw_certificate(c, pool, &raw_cert) != NGX_OK) {
+                return NULL;
+            }
+
+            if (ngx_mail_auth_http_escape(pool, &raw_cert, &cert) != NGX_OK) {
+                return NULL;
+            }
+
+        } else {
+            ngx_str_null(&cert);
+        }
+
+    } else {
+        ngx_str_null(&verify);
+        ngx_str_null(&subject);
+        ngx_str_null(&issuer);
+        ngx_str_null(&serial);
+        ngx_str_null(&fingerprint);
+        ngx_str_null(&cert);
+    }
+
+#endif
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
@@ -1175,6 +1243,13 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
           + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len + sizeof(CRLF) - 1
 #if (NGX_MAIL_SSL)
           + sizeof("Auth-SSL: on" CRLF) - 1
+          + sizeof("Auth-SSL-Verify: ") - 1 + verify.len + sizeof(CRLF) - 1
+          + sizeof("Auth-SSL-Subject: ") - 1 + subject.len + sizeof(CRLF) - 1
+          + sizeof("Auth-SSL-Issuer: ") - 1 + issuer.len + sizeof(CRLF) - 1
+          + sizeof("Auth-SSL-Serial: ") - 1 + serial.len + sizeof(CRLF) - 1
+          + sizeof("Auth-SSL-Fingerprint: ") - 1 + fingerprint.len
+              + sizeof(CRLF) - 1
+          + sizeof("Auth-SSL-Cert: ") - 1 + cert.len + sizeof(CRLF) - 1
 #endif
           + ahcf->header.len
           + sizeof(CRLF) - 1;
@@ -1260,9 +1335,49 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
 
 #if (NGX_MAIL_SSL)
 
-    if (s->connection->ssl) {
+    if (c->ssl) {
         b->last = ngx_cpymem(b->last, "Auth-SSL: on" CRLF,
                              sizeof("Auth-SSL: on" CRLF) - 1);
+
+        b->last = ngx_cpymem(b->last, "Auth-SSL-Verify: ",
+                             sizeof("Auth-SSL-Verify: ") - 1);
+        b->last = ngx_copy(b->last, verify.data, verify.len);
+        *b->last++ = CR; *b->last++ = LF;
+
+        if (subject.len) {
+            b->last = ngx_cpymem(b->last, "Auth-SSL-Subject: ",
+                                 sizeof("Auth-SSL-Subject: ") - 1);
+            b->last = ngx_copy(b->last, subject.data, subject.len);
+            *b->last++ = CR; *b->last++ = LF;
+        }
+
+        if (issuer.len) {
+            b->last = ngx_cpymem(b->last, "Auth-SSL-Issuer: ",
+                                 sizeof("Auth-SSL-Issuer: ") - 1);
+            b->last = ngx_copy(b->last, issuer.data, issuer.len);
+            *b->last++ = CR; *b->last++ = LF;
+        }
+
+        if (serial.len) {
+            b->last = ngx_cpymem(b->last, "Auth-SSL-Serial: ",
+                                 sizeof("Auth-SSL-Serial: ") - 1);
+            b->last = ngx_copy(b->last, serial.data, serial.len);
+            *b->last++ = CR; *b->last++ = LF;
+        }
+
+        if (fingerprint.len) {
+            b->last = ngx_cpymem(b->last, "Auth-SSL-Fingerprint: ",
+                                 sizeof("Auth-SSL-Fingerprint: ") - 1);
+            b->last = ngx_copy(b->last, fingerprint.data, fingerprint.len);
+            *b->last++ = CR; *b->last++ = LF;
+        }
+
+        if (cert.len) {
+            b->last = ngx_cpymem(b->last, "Auth-SSL-Cert: ",
+                                 sizeof("Auth-SSL-Cert: ") - 1);
+            b->last = ngx_copy(b->last, cert.data, cert.len);
+            *b->last++ = CR; *b->last++ = LF;
+        }
     }
 
 #endif
@@ -1328,6 +1443,7 @@ ngx_mail_auth_http_create_conf(ngx_conf_t *cf)
     }
 
     ahcf->timeout = NGX_CONF_UNSET_MSEC;
+    ahcf->pass_client_cert = NGX_CONF_UNSET;
 
     ahcf->file = cf->conf_file->file.name.data;
     ahcf->line = cf->conf_file->line;
@@ -1362,6 +1478,8 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
+
+    ngx_conf_merge_value(conf->pass_client_cert, prev->pass_client_cert, 0);
 
     if (conf->headers == NULL) {
         conf->headers = prev->headers;

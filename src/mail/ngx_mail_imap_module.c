@@ -52,7 +52,9 @@ static ngx_mail_protocol_t  ngx_mail_imap_protocol = {
     ngx_mail_imap_parse_command,
     ngx_mail_imap_auth_state,
 
-    ngx_string("* BAD internal server error" CRLF)
+    ngx_string("* BAD internal server error" CRLF),
+    ngx_string("* BYE SSL certificate error" CRLF),
+    ngx_string("* BYE No required SSL certificate" CRLF)
 };
 
 

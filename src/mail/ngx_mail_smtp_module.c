@@ -45,7 +45,9 @@ static ngx_mail_protocol_t  ngx_mail_smtp_protocol = {
     ngx_mail_smtp_parse_command,
     ngx_mail_smtp_auth_state,
 
-    ngx_string("451 4.3.2 Internal server error" CRLF)
+    ngx_string("451 4.3.2 Internal server error" CRLF),
+    ngx_string("421 4.7.1 SSL certificate error" CRLF),
+    ngx_string("421 4.7.1 No required SSL certificate" CRLF)
 };
 
 

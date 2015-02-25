@@ -16,6 +16,8 @@ static void ngx_mail_init_session(ngx_connection_t *c);
 #if (NGX_MAIL_SSL)
 static void ngx_mail_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c);
 static void ngx_mail_ssl_handshake_handler(ngx_connection_t *c);
+static ngx_int_t ngx_mail_verify_cert(ngx_mail_session_t *s,
+    ngx_connection_t *c);
 #endif
 
 
@@ -247,6 +249,10 @@ ngx_mail_ssl_handshake_handler(ngx_connection_t *c)
 
         s = c->data;
 
+        if (ngx_mail_verify_cert(s, c) != NGX_OK) {
+            return;
+        }
+
         if (s->starttls) {
             cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
@@ -265,6 +271,71 @@ ngx_mail_ssl_handshake_handler(ngx_connection_t *c)
     }
 
     ngx_mail_close_connection(c);
+}
+
+
+static ngx_int_t
+ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
+{
+    long                       rc;
+    X509                      *cert;
+    ngx_mail_ssl_conf_t       *sslcf;
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
+
+    if (!sslcf->verify) {
+        return NGX_OK;
+    }
+
+    rc = SSL_get_verify_result(c->ssl->connection);
+
+    if (rc != X509_V_OK
+        && (sslcf->verify != 3 || !ngx_ssl_verify_error_optional(rc)))
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client SSL certificate verify error: (%l:%s)",
+                      rc, X509_verify_cert_error_string(rc));
+
+        ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+                                      (SSL_get0_session(c->ssl->connection)));
+
+        cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+        s->out = cscf->protocol->cert_error;
+        s->quit = 1;
+
+        c->write->handler = ngx_mail_send;
+
+        ngx_mail_send(s->connection->write);
+        return NGX_ERROR;
+    }
+
+    if (sslcf->verify == 1) {
+        cert = SSL_get_peer_certificate(c->ssl->connection);
+
+        if (cert == NULL) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent no required SSL certificate");
+
+            ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+                                       (SSL_get0_session(c->ssl->connection)));
+
+            cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+            s->out = cscf->protocol->no_cert;
+            s->quit = 1;
+
+            c->write->handler = ngx_mail_send;
+
+            ngx_mail_send(s->connection->write);
+            return NGX_ERROR;
+        }
+
+        X509_free(cert);
+    }
+
+    return NGX_OK;
 }
 
 #endif

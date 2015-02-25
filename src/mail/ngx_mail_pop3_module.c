@@ -58,7 +58,9 @@ static ngx_mail_protocol_t  ngx_mail_pop3_protocol = {
     ngx_mail_pop3_parse_command,
     ngx_mail_pop3_auth_state,
 
-    ngx_string("-ERR internal server error" CRLF)
+    ngx_string("-ERR internal server error" CRLF),
+    ngx_string("-ERR SSL certificate error" CRLF),
+    ngx_string("-ERR No required SSL certificate" CRLF)
 };
 
 
