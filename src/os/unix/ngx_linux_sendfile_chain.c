@@ -10,6 +10,10 @@
 #include <ngx_event.h>
 
 
+static ssize_t ngx_linux_sendfile(ngx_connection_t *c, ngx_buf_t *file,
+    size_t size);
+
+
 /*
  * On Linux up to 2.4.21 sendfile() (syscall #187) works with 32-bit
  * offsets only, and the including <sys/sendfile.h> breaks the compiling,
@@ -36,16 +40,10 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t        n;
     ngx_err_t      err;
     ngx_buf_t     *file;
-    ngx_uint_t     eintr;
     ngx_event_t   *wev;
     ngx_chain_t   *cl;
     ngx_iovec_t    header;
     struct iovec   headers[NGX_IOVS_PREALLOCATE];
-#if (NGX_HAVE_SENDFILE64)
-    off_t          offset;
-#else
-    int32_t        offset;
-#endif
 
     wev = c->write;
 
@@ -67,7 +65,6 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     header.nalloc = NGX_IOVS_PREALLOCATE;
 
     for ( ;; ) {
-        eintr = 0;
         prev_send = send;
 
         /* create the iovec and coalesce the neighbouring bufs */
@@ -161,43 +158,13 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 return NGX_CHAIN_ERROR;
             }
 #endif
-#if (NGX_HAVE_SENDFILE64)
-            offset = file->file_pos;
-#else
-            offset = (int32_t) file->file_pos;
-#endif
+            n = ngx_linux_sendfile(c, file, file_size);
 
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: @%O %uz", file->file_pos, file_size);
-
-            n = sendfile(c->fd, file->file->fd, &offset, file_size);
-
-            if (n == -1) {
-                err = ngx_errno;
-
-                switch (err) {
-                case NGX_EAGAIN:
-                    break;
-
-                case NGX_EINTR:
-                    eintr = 1;
-                    break;
-
-                default:
-                    wev->error = 1;
-                    ngx_connection_error(c, err, "sendfile() failed");
-                    return NGX_CHAIN_ERROR;
-                }
-
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
-                               "sendfile() is not ready");
+            if (n == NGX_ERROR) {
+                return NGX_CHAIN_ERROR;
             }
 
-            sent = n > 0 ? n : 0;
-
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "sendfile: %z, @%O %O:%uz",
-                           n, file->file_pos, sent, file_size);
+            sent = (n == NGX_AGAIN) ? 0 : n;
 
         } else {
             n = ngx_writev(c, &header);
@@ -213,11 +180,6 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         in = ngx_chain_update_sent(in, sent);
 
-        if (eintr) {
-            send = prev_send;
-            continue;
-        }
-
         if (send - prev_send != sent) {
             wev->ready = 0;
             return in;
@@ -227,4 +189,56 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             return in;
         }
     }
+}
+
+
+static ssize_t
+ngx_linux_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
+{
+#if (NGX_HAVE_SENDFILE64)
+    off_t      offset;
+#else
+    int32_t    offset;
+#endif
+    ssize_t    n;
+    ngx_err_t  err;
+
+#if (NGX_HAVE_SENDFILE64)
+    offset = file->file_pos;
+#else
+    offset = (int32_t) file->file_pos;
+#endif
+
+eintr:
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "sendfile: @%O %uz", file->file_pos, size);
+
+    n = sendfile(c->fd, file->file->fd, &offset, size);
+
+    if (n == -1) {
+        err = ngx_errno;
+
+        switch (err) {
+        case NGX_EAGAIN:
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "sendfile() is not ready");
+            return NGX_AGAIN;
+
+        case NGX_EINTR:
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "sendfile() was interrupted");
+            goto eintr;
+
+        default:
+            c->write->error = 1;
+            ngx_connection_error(c, err, "sendfile() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0, "sendfile: %z of %uz @%O",
+                   n, size, file->file_pos);
+
+    return n;
 }
