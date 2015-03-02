@@ -3426,8 +3426,8 @@ static void
 ngx_http_upstream_process_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
-    ngx_temp_file_t      *tf;
-    ngx_event_pipe_t     *p;
+    ngx_temp_file_t   *tf;
+    ngx_event_pipe_t  *p;
 
     p = u->pipe;
 
