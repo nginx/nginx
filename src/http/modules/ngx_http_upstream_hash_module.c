@@ -49,8 +49,8 @@ static ngx_int_t ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc,
 
 static ngx_int_t ngx_http_upstream_init_chash(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us);
-static void ngx_http_upstream_add_chash_point(
-    ngx_http_upstream_chash_points_t *points, uint32_t hash, ngx_str_t *server);
+static int ngx_libc_cdecl
+    ngx_http_upstream_chash_cmp_points(const void *one, const void *two);
 static ngx_uint_t ngx_http_upstream_find_chash_point(
     ngx_http_upstream_chash_points_t *points, uint32_t hash);
 static ngx_int_t ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
@@ -360,11 +360,26 @@ ngx_http_upstream_init_chash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
             ngx_crc32_update(&hash, (u_char *) &prev_hash, sizeof(uint32_t));
             ngx_crc32_final(hash);
 
-            ngx_http_upstream_add_chash_point(points, hash, &peer->server);
+            points->point[points->number].hash = hash;
+            points->point[points->number].server = server;
+            points->number++;
 
             prev_hash = hash;
         }
     }
+
+    ngx_qsort(points->point,
+              points->number,
+              sizeof(ngx_http_upstream_chash_point_t),
+              ngx_http_upstream_chash_cmp_points);
+
+    for (i = 0, j = 1; j < points->number; j++) {
+        if (points->point[i].hash != points->point[j].hash) {
+            points->point[++i] = points->point[j];
+        }
+    }
+
+    points->number = i + 1;
 
     hcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_hash_module);
     hcf->points = points;
@@ -373,28 +388,23 @@ ngx_http_upstream_init_chash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 }
 
 
-static void
-ngx_http_upstream_add_chash_point(ngx_http_upstream_chash_points_t *points,
-    uint32_t hash, ngx_str_t *server)
+static int ngx_libc_cdecl
+ngx_http_upstream_chash_cmp_points(const void *one, const void *two)
 {
-    size_t                            size;
-    ngx_uint_t                        i;
-    ngx_http_upstream_chash_point_t  *point;
+    ngx_http_upstream_chash_point_t *first =
+                                       (ngx_http_upstream_chash_point_t *) one;
+    ngx_http_upstream_chash_point_t *second =
+                                       (ngx_http_upstream_chash_point_t *) two;
 
-    i = ngx_http_upstream_find_chash_point(points, hash);
-    point = &points->point[i];
+    if (first->hash < second->hash) {
+        return -1;
 
-    if (point->hash == hash) {
-        return;
+    } else if (first->hash > second->hash) {
+        return 1;
+
+    } else {
+        return 0;
     }
-
-    size = (points->number - i) * sizeof(ngx_http_upstream_chash_point_t);
-
-    ngx_memmove(point + 1, point, size);
-
-    points->number++;
-    point->hash = hash;
-    point->server = server;
 }
 
 
