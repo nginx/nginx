@@ -2635,7 +2635,14 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
                 if (u->headers_in.etag) {
                     r->cache->etag = u->headers_in.etag->value;
+
+                } else {
+                    ngx_str_null(&r->cache->etag);
                 }
+
+            } else {
+                r->cache->last_modified = -1;
+                ngx_str_null(&r->cache->etag);
             }
 
             if (ngx_http_file_cache_set_header(r, u->buffer.start) != NGX_OK) {
