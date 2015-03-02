@@ -3751,10 +3751,14 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
 
-    if (u->cleanup) {
-        *u->cleanup = NULL;
-        u->cleanup = NULL;
+    if (u->cleanup == NULL) {
+        /* the request was already finalized */
+        ngx_http_finalize_request(r, NGX_DONE);
+        return;
     }
+
+    *u->cleanup = NULL;
+    u->cleanup = NULL;
 
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
