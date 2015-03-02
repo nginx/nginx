@@ -76,7 +76,8 @@ static ngx_int_t ngx_http_upstream_non_buffered_filter(void *data,
 static void ngx_http_upstream_process_downstream(ngx_http_request_t *r);
 static void ngx_http_upstream_process_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
-static void ngx_http_upstream_process_request(ngx_http_request_t *r);
+static void ngx_http_upstream_process_request(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static void ngx_http_upstream_store(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_dummy_handler(ngx_http_request_t *r,
@@ -3349,7 +3350,7 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
         }
     }
 
-    ngx_http_upstream_process_request(r);
+    ngx_http_upstream_process_request(r, u);
 }
 
 
@@ -3417,18 +3418,17 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
         }
     }
 
-    ngx_http_upstream_process_request(r);
+    ngx_http_upstream_process_request(r, u);
 }
 
 
 static void
-ngx_http_upstream_process_request(ngx_http_request_t *r)
+ngx_http_upstream_process_request(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
 {
     ngx_temp_file_t      *tf;
     ngx_event_pipe_t     *p;
-    ngx_http_upstream_t  *u;
 
-    u = r->upstream;
     p = u->pipe;
 
     if (u->peer.connection) {
