@@ -176,11 +176,9 @@ struct ngx_event_aio_s {
 
 #if (NGX_HAVE_EVENTFD)
     int64_t                    res;
-#if (NGX_TEST_BUILD_EPOLL)
-    ngx_err_t                  err;
-    size_t                     nbytes;
 #endif
-#else
+
+#if !(NGX_HAVE_EVENTFD) || (NGX_TEST_BUILD_EPOLL)
     ngx_err_t                  err;
     size_t                     nbytes;
 #endif
