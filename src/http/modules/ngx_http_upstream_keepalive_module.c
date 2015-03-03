@@ -387,7 +387,7 @@ ngx_http_upstream_keepalive_close_handler(ngx_event_t *ev)
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
     if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
-        /* stale event */
+        ev->ready = 0;
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
             goto close;
