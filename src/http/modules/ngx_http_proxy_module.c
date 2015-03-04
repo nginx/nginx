@@ -812,7 +812,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_ctx_t));
     if (ctx == NULL) {
-        return NGX_ERROR;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ngx_http_set_ctx(r, ctx, ngx_http_proxy_module);
