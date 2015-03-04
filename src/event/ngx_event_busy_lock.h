@@ -46,7 +46,7 @@ typedef struct {
     ngx_event_busy_lock_ctx_t  *events;
     ngx_event_busy_lock_ctx_t  *last;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_mutex_t                *mutex;
 #endif
 } ngx_event_busy_lock_t;

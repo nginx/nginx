@@ -48,7 +48,7 @@ static struct kevent  *change_list, *change_list0, *change_list1;
 static struct kevent  *event_list;
 static ngx_uint_t      max_changes, nchanges, nevents;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 static ngx_mutex_t    *list_mutex;
 static ngx_mutex_t    *kevent_mutex;
 #endif
@@ -133,7 +133,7 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
             return NGX_ERROR;
         }
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
         list_mutex = ngx_mutex_init(cycle->log, 0);
         if (list_mutex == NULL) {
@@ -257,7 +257,7 @@ ngx_kqueue_done(ngx_cycle_t *cycle)
 
     ngx_kqueue = -1;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_mutex_destroy(kevent_mutex);
     ngx_mutex_destroy(list_mutex);
 #endif

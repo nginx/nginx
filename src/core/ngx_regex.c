@@ -80,7 +80,7 @@ ngx_regex_init(void)
 static ngx_inline void
 ngx_regex_malloc_init(ngx_pool_t *pool)
 {
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_core_tls_t  *tls;
 
     if (ngx_threaded) {
@@ -98,7 +98,7 @@ ngx_regex_malloc_init(ngx_pool_t *pool)
 static ngx_inline void
 ngx_regex_malloc_done(void)
 {
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_core_tls_t  *tls;
 
     if (ngx_threaded) {
@@ -253,7 +253,7 @@ static void * ngx_libc_cdecl
 ngx_regex_malloc(size_t size)
 {
     ngx_pool_t      *pool;
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_core_tls_t  *tls;
 
     if (ngx_threaded) {

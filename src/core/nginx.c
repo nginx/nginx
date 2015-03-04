@@ -139,7 +139,7 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       NULL },
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     { ngx_string("worker_threads"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
@@ -959,7 +959,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ccf->worker_threads = NGX_CONF_UNSET;
     ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
 #endif
@@ -1000,7 +1000,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     ngx_conf_init_value(ccf->worker_threads, 0);
     ngx_threads_n = ccf->worker_threads;

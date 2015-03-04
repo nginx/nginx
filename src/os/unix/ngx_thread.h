@@ -12,7 +12,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
 #define NGX_MAX_THREADS      128
 
@@ -107,7 +107,7 @@ ngx_int_t ngx_cond_wait(ngx_cond_t *cv, ngx_mutex_t *m);
 ngx_int_t ngx_cond_signal(ngx_cond_t *cv);
 
 
-#else /* !NGX_THREADS */
+#else /* !NGX_OLD_THREADS */
 
 #define ngx_thread_volatile
 

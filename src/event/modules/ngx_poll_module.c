@@ -413,7 +413,7 @@ ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_OK;
     }
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                   "poll() is not supported in the threaded mode");

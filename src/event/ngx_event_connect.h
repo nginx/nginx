@@ -53,7 +53,7 @@ struct ngx_peer_connection_s {
     ngx_event_save_peer_session_pt   save_session;
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_atomic_t                    *lock;
 #endif
 

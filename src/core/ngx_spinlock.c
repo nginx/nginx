@@ -42,7 +42,7 @@ ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin)
 
 #else
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
 #error ngx_spinlock() or ngx_atomic_cmp_set() are not defined !
 

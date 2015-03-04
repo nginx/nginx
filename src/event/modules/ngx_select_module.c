@@ -419,7 +419,7 @@ ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                   "select() is not supported in the threaded mode");

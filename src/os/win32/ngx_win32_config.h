@@ -218,7 +218,7 @@ typedef int                 sig_atomic_t;
 #define NGX_HAVE_LITTLE_ENDIAN  1
 #define NGX_HAVE_NONALIGNED     1
 
-#define NGX_THREADS       1
+#define NGX_OLD_THREADS         1
 
 
 #define NGX_WIN_NT        200000

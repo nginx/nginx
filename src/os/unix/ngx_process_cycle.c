@@ -23,7 +23,7 @@ static void ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker);
 static void ngx_worker_process_exit(ngx_cycle_t *cycle);
 static void ngx_channel_handler(ngx_event_t *ev);
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 static void ngx_wakeup_worker_threads(ngx_cycle_t *cycle);
 static ngx_thread_value_t ngx_worker_thread_cycle(void *data);
 #endif
@@ -56,7 +56,7 @@ ngx_uint_t    ngx_noaccepting;
 ngx_uint_t    ngx_restart;
 
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 volatile ngx_thread_t  ngx_threads[NGX_MAX_THREADS];
 ngx_int_t              ngx_threads_n;
 #endif
@@ -747,7 +747,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     ngx_setproctitle("worker process");
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     {
     ngx_int_t         n;
     ngx_err_t         err;
@@ -1032,7 +1032,7 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     ngx_uint_t         i;
     ngx_connection_t  *c;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_terminate = 1;
 
     ngx_wakeup_worker_threads(cycle);
@@ -1181,7 +1181,7 @@ ngx_channel_handler(ngx_event_t *ev)
 }
 
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
 static void
 ngx_wakeup_worker_threads(ngx_cycle_t *cycle)

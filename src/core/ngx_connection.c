@@ -943,7 +943,7 @@ ngx_close_connection(ngx_connection_t *c)
         }
     }
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     /*
      * we have to clean the connection information before the closing

@@ -184,7 +184,7 @@ struct ngx_connection_s {
     unsigned            busy_count:2;
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ngx_atomic_t        lock;
 #endif
 };

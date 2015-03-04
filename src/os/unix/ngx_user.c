@@ -64,7 +64,7 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     size_t      len;
     ngx_err_t   err;
 
-#if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
+#if (NGX_OLD_THREADS && NGX_NONREENTRANT_CRYPT)
 
     /* crypt() is a time consuming function, so we only try to lock */
 
@@ -81,14 +81,14 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
         *encrypted = ngx_pnalloc(pool, len);
         if (*encrypted == NULL) {
-#if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
+#if (NGX_OLD_THREADS && NGX_NONREENTRANT_CRYPT)
             ngx_mutex_unlock(ngx_crypt_mutex);
 #endif
             return NGX_ERROR;
         }
 
         ngx_memcpy(*encrypted, value, len);
-#if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
+#if (NGX_OLD_THREADS && NGX_NONREENTRANT_CRYPT)
         ngx_mutex_unlock(ngx_crypt_mutex);
 #endif
         return NGX_OK;
@@ -96,7 +96,7 @@ ngx_libc_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
     err = ngx_errno;
 
-#if (NGX_THREADS && NGX_NONREENTRANT_CRYPT)
+#if (NGX_OLD_THREADS && NGX_NONREENTRANT_CRYPT)
     ngx_mutex_unlock(ngx_crypt_mutex);
 #endif
 
