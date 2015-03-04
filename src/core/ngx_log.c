@@ -97,10 +97,8 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     last = errstr + NGX_MAX_ERROR_STR;
 
-    ngx_memcpy(errstr, ngx_cached_err_log_time.data,
-               ngx_cached_err_log_time.len);
-
-    p = errstr + ngx_cached_err_log_time.len;
+    p = ngx_cpymem(errstr, ngx_cached_err_log_time.data,
+                   ngx_cached_err_log_time.len);
 
     p = ngx_slprintf(p, last, " [%V] ", &err_levels[level]);
 
@@ -248,9 +246,8 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
     u_char    errstr[NGX_MAX_ERROR_STR];
 
     last = errstr + NGX_MAX_ERROR_STR;
-    p = errstr + 7;
 
-    ngx_memcpy(errstr, "nginx: ", 7);
+    p = ngx_cpymem(errstr, "nginx: ", 7);
 
     va_start(args, fmt);
     p = ngx_vslprintf(p, last, fmt, args);
