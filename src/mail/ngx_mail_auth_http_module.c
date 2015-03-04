@@ -1394,14 +1394,9 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     *b->last++ = CR; *b->last++ = LF;
 
 #if (NGX_DEBUG_MAIL_PASSWD)
-    {
-    ngx_str_t  l;
-
-    l.len = b->last - b->pos;
-    l.data = b->pos;
-    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
-                   "mail auth http header:%N\"%V\"", &l);
-    }
+    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
+                   "mail auth http header:%N\"%*s\"",
+                   (size_t) (b->last - b->pos), b->pos);
 #endif
 
     return b;
