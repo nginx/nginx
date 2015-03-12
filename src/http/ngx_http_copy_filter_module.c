@@ -121,14 +121,10 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->filter_ctx = r;
 
 #if (NGX_HAVE_FILE_AIO)
-        if (ngx_file_aio) {
-            if (clcf->aio) {
-                ctx->aio_handler = ngx_http_copy_aio_handler;
-            }
+        if (ngx_file_aio && clcf->aio) {
+            ctx->aio_handler = ngx_http_copy_aio_handler;
 #if (NGX_HAVE_AIO_SENDFILE)
-            if (clcf->aio == NGX_HTTP_AIO_SENDFILE) {
-                ctx->aio_preload = ngx_http_copy_aio_sendfile_preload;
-            }
+            ctx->aio_preload = ngx_http_copy_aio_sendfile_preload;
 #endif
         }
 #endif
