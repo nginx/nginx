@@ -581,7 +581,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
         default:
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                          "unexpected even_port object %d",
+                          "unexpected eventport object %d",
                           event_list[i].portev_object);
             continue;
         }
