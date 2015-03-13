@@ -54,6 +54,8 @@ static char *ngx_http_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -112,20 +114,6 @@ static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("clean"), NGX_HTTP_REQUEST_BODY_FILE_CLEAN },
     { ngx_null_string, 0 }
 };
-
-
-#if (NGX_HAVE_FILE_AIO)
-
-static ngx_conf_enum_t  ngx_http_core_aio[] = {
-    { ngx_string("off"), NGX_HTTP_AIO_OFF  },
-    { ngx_string("on"), NGX_HTTP_AIO_ON },
-#if (NGX_HAVE_AIO_SENDFILE)
-    { ngx_string("sendfile"), NGX_HTTP_AIO_ON },
-#endif
-    { ngx_null_string, 0 }
-};
-
-#endif
 
 
 static ngx_conf_enum_t  ngx_http_core_satisfy[] = {
@@ -423,16 +411,12 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, sendfile_max_chunk),
       NULL },
 
-#if (NGX_HAVE_FILE_AIO)
-
     { ngx_string("aio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
+      ngx_http_core_set_aio,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, aio),
-      &ngx_http_core_aio },
-
-#endif
+      0,
+      NULL },
 
     { ngx_string("read_ahead"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -3639,9 +3623,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->internal = NGX_CONF_UNSET;
     clcf->sendfile = NGX_CONF_UNSET;
     clcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
-#if (NGX_HAVE_FILE_AIO)
     clcf->aio = NGX_CONF_UNSET;
-#endif
     clcf->read_ahead = NGX_CONF_UNSET_SIZE;
     clcf->directio = NGX_CONF_UNSET;
     clcf->directio_alignment = NGX_CONF_UNSET;
@@ -3857,9 +3839,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
-#if (NGX_HAVE_FILE_AIO)
     ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
-#endif
     ngx_conf_merge_size_value(conf->read_ahead, prev->read_ahead, 0);
     ngx_conf_merge_off_value(conf->directio, prev->directio,
                               NGX_OPEN_FILE_DIRECTIO_OFF);
@@ -4650,6 +4630,53 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     *cf = save;
 
     return rv;
+}
+
+
+static char *
+ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    ngx_str_t  *value;
+
+    if (clcf->aio != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        clcf->aio = NGX_HTTP_AIO_OFF;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+#if (NGX_HAVE_FILE_AIO)
+        clcf->aio = NGX_HTTP_AIO_ON;
+        return NGX_CONF_OK;
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"aio on\" "
+                           "is unsupported on this platform");
+        return NGX_CONF_ERROR;
+#endif
+    }
+
+#if (NGX_HAVE_AIO_SENDFILE)
+
+    if (ngx_strcmp(value[1].data, "sendfile") == 0) {
+        clcf->aio = NGX_HTTP_AIO_ON;
+
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "the \"sendfile\" parameter of "
+                           "the \"aio\" directive is deprecated");
+        return NGX_CONF_OK;
+    }
+
+#endif
+
+    return "invalid value";
 }
 
 

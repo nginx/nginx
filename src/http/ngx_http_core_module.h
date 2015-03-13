@@ -395,9 +395,7 @@ struct ngx_http_core_loc_conf_s {
                                            /* client_body_in_singe_buffer */
     ngx_flag_t    internal;                /* internal */
     ngx_flag_t    sendfile;                /* sendfile */
-#if (NGX_HAVE_FILE_AIO)
     ngx_flag_t    aio;                     /* aio */
-#endif
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
