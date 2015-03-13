@@ -100,7 +100,6 @@ ngx_feature_test="int s = 0, fd = 1;
 . auto/feature
 
 if [ $ngx_found = yes ]; then
-    have=NGX_HAVE_SENDFILE . auto/have
     CORE_SRCS="$CORE_SRCS $DARWIN_SENDFILE_SRCS"
 fi
 
