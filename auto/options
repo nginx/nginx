@@ -190,9 +190,6 @@ do
         --without-poll_module)           EVENT_POLL=NONE            ;;
         --with-aio_module)               EVENT_AIO=YES              ;;
 
-        #--with-threads=*)                USE_THREADS="$value"       ;;
-        #--with-threads)                  USE_THREADS="pthreads"     ;;
-
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
         --with-ipv6)                     NGX_IPV6=YES               ;;
 

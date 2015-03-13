@@ -99,25 +99,6 @@ then
 fi
 
 
-if [ $USE_THREADS = "rfork" ]; then
-
-    echo " + using rfork()"
-
-#    # kqueue's EVFILT_SIGNAL is safe
-#
-#    if [ $version -gt 460101 ]; then
-#        echo " + kqueue's EVFILT_SIGNAL is safe"
-#        have=NGX_HAVE_SAFE_EVFILT_SIGNAL . auto/have
-#    else
-#        echo "$0: error: the kqueue's EVFILT_SIGNAL is unsafe on this"
-#        echo "FreeBSD version, so --with-threads=rfork could not be used"
-#        echo
-#
-#        exit 1
-#    fi
-fi
-
-
 if [ $EVENT_AIO = YES ]; then
     if [ \( $version -lt 500000 -a $version -ge 430000 \) \
          -o $version -ge 500014 ]

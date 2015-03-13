@@ -3,34 +3,9 @@
 # Copyright (C) Nginx, Inc.
 
 
-### STUB
-
-if [ $USE_THREADS != NO ]; then
-
-cat << END
-
-$0: error: the threads support is broken now.
-
-END
-        exit 1
-    fi
-
-###
-
-
 echo
 echo "Configuration summary"
 
-
-#case $USE_THREADS in
-#    rfork)         echo "  + using rfork()ed threads" ;;
-#    pthreads)      echo "  + using libpthread threads library" ;;
-#    libthr)        echo "  + using FreeBSD libthr threads library" ;;
-#    libc_r)        echo "  + using FreeBSD libc_r threads library" ;;
-#    linuxthreads)  echo "  + using FreeBSD LinuxThreads port library" ;;
-#    NO)            echo "  + threads are not used" ;;
-#    *)             echo "  + using lib$USE_THREADS threads library" ;;
-#esac
 
 if [ $USE_PCRE = DISABLED ]; then
     echo "  + PCRE library is disabled"

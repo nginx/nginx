@@ -41,11 +41,6 @@ END
     ;;
 
     *)
-        case $USE_THREADS in
-            NO) OPENSSL_OPT="$OPENSSL_OPT no-threads" ;;
-            *)  OPENSSL_OPT="$OPENSSL_OPT threads" ;;
-        esac
-
         case $OPENSSL in
             /*) ngx_prefix="$OPENSSL/.openssl" ;;
             *)  ngx_prefix="$PWD/$OPENSSL/.openssl" ;;
