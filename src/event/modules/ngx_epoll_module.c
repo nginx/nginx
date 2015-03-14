@@ -70,12 +70,15 @@ int epoll_wait(int epfd, struct epoll_event *events, int nevents, int timeout)
     return -1;
 }
 
+#if (NGX_HAVE_EVENTFD)
+#define SYS_eventfd       323
+#endif
+
 #if (NGX_HAVE_FILE_AIO)
 
 #define SYS_io_setup      245
 #define SYS_io_destroy    246
 #define SYS_io_getevents  247
-#define SYS_eventfd       323
 
 typedef u_int  aio_context_t;
 
@@ -88,7 +91,7 @@ struct io_event {
 
 
 #endif
-#endif
+#endif /* NGX_TEST_BUILD_EPOLL */
 
 
 typedef struct {
@@ -98,6 +101,10 @@ typedef struct {
 
 
 static ngx_int_t ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer);
+#if (NGX_HAVE_EVENTFD)
+static ngx_int_t ngx_epoll_notify_init(ngx_log_t *log);
+static void ngx_epoll_notify_handler(ngx_event_t *ev);
+#endif
 static void ngx_epoll_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event,
     ngx_uint_t flags);
@@ -106,6 +113,9 @@ static ngx_int_t ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event,
 static ngx_int_t ngx_epoll_add_connection(ngx_connection_t *c);
 static ngx_int_t ngx_epoll_del_connection(ngx_connection_t *c,
     ngx_uint_t flags);
+#if (NGX_HAVE_EVENTFD)
+static ngx_int_t ngx_epoll_notify(ngx_event_handler_pt handler);
+#endif
 static ngx_int_t ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 
@@ -119,6 +129,12 @@ static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
 static int                  ep = -1;
 static struct epoll_event  *event_list;
 static ngx_uint_t           nevents;
+
+#if (NGX_HAVE_EVENTFD)
+static int                  notify_fd = -1;
+static ngx_event_t          notify_event;
+static ngx_connection_t     notify_conn;
+#endif
 
 #if (NGX_HAVE_FILE_AIO)
 
@@ -164,7 +180,11 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
         ngx_epoll_del_event,             /* disable an event */
         ngx_epoll_add_connection,        /* add an connection */
         ngx_epoll_del_connection,        /* delete an connection */
+#if (NGX_HAVE_EVENTFD)
+        ngx_epoll_notify,                /* trigger a notify */
+#else
         NULL,                            /* trigger a notify */
+#endif
         NULL,                            /* process the changes */
         ngx_epoll_process_events,        /* process the events */
         ngx_epoll_init,                  /* init the events */
@@ -308,6 +328,12 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
             return NGX_ERROR;
         }
 
+#if (NGX_HAVE_EVENTFD)
+        if (ngx_epoll_notify_init(cycle->log) != NGX_OK) {
+            return NGX_ERROR;
+        }
+#endif
+
 #if (NGX_HAVE_FILE_AIO)
 
         ngx_epoll_aio_init(cycle, epcf);
@@ -345,6 +371,85 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 }
 
 
+#if (NGX_HAVE_EVENTFD)
+
+static ngx_int_t
+ngx_epoll_notify_init(ngx_log_t *log)
+{
+    struct epoll_event  ee;
+
+#if (NGX_HAVE_SYS_EVENTFD_H)
+    notify_fd = eventfd(0, 0);
+#else
+    notify_fd = syscall(SYS_eventfd, 0);
+#endif
+
+    if (notify_fd == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno, "eventfd() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "notify eventfd: %d", notify_fd);
+
+    notify_event.handler = ngx_epoll_notify_handler;
+    notify_event.log = log;
+    notify_event.active = 1;
+
+    notify_conn.fd = notify_fd;
+    notify_conn.read = &notify_event;
+    notify_conn.log = log;
+
+    ee.events = EPOLLIN|EPOLLET;
+    ee.data.ptr = &notify_conn;
+
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, notify_fd, &ee) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "epoll_ctl(EPOLL_CTL_ADD, eventfd) failed");
+
+        if (close(notify_fd) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                            "eventfd close() failed");
+        }
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_epoll_notify_handler(ngx_event_t *ev)
+{
+    ssize_t               n;
+    uint64_t              count;
+    ngx_err_t             err;
+    ngx_event_handler_pt  handler;
+
+    if (++ev->index == NGX_MAX_UINT32_VALUE) {
+        ev->index = 0;
+
+        n = read(notify_fd, &count, sizeof(uint64_t));
+
+        err = ngx_errno;
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                       "read() eventfd %d: %z count:%uL", notify_fd, n, count);
+
+        if ((size_t) n != sizeof(uint64_t)) {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, err,
+                          "read() eventfd %d failed", notify_fd);
+        }
+    }
+
+    handler = ev->data;
+    handler(ev);
+}
+
+#endif
+
+
 static void
 ngx_epoll_done(ngx_cycle_t *cycle)
 {
@@ -354,6 +459,17 @@ ngx_epoll_done(ngx_cycle_t *cycle)
     }
 
     ep = -1;
+
+#if (NGX_HAVE_EVENTFD)
+
+    if (close(notify_fd) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "eventfd close() failed");
+    }
+
+    notify_fd = -1;
+
+#endif
 
 #if (NGX_HAVE_FILE_AIO)
 
@@ -559,6 +675,27 @@ ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 
     return NGX_OK;
 }
+
+
+#if (NGX_HAVE_EVENTFD)
+
+static ngx_int_t
+ngx_epoll_notify(ngx_event_handler_pt handler)
+{
+    static uint64_t inc = 1;
+
+    if ((size_t) write(notify_fd, &inc, sizeof(uint64_t)) != sizeof(uint64_t)) {
+        ngx_log_error(NGX_LOG_ALERT, notify_event.log, ngx_errno,
+                      "write() to eventfd %d failed", notify_fd);
+        return NGX_ERROR;
+    }
+
+    notify_event.data = handler;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t
