@@ -23,6 +23,12 @@ struct ngx_file_s {
 
     ngx_log_t                 *log;
 
+#if (NGX_THREADS)
+    ngx_int_t                (*thread_handler)(ngx_thread_task_t *task,
+                                               ngx_file_t *file);
+    void                      *thread_ctx;
+#endif
+
 #if (NGX_HAVE_FILE_AIO)
     ngx_event_aio_t           *aio;
 #endif

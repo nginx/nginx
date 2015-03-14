@@ -13,6 +13,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_THREADS)
+#include <ngx_thread_pool.h>
+#endif
+
 
 #define NGX_HTTP_GZIP_PROXIED_OFF       0x0002
 #define NGX_HTTP_GZIP_PROXIED_EXPIRED   0x0004
@@ -27,6 +31,7 @@
 
 #define NGX_HTTP_AIO_OFF                0
 #define NGX_HTTP_AIO_ON                 1
+#define NGX_HTTP_AIO_THREADS            2
 
 
 #define NGX_HTTP_SATISFY_ALL            0
@@ -419,6 +424,11 @@ struct ngx_http_core_loc_conf_s {
 #if (NGX_PCRE)
     ngx_array_t  *gzip_disable;            /* gzip_disable */
 #endif
+#endif
+
+#if (NGX_THREADS)
+    ngx_thread_pool_t         *thread_pool;
+    ngx_http_complex_value_t  *thread_pool_value;
 #endif
 
 #if (NGX_HAVE_OPENAT)

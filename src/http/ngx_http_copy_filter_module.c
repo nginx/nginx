@@ -24,6 +24,11 @@ static ssize_t ngx_http_copy_aio_sendfile_preload(ngx_buf_t *file);
 static void ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev);
 #endif
 #endif
+#if (NGX_THREADS)
+static ngx_int_t ngx_http_copy_thread_handler(ngx_thread_task_t *task,
+    ngx_file_t *file);
+static void ngx_http_copy_thread_event_handler(ngx_event_t *ev);
+#endif
 
 static void *ngx_http_copy_filter_create_conf(ngx_conf_t *cf);
 static char *ngx_http_copy_filter_merge_conf(ngx_conf_t *cf,
@@ -121,11 +126,17 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->filter_ctx = r;
 
 #if (NGX_HAVE_FILE_AIO)
-        if (ngx_file_aio && clcf->aio) {
+        if (ngx_file_aio && clcf->aio == NGX_HTTP_AIO_ON) {
             ctx->aio_handler = ngx_http_copy_aio_handler;
 #if (NGX_HAVE_AIO_SENDFILE)
             ctx->aio_preload = ngx_http_copy_aio_sendfile_preload;
 #endif
+        }
+#endif
+
+#if (NGX_THREADS)
+        if (clcf->aio == NGX_HTTP_AIO_THREADS) {
+            ctx->thread_handler = ngx_http_copy_thread_handler;
         }
 #endif
 
@@ -134,7 +145,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     ctx->aio = r->aio;
 #endif
 
@@ -230,6 +241,67 @@ ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev)
 }
 
 #endif
+#endif
+
+
+#if (NGX_THREADS)
+
+static ngx_int_t
+ngx_http_copy_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
+{
+    ngx_str_t                  name;
+    ngx_thread_pool_t         *tp;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    r = file->thread_ctx;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    tp = clcf->thread_pool;
+
+    if (tp == NULL) {
+        if (ngx_http_complex_value(r, clcf->thread_pool_value, &name)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        tp = ngx_thread_pool_get((ngx_cycle_t *) ngx_cycle, &name);
+
+        if (tp == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "thread pool \"%V\" not found", &name);
+            return NGX_ERROR;
+        }
+    }
+
+    task->event.data = r;
+    task->event.handler = ngx_http_copy_thread_event_handler;
+
+    if (ngx_thread_task_post(tp, task) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    r->main->blocked++;
+    r->aio = 1;
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_copy_thread_event_handler(ngx_event_t *ev)
+{
+    ngx_http_request_t  *r;
+
+    r = ev->data;
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    r->connection->write->handler(r->connection->write);
+}
+
 #endif
 
 

@@ -3624,6 +3624,10 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->sendfile = NGX_CONF_UNSET;
     clcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
     clcf->aio = NGX_CONF_UNSET;
+#if (NGX_THREADS)
+    clcf->thread_pool = NGX_CONF_UNSET_PTR;
+    clcf->thread_pool_value = NGX_CONF_UNSET_PTR;
+#endif
     clcf->read_ahead = NGX_CONF_UNSET_SIZE;
     clcf->directio = NGX_CONF_UNSET;
     clcf->directio_alignment = NGX_CONF_UNSET;
@@ -3839,7 +3843,14 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->sendfile, prev->sendfile, 0);
     ngx_conf_merge_size_value(conf->sendfile_max_chunk,
                               prev->sendfile_max_chunk, 0);
+#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
+#endif
+#if (NGX_THREADS)
+    ngx_conf_merge_ptr_value(conf->thread_pool, prev->thread_pool, NULL);
+    ngx_conf_merge_ptr_value(conf->thread_pool_value, prev->thread_pool_value,
+                             NULL);
+#endif
     ngx_conf_merge_size_value(conf->read_ahead, prev->read_ahead, 0);
     ngx_conf_merge_off_value(conf->directio, prev->directio,
                               NGX_OPEN_FILE_DIRECTIO_OFF);
@@ -4644,6 +4655,11 @@ ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
+#if (NGX_THREADS)
+    clcf->thread_pool = NULL;
+    clcf->thread_pool_value = NULL;
+#endif
+
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "off") == 0) {
@@ -4675,6 +4691,64 @@ ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 #endif
+
+    if (ngx_strncmp(value[1].data, "threads", 7) == 0
+        && (value[1].len == 7 || value[1].data[7] == '='))
+    {
+#if (NGX_THREADS)
+        ngx_str_t                          name;
+        ngx_thread_pool_t                 *tp;
+        ngx_http_complex_value_t           cv;
+        ngx_http_compile_complex_value_t   ccv;
+
+        clcf->aio = NGX_HTTP_AIO_THREADS;
+
+        if (value[1].len >= 8) {
+            name.len = value[1].len - 8;
+            name.data = value[1].data + 8;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            ccv.cf = cf;
+            ccv.value = &name;
+            ccv.complex_value = &cv;
+
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+            if (cv.lengths != NULL) {
+                clcf->thread_pool_value = ngx_palloc(cf->pool,
+                                    sizeof(ngx_http_complex_value_t));
+                if (clcf->thread_pool_value == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+
+                *clcf->thread_pool_value = cv;
+
+                return NGX_CONF_OK;
+            }
+
+            tp = ngx_thread_pool_add(cf, &name);
+
+        } else {
+            tp = ngx_thread_pool_add(cf, NULL);
+        }
+
+        if (tp == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        clcf->thread_pool = tp;
+
+        return NGX_CONF_OK;
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"aio threads\" "
+                           "is unsupported on this platform");
+        return NGX_CONF_ERROR;
+#endif
+    }
 
     return "invalid value";
 }

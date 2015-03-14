@@ -9,6 +9,12 @@
 #include <ngx_core.h>
 
 
+#if (NGX_THREADS)
+#include <ngx_thread_pool.h>
+static void ngx_thread_read_handler(void *data, ngx_log_t *log);
+#endif
+
+
 #if (NGX_HAVE_FILE_AIO)
 
 ngx_uint_t  ngx_file_aio = 1;
@@ -62,6 +68,109 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 
     return n;
 }
+
+
+#if (NGX_THREADS)
+
+typedef struct {
+    ngx_fd_t     fd;
+    u_char      *buf;
+    size_t       size;
+    off_t        offset;
+
+    size_t       read;
+    ngx_err_t    err;
+} ngx_thread_read_ctx_t;
+
+
+ssize_t
+ngx_thread_read(ngx_thread_task_t **taskp, ngx_file_t *file, u_char *buf,
+    size_t size, off_t offset, ngx_pool_t *pool)
+{
+    ngx_thread_task_t      *task;
+    ngx_thread_read_ctx_t  *ctx;
+
+    ngx_log_debug4(NGX_LOG_DEBUG_CORE, file->log, 0,
+                   "thread read: %d, %p, %uz, %O",
+                   file->fd, buf, size, offset);
+
+    task = *taskp;
+
+    if (task == NULL) {
+        task = ngx_thread_task_alloc(pool, sizeof(ngx_thread_read_ctx_t));
+        if (task == NULL) {
+            return NGX_ERROR;
+        }
+
+        task->handler = ngx_thread_read_handler;
+
+        *taskp = task;
+    }
+
+    ctx = task->ctx;
+
+    if (task->event.complete) {
+        task->event.complete = 0;
+
+        if (ctx->err) {
+            ngx_log_error(NGX_LOG_CRIT, file->log, ctx->err,
+                          "pread() \"%s\" failed", file->name.data);
+            return NGX_ERROR;
+        }
+
+        return ctx->read;
+    }
+
+    ctx->fd = file->fd;
+    ctx->buf = buf;
+    ctx->size = size;
+    ctx->offset = offset;
+
+    if (file->thread_handler(task, file) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return NGX_AGAIN;
+}
+
+
+#if (NGX_HAVE_PREAD)
+
+static void
+ngx_thread_read_handler(void *data, ngx_log_t *log)
+{
+    ngx_thread_read_ctx_t *ctx = data;
+
+    ssize_t  n;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, log, 0, "thread read handler");
+
+    n = pread(ctx->fd, ctx->buf, ctx->size, ctx->offset);
+
+    if (n == -1) {
+        ctx->err = ngx_errno;
+
+    } else {
+        ctx->read = n;
+        ctx->err = 0;
+    }
+
+#if 0
+    ngx_time_update();
+#endif
+
+    ngx_log_debug4(NGX_LOG_DEBUG_CORE, log, 0,
+                   "pread: %z (err: %i) of %uz @%O",
+                   n, ctx->err, ctx->size, ctx->offset);
+}
+
+#else
+
+#error pread() is required!
+
+#endif
+
+#endif /* NGX_THREADS */
 
 
 ssize_t

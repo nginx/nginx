@@ -646,7 +646,7 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (!clcf->aio) {
+    if (clcf->aio != NGX_HTTP_AIO_ON) {
         goto noaio;
     }
 

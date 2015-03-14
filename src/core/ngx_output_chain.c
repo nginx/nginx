@@ -50,7 +50,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
     ngx_chain_t  *cl, *out, **last_out;
 
     if (ctx->in == NULL && ctx->busy == NULL
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
         && !ctx->aio
 #endif
        )
@@ -89,7 +89,7 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
     for ( ;; ) {
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
         if (ctx->aio) {
             return NGX_AGAIN;
         }
@@ -232,6 +232,13 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
     if (ngx_buf_special(buf)) {
         return 1;
     }
+
+#if (NGX_THREADS)
+    if (buf->in_file) {
+        buf->file->thread_handler = ctx->thread_handler;
+        buf->file->thread_ctx = ctx->filter_ctx;
+    }
+#endif
 
     if (buf->in_file && buf->file->directio) {
         return 0;
@@ -559,7 +566,6 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 #endif
 
 #if (NGX_HAVE_FILE_AIO)
-
         if (ctx->aio_handler) {
             n = ngx_file_aio_read(src->file, dst->pos, (size_t) size,
                                   src->file_pos, ctx->pool);
@@ -568,15 +574,23 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
                 return NGX_AGAIN;
             }
 
-        } else {
+        } else
+#endif
+#if (NGX_THREADS)
+        if (src->file->thread_handler) {
+            n = ngx_thread_read(&ctx->thread_task, src->file, dst->pos,
+                                (size_t) size, src->file_pos, ctx->pool);
+            if (n == NGX_AGAIN) {
+                ctx->aio = 1;
+                return NGX_AGAIN;
+            }
+
+        } else
+#endif
+        {
             n = ngx_read_file(src->file, dst->pos, (size_t) size,
                               src->file_pos);
         }
-#else
-
-        n = ngx_read_file(src->file, dst->pos, (size_t) size, src->file_pos);
-
-#endif
 
 #if (NGX_HAVE_ALIGNED_DIRECTIO)
 
