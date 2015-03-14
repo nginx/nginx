@@ -93,6 +93,13 @@ int port_getn(int port, port_event_t list[], uint_t max, uint_t *nget,
     return -1;
 }
 
+int port_send(int port, int events, void *user);
+
+int port_send(int port, int events, void *user)
+{
+    return -1;
+}
+
 
 int timer_create(clockid_t clock_id, struct sigevent *evp, timer_t *timerid);
 
@@ -133,6 +140,7 @@ static ngx_int_t ngx_eventport_add_event(ngx_event_t *ev, ngx_int_t event,
     ngx_uint_t flags);
 static ngx_int_t ngx_eventport_del_event(ngx_event_t *ev, ngx_int_t event,
     ngx_uint_t flags);
+static ngx_int_t ngx_eventport_notify(ngx_event_handler_pt handler);
 static ngx_int_t ngx_eventport_process_events(ngx_cycle_t *cycle,
     ngx_msec_t timer, ngx_uint_t flags);
 
@@ -143,6 +151,7 @@ static int            ep = -1;
 static port_event_t  *event_list;
 static ngx_uint_t     nevents;
 static timer_t        event_timer = (timer_t) -1;
+static ngx_event_t    notify_event;
 
 static ngx_str_t      eventport_name = ngx_string("eventport");
 
@@ -172,7 +181,7 @@ ngx_event_module_t  ngx_eventport_module_ctx = {
         ngx_eventport_del_event,           /* disable an event */
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
-        NULL,                              /* trigger a notify */
+        ngx_eventport_notify,              /* trigger a notify */
         NULL,                              /* process the changes */
         ngx_eventport_process_events,      /* process the events */
         ngx_eventport_init,                /* init the events */
@@ -215,6 +224,9 @@ ngx_eventport_init(ngx_cycle_t *cycle, ngx_msec_t timer)
                           "port_create() failed");
             return NGX_ERROR;
         }
+
+        notify_event.active = 1;
+        notify_event.log = cycle->log;
     }
 
     if (nevents < epcf->events) {
@@ -406,6 +418,21 @@ ngx_eventport_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 }
 
 
+static ngx_int_t
+ngx_eventport_notify(ngx_event_handler_pt handler)
+{
+    notify_event.handler = handler;
+
+    if (port_send(ep, 0, &notify_event) != 0) {
+        ngx_log_error(NGX_LOG_ALERT, notify_event.log, ngx_errno,
+                      "port_send() failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
 ngx_int_t
 ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags)
@@ -577,6 +604,12 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                     wev->handler(wev);
                 }
             }
+
+            continue;
+
+        case PORT_SOURCE_USER:
+
+            ev->handler(ev);
 
             continue;
 
