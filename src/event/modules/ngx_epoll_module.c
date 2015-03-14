@@ -164,6 +164,7 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
         ngx_epoll_del_event,             /* disable an event */
         ngx_epoll_add_connection,        /* add an connection */
         ngx_epoll_del_connection,        /* delete an connection */
+        NULL,                            /* trigger a notify */
         NULL,                            /* process the changes */
         ngx_epoll_process_events,        /* process the events */
         ngx_epoll_init,                  /* init the events */

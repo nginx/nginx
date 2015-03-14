@@ -190,6 +190,8 @@ do
         --without-poll_module)           EVENT_POLL=NONE            ;;
         --with-aio_module)               EVENT_AIO=YES              ;;
 
+        --with-threads)                  USE_THREADS=YES            ;;
+
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
         --with-ipv6)                     NGX_IPV6=YES               ;;
 
@@ -350,6 +352,8 @@ cat << END
   --without-select_module            disable select module
   --with-poll_module                 enable poll module
   --without-poll_module              disable poll module
+
+  --with-threads                     enable thread pool support
 
   --with-file-aio                    enable file AIO support
   --with-ipv6                        enable IPv6 support

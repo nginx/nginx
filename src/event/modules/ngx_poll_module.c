@@ -39,6 +39,7 @@ ngx_event_module_t  ngx_poll_module_ctx = {
         ngx_poll_del_event,                /* disable an event */
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
+        NULL,                              /* trigger a notify */
         NULL,                              /* process the changes */
         ngx_poll_process_events,           /* process the events */
         ngx_poll_init,                     /* init the events */

@@ -89,6 +89,7 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
         ngx_kqueue_del_event,              /* disable an event */
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
+        NULL,                              /* trigger a notify */
         ngx_kqueue_process_changes,        /* process the changes */
         ngx_kqueue_process_events,         /* process the events */
         ngx_kqueue_init,                   /* init the events */

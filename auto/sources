@@ -193,6 +193,13 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
 
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
 
+THREAD_POOL_MODULE=ngx_thread_pool_module
+THREAD_POOL_DEPS=src/core/ngx_thread_pool.h
+THREAD_POOL_SRCS="src/core/ngx_thread_pool.c
+                  src/os/unix/ngx_thread_cond.c
+                  src/os/unix/ngx_thread_mutex.c
+                  src/os/unix/ngx_thread_id.c"
+
 FREEBSD_DEPS="src/os/unix/ngx_freebsd_config.h src/os/unix/ngx_freebsd.h"
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c

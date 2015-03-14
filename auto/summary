@@ -7,6 +7,10 @@ echo
 echo "Configuration summary"
 
 
+if [ $USE_THREADS = YES ]; then
+    echo "  + using threads"
+fi
+
 if [ $USE_PCRE = DISABLED ]; then
     echo "  + PCRE library is disabled"
 

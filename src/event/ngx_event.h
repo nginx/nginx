@@ -200,6 +200,8 @@ typedef struct {
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
 
+    ngx_int_t  (*notify)(ngx_event_handler_pt handler);
+
     ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                    ngx_uint_t flags);
@@ -421,6 +423,8 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define ngx_del_event        ngx_event_actions.del
 #define ngx_add_conn         ngx_event_actions.add_conn
 #define ngx_del_conn         ngx_event_actions.del_conn
+
+#define ngx_notify           ngx_event_actions.notify
 
 #define ngx_add_timer        ngx_event_add_timer
 #define ngx_del_timer        ngx_event_del_timer
