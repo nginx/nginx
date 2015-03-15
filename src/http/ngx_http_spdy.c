@@ -1353,7 +1353,7 @@ ngx_http_spdy_state_window_update(ngx_http_spdy_connection_t *sc, u_char *pos,
     pos += NGX_SPDY_DELTA_SIZE;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sc->connection->log, 0,
-                   "spdy WINDOW_UPDATE sid:%ui delta:%ui", sid, delta);
+                   "spdy WINDOW_UPDATE sid:%ui delta:%uz", sid, delta);
 
     if (sid) {
         stream = ngx_http_spdy_get_stream_by_id(sc, sid);
