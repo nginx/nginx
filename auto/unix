@@ -510,6 +510,7 @@ ngx_param=NGX_OFF_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
 ngx_type="time_t"; . auto/types/sizeof
 ngx_param=NGX_TIME_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 ngx_param=NGX_TIME_T_LEN; ngx_value=$ngx_max_len; . auto/types/value
+ngx_param=NGX_MAX_TIME_T_VALUE; ngx_value=$ngx_max_value; . auto/types/value
 
 
 # syscalls, libc calls and some features

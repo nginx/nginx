@@ -85,8 +85,11 @@ typedef intptr_t        ngx_flag_t;
 
 #if (NGX_PTR_SIZE == 4)
 #define NGX_INT_T_LEN   NGX_INT32_LEN
+#define NGX_MAX_INT_T_VALUE  2147483647
+
 #else
 #define NGX_INT_T_LEN   NGX_INT64_LEN
+#define NGX_MAX_INT_T_VALUE  9223372036854775807
 #endif
 
 
