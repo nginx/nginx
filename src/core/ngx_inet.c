@@ -27,6 +27,10 @@ ngx_inet_addr(u_char *text, size_t len)
 
     for (p = text; p < text + len; p++) {
 
+        if (octet > 255) {
+            return INADDR_NONE;
+        }
+
         c = *p;
 
         if (c >= '0' && c <= '9') {
@@ -34,7 +38,7 @@ ngx_inet_addr(u_char *text, size_t len)
             continue;
         }
 
-        if (c == '.' && octet < 256) {
+        if (c == '.') {
             addr = (addr << 8) + octet;
             octet = 0;
             n++;
@@ -44,7 +48,7 @@ ngx_inet_addr(u_char *text, size_t len)
         return INADDR_NONE;
     }
 
-    if (n == 3 && octet < 256) {
+    if (n == 3) {
         addr = (addr << 8) + octet;
         return htonl(addr);
     }
