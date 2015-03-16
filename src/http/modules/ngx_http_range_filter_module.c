@@ -274,13 +274,16 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
     ngx_uint_t ranges)
 {
     u_char            *p;
-    off_t              start, end, size, content_length;
+    off_t              start, end, size, content_length, cutoff, cutlim;
     ngx_uint_t         suffix;
     ngx_http_range_t  *range;
 
     p = r->headers_in.range->value.data + 6;
     size = 0;
     content_length = r->headers_out.content_length_n;
+
+    cutoff = NGX_MAX_OFF_T_VALUE / 10;
+    cutlim = NGX_MAX_OFF_T_VALUE % 10;
 
     for ( ;; ) {
         start = 0;
@@ -295,6 +298,10 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
             }
 
             while (*p >= '0' && *p <= '9') {
+                if (start >= cutoff && (start > cutoff || *p - '0' > cutlim)) {
+                    return NGX_HTTP_RANGE_NOT_SATISFIABLE;
+                }
+
                 start = start * 10 + *p++ - '0';
             }
 
@@ -321,6 +328,10 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
         }
 
         while (*p >= '0' && *p <= '9') {
+            if (end >= cutoff && (end > cutoff || *p - '0' > cutlim)) {
+                return NGX_HTTP_RANGE_NOT_SATISFIABLE;
+            }
+
             end = end * 10 + *p++ - '0';
         }
 
