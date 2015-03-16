@@ -12,10 +12,9 @@
 ssize_t
 ngx_parse_size(ngx_str_t *line)
 {
-    u_char     unit;
-    size_t     len;
-    ssize_t    size;
-    ngx_int_t  scale;
+    u_char   unit;
+    size_t   len;
+    ssize_t  size, scale, max;
 
     len = line->len;
     unit = line->data[len - 1];
@@ -24,21 +23,24 @@ ngx_parse_size(ngx_str_t *line)
     case 'K':
     case 'k':
         len--;
+        max = NGX_MAX_SIZE_T_VALUE / 1024;
         scale = 1024;
         break;
 
     case 'M':
     case 'm':
         len--;
+        max = NGX_MAX_SIZE_T_VALUE / (1024 * 1024);
         scale = 1024 * 1024;
         break;
 
     default:
+        max = NGX_MAX_SIZE_T_VALUE;
         scale = 1;
     }
 
     size = ngx_atosz(line->data, len);
-    if (size == NGX_ERROR) {
+    if (size == NGX_ERROR || size > max) {
         return NGX_ERROR;
     }
 
@@ -51,10 +53,9 @@ ngx_parse_size(ngx_str_t *line)
 off_t
 ngx_parse_offset(ngx_str_t *line)
 {
-    u_char     unit;
-    off_t      offset;
-    size_t     len;
-    ngx_int_t  scale;
+    u_char  unit;
+    off_t   offset, scale, max;
+    size_t  len;
 
     len = line->len;
     unit = line->data[len - 1];
@@ -63,27 +64,31 @@ ngx_parse_offset(ngx_str_t *line)
     case 'K':
     case 'k':
         len--;
+        max = NGX_MAX_OFF_T_VALUE / 1024;
         scale = 1024;
         break;
 
     case 'M':
     case 'm':
         len--;
+        max = NGX_MAX_OFF_T_VALUE / (1024 * 1024);
         scale = 1024 * 1024;
         break;
 
     case 'G':
     case 'g':
         len--;
+        max = NGX_MAX_OFF_T_VALUE / (1024 * 1024 * 1024);
         scale = 1024 * 1024 * 1024;
         break;
 
     default:
+        max = NGX_MAX_OFF_T_VALUE;
         scale = 1;
     }
 
     offset = ngx_atoof(line->data, len);
-    if (offset == NGX_ERROR) {
+    if (offset == NGX_ERROR || offset > max) {
         return NGX_ERROR;
     }
 
