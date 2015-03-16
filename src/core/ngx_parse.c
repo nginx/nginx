@@ -121,7 +121,6 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
     value = 0;
     total = 0;
     step = is_sec ? st_start : st_month;
-    scale = is_sec ? 1 : 1000;
 
     p = line->data;
     last = p + line->len;
@@ -239,7 +238,6 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
         }
 
         value = 0;
-        scale = is_sec ? 1 : 1000;
 
         while (p < last && *p == ' ') {
             p++;
@@ -247,7 +245,7 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
     }
 
     if (valid) {
-        return total + value * scale;
+        return total + value * (is_sec ? 1 : 1000);
     }
 
     return NGX_ERROR;
