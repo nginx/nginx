@@ -72,6 +72,8 @@ typedef struct {
     ngx_str_t                                   cookie_domain;
     ngx_str_t                                   cookie_path;
     time_t                                      cookie_expires;
+    unsigned                                    cookie_httponly:1;
+    unsigned                                    cookie_secure:1;
 } ngx_http_upstream_sticky_srv_conf_t;
 
 
@@ -148,6 +150,8 @@ static char *ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
 
 
 static u_char expires[] = "; expires=Thu, 31-Dec-37 23:55:55 GMT";
+static u_char httponly[] = "; httponly";
+static u_char secure[] = "; secure";
 
 
 static ngx_command_t  ngx_http_upstream_sticky_commands[] = {
@@ -551,6 +555,14 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         len += sizeof(expires) - 1;
     }
 
+    if (stcf->cookie_httponly) {
+        len += sizeof(httponly) - 1;
+    }
+
+    if (stcf->cookie_secure) {
+        len += sizeof(secure) - 1;
+    }
+
     data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
         return NGX_ERROR;
@@ -572,6 +584,15 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
     }
 
     p = ngx_copy(p, stcf->cookie_domain.data, stcf->cookie_domain.len);
+
+    if (stcf->cookie_httponly) {
+        p = ngx_copy(p, httponly, sizeof(httponly) - 1);
+    }
+
+    if (stcf->cookie_secure) {
+        p = ngx_copy(p, secure, sizeof(secure) - 1);
+    }
+
     ngx_memcpy(p, stcf->cookie_path.data, stcf->cookie_path.len);
 
     cookie = stp->cookie;
@@ -892,6 +913,8 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
      *     stcf->cookie_name = { 0, NULL };
      *     stcf->cookie_domain = { 0, NULL };
      *     stcf->cookie_path = { 0, NULL };
+     *     stcf->cookie_httponly = 0;
+     *     stcf->cookie_secure = 0;
      */
 
     stcf->cookie_expires = NGX_CONF_UNSET;
@@ -1060,6 +1083,22 @@ ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
                     return "invalid \"expires\" parameter value";
                 }
             }
+
+        } else if (ngx_strcmp(value[i].data, "httponly") == 0) {
+
+            if (stcf->cookie_httponly) {
+                return "parameter \"httponly\" is duplicate";
+            }
+
+            stcf->cookie_httponly = 1;
+
+        } else if (ngx_strcmp(value[i].data, "secure") == 0) {
+
+            if (stcf->cookie_secure) {
+                return "parameter \"secure\" is duplicate";
+            }
+
+            stcf->cookie_secure = 1;
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
