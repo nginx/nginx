@@ -50,22 +50,12 @@ rm -rf $NGX_AUTOTEST*
 
 case $ngx_size in
     4)
-        if [ "$ngx_type"="long" ]; then
-            ngx_max_value=2147483647L
-        else
-            ngx_max_value=2147483647
-        fi
-
+        ngx_max_value=2147483647
         ngx_max_len='(sizeof("-2147483648") - 1)'
     ;;
 
     8)
-        if [ "$ngx_type"="long long" ]; then
-            ngx_max_value=9223372036854775807LL
-        else
-            ngx_max_value=9223372036854775807L
-        fi
-
+        ngx_max_value=9223372036854775807LL
         ngx_max_len='(sizeof("-9223372036854775808") - 1)'
     ;;
 
