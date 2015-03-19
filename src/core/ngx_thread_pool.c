@@ -172,7 +172,11 @@ ngx_thread_pool_queue_init(ngx_thread_pool_queue_t *queue, ngx_log_t *log)
 static ngx_int_t
 ngx_thread_pool_queue_destroy(ngx_thread_pool_queue_t *queue, ngx_log_t *log)
 {
+#if 0
     return ngx_thread_mutex_destroy(&queue->mtx, log);
+#else
+    return NGX_OK;
+#endif
 }
 
 
@@ -181,7 +185,10 @@ ngx_thread_pool_destroy(ngx_thread_pool_t *tp)
 {
     /* TODO: exit threads */
 
+#if 0
     (void) ngx_thread_cond_destroy(&tp->cond, tp->log);
+#endif
+
     (void) ngx_thread_pool_queue_destroy(&tp->queue, tp->log);
 }
 
