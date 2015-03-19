@@ -18,16 +18,15 @@ typedef struct {
 
 typedef struct {
     ngx_thread_mutex_t        mtx;
-    ngx_uint_t                count;
     ngx_thread_task_t        *first;
     ngx_thread_task_t       **last;
 } ngx_thread_pool_queue_t;
 
 
 struct ngx_thread_pool_s {
-    ngx_thread_cond_t         cond;
-
     ngx_thread_pool_queue_t   queue;
+    ngx_uint_t                waiting;
+    ngx_thread_cond_t         cond;
 
     ngx_log_t                *log;
     ngx_pool_t               *pool;
@@ -163,7 +162,6 @@ ngx_thread_pool_init(ngx_thread_pool_t *tp, ngx_log_t *log, ngx_pool_t *pool)
 static ngx_int_t
 ngx_thread_pool_queue_init(ngx_thread_pool_queue_t *queue, ngx_log_t *log)
 {
-    queue->count = 0;
     queue->first = NULL;
     queue->last = &queue->first;
 
@@ -217,12 +215,12 @@ ngx_thread_task_post(ngx_thread_pool_t *tp, ngx_thread_task_t *task)
         return NGX_ERROR;
     }
 
-    if (tp->queue.count >= tp->max_queue) {
+    if (tp->waiting >= tp->max_queue) {
         (void) ngx_thread_mutex_unlock(&tp->queue.mtx, tp->log);
 
         ngx_log_error(NGX_LOG_ERR, tp->log, 0,
                       "thread pool \"%V\" queue overflow: %ui tasks waiting",
-                      &tp->name, tp->queue.count);
+                      &tp->name, tp->waiting);
         return NGX_ERROR;
     }
 
@@ -239,7 +237,7 @@ ngx_thread_task_post(ngx_thread_pool_t *tp, ngx_thread_task_t *task)
     *tp->queue.last = task;
     tp->queue.last = &task->next;
 
-    tp->queue.count++;
+    tp->waiting++;
 
     (void) ngx_thread_mutex_unlock(&tp->queue.mtx, tp->log);
 
@@ -285,7 +283,7 @@ ngx_thread_pool_cycle(void *data)
             return NULL;
         }
 
-        while (tp->queue.count == 0) {
+        while (tp->waiting == 0) {
             if (ngx_thread_cond_wait(&tp->cond, &tp->queue.mtx, tp->log)
                 != NGX_OK)
             {
@@ -294,7 +292,7 @@ ngx_thread_pool_cycle(void *data)
             }
         }
 
-        tp->queue.count--;
+        tp->waiting--;
 
         task = tp->queue.first;
         tp->queue.first = task->next;
