@@ -14,6 +14,23 @@ static char *ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log);
 static void ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log);
 
 
+#if (NGX_DEBUG)
+
+static void ngx_log_memory_writer(ngx_log_t *log, ngx_uint_t level,
+    u_char *buf, size_t len);
+static void ngx_log_memory_cleanup(void *data);
+
+
+typedef struct {
+    u_char        *start;
+    u_char        *end;
+    u_char        *pos;
+    ngx_atomic_t   written;
+} ngx_log_memory_buf_t;
+
+#endif
+
+
 static ngx_command_t  ngx_errlog_commands[] = {
 
     {ngx_string("error_log"),
@@ -568,6 +585,64 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
             return NGX_CONF_ERROR;
         }
 
+     } else if (ngx_strncmp(value[1].data, "memory:", 7) == 0) {
+
+#if (NGX_DEBUG)
+        size_t                 size, needed;
+        ngx_pool_cleanup_t    *cln;
+        ngx_log_memory_buf_t  *buf;
+
+        value[1].len -= 7;
+        value[1].data += 7;
+
+        needed = sizeof("MEMLOG  :" NGX_LINEFEED)
+                 + cf->conf_file->file.name.len
+                 + NGX_SIZE_T_LEN
+                 + NGX_INT_T_LEN
+                 + NGX_MAX_ERROR_STR;
+
+        size = ngx_parse_size(&value[1]);
+
+        if (size == (size_t) NGX_ERROR || size < needed) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid buffer size \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        buf = ngx_palloc(cf->pool, sizeof(ngx_log_memory_buf_t));
+        if (buf == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        buf->start = ngx_pnalloc(cf->pool, size);
+        if (buf->start == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        buf->end = buf->start + size;
+
+        buf->pos = ngx_slprintf(buf->start, buf->end, "MEMLOG %uz %V:%ui%N",
+                                size, &cf->conf_file->file.name,
+                                cf->conf_file->line);
+
+        ngx_memset(buf->pos, ' ', buf->end - buf->pos);
+
+        cln = ngx_pool_cleanup_add(cf->pool, 0);
+        if (cln == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        cln->data = new_log;
+        cln->handler = ngx_log_memory_cleanup;
+
+        new_log->writer = ngx_log_memory_writer;
+        new_log->wdata = buf;
+
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "nginx was built without debug support");
+        return NGX_CONF_ERROR;
+#endif
 
      } else if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
         peer = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
@@ -633,3 +708,48 @@ ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log)
 
     log->next = new_log;
 }
+
+
+#if (NGX_DEBUG)
+
+static void
+ngx_log_memory_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
+    size_t len)
+{
+    u_char                *p;
+    size_t                 avail, written;
+    ngx_log_memory_buf_t  *mem;
+
+    mem = log->wdata;
+
+    if (mem == NULL) {
+        return;
+    }
+
+    written = ngx_atomic_fetch_add(&mem->written, len);
+
+    p = mem->pos + written % (mem->end - mem->pos);
+
+    avail = mem->end - p;
+
+    if (avail >= len) {
+        ngx_memcpy(p, buf, len);
+
+    } else {
+        ngx_memcpy(p, buf, avail);
+        ngx_memcpy(mem->pos, buf + avail, len - avail);
+    }
+}
+
+
+static void
+ngx_log_memory_cleanup(void *data)
+{
+    ngx_log_t *log = data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, log, 0, "destroy memory log buffer");
+
+    log->wdata = NULL;
+}
+
+#endif
