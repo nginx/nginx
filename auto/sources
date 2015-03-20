@@ -203,9 +203,6 @@ THREAD_POOL_SRCS="src/core/ngx_thread_pool.c
 FREEBSD_DEPS="src/os/unix/ngx_freebsd_config.h src/os/unix/ngx_freebsd.h"
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c
-FREEBSD_RFORK_DEPS="src/os/unix/ngx_freebsd_rfork_thread.h"
-FREEBSD_RFORK_SRCS="src/os/unix/ngx_freebsd_rfork_thread.c"
-FREEBSD_RFORK_THREAD_SRCS="src/os/unix/rfork_thread.S"
 
 PTHREAD_SRCS="src/os/unix/ngx_pthread_thread.c"
 

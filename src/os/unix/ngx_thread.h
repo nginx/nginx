@@ -16,12 +16,6 @@
 
 #define NGX_MAX_THREADS      128
 
-#if (NGX_USE_RFORK)
-#include <ngx_freebsd_rfork_thread.h>
-
-
-#else /* use pthreads */
-
 #include <pthread.h>
 
 typedef pthread_t                    ngx_tid_t;
@@ -69,8 +63,6 @@ typedef struct {
 ngx_int_t ngx_mutex_trylock(ngx_mutex_t *m);
 void ngx_mutex_lock(ngx_mutex_t *m);
 void ngx_mutex_unlock(ngx_mutex_t *m);
-
-#endif
 
 
 #define ngx_thread_volatile   volatile

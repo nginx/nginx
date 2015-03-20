@@ -100,12 +100,6 @@ typedef struct aiocb  ngx_aiocb_t;
 #endif
 
 
-#if (__FreeBSD_version < 430000 || __FreeBSD_version < 500012)
-
-pid_t rfork_thread(int flags, void *stack, int (*func)(void *arg), void *arg);
-
-#endif
-
 #ifndef IOV_MAX
 #define IOV_MAX   1024
 #endif
