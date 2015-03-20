@@ -943,18 +943,6 @@ ngx_close_connection(ngx_connection_t *c)
         }
     }
 
-#if (NGX_OLD_THREADS)
-
-    /*
-     * we have to clean the connection information before the closing
-     * because another thread may reopen the same file descriptor
-     * before we clean the connection
-     */
-
-    ngx_unlock(&c->lock);
-
-#endif
-
     if (c->read->posted) {
         ngx_delete_posted_event(c->read);
     }

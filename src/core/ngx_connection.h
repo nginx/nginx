@@ -187,10 +187,6 @@ struct ngx_connection_s {
 #if (NGX_THREADS)
     ngx_thread_task_t  *sendfile_task;
 #endif
-
-#if (NGX_OLD_THREADS)
-    ngx_atomic_t        lock;
-#endif
 };
 
 

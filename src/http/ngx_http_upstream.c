@@ -446,9 +446,6 @@ ngx_http_upstream_create(ngx_http_request_t *r)
 
     u->peer.log = r->connection->log;
     u->peer.log_error = NGX_ERROR_ERR;
-#if (NGX_OLD_THREADS)
-    u->peer.lock = &r->connection->lock;
-#endif
 
 #if (NGX_HTTP_CACHE)
     r->cache = NULL;
