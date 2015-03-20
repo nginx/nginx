@@ -36,7 +36,6 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
 #include <ngx_http_script.h>
 #include <ngx_http_upstream.h>
 #include <ngx_http_upstream_round_robin.h>
-#include <ngx_http_busy_lock.h>
 #include <ngx_http_core_module.h>
 
 #if (NGX_HTTP_SPDY)

@@ -27,14 +27,6 @@ typedef struct {
 #endif
 
 
-typedef struct {
-    ngx_uint_t       lock;
-
-    ngx_event_t     *events;
-    ngx_event_t     *last;
-} ngx_event_mutex_t;
-
-
 struct ngx_event_s {
     void            *data;
 
@@ -533,7 +525,6 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
-#include <ngx_event_busy_lock.h>
 
 #if (NGX_WIN32)
 #include <ngx_iocp_module.h>

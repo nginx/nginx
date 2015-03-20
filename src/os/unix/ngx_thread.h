@@ -67,8 +67,5 @@ ngx_tid_t ngx_thread_tid(void);
 
 #endif
 
-#define ngx_mutex_lock(m)
-#define ngx_mutex_unlock(m)
-
 
 #endif /* _NGX_THREAD_H_INCLUDED_ */

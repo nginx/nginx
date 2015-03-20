@@ -92,14 +92,12 @@ EVENT_INCS="src/event src/event/modules"
 EVENT_DEPS="src/event/ngx_event.h \
             src/event/ngx_event_timer.h \
             src/event/ngx_event_posted.h \
-            src/event/ngx_event_busy_lock.h \
             src/event/ngx_event_connect.h \
             src/event/ngx_event_pipe.h"
 
 EVENT_SRCS="src/event/ngx_event.c \
             src/event/ngx_event_timer.c \
             src/event/ngx_event_posted.c \
-            src/event/ngx_event_busy_lock.c \
             src/event/ngx_event_accept.c \
             src/event/ngx_event_connect.c \
             src/event/ngx_event_pipe.c"
@@ -297,8 +295,7 @@ HTTP_DEPS="src/http/ngx_http.h \
            src/http/ngx_http_variables.h \
            src/http/ngx_http_script.h \
            src/http/ngx_http_upstream.h \
-           src/http/ngx_http_upstream_round_robin.h \
-           src/http/ngx_http_busy_lock.h"
+           src/http/ngx_http_upstream_round_robin.h"
 
 HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_core_module.c \
@@ -321,9 +318,6 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/modules/ngx_http_range_filter_module.c \
            src/http/modules/ngx_http_headers_filter_module.c \
            src/http/modules/ngx_http_not_modified_filter_module.c"
-
-# STUB
-HTTP_SRCS="$HTTP_SRCS src/http/ngx_http_busy_lock.c"
 
 HTTP_POSTPONE_FILTER_SRCS=src/http/ngx_http_postpone_filter_module.c
 
