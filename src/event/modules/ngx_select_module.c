@@ -48,7 +48,6 @@ ngx_event_module_t  ngx_select_module_ctx = {
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
         NULL,                              /* trigger a notify */
-        NULL,                              /* process the changes */
         ngx_select_process_events,         /* process the events */
         ngx_select_init,                   /* init the events */
         ngx_select_done                    /* done the events */

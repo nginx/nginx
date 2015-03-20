@@ -43,7 +43,6 @@ extern ngx_pid_t       ngx_pid;
 extern ngx_pid_t       ngx_new_binary;
 extern ngx_uint_t      ngx_inherited;
 extern ngx_uint_t      ngx_daemonized;
-extern ngx_uint_t      ngx_threaded;
 extern ngx_uint_t      ngx_exiting;
 
 extern sig_atomic_t    ngx_reap;

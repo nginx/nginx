@@ -202,7 +202,6 @@ typedef struct {
 
     ngx_int_t  (*notify)(ngx_event_handler_pt handler);
 
-    ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                    ngx_uint_t flags);
 
@@ -415,7 +414,6 @@ extern ngx_event_actions_t   ngx_event_actions;
 #endif
 
 
-#define ngx_process_changes  ngx_event_actions.process_changes
 #define ngx_process_events   ngx_event_actions.process_events
 #define ngx_done_events      ngx_event_actions.done
 

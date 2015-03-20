@@ -131,7 +131,6 @@ ngx_event_module_t  ngx_rtsig_module_ctx = {
         ngx_rtsig_add_connection,        /* add an connection */
         ngx_rtsig_del_connection,        /* delete an connection */
         NULL,                            /* trigger a notify */
-        NULL,                            /* process the changes */
         ngx_rtsig_process_events,        /* process the events */
         ngx_rtsig_init,                  /* init the events */
         ngx_rtsig_done,                  /* done the events */

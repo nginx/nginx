@@ -182,7 +182,6 @@ ngx_event_module_t  ngx_eventport_module_ctx = {
         NULL,                              /* add an connection */
         NULL,                              /* delete an connection */
         ngx_eventport_notify,              /* trigger a notify */
-        NULL,                              /* process the changes */
         ngx_eventport_process_events,      /* process the events */
         ngx_eventport_init,                /* init the events */
         ngx_eventport_done,                /* done the events */

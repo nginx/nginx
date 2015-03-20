@@ -30,7 +30,6 @@ static ngx_int_t ngx_kqueue_set_event(ngx_event_t *ev, ngx_int_t filter,
 #ifdef EVFILT_USER
 static ngx_int_t ngx_kqueue_notify(ngx_event_handler_pt handler);
 #endif
-static ngx_int_t ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try);
 static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log,
@@ -42,15 +41,7 @@ static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
 
 int                    ngx_kqueue = -1;
 
-/*
- * The "change_list" should be declared as ngx_thread_volatile.
- * However, the use of the change_list is localized in kqueue functions and
- * is protected by the mutex so even the "icc -ipo" should not build the code
- * with the race condition.  Thus we avoid the declaration to make a more
- * readable code.
- */
-
-static struct kevent  *change_list, *change_list0, *change_list1;
+static struct kevent  *change_list;
 static struct kevent  *event_list;
 static ngx_uint_t      max_changes, nchanges, nevents;
 
@@ -99,7 +90,6 @@ ngx_event_module_t  ngx_kqueue_module_ctx = {
 #else
         NULL,                              /* trigger a notify */
 #endif
-        ngx_kqueue_process_changes,        /* process the changes */
         ngx_kqueue_process_events,         /* process the events */
         ngx_kqueue_init,                   /* init the events */
         ngx_kqueue_done                    /* done the events */
@@ -165,27 +155,15 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
             nchanges = 0;
         }
 
-        if (change_list0) {
-            ngx_free(change_list0);
+        if (change_list) {
+            ngx_free(change_list);
         }
 
-        change_list0 = ngx_alloc(kcf->changes * sizeof(struct kevent),
-                                 cycle->log);
-        if (change_list0 == NULL) {
+        change_list = ngx_alloc(kcf->changes * sizeof(struct kevent),
+                                cycle->log);
+        if (change_list == NULL) {
             return NGX_ERROR;
         }
-
-        if (change_list1) {
-            ngx_free(change_list1);
-        }
-
-        change_list1 = ngx_alloc(kcf->changes * sizeof(struct kevent),
-                                 cycle->log);
-        if (change_list1 == NULL) {
-            return NGX_ERROR;
-        }
-
-        change_list = change_list0;
     }
 
     max_changes = kcf->changes;
@@ -290,12 +268,9 @@ ngx_kqueue_done(ngx_cycle_t *cycle)
 
     ngx_kqueue = -1;
 
-    ngx_free(change_list1);
-    ngx_free(change_list0);
+    ngx_free(change_list);
     ngx_free(event_list);
 
-    change_list1 = NULL;
-    change_list0 = NULL;
     change_list = NULL;
     event_list = NULL;
     max_changes = 0;
@@ -531,17 +506,8 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_queue_t      *queue;
     struct timespec   ts, *tp;
 
-    if (ngx_threaded) {
-        if (ngx_kqueue_process_changes(cycle, 0) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        n = 0;
-
-    } else {
-        n = (int) nchanges;
-        nchanges = 0;
-    }
+    n = (int) nchanges;
+    nchanges = 0;
 
     if (timer == NGX_TIMER_INFINITE) {
         tp = NULL;
@@ -704,49 +670,6 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     }
 
     return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
-{
-    int               n;
-    ngx_int_t         rc;
-    ngx_err_t         err;
-    struct timespec   ts;
-    struct kevent    *changes;
-
-    if (nchanges == 0) {
-        return NGX_OK;
-    }
-
-    changes = change_list;
-    if (change_list == change_list0) {
-        change_list = change_list1;
-    } else {
-        change_list = change_list0;
-    }
-
-    n = (int) nchanges;
-    nchanges = 0;
-
-    ts.tv_sec = 0;
-    ts.tv_nsec = 0;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "kevent changes: %d", n);
-
-    if (kevent(ngx_kqueue, changes, n, NULL, 0, &ts) == -1) {
-        err = ngx_errno;
-        ngx_log_error((err == NGX_EINTR) ? NGX_LOG_INFO : NGX_LOG_ALERT,
-                      cycle->log, err, "kevent() failed");
-        rc = NGX_ERROR;
-
-    } else {
-        rc = NGX_OK;
-    }
-
-    return rc;
 }
 
 

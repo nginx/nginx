@@ -185,7 +185,6 @@ ngx_event_module_t  ngx_epoll_module_ctx = {
 #else
         NULL,                            /* trigger a notify */
 #endif
-        NULL,                            /* process the changes */
         ngx_epoll_process_events,        /* process the events */
         ngx_epoll_init,                  /* init the events */
         ngx_epoll_done,                  /* done the events */
