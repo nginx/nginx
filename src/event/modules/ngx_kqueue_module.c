@@ -59,12 +59,6 @@ static ngx_event_t     notify_event;
 static struct kevent   notify_kev;
 #endif
 
-#if (NGX_OLD_THREADS)
-static ngx_mutex_t    *list_mutex;
-static ngx_mutex_t    *kevent_mutex;
-#endif
-
-
 
 static ngx_str_t      kqueue_name = ngx_string("kqueue");
 
@@ -153,20 +147,6 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         if (ngx_kqueue_notify_init(cycle->log) != NGX_OK) {
             return NGX_ERROR;
         }
-#endif
-
-#if (NGX_OLD_THREADS)
-
-        list_mutex = ngx_mutex_init(cycle->log, 0);
-        if (list_mutex == NULL) {
-            return NGX_ERROR;
-        }
-
-        kevent_mutex = ngx_mutex_init(cycle->log, 0);
-        if (kevent_mutex == NULL) {
-            return NGX_ERROR;
-        }
-
 #endif
     }
 
@@ -310,11 +290,6 @@ ngx_kqueue_done(ngx_cycle_t *cycle)
 
     ngx_kqueue = -1;
 
-#if (NGX_OLD_THREADS)
-    ngx_mutex_destroy(kevent_mutex);
-    ngx_mutex_destroy(list_mutex);
-#endif
-
     ngx_free(change_list1);
     ngx_free(change_list0);
     ngx_free(event_list);
@@ -342,8 +317,6 @@ ngx_kqueue_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     ev->disabled = 0;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 
-    ngx_mutex_lock(list_mutex);
-
 #if 0
 
     if (ev->index < nchanges
@@ -368,8 +341,6 @@ ngx_kqueue_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                 e->index = ev->index;
             }
 
-            ngx_mutex_unlock(list_mutex);
-
             return NGX_OK;
         }
 
@@ -378,16 +349,12 @@ ngx_kqueue_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                       "previous event on #%d were not passed in kernel", c->fd);
 
-        ngx_mutex_unlock(list_mutex);
-
         return NGX_ERROR;
     }
 
 #endif
 
     rc = ngx_kqueue_set_event(ev, event, EV_ADD|EV_ENABLE|flags);
-
-    ngx_mutex_unlock(list_mutex);
 
     return rc;
 }
@@ -401,8 +368,6 @@ ngx_kqueue_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     ev->active = 0;
     ev->disabled = 0;
-
-    ngx_mutex_lock(list_mutex);
 
     if (ev->index < nchanges
         && ((uintptr_t) change_list[ev->index].udata & (uintptr_t) ~1)
@@ -423,8 +388,6 @@ ngx_kqueue_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
             e->index = ev->index;
         }
 
-        ngx_mutex_unlock(list_mutex);
-
         return NGX_OK;
     }
 
@@ -435,7 +398,6 @@ ngx_kqueue_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
      */
 
     if (flags & NGX_CLOSE_EVENT) {
-        ngx_mutex_unlock(list_mutex);
         return NGX_OK;
     }
 
@@ -447,8 +409,6 @@ ngx_kqueue_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     }
 
     rc = ngx_kqueue_set_event(ev, event, flags);
-
-    ngx_mutex_unlock(list_mutex);
 
     return rc;
 }
@@ -756,13 +716,7 @@ ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
     struct timespec   ts;
     struct kevent    *changes;
 
-    ngx_mutex_lock(kevent_mutex);
-
-    ngx_mutex_lock(list_mutex);
-
     if (nchanges == 0) {
-        ngx_mutex_unlock(list_mutex);
-        ngx_mutex_unlock(kevent_mutex);
         return NGX_OK;
     }
 
@@ -775,8 +729,6 @@ ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
 
     n = (int) nchanges;
     nchanges = 0;
-
-    ngx_mutex_unlock(list_mutex);
 
     ts.tv_sec = 0;
     ts.tv_nsec = 0;
@@ -793,8 +745,6 @@ ngx_kqueue_process_changes(ngx_cycle_t *cycle, ngx_uint_t try)
     } else {
         rc = NGX_OK;
     }
-
-    ngx_mutex_unlock(kevent_mutex);
 
     return rc;
 }

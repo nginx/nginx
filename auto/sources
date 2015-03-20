@@ -204,8 +204,6 @@ FREEBSD_DEPS="src/os/unix/ngx_freebsd_config.h src/os/unix/ngx_freebsd.h"
 FREEBSD_SRCS=src/os/unix/ngx_freebsd_init.c
 FREEBSD_SENDFILE_SRCS=src/os/unix/ngx_freebsd_sendfile_chain.c
 
-PTHREAD_SRCS="src/os/unix/ngx_pthread_thread.c"
-
 LINUX_DEPS="src/os/unix/ngx_linux_config.h src/os/unix/ngx_linux.h"
 LINUX_SRCS=src/os/unix/ngx_linux_init.c
 LINUX_SENDFILE_SRCS=src/os/unix/ngx_linux_sendfile_chain.c
