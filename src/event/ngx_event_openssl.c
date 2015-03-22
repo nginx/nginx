@@ -249,6 +249,12 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_DH_USE);
 
+#ifdef SSL_CTRL_CLEAR_OPTIONS
+    /* only in 0.9.8m+ */
+    SSL_CTX_clear_options(ssl->ctx,
+                          SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+#endif
+
     if (!(protocols & NGX_SSL_SSLv2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_SSLv2);
     }
@@ -259,11 +265,13 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1);
     }
 #ifdef SSL_OP_NO_TLSv1_1
+    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     if (!(protocols & NGX_SSL_TLSv1_1)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     }
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
+    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     if (!(protocols & NGX_SSL_TLSv1_2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     }
