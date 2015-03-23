@@ -415,7 +415,7 @@ static ngx_int_t
 ngx_http_write_request_body(ngx_http_request_t *r)
 {
     ssize_t                    n;
-    ngx_chain_t               *cl;
+    ngx_chain_t               *cl, *ln;
     ngx_temp_file_t           *tf;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
@@ -478,8 +478,13 @@ ngx_http_write_request_body(ngx_http_request_t *r)
 
     /* mark all buffers as written */
 
-    for (cl = rb->bufs; cl; cl = cl->next) {
+    for (cl = rb->bufs; cl; /* void */) {
+
         cl->buf->pos = cl->buf->last;
+
+        ln = cl;
+        cl = cl->next;
+        ngx_free_chain(r->pool, ln);
     }
 
     rb->bufs = NULL;
