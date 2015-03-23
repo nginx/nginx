@@ -936,7 +936,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
                            "http body chunked buf "
-                           "t:%d f:%d %p, pos %p, size: %z file: %O, size: %z",
+                           "t:%d f:%d %p, pos %p, size: %z file: %O, size: %O",
                            cl->buf->temporary, cl->buf->in_file,
                            cl->buf->start, cl->buf->pos,
                            cl->buf->last - cl->buf->pos,
@@ -1068,7 +1068,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = rb->bufs; cl; cl = cl->next) {
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
                        "http body old buf t:%d f:%d %p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos,
@@ -1079,7 +1079,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = in; cl; cl = cl->next) {
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
                        "http body new buf t:%d f:%d %p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos,

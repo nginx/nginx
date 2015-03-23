@@ -376,7 +376,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         ngx_log_debug8(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe buf busy s:%d t:%d f:%d "
                        "%p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        (cl->buf->shadow ? 1 : 0),
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
@@ -389,7 +389,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         ngx_log_debug8(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe buf out  s:%d t:%d f:%d "
                        "%p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        (cl->buf->shadow ? 1 : 0),
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
@@ -402,7 +402,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         ngx_log_debug8(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe buf in   s:%d t:%d f:%d "
                        "%p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        (cl->buf->shadow ? 1 : 0),
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
@@ -415,7 +415,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         ngx_log_debug8(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe buf free s:%d t:%d f:%d "
                        "%p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        (cl->buf->shadow ? 1 : 0),
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,

@@ -73,7 +73,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "write old buf t:%d f:%d %p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos,
@@ -129,7 +129,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "write new buf t:%d f:%d %p, pos %p, size: %z "
-                       "file: %O, size: %z",
+                       "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
                        cl->buf->last - cl->buf->pos,
