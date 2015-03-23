@@ -835,8 +835,6 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    /* ngx_mutex_lock */
-
     c = ngx_cycle->free_connections;
 
     if (c == NULL) {
@@ -849,15 +847,11 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
                       "%ui worker_connections are not enough",
                       ngx_cycle->connection_n);
 
-        /* ngx_mutex_unlock */
-
         return NULL;
     }
 
     ngx_cycle->free_connections = c->data;
     ngx_cycle->free_connection_n--;
-
-    /* ngx_mutex_unlock */
 
     if (ngx_cycle->files) {
         ngx_cycle->files[s] = c;
@@ -896,13 +890,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 void
 ngx_free_connection(ngx_connection_t *c)
 {
-    /* ngx_mutex_lock */
-
     c->data = ngx_cycle->free_connections;
     ngx_cycle->free_connections = c;
     ngx_cycle->free_connection_n++;
-
-    /* ngx_mutex_unlock */
 
     if (ngx_cycle->files) {
         ngx_cycle->files[c->fd] = NULL;
