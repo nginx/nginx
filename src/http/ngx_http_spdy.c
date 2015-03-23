@@ -700,20 +700,14 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
     cl = c->send_chain(c, cl, 0);
 
     if (cl == NGX_CHAIN_ERROR) {
-        c->error = 1;
-
-        if (!sc->blocked) {
-            ngx_post_event(wev, &ngx_posted_events);
-        }
-
-        return NGX_ERROR;
+        goto error;
     }
 
     clcf = ngx_http_get_module_loc_conf(sc->http_connection->conf_ctx,
                                         ngx_http_core_module);
 
     if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
-        return NGX_ERROR; /* FIXME */
+        goto error;
     }
 
     if (cl) {
@@ -751,6 +745,16 @@ ngx_http_spdy_send_output_queue(ngx_http_spdy_connection_t *sc)
     sc->last_out = frame;
 
     return NGX_OK;
+
+error:
+
+    c->error = 1;
+
+    if (!sc->blocked) {
+        ngx_post_event(wev, &ngx_posted_events);
+    }
+
+    return NGX_ERROR;
 }
 
 
