@@ -2525,6 +2525,11 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
         return;
     }
 
+    if (r->reading_body) {
+        r->keepalive = 0;
+        r->lingering_close = 1;
+    }
+
     if (!ngx_terminate
          && !ngx_exiting
          && r->keepalive

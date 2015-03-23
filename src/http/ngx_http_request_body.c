@@ -42,12 +42,14 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
 #if (NGX_HTTP_SPDY)
     if (r->spdy_stream && r == r->main) {
+        r->request_body_no_buffering = 0;
         rc = ngx_http_spdy_read_request_body(r, post_handler);
         goto done;
     }
 #endif
 
     if (r != r->main || r->request_body || r->discard_body) {
+        r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
     }
@@ -55,6 +57,10 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     if (ngx_http_test_expect(r) != NGX_OK) {
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto done;
+    }
+
+    if (r->request_body_no_buffering) {
+        r->request_body_in_file_only = 0;
     }
 
     rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
@@ -79,6 +85,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     r->request_body = rb;
 
     if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
+        r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
     }
@@ -171,6 +178,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
             }
         }
 
+        r->request_body_no_buffering = 0;
+
         post_handler(r);
 
         return NGX_OK;
@@ -214,8 +223,43 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
 done:
 
+    if (r->request_body_no_buffering
+        && (rc == NGX_OK || rc == NGX_AGAIN))
+    {
+        if (rc == NGX_OK) {
+            r->request_body_no_buffering = 0;
+
+        } else {
+            /* rc == NGX_AGAIN */
+            r->reading_body = 1;
+        }
+
+        r->read_event_handler = ngx_http_block_reading;
+        post_handler(r);
+    }
+
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         r->main->count--;
+    }
+
+    return rc;
+}
+
+
+ngx_int_t
+ngx_http_read_unbuffered_request_body(ngx_http_request_t *r)
+{
+    ngx_int_t  rc;
+
+    if (r->connection->read->timedout) {
+        r->connection->timedout = 1;
+        return NGX_HTTP_REQUEST_TIME_OUT;
+    }
+
+    rc = ngx_http_do_read_client_request_body(r);
+
+    if (rc == NGX_OK) {
+        r->reading_body = 0;
     }
 
     return rc;
@@ -264,18 +308,43 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         for ( ;; ) {
             if (rb->buf->last == rb->buf->end) {
 
-                /* pass buffer to request body filter chain */
+                if (rb->buf->pos != rb->buf->last) {
 
-                out.buf = rb->buf;
-                out.next = NULL;
+                    /* pass buffer to request body filter chain */
 
-                rc = ngx_http_request_body_filter(r, &out);
+                    out.buf = rb->buf;
+                    out.next = NULL;
 
-                if (rc != NGX_OK) {
-                    return rc;
+                    rc = ngx_http_request_body_filter(r, &out);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
+
+                } else {
+
+                    /* update chains */
+
+                    rc = ngx_http_request_body_filter(r, NULL);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
                 }
 
                 if (rb->busy != NULL) {
+                    if (r->request_body_no_buffering) {
+                        if (c->read->timer_set) {
+                            ngx_del_timer(c->read);
+                        }
+
+                        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                        }
+
+                        return NGX_AGAIN;
+                    }
+
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
@@ -342,6 +411,22 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         if (!c->read->ready) {
+
+            if (r->request_body_no_buffering
+                && rb->buf->pos != rb->buf->last)
+            {
+                /* pass buffer to request body filter chain */
+
+                out.buf = rb->buf;
+                out.next = NULL;
+
+                rc = ngx_http_request_body_filter(r, &out);
+
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+            }
+
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             ngx_add_timer(c->read, clcf->client_body_timeout);
 
@@ -387,9 +472,10 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
     }
 
-    r->read_event_handler = ngx_http_block_reading;
-
-    rb->post_handler(r);
+    if (!r->request_body_no_buffering) {
+        r->read_event_handler = ngx_http_block_reading;
+        rb->post_handler(r);
+    }
 
     return NGX_OK;
 }
@@ -1085,7 +1171,8 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (rb->rest > 0
-        && rb->buf && rb->buf->last == rb->buf->end)
+        && rb->buf && rb->buf->last == rb->buf->end
+        && !r->request_body_no_buffering)
     {
         if (ngx_http_write_request_body(r) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
