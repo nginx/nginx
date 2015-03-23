@@ -277,20 +277,6 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                     return rc;
                 }
 
-                /* write to file */
-
-                if (ngx_http_write_request_body(r) != NGX_OK) {
-                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
-                }
-
-                /* update chains */
-
-                rc = ngx_http_request_body_filter(r, NULL);
-
-                if (rc != NGX_OK) {
-                    return rc;
-                }
-
                 if (rb->busy != NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
@@ -1098,6 +1084,14 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (ngx_chain_add_copy(r->pool, &rb->bufs, in) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (rb->rest > 0
+        && rb->buf && rb->buf->last == rb->buf->end)
+    {
+        if (ngx_http_write_request_body(r) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     return NGX_OK;
