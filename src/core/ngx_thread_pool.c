@@ -33,7 +33,6 @@ struct ngx_thread_pool_s {
     ngx_thread_cond_t         cond;
 
     ngx_log_t                *log;
-    ngx_pool_t               *pool;
 
     ngx_str_t                 name;
     ngx_uint_t                threads;
@@ -129,7 +128,6 @@ ngx_thread_pool_init(ngx_thread_pool_t *tp, ngx_log_t *log, ngx_pool_t *pool)
     }
 
     tp->log = log;
-    tp->pool = pool;
 
     err = pthread_attr_init(&attr);
     if (err) {
