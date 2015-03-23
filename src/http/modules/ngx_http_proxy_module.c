@@ -1379,6 +1379,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     if (plcf->body_values) {
         e.ip = plcf->body_values->elts;
         e.pos = b->last;
+        e.skip = 0;
 
         while (*(uintptr_t *) e.ip) {
             code = *(ngx_http_script_code_pt *) e.ip;
