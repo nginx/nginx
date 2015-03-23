@@ -99,6 +99,7 @@ ngx_module_t  ngx_thread_pool_module = {
 static ngx_str_t  ngx_thread_pool_default = ngx_string("default");
 
 static ngx_uint_t               ngx_thread_pool_task_id;
+static ngx_atomic_t             ngx_thread_pool_done_lock;
 static ngx_thread_pool_queue_t  ngx_thread_pool_done;
 
 
@@ -329,20 +330,12 @@ ngx_thread_pool_cycle(void *data)
 
         task->next = NULL;
 
-        if (ngx_thread_mutex_lock(&ngx_thread_pool_done.mtx, tp->log)
-            != NGX_OK)
-        {
-            return NULL;
-        }
+        ngx_spinlock(&ngx_thread_pool_done_lock, 1, 2048);
 
         *ngx_thread_pool_done.last = task;
         ngx_thread_pool_done.last = &task->next;
 
-        if (ngx_thread_mutex_unlock(&ngx_thread_pool_done.mtx, tp->log)
-            != NGX_OK)
-        {
-            return NULL;
-        }
+        ngx_unlock(&ngx_thread_pool_done_lock);
 
         (void) ngx_notify(ngx_thread_pool_handler);
     }
@@ -357,17 +350,13 @@ ngx_thread_pool_handler(ngx_event_t *ev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_CORE, ev->log, 0, "thread pool handler");
 
-    if (ngx_thread_mutex_lock(&ngx_thread_pool_done.mtx, ev->log) != NGX_OK) {
-        return;
-    }
+    ngx_spinlock(&ngx_thread_pool_done_lock, 1, 2048);
 
     task = ngx_thread_pool_done.first;
     ngx_thread_pool_done.first = NULL;
     ngx_thread_pool_done.last = &ngx_thread_pool_done.first;
 
-    if (ngx_thread_mutex_unlock(&ngx_thread_pool_done.mtx, ev->log) != NGX_OK) {
-        return;
-    }
+    ngx_unlock(&ngx_thread_pool_done_lock);
 
     while (task) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
