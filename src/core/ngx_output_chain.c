@@ -663,7 +663,23 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
 #if 1
         if (ngx_buf_size(in->buf) == 0 && !ngx_buf_special(in->buf)) {
+
+            ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
+                          "zero size buf in chain writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          in->buf->temporary,
+                          in->buf->recycled,
+                          in->buf->in_file,
+                          in->buf->start,
+                          in->buf->pos,
+                          in->buf->last,
+                          in->buf->file,
+                          in->buf->file_pos,
+                          in->buf->file_last);
+
             ngx_debug_point();
+
+            continue;
         }
 #endif
 
@@ -691,9 +707,24 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
-            ngx_debug_point();
-        }
 
+            ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
+                          "zero size buf in chain writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
+            ngx_debug_point();
+
+            continue;
+        }
 #endif
 
         size += ngx_buf_size(cl->buf);
