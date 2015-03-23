@@ -46,6 +46,7 @@ struct ngx_thread_pool_s {
 static ngx_int_t ngx_thread_pool_init(ngx_thread_pool_t *tp, ngx_log_t *log,
     ngx_pool_t *pool);
 static void ngx_thread_pool_destroy(ngx_thread_pool_t *tp);
+static void ngx_thread_pool_exit_handler(void *data, ngx_log_t *log);
 
 static void *ngx_thread_pool_cycle(void *data);
 static void ngx_thread_pool_handler(ngx_event_t *ev);
@@ -163,13 +164,43 @@ ngx_thread_pool_init(ngx_thread_pool_t *tp, ngx_log_t *log, ngx_pool_t *pool)
 static void
 ngx_thread_pool_destroy(ngx_thread_pool_t *tp)
 {
-    /* TODO: exit threads */
+    ngx_uint_t           n;
+    ngx_thread_task_t    task;
+    volatile ngx_uint_t  lock;
 
-#if 0
+    ngx_memzero(&task, sizeof(ngx_thread_task_t));
+
+    task.handler = ngx_thread_pool_exit_handler;
+    task.ctx = (void *) &lock;
+
+    for (n = 0; n < tp->threads; n++) {
+        lock = 1;
+
+        if (ngx_thread_task_post(tp, &task) != NGX_OK) {
+            return;
+        }
+
+        while (lock) {
+            ngx_sched_yield();
+        }
+
+        task.event.active = 0;
+    }
+
     (void) ngx_thread_cond_destroy(&tp->cond, tp->log);
 
     (void) ngx_thread_mutex_destroy(&tp->mtx, tp->log);
- #endif
+}
+
+
+static void
+ngx_thread_pool_exit_handler(void *data, ngx_log_t *log)
+{
+    ngx_uint_t *lock = data;
+
+    *lock = 0;
+
+    pthread_exit(0);
 }
 
 
