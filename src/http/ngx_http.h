@@ -177,6 +177,7 @@ extern ngx_str_t  ngx_http_html_default_types[];
 
 extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
+extern ngx_http_request_body_filter_pt   ngx_http_top_request_body_filter;
 
 
 #endif /* _NGX_HTTP_H_INCLUDED_ */

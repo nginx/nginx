@@ -26,6 +26,7 @@ static ngx_int_t ngx_http_core_find_static_location(ngx_http_request_t *r,
     ngx_http_location_tree_node_t *node);
 
 static ngx_int_t ngx_http_core_preconfiguration(ngx_conf_t *cf);
+static ngx_int_t ngx_http_core_postconfiguration(ngx_conf_t *cf);
 static void *ngx_http_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_http_core_create_srv_conf(ngx_conf_t *cf);
@@ -779,7 +780,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 static ngx_http_module_t  ngx_http_core_module_ctx = {
     ngx_http_core_preconfiguration,        /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_core_postconfiguration,       /* postconfiguration */
 
     ngx_http_core_create_main_conf,        /* create main configuration */
     ngx_http_core_init_main_conf,          /* init main configuration */
@@ -3417,6 +3418,15 @@ static ngx_int_t
 ngx_http_core_preconfiguration(ngx_conf_t *cf)
 {
     return ngx_http_variables_add_core_vars(cf);
+}
+
+
+static ngx_int_t
+ngx_http_core_postconfiguration(ngx_conf_t *cf)
+{
+    ngx_http_top_request_body_filter = ngx_http_request_body_save_filter;
+
+    return NGX_OK;
 }
 
 
