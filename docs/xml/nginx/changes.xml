@@ -5,6 +5,174 @@
 <change_log title="nginx">
 
 
+<changes ver="1.7.11" date="24.03.2015">
+
+<change type="change">
+<para lang="ru">
+параметр sendfile директивы aio более не нужен;
+теперь nginx автоматически использует AIO для подгрузки данных для sendfile,
+если одновременно используются директивы aio и sendfile.
+</para>
+<para lang="en">
+the "sendfile" parameter of the "aio" directive is deprecated;
+now nginx automatically uses AIO to pre-load data for sendfile
+if both "aio" and "sendfile" directives are used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+экспериментальная поддержка потоков.
+</para>
+<para lang="en">
+experimental thread pools support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_request_buffering, fastcgi_request_buffering,
+scgi_request_buffering и uwsgi_request_buffering.
+</para>
+<para lang="en">
+the "proxy_request_buffering", "fastcgi_request_buffering",
+"scgi_request_buffering", and "uwsgi_request_buffering" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+экспериментальное API для обработки тела запроса.
+</para>
+<para lang="en">
+request body filters experimental API.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+проверка клиентских SSL-сертификатов в почтовом прокси-сервере.<br/>
+Спасибо Sven Peter, Franck Levionnois и Filipe Da Silva.
+</para>
+<para lang="en">
+client SSL certificates support in mail proxy.<br/>
+Thanks to Sven Peter, Franck Levionnois, and Filipe Da Silva.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+уменьшение времени запуска
+при использовании дирекивы "hash ... consistent" в блоке upstream.<br/>
+Спасибо Wai Keen Woon.
+</para>
+<para lang="en">
+startup speedup
+when using the "hash ... consistent" directive in the upstream block.<br/>
+Thanks to Wai Keen Woon.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+отладочное логгирование в кольцевой буфер в памяти.
+</para>
+<para lang="en">
+debug logging into a cyclic memory buffer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке хэш-таблиц.<br/>
+Спасибо Chris West.
+</para>
+<para lang="en">
+in hash table handling.<br/>
+Thanks to Chris West.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_revalidate.
+</para>
+<para lang="en">
+in the "proxy_cache_revalidate" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-соединения могли зависать, если использовался отложенный accept
+или параметр proxy_protocol директивы listen.<br/>
+Спасибо James Hamlin.
+</para>
+<para lang="en">
+SSL connections might hang if deferred accept
+or the "proxy_protocol" parameter of the "listen" directive were used.<br/>
+Thanks to James Hamlin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная $upstream_response_time могла содержать неверное значение
+при использовании директивы image_filter.
+</para>
+<para lang="en">
+the $upstream_response_time variable might contain a wrong value
+if the "image_filter" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке целочисленных переполнений.<br/>
+Спасибо Régis Leroy.
+</para>
+<para lang="en">
+in integer overflow handling.<br/>
+Thanks to Régis Leroy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании LibreSSL было невозможно включить поддержку SSLv3.
+</para>
+<para lang="en">
+it was not possible to enable SSLv3 with LibreSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании LibreSSL в логах появлялись сообщения
+"ignoring stale global SSL error ... called a function you should not call".
+</para>
+<para lang="en">
+the "ignoring stale global SSL error ... called a function you should not call"
+alerts appeared in logs when using LibreSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сертификаты, указанные в директивах ssl_client_certificate и
+ssl_trusted_certificate, использовались
+для автоматического построения цепочек сертификатов.
+</para>
+<para lang="en">
+certificates specified by the "ssl_client_certificate" and
+"ssl_trusted_certificate" directives were inadvertently used
+to automatically construct certificate chains.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.10" date="10.02.2015">
 
 <change type="feature">
