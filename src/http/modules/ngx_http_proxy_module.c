@@ -1503,7 +1503,7 @@ ngx_http_proxy_body_output_filter(void *data, ngx_chain_t *in)
     u_char                *chunk;
     ngx_int_t              rc;
     ngx_buf_t             *b;
-    ngx_chain_t           *out, *cl, *tl, **ll;
+    ngx_chain_t           *out, *cl, *tl, **ll, **fl;
     ngx_http_proxy_ctx_t  *ctx;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1546,6 +1546,7 @@ ngx_http_proxy_body_output_filter(void *data, ngx_chain_t *in)
 
     size = 0;
     cl = in;
+    fl = ll;
 
     for ( ;; ) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1602,8 +1603,8 @@ ngx_http_proxy_body_output_filter(void *data, ngx_chain_t *in)
         b->pos = chunk;
         b->last = ngx_sprintf(chunk, "%xO" CRLF, size);
 
-        tl->next = out;
-        out = tl;
+        tl->next = *fl;
+        *fl = tl;
     }
 
     if (cl->buf->last_buf) {
