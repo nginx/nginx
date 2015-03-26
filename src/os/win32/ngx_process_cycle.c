@@ -11,7 +11,6 @@
 #include <nginx.h>
 
 
-static void ngx_process_init(ngx_cycle_t *cycle);
 static void ngx_console_init(ngx_cycle_t *cycle);
 static int __stdcall ngx_console_handler(u_long type);
 static ngx_int_t ngx_create_signal_events(ngx_cycle_t *cycle);
@@ -68,8 +67,6 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_msec_t  timer;
     ngx_uint_t  live;
     HANDLE      events[MAXIMUM_WAIT_OBJECTS];
-
-    ngx_process_init(cycle);
 
     ngx_sprintf((u_char *) ngx_master_process_event_name,
                 "ngx_master_%s%Z", ngx_unique);
@@ -246,22 +243,6 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
             "WaitForMultipleObjects() returned unexpected value %ul", ev);
-    }
-}
-
-
-static void
-ngx_process_init(ngx_cycle_t *cycle)
-{
-    ngx_core_conf_t  *ccf;
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    if (ngx_init_threads(ngx_threads_n, ccf->thread_stack_size, cycle)
-        != NGX_OK)
-    {
-        /* fatal */
-        exit(2);
     }
 }
 
@@ -1015,8 +996,6 @@ void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_tid_t  tid;
-
-    ngx_process_init(cycle);
 
     ngx_console_init(cycle);
 

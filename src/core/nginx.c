@@ -139,24 +139,6 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       NULL },
 
-#if (NGX_OLD_THREADS)
-
-    { ngx_string("worker_threads"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      0,
-      offsetof(ngx_core_conf_t, worker_threads),
-      NULL },
-
-    { ngx_string("thread_stack_size"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      0,
-      offsetof(ngx_core_conf_t, thread_stack_size),
-      NULL },
-
-#endif
-
       ngx_null_command
 };
 
@@ -971,11 +953,6 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
 
-#if (NGX_OLD_THREADS)
-    ccf->worker_threads = NGX_CONF_UNSET;
-    ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
-#endif
-
     if (ngx_array_init(&ccf->env, cycle->pool, 1, sizeof(ngx_str_t))
         != NGX_OK)
     {
@@ -1009,14 +986,6 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
                       "the number of \"worker_cpu_affinity\" masks, "
                       "using last mask for remaining worker processes");
     }
-
-#endif
-
-#if (NGX_OLD_THREADS)
-
-    ngx_conf_init_value(ccf->worker_threads, 0);
-    ngx_threads_n = ccf->worker_threads;
-    ngx_conf_init_size_value(ccf->thread_stack_size, 2 * 1024 * 1024);
 
 #endif
 
