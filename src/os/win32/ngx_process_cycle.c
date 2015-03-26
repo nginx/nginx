@@ -253,7 +253,6 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 static void
 ngx_process_init(ngx_cycle_t *cycle)
 {
-    ngx_err_t         err;
     ngx_core_conf_t  *ccf;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
@@ -261,14 +260,6 @@ ngx_process_init(ngx_cycle_t *cycle)
     if (ngx_init_threads(ngx_threads_n, ccf->thread_stack_size, cycle)
         != NGX_OK)
     {
-        /* fatal */
-        exit(2);
-    }
-
-    err = ngx_thread_key_create(&ngx_core_tls_key);
-    if (err != 0) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
-                      ngx_thread_key_create_n " failed");
         /* fatal */
         exit(2);
     }

@@ -43,27 +43,3 @@ ngx_init_threads(int n, size_t size, ngx_cycle_t *cycle)
 
     return NGX_OK;
 }
-
-
-ngx_err_t
-ngx_thread_key_create(ngx_tls_key_t *key)
-{
-    *key = TlsAlloc();
-
-    if (*key == TLS_OUT_OF_INDEXES) {
-        return ngx_errno;
-    }
-
-    return 0;
-}
-
-
-ngx_err_t
-ngx_thread_set_tls(ngx_tls_key_t *key, void *data)
-{
-    if (TlsSetValue(*key, data) == 0) {
-        return ngx_errno;
-    }
-
-    return 0;
-}

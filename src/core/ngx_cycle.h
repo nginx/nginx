@@ -112,15 +112,6 @@ typedef struct {
 } ngx_core_conf_t;
 
 
-#if (NGX_OLD_THREADS)
-
-typedef struct {
-     ngx_pool_t              *pool;   /* pcre's malloc() pool */
-} ngx_core_tls_t;
-
-#endif
-
-
 #define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
 
 
@@ -141,9 +132,6 @@ extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;
 extern ngx_uint_t             ngx_test_config;
 extern ngx_uint_t             ngx_quiet_mode;
-#if (NGX_OLD_THREADS)
-extern ngx_tls_key_t          ngx_core_tls_key;
-#endif
 
 
 #endif /* _NGX_CYCLE_H_INCLUDED_ */
