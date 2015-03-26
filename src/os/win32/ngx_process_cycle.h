@@ -26,7 +26,6 @@ void ngx_close_handle(HANDLE h);
 
 extern ngx_uint_t      ngx_process;
 extern ngx_pid_t       ngx_pid;
-extern ngx_uint_t      ngx_threaded;
 extern ngx_uint_t      ngx_exiting;
 
 extern sig_atomic_t    ngx_quit;

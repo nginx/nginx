@@ -80,17 +80,6 @@ ngx_regex_init(void)
 static ngx_inline void
 ngx_regex_malloc_init(ngx_pool_t *pool)
 {
-#if (NGX_OLD_THREADS)
-    ngx_core_tls_t  *tls;
-
-    if (ngx_threaded) {
-        tls = ngx_thread_get_tls(ngx_core_tls_key);
-        tls->pool = pool;
-        return;
-    }
-
-#endif
-
     ngx_pcre_pool = pool;
 }
 
@@ -98,17 +87,6 @@ ngx_regex_malloc_init(ngx_pool_t *pool)
 static ngx_inline void
 ngx_regex_malloc_done(void)
 {
-#if (NGX_OLD_THREADS)
-    ngx_core_tls_t  *tls;
-
-    if (ngx_threaded) {
-        tls = ngx_thread_get_tls(ngx_core_tls_key);
-        tls->pool = NULL;
-        return;
-    }
-
-#endif
-
     ngx_pcre_pool = NULL;
 }
 
@@ -253,22 +231,7 @@ static void * ngx_libc_cdecl
 ngx_regex_malloc(size_t size)
 {
     ngx_pool_t      *pool;
-#if (NGX_OLD_THREADS)
-    ngx_core_tls_t  *tls;
-
-    if (ngx_threaded) {
-        tls = ngx_thread_get_tls(ngx_core_tls_key);
-        pool = tls->pool;
-
-    } else {
-        pool = ngx_pcre_pool;
-    }
-
-#else
-
     pool = ngx_pcre_pool;
-
-#endif
 
     if (pool) {
         return ngx_palloc(pool, size);
