@@ -683,13 +683,13 @@ ngx_epoll_notify(ngx_event_handler_pt handler)
 {
     static uint64_t inc = 1;
 
+    notify_event.data = handler;
+
     if ((size_t) write(notify_fd, &inc, sizeof(uint64_t)) != sizeof(uint64_t)) {
         ngx_log_error(NGX_LOG_ALERT, notify_event.log, ngx_errno,
                       "write() to eventfd %d failed", notify_fd);
         return NGX_ERROR;
     }
-
-    notify_event.data = handler;
 
     return NGX_OK;
 }
