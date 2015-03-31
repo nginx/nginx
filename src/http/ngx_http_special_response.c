@@ -553,7 +553,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return NGX_ERROR;
     }
 
-    if (uri.data[0] == '/') {
+    if (uri.len && uri.data[0] == '/') {
 
         if (err_page->value.lengths) {
             ngx_http_split_args(r, &uri, &args);
@@ -570,7 +570,7 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
         return ngx_http_internal_redirect(r, &uri, &args);
     }
 
-    if (uri.data[0] == '@') {
+    if (uri.len && uri.data[0] == '@') {
         return ngx_http_named_location(r, &uri);
     }
 

@@ -378,7 +378,7 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
         }
     }
 
-    if (value->data[0] == '@') {
+    if (value->len && value->data[0] == '@') {
         value->data++;
         value->len--;
         minus = 0;
@@ -390,12 +390,12 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
 
         *expires = NGX_HTTP_EXPIRES_DAILY;
 
-    } else if (value->data[0] == '+') {
+    } else if (value->len && value->data[0] == '+') {
         value->data++;
         value->len--;
         minus = 0;
 
-    } else if (value->data[0] == '-') {
+    } else if (value->len && value->data[0] == '-') {
         value->data++;
         value->len--;
         minus = 1;
