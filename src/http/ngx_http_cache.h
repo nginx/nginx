@@ -91,6 +91,10 @@ struct ngx_http_cache_s {
     ngx_http_file_cache_t           *file_cache;
     ngx_http_file_cache_node_t      *node;
 
+#if (NGX_THREADS)
+    ngx_thread_task_t               *thread_task;
+#endif
+
     ngx_msec_t                       lock_timeout;
     ngx_msec_t                       lock_age;
     ngx_msec_t                       lock_time;

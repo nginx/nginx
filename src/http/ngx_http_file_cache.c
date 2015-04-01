@@ -23,6 +23,11 @@ static ssize_t ngx_http_file_cache_aio_read(ngx_http_request_t *r,
 #if (NGX_HAVE_FILE_AIO)
 static void ngx_http_cache_aio_event_handler(ngx_event_t *ev);
 #endif
+#if (NGX_THREADS)
+static ngx_int_t ngx_http_cache_thread_handler(ngx_thread_task_t *task,
+    ngx_file_t *file);
+static void ngx_http_cache_thread_event_handler(ngx_event_t *ev);
+#endif
 static ngx_int_t ngx_http_file_cache_exists(ngx_http_file_cache_t *cache,
     ngx_http_cache_t *c);
 static ngx_int_t ngx_http_file_cache_name(ngx_http_request_t *r,
@@ -636,38 +641,49 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 static ssize_t
 ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 {
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     ssize_t                    n;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (!ngx_file_aio) {
-        goto noaio;
-    }
-
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+#endif
 
-    if (clcf->aio != NGX_HTTP_AIO_ON) {
-        goto noaio;
+#if (NGX_HAVE_FILE_AIO)
+
+    if (clcf->aio == NGX_HTTP_AIO_ON && ngx_file_aio) {
+        n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
+
+        if (n != NGX_AGAIN) {
+            c->reading = 0;
+            return n;
+        }
+
+        c->reading = 1;
+
+        c->file.aio->data = r;
+        c->file.aio->handler = ngx_http_cache_aio_event_handler;
+
+        r->main->blocked++;
+        r->aio = 1;
+
+        return NGX_AGAIN;
     }
 
-    n = ngx_file_aio_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
+#endif
 
-    if (n != NGX_AGAIN) {
-        c->reading = 0;
+#if (NGX_THREADS)
+
+    if (clcf->aio == NGX_HTTP_AIO_THREADS) {
+        c->file.thread_handler = ngx_http_cache_thread_handler;
+        c->file.thread_ctx = r;
+
+        n = ngx_thread_read(&c->thread_task, &c->file, c->buf->pos,
+                            c->body_start, 0, r->pool);
+
+        c->reading = (n == NGX_AGAIN);
+
         return n;
     }
-
-    c->reading = 1;
-
-    c->file.aio->data = r;
-    c->file.aio->handler = ngx_http_cache_aio_event_handler;
-
-    r->main->blocked++;
-    r->aio = 1;
-
-    return NGX_AGAIN;
-
-noaio:
 
 #endif
 
@@ -692,6 +708,76 @@ ngx_http_cache_aio_event_handler(ngx_event_t *ev)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache aio: \"%V?%V\"", &r->uri, &r->args);
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    r->write_event_handler(r);
+
+    ngx_http_run_posted_requests(c);
+}
+
+#endif
+
+
+#if (NGX_THREADS)
+
+static ngx_int_t
+ngx_http_cache_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
+{
+    ngx_str_t                  name;
+    ngx_thread_pool_t         *tp;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    r = file->thread_ctx;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    tp = clcf->thread_pool;
+
+    if (tp == NULL) {
+        if (ngx_http_complex_value(r, clcf->thread_pool_value, &name)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        tp = ngx_thread_pool_get((ngx_cycle_t *) ngx_cycle, &name);
+
+        if (tp == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "thread pool \"%V\" not found", &name);
+            return NGX_ERROR;
+        }
+    }
+
+    task->event.data = r;
+    task->event.handler = ngx_http_cache_thread_event_handler;
+
+    if (ngx_thread_task_post(tp, task) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    r->main->blocked++;
+    r->aio = 1;
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_cache_thread_event_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    r = ev->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http file cache thread: \"%V?%V\"", &r->uri, &r->args);
 
     r->main->blocked--;
     r->aio = 0;
