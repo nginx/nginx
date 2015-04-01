@@ -310,6 +310,7 @@ ngx_ssl_stapling_issuer(ngx_conf_t *cf, ngx_ssl_t *ssl)
     if (X509_STORE_CTX_init(store_ctx, store, NULL, NULL) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "X509_STORE_CTX_init() failed");
+        X509_STORE_CTX_free(store_ctx);
         return NGX_ERROR;
     }
 
@@ -1118,6 +1119,7 @@ ngx_ssl_ocsp_create_request(ngx_ssl_ocsp_ctx_t *ctx)
     if (OCSP_request_add0_id(ocsp, id) == NULL) {
         ngx_ssl_error(NGX_LOG_CRIT, ctx->log, 0,
                       "OCSP_request_add0_id() failed");
+        OCSP_CERTID_free(id);
         goto failed;
     }
 
