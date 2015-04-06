@@ -356,7 +356,7 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (ngx_conf_full_name(cf->cycle, &path->name, 0) != NGX_OK) {
-        return NULL;
+        return NGX_CONF_ERROR;
     }
 
     path->conf_file = cf->conf_file->file.name.data;
