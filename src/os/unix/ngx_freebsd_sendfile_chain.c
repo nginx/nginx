@@ -266,9 +266,9 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 c->busy_count = 0;
             }
 
-            rc = aio->preload_handler(file);
+            n = aio->preload_handler(file);
 
-            if (rc > 0) {
+            if (n > 0) {
                 send = prev_send + sent;
                 continue;
             }
