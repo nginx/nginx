@@ -949,6 +949,7 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
         b->pos = cl->buf->pos;
         b->last = cl->buf->last;
         b->end = cl->buf->end;
+        b->flush = r->request_body_no_buffering;
 
         size = cl->buf->last - cl->buf->pos;
 
@@ -1056,6 +1057,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 b->pos = cl->buf->pos;
                 b->last = cl->buf->last;
                 b->end = cl->buf->end;
+                b->flush = r->request_body_no_buffering;
 
                 *ll = tl;
                 ll = &tl->next;
