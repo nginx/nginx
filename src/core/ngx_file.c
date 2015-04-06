@@ -372,10 +372,6 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         path->len += level + 1;
     }
 
-    while (i < 3) {
-        path->level[i++] = 0;
-    }
-
     *slot = path;
 
     if (ngx_add_path(cf, slot) == NGX_ERROR) {
