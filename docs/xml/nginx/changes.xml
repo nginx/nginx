@@ -5,6 +5,75 @@
 <change_log title="nginx">
 
 
+<changes ver="1.6.3" date="07.04.2014">
+
+<change type="feature">
+<para lang="ru">
+теперь директива tcp_nodelay работает для SPDY-соединений.
+</para>
+<para lang="en">
+now the "tcp_nodelay" directive works with SPDY connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок.<br/>
+Спасибо Yichun Zhang и Даниилу Бондареву.
+</para>
+<para lang="en">
+in error handling.<br/>
+Thanks to Yichun Zhang and Daniil Bondarev.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы post_action
+в лог писались сообщения "header already sent";
+ошибка появилась в nginx 1.5.4.
+</para>
+<para lang="en">
+alerts "header already sent" appeared in logs
+if the "post_action" directive was used;
+the bug had appeared in 1.5.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в лог могли писаться сообщения "sem_post() failed".
+</para>
+<para lang="en">
+alerts "sem_post() failed" might appear in logs.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке хэш-таблиц.<br/>
+Спасибо Chris West.
+</para>
+<para lang="en">
+in hash table handling.<br/>
+Thanks to Chris West.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке целочисленных переполнений.<br/>
+Спасибо Régis Leroy.
+</para>
+<para lang="en">
+in integer overflow handling.<br/>
+Thanks to Régis Leroy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.6.2" date="16.09.2014">
 
 <change type="security">
