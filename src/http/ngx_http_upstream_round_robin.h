@@ -14,7 +14,9 @@
 #include <ngx_http.h>
 
 
-typedef struct {
+typedef struct ngx_http_upstream_rr_peer_s   ngx_http_upstream_rr_peer_t;
+
+struct ngx_http_upstream_rr_peer_s {
     struct sockaddr                *sockaddr;
     socklen_t                       socklen;
     ngx_str_t                       name;
@@ -38,7 +40,9 @@ typedef struct {
 #if (NGX_HTTP_SSL)
     ngx_ssl_session_t              *ssl_session;   /* local to a process */
 #endif
-} ngx_http_upstream_rr_peer_t;
+
+    ngx_http_upstream_rr_peer_t    *next;
+};
 
 
 typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
@@ -55,13 +59,13 @@ struct ngx_http_upstream_rr_peers_s {
 
     ngx_http_upstream_rr_peers_t   *next;
 
-    ngx_http_upstream_rr_peer_t     peer[1];
+    ngx_http_upstream_rr_peer_t    *peer;
 };
 
 
 typedef struct {
     ngx_http_upstream_rr_peers_t   *peers;
-    ngx_uint_t                      current;
+    ngx_http_upstream_rr_peer_t    *current;
     uintptr_t                      *tried;
     uintptr_t                       data;
 } ngx_http_upstream_rr_peer_data_t;

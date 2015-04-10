@@ -181,11 +181,19 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         if (!iphp->rrp.peers->weighted) {
             p = hash % iphp->rrp.peers->number;
 
+            peer = iphp->rrp.peers->peer;
+            for (i = 0; i < p; i++) {
+                peer = peer->next;
+            }
+
         } else {
             w = hash % iphp->rrp.peers->total_weight;
 
-            for (i = 0; i < iphp->rrp.peers->number; i++) {
-                w -= iphp->rrp.peers->peer[i].weight;
+            for (peer = iphp->rrp.peers->peer, i = 0;
+                 peer;
+                 peer = peer->next, i++)
+            {
+                w -= peer->weight;
                 if (w < 0) {
                     break;
                 }
@@ -203,8 +211,6 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get ip hash peer, hash: %ui %04XA", p, m);
-
-        peer = &iphp->rrp.peers->peer[p];
 
         /* ngx_lock_mutex(iphp->rrp.peers->mutex); */
 
@@ -236,7 +242,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         }
     }
 
-    iphp->rrp.current = p;
+    iphp->rrp.current = peer;
 
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;

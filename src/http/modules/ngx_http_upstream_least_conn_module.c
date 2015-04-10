@@ -130,7 +130,10 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     p = 0;
 #endif
 
-    for (i = 0; i < peers->number; i++) {
+    for (peer = peers->peer, i = 0;
+         peer;
+         peer = peer->next, i++)
+    {
 
         n = i / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
@@ -138,8 +141,6 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
         if (rrp->tried[n] & m) {
             continue;
         }
-
-        peer = &peers->peer[i];
 
         if (peer->down) {
             continue;
@@ -181,16 +182,16 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get least conn peer, many");
 
-        for (i = p; i < peers->number; i++) {
-
+        for (peer = best, i = p;
+             peer;
+             peer = peer->next, i++)
+        {
             n = i / (8 * sizeof(uintptr_t));
             m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 
             if (rrp->tried[n] & m) {
                 continue;
             }
-
-            peer = &peers->peer[i];
 
             if (peer->down) {
                 continue;
@@ -233,7 +234,7 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     best->conns++;
 
-    rrp->current = p;
+    rrp->current = best;
 
     n = p / (8 * sizeof(uintptr_t));
     m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
@@ -266,8 +267,8 @@ failed:
 
     /* all peers failed, mark them as live for quick recovery */
 
-    for (i = 0; i < peers->number; i++) {
-        peers->peer[i].fails = 0;
+    for (peer = peers->peer; peer; peer = peer->next) {
+        peer->fails = 0;
     }
 
     pc->name = peers->name;
