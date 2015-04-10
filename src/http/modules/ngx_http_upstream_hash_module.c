@@ -262,6 +262,8 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
 
+    peer->conns++;
+
     if (now - peer->checked > peer->fail_timeout) {
         peer->checked = now;
     }
@@ -561,6 +563,8 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
             pc->sockaddr = best->sockaddr;
             pc->socklen = best->socklen;
             pc->name = &best->name;
+
+            best->conns++;
 
             return NGX_OK;
         }

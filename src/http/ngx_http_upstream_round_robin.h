@@ -24,6 +24,8 @@ typedef struct {
     ngx_int_t                       effective_weight;
     ngx_int_t                       weight;
 
+    ngx_uint_t                      conns;
+
     ngx_uint_t                      fails;
     time_t                          accessed;
     time_t                          checked;

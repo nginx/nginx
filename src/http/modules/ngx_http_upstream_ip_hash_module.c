@@ -242,6 +242,8 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
 
+    peer->conns++;
+
     if (now - peer->checked > peer->fail_timeout) {
         peer->checked = now;
     }

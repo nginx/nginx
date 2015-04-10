@@ -434,6 +434,8 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
 
+    peer->conns++;
+
     /* ngx_unlock_mutex(peers->mutex); */
 
     return NGX_OK;
@@ -563,12 +565,15 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
     /* TODO: NGX_PEER_KEEPALIVE */
 
+    peer = &rrp->peers->peer[rrp->current];
+
     if (rrp->peers->single) {
+
+        peer->conns--;
+
         pc->tries = 0;
         return;
     }
-
-    peer = &rrp->peers->peer[rrp->current];
 
     if (state & NGX_PEER_FAILED) {
         now = ngx_time();
@@ -601,6 +606,8 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
             peer->fails = 0;
         }
     }
+
+    peer->conns--;
 
     if (pc->tries) {
         pc->tries--;
