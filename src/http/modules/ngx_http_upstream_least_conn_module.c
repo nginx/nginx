@@ -122,6 +122,8 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     peers = rrp->peers;
 
+    ngx_http_upstream_rr_peers_wlock(peers);
+
     best = NULL;
     total = 0;
 
@@ -241,6 +243,8 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     rrp->tried[n] |= m;
 
+    ngx_http_upstream_rr_peers_unlock(peers);
+
     return NGX_OK;
 
 failed:
@@ -258,11 +262,15 @@ failed:
              rrp->tried[i] = 0;
         }
 
+        ngx_http_upstream_rr_peers_unlock(peers);
+
         rc = ngx_http_upstream_get_least_conn_peer(pc, rrp);
 
         if (rc != NGX_BUSY) {
             return rc;
         }
+
+        ngx_http_upstream_rr_peers_wlock(peers);
     }
 
     /* all peers failed, mark them as live for quick recovery */
@@ -270,6 +278,8 @@ failed:
     for (peer = peers->peer; peer; peer = peer->next) {
         peer->fails = 0;
     }
+
+    ngx_http_upstream_rr_peers_unlock(peers);
 
     pc->name = peers->name;
 

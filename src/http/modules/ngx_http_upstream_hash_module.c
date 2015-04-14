@@ -176,7 +176,10 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "get hash peer, try: %ui", pc->tries);
 
+    ngx_http_upstream_rr_peers_wlock(hp->rrp.peers);
+
     if (hp->tries > 20 || hp->rrp.peers->single) {
+        ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
         return hp->get_rr_peer(pc, &hp->rrp);
     }
 
@@ -258,6 +261,7 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     next:
 
         if (++hp->tries > 20) {
+            ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
             return hp->get_rr_peer(pc, &hp->rrp);
         }
     }
@@ -273,6 +277,8 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     if (now - peer->checked > peer->fail_timeout) {
         peer->checked = now;
     }
+
+    ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
 
     hp->rrp.tried[n] |= m;
 
@@ -465,7 +471,12 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
     hcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_hash_module);
 
     hash = ngx_crc32_long(hp->key.data, hp->key.len);
+
+    ngx_http_upstream_rr_peers_rlock(hp->rrp.peers);
+
     hp->hash = ngx_http_upstream_find_chash_point(hcf->points, hash);
+
+    ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
 
     return NGX_OK;
 }
@@ -488,6 +499,8 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "get consistent hash peer, try: %ui", pc->tries);
+
+    ngx_http_upstream_rr_peers_wlock(hp->rrp.peers);
 
     pc->cached = 0;
     pc->connection = NULL;
@@ -561,6 +574,7 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->tries++;
 
         if (hp->tries >= points->number) {
+            ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
             return NGX_BUSY;
         }
     }
@@ -578,6 +592,8 @@ found:
     if (now - best->checked > best->fail_timeout) {
         best->checked = now;
     }
+
+    ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
 
     n = best_i / (8 * sizeof(uintptr_t));
     m = (uintptr_t) 1 << best_i % (8 * sizeof(uintptr_t));

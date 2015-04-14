@@ -161,7 +161,10 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     /* TODO: cached */
 
+    ngx_http_upstream_rr_peers_wlock(iphp->rrp.peers);
+
     if (iphp->tries > 20 || iphp->rrp.peers->single) {
+        ngx_http_upstream_rr_peers_unlock(iphp->rrp.peers);
         return iphp->get_rr_peer(pc, &iphp->rrp);
     }
 
@@ -212,8 +215,6 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get ip hash peer, hash: %ui %04XA", p, m);
 
-        /* ngx_lock_mutex(iphp->rrp.peers->mutex); */
-
         if (peer->down) {
             goto next_try;
         }
@@ -230,14 +231,12 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
     next_try:
 
         iphp->rrp.tried[n] |= m;
-
-        /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
-
         pc->tries--;
 
     next:
 
         if (++iphp->tries > 20) {
+            ngx_http_upstream_rr_peers_unlock(iphp->rrp.peers);
             return iphp->get_rr_peer(pc, &iphp->rrp);
         }
     }
@@ -254,7 +253,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         peer->checked = now;
     }
 
-    /* ngx_unlock_mutex(iphp->rrp.peers->mutex); */
+    ngx_http_upstream_rr_peers_unlock(iphp->rrp.peers);
 
     iphp->rrp.tried[n] |= m;
     iphp->hash = hash;

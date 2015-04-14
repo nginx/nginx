@@ -63,6 +63,13 @@ struct ngx_http_upstream_rr_peers_s {
 };
 
 
+#define ngx_http_upstream_rr_peers_rlock(peers)
+#define ngx_http_upstream_rr_peers_wlock(peers)
+#define ngx_http_upstream_rr_peers_unlock(peers)
+#define ngx_http_upstream_rr_peer_lock(peers, peer)
+#define ngx_http_upstream_rr_peer_unlock(peers, peer)
+
+
 typedef struct {
     ngx_http_upstream_rr_peers_t   *peers;
     ngx_http_upstream_rr_peer_t    *current;
