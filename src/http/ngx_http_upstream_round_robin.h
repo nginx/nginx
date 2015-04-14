@@ -38,10 +38,15 @@ struct ngx_http_upstream_rr_peer_s {
     ngx_uint_t                      down;          /* unsigned  down:1; */
 
 #if (NGX_HTTP_SSL)
-    ngx_ssl_session_t              *ssl_session;   /* local to a process */
+    void                           *ssl_session;
+    int                             ssl_session_len;
 #endif
 
     ngx_http_upstream_rr_peer_t    *next;
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ngx_atomic_t                    lock;
+#endif
 };
 
 
@@ -49,6 +54,11 @@ typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 
 struct ngx_http_upstream_rr_peers_s {
     ngx_uint_t                      number;
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ngx_slab_pool_t                *shpool;
+    ngx_atomic_t                    rwlock;
+#endif
 
     ngx_uint_t                      total_weight;
 
@@ -63,11 +73,48 @@ struct ngx_http_upstream_rr_peers_s {
 };
 
 
+#if (NGX_HTTP_UPSTREAM_ZONE)
+
+#define ngx_http_upstream_rr_peers_rlock(peers)                               \
+                                                                              \
+    if (peers->shpool) {                                                      \
+        ngx_rwlock_rlock(&peers->rwlock);                                     \
+    }
+
+#define ngx_http_upstream_rr_peers_wlock(peers)                               \
+                                                                              \
+    if (peers->shpool) {                                                      \
+        ngx_rwlock_wlock(&peers->rwlock);                                     \
+    }
+
+#define ngx_http_upstream_rr_peers_unlock(peers)                              \
+                                                                              \
+    if (peers->shpool) {                                                      \
+        ngx_rwlock_unlock(&peers->rwlock);                                    \
+    }
+
+
+#define ngx_http_upstream_rr_peer_lock(peers, peer)                           \
+                                                                              \
+    if (peers->shpool) {                                                      \
+        ngx_rwlock_wlock(&peer->lock);                                        \
+    }
+
+#define ngx_http_upstream_rr_peer_unlock(peers, peer)                         \
+                                                                              \
+    if (peers->shpool) {                                                      \
+        ngx_rwlock_unlock(&peer->lock);                                       \
+    }
+
+#else
+
 #define ngx_http_upstream_rr_peers_rlock(peers)
 #define ngx_http_upstream_rr_peers_wlock(peers)
 #define ngx_http_upstream_rr_peers_unlock(peers)
 #define ngx_http_upstream_rr_peer_lock(peers, peer)
 #define ngx_http_upstream_rr_peer_unlock(peers, peer)
+
+#endif
 
 
 typedef struct {

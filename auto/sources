@@ -513,6 +513,11 @@ HTTP_UPSTREAM_KEEPALIVE_SRCS=" \
     src/http/modules/ngx_http_upstream_keepalive_module.c"
 
 
+HTTP_UPSTREAM_ZONE_MODULE=ngx_http_upstream_zone_module
+HTTP_UPSTREAM_ZONE_SRCS=" \
+    src/http/modules/ngx_http_upstream_zone_module.c"
+
+
 MAIL_INCS="src/mail"
 
 MAIL_DEPS="src/mail/ngx_mail.h"

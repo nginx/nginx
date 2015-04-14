@@ -441,7 +441,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
 
             if (shm_zone[i].tag == oshm_zone[n].tag
-                && shm_zone[i].shm.size == oshm_zone[n].shm.size)
+                && shm_zone[i].shm.size == oshm_zone[n].shm.size
+                && !shm_zone[i].noreuse)
             {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
 
@@ -1234,6 +1235,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
     shm_zone->shm.exists = 0;
     shm_zone->init = NULL;
     shm_zone->tag = tag;
+    shm_zone->noreuse = 0;
 
     return shm_zone;
 }
