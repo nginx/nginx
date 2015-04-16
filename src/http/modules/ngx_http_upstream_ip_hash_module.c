@@ -216,22 +216,17 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
                        "get ip hash peer, hash: %ui %04XA", p, m);
 
         if (peer->down) {
-            goto next_try;
+            goto next;
         }
 
         if (peer->max_fails
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
         {
-            goto next_try;
+            goto next;
         }
 
         break;
-
-    next_try:
-
-        iphp->rrp.tried[n] |= m;
-        pc->tries--;
 
     next:
 
