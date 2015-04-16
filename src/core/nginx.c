@@ -260,7 +260,8 @@ main(int argc, char *const *argv)
             } else {
                 ngx_write_stderr("built with " OPENSSL_VERSION_TEXT
                                  " (running with ");
-                ngx_write_stderr((char *) SSLeay_version(SSLEAY_VERSION));
+                ngx_write_stderr((char *) (uintptr_t)
+                                 SSLeay_version(SSLEAY_VERSION));
                 ngx_write_stderr(")" NGX_LINEFEED);
             }
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
