@@ -599,16 +599,19 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
     peer = rrp->current;
 
+    ngx_http_upstream_rr_peers_rlock(rrp->peers);
+    ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
+
     if (rrp->peers->single) {
 
         peer->conns--;
 
+        ngx_http_upstream_rr_peer_unlock(rrp->peers, peer);
+        ngx_http_upstream_rr_peers_unlock(rrp->peers);
+
         pc->tries = 0;
         return;
     }
-
-    ngx_http_upstream_rr_peers_rlock(rrp->peers);
-    ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
 
     if (state & NGX_PEER_FAILED) {
         now = ngx_time();
