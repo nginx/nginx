@@ -919,13 +919,6 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (shm_zone->data == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "unknown limit_req_zone \"%V\"",
-                           &shm_zone->shm.name);
-        return NGX_CONF_ERROR;
-    }
-
     limits = lrcf->limits.elts;
 
     if (limits == NULL) {
