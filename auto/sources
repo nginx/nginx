@@ -554,6 +554,40 @@ MAIL_AUTH_HTTP_SRCS="src/mail/ngx_mail_auth_http_module.c"
 MAIL_PROXY_MODULE="ngx_mail_proxy_module"
 MAIL_PROXY_SRCS="src/mail/ngx_mail_proxy_module.c"
 
+
+STREAM_INCS="src/stream"
+
+STREAM_DEPS="src/stream/ngx_stream.h \
+             src/stream/ngx_stream_upstream.h \
+             src/stream/ngx_stream_upstream_round_robin.h"
+
+STREAM_MODULES="ngx_stream_module \
+                ngx_stream_core_module \
+                ngx_stream_proxy_module \
+                ngx_stream_upstream_module"
+
+STREAM_SRCS="src/stream/ngx_stream.c \
+             src/stream/ngx_stream_handler.c \
+             src/stream/ngx_stream_core_module.c \
+             src/stream/ngx_stream_proxy_module.c \
+             src/stream/ngx_stream_upstream.c \
+             src/stream/ngx_stream_upstream_round_robin.c"
+
+STREAM_SSL_MODULE="ngx_stream_ssl_module"
+STREAM_SSL_DEPS="src/stream/ngx_stream_ssl_module.h"
+STREAM_SSL_SRCS="src/stream/ngx_stream_ssl_module.c"
+
+STREAM_UPSTREAM_HASH_MODULE=ngx_stream_upstream_hash_module
+STREAM_UPSTREAM_HASH_SRCS=src/stream/ngx_stream_upstream_hash_module.c
+
+STREAM_UPSTREAM_LEAST_CONN_MODULE=ngx_stream_upstream_least_conn_module
+STREAM_UPSTREAM_LEAST_CONN_SRCS=" \
+    src/stream/ngx_stream_upstream_least_conn_module.c"
+
+STREAM_UPSTREAM_ZONE_MODULE=ngx_stream_upstream_zone_module
+STREAM_UPSTREAM_ZONE_SRCS=src/stream/ngx_stream_upstream_zone_module.c
+
+
 NGX_GOOGLE_PERFTOOLS_MODULE=ngx_google_perftools_module
 NGX_GOOGLE_PERFTOOLS_SRCS=src/misc/ngx_google_perftools_module.c
 

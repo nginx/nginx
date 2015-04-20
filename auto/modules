@@ -435,6 +435,12 @@ if [ $MAIL_SSL = YES ]; then
 fi
 
 
+if [ $STREAM_SSL = YES ]; then
+    have=NGX_STREAM_SSL . auto/have
+    USE_OPENSSL=YES
+fi
+
+
 modules="$CORE_MODULES $EVENT_MODULES"
 
 
@@ -502,6 +508,36 @@ if [ $MAIL = YES ]; then
     MAIL_SRCS="$MAIL_SRCS $MAIL_PROXY_SRCS"
 
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(MAIL_DEPS)"
+fi
+
+
+if [ $STREAM = YES ]; then
+    have=NGX_STREAM . auto/have
+    modules="$modules $STREAM_MODULES"
+
+    if [ $STREAM_SSL = YES ]; then
+        modules="$modules $STREAM_SSL_MODULE"
+        STREAM_DEPS="$STREAM_DEPS $STREAM_SSL_DEPS"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_SSL_SRCS"
+    fi
+
+    if [ $STREAM_UPSTREAM_HASH = YES ]; then
+        modules="$modules $STREAM_UPSTREAM_HASH_MODULE"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_HASH_SRCS"
+    fi
+
+    if [ $STREAM_UPSTREAM_LEAST_CONN = YES ]; then
+        modules="$modules $STREAM_UPSTREAM_LEAST_CONN_MODULE"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_LEAST_CONN_SRCS"
+    fi
+
+    if [ $STREAM_UPSTREAM_ZONE = YES ]; then
+        have=NGX_STREAM_UPSTREAM_ZONE . auto/have
+        modules="$modules $STREAM_UPSTREAM_ZONE_MODULE"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_ZONE_SRCS"
+    fi
+
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(STREAM_DEPS)"
 fi
 
 

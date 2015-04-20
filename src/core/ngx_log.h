@@ -30,6 +30,7 @@
 #define NGX_LOG_DEBUG_HTTP        0x100
 #define NGX_LOG_DEBUG_MAIL        0x200
 #define NGX_LOG_DEBUG_MYSQL       0x400
+#define NGX_LOG_DEBUG_STREAM      0x800
 
 /*
  * do not forget to update debug_levels[] in src/core/ngx_log.c
@@ -37,7 +38,7 @@
  */
 
 #define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
-#define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_MYSQL
+#define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_STREAM
 #define NGX_LOG_DEBUG_CONNECTION  0x80000000
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
 

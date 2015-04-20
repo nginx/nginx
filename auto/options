@@ -114,6 +114,12 @@ MAIL_POP3=YES
 MAIL_IMAP=YES
 MAIL_SMTP=YES
 
+STREAM=NO
+STREAM_SSL=NO
+STREAM_UPSTREAM_HASH=YES
+STREAM_UPSTREAM_LEAST_CONN=YES
+STREAM_UPSTREAM_ZONE=YES
+
 NGX_ADDONS=
 
 USE_PCRE=NO
@@ -275,6 +281,15 @@ use the \"--without-http_limit_conn_module\" option instead"
         --without-mail_imap_module)      MAIL_IMAP=NO               ;;
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
+        --with-stream)                   STREAM=YES                 ;;
+        --with-stream_ssl_module)        STREAM_SSL=YES             ;;
+        --without-stream_upstream_hash_module)
+                                         STREAM_UPSTREAM_HASH=NO    ;;
+        --without-stream_upstream_least_conn_module)
+                                         STREAM_UPSTREAM_LEAST_CONN=NO ;;
+        --without-stream_upstream_zone_module)
+                                         STREAM_UPSTREAM_ZONE=NO    ;;
+
         --with-google_perftools_module)  NGX_GOOGLE_PERFTOOLS=YES   ;;
         --with-cpp_test_module)          NGX_CPP_TEST=YES           ;;
 
@@ -435,6 +450,15 @@ cat << END
   --without-mail_pop3_module         disable ngx_mail_pop3_module
   --without-mail_imap_module         disable ngx_mail_imap_module
   --without-mail_smtp_module         disable ngx_mail_smtp_module
+
+  --with-stream                      enable TCP proxy module
+  --with-stream_ssl_module           enable ngx_stream_ssl_module
+  --without-stream_upstream_hash_module
+                                     disable ngx_stream_upstream_hash_module
+  --without-stream_upstream_least_conn_module
+                                     disable ngx_stream_upstream_least_conn_module
+  --without-stream_upstream_zone_module
+                                     disable ngx_stream_upstream_zone_module
 
   --with-google_perftools_module     enable ngx_google_perftools_module
   --with-cpp_test_module             enable ngx_cpp_test_module

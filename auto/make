@@ -10,6 +10,7 @@ mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/src/http $NGX_OBJS/src/http/modules \
          $NGX_OBJS/src/http/modules/perl \
          $NGX_OBJS/src/mail \
+         $NGX_OBJS/src/stream \
          $NGX_OBJS/src/misc
 
 
@@ -115,6 +116,32 @@ MAIL_DEPS = $ngx_deps
 
 
 MAIL_INCS = $ngx_include_opt$ngx_incs
+
+END
+
+fi
+
+
+# the stream dependences and include paths
+
+if [ $STREAM = YES ]; then
+
+    ngx_all_srcs="$ngx_all_srcs $STREAM_SRCS"
+
+    ngx_deps=`echo $STREAM_DEPS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
+
+    ngx_incs=`echo $STREAM_INCS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont$ngx_include_opt\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+STREAM_DEPS = $ngx_deps
+
+
+STREAM_INCS = $ngx_include_opt$ngx_incs
 
 END
 
@@ -298,6 +325,36 @@ if [ $MAIL = YES ]; then
         cat << END                                            >> $NGX_MAKEFILE
 
 $ngx_obj:	\$(CORE_DEPS) \$(MAIL_DEPS)$ngx_cont$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
+
+END
+     done
+
+fi
+
+
+# the stream sources
+
+if [ $STREAM = YES ]; then
+
+    if test -n "$NGX_PCH"; then
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
+    else
+        ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(STREAM_INCS)"
+    fi
+
+    for ngx_src in $STREAM_SRCS
+    do
+        ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_obj=`echo $ngx_src \
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
+
+        cat << END                                            >> $NGX_MAKEFILE
+
+$ngx_obj:	\$(CORE_DEPS) \$(STREAM_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
