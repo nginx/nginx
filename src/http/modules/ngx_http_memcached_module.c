@@ -618,6 +618,7 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.intercept_404 = 1;
     conf->upstream.pass_request_headers = 0;
     conf->upstream.pass_request_body = 0;
+    conf->upstream.force_ranges = 1;
 
     conf->index = NGX_CONF_UNSET;
     conf->gzip_flag = NGX_CONF_UNSET_UINT;
