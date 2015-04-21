@@ -170,7 +170,7 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     uint32_t                      hash;
     ngx_int_t                     w;
     uintptr_t                     m;
-    ngx_uint_t                    i, n, p;
+    ngx_uint_t                    n, p;
     ngx_http_upstream_rr_peer_t  *peer;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
@@ -211,28 +211,14 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
         hp->hash += hash;
         hp->rehash++;
 
-        if (!hp->rrp.peers->weighted) {
-            p = hp->hash % hp->rrp.peers->number;
+        w = hp->hash % hp->rrp.peers->total_weight;
+        peer = hp->rrp.peers->peer;
+        p = 0;
 
-            peer = hp->rrp.peers->peer;
-            for (i = 0; i < p; i++) {
-                peer = peer->next;
-            }
-
-        } else {
-            w = hp->hash % hp->rrp.peers->total_weight;
-
-            for (peer = hp->rrp.peers->peer, i = 0;
-                 peer;
-                 peer = peer->next, i++)
-            {
-                w -= peer->weight;
-                if (w < 0) {
-                    break;
-                }
-            }
-
-            p = i;
+        while (w >= peer->weight) {
+            w -= peer->weight;
+            peer = peer->next;
+            p++;
         }
 
         n = p / (8 * sizeof(uintptr_t));

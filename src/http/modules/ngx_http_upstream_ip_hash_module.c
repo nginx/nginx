@@ -181,28 +181,14 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
             hash = (hash * 113 + iphp->addr[i]) % 6271;
         }
 
-        if (!iphp->rrp.peers->weighted) {
-            p = hash % iphp->rrp.peers->number;
+        w = hash % iphp->rrp.peers->total_weight;
+        peer = iphp->rrp.peers->peer;
+        p = 0;
 
-            peer = iphp->rrp.peers->peer;
-            for (i = 0; i < p; i++) {
-                peer = peer->next;
-            }
-
-        } else {
-            w = hash % iphp->rrp.peers->total_weight;
-
-            for (peer = iphp->rrp.peers->peer, i = 0;
-                 peer;
-                 peer = peer->next, i++)
-            {
-                w -= peer->weight;
-                if (w < 0) {
-                    break;
-                }
-            }
-
-            p = i;
+        while (w >= peer->weight) {
+            w -= peer->weight;
+            peer = peer->next;
+            p++;
         }
 
         n = p / (8 * sizeof(uintptr_t));
