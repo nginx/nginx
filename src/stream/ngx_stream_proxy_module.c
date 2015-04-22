@@ -814,6 +814,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     size_t                        size;
     ssize_t                       n;
     ngx_buf_t                    *b;
+    ngx_uint_t                    flags;
     ngx_connection_t             *c, *pc, *src, *dst;
     ngx_log_handler_pt            handler;
     ngx_stream_upstream_t        *u;
@@ -911,7 +912,9 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         return NGX_DONE;
     }
 
-    if (ngx_handle_read_event(src->read, 0) != NGX_OK) {
+    flags = src->read->eof ? NGX_CLOSE_EVENT : 0;
+
+    if (ngx_handle_read_event(src->read, flags) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_ERROR);
         return NGX_ERROR;
     }
