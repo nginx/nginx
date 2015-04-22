@@ -330,7 +330,7 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
         }
     }
 
-    /* aio, iocp, rtsig */
+    /* iocp, rtsig */
 
     return NGX_OK;
 }
@@ -409,7 +409,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
         }
     }
 
-    /* aio, iocp, rtsig */
+    /* iocp, rtsig */
 
     return NGX_OK;
 }

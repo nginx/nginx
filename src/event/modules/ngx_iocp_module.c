@@ -125,7 +125,7 @@ ngx_iocp_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 
     ngx_event_actions = ngx_iocp_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_AIO_EVENT|NGX_USE_IOCP_EVENT;
+    ngx_event_flags = NGX_USE_IOCP_EVENT;
 
     if (timer == 0) {
         return NGX_OK;

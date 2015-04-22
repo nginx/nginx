@@ -3092,7 +3092,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
 
     rc = connect(s, uc->sockaddr, uc->socklen);
 
-    /* TODO: aio, iocp */
+    /* TODO: iocp */
 
     if (rc == -1) {
         ngx_log_error(NGX_LOG_CRIT, &uc->log, ngx_socket_errno,

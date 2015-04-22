@@ -41,7 +41,6 @@ EVENT_FOUND=NO
 EVENT_RTSIG=NO
 EVENT_SELECT=NO
 EVENT_POLL=NO
-EVENT_AIO=NO
 
 USE_THREADS=NO
 
@@ -195,7 +194,6 @@ do
         --without-select_module)         EVENT_SELECT=NONE          ;;
         --with-poll_module)              EVENT_POLL=YES             ;;
         --without-poll_module)           EVENT_POLL=NONE            ;;
-        --with-aio_module)               EVENT_AIO=YES              ;;
 
         --with-threads)                  USE_THREADS=YES            ;;
 

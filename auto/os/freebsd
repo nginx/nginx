@@ -99,26 +99,6 @@ then
 fi
 
 
-if [ $EVENT_AIO = YES ]; then
-    if [ \( $version -lt 500000 -a $version -ge 430000 \) \
-         -o $version -ge 500014 ]
-    then
-        have=NGX_HAVE_AIO . auto/have
-        EVENT_MODULES="$EVENT_MODULES $AIO_MODULE"
-        CORE_SRCS="$CORE_SRCS $AIO_SRCS"
-    else
-
-cat << END
-
-$0: error: the kqueue does not support AIO on this FreeBSD version
-
-END
-
-        exit 1
-    fi
-fi
-
-
 # cpuset_setaffinity()
 
 if [ $version -ge 701000 ]; then

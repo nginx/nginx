@@ -130,13 +130,6 @@ RTSIG_SRCS=src/event/modules/ngx_rtsig_module.c
 IOCP_MODULE=ngx_iocp_module
 IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 
-AIO_MODULE=ngx_aio_module
-AIO_SRCS="src/event/modules/ngx_aio_module.c \
-          src/os/unix/ngx_aio_read.c \
-          src/os/unix/ngx_aio_write.c \
-          src/os/unix/ngx_aio_read_chain.c \
-          src/os/unix/ngx_aio_write_chain.c"
-
 FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
 LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
 

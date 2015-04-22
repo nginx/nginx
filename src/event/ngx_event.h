@@ -103,14 +103,8 @@ struct ngx_event_s {
     ngx_event_handler_pt  handler;
 
 
-#if (NGX_HAVE_AIO)
-
 #if (NGX_HAVE_IOCP)
     ngx_event_ovlp_t ovlp;
-#else
-    struct aiocb     aiocb;
-#endif
-
 #endif
 
     ngx_uint_t       index;
@@ -251,14 +245,12 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_USE_RTSIG_EVENT      0x00000080
 
 /*
- * No need to add or delete the event filters: overlapped, aio_read,
- * aioread, io_submit.
+ * Obsolete.
  */
 #define NGX_USE_AIO_EVENT        0x00000100
 
 /*
  * Need to add socket or handle only once: i/o completion port.
- * It also requires NGX_HAVE_AIO and NGX_USE_AIO_EVENT to be set.
  */
 #define NGX_USE_IOCP_EVENT       0x00000200
 

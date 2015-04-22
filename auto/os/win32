@@ -36,5 +36,4 @@ if [ $NGX_IPV6 = YES ]; then
     have=NGX_HAVE_INET6 . auto/have
 fi
 
-have=NGX_HAVE_AIO . auto/have
 have=NGX_HAVE_IOCP . auto/have

@@ -176,10 +176,10 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
-        /* set a blocking mode for aio and non-blocking mode for others */
+        /* set a blocking mode for iocp and non-blocking mode for others */
 
         if (ngx_inherited_nonblocking) {
-            if (ngx_event_flags & NGX_USE_AIO_EVENT) {
+            if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
                 if (ngx_blocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_blocking_n " failed");
@@ -189,7 +189,7 @@ ngx_event_accept(ngx_event_t *ev)
             }
 
         } else {
-            if (!(ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT))) {
+            if (!(ngx_event_flags & (NGX_USE_IOCP_EVENT|NGX_USE_RTSIG_EVENT))) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");
@@ -232,8 +232,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         wev->ready = 1;
 
-        if (ngx_event_flags & (NGX_USE_AIO_EVENT|NGX_USE_RTSIG_EVENT)) {
-            /* rtsig, aio, iocp */
+        if (ngx_event_flags & (NGX_USE_IOCP_EVENT|NGX_USE_RTSIG_EVENT)) {
             rev->ready = 1;
         }
 
