@@ -14,12 +14,14 @@ static char *ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone,
     void *data);
+static ngx_int_t ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
+    ngx_stream_upstream_srv_conf_t *uscf);
 
 
 static ngx_command_t  ngx_stream_upstream_zone_commands[] = {
 
     { ngx_string("zone"),
-      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE2,
+      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE12,
       ngx_stream_upstream_zone,
       0,
       0,
@@ -57,11 +59,13 @@ ngx_module_t  ngx_stream_upstream_zone_module = {
 static char *
 ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ssize_t                          size;
-    ngx_str_t                       *value;
-    ngx_stream_upstream_srv_conf_t  *uscf;
+    ssize_t                           size;
+    ngx_str_t                        *value;
+    ngx_stream_upstream_srv_conf_t   *uscf;
+    ngx_stream_upstream_main_conf_t  *umcf;
 
     uscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_upstream_module);
+    umcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_upstream_module);
 
     value = cf->args->elts;
 
@@ -71,18 +75,23 @@ ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    size = ngx_parse_size(&value[2]);
+    if (cf->args->nelts == 3) {
+        size = ngx_parse_size(&value[2]);
 
-    if (size == NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid zone size \"%V\"", &value[2]);
-        return NGX_CONF_ERROR;
-    }
+        if (size == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid zone size \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
 
-    if (size < (ssize_t) (8 * ngx_pagesize)) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "zone \"%V\" is too small", &value[1]);
-        return NGX_CONF_ERROR;
+        if (size < (ssize_t) (8 * ngx_pagesize)) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "zone \"%V\" is too small", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+    } else {
+        size = 0;
     }
 
     uscf->shm_zone = ngx_shared_memory_add(cf, &value[1], size,
@@ -91,19 +100,8 @@ ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (uscf->shm_zone->data) {
-        uscf = uscf->shm_zone->data;
-
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "upstream \"%V\" in %s:%ui "
-                           "is already bound to zone \"%V\"",
-                           &uscf->host, uscf->file_name, uscf->line,
-                           &value[1]);
-        return NGX_CONF_ERROR;
-    }
-
     uscf->shm_zone->init = ngx_stream_upstream_init_zone;
-    uscf->shm_zone->data = uscf;
+    uscf->shm_zone->data = umcf;
 
     uscf->shm_zone->noreuse = 1;
 
@@ -114,30 +112,17 @@ ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 {
-    ngx_stream_upstream_srv_conf_t  *ouscf = data;
-
     size_t                            len;
+    ngx_uint_t                        i;
     ngx_slab_pool_t                  *shpool;
-    ngx_stream_upstream_rr_peer_t    *peer, **peerp;
-    ngx_stream_upstream_rr_peers_t   *peers, *backup;
-    ngx_stream_upstream_srv_conf_t   *uscf;
-
-    uscf = shm_zone->data;
-
-    if (ouscf) {
-        ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
-                      "zone \"%V\" cannot be reused", &shm_zone->shm.name);
-        return NGX_ERROR;
-    }
+    ngx_stream_upstream_srv_conf_t   *uscf, **uscfp;
+    ngx_stream_upstream_main_conf_t  *umcf;
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
     if (shm_zone->shm.exists) {
         return NGX_ERROR;
     }
-
-
-    /* copy peers to shared memory */
 
     len = sizeof(" in upstream zone \"\"") + shm_zone->shm.name.len;
 
@@ -148,6 +133,35 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_sprintf(shpool->log_ctx, " in upstream zone \"%V\"%Z",
                 &shm_zone->shm.name);
+
+
+    /* copy peers to shared memory */
+
+    umcf = shm_zone->data;
+    uscfp = umcf->upstreams.elts;
+
+    for (i = 0; i < umcf->upstreams.nelts; i++) {
+        uscf = uscfp[i];
+
+        if (uscf->shm_zone != shm_zone) {
+            continue;
+        }
+
+        if (ngx_stream_upstream_zone_copy_peers(shpool, uscf) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
+    ngx_stream_upstream_srv_conf_t *uscf)
+{
+    ngx_stream_upstream_rr_peer_t   *peer, **peerp;
+    ngx_stream_upstream_rr_peers_t  *peers, *backup;
 
     peers = ngx_slab_alloc(shpool, sizeof(ngx_stream_upstream_rr_peers_t));
     if (peers == NULL) {
