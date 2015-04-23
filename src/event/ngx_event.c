@@ -17,7 +17,6 @@ extern ngx_module_t ngx_kqueue_module;
 extern ngx_module_t ngx_eventport_module;
 extern ngx_module_t ngx_devpoll_module;
 extern ngx_module_t ngx_epoll_module;
-extern ngx_module_t ngx_rtsig_module;
 extern ngx_module_t ngx_select_module;
 
 
@@ -330,7 +329,7 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
         }
     }
 
-    /* iocp, rtsig */
+    /* iocp */
 
     return NGX_OK;
 }
@@ -409,7 +408,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
         }
     }
 
-    /* iocp, rtsig */
+    /* iocp */
 
     return NGX_OK;
 }
@@ -817,15 +816,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (ngx_add_conn(c) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-        } else {
-            if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
+        if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
         }
 
 #endif
@@ -1191,10 +1183,6 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 #if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
     int                  fd;
 #endif
-#if (NGX_HAVE_RTSIG)
-    ngx_uint_t           rtsig;
-    ngx_core_conf_t     *ccf;
-#endif
     ngx_int_t            i;
     ngx_module_t        *module;
     ngx_event_module_t  *event_module;
@@ -1211,18 +1199,6 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 
     } else if (ngx_errno != NGX_ENOSYS) {
         module = &ngx_epoll_module;
-    }
-
-#endif
-
-#if (NGX_HAVE_RTSIG)
-
-    if (module == NULL) {
-        module = &ngx_rtsig_module;
-        rtsig = 1;
-
-    } else {
-        rtsig = 0;
     }
 
 #endif
@@ -1283,31 +1259,5 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ecf->accept_mutex, 1);
     ngx_conf_init_msec_value(ecf->accept_mutex_delay, 500);
 
-
-#if (NGX_HAVE_RTSIG)
-
-    if (!rtsig) {
-        return NGX_CONF_OK;
-    }
-
-    if (ecf->accept_mutex) {
-        return NGX_CONF_OK;
-    }
-
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
-
-    if (ccf->worker_processes == 0) {
-        return NGX_CONF_OK;
-    }
-
-    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                  "the \"rtsig\" method requires \"accept_mutex\" to be on");
-
-    return NGX_CONF_ERROR;
-
-#else
-
     return NGX_CONF_OK;
-
-#endif
 }

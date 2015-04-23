@@ -42,10 +42,7 @@ ngx_event_accept(ngx_event_t *ev)
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
 
-    if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-        ev->available = 1;
-
-    } else if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
+    if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
         ev->available = ecf->multi_accept;
     }
 
@@ -189,7 +186,7 @@ ngx_event_accept(ngx_event_t *ev)
             }
 
         } else {
-            if (!(ngx_event_flags & (NGX_USE_IOCP_EVENT|NGX_USE_RTSIG_EVENT))) {
+            if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
                                   ngx_nonblocking_n " failed");
@@ -232,7 +229,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         wev->ready = 1;
 
-        if (ngx_event_flags & (NGX_USE_IOCP_EVENT|NGX_USE_RTSIG_EVENT)) {
+        if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             rev->ready = 1;
         }
 
@@ -374,10 +371,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
 
-        if (ngx_accept_mutex_held
-            && ngx_accept_events == 0
-            && !(ngx_event_flags & NGX_USE_RTSIG_EVENT))
-        {
+        if (ngx_accept_mutex_held && ngx_accept_events == 0) {
             return NGX_OK;
         }
 
@@ -423,16 +417,8 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-
-            if (ngx_add_conn(c) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-        } else {
-            if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
+        if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
+            return NGX_ERROR;
         }
     }
 
@@ -456,17 +442,10 @@ ngx_disable_accept_events(ngx_cycle_t *cycle)
             continue;
         }
 
-        if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-            if (ngx_del_conn(c, NGX_DISABLE_EVENT) == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-        } else {
-            if (ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT)
-                == NGX_ERROR)
-            {
-                return NGX_ERROR;
-            }
+        if (ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT)
+            == NGX_ERROR)
+        {
+            return NGX_ERROR;
         }
     }
 

@@ -26,18 +26,6 @@ version=$((`uname -r \
 version=${version:-0}
 
 
-# enable the rt signals on Linux between 2.2.19 and 2.6.17
-
-if [ \( $version -ge 131603 -a $version -lt 132626 \) -o $EVENT_RTSIG = YES ]
-then
-    echo " + rt signals found"
-    have=NGX_HAVE_RTSIG . auto/have
-    EVENT_MODULES="$EVENT_MODULES $RTSIG_MODULE"
-    CORE_SRCS="$CORE_SRCS $RTSIG_SRCS"
-    EVENT_FOUND=YES
-fi
-
-
 # posix_fadvise64() had been implemented in 2.5.60
 
 if [ $version -lt 132412 ]; then

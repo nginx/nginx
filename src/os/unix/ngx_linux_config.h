@@ -82,12 +82,6 @@ extern ssize_t sendfile(int s, int fd, int32_t *offset, size_t size);
 #endif
 
 
-#if (NGX_HAVE_RTSIG)
-#include <poll.h>
-#include <sys/sysctl.h>
-#endif
-
-
 #if (NGX_HAVE_EPOLL)
 #include <sys/epoll.h>
 #endif

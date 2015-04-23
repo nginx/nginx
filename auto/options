@@ -30,7 +30,6 @@ NGX_RPATH=NO
 NGX_TEST_BUILD_DEVPOLL=NO
 NGX_TEST_BUILD_EVENTPORT=NO
 NGX_TEST_BUILD_EPOLL=NO
-NGX_TEST_BUILD_RTSIG=NO
 NGX_TEST_BUILD_SOLARIS_SENDFILEV=NO
 
 NGX_PLATFORM=
@@ -38,7 +37,6 @@ NGX_WINE=
 
 EVENT_FOUND=NO
 
-EVENT_RTSIG=NO
 EVENT_SELECT=NO
 EVENT_POLL=NO
 
@@ -189,7 +187,6 @@ do
         --build=*)                       NGX_BUILD="$value"         ;;
         --builddir=*)                    NGX_OBJS="$value"          ;;
 
-        --with-rtsig_module)             EVENT_RTSIG=YES            ;;
         --with-select_module)            EVENT_SELECT=YES           ;;
         --without-select_module)         EVENT_SELECT=NONE          ;;
         --with-poll_module)              EVENT_POLL=YES             ;;
@@ -327,7 +324,6 @@ use the \"--without-http_limit_conn_module\" option instead"
         --test-build-devpoll)            NGX_TEST_BUILD_DEVPOLL=YES ;;
         --test-build-eventport)          NGX_TEST_BUILD_EVENTPORT=YES ;;
         --test-build-epoll)              NGX_TEST_BUILD_EPOLL=YES   ;;
-        --test-build-rtsig)              NGX_TEST_BUILD_RTSIG=YES   ;;
         --test-build-solaris-sendfilev)  NGX_TEST_BUILD_SOLARIS_SENDFILEV=YES ;;
 
         *)
@@ -362,7 +358,6 @@ cat << END
   --build=NAME                       set build name
   --builddir=DIR                     set build directory
 
-  --with-rtsig_module                enable rtsig module
   --with-select_module               enable select module
   --without-select_module            disable select module
   --with-poll_module                 enable poll module
