@@ -840,19 +840,6 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
     }
 
-#ifdef RLIMIT_SIGPENDING
-    if (ccf->rlimit_sigpending != NGX_CONF_UNSET) {
-        rlmt.rlim_cur = (rlim_t) ccf->rlimit_sigpending;
-        rlmt.rlim_max = (rlim_t) ccf->rlimit_sigpending;
-
-        if (setrlimit(RLIMIT_SIGPENDING, &rlmt) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "setrlimit(RLIMIT_SIGPENDING, %i) failed",
-                          ccf->rlimit_sigpending);
-        }
-    }
-#endif
-
     if (geteuid() == 0) {
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
