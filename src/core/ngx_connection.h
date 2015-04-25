@@ -190,6 +190,17 @@ struct ngx_connection_s {
 };
 
 
+#define ngx_set_connection_log(c, l)                                         \
+                                                                             \
+    c->log->file = l->file;                                                  \
+    c->log->next = l->next;                                                  \
+    c->log->writer = l->writer;                                              \
+    c->log->wdata = l->wdata;                                                \
+    if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {                   \
+        c->log->log_level = l->log_level;                                    \
+    }
+
+
 ngx_listening_t *ngx_create_listening(ngx_conf_t *cf, void *sockaddr,
     socklen_t socklen);
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);

@@ -586,17 +586,6 @@ extern ngx_http_header_t       ngx_http_headers_in[];
 extern ngx_http_header_out_t   ngx_http_headers_out[];
 
 
-#define ngx_http_set_connection_log(c, l)                                     \
-                                                                              \
-    c->log->file = l->file;                                                   \
-    c->log->next = l->next;                                                   \
-    c->log->writer = l->writer;                                               \
-    c->log->wdata = l->wdata;                                                 \
-    if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {                    \
-        c->log->log_level = l->log_level;                                     \
-    }
-
-
 #define ngx_http_set_log_request(log, r)                                      \
     ((ngx_http_log_ctx_t *) log->data)->current_request = r
 

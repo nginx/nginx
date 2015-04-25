@@ -543,7 +543,7 @@ ngx_http_create_request(ngx_connection_t *c)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    ngx_http_set_connection_log(r->connection, clcf->error_log);
+    ngx_set_connection_log(r->connection, clcf->error_log);
 
     r->header_in = hc->nbusy ? hc->busy[0] : c->buffer;
 
@@ -867,7 +867,7 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
-    ngx_http_set_connection_log(c, clcf->error_log);
+    ngx_set_connection_log(c, clcf->error_log);
 
     sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
@@ -2073,7 +2073,7 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    ngx_http_set_connection_log(r->connection, clcf->error_log);
+    ngx_set_connection_log(r->connection, clcf->error_log);
 
     return NGX_OK;
 }

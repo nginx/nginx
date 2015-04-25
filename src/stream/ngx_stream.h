@@ -192,16 +192,6 @@ typedef struct {
             ->main_conf[module.ctx_index]:                                     \
         NULL)
 
-#define ngx_stream_set_connection_log(c, l)                                    \
-                                                                               \
-    c->log->file = l->file;                                                    \
-    c->log->next = l->next;                                                    \
-    c->log->writer = l->writer;                                                \
-    c->log->wdata = l->wdata;                                                  \
-    if (!(c->log->log_level & NGX_LOG_DEBUG_CONNECTION)) {                     \
-        c->log->log_level = l->log_level;                                      \
-    }
-
 
 void ngx_stream_init_connection(ngx_connection_t *c);
 void ngx_stream_close_connection(ngx_connection_t *c);

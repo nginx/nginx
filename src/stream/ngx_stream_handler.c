@@ -130,7 +130,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
 
-    ngx_stream_set_connection_log(c, cscf->error_log);
+    ngx_set_connection_log(c, cscf->error_log);
 
     len = ngx_sock_ntop(c->sockaddr, c->socklen, text, NGX_SOCKADDR_STRLEN, 1);
 

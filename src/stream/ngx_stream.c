@@ -370,8 +370,8 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->pool_size = 256;
 
             cscf = addr->ctx->srv_conf[ngx_stream_core_module.ctx_index];
-            ls->logp = cscf->error_log;
 
+            ls->logp = cscf->error_log;
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
 
