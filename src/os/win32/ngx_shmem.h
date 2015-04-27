@@ -24,7 +24,10 @@ typedef struct {
 
 
 ngx_int_t ngx_shm_alloc(ngx_shm_t *shm);
+ngx_int_t ngx_shm_remap(ngx_shm_t *shm, u_char *addr);
 void ngx_shm_free(ngx_shm_t *shm);
+
+extern ngx_uint_t  ngx_allocation_granularity;
 
 
 #endif /* _NGX_SHMEM_H_INCLUDED_ */
