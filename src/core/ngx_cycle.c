@@ -441,6 +441,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 && !shm_zone[i].noreuse)
             {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
+#if (NGX_WIN32)
+                shm_zone[i].shm.handle = oshm_zone[n].shm.handle;
+#endif
 
                 if (shm_zone[i].init(&shm_zone[i], oshm_zone[n].data)
                     != NGX_OK)
