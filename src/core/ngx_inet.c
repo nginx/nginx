@@ -26,15 +26,15 @@ ngx_inet_addr(u_char *text, size_t len)
     n = 0;
 
     for (p = text; p < text + len; p++) {
-
-        if (octet > 255) {
-            return INADDR_NONE;
-        }
-
         c = *p;
 
         if (c >= '0' && c <= '9') {
             octet = octet * 10 + (c - '0');
+
+            if (octet > 255) {
+                return INADDR_NONE;
+            }
+
             continue;
         }
 
