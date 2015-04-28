@@ -5,6 +5,84 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.0" date="28.04.2015">
+
+<change type="change">
+<para lang="ru">
+устаревшие методы обработки соединений aio и rtsig больше не поддерживаются.
+</para>
+<para lang="en">
+obsolete aio and rtsig event methods have been removed.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива zone в блоке upstream.
+</para>
+<para lang="en">
+the "zone" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль stream.
+</para>
+<para lang="en">
+the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка byte ranges для ответов модуля ngx_http_memcached_module.<br/>
+Спасибо Martin Mlynář.
+</para>
+<para lang="en">
+byte ranges support in the ngx_http_memcached_module.<br/>
+Thanks to Martin Mlynář.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+разделяемую память теперь можно использовать на версиях Windows
+с рандомизацией адресного пространства.<br/>
+Спасибо Сергею Брестеру.
+</para>
+<para lang="en">
+shared memory can now be used on Windows versions
+with address space layout randomization.<br/>
+Thanks to Sergey Brester.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директиву error_log теперь можно использовать
+на уровнях mail и server в почтовом прокси-сервере.
+</para>
+<para lang="en">
+the "error_log" directive can now be used
+on mail and server levels in mail proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр proxy_protocol директивы listen не работал,
+если не был указан в первой директиве listen для данного listen-сокета.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive did not work
+if not specified in the first "listen" directive for a listen socket.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.7.12" date="07.04.2015">
 
 <change type="feature">
