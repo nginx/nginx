@@ -126,13 +126,6 @@ static ngx_command_t  ngx_event_core_commands[] = {
       0,
       NULL },
 
-    { ngx_string("connections"),
-      NGX_EVENT_CONF|NGX_CONF_TAKE1,
-      ngx_event_connections,
-      0,
-      0,
-      NULL },
-
     { ngx_string("use"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_event_use,
@@ -954,12 +947,6 @@ ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ecf->connections != NGX_CONF_UNSET_UINT) {
         return "is duplicate";
-    }
-
-    if (ngx_strcmp(cmd->name.data, "connections") == 0) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "the \"connections\" directive is deprecated, "
-                           "use the \"worker_connections\" directive instead");
     }
 
     value = cf->args->elts;
