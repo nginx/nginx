@@ -36,13 +36,6 @@ static ngx_command_t  ngx_mail_commands[] = {
       0,
       NULL },
 
-    { ngx_string("imap"),
-      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
-      ngx_mail_block,
-      0,
-      0,
-      NULL },
-
       ngx_null_command
 };
 
@@ -82,12 +75,6 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_mail_conf_ctx_t         *ctx;
     ngx_mail_core_srv_conf_t   **cscfp;
     ngx_mail_core_main_conf_t   *cmcf;
-
-    if (cmd->name.data[0] == 'i') {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "the \"imap\" directive is deprecated, "
-                           "use the \"mail\" directive instead");
-    }
 
     /* the main mail context */
 
