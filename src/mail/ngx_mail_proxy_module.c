@@ -111,7 +111,6 @@ static u_char  smtp_auth_ok[] = "235 2.0.0 OK" CRLF;
 void
 ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
 {
-    int                        keepalive;
     ngx_int_t                  rc;
     ngx_mail_proxy_ctx_t      *p;
     ngx_mail_proxy_conf_t     *pcf;
@@ -120,18 +119,6 @@ ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
     s->connection->log->action = "connecting to upstream";
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
-
-    if (cscf->so_keepalive) {
-        keepalive = 1;
-
-        if (setsockopt(s->connection->fd, SOL_SOCKET, SO_KEEPALIVE,
-                       (const void *) &keepalive, sizeof(int))
-                == -1)
-        {
-            ngx_log_error(NGX_LOG_ALERT, s->connection->log, ngx_socket_errno,
-                          "setsockopt(SO_KEEPALIVE) failed");
-        }
-    }
 
     p = ngx_pcalloc(s->connection->pool, sizeof(ngx_mail_proxy_ctx_t));
     if (p == NULL) {

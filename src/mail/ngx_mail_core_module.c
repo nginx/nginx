@@ -27,12 +27,6 @@ static char *ngx_mail_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
-static ngx_conf_deprecated_t  ngx_conf_deprecated_so_keepalive = {
-    ngx_conf_deprecated, "so_keepalive",
-    "so_keepalive\" parameter of the \"listen"
-};
-
-
 static ngx_command_t  ngx_mail_core_commands[] = {
 
     { ngx_string("server"),
@@ -55,13 +49,6 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       NGX_MAIL_SRV_CONF_OFFSET,
       0,
       NULL },
-
-    { ngx_string("so_keepalive"),
-      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_MAIL_SRV_CONF_OFFSET,
-      offsetof(ngx_mail_core_srv_conf_t, so_keepalive),
-      &ngx_conf_deprecated_so_keepalive },
 
     { ngx_string("timeout"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
@@ -175,7 +162,6 @@ ngx_mail_core_create_srv_conf(ngx_conf_t *cf)
 
     cscf->timeout = NGX_CONF_UNSET_MSEC;
     cscf->resolver_timeout = NGX_CONF_UNSET_MSEC;
-    cscf->so_keepalive = NGX_CONF_UNSET;
 
     cscf->resolver = NGX_CONF_UNSET_PTR;
 
@@ -195,8 +181,6 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
     ngx_conf_merge_msec_value(conf->resolver_timeout, prev->resolver_timeout,
                               30000);
-
-    ngx_conf_merge_value(conf->so_keepalive, prev->so_keepalive, 0);
 
 
     ngx_conf_merge_str_value(conf->server_name, prev->server_name, "");

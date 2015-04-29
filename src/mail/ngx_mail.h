@@ -131,8 +131,6 @@ typedef struct {
     ngx_msec_t              timeout;
     ngx_msec_t              resolver_timeout;
 
-    ngx_flag_t              so_keepalive;
-
     ngx_str_t               server_name;
 
     u_char                 *file_name;
