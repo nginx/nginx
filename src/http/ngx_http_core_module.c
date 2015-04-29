@@ -96,18 +96,6 @@ static ngx_conf_post_t  ngx_http_core_lowat_post =
 static ngx_conf_post_handler_pt  ngx_http_core_pool_size_p =
     ngx_http_core_pool_size;
 
-static ngx_conf_deprecated_t  ngx_conf_deprecated_optimize_server_names = {
-    ngx_conf_deprecated, "optimize_server_names", "server_name_in_redirect"
-};
-
-static ngx_conf_deprecated_t  ngx_conf_deprecated_open_file_cache_retest = {
-    ngx_conf_deprecated, "open_file_cache_retest", "open_file_cache_valid"
-};
-
-static ngx_conf_deprecated_t  ngx_conf_deprecated_satisfy_any = {
-    ngx_conf_deprecated, "satisfy_any", "satisfy"
-};
-
 
 static ngx_conf_enum_t  ngx_http_core_request_body_in_file[] = {
     { ngx_string("off"), NGX_HTTP_REQUEST_BODY_FILE_OFF },
@@ -254,13 +242,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, large_client_header_buffers),
       NULL },
-
-    { ngx_string("optimize_server_names"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, server_name_in_redirect),
-      &ngx_conf_deprecated_optimize_server_names },
 
     { ngx_string("ignore_invalid_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
@@ -519,13 +500,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, satisfy),
       &ngx_http_core_satisfy },
 
-    { ngx_string("satisfy_any"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, satisfy),
-      &ngx_conf_deprecated_satisfy_any },
-
     { ngx_string("internal"),
       NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS,
       ngx_http_core_internal,
@@ -688,13 +662,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, open_file_cache_valid),
       NULL },
-
-    { ngx_string("open_file_cache_retest"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_sec_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_core_loc_conf_t, open_file_cache_valid),
-      &ngx_conf_deprecated_open_file_cache_retest },
 
     { ngx_string("open_file_cache_min_uses"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
