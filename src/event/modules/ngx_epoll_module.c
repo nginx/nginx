@@ -329,7 +329,7 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 
 #if (NGX_HAVE_EVENTFD)
         if (ngx_epoll_notify_init(cycle->log) != NGX_OK) {
-            return NGX_ERROR;
+            ngx_epoll_module_ctx.actions.notify = NULL;
         }
 #endif
 
