@@ -176,9 +176,11 @@ static char **ngx_os_environ;
 int ngx_cdecl
 main(int argc, char *const *argv)
 {
-    ngx_int_t         i;
+    ngx_buf_t        *b;
     ngx_log_t        *log;
+    ngx_uint_t        i;
     ngx_cycle_t      *cycle, init_cycle;
+    ngx_conf_dump_t  *cd;
     ngx_core_conf_t  *ccf;
 
     ngx_debug_init();
@@ -196,7 +198,7 @@ main(int argc, char *const *argv)
 
         if (ngx_show_help) {
             ngx_write_stderr(
-                "Usage: nginx [-?hvVtq] [-s signal] [-c filename] "
+                "Usage: nginx [-?hvVtTq] [-s signal] [-c filename] "
                              "[-p prefix] [-g directives]" NGX_LINEFEED
                              NGX_LINEFEED
                 "Options:" NGX_LINEFEED
@@ -205,6 +207,8 @@ main(int argc, char *const *argv)
                 "  -V            : show version and configure options then exit"
                                    NGX_LINEFEED
                 "  -t            : test configuration and exit" NGX_LINEFEED
+                "  -T            : test configuration, dump it and exit"
+                                   NGX_LINEFEED
                 "  -q            : suppress non-error messages "
                                    "during configuration testing" NGX_LINEFEED
                 "  -s signal     : send signal to a master process: "
@@ -331,6 +335,23 @@ main(int argc, char *const *argv)
         if (!ngx_quiet_mode) {
             ngx_log_stderr(0, "configuration file %s test is successful",
                            cycle->conf_file.data);
+        }
+
+        if (ngx_dump_config) {
+            cd = cycle->config_dump.elts;
+
+            for (i = 0; i < cycle->config_dump.nelts; i++) {
+
+                ngx_write_stdout("# configuration file ");
+                (void) ngx_write_fd(ngx_stdout, cd[i].name.data,
+                                    cd[i].name.len);
+                ngx_write_stdout(":" NGX_LINEFEED);
+
+                b = cd[i].buffer;
+
+                (void) ngx_write_fd(ngx_stdout, b->pos, b->last - b->pos);
+                ngx_write_stdout(NGX_LINEFEED);
+            }
         }
 
         return 0;
@@ -687,6 +708,11 @@ ngx_get_options(int argc, char *const *argv)
 
             case 't':
                 ngx_test_config = 1;
+                break;
+
+            case 'T':
+                ngx_test_config = 1;
+                ngx_dump_config = 1;
                 break;
 
             case 'q':

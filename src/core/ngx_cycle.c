@@ -24,6 +24,7 @@ static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
 
 ngx_uint_t             ngx_test_config;
+ngx_uint_t             ngx_dump_config;
 ngx_uint_t             ngx_quiet_mode;
 
 
@@ -123,6 +124,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->paths.nalloc = n;
     cycle->paths.pool = pool;
 
+
+    if (ngx_array_init(&cycle->config_dump, pool, 1, sizeof(ngx_conf_dump_t))
+        != NGX_OK)
+    {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
 
     if (old_cycle->open_files.part.nelts) {
         n = old_cycle->open_files.part.nelts;

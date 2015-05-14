@@ -52,6 +52,7 @@ struct ngx_cycle_s {
 
     ngx_array_t               listening;
     ngx_array_t               paths;
+    ngx_array_t               config_dump;
     ngx_list_t                open_files;
     ngx_list_t                shared_memory;
 
@@ -124,6 +125,7 @@ extern volatile ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;
 extern ngx_uint_t             ngx_test_config;
+extern ngx_uint_t             ngx_dump_config;
 extern ngx_uint_t             ngx_quiet_mode;
 
 

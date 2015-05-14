@@ -146,8 +146,15 @@ typedef struct {
 typedef struct {
     ngx_file_t            file;
     ngx_buf_t            *buffer;
+    ngx_buf_t            *dump;
     ngx_uint_t            line;
 } ngx_conf_file_t;
+
+
+typedef struct {
+    ngx_str_t             name;
+    ngx_buf_t            *buffer;
+} ngx_conf_dump_t;
 
 
 typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
