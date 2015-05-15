@@ -68,6 +68,14 @@ struct ngx_event_s {
 
     unsigned         posted:1;
 
+    unsigned         closed:1;
+
+    /* to test on worker exit */
+    unsigned         channel:1;
+    unsigned         resolver:1;
+
+    unsigned         cancelable:1;
+
 #if (NGX_WIN32)
     /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was successful */
     unsigned         accept_context_updated:1;
@@ -115,15 +123,6 @@ struct ngx_event_s {
 
     /* the posted queue */
     ngx_queue_t      queue;
-
-    unsigned         closed:1;
-
-    /* to test on worker exit */
-    unsigned         channel:1;
-    unsigned         resolver:1;
-
-    unsigned         cancelable:1;
-
 
 #if 0
 
