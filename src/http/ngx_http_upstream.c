@@ -1300,15 +1300,12 @@ static void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t          rc;
-    ngx_time_t        *tp;
     ngx_connection_t  *c;
 
     r->connection->log->action = "connecting to upstream";
 
-    if (u->state && u->state->response_sec) {
-        tp = ngx_timeofday();
-        u->state->response_sec = tp->sec - u->state->response_sec;
-        u->state->response_msec = tp->msec - u->state->response_msec;
+    if (u->state && u->state->response_time) {
+        u->state->response_time = ngx_current_msec - u->state->response_time;
     }
 
     u->state = ngx_array_push(r->upstream_states);
@@ -1320,10 +1317,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
 
-    tp = ngx_timeofday();
-    u->state->response_sec = tp->sec;
-    u->state->response_msec = tp->msec;
-    u->state->header_sec = (time_t) NGX_ERROR;
+    u->state->response_time = ngx_current_msec;
+    u->state->header_time = (ngx_msec_t) -1;
 
     rc = ngx_event_connect_peer(&u->peer);
 
@@ -2017,7 +2012,6 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ssize_t            n;
     ngx_int_t          rc;
-    ngx_time_t        *tp;
     ngx_connection_t  *c;
 
     c = u->peer.connection;
@@ -2138,9 +2132,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* rc == NGX_OK */
 
-    tp = ngx_timeofday();
-    u->state->header_sec = tp->sec - u->state->response_sec;
-    u->state->header_msec = tp->msec - u->state->response_msec;
+    u->state->header_time = ngx_current_msec - u->state->response_time;
 
     if (u->headers_in.status_n >= NGX_HTTP_SPECIAL_RESPONSE) {
 
@@ -3923,8 +3915,7 @@ static void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
-    ngx_uint_t   flush;
-    ngx_time_t  *tp;
+    ngx_uint_t  flush;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
@@ -3943,10 +3934,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         u->resolved->ctx = NULL;
     }
 
-    if (u->state && u->state->response_sec) {
-        tp = ngx_timeofday();
-        u->state->response_sec = tp->sec - u->state->response_sec;
-        u->state->response_msec = tp->msec - u->state->response_msec;
+    if (u->state && u->state->response_time) {
+        u->state->response_time = ngx_current_msec - u->state->response_time;
 
         if (u->pipe && u->pipe->read_length) {
             u->state->response_length = u->pipe->read_length;
@@ -5020,15 +5009,11 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     for ( ;; ) {
         if (state[i].status) {
 
-            if (data
-                && state[i].header_sec != (time_t) NGX_ERROR)
-            {
-                ms = (ngx_msec_int_t)
-                      (state[i].header_sec * 1000 + state[i].header_msec);
+            if (data && state[i].header_time != (ngx_msec_t) -1) {
+                ms = state[i].header_time;
 
             } else {
-                ms = (ngx_msec_int_t)
-                      (state[i].response_sec * 1000 + state[i].response_msec);
+                ms = state[i].response_time;
             }
 
             ms = ngx_max(ms, 0);
