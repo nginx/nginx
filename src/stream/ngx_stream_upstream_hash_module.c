@@ -271,13 +271,17 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
 {
     u_char                               *host, *port, c;
     size_t                                host_len, port_len, size;
-    uint32_t                              hash, base_hash, prev_hash;
+    uint32_t                              hash, base_hash;
     ngx_str_t                            *server;
     ngx_uint_t                            npoints, i, j;
     ngx_stream_upstream_rr_peer_t        *peer;
     ngx_stream_upstream_rr_peers_t       *peers;
     ngx_stream_upstream_chash_points_t   *points;
     ngx_stream_upstream_hash_srv_conf_t  *hcf;
+    union {
+        uint32_t                          value;
+        u_char                            byte[4];
+    } prev_hash;
 
     if (ngx_stream_upstream_init_round_robin(cf, us) != NGX_OK) {
         return NGX_ERROR;
@@ -344,20 +348,27 @@ ngx_stream_upstream_init_chash(ngx_conf_t *cf,
         ngx_crc32_update(&base_hash, (u_char *) "", 1);
         ngx_crc32_update(&base_hash, port, port_len);
 
-        prev_hash = 0;
+        prev_hash.value = 0;
         npoints = peer->weight * 160;
 
         for (j = 0; j < npoints; j++) {
             hash = base_hash;
 
-            ngx_crc32_update(&hash, (u_char *) &prev_hash, sizeof(uint32_t));
+            ngx_crc32_update(&hash, prev_hash.byte, 4);
             ngx_crc32_final(hash);
 
             points->point[points->number].hash = hash;
             points->point[points->number].server = server;
             points->number++;
 
-            prev_hash = hash;
+#if (NGX_HAVE_LITTLE_ENDIAN)
+            prev_hash.value = hash;
+#else
+            prev_hash.byte[0] = (u_char) (hash & 0xff);
+            prev_hash.byte[1] = (u_char) ((hash >> 8) & 0xff);
+            prev_hash.byte[2] = (u_char) ((hash >> 16) & 0xff);
+            prev_hash.byte[3] = (u_char) ((hash >> 24) & 0xff);
+#endif
         }
     }
 
