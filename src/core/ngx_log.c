@@ -609,7 +609,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
             return NGX_CONF_ERROR;
         }
 
-        buf = ngx_palloc(cf->pool, sizeof(ngx_log_memory_buf_t));
+        buf = ngx_pcalloc(cf->pool, sizeof(ngx_log_memory_buf_t));
         if (buf == NULL) {
             return NGX_CONF_ERROR;
         }
