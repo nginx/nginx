@@ -29,6 +29,7 @@ static void ngx_cache_loader_process_handler(ngx_event_t *ev);
 
 
 ngx_uint_t    ngx_process;
+ngx_uint_t    ngx_worker;
 ngx_pid_t     ngx_pid;
 
 sig_atomic_t  ngx_reap;
@@ -731,6 +732,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_connection_t  *c;
 
     ngx_process = NGX_PROCESS_WORKER;
+    ngx_worker = worker;
 
     ngx_worker_process_init(cycle, worker);
 
