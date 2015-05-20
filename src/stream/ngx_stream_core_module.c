@@ -384,6 +384,18 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strcmp(value[i].data, "reuseport") == 0) {
+#if (NGX_HAVE_REUSEPORT)
+            ls->reuseport = 1;
+            ls->bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "reuseport is not supported "
+                               "on this platform, ignored");
+#endif
+            continue;
+        }
+
         if (ngx_strcmp(value[i].data, "ssl") == 0) {
 #if (NGX_STREAM_SSL)
             ls->ssl = 1;

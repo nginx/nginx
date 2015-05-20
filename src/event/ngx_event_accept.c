@@ -11,7 +11,7 @@
 
 
 static ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
-static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
+static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all);
 static void ngx_close_accepted_connection(ngx_connection_t *c);
 
 
@@ -109,7 +109,7 @@ ngx_event_accept(ngx_event_t *ev)
             }
 
             if (err == NGX_EMFILE || err == NGX_ENFILE) {
-                if (ngx_disable_accept_events((ngx_cycle_t *) ngx_cycle)
+                if (ngx_disable_accept_events((ngx_cycle_t *) ngx_cycle, 1)
                     != NGX_OK)
                 {
                     return;
@@ -390,7 +390,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
                    "accept mutex lock failed: %ui", ngx_accept_mutex_held);
 
     if (ngx_accept_mutex_held) {
-        if (ngx_disable_accept_events(cycle) == NGX_ERROR) {
+        if (ngx_disable_accept_events(cycle, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
@@ -413,7 +413,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 
         c = ls[i].connection;
 
-        if (c->read->active) {
+        if (c == NULL || c->read->active) {
             continue;
         }
 
@@ -427,7 +427,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 
 
 static ngx_int_t
-ngx_disable_accept_events(ngx_cycle_t *cycle)
+ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 {
     ngx_uint_t         i;
     ngx_listening_t   *ls;
@@ -438,9 +438,22 @@ ngx_disable_accept_events(ngx_cycle_t *cycle)
 
         c = ls[i].connection;
 
-        if (!c->read->active) {
+        if (c == NULL || !c->read->active) {
             continue;
         }
+
+#if (NGX_HAVE_REUSEPORT)
+
+        /*
+         * do not disable accept on worker's own sockets
+         * when disabling accept events due to accept mutex
+         */
+
+        if (ls[i].reuseport && !all) {
+            continue;
+        }
+
+#endif
 
         if (ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT)
             == NGX_ERROR)

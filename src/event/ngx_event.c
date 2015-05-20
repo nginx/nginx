@@ -725,6 +725,12 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
+#if (NGX_HAVE_REUSEPORT)
+        if (ls[i].reuseport && ls[i].worker != ngx_worker) {
+            continue;
+        }
+#endif
+
         c = ngx_get_connection(ls[i].fd, cycle->log);
 
         if (c == NULL) {

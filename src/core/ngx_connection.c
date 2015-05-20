@@ -91,6 +91,43 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
 
 
 ngx_int_t
+ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
+{
+#if (NGX_HAVE_REUSEPORT)
+
+    ngx_int_t         n;
+    ngx_core_conf_t  *ccf;
+    ngx_listening_t   ols;
+
+    if (!ls->reuseport) {
+        return NGX_OK;
+    }
+
+    ols = *ls;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
+                                           ngx_core_module);
+
+    for (n = 1; n < ccf->worker_processes; n++) {
+
+        /* create a socket for each worker process */
+
+        ls = ngx_array_push(&cf->cycle->listening);
+        if (ls == NULL) {
+            return NGX_ERROR;
+        }
+
+        *ls = ols;
+        ls->worker = n;
+    }
+
+#endif
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
     size_t                     len;
@@ -105,6 +142,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #endif
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
     int                        timeout;
+#endif
+#if (NGX_HAVE_REUSEPORT)
+    int                        reuseport;
 #endif
 
     ls = cycle->listening.elts;
@@ -213,6 +253,25 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
 #endif
+#endif
+
+#if (NGX_HAVE_REUSEPORT)
+
+        reuseport = 0;
+        olen = sizeof(int);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_REUSEPORT,
+                       (void *) &reuseport, &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "getsockopt(SO_REUSEPORT) %V failed, ignored",
+                          &ls[i].addr_text);
+
+        } else {
+            ls[i].reuseport = reuseport ? 1 : 0;
+        }
+
 #endif
 
 #if (NGX_HAVE_TCP_FASTOPEN)
@@ -332,6 +391,31 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 continue;
             }
 
+#if (NGX_HAVE_REUSEPORT)
+
+            if (ls[i].add_reuseport) {
+
+                /*
+                 * to allow transition from a socket without SO_REUSEPORT
+                 * to multiple sockets with SO_REUSEPORT, we have to set
+                 * SO_REUSEPORT on the old socket before opening new ones
+                 */
+
+                int  reuseport = 1;
+
+                if (setsockopt(ls[i].fd, SOL_SOCKET, SO_REUSEPORT,
+                               (const void *) &reuseport, sizeof(int))
+                    == -1)
+                {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                                  "setsockopt(SO_REUSEPORT) %V failed, ignored",
+                                  &ls[i].addr_text);
+                }
+
+                ls[i].add_reuseport = 0;
+            }
+#endif
+
             if (ls[i].fd != (ngx_socket_t) -1) {
                 continue;
             }
@@ -369,6 +453,32 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
                 return NGX_ERROR;
             }
+
+#if (NGX_HAVE_REUSEPORT)
+
+            if (ls[i].reuseport) {
+                int  reuseport;
+
+                reuseport = 1;
+
+                if (setsockopt(s, SOL_SOCKET, SO_REUSEPORT,
+                               (const void *) &reuseport, sizeof(int))
+                    == -1)
+                {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                  "setsockopt(SO_REUSEPORT) %V failed, ignored",
+                                  &ls[i].addr_text);
+
+                    if (ngx_close_socket(s) == -1) {
+                        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                      ngx_close_socket_n " %V failed",
+                                      &ls[i].addr_text);
+                    }
+
+                    return NGX_ERROR;
+                }
+            }
+#endif
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
 

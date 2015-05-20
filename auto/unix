@@ -308,6 +308,16 @@ ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_SETFIB, NULL, 0)"
 . auto/feature
 
 
+ngx_feature="SO_REUSEPORT"
+ngx_feature_name="NGX_HAVE_REUSEPORT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_REUSEPORT, NULL, 0)"
+. auto/feature
+
+
 ngx_feature="SO_ACCEPTFILTER"
 ngx_feature_name="NGX_HAVE_DEFERRED_ACCEPT"
 ngx_feature_run=no
