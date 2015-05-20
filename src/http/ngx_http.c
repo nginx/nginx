@@ -1719,13 +1719,7 @@ ngx_http_init_listening(ngx_conf_t *cf, ngx_http_conf_port_t *port)
 
         ls->servers = hport;
 
-        if (i == last - 1) {
-            hport->naddrs = last;
-
-        } else {
-            hport->naddrs = 1;
-            i = 0;
-        }
+        hport->naddrs = i + 1;
 
         switch (ls->sockaddr->sa_family) {
 

@@ -392,13 +392,7 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 
             ls->servers = mport;
 
-            if (i == last - 1) {
-                mport->naddrs = last;
-
-            } else {
-                mport->naddrs = 1;
-                i = 0;
-            }
+            mport->naddrs = i + 1;
 
             switch (ls->sockaddr->sa_family) {
 #if (NGX_HAVE_INET6)
