@@ -622,6 +622,11 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
         if (peer->max_fails) {
             peer->effective_weight -= peer->weight / peer->max_fails;
+
+            if (peer->fails >= peer->max_fails) {
+                ngx_log_error(NGX_LOG_WARN, pc->log, 0,
+                              "upstream server temporarily disabled");
+            }
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
