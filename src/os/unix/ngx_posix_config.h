@@ -21,6 +21,14 @@
 #endif
 
 
+#if (NGX_GNU_HURD)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE             /* accept4() */
+#endif
+#define _FILE_OFFSET_BITS       64
+#endif
+
+
 #ifdef __CYGWIN__
 #define timezonevar             /* timezone is variable */
 #define NGX_BROKEN_SCM_RIGHTS   1

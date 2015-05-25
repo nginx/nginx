@@ -60,6 +60,15 @@ case "$NGX_PLATFORM" in
         CORE_SRCS="$UNIX_SRCS"
     ;;
 
+    GNU:*)
+        # GNU Hurd
+        have=NGX_GNU_HURD . auto/have_headers
+        CORE_INCS="$UNIX_INCS"
+        CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
+        CORE_SRCS="$UNIX_SRCS"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+    ;;
+
     *)
         CORE_INCS="$UNIX_INCS"
         CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
