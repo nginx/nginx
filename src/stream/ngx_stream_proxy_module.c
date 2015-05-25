@@ -1139,9 +1139,8 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->ssl_session_reuse, 1);
 
     ngx_conf_merge_bitmask_value(conf->ssl_protocols, prev->ssl_protocols,
-                              (NGX_CONF_BITMASK_SET|NGX_SSL_SSLv3
-                               |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
-                               |NGX_SSL_TLSv1_2));
+                              (NGX_CONF_BITMASK_SET|NGX_SSL_TLSv1
+                               |NGX_SSL_TLSv1_1|NGX_SSL_TLSv1_2));
 
     ngx_conf_merge_str_value(conf->ssl_ciphers, prev->ssl_ciphers, "DEFAULT");
 

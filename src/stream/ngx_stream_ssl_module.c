@@ -211,7 +211,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                          prev->prefer_server_ciphers, 0);
 
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
-                         (NGX_CONF_BITMASK_SET|NGX_SSL_SSLv3|NGX_SSL_TLSv1
+                         (NGX_CONF_BITMASK_SET|NGX_SSL_TLSv1
                           |NGX_SSL_TLSv1_1|NGX_SSL_TLSv1_2));
 
     ngx_conf_merge_str_value(conf->certificate, prev->certificate, "");
