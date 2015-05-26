@@ -5,6 +5,80 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.1" date="26.05.2015">
+
+<change type="change">
+<para lang="ru">
+теперь протокол SSLv3 по умолчанию запрещён.
+</para>
+<para lang="en">
+now SSLv3 protocol is disabled by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+некоторые давно устаревшие директивы больше не поддерживаются.
+</para>
+<para lang="en">
+some long deprecated directives are not supported anymore.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр reuseport директивы listen.<br/>
+Спасибо Sepherosa Ziehau и Yingqi Lu.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive.<br/>
+Thanks to Sepherosa Ziehau and Yingqi Lu.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_connect_time.
+</para>
+<para lang="en">
+the $upstream_connect_time variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве hash на big-endian платформах.
+</para>
+<para lang="en">
+in the "hash" directive on big-endian platforms.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не запускаться на некоторых старых версиях Linux;
+ошибка появилась в 1.7.11.
+</para>
+<para lang="en">
+nginx might fail to start on some old Linux variants;
+the bug had appeared in 1.7.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге IP-адресов.<br/>
+Спасибо Сергею Половко.
+</para>
+<para lang="en">
+in IP address parsing.<br/>
+Thanks to Sergey Polovko.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.0" date="28.04.2015">
 
 <change type="change">
