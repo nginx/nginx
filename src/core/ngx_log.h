@@ -111,7 +111,7 @@ void ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 /*********************************/
 
-#else /* NO VARIADIC MACROS */
+#else /* no variadic macros */
 
 #define NGX_HAVE_VARIADIC_MACROS  0
 
@@ -123,7 +123,7 @@ void ngx_cdecl ngx_log_debug_core(ngx_log_t *log, ngx_err_t err,
     const char *fmt, ...);
 
 
-#endif /* VARIADIC MACROS */
+#endif /* variadic macros */
 
 
 /*********************************/
@@ -166,7 +166,7 @@ void ngx_cdecl ngx_log_debug_core(ngx_log_t *log, ngx_err_t err,
                        arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 
 
-#else /* NO VARIADIC MACROS */
+#else /* no variadic macros */
 
 #define ngx_log_debug0(level, log, err, fmt)                                  \
     if ((log)->log_level & level)                                             \
@@ -211,7 +211,7 @@ void ngx_cdecl ngx_log_debug_core(ngx_log_t *log, ngx_err_t err,
 
 #endif
 
-#else /* NO NGX_DEBUG */
+#else /* !NGX_DEBUG */
 
 #define ngx_log_debug0(level, log, err, fmt)
 #define ngx_log_debug1(level, log, err, fmt, arg1)
