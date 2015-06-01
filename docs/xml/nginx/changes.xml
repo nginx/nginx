@@ -278,7 +278,7 @@ Thanks to Sven Peter, Franck Levionnois, and Filipe Da Silva.
 <change type="feature">
 <para lang="ru">
 уменьшение времени запуска
-при использовании дирекивы "hash ... consistent" в блоке upstream.<br/>
+при использовании директивы "hash ... consistent" в блоке upstream.<br/>
 Спасибо Wai Keen Woon.
 </para>
 <para lang="en">
@@ -4977,7 +4977,7 @@ responses from cache might hang.
 ошибка появилась в 1.1.9.
 </para>
 <para lang="en">
-a segmentation fault occured in a worker process if AIO was used on Linux;
+a segmentation fault occurred in a worker process if AIO was used on Linux;
 the bug had appeared in 1.1.9.
 </para>
 </change>
@@ -5927,7 +5927,7 @@ Thanks to Maxim Dounin.
 Спасибо Lanshun Zhou.
 </para>
 <para lang="en">
-in parameter validaiton of a "proxy_pass" directive with variables.<br/>
+in parameter validation of a "proxy_pass" directive with variables.<br/>
 Thanks to Lanshun Zhou.
 </para>
 </change>
@@ -14899,7 +14899,7 @@ the bug had appeared in 0.5.21.
 </para>
 <para lang="en">
 if server has more than about ten locations, then regex locations
-might be choosen not in that order as they were specified.
+might be chosen not in that order as they were specified.
 </para>
 </change>
 
@@ -15185,7 +15185,7 @@ in the HTTPS protocol in the "proxy_pass" directive.
 возвращали старое закэшированное значение.
 </para>
 <para lang="en">
-in some cases non-cachable variables (such as $uri variable)
+in some cases non-cacheable variables (such as $uri variable)
 returned old cached value.
 </para>
 </change>
@@ -15252,12 +15252,12 @@ the bug had appeared in 0.5.15.
 <change type="feature">
 <para lang="ru">
 почтовый прокси-сервер поддерживает аутентифицированное SMTP-проксирование и
-директивы smtp_auth, smtp_capablities и xclient.<br/>
+директивы smtp_auth, smtp_capabilities и xclient.<br/>
 Спасибо Антону Южанинову и Максиму Дунину.
 </para>
 <para lang="en">
 the mail proxy supports authenticated SMTP proxying and
-the "smtp_auth", "smtp_capablities", and "xclient" directives.<br/>
+the "smtp_auth", "smtp_capabilities", and "xclient" directives.<br/>
 Thanks to Anton Yuzhaninov and Maxim Dounin.
 </para>
 </change>
@@ -18760,7 +18760,7 @@ the ngx_http_perl_module.
 директива valid_referers разрешает использовать рефереры совсем без URI.
 </para>
 <para lang="en">
-the "valid_referers" directive allows the referreres without URI part.
+the "valid_referers" directive allows the referrers without URI part.
 </para>
 </change>
 
@@ -19080,10 +19080,10 @@ the "so_keepalive" directive in IMAP/POP3 proxy.
 <change type="bugfix">
 <para lang="ru">
 nginx теперь вызывает abort() при обнаружении незакрытых соединений
-только при планом выходе и включённой директиве debug_points.
+только при плавном выходе и включённой директиве debug_points.
 </para>
 <para lang="en">
-if there are unclosed connection nginx now calls abort() only on gracefull
+if there are unclosed connection nginx now calls abort() only on graceful
 quit and active "debug_points" directive.
 </para>
 </change>
@@ -20862,7 +20862,7 @@ if many parts or the big parts were included by SSI.
 начинал запрашивать все бэкенды снова.
 </para>
 <para lang="en">
-if all backends had returned the 404 reponse and the "http_404" parameter of
+if all backends had returned the 404 response and the "http_404" parameter of
 the "proxy_next_upstream" or "fastcgi_next_upstream" directives was used,
 then nginx started to request all backends again.
 </para>
