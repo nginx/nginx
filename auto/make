@@ -50,7 +50,7 @@ END
 ngx_all_srcs="$CORE_SRCS"
 
 
-# the core dependences and include paths
+# the core dependencies and include paths
 
 ngx_deps=`echo $CORE_DEPS $NGX_AUTO_CONFIG_H $NGX_PCH \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
@@ -70,7 +70,7 @@ CORE_INCS = $ngx_include_opt$ngx_incs
 END
 
 
-# the http dependences and include paths
+# the http dependencies and include paths
 
 if [ $HTTP = YES ]; then
 
@@ -96,7 +96,7 @@ END
 fi
 
 
-# the mail dependences and include paths
+# the mail dependencies and include paths
 
 if [ $MAIL = YES ]; then
 
@@ -122,7 +122,7 @@ END
 fi
 
 
-# the stream dependences and include paths
+# the stream dependencies and include paths
 
 if [ $STREAM = YES ]; then
 
