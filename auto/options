@@ -113,6 +113,7 @@ MAIL_SMTP=YES
 
 STREAM=NO
 STREAM_SSL=NO
+STREAM_ACCESS=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_ZONE=YES
@@ -282,6 +283,7 @@ use the \"--with-mail_ssl_module\" option instead"
 
         --with-stream)                   STREAM=YES                 ;;
         --with-stream_ssl_module)        STREAM_SSL=YES             ;;
+        --without-stream_access_module)  STREAM_ACCESS=NO           ;;
         --without-stream_upstream_hash_module)
                                          STREAM_UPSTREAM_HASH=NO    ;;
         --without-stream_upstream_least_conn_module)
@@ -450,6 +452,7 @@ cat << END
 
   --with-stream                      enable TCP proxy module
   --with-stream_ssl_module           enable ngx_stream_ssl_module
+  --without-stream_access_module     disable ngx_stream_access_module
   --without-stream_upstream_hash_module
                                      disable ngx_stream_upstream_hash_module
   --without-stream_upstream_least_conn_module

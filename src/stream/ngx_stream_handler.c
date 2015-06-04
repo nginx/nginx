@@ -23,20 +23,22 @@ static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
 void
 ngx_stream_init_connection(ngx_connection_t *c)
 {
-    u_char                       text[NGX_SOCKADDR_STRLEN];
-    size_t                       len;
-    ngx_uint_t                   i;
-    struct sockaddr             *sa;
-    ngx_stream_port_t           *port;
-    struct sockaddr_in          *sin;
-    ngx_stream_in_addr_t        *addr;
-    ngx_stream_session_t        *s;
-    ngx_stream_addr_conf_t      *addr_conf;
+    u_char                        text[NGX_SOCKADDR_STRLEN];
+    size_t                        len;
+    ngx_int_t                     rc;
+    ngx_uint_t                    i;
+    struct sockaddr              *sa;
+    ngx_stream_port_t            *port;
+    struct sockaddr_in           *sin;
+    ngx_stream_in_addr_t         *addr;
+    ngx_stream_session_t         *s;
+    ngx_stream_addr_conf_t       *addr_conf;
 #if (NGX_HAVE_INET6)
-    struct sockaddr_in6         *sin6;
-    ngx_stream_in6_addr_t       *addr6;
+    struct sockaddr_in6          *sin6;
+    ngx_stream_in6_addr_t        *addr6;
 #endif
-    ngx_stream_core_srv_conf_t  *cscf;
+    ngx_stream_core_srv_conf_t   *cscf;
+    ngx_stream_core_main_conf_t  *cmcf;
 
     /* find the server configuration for the address:port */
 
@@ -142,6 +144,17 @@ ngx_stream_init_connection(ngx_connection_t *c)
     c->log->data = s;
     c->log->action = "initializing connection";
     c->log_error = NGX_ERROR_INFO;
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
+    if (cmcf->access_handler) {
+        rc = cmcf->access_handler(s);
+
+        if (rc != NGX_OK && rc != NGX_DECLINED) {
+            ngx_stream_close_connection(c);
+            return;
+        }
+    }
 
 #if (NGX_STREAM_SSL)
     {

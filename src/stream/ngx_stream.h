@@ -112,9 +112,13 @@ typedef struct {
 } ngx_stream_conf_addr_t;
 
 
+typedef ngx_int_t (*ngx_stream_access_pt)(ngx_stream_session_t *s);
+
+
 typedef struct {
     ngx_array_t             servers;     /* ngx_stream_core_srv_conf_t */
     ngx_array_t             listen;      /* ngx_stream_listen_t */
+    ngx_stream_access_pt    access_handler;
 } ngx_stream_core_main_conf_t;
 
 

@@ -514,6 +514,11 @@ if [ $STREAM = YES ]; then
         STREAM_SRCS="$STREAM_SRCS $STREAM_SSL_SRCS"
     fi
 
+    if [ $STREAM_ACCESS = YES ]; then
+        modules="$modules $STREAM_ACCESS_MODULE"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_ACCESS_SRCS"
+    fi
+
     if [ $STREAM_UPSTREAM_HASH = YES ]; then
         modules="$modules $STREAM_UPSTREAM_HASH_MODULE"
         STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_HASH_SRCS"

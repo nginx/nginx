@@ -567,6 +567,9 @@ STREAM_SSL_MODULE="ngx_stream_ssl_module"
 STREAM_SSL_DEPS="src/stream/ngx_stream_ssl_module.h"
 STREAM_SSL_SRCS="src/stream/ngx_stream_ssl_module.c"
 
+STREAM_ACCESS_MODULE=ngx_stream_access_module
+STREAM_ACCESS_SRCS=src/stream/ngx_stream_access_module.c
+
 STREAM_UPSTREAM_HASH_MODULE=ngx_stream_upstream_hash_module
 STREAM_UPSTREAM_HASH_SRCS=src/stream/ngx_stream_upstream_hash_module.c
 
