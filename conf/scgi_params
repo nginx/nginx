@@ -8,6 +8,7 @@ scgi_param  DOCUMENT_URI       $document_uri;
 scgi_param  DOCUMENT_ROOT      $document_root;
 scgi_param  SCGI               1;
 scgi_param  SERVER_PROTOCOL    $server_protocol;
+scgi_param  REQUEST_SCHEME     $scheme;
 scgi_param  HTTPS              $https if_not_empty;
 
 scgi_param  REMOTE_ADDR        $remote_addr;
