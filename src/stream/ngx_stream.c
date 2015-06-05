@@ -314,6 +314,9 @@ found:
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
     addr->ipv6only = listen->ipv6only;
 #endif
+#if (NGX_HAVE_REUSEPORT)
+    addr->reuseport = listen->reuseport;
+#endif
 
     return NGX_OK;
 }
@@ -384,6 +387,10 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
             ls->ipv6only = addr[i].ipv6only;
+#endif
+
+#if (NGX_HAVE_REUSEPORT)
+            ls->reuseport = addr[i].reuseport;
 #endif
 
             stport = ngx_palloc(cf->pool, sizeof(ngx_stream_port_t));
