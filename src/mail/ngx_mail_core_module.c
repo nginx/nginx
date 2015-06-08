@@ -325,7 +325,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 0; i < cmcf->listen.nelts; i++) {
 
-        sa = (struct sockaddr *) ls[i].sockaddr;
+        sa = &ls[i].u.sockaddr;
 
         if (sa->sa_family != u.family) {
             continue;
@@ -337,7 +337,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         case AF_INET6:
             off = offsetof(struct sockaddr_in6, sin6_addr);
             len = 16;
-            sin6 = (struct sockaddr_in6 *) sa;
+            sin6 = &ls[i].u.sockaddr_in6;
             port = ntohs(sin6->sin6_port);
             break;
 #endif
@@ -353,12 +353,14 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         default: /* AF_INET */
             off = offsetof(struct sockaddr_in, sin_addr);
             len = 4;
-            sin = (struct sockaddr_in *) sa;
+            sin = &ls[i].u.sockaddr_in;
             port = ntohs(sin->sin_port);
             break;
         }
 
-        if (ngx_memcmp(ls[i].sockaddr + off, u.sockaddr + off, len) != 0) {
+        if (ngx_memcmp(ls[i].u.sockaddr_data + off, u.sockaddr + off, len)
+            != 0)
+        {
             continue;
         }
 
@@ -378,7 +380,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_mail_listen_t));
 
-    ngx_memcpy(ls->sockaddr, u.sockaddr, u.socklen);
+    ngx_memcpy(&ls->u.sockaddr, u.sockaddr, u.socklen);
 
     ls->socklen = u.socklen;
     ls->wildcard = u.wildcard;
@@ -421,7 +423,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             struct sockaddr  *sa;
             u_char            buf[NGX_SOCKADDR_STRLEN];
 
-            sa = (struct sockaddr *) ls->sockaddr;
+            sa = &ls->u.sockaddr;
 
             if (sa->sa_family == AF_INET6) {
 

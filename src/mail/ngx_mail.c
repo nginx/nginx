@@ -238,13 +238,13 @@ ngx_mail_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     struct sockaddr_in6   *sin6;
 #endif
 
-    sa = (struct sockaddr *) &listen->sockaddr;
+    sa = &listen->u.sockaddr;
 
     switch (sa->sa_family) {
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) sa;
+        sin6 = &listen->u.sockaddr_in6;
         p = sin6->sin6_port;
         break;
 #endif
@@ -256,7 +256,7 @@ ngx_mail_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
 #endif
 
     default: /* AF_INET */
-        sin = (struct sockaddr_in *) sa;
+        sin = &listen->u.sockaddr_in;
         p = sin->sin_port;
         break;
     }
@@ -296,23 +296,7 @@ found:
         return NGX_ERROR;
     }
 
-    addr->sockaddr = (struct sockaddr *) &listen->sockaddr;
-    addr->socklen = listen->socklen;
-    addr->ctx = listen->ctx;
-    addr->bind = listen->bind;
-    addr->wildcard = listen->wildcard;
-    addr->so_keepalive = listen->so_keepalive;
-#if (NGX_HAVE_KEEPALIVE_TUNABLE)
-    addr->tcp_keepidle = listen->tcp_keepidle;
-    addr->tcp_keepintvl = listen->tcp_keepintvl;
-    addr->tcp_keepcnt = listen->tcp_keepcnt;
-#endif
-#if (NGX_MAIL_SSL)
-    addr->ssl = listen->ssl;
-#endif
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-    addr->ipv6only = listen->ipv6only;
-#endif
+    addr->opt = *listen;
 
     return NGX_OK;
 }
@@ -342,8 +326,8 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
          * to the "*:port" only and ignore the other bindings
          */
 
-        if (addr[last - 1].wildcard) {
-            addr[last - 1].bind = 1;
+        if (addr[last - 1].opt.wildcard) {
+            addr[last - 1].opt.bind = 1;
             bind_wildcard = 1;
 
         } else {
@@ -354,12 +338,13 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 
         while (i < last) {
 
-            if (bind_wildcard && !addr[i].bind) {
+            if (bind_wildcard && !addr[i].opt.bind) {
                 i++;
                 continue;
             }
 
-            ls = ngx_create_listening(cf, addr[i].sockaddr, addr[i].socklen);
+            ls = ngx_create_listening(cf, &addr[i].opt.u.sockaddr,
+                                      addr[i].opt.socklen);
             if (ls == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -368,21 +353,21 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->handler = ngx_mail_init_connection;
             ls->pool_size = 256;
 
-            cscf = addr->ctx->srv_conf[ngx_mail_core_module.ctx_index];
+            cscf = addr->opt.ctx->srv_conf[ngx_mail_core_module.ctx_index];
 
             ls->logp = cscf->error_log;
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
 
-            ls->keepalive = addr[i].so_keepalive;
+            ls->keepalive = addr[i].opt.so_keepalive;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
-            ls->keepidle = addr[i].tcp_keepidle;
-            ls->keepintvl = addr[i].tcp_keepintvl;
-            ls->keepcnt = addr[i].tcp_keepcnt;
+            ls->keepidle = addr[i].opt.tcp_keepidle;
+            ls->keepintvl = addr[i].opt.tcp_keepintvl;
+            ls->keepcnt = addr[i].opt.tcp_keepcnt;
 #endif
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-            ls->ipv6only = addr[i].ipv6only;
+            ls->ipv6only = addr[i].opt.ipv6only;
 #endif
 
             mport = ngx_palloc(cf->pool, sizeof(ngx_mail_port_t));
@@ -439,15 +424,15 @@ ngx_mail_add_addrs(ngx_conf_t *cf, ngx_mail_port_t *mport,
 
     for (i = 0; i < mport->naddrs; i++) {
 
-        sin = (struct sockaddr_in *) addr[i].sockaddr;
+        sin = &addr[i].opt.u.sockaddr_in;
         addrs[i].addr = sin->sin_addr.s_addr;
 
-        addrs[i].conf.ctx = addr[i].ctx;
+        addrs[i].conf.ctx = addr[i].opt.ctx;
 #if (NGX_MAIL_SSL)
-        addrs[i].conf.ssl = addr[i].ssl;
+        addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
 
-        len = ngx_sock_ntop(addr[i].sockaddr, addr[i].socklen, buf,
+        len = ngx_sock_ntop(&addr[i].opt.u.sockaddr, addr[i].opt.socklen, buf,
                             NGX_SOCKADDR_STRLEN, 1);
 
         p = ngx_pnalloc(cf->pool, len);
@@ -488,15 +473,15 @@ ngx_mail_add_addrs6(ngx_conf_t *cf, ngx_mail_port_t *mport,
 
     for (i = 0; i < mport->naddrs; i++) {
 
-        sin6 = (struct sockaddr_in6 *) addr[i].sockaddr;
+        sin6 = &addr[i].opt.u.sockaddr_in6;
         addrs6[i].addr6 = sin6->sin6_addr;
 
-        addrs6[i].conf.ctx = addr[i].ctx;
+        addrs6[i].conf.ctx = addr[i].opt.ctx;
 #if (NGX_MAIL_SSL)
-        addrs6[i].conf.ssl = addr[i].ssl;
+        addrs6[i].conf.ssl = addr[i].opt.ssl;
 #endif
 
-        len = ngx_sock_ntop(addr[i].sockaddr, addr[i].socklen, buf,
+        len = ngx_sock_ntop(&addr[i].opt.u.sockaddr, addr[i].opt.socklen, buf,
                             NGX_SOCKADDR_STRLEN, 1);
 
         p = ngx_pnalloc(cf->pool, len);
@@ -524,22 +509,22 @@ ngx_mail_cmp_conf_addrs(const void *one, const void *two)
     first = (ngx_mail_conf_addr_t *) one;
     second = (ngx_mail_conf_addr_t *) two;
 
-    if (first->wildcard) {
+    if (first->opt.wildcard) {
         /* a wildcard must be the last resort, shift it to the end */
         return 1;
     }
 
-    if (second->wildcard) {
+    if (second->opt.wildcard) {
         /* a wildcard must be the last resort, shift it to the end */
         return -1;
     }
 
-    if (first->bind && !second->bind) {
+    if (first->opt.bind && !second->opt.bind) {
         /* shift explicit bind()ed addresses to the start */
         return -1;
     }
 
-    if (!first->bind && second->bind) {
+    if (!first->opt.bind && second->opt.bind) {
         /* shift explicit bind()ed addresses to the start */
         return 1;
     }
