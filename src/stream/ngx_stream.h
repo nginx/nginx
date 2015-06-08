@@ -65,6 +65,7 @@ typedef struct {
     int                     tcp_keepintvl;
     int                     tcp_keepcnt;
 #endif
+    int                     backlog;
 } ngx_stream_listen_t;
 
 

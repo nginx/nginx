@@ -360,6 +360,8 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->log.data = &ls->addr_text;
             ls->log.handler = ngx_accept_log_error;
 
+            ls->backlog = addr[i].opt.backlog;
+
             ls->keepalive = addr[i].opt.so_keepalive;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
             ls->keepidle = addr[i].opt.tcp_keepidle;

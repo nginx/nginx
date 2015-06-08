@@ -330,6 +330,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memcpy(&ls->u.sockaddr, u.sockaddr, u.socklen);
 
     ls->socklen = u.socklen;
+    ls->backlog = NGX_LISTEN_BACKLOG;
     ls->wildcard = u.wildcard;
     ls->ctx = cf->ctx;
 
@@ -341,6 +342,19 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strcmp(value[i].data, "bind") == 0) {
             ls->bind = 1;
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "backlog=", 8) == 0) {
+            ls->backlog = ngx_atoi(value[i].data + 8, value[i].len - 8);
+            ls->bind = 1;
+
+            if (ls->backlog == NGX_ERROR || ls->backlog == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid backlog \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
             continue;
         }
 
