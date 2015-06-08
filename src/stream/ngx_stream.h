@@ -31,7 +31,18 @@ typedef struct {
 
 
 typedef struct {
-    u_char                  sockaddr[NGX_SOCKADDRLEN];
+    union {
+        struct sockaddr     sockaddr;
+        struct sockaddr_in  sockaddr_in;
+#if (NGX_HAVE_INET6)
+        struct sockaddr_in6 sockaddr_in6;
+#endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+        struct sockaddr_un  sockaddr_un;
+#endif
+        u_char              sockaddr_data[NGX_SOCKADDRLEN];
+    } u;
+
     socklen_t               socklen;
 
     /* server ctx */
@@ -96,28 +107,7 @@ typedef struct {
 
 
 typedef struct {
-    struct sockaddr        *sockaddr;
-    socklen_t               socklen;
-
-    ngx_stream_conf_ctx_t  *ctx;
-
-    unsigned                bind:1;
-    unsigned                wildcard:1;
-#if (NGX_STREAM_SSL)
-    unsigned                ssl:1;
-#endif
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-    unsigned                ipv6only:1;
-#endif
-#if (NGX_HAVE_REUSEPORT)
-    unsigned                reuseport:1;
-#endif
-    unsigned                so_keepalive:2;
-#if (NGX_HAVE_KEEPALIVE_TUNABLE)
-    int                     tcp_keepidle;
-    int                     tcp_keepintvl;
-    int                     tcp_keepcnt;
-#endif
+    ngx_stream_listen_t     opt;
 } ngx_stream_conf_addr_t;
 
 
