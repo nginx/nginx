@@ -246,6 +246,8 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_proxy_module_ctx = {
+    NULL,                                  /* postconfiguration */
+
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 

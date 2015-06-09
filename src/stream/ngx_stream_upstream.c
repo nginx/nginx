@@ -39,6 +39,8 @@ static ngx_command_t  ngx_stream_upstream_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_upstream_module_ctx = {
+    NULL,                                  /* postconfiguration */
+
     ngx_stream_upstream_create_main_conf,  /* create main configuration */
     ngx_stream_upstream_init_main_conf,    /* init main configuration */
 

@@ -148,6 +148,8 @@ struct ngx_stream_session_s {
 
 
 typedef struct {
+    ngx_int_t             (*postconfiguration)(ngx_conf_t *cf);
+
     void                 *(*create_main_conf)(ngx_conf_t *cf);
     char                 *(*init_main_conf)(ngx_conf_t *cf, void *conf);
 

@@ -50,6 +50,8 @@ static ngx_command_t  ngx_stream_core_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_core_module_ctx = {
+    NULL,                                  /* postconfiguration */
+
     ngx_stream_core_create_main_conf,      /* create main configuration */
     NULL,                                  /* init main configuration */
 
