@@ -55,6 +55,54 @@ else
         ngx_feature_test="SSL_library_init()"
         . auto/feature
 
+        if [ $ngx_found = no ]; then
+
+            # FreeBSD port
+
+            ngx_feature="OpenSSL library in /usr/local/"
+            ngx_feature_path="/usr/local/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/usr/local/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
+        if [ $ngx_found = no ]; then
+
+            # NetBSD port
+
+            ngx_feature="OpenSSL library in /usr/pkg/"
+            ngx_feature_path="/usr/pkg/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/usr/pkg/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
+        if [ $ngx_found = no ]; then
+
+            # MacPorts
+
+            ngx_feature="OpenSSL library in /opt/local/"
+            ngx_feature_path="/opt/local/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/opt/local/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
         if [ $ngx_found = yes ]; then
             have=NGX_SSL . auto/have
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs $NGX_LIBDL"
