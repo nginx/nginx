@@ -525,6 +525,7 @@ if [ ".$NGX_PLATFORM" = ".win32" ]; then
 fi
 
 
+NGX_SBIN_PATH=${NGX_SBIN_PATH:-sbin/nginx}
 NGX_CONF_PATH=${NGX_CONF_PATH:-conf/nginx.conf}
 NGX_CONF_PREFIX=`dirname $NGX_CONF_PATH`
 NGX_PID_PATH=${NGX_PID_PATH:-logs/nginx.pid}

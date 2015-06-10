@@ -20,10 +20,6 @@ case ".$NGX_SBIN_PATH" in
     ./*)
     ;;
 
-    .)
-        NGX_SBIN_PATH=$NGX_PREFIX/sbin/nginx
-    ;;
-
     *)
         NGX_SBIN_PATH=$NGX_PREFIX/$NGX_SBIN_PATH
     ;;
