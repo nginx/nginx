@@ -153,7 +153,7 @@ CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 
 
 case "$NGX_GCC_VER" in
-    3.* | 4.* )
+    [3-5].*)
         # we have a lot of the unused function arguments
         CFLAGS="$CFLAGS -Wno-unused-parameter"
         # 4.2.1 shows the warning in wrong places
