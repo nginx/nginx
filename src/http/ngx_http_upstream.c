@@ -3731,7 +3731,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (u->headers_in.last_modified) {
 
-        lm = ngx_http_parse_time(u->headers_in.last_modified->value.data,
+        lm = ngx_parse_http_time(u->headers_in.last_modified->value.data,
                                  u->headers_in.last_modified->value.len);
 
         if (lm != NGX_ERROR) {
@@ -4128,7 +4128,7 @@ ngx_http_upstream_process_last_modified(ngx_http_request_t *r,
 #if (NGX_HTTP_CACHE)
 
     if (u->cacheable) {
-        u->headers_in.last_modified_time = ngx_http_parse_time(h->value.data,
+        u->headers_in.last_modified_time = ngx_parse_http_time(h->value.data,
                                                                h->value.len);
     }
 
@@ -4292,7 +4292,7 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_OK;
     }
 
-    expires = ngx_http_parse_time(h->value.data, h->value.len);
+    expires = ngx_parse_http_time(h->value.data, h->value.len);
 
     if (expires == NGX_ERROR || expires < ngx_time()) {
         u->cacheable = 0;

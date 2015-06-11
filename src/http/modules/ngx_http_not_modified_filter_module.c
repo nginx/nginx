@@ -118,7 +118,7 @@ ngx_http_test_if_unmodified(ngx_http_request_t *r)
         return 0;
     }
 
-    iums = ngx_http_parse_time(r->headers_in.if_unmodified_since->value.data,
+    iums = ngx_parse_http_time(r->headers_in.if_unmodified_since->value.data,
                                r->headers_in.if_unmodified_since->value.len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -148,7 +148,7 @@ ngx_http_test_if_modified(ngx_http_request_t *r)
         return 1;
     }
 
-    ims = ngx_http_parse_time(r->headers_in.if_modified_since->value.data,
+    ims = ngx_parse_http_time(r->headers_in.if_modified_since->value.data,
                               r->headers_in.if_modified_since->value.len);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

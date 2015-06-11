@@ -19,6 +19,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_queue.h \
            src/core/ngx_string.h \
            src/core/ngx_parse.h \
+           src/core/ngx_parse_time.h \
            src/core/ngx_inet.h \
            src/core/ngx_file.h \
            src/core/ngx_crc.h \
@@ -53,6 +54,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_output_chain.c \
            src/core/ngx_string.c \
            src/core/ngx_parse.c \
+           src/core/ngx_parse_time.c \
            src/core/ngx_inet.c \
            src/core/ngx_file.c \
            src/core/ngx_crc32.c \
@@ -303,7 +305,6 @@ HTTP_SRCS="src/http/ngx_http.c \
            src/http/ngx_http_script.c \
            src/http/ngx_http_upstream.c \
            src/http/ngx_http_upstream_round_robin.c \
-           src/http/ngx_http_parse_time.c \
            src/http/modules/ngx_http_static_module.c \
            src/http/modules/ngx_http_index_module.c \
            src/http/modules/ngx_http_chunked_filter_module.c \

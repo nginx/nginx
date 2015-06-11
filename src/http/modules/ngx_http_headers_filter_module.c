@@ -498,7 +498,7 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     }
 
     r->headers_out.last_modified_time =
-        (value->len) ? ngx_http_parse_time(value->data, value->len) : -1;
+        (value->len) ? ngx_parse_http_time(value->data, value->len) : -1;
 
     return NGX_OK;
 }

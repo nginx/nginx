@@ -255,7 +255,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     ext.log = r->connection->log;
 
     if (r->headers_in.date) {
-        date = ngx_http_parse_time(r->headers_in.date->value.data,
+        date = ngx_parse_http_time(r->headers_in.date->value.data,
                                    r->headers_in.date->value.len);
 
         if (date != NGX_ERROR) {
