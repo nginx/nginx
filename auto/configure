@@ -11,7 +11,7 @@ export LC_ALL
 . auto/init
 . auto/sources
 
-test -d $NGX_OBJS || mkdir $NGX_OBJS
+test -d $NGX_OBJS || mkdir -p $NGX_OBJS
 
 echo > $NGX_AUTO_HEADERS_H
 echo > $NGX_AUTOCONF_ERR
