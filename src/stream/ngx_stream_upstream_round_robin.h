@@ -58,6 +58,7 @@ struct ngx_stream_upstream_rr_peers_s {
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_slab_pool_t                 *shpool;
     ngx_atomic_t                     rwlock;
+    ngx_stream_upstream_rr_peers_t  *zone_next;
 #endif
 
     ngx_uint_t                       total_weight;

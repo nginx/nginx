@@ -14,8 +14,8 @@ static char *ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone,
     void *data);
-static ngx_int_t ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
-    ngx_stream_upstream_srv_conf_t *uscf);
+static ngx_stream_upstream_rr_peers_t *ngx_stream_upstream_zone_copy_peers(
+    ngx_slab_pool_t *shpool, ngx_stream_upstream_srv_conf_t *uscf);
 
 
 static ngx_command_t  ngx_stream_upstream_zone_commands[] = {
@@ -117,13 +117,29 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     size_t                            len;
     ngx_uint_t                        i;
     ngx_slab_pool_t                  *shpool;
+    ngx_stream_upstream_rr_peers_t   *peers, **peersp;
     ngx_stream_upstream_srv_conf_t   *uscf, **uscfp;
     ngx_stream_upstream_main_conf_t  *umcf;
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    umcf = shm_zone->data;
+    uscfp = umcf->upstreams.elts;
 
     if (shm_zone->shm.exists) {
-        return NGX_ERROR;
+        peers = shpool->data;
+
+        for (i = 0; i < umcf->upstreams.nelts; i++) {
+            uscf = uscfp[i];
+
+            if (uscf->shm_zone != shm_zone) {
+                continue;
+            }
+
+            uscf->peer.data = peers;
+            peers = peers->zone_next;
+        }
+
+        return NGX_OK;
     }
 
     len = sizeof(" in upstream zone \"\"") + shm_zone->shm.name.len;
@@ -139,8 +155,7 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     /* copy peers to shared memory */
 
-    umcf = shm_zone->data;
-    uscfp = umcf->upstreams.elts;
+    peersp = (ngx_stream_upstream_rr_peers_t **) &shpool->data;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
         uscf = uscfp[i];
@@ -149,16 +164,20 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
             continue;
         }
 
-        if (ngx_stream_upstream_zone_copy_peers(shpool, uscf) != NGX_OK) {
+        peers = ngx_stream_upstream_zone_copy_peers(shpool, uscf);
+        if (peers == NULL) {
             return NGX_ERROR;
         }
+
+        *peersp = peers;
+        peersp = &peers->zone_next;
     }
 
     return NGX_OK;
 }
 
 
-static ngx_int_t
+static ngx_stream_upstream_rr_peers_t *
 ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
     ngx_stream_upstream_srv_conf_t *uscf)
 {
@@ -167,7 +186,7 @@ ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
 
     peers = ngx_slab_alloc(shpool, sizeof(ngx_stream_upstream_rr_peers_t));
     if (peers == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     ngx_memcpy(peers, uscf->peer.data, sizeof(ngx_stream_upstream_rr_peers_t));
@@ -179,7 +198,7 @@ ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
         peer = ngx_slab_calloc_locked(shpool,
                                       sizeof(ngx_stream_upstream_rr_peer_t));
         if (peer == NULL) {
-            return NGX_ERROR;
+            return NULL;
         }
 
         ngx_memcpy(peer, *peerp, sizeof(ngx_stream_upstream_rr_peer_t));
@@ -193,7 +212,7 @@ ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
 
     backup = ngx_slab_alloc(shpool, sizeof(ngx_stream_upstream_rr_peers_t));
     if (backup == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     ngx_memcpy(backup, peers->next, sizeof(ngx_stream_upstream_rr_peers_t));
@@ -205,7 +224,7 @@ ngx_stream_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
         peer = ngx_slab_calloc_locked(shpool,
                                       sizeof(ngx_stream_upstream_rr_peer_t));
         if (peer == NULL) {
-            return NGX_ERROR;
+            return NULL;
         }
 
         ngx_memcpy(peer, *peerp, sizeof(ngx_stream_upstream_rr_peer_t));
@@ -219,5 +238,5 @@ done:
 
     uscf->peer.data = peers;
 
-    return NGX_OK;
+    return peers;
 }
