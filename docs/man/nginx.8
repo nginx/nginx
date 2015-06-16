@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd March 6, 2012
+.Dd June 16, 2015
 .Dt NGINX 8
 .Os
 .Sh NAME
@@ -33,7 +33,7 @@
 .Nd "HTTP and reverse proxy server, mail proxy server"
 .Sh SYNOPSIS
 .Nm
-.Op Fl ?hqtVv
+.Op Fl ?hqTtVv
 .Op Fl c Ar file
 .Op Fl g Ar directives
 .Op Fl p Ar prefix
@@ -87,6 +87,8 @@ Do not run, just test the configuration file.
 .Nm
 checks the configuration file syntax and then tries to open files
 referenced in the configuration file.
+.It Fl T
+Same as -t, but additionally dumps configuration files to stdout.
 .It Fl V
 Print the
 .Nm
