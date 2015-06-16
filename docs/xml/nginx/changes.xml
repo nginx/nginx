@@ -5,6 +5,89 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.2" date="16.06.2015">
+
+<change type="feature">
+<para lang="ru">
+параметр backlog директивы listen
+в почтовом прокси-сервере и модуле stream.
+</para>
+<para lang="en">
+the "backlog" parameter of the "listen" directives
+of the mail proxy and stream modules.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы allow и deny в модуле stream.
+</para>
+<para lang="en">
+the "allow" and "deny" directives in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_bind в модуле stream.
+</para>
+<para lang="en">
+the "proxy_bind" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_protocol в модуле stream.
+</para>
+<para lang="en">
+the "proxy_protocol" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключ -T.
+</para>
+<para lang="en">
+the -T switch.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр REQUEST_SCHEME добавлен в стандартные конфигурационные файлы
+fastcgi.conf, fastcgi_params, scgi_params и uwsgi_params.
+</para>
+<para lang="en">
+the REQUEST_SCHEME parameter added to the fastcgi.conf, fastcgi_params,
+scgi_params, and uwsgi_params standard configuration files.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр reuseport директивы listen в модуле stream
+не работал.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive of the stream module
+did not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+OCSP stapling в некоторых случаях мог вернуть устаревший OCSP-ответ.
+</para>
+<para lang="en">
+OCSP stapling might return an expired OCSP response in some cases.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.1" date="26.05.2015">
 
 <change type="change">
