@@ -21,6 +21,7 @@ typedef struct {
     size_t                           upstream_buf_size;
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
+    ngx_flag_t                       proxy_protocol;
     ngx_addr_t                      *local;
 
 #if (NGX_STREAM_SSL)
@@ -67,6 +68,7 @@ static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static ngx_int_t ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s);
 
 #if (NGX_STREAM_SSL)
 
@@ -154,6 +156,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, next_upstream_timeout),
+      NULL },
+
+    { ngx_string("proxy_protocol"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol),
       NULL },
 
 #if (NGX_STREAM_SSL)
@@ -328,6 +337,8 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
         u->peer.tries = pscf->next_upstream_tries;
     }
 
+    u->proxy_protocol = pscf->proxy_protocol;
+
     p = ngx_pnalloc(c->pool, pscf->downstream_buf_size);
     if (p == NULL) {
         ngx_stream_proxy_finalize(s, NGX_ERROR);
@@ -341,6 +352,29 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
 
     c->write->handler = ngx_stream_proxy_downstream_handler;
     c->read->handler = ngx_stream_proxy_downstream_handler;
+
+    if (u->proxy_protocol
+#if (NGX_STREAM_SSL)
+        && pscf->ssl == NULL
+#endif
+        && pscf->downstream_buf_size >= NGX_PROXY_PROTOCOL_MAX_HEADER
+       )
+    {
+        /* optimization for a typical case */
+
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "stream proxy send PROXY protocol header");
+
+        p = ngx_proxy_protocol_write(c, u->downstream_buf.last,
+                                     u->downstream_buf.end);
+        if (p == NULL) {
+            ngx_stream_proxy_finalize(s, NGX_ERROR);
+            return;
+        }
+
+        u->downstream_buf.last = p;
+        u->proxy_protocol = 0;
+    }
 
     if (ngx_stream_proxy_process(s, 0, 0) != NGX_OK) {
         return;
@@ -417,9 +451,17 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
-    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
     u = s->upstream;
+
+    if (u->proxy_protocol) {
+        if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
+            return;
+        }
+
+        u->proxy_protocol = 0;
+    }
+
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
     pc = u->peer.connection;
 
@@ -471,6 +513,76 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     }
 
     ngx_stream_proxy_process(s, 0, 1);
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s)
+{
+    u_char                       *p;
+    ssize_t                       n, size;
+    ngx_connection_t             *c, *pc;
+    ngx_stream_upstream_t        *u;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+    u_char                        buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
+
+    c = s->connection;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                   "stream proxy send PROXY protocol header");
+
+    p = ngx_proxy_protocol_write(c, buf, buf + NGX_PROXY_PROTOCOL_MAX_HEADER);
+    if (p == NULL) {
+        ngx_stream_proxy_finalize(s, NGX_ERROR);
+        return NGX_ERROR;
+    }
+
+    u = s->upstream;
+
+    pc = u->peer.connection;
+
+    size = p - buf;
+
+    n = pc->send(pc, buf, size);
+
+    if (n == NGX_AGAIN) {
+        if (ngx_handle_write_event(pc->write, 0) != NGX_OK) {
+            ngx_stream_proxy_finalize(s, NGX_ERROR);
+            return NGX_ERROR;
+        }
+
+        pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+        ngx_add_timer(pc->write, pscf->timeout);
+
+        pc->write->handler = ngx_stream_proxy_connect_handler;
+
+        return NGX_AGAIN;
+    }
+
+    if (n == NGX_ERROR) {
+        ngx_stream_proxy_finalize(s, NGX_DECLINED);
+        return NGX_ERROR;
+    }
+
+    if (n != size) {
+
+        /*
+         * PROXY protocol specification:
+         * The sender must always ensure that the header
+         * is sent at once, so that the transport layer
+         * maintains atomicity along the path to the receiver.
+         */
+
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "could not send PROXY protocol header at once");
+
+        ngx_stream_proxy_finalize(s, NGX_DECLINED);
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -1105,6 +1217,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->upstream_buf_size = NGX_CONF_UNSET_SIZE;
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->next_upstream = NGX_CONF_UNSET;
+    conf->proxy_protocol = NGX_CONF_UNSET;
     conf->local = NGX_CONF_UNSET_PTR;
 
 #if (NGX_STREAM_SSL)
@@ -1145,6 +1258,8 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->next_upstream_tries, 0);
 
     ngx_conf_merge_value(conf->next_upstream, prev->next_upstream, 1);
+
+    ngx_conf_merge_value(conf->proxy_protocol, prev->proxy_protocol, 0);
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 

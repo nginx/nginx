@@ -86,6 +86,8 @@ typedef struct {
 #if (NGX_STREAM_SSL)
     ngx_str_t                          ssl_name;
 #endif
+    ngx_uint_t                         proxy_protocol;
+                                               /* unsigned  proxy_protocol:1; */
 } ngx_stream_upstream_t;
 
 
