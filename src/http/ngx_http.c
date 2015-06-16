@@ -128,6 +128,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_srv_conf_t   **cscfp;
     ngx_http_core_main_conf_t   *cmcf;
 
+    if (*(ngx_http_conf_ctx_t **) conf) {
+        return "is duplicate";
+    }
+
     /* the main http context */
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));

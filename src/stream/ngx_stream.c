@@ -76,6 +76,10 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_stream_core_srv_conf_t   **cscfp;
     ngx_stream_core_main_conf_t   *cmcf;
 
+    if (*(ngx_stream_conf_ctx_t **) conf) {
+        return "is duplicate";
+    }
+
     /* the main stream context */
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_conf_ctx_t));
