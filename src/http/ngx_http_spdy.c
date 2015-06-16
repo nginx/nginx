@@ -866,7 +866,7 @@ ngx_http_spdy_proxy_protocol(ngx_http_spdy_connection_t *sc, u_char *pos,
     log = sc->connection->log;
     log->action = "reading PROXY protocol";
 
-    pos = ngx_proxy_protocol_parse(sc->connection, pos, end);
+    pos = ngx_proxy_protocol_read(sc->connection, pos, end);
 
     log->action = "processing SPDY";
 

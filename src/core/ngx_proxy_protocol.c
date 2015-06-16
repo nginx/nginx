@@ -10,7 +10,7 @@
 
 
 u_char *
-ngx_proxy_protocol_parse(ngx_connection_t *c, u_char *buf, u_char *last)
+ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     size_t  len;
     u_char  ch, *p, *addr;

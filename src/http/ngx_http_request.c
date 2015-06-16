@@ -467,7 +467,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     if (hc->proxy_protocol) {
         hc->proxy_protocol = 0;
 
-        p = ngx_proxy_protocol_parse(c, b->pos, b->last);
+        p = ngx_proxy_protocol_read(c, b->pos, b->last);
 
         if (p == NULL) {
             ngx_http_close_connection(c);
@@ -675,7 +675,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     if (hc->proxy_protocol) {
         hc->proxy_protocol = 0;
 
-        p = ngx_proxy_protocol_parse(c, buf, buf + n);
+        p = ngx_proxy_protocol_read(c, buf, buf + n);
 
         if (p == NULL) {
             ngx_http_close_connection(c);
