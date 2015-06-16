@@ -255,6 +255,13 @@ ngx_write_stderr(char *text)
 }
 
 
+static ngx_inline void
+ngx_write_stdout(char *text)
+{
+    (void) ngx_write_fd(ngx_stdout, text, ngx_strlen(text));
+}
+
+
 extern ngx_module_t  ngx_errlog_module;
 extern ngx_uint_t    ngx_use_stderr;
 

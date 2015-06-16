@@ -264,6 +264,7 @@ ngx_int_t ngx_directio_off(ngx_fd_t fd);
 size_t ngx_fs_bsize(u_char *name);
 
 
+#define ngx_stdout               GetStdHandle(STD_OUTPUT_HANDLE)
 #define ngx_stderr               GetStdHandle(STD_ERROR_HANDLE)
 #define ngx_set_stderr(fd)       SetStdHandle(STD_ERROR_HANDLE, fd)
 #define ngx_set_stderr_n         "SetStdHandle(STD_ERROR_HANDLE)"
