@@ -71,6 +71,7 @@ static ngx_int_t ngx_resolver_create_addr_query(ngx_resolver_node_t *rn,
 static void ngx_resolver_resend_handler(ngx_event_t *ev);
 static time_t ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree,
     ngx_queue_t *queue);
+static ngx_uint_t ngx_resolver_resend_empty(ngx_resolver_t *r);
 static void ngx_resolver_read_response(ngx_event_t *rev);
 static void ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf,
     size_t n);
@@ -463,6 +464,10 @@ done:
     ngx_resolver_free_locked(r, ctx);
 
     /* unlock alloc mutex */
+
+    if (r->event->timer_set && ngx_resolver_resend_empty(r)) {
+        ngx_del_timer(r->event);
+    }
 }
 
 
@@ -1016,6 +1021,10 @@ done:
     ngx_resolver_free_locked(r, ctx);
 
     /* unlock alloc mutex */
+
+    if (r->event->timer_set && ngx_resolver_resend_empty(r)) {
+        ngx_del_timer(r->event);
+    }
 }
 
 
@@ -1222,6 +1231,17 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 
         ngx_resolver_free_node(r, rn);
     }
+}
+
+
+static ngx_uint_t
+ngx_resolver_resend_empty(ngx_resolver_t *r)
+{
+    return ngx_queue_empty(&r->name_resend_queue)
+#if (NGX_HAVE_INET6)
+           && ngx_queue_empty(&r->addr6_resend_queue)
+#endif
+           && ngx_queue_empty(&r->addr_resend_queue);
 }
 
 
