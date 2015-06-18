@@ -514,6 +514,11 @@ if [ $STREAM = YES ]; then
         STREAM_SRCS="$STREAM_SRCS $STREAM_SSL_SRCS"
     fi
 
+    if [ $STREAM_LIMIT_CONN = YES ]; then
+        modules="$modules $STREAM_LIMIT_CONN_MODULE"
+        STREAM_SRCS="$STREAM_SRCS $STREAM_LIMIT_CONN_SRCS"
+    fi
+
     if [ $STREAM_ACCESS = YES ]; then
         modules="$modules $STREAM_ACCESS_MODULE"
         STREAM_SRCS="$STREAM_SRCS $STREAM_ACCESS_SRCS"
