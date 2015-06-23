@@ -52,6 +52,8 @@ static void ngx_stream_proxy_connect(ngx_stream_session_t *s);
 static void ngx_stream_proxy_init_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_upstream_handler(ngx_event_t *ev);
 static void ngx_stream_proxy_downstream_handler(ngx_event_t *ev);
+static void ngx_stream_proxy_process_connection(ngx_event_t *ev,
+    ngx_uint_t from_upstream);
 static void ngx_stream_proxy_connect_handler(ngx_event_t *ev);
 static ngx_int_t ngx_stream_proxy_test_connect(ngx_connection_t *c);
 static ngx_int_t ngx_stream_proxy_process(ngx_stream_session_t *s,
@@ -815,32 +817,19 @@ done:
 static void
 ngx_stream_proxy_downstream_handler(ngx_event_t *ev)
 {
-    ngx_connection_t       *c;
-    ngx_stream_session_t   *s;
-    ngx_stream_upstream_t  *u;
-
-    c = ev->data;
-    s = c->data;
-
-    if (ev->timedout) {
-        ngx_connection_error(c, NGX_ETIMEDOUT, "connection timed out");
-        ngx_stream_proxy_finalize(s, NGX_DECLINED);
-        return;
-    }
-
-    u = s->upstream;
-
-    if (!ev->write) {
-        ngx_stream_proxy_process(s, 0, 0);
-
-    } else if (u->upstream_buf.start) {
-        ngx_stream_proxy_process(s, 1, 1);
-    }
+    ngx_stream_proxy_process_connection(ev, ev->write);
 }
 
 
 static void
 ngx_stream_proxy_upstream_handler(ngx_event_t *ev)
+{
+    ngx_stream_proxy_process_connection(ev, !ev->write);
+}
+
+
+static void
+ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
 {
     ngx_connection_t       *c;
     ngx_stream_session_t   *s;
@@ -848,15 +837,19 @@ ngx_stream_proxy_upstream_handler(ngx_event_t *ev)
 
     c = ev->data;
     s = c->data;
-
     u = s->upstream;
 
-    if (ev->write) {
-        ngx_stream_proxy_process(s, 0, 1);
-
-    } else if (u->upstream_buf.start) {
-        ngx_stream_proxy_process(s, 1, 0);
+    if (ev->timedout) {
+        ngx_connection_error(c, NGX_ETIMEDOUT, "connection timed out");
+        ngx_stream_proxy_finalize(s, NGX_DECLINED);
+        return;
     }
+
+    if (from_upstream && u->upstream_buf.start == NULL) {
+        return;
+    }
+
+    ngx_stream_proxy_process(s, from_upstream, ev->write);
 }
 
 
