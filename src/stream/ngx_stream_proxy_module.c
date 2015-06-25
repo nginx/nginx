@@ -524,6 +524,8 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     u->upstream_buf.pos = p;
     u->upstream_buf.last = p;
 
+    u->connected = 1;
+
     pc->read->handler = ngx_stream_proxy_upstream_handler;
     pc->write->handler = ngx_stream_proxy_upstream_handler;
 
@@ -870,7 +872,7 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
                     return;
                 }
 
-                if (u->upstream_buf.start) {
+                if (u->connected) {
                     pc = u->peer.connection;
 
                     if (!c->read->delayed && !pc->read->delayed) {
@@ -901,7 +903,7 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
         return;
     }
 
-    if (from_upstream && u->upstream_buf.start == NULL) {
+    if (from_upstream && !u->connected) {
         return;
     }
 
@@ -1000,7 +1002,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     u = s->upstream;
 
     c = s->connection;
-    pc = u->upstream_buf.start ? u->peer.connection : NULL;
+    pc = u->connected ? u->peer.connection : NULL;
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
