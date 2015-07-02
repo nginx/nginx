@@ -1063,7 +1063,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                 }
 
                 if (size > (size_t) limit) {
-                    size = limit;
+                    size = (size_t) limit;
                 }
             }
 
