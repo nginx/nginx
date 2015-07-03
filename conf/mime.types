@@ -14,6 +14,7 @@ types {
     text/vnd.sun.j2me.app-descriptor      jad;
     text/vnd.wap.wml                      wml;
     text/x-component                      htc;
+    text/cache-manifest                   appcache manifest;
 
     image/png                             png;
     image/tiff                            tif tiff;
