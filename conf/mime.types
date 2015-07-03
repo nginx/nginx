@@ -25,6 +25,7 @@ types {
     image/webp                            webp;
 
     application/font-woff                 woff;
+    application/font-woff2                woff2;
     application/java-archive              jar war ear;
     application/json                      json;
     application/mac-binhex40              hqx;
