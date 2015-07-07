@@ -245,6 +245,7 @@ ngx_ssl_stapling_file(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 
     staple->staple.data = buf;
     staple->staple.len = len;
+    staple->valid = NGX_MAX_TIME_T_VALUE;
 
     return NGX_OK;
 
