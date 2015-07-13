@@ -637,11 +637,16 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
         goto error;
     }
 
-    valid = ngx_ssl_stapling_time(nextupdate);
-    if (valid == (time_t) NGX_ERROR) {
-        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
-                      "invalid nextUpdate time in certificate status");
-        goto error;
+    if (nextupdate) {
+        valid = ngx_ssl_stapling_time(nextupdate);
+        if (valid == (time_t) NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                          "invalid nextUpdate time in certificate status");
+            goto error;
+        }
+
+    } else {
+        valid = NGX_MAX_TIME_T_VALUE;
     }
 
     OCSP_CERTID_free(id);
