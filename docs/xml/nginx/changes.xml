@@ -5,6 +5,97 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.3" date="14.07.2015">
+
+<change type="change">
+<para lang="ru">
+дублирующиеся блоки http, mail и stream теперь запрещены.
+</para>
+<para lang="en">
+duplicate "http", "mail", and "stream" blocks are now disallowed.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ограничение количества соединений в модуле stream.
+</para>
+<para lang="en">
+connection limiting in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+органичение скорости в модуле stream.
+</para>
+<para lang="en">
+data rate limiting in the stream module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива zone в блоке upstream не работала на Windows.
+</para>
+<para lang="en">
+the "zone" directive inside the "upstream" block did not work on Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость с LibreSSL в модуле stream.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+compatibility with LibreSSL in the stream module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в параметре --builddir в configure.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the "--builddir" configure parameter.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_stapling_file не работала;
+ошибка появилась в 1.9.2.<br/>
+Спасибо Faidon Liambotis и Brandon Black.
+</para>
+<para lang="en">
+the "ssl_stapling_file" directive did not work;
+the bug had appeared in 1.9.2.<br/>
+Thanks to Faidon Liambotis and Brandon Black.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ssl_stapling
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.9.2.<br/>
+Спасибо Matthew Baldwin.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "ssl_stapling" directive was used;
+the bug had appeared in 1.9.2.<br/>
+Thanks to Matthew Baldwin.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.2" date="16.06.2015">
 
 <change type="feature">
