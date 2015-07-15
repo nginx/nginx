@@ -202,11 +202,11 @@ some long deprecated directives are not supported anymore.
 <change type="feature">
 <para lang="ru">
 параметр reuseport директивы listen.<br/>
-Спасибо Sepherosa Ziehau и Yingqi Lu.
+Спасибо Yingqi Lu из Intel и Sepherosa Ziehau.
 </para>
 <para lang="en">
 the "reuseport" parameter of the "listen" directive.<br/>
-Thanks to Sepherosa Ziehau and Yingqi Lu.
+Thanks to Yingqi Lu at Intel and Sepherosa Ziehau.
 </para>
 </change>
 
