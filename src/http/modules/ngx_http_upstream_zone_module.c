@@ -159,7 +159,7 @@ ngx_http_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
     /* copy peers to shared memory */
 
-    peersp = (ngx_http_upstream_rr_peers_t **) &shpool->data;
+    peersp = (ngx_http_upstream_rr_peers_t **) (void *) &shpool->data;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
         uscf = uscfp[i];
