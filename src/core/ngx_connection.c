@@ -567,9 +567,19 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 #endif
 
             if (listen(s, ls[i].backlog) == -1) {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "listen() to %V, backlog %d failed",
-                              &ls[i].addr_text, ls[i].backlog);
+                err = ngx_socket_errno;
+
+                /*
+                 * on OpenVZ after suspend/resume EADDRINUSE
+                 * may be returned by listen() instead of bind(), see
+                 * https://bugzilla.openvz.org/show_bug.cgi?id=2470
+                 */
+
+                if (err != NGX_EADDRINUSE || !ngx_test_config) {
+                    ngx_log_error(NGX_LOG_EMERG, log, err,
+                                  "listen() to %V, backlog %d failed",
+                                  &ls[i].addr_text, ls[i].backlog);
+                }
 
                 if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
@@ -577,7 +587,15 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                                   &ls[i].addr_text);
                 }
 
-                return NGX_ERROR;
+                if (err != NGX_EADDRINUSE) {
+                    return NGX_ERROR;
+                }
+
+                if (!ngx_test_config) {
+                    failed = 1;
+                }
+
+                continue;
             }
 
             ls[i].listen = 1;
