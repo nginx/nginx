@@ -368,8 +368,7 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
 #if (NGX_STREAM_SSL)
         && pscf->ssl == NULL
 #endif
-        && pscf->buffer_size >= NGX_PROXY_PROTOCOL_MAX_HEADER
-       )
+        && pscf->buffer_size >= NGX_PROXY_PROTOCOL_MAX_HEADER)
     {
         /* optimization for a typical case */
 
