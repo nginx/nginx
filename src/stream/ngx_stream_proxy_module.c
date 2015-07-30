@@ -96,6 +96,15 @@ static ngx_conf_bitmask_t  ngx_stream_proxy_ssl_protocols[] = {
 #endif
 
 
+static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_downstream_buffer = {
+    ngx_conf_deprecated, "proxy_downstream_buffer", "proxy_buffer_size"
+};
+
+static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_upstream_buffer = {
+    ngx_conf_deprecated, "proxy_upstream_buffer", "proxy_buffer_size"
+};
+
+
 static ngx_command_t  ngx_stream_proxy_commands[] = {
 
     { ngx_string("proxy_pass"),
@@ -132,6 +141,20 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, buffer_size),
       NULL },
+
+    { ngx_string("proxy_downstream_buffer"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, buffer_size),
+      &ngx_conf_deprecated_proxy_downstream_buffer },
+
+    { ngx_string("proxy_upstream_buffer"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, buffer_size),
+      &ngx_conf_deprecated_proxy_upstream_buffer },
 
     { ngx_string("proxy_upload_rate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
