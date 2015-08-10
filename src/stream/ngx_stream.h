@@ -132,6 +132,7 @@ typedef struct {
     u_char                 *file_name;
     ngx_int_t               line;
     ngx_log_t              *error_log;
+    ngx_flag_t              tcp_nodelay;
 } ngx_stream_core_srv_conf_t;
 
 

@@ -45,6 +45,13 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       0,
       NULL },
 
+    { ngx_string("tcp_nodelay"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_core_srv_conf_t, tcp_nodelay),
+      NULL },
+
       ngx_null_command
 };
 
@@ -122,6 +129,7 @@ ngx_stream_core_create_srv_conf(ngx_conf_t *cf)
 
     cscf->file_name = cf->conf_file->file.name.data;
     cscf->line = cf->conf_file->line;
+    cscf->tcp_nodelay = NGX_CONF_UNSET;
 
     return cscf;
 }
@@ -147,6 +155,8 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->error_log = &cf->cycle->new_log;
         }
     }
+
+    ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 
     return NGX_CONF_OK;
 }

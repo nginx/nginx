@@ -478,13 +478,35 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 static void
 ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 {
+    int                          tcp_nodelay;
     u_char                       *p;
     ngx_connection_t             *c, *pc;
     ngx_log_handler_pt            handler;
     ngx_stream_upstream_t        *u;
+    ngx_stream_core_srv_conf_t   *cscf;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
     u = s->upstream;
+    pc = u->peer.connection;
+
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    if (cscf->tcp_nodelay && pc->tcp_nodelay == NGX_TCP_NODELAY_UNSET) {
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0, "tcp_nodelay");
+
+        tcp_nodelay = 1;
+
+        if (setsockopt(pc->fd, IPPROTO_TCP, TCP_NODELAY,
+                       (const void *) &tcp_nodelay, sizeof(int)) == -1)
+        {
+            ngx_connection_error(pc, ngx_socket_errno,
+                                 "setsockopt(TCP_NODELAY) failed");
+            ngx_stream_proxy_next_upstream(s);
+            return;
+        }
+
+        pc->tcp_nodelay = NGX_TCP_NODELAY_SET;
+    }
 
     if (u->proxy_protocol) {
         if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
@@ -495,8 +517,6 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     }
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
-    pc = u->peer.connection;
 
 #if (NGX_STREAM_SSL)
     if (pscf->ssl && pc->ssl == NULL) {
