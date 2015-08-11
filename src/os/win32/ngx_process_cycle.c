@@ -761,10 +761,8 @@ failed:
 static ngx_thread_value_t __stdcall
 ngx_worker_thread(void *data)
 {
-    ngx_int_t          n;
-    ngx_uint_t         i;
-    ngx_cycle_t       *cycle;
-    ngx_connection_t  *c;
+    ngx_int_t     n;
+    ngx_cycle_t  *cycle;
 
     cycle = (ngx_cycle_t *) ngx_cycle;
 
@@ -780,19 +778,6 @@ ngx_worker_thread(void *data)
     while (!ngx_quit) {
 
         if (ngx_exiting) {
-
-            c = cycle->connections;
-
-            for (i = 0; i < cycle->connection_n; i++) {
-
-                /* THREAD: lock */
-
-                if (c[i].fd != (ngx_socket_t) -1 && c[i].idle) {
-                    c[i].close = 1;
-                    c[i].read->handler(c[i].read);
-                }
-            }
-
             ngx_event_cancel_timers();
 
             if (ngx_event_timer_rbtree.root
@@ -814,8 +799,9 @@ ngx_worker_thread(void *data)
             ngx_quit = 0;
 
             if (!ngx_exiting) {
-                ngx_close_listening_sockets(cycle);
                 ngx_exiting = 1;
+                ngx_close_listening_sockets(cycle);
+                ngx_close_idle_connections(cycle);
             }
         }
 

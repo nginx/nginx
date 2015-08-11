@@ -1163,6 +1163,26 @@ ngx_drain_connections(void)
 }
 
 
+void
+ngx_close_idle_connections(ngx_cycle_t *cycle)
+{
+    ngx_uint_t         i;
+    ngx_connection_t  *c;
+
+    c = cycle->connections;
+
+    for (i = 0; i < cycle->connection_n; i++) {
+
+        /* THREAD: lock */
+
+        if (c[i].fd != -1 && c[i].idle) {
+            c[i].close = 1;
+            c[i].read->handler(c[i].read);
+        }
+    }
+}
+
+
 ngx_int_t
 ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port)
