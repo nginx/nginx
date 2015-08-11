@@ -128,7 +128,7 @@ ngx_open_file_cache_cleanup(void *data)
 
     if (cache->current) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                      "%ui items still leave in open file cache",
+                      "%ui items still left in open file cache",
                       cache->current);
     }
 
