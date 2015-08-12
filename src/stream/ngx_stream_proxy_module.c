@@ -478,7 +478,7 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 static void
 ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 {
-    int                          tcp_nodelay;
+    int                           tcp_nodelay;
     u_char                       *p;
     ngx_connection_t             *c, *pc;
     ngx_log_handler_pt            handler;
