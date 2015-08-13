@@ -261,7 +261,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         if (hinit->bucket_size < NGX_HASH_ELT_SIZE(&names[n]) + sizeof(void *))
         {
             ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
-                          "could not build the %s, you should "
+                          "could not build %s, you should "
                           "increase %s_bucket_size: %i",
                           hinit->name, hinit->name, hinit->bucket_size);
             return NGX_ERROR;
