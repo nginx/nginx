@@ -328,9 +328,11 @@ ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len)
     p = ngx_snprintf(buf, len, ", client: %V, server: %V",
                      &s->connection->addr_text,
                      &s->connection->listening->addr_text);
+    len -= p - buf;
+    buf = p;
 
     if (s->log_handler) {
-        return s->log_handler(log, p, len);
+        p = s->log_handler(log, buf, len);
     }
 
     return p;
