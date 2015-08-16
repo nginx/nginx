@@ -1273,7 +1273,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             *e.pos = '\0';
 
             if (alias && alias != NGX_MAX_SIZE_T_VALUE
-                && ngx_strncmp(name, clcf->name.data, alias) == 0)
+                && ngx_strncmp(name, r->uri.data, alias) == 0)
             {
                 ngx_memmove(name, name + alias, len - alias);
                 path.len -= alias;
@@ -1357,6 +1357,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             }
 
         } else {
+            name = r->uri.data;
+
             r->uri.len = alias + path.len;
             r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
             if (r->uri.data == NULL) {
@@ -1364,8 +1366,8 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
                 return NGX_OK;
             }
 
-            p = ngx_copy(r->uri.data, clcf->name.data, alias);
-            ngx_memcpy(p, name, path.len);
+            p = ngx_copy(r->uri.data, name, alias);
+            ngx_memcpy(p, path.data, path.len);
         }
 
         ngx_http_set_exten(r);
