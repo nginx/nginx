@@ -13,6 +13,20 @@
 typedef struct {
     ngx_str_t                  match;
     ngx_http_complex_value_t   value;
+} ngx_http_sub_match_t;
+
+
+typedef struct {
+    ngx_uint_t                 min_match_len;
+    ngx_uint_t                 max_match_len;
+
+    u_char                     index[257];
+    u_char                     shift[256];
+} ngx_http_sub_tables_t;
+
+
+typedef struct {
+    ngx_http_sub_tables_t     *tables;
 
     ngx_hash_t                 types;
 
@@ -20,17 +34,11 @@ typedef struct {
     ngx_flag_t                 last_modified;
 
     ngx_array_t               *types_keys;
+    ngx_array_t               *matches;
 } ngx_http_sub_loc_conf_t;
 
 
-typedef enum {
-    sub_start_state = 0,
-    sub_match_state,
-} ngx_http_sub_state_e;
-
-
 typedef struct {
-    ngx_str_t                  match;
     ngx_str_t                  saved;
     ngx_str_t                  looked;
 
@@ -48,10 +56,15 @@ typedef struct {
     ngx_chain_t               *busy;
     ngx_chain_t               *free;
 
-    ngx_str_t                  sub;
+    ngx_str_t                 *sub;
+    ngx_uint_t                 applied;
 
-    ngx_uint_t                 state;
+    ngx_int_t                  offset;
+    ngx_uint_t                 index;
 } ngx_http_sub_ctx_t;
+
+
+static ngx_uint_t ngx_http_sub_cmp_index;
 
 
 static ngx_int_t ngx_http_sub_output(ngx_http_request_t *r,
@@ -64,6 +77,9 @@ static char * ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd,
 static void *ngx_http_sub_create_conf(ngx_conf_t *cf);
 static char *ngx_http_sub_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
+static void ngx_http_sub_init_tables(ngx_http_sub_tables_t *tables,
+    ngx_http_sub_match_t *match, ngx_uint_t n);
+static ngx_int_t ngx_http_sub_cmp_matches(const void *one, const void *two);
 static ngx_int_t ngx_http_sub_filter_init(ngx_conf_t *cf);
 
 
@@ -144,7 +160,7 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_sub_filter_module);
 
-    if (slcf->match.len == 0
+    if (slcf->matches == NULL
         || r->headers_out.content_length_n == 0
         || ngx_http_test_content_type(r, &slcf->types) == NULL)
     {
@@ -156,19 +172,19 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    ctx->saved.data = ngx_pnalloc(r->pool, slcf->match.len);
+    ctx->saved.data = ngx_pnalloc(r->pool, slcf->tables->max_match_len - 1);
     if (ctx->saved.data == NULL) {
         return NGX_ERROR;
     }
 
-    ctx->looked.data = ngx_pnalloc(r->pool, slcf->match.len);
+    ctx->looked.data = ngx_pnalloc(r->pool, slcf->tables->max_match_len - 1);
     if (ctx->looked.data == NULL) {
         return NGX_ERROR;
     }
 
     ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
 
-    ctx->match = slcf->match;
+    ctx->offset = slcf->tables->min_match_len - 1;
     ctx->last_out = &ctx->out;
 
     r->filter_need_in_memory = 1;
@@ -194,8 +210,10 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
+    ngx_str_t                 *sub;
     ngx_chain_t               *cl;
     ngx_http_sub_ctx_t        *ctx;
+    ngx_http_sub_match_t      *match;
     ngx_http_sub_loc_conf_t   *slcf;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_sub_filter_module);
@@ -242,17 +260,9 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->pos = ctx->buf->pos;
         }
 
-        if (ctx->state == sub_start_state) {
-            ctx->copy_start = ctx->pos;
-            ctx->copy_end = ctx->pos;
-        }
-
         b = NULL;
 
         while (ctx->pos < ctx->buf->last) {
-
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "saved: \"%V\" state: %d", &ctx->saved, ctx->state);
 
             rc = ngx_http_sub_parse(r, ctx);
 
@@ -320,20 +330,6 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 ctx->last_out = &cl->next;
             }
 
-            if (ctx->state == sub_start_state) {
-                ctx->copy_start = ctx->pos;
-                ctx->copy_end = ctx->pos;
-
-            } else {
-                ctx->copy_start = NULL;
-                ctx->copy_end = NULL;
-            }
-
-            if (ctx->looked.len > (size_t) (ctx->pos - ctx->buf->pos)) {
-                ctx->saved.len = ctx->looked.len - (ctx->pos - ctx->buf->pos);
-                ngx_memcpy(ctx->saved.data, ctx->looked.data, ctx->saved.len);
-            }
-
             if (rc == NGX_AGAIN) {
                 continue;
             }
@@ -352,19 +348,30 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
             slcf = ngx_http_get_module_loc_conf(r, ngx_http_sub_filter_module);
 
-            if (ctx->sub.data == NULL) {
+            if (ctx->sub == NULL) {
+                ctx->sub = ngx_pcalloc(r->pool, sizeof(ngx_str_t)
+                                                * slcf->matches->nelts);
+                if (ctx->sub == NULL) {
+                    return NGX_ERROR;
+                }
+            }
 
-                if (ngx_http_complex_value(r, &slcf->value, &ctx->sub)
+            sub = &ctx->sub[ctx->index];
+
+            if (sub->data == NULL) {
+                match = slcf->matches->elts;
+
+                if (ngx_http_complex_value(r, &match[ctx->index].value, sub)
                     != NGX_OK)
                 {
                     return NGX_ERROR;
                 }
             }
 
-            if (ctx->sub.len) {
+            if (sub->len) {
                 b->memory = 1;
-                b->pos = ctx->sub.data;
-                b->last = ctx->sub.data + ctx->sub.len;
+                b->pos = sub->data;
+                b->last = sub->data + sub->len;
 
             } else {
                 b->sync = 1;
@@ -373,7 +380,8 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             *ctx->last_out = cl;
             ctx->last_out = &cl->next;
 
-            ctx->once = slcf->once;
+            ctx->index = 0;
+            ctx->once = slcf->once && (++ctx->applied == slcf->matches->nelts);
 
             continue;
         }
@@ -428,9 +436,6 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         ctx->buf = NULL;
-
-        ctx->saved.len = ctx->looked.len;
-        ngx_memcpy(ctx->saved.data, ctx->looked.data, ctx->looked.len);
     }
 
     if (ctx->out == NULL && ctx->busy == NULL) {
@@ -513,158 +518,142 @@ ngx_http_sub_output(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 static ngx_int_t
 ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 {
-    u_char                *p, *last, *copy_end, ch, match;
-    size_t                 looked, i;
-    ngx_http_sub_state_e   state;
+    u_char                   *p, *last, *pat, *pat_end, c;
+    ngx_str_t                *m;
+    ngx_int_t                 offset, start, next, end, len, rc;
+    ngx_uint_t                shift, i, j;
+    ngx_http_sub_match_t     *match;
+    ngx_http_sub_tables_t    *tables;
+    ngx_http_sub_loc_conf_t  *slcf;
+
+    slcf = ngx_http_get_module_loc_conf(r, ngx_http_sub_filter_module);
+    tables = slcf->tables;
+
+    offset = ctx->offset;
+    end = ctx->buf->last - ctx->pos;
 
     if (ctx->once) {
-        ctx->copy_start = ctx->pos;
-        ctx->copy_end = ctx->buf->last;
-        ctx->pos = ctx->buf->last;
-        ctx->looked.len = 0;
-
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "once");
-
-        return NGX_AGAIN;
+        /* sets start and next to end */
+        offset = end + (ngx_int_t) tables->min_match_len - 1;
+        goto again;
     }
 
-    state = ctx->state;
-    looked = ctx->looked.len;
-    last = ctx->buf->last;
-    copy_end = ctx->copy_end;
+    while (offset < end) {
 
-    for (p = ctx->pos; p < last; p++) {
+        c = offset < 0 ? ctx->looked.data[ctx->looked.len + offset]
+                       : ctx->pos[offset];
 
-        ch = *p;
-        ch = ngx_tolower(ch);
+        c = ngx_tolower(c);
 
-        if (state == sub_start_state) {
-
-            /* the tight loop */
-
-            match = ctx->match.data[0];
-
-            for ( ;; ) {
-                if (ch == match) {
-
-                    if (ctx->match.len == 1) {
-                        ctx->pos = p + 1;
-                        ctx->copy_end = p;
-
-                        return NGX_OK;
-                    }
-
-                    copy_end = p;
-                    ctx->looked.data[0] = *p;
-                    looked = 1;
-                    state = sub_match_state;
-
-                    goto match_started;
-                }
-
-                if (++p == last) {
-                    break;
-                }
-
-                ch = *p;
-                ch = ngx_tolower(ch);
-            }
-
-            ctx->state = state;
-            ctx->pos = p;
-            ctx->looked.len = looked;
-            ctx->copy_end = p;
-
-            if (ctx->copy_start == NULL) {
-                ctx->copy_start = ctx->buf->pos;
-            }
-
-            return NGX_AGAIN;
-
-        match_started:
-
+        shift = tables->shift[c];
+        if (shift > 0) {
+            offset += shift;
             continue;
         }
 
-        /* state == sub_match_state */
+        /* a potential match */
 
-        if (ch == ctx->match.data[looked]) {
-            ctx->looked.data[looked] = *p;
-            looked++;
+        start = offset - (ngx_int_t) tables->min_match_len + 1;
+        match = slcf->matches->elts;
 
-            if (looked == ctx->match.len) {
+        i = ngx_max(tables->index[c], ctx->index);
+        j = tables->index[c + 1];
 
-                ctx->state = sub_start_state;
-                ctx->pos = p + 1;
-                ctx->looked.len = 0;
-                ctx->saved.len = 0;
-                ctx->copy_end = copy_end;
+        while (i != j) {
 
-                if (ctx->copy_start == NULL && copy_end) {
-                    ctx->copy_start = ctx->buf->pos;
-                }
-
-                return NGX_OK;
+            if (slcf->once && ctx->sub && ctx->sub[i].data) {
+                goto next;
             }
 
-        } else {
-            /*
-             * check if there is another partial match in previously
-             * matched substring to catch cases like "aab" in "aaab"
-             */
+            m = &match[i].match;
 
-            ctx->looked.data[looked] = *p;
-            looked++;
+            pat = m->data;
+            pat_end = m->data + m->len;
 
-            for (i = 1; i < looked; i++) {
-                if (ngx_strncasecmp(ctx->looked.data + i,
-                                    ctx->match.data, looked - i)
-                    == 0)
-                {
-                    break;
-                }
-            }
-
-            if (i < looked) {
-                if (ctx->saved.len > i) {
-                    ctx->saved.len = i;
-                }
-
-                if ((size_t) (p + 1 - ctx->buf->pos) >= looked - i) {
-                    copy_end = p + 1 - (looked - i);
-                }
-
-                ngx_memmove(ctx->looked.data, ctx->looked.data + i, looked - i);
-                looked = looked - i;
+            if (start >= 0) {
+                p = ctx->pos + start;
 
             } else {
-                copy_end = p;
-                looked = 0;
-                state = sub_start_state;
+                last = ctx->looked.data + ctx->looked.len;
+                p = last + start;
+
+                while (p < last && pat < pat_end) {
+                    if (ngx_tolower(*p) != *pat) {
+                        goto next;
+                    }
+
+                    p++;
+                    pat++;
+                }
+
+                p = ctx->pos;
             }
 
-            if (ctx->saved.len) {
+            while (p < ctx->buf->last && pat < pat_end) {
+                if (ngx_tolower(*p) != *pat) {
+                    goto next;
+                }
+
                 p++;
-                goto out;
+                pat++;
             }
+
+            ctx->index = i;
+
+            if (pat != pat_end) {
+                /* partial match */
+                goto again;
+            }
+
+            ctx->offset = offset + (ngx_int_t) m->len;
+            next = start + (ngx_int_t) m->len;
+            end = ngx_max(next, 0);
+            rc = NGX_OK;
+
+            goto done;
+
+        next:
+
+            i++;
         }
+
+        offset++;
+        ctx->index = 0;
     }
 
-    ctx->saved.len = 0;
+again:
 
-out:
+    ctx->offset = offset;
+    start = offset - (ngx_int_t) tables->min_match_len + 1;
+    next = start;
+    rc = NGX_AGAIN;
 
-    ctx->state = state;
-    ctx->pos = p;
-    ctx->looked.len = looked;
+done:
 
-    ctx->copy_end = (state == sub_start_state) ? p : copy_end;
+    /* send [ - looked.len, start ] to client */
 
-    if (ctx->copy_start == NULL && ctx->copy_end) {
-        ctx->copy_start = ctx->buf->pos;
-    }
+    ctx->saved.len = ctx->looked.len + ngx_min(start, 0);
+    ngx_memcpy(ctx->saved.data, ctx->looked.data, ctx->saved.len);
 
-    return NGX_AGAIN;
+    ctx->copy_start = ctx->pos;
+    ctx->copy_end = ctx->pos + ngx_max(start, 0);
+
+    /* save [ next, end ] in looked */
+
+    len = ngx_min(next, 0);
+    p = ctx->looked.data;
+    p = ngx_movemem(p, p + ctx->looked.len + len, - len);
+
+    len = ngx_max(next, 0);
+    p = ngx_cpymem(p, ctx->pos + len, end - len);
+    ctx->looked.len = p - ctx->looked.data;
+
+    /* update position */
+
+    ctx->pos += end;
+    ctx->offset -= end;
+
+    return rc;
 }
 
 
@@ -674,23 +663,44 @@ ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_sub_loc_conf_t *slcf = conf;
 
     ngx_str_t                         *value;
+    ngx_http_sub_match_t              *match;
     ngx_http_compile_complex_value_t   ccv;
-
-    if (slcf->match.data) {
-        return "is duplicate";
-    }
 
     value = cf->args->elts;
 
+    if (value[1].len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "empty search pattern");
+        return NGX_CONF_ERROR;
+    }
+
+    if (slcf->matches == NULL) {
+        slcf->matches = ngx_array_create(cf->pool, 1,
+                                         sizeof(ngx_http_sub_match_t));
+        if (slcf->matches == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (slcf->matches->nelts == 255) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "number of search patterns exceeds 255");
+        return NGX_CONF_ERROR;
+    }
+
     ngx_strlow(value[1].data, value[1].data, value[1].len);
 
-    slcf->match = value[1];
+    match = ngx_array_push(slcf->matches);
+    if (match == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    match->match = value[1];
 
     ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
     ccv.cf = cf;
     ccv.value = &value[2];
-    ccv.complex_value = &slcf->value;
+    ccv.complex_value = &match->value;
 
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -713,9 +723,10 @@ ngx_http_sub_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->match = { 0, NULL };
+     *     conf->tables = NULL;
      *     conf->types = { NULL };
      *     conf->types_keys = NULL;
+     *     conf->matches = NULL;
      */
 
     slcf->once = NGX_CONF_UNSET;
@@ -732,12 +743,7 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_sub_loc_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->once, prev->once, 1);
-    ngx_conf_merge_str_value(conf->match, prev->match, "");
     ngx_conf_merge_value(conf->last_modified, prev->last_modified, 0);
-
-    if (conf->value.value.data == NULL) {
-        conf->value = prev->value;
-    }
 
     if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
                              &prev->types_keys, &prev->types,
@@ -747,7 +753,82 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    if (conf->matches == NULL) {
+        conf->matches = prev->matches;
+        conf->tables = prev->tables;
+
+    } else {
+        conf->tables = ngx_palloc(cf->pool, sizeof(ngx_http_sub_tables_t));
+        if (conf->tables == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_http_sub_init_tables(conf->tables, conf->matches->elts,
+                                 conf->matches->nelts);
+    }
+
     return NGX_CONF_OK;
+}
+
+
+static void
+ngx_http_sub_init_tables(ngx_http_sub_tables_t *tables,
+    ngx_http_sub_match_t *match, ngx_uint_t n)
+{
+    u_char      c;
+    ngx_uint_t  i, j, min, max, ch;
+
+    min = match[0].match.len;
+    max = match[0].match.len;
+
+    for (i = 1; i < n; i++) {
+        min = ngx_min(min, match[i].match.len);
+        max = ngx_max(max, match[i].match.len);
+    }
+
+    tables->min_match_len = min;
+    tables->max_match_len = max;
+
+    ngx_http_sub_cmp_index = tables->min_match_len - 1;
+    ngx_sort(match, n, sizeof(ngx_http_sub_match_t), ngx_http_sub_cmp_matches);
+
+    min = ngx_min(min, 255);
+    ngx_memset(tables->shift, min, 256);
+
+    ch = 0;
+
+    for (i = 0; i < n; i++) {
+
+        for (j = 0; j < min; j++) {
+            c = match[i].match.data[tables->min_match_len - 1 - j];
+            tables->shift[c] = ngx_min(tables->shift[c], (u_char) j);
+        }
+
+        c = match[i].match.data[tables->min_match_len - 1];
+        while (ch <= c) {
+            tables->index[ch++] = (u_char) i;
+        }
+    }
+
+    while (ch < 257) {
+        tables->index[ch++] = (u_char) n;
+    }
+}
+
+
+static ngx_int_t
+ngx_http_sub_cmp_matches(const void *one, const void *two)
+{
+    ngx_int_t              c1, c2;
+    ngx_http_sub_match_t  *first, *second;
+
+    first = (ngx_http_sub_match_t *) one;
+    second = (ngx_http_sub_match_t *) two;
+
+    c1 = first->match.data[ngx_http_sub_cmp_index];
+    c2 = second->match.data[ngx_http_sub_cmp_index];
+
+    return c1 - c2;
 }
 
 
