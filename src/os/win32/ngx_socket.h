@@ -21,9 +21,9 @@ typedef int     socklen_t;
 
 
 #define ngx_socket(af, type, proto)                                          \
-    WSASocket(af, type, proto, NULL, 0, WSA_FLAG_OVERLAPPED)
+    WSASocketW(af, type, proto, NULL, 0, WSA_FLAG_OVERLAPPED)
 
-#define ngx_socket_n        "WSASocket()"
+#define ngx_socket_n        "WSASocketW()"
 
 int ngx_nonblocking(ngx_socket_t s);
 int ngx_blocking(ngx_socket_t s);

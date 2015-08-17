@@ -21,6 +21,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_DEPRECATE
 
+/* enable gethostbyname() in msvc2015 */
+#if !(NGX_HAVE_INET6)
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#endif
+
 /*
  * we need to include <windows.h> explicitly before <winsock2.h> because
  * the warning 4201 is enabled in <windows.h>

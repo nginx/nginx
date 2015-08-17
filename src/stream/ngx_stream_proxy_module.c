@@ -528,18 +528,18 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     c = s->connection;
 
     if (c->log->log_level >= NGX_LOG_INFO) {
-        ngx_str_t  s;
+        ngx_str_t  str;
         u_char     addr[NGX_SOCKADDR_STRLEN];
 
-        s.len = NGX_SOCKADDR_STRLEN;
-        s.data = addr;
+        str.len = NGX_SOCKADDR_STRLEN;
+        str.data = addr;
 
-        if (ngx_connection_local_sockaddr(pc, &s, 1) == NGX_OK) {
+        if (ngx_connection_local_sockaddr(pc, &str, 1) == NGX_OK) {
             handler = c->log->handler;
             c->log->handler = NULL;
 
             ngx_log_error(NGX_LOG_INFO, c->log, 0, "proxy %V connected to %V",
-                          &s, u->peer.name);
+                          &str, u->peer.name);
 
             c->log->handler = handler;
         }

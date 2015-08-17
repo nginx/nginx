@@ -375,7 +375,7 @@ ngx_http_map_cmp_dns_wildcards(const void *one, const void *two)
 static char *
 ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_int_t                   rc, index;
+    ngx_int_t                   rv, index;
     ngx_str_t                  *value, name;
     ngx_uint_t                  i, key;
     ngx_http_map_conf_ctx_t    *ctx;
@@ -546,19 +546,19 @@ found:
         value[0].data++;
     }
 
-    rc = ngx_hash_add_key(&ctx->keys, &value[0], var,
+    rv = ngx_hash_add_key(&ctx->keys, &value[0], var,
                           (ctx->hostnames) ? NGX_HASH_WILDCARD_KEY : 0);
 
-    if (rc == NGX_OK) {
+    if (rv == NGX_OK) {
         return NGX_CONF_OK;
     }
 
-    if (rc == NGX_DECLINED) {
+    if (rv == NGX_DECLINED) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid hostname or wildcard \"%V\"", &value[0]);
     }
 
-    if (rc == NGX_BUSY) {
+    if (rv == NGX_BUSY) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "conflicting parameter \"%V\"", &value[0]);
     }
