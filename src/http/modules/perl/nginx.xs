@@ -98,6 +98,9 @@ ngx_http_perl_output(ngx_http_request_t *r, ngx_buf_t *b)
 MODULE = nginx    PACKAGE = nginx
 
 
+PROTOTYPES: DISABLE
+
+
 void
 status(r, code)
     CODE:
