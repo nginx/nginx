@@ -5,6 +5,117 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.4" date="18.08.2015">
+
+<change type="change">
+<para lang="ru">
+директивы proxy_downstream_buffer и proxy_upstream_buffer в модуле stream
+заменены директивой proxy_buffer_size.
+</para>
+<para lang="en">
+the "proxy_downstream_buffer" and "proxy_upstream_buffer" directives
+of the stream module are replaced with the "proxy_buffer_size" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива tcp_nodelay в модуле stream.
+</para>
+<para lang="en">
+the "tcp_nodelay" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь можно указать несколько директив sub_filter одновременно.
+</para>
+<para lang="en">
+multiple "sub_filter" directives can be used simultaneously.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива sub_filter поддерживает переменные в строке поиска.
+</para>
+<para lang="en">
+variables support in the search string of the "sub_filter" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+тестирование конфигурации могло не работать под Linux OpenVZ.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+configuration testing might fail under Linux OpenVZ.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после переконфигурации старые рабочие процессы могли сильно нагружать процессор
+при больших значениях worker_connections.
+</para>
+<para lang="en">
+old worker processes might hog CPU after reconfiguration
+with a large number of worker_connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при совместном использовании директив try_files и alias
+внутри location'а, заданного регулярным выражением,
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.7.1.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "try_files" and "alias" directives were used
+inside a location given by a regular expression;
+the bug had appeared in 1.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files внутри вложенного location'а, заданного регулярным
+выражением, работала неправильно, если во внешнем location'е использовалась
+директива alias.
+</para>
+<para lang="en">
+the "try_files" directive inside a nested location
+given by a regular expression worked incorrectly
+if the "alias" directive was used in the outer location.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при построении хэш-таблиц.
+</para>
+<para lang="en">
+in hash table initialization error handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с Visual Studio 2015.
+</para>
+<para lang="en">
+nginx could not be built with Visual Studio 2015.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.3" date="14.07.2015">
 
 <change type="change">
