@@ -268,18 +268,15 @@ header_in(r, key)
         }
 #endif
 
-        if (hh->offset) {
+        ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
 
-            ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
+        if (*ph) {
+            ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
 
-            if (*ph) {
-                ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
-
-                goto done;
-            }
-
-            XSRETURN_UNDEF;
+            goto done;
         }
+
+        XSRETURN_UNDEF;
 
     multi:
 
