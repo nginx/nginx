@@ -2427,12 +2427,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_http_core_srv_conf_t      *cscf;
     ngx_http_postponed_request_t  *pr, *p;
 
-    r->main->subrequests--;
-
-    if (r->main->subrequests == 0) {
+    if (r->subrequests == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "subrequests cycle while processing \"%V\"", uri);
-        r->main->subrequests = 1;
         return NGX_ERROR;
     }
 
@@ -2537,6 +2534,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
     sr->uri_changes = NGX_HTTP_MAX_URI_CHANGES + 1;
+    sr->subrequests = r->subrequests - 1;
 
     tp = ngx_timeofday();
     sr->start_sec = tp->sec;

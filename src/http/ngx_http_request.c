@@ -2338,7 +2338,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         if (r == c->data) {
 
             r->main->count--;
-            r->main->subrequests++;
 
             if (!r->logged) {
 
