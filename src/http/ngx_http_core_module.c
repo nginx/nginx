@@ -2433,6 +2433,16 @@ ngx_http_subrequest(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    /*
+     * 1000 is reserved for other purposes.
+     */
+    if (r->main->count >= 65535 - 1000) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "request reference counter overflow "
+                      "while processing \"%V\"", uri);
+        return NGX_ERROR;
+    }
+
     sr = ngx_pcalloc(r->pool, sizeof(ngx_http_request_t));
     if (sr == NULL) {
         return NGX_ERROR;
