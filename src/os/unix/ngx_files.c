@@ -344,7 +344,7 @@ eintr:
             err = ngx_errno;
 
             if (err == NGX_EINTR) {
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                ngx_log_debug0(NGX_LOG_DEBUG_CORE, file->log, err,
                                "writev() was interrupted");
                 goto eintr;
             }
