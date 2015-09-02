@@ -264,6 +264,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
     u_char        *prev;
     size_t         size;
     ssize_t        total, n;
+    ngx_err_t      err;
     ngx_array_t    vec;
     struct iovec  *iov, iovs[NGX_IOVS];
 
@@ -335,10 +336,20 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
             file->sys_offset = offset;
         }
 
+eintr:
+
         n = writev(file->fd, vec.elts, vec.nelts);
 
         if (n == -1) {
-            ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
+            err = ngx_errno;
+
+            if (err == NGX_EINTR) {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                               "writev() was interrupted");
+                goto eintr;
+            }
+
+            ngx_log_error(NGX_LOG_CRIT, file->log, err,
                           "writev() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
