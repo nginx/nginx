@@ -521,9 +521,12 @@ wakeup:
 static ngx_int_t
 ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 {
+    u_char                        *p;
     time_t                         now;
     ssize_t                        n;
+    ngx_str_t                     *key;
     ngx_int_t                      rc;
+    ngx_uint_t                     i;
     ngx_http_file_cache_t         *cache;
     ngx_http_file_cache_header_t  *h;
 
@@ -547,10 +550,25 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         return NGX_DECLINED;
     }
 
-    if (h->crc32 != c->crc32) {
+    if (h->crc32 != c->crc32 || h->header_start != c->header_start) {
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
                       "cache file \"%s\" has md5 collision", c->file.name.data);
         return NGX_DECLINED;
+    }
+
+    p = c->buf->pos + sizeof(ngx_http_file_cache_header_t)
+        + sizeof(ngx_http_file_cache_key);
+
+    key = c->keys.elts;
+    for (i = 0; i < c->keys.nelts; i++) {
+        if (ngx_memcmp(p, key[i].data, key[i].len) != 0) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "cache file \"%s\" has md5 collision",
+                          c->file.name.data);
+            return NGX_DECLINED;
+        }
+
+        p += key[i].len;
     }
 
     if ((size_t) h->body_start > c->body_start) {
@@ -583,7 +601,6 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     c->last_modified = h->last_modified;
     c->date = h->date;
     c->valid_msec = h->valid_msec;
-    c->header_start = h->header_start;
     c->body_start = h->body_start;
     c->etag.len = h->etag_len;
     c->etag.data = h->etag;
