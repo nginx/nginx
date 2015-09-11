@@ -312,9 +312,9 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
 
-#if (NGX_HTTP_SPDY)
-    if (hc->addr_conf->spdy) {
-        rev->handler = ngx_http_spdy_init;
+#if (NGX_HTTP_V2)
+    if (hc->addr_conf->http2) {
+        rev->handler = ngx_http_v2_init;
     }
 #endif
 
@@ -764,13 +764,12 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 
         c->ssl->no_wait_shutdown = 1;
 
-#if (NGX_HTTP_SPDY                                                            \
+#if (NGX_HTTP_V2                                                              \
      && (defined TLSEXT_TYPE_application_layer_protocol_negotiation           \
          || defined TLSEXT_TYPE_next_proto_neg))
         {
-        unsigned int             len;
-        const unsigned char     *data;
-        static const ngx_str_t   spdy = ngx_string(NGX_SPDY_NPN_NEGOTIATED);
+        unsigned int          len;
+        const unsigned char  *data;
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
         SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
@@ -785,8 +784,8 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
         SSL_get0_next_proto_negotiated(c->ssl->connection, &data, &len);
 #endif
 
-        if (len == spdy.len && ngx_strncmp(data, spdy.data, spdy.len) == 0) {
-            ngx_http_spdy_init(c->read);
+        if (len == 2 && data[0] == 'h' && data[1] == '2') {
+            ngx_http_v2_init(c->read);
             return;
         }
         }
@@ -2499,8 +2498,8 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 {
     ngx_http_core_loc_conf_t  *clcf;
 
-#if (NGX_HTTP_SPDY)
-    if (r->spdy_stream) {
+#if (NGX_HTTP_V2)
+    if (r->stream) {
         ngx_http_close_request(r, 0);
         return;
     }
@@ -2565,8 +2564,8 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
                                 ngx_http_test_reading;
     r->write_event_handler = ngx_http_writer;
 
-#if (NGX_HTTP_SPDY)
-    if (r->spdy_stream) {
+#if (NGX_HTTP_V2)
+    if (r->stream) {
         return NGX_OK;
     }
 #endif
@@ -2656,8 +2655,8 @@ ngx_http_writer(ngx_http_request_t *r)
 
     if (r->buffered || r->postponed || (r == r->main && c->buffered)) {
 
-#if (NGX_HTTP_SPDY)
-        if (r->spdy_stream) {
+#if (NGX_HTTP_V2)
+        if (r->stream) {
             return;
         }
 #endif
@@ -2724,9 +2723,9 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http test reading");
 
-#if (NGX_HTTP_SPDY)
+#if (NGX_HTTP_V2)
 
-    if (r->spdy_stream) {
+    if (r->stream) {
         if (c->error) {
             err = 0;
             goto closed;
@@ -3399,9 +3398,9 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-#if (NGX_HTTP_SPDY)
-    if (r->spdy_stream) {
-        ngx_http_spdy_close_stream(r->spdy_stream, rc);
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        ngx_http_v2_close_stream(r->stream, rc);
         return;
     }
 #endif

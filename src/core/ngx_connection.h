@@ -118,7 +118,7 @@ typedef enum {
 
 #define NGX_LOWLEVEL_BUFFERED  0x0f
 #define NGX_SSL_BUFFERED       0x01
-#define NGX_SPDY_BUFFERED      0x02
+#define NGX_HTTP_V2_BUFFERED   0x02
 
 
 struct ngx_connection_s {

@@ -23,6 +23,7 @@
 #define NGX_HTTP_VERSION_9                 9
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001
+#define NGX_HTTP_VERSION_20                2000
 
 #define NGX_HTTP_UNKNOWN                   0x0001
 #define NGX_HTTP_GET                       0x0002
@@ -431,8 +432,8 @@ struct ngx_http_request_s {
     ngx_uint_t                        err_status;
 
     ngx_http_connection_t            *http_connection;
-#if (NGX_HTTP_SPDY)
-    ngx_http_spdy_stream_t           *spdy_stream;
+#if (NGX_HTTP_V2)
+    ngx_http_v2_stream_t             *stream;
 #endif
 
     ngx_http_log_handler_pt           log_handler;

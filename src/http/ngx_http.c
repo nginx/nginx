@@ -1233,8 +1233,8 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #if (NGX_HTTP_SSL)
     ngx_uint_t             ssl;
 #endif
-#if (NGX_HTTP_SPDY)
-    ngx_uint_t             spdy;
+#if (NGX_HTTP_V2)
+    ngx_uint_t             http2;
 #endif
 
     /*
@@ -1290,8 +1290,8 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #if (NGX_HTTP_SSL)
         ssl = lsopt->ssl || addr[i].opt.ssl;
 #endif
-#if (NGX_HTTP_SPDY)
-        spdy = lsopt->spdy || addr[i].opt.spdy;
+#if (NGX_HTTP_V2)
+        http2 = lsopt->http2 || addr[i].opt.http2;
 #endif
 
         if (lsopt->set) {
@@ -1324,8 +1324,8 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #if (NGX_HTTP_SSL)
         addr[i].opt.ssl = ssl;
 #endif
-#if (NGX_HTTP_SPDY)
-        addr[i].opt.spdy = spdy;
+#if (NGX_HTTP_V2)
+        addr[i].opt.http2 = http2;
 #endif
 
         return NGX_OK;
@@ -1357,14 +1357,17 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
     }
 
-#if (NGX_HTTP_SPDY && NGX_HTTP_SSL                                            \
+#if (NGX_HTTP_V2 && NGX_HTTP_SSL                                              \
      && !defined TLSEXT_TYPE_application_layer_protocol_negotiation           \
      && !defined TLSEXT_TYPE_next_proto_neg)
-    if (lsopt->spdy && lsopt->ssl) {
+
+    if (lsopt->http2 && lsopt->ssl) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "nginx was built without OpenSSL ALPN or NPN "
-                           "support, SPDY is not enabled for %s", lsopt->addr);
+                           "nginx was built with OpenSSL that lacks ALPN "
+                           "and NPN support, HTTP/2 is not enabled for %s",
+                           lsopt->addr);
     }
+
 #endif
 
     addr = ngx_array_push(&port->addrs);
@@ -1856,8 +1859,8 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 #if (NGX_HTTP_SSL)
         addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
-#if (NGX_HTTP_SPDY)
-        addrs[i].conf.spdy = addr[i].opt.spdy;
+#if (NGX_HTTP_V2)
+        addrs[i].conf.http2 = addr[i].opt.http2;
 #endif
         addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 
@@ -1921,8 +1924,8 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 #if (NGX_HTTP_SSL)
         addrs6[i].conf.ssl = addr[i].opt.ssl;
 #endif
-#if (NGX_HTTP_SPDY)
-        addrs6[i].conf.spdy = addr[i].opt.spdy;
+#if (NGX_HTTP_V2)
+        addrs6[i].conf.http2 = addr[i].opt.http2;
 #endif
 
         if (addr[i].hash.buckets == NULL

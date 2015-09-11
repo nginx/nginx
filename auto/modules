@@ -94,7 +94,7 @@ fi
 #     ngx_http_write_filter
 #     ngx_http_header_filter
 #     ngx_http_chunked_filter
-#     ngx_http_spdy_filter
+#     ngx_http_v2_filter
 #     ngx_http_range_header_filter
 #     ngx_http_gzip_filter
 #     ngx_http_postpone_filter
@@ -115,8 +115,8 @@ HTTP_FILTER_MODULES="$HTTP_WRITE_FILTER_MODULE \
                      $HTTP_HEADER_FILTER_MODULE \
                      $HTTP_CHUNKED_FILTER_MODULE"
 
-if [ $HTTP_SPDY = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SPDY_FILTER_MODULE"
+if [ $HTTP_V2 = YES ]; then
+    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_V2_FILTER_MODULE"
 fi
 
 HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_RANGE_HEADER_FILTER_MODULE"
@@ -180,12 +180,12 @@ if [ $HTTP_USERID = YES ]; then
 fi
 
 
-if [ $HTTP_SPDY = YES ]; then
-    have=NGX_HTTP_SPDY . auto/have
-    USE_ZLIB=YES
-    HTTP_MODULES="$HTTP_MODULES $HTTP_SPDY_MODULE"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_SPDY_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SPDY_SRCS"
+if [ $HTTP_V2 = YES ]; then
+    have=NGX_HTTP_V2 . auto/have
+    HTTP_MODULES="$HTTP_MODULES $HTTP_V2_MODULE"
+    HTTP_INCS="$HTTP_INCS $HTTP_V2_INCS"
+    HTTP_DEPS="$HTTP_DEPS $HTTP_V2_DEPS"
+    HTTP_SRCS="$HTTP_SRCS $HTTP_V2_SRCS"
 fi
 
 HTTP_MODULES="$HTTP_MODULES $HTTP_STATIC_MODULE"
