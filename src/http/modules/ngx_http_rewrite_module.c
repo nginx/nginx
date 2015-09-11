@@ -612,7 +612,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     save = *cf;
     cf->ctx = ctx;
 
-    if (pclcf->name.len == 0) {
+    if (cf->cmd_type == NGX_HTTP_SRV_CONF) {
         if_code->loc_conf = NULL;
         cf->cmd_type = NGX_HTTP_SIF_CONF;
 
