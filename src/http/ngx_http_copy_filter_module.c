@@ -327,7 +327,7 @@ ngx_http_copy_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_copy_filter_conf_t *prev = parent;
     ngx_http_copy_filter_conf_t *conf = child;
 
-    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 1, 32768);
+    ngx_conf_merge_bufs_value(conf->bufs, prev->bufs, 2, 32768);
 
     return NULL;
 }
