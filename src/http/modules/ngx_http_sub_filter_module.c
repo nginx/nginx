@@ -853,8 +853,9 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->pairs = prev->pairs;
         conf->matches = prev->matches;
         conf->tables = prev->tables;
+    }
 
-    } else if (conf->dynamic == 0){
+    if (conf->pairs && conf->dynamic == 0 && conf->tables == NULL) {
         pairs = conf->pairs->elts;
         n = conf->pairs->nelts;
 
