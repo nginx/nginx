@@ -1451,6 +1451,11 @@ ngx_http_v2_state_field_skip(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->state.field_rest -= size;
 
+    if (h2c->state.field_rest) {
+        return ngx_http_v2_state_save(h2c, end, end,
+                                      ngx_http_v2_state_field_skip);
+    }
+
     return ngx_http_v2_state_process_header(h2c, pos + size, end);
 }
 
