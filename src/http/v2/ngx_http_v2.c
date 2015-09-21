@@ -86,6 +86,8 @@ static u_char *ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
+static u_char *ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c,
+    u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
 static u_char *ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_rst_stream(ngx_http_v2_connection_t *h2c,
@@ -1198,6 +1200,13 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
                                       ngx_http_v2_state_header_block);
     }
 
+    if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)
+        && h2c->state.length < NGX_HTTP_V2_INT_OCTETS)
+    {
+        return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                               ngx_http_v2_state_header_block);
+    }
+
     size_update = 0;
     indexed = 0;
 
@@ -1295,6 +1304,13 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_int_t   len;
     ngx_uint_t  huff;
 
+    if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)
+        && h2c->state.length < NGX_HTTP_V2_INT_OCTETS)
+    {
+        return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                               ngx_http_v2_state_field_len);
+    }
+
     if (h2c->state.length < 1) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent header block with incorrect length");
@@ -1332,15 +1348,6 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 hpack %s string length: %i",
                    huff ? "encoded" : "raw", len);
-
-    if ((size_t) len > h2c->state.length) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent header field with incorrect length");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
-    }
-
-    h2c->state.length -= len;
 
     if ((size_t) len > h2c->state.field_limit) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -1385,6 +1392,11 @@ ngx_http_v2_state_field_huff(ngx_http_v2_connection_t *h2c, u_char *pos,
         size = h2c->state.field_rest;
     }
 
+    if (size > h2c->state.length) {
+        size = h2c->state.length;
+    }
+
+    h2c->state.length -= size;
     h2c->state.field_rest -= size;
 
     if (ngx_http_v2_huff_decode(&h2c->state.field_state, pos, size,
@@ -1399,14 +1411,27 @@ ngx_http_v2_state_field_huff(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_COMP_ERROR);
     }
 
-    if (h2c->state.field_rest != 0) {
-        return ngx_http_v2_state_save(h2c, end, end,
+    pos += size;
+
+    if (h2c->state.field_rest == 0) {
+        *h2c->state.field_end = '\0';
+        return ngx_http_v2_state_process_header(h2c, pos, end);
+    }
+
+    if (h2c->state.length) {
+        return ngx_http_v2_state_save(h2c, pos, end,
                                       ngx_http_v2_state_field_huff);
     }
 
-    *h2c->state.field_end = '\0';
+    if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent header field with incorrect length");
 
-    return ngx_http_v2_state_process_header(h2c, pos + size, end);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                           ngx_http_v2_state_field_huff);
 }
 
 
@@ -1422,18 +1447,36 @@ ngx_http_v2_state_field_raw(ngx_http_v2_connection_t *h2c, u_char *pos,
         size = h2c->state.field_rest;
     }
 
+    if (size > h2c->state.length) {
+        size = h2c->state.length;
+    }
+
+    h2c->state.length -= size;
     h2c->state.field_rest -= size;
 
     h2c->state.field_end = ngx_cpymem(h2c->state.field_end, pos, size);
 
-    if (h2c->state.field_rest) {
-        return ngx_http_v2_state_save(h2c, end, end,
+    pos += size;
+
+    if (h2c->state.field_rest == 0) {
+        *h2c->state.field_end = '\0';
+        return ngx_http_v2_state_process_header(h2c, pos, end);
+    }
+
+    if (h2c->state.length) {
+        return ngx_http_v2_state_save(h2c, pos, end,
                                       ngx_http_v2_state_field_raw);
     }
 
-    *h2c->state.field_end = '\0';
+    if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent header field with incorrect length");
 
-    return ngx_http_v2_state_process_header(h2c, pos + size, end);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                           ngx_http_v2_state_field_raw);
 }
 
 
@@ -1449,14 +1492,33 @@ ngx_http_v2_state_field_skip(ngx_http_v2_connection_t *h2c, u_char *pos,
         size = h2c->state.field_rest;
     }
 
+    if (size > h2c->state.length) {
+        size = h2c->state.length;
+    }
+
+    h2c->state.length -= size;
     h2c->state.field_rest -= size;
 
-    if (h2c->state.field_rest) {
-        return ngx_http_v2_state_save(h2c, end, end,
+    pos += size;
+
+    if (h2c->state.field_rest == 0) {
+        return ngx_http_v2_state_process_header(h2c, pos, end);
+    }
+
+    if (h2c->state.length) {
+        return ngx_http_v2_state_save(h2c, pos, end,
                                       ngx_http_v2_state_field_skip);
     }
 
-    return ngx_http_v2_state_process_header(h2c, pos + size, end);
+    if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent header field with incorrect length");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                           ngx_http_v2_state_field_skip);
 }
 
 
@@ -1631,16 +1693,15 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
         return pos;
     }
 
+    if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)) {
+        return ngx_http_v2_handle_continuation(h2c, pos, end,
+                                             ngx_http_v2_state_header_complete);
+    }
+
     stream = h2c->state.stream;
 
     if (stream) {
-        if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
-            stream->end_headers = 1;
-            ngx_http_v2_run_request(stream->request);
-
-        } else {
-            stream->header_limit = h2c->state.header_limit;
-        }
+        ngx_http_v2_run_request(stream->request);
 
     } else if (h2c->state.pool) {
         ngx_destroy_pool(h2c->state.pool);
@@ -1653,6 +1714,51 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     return ngx_http_v2_state_complete(h2c, pos, end);
+}
+
+
+static u_char *
+ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
+    u_char *end, ngx_http_v2_handler_pt handler)
+{
+    u_char    *p;
+    size_t     len;
+    uint32_t   head;
+
+    len = h2c->state.length;
+
+    if ((size_t) (end - pos) < len + NGX_HTTP_V2_FRAME_HEADER_SIZE) {
+        return ngx_http_v2_state_save(h2c, pos, end, handler);
+    }
+
+    p = pos + len;
+
+    head = ngx_http_v2_parse_uint32(p);
+
+    if (ngx_http_v2_parse_type(head) != NGX_HTTP_V2_CONTINUATION_FRAME) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+             "client sent inappropriate frame while CONTINUATION was expected");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    h2c->state.length += ngx_http_v2_parse_length(head);
+    h2c->state.flags |= p[4];
+
+    if (h2c->state.sid != ngx_http_v2_parse_sid(&p[5])) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                    "client sent CONTINUATION frame with incorrect identifier");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    p = pos;
+    pos += NGX_HTTP_V2_FRAME_HEADER_SIZE;
+
+    ngx_memcpy(pos, p, len);
+
+    h2c->state.handler = handler;
+    return pos;
 }
 
 
@@ -2141,49 +2247,10 @@ static u_char *
 ngx_http_v2_state_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    ngx_http_v2_node_t      *node;
-    ngx_http_v2_stream_t    *stream;
-    ngx_http_v2_srv_conf_t  *h2scf;
+    ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                  "client sent unexpected CONTINUATION frame");
 
-    if (h2c->state.length == 0) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent CONTINUATION with empty header block");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
-    }
-
-    if (h2c->state.sid == 0) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                   "client sent CONTINUATION frame with incorrect identifier");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
-    node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
-
-    if (node == NULL || node->stream == NULL) {
-        h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                             ngx_http_v2_module);
-
-        h2c->state.header_limit = h2scf->max_header_size;
-
-        return ngx_http_v2_state_skip_headers(h2c, pos, end);
-    }
-
-    stream = node->stream;
-
-    if (stream->end_headers) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent unexpected CONTINUATION frame");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
-    h2c->state.stream = stream;
-    h2c->state.header_limit = stream->header_limit;
-    h2c->state.pool = stream->request->pool;
-
-    return ngx_http_v2_state_header_block(h2c, pos, end);
+    return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
 }
 
 
