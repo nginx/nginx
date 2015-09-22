@@ -5,6 +5,103 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.5" date="22.09.2015">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_v2_module (заменяет модуль ngx_http_spdy_module).<br/>
+Спасибо Dropbox и Automattic за спонсирование разработки.
+</para>
+<para lang="en">
+the ngx_http_v2_module (replaces ngx_http_spdy_module).<br/>
+Thanks to Dropbox and Automattic for sponsoring this work.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь по умолчанию директива output_buffers использует два буфера.
+</para>
+<para lang="en">
+now the "output_buffers" directive uses two buffers by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx ограничивает максимальную вложенность подзапросов,
+а не количество одновременных подзапросов.
+</para>
+<para lang="en">
+now nginx limits subrequests recursion,
+not simultaneous subrequests.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при возврате ответов из кэша nginx проверяет ключ полностью.<br/>
+Спасибо Геннадию Махомеду и Сергею Брестеру.
+</para>
+<para lang="en">
+now nginx checks the whole cache key when returning a response from cache.<br/>
+Thanks to Gena Makhomed and Sergey Brester.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэша
+в логах могли появляться сообщения "header already sent";
+ошибка появилась в 1.7.5.
+</para>
+<para lang="en">
+"header already sent" alerts might appear in logs
+when using cache;
+the bug had appeared in 1.7.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании CephFS и директивы timer_resolution на Linux
+в логах могли появляться сообщения
+"writev() failed (4: Interrupted system call)".
+</para>
+<para lang="en">
+"writev() failed (4: Interrupted system call)"
+errors might appear in logs
+when using CephFS and the "timer_resolution" directive on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок конфигурации.<br/>
+Спасибо Markus Linnala.
+</para>
+<para lang="en">
+in invalid configurations handling.<br/>
+Thanks to Markus Linnala.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы sub_filter на уровне http
+в рабочем процессе происходил segmentation fault;
+ошибка появилась в 1.9.4.
+</para>
+<para lang="en">
+a segmentation fault occurred in a worker process
+if the "sub_filter" directive was used at http level;
+the bug had appeared in 1.9.4.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.4" date="18.08.2015">
 
 <change type="change">
