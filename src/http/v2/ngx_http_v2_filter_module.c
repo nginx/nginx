@@ -945,7 +945,8 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
     buf = cl->buf;
 
     if (!buf->start) {
-        buf->start = ngx_palloc(stream->request->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE);
+        buf->start = ngx_palloc(stream->request->pool,
+                                NGX_HTTP_V2_FRAME_HEADER_SIZE);
         if (buf->start == NULL) {
             return NULL;
         }
