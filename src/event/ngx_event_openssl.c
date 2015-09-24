@@ -1158,6 +1158,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 
         /* initial handshake done, disable renegotiation (CVE-2009-3555) */
@@ -1165,6 +1166,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
             c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
         }
 
+#endif
 #endif
 
         return NGX_OK;
@@ -2861,7 +2863,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                        ngx_hex_dump(buf, key[0].name, 16) - buf, buf,
                        SSL_session_reused(ssl_conn) ? "reused" : "new");
 
-        RAND_pseudo_bytes(iv, 16);
+        RAND_bytes(iv, 16);
         EVP_EncryptInit_ex(ectx, EVP_aes_128_cbc(), NULL, key[0].aes_key, iv);
         HMAC_Init_ex(hctx, key[0].hmac_key, 16,
                      ngx_ssl_session_ticket_md(), NULL);
