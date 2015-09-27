@@ -43,10 +43,8 @@
 
 static u_char *ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix,
     ngx_uint_t value);
-static void ngx_http_v2_write_headers_head(u_char *pos, size_t length,
-    ngx_uint_t sid, ngx_uint_t end_headers, ngx_uint_t end_stream);
-static void ngx_http_v2_write_continuation_head(u_char *pos, size_t length,
-    ngx_uint_t sid, ngx_uint_t end_headers);
+static ngx_http_v2_out_frame_t *ngx_http_v2_create_headers_frame(
+    ngx_http_request_t *r, u_char *pos, u_char *end);
 
 static ngx_chain_t *ngx_http_v2_send_chain(ngx_connection_t *fc,
     ngx_chain_t *in, off_t limit);
@@ -116,17 +114,14 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_int_t
 ngx_http_v2_header_filter(ngx_http_request_t *r)
 {
-    u_char                     status, *p, *head;
-    size_t                     len, rest, frame_size;
-    ngx_buf_t                 *b;
+    u_char                     status, *pos, *start, *p;
+    size_t                     len;
     ngx_str_t                  host, location;
-    ngx_uint_t                 i, port, continuation;
-    ngx_chain_t               *cl;
+    ngx_uint_t                 i, port;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *fc;
     ngx_http_cleanup_t        *cln;
-    ngx_http_v2_stream_t      *stream;
     ngx_http_v2_out_frame_t   *frame;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
@@ -388,133 +383,116 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                  + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
     }
 
-    stream = r->stream;
-    frame_size = stream->connection->frame_size;
-
-    len += NGX_HTTP_V2_FRAME_HEADER_SIZE
-           * ((len + frame_size - 1) / frame_size);
-
-    b = ngx_create_temp_buf(r->pool, len);
-    if (b == NULL) {
+    pos = ngx_palloc(r->pool, len);
+    if (pos == NULL) {
         return NGX_ERROR;
     }
 
-    b->last_buf = r->header_only;
-
-    b->last += NGX_HTTP_V2_FRAME_HEADER_SIZE;
+    start = pos;
 
     if (status) {
-        *b->last++ = status;
+        *pos++ = status;
 
     } else {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_STATUS_INDEX);
-        *b->last++ = NGX_HTTP_V2_ENCODE_RAW | 3;
-        b->last = ngx_sprintf(b->last, "%03ui", r->headers_out.status);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_STATUS_INDEX);
+        *pos++ = NGX_HTTP_V2_ENCODE_RAW | 3;
+        pos = ngx_sprintf(pos, "%03ui", r->headers_out.status);
     }
 
     if (r->headers_out.server == NULL) {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
 
         if (clcf->server_tokens) {
-            *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof(NGINX_VER) - 1);
-            b->last = ngx_cpymem(b->last, NGINX_VER, sizeof(NGINX_VER) - 1);
+            *pos++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof(NGINX_VER) - 1);
+            pos = ngx_cpymem(pos, NGINX_VER, sizeof(NGINX_VER) - 1);
 
         } else {
-            *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("nginx") - 1);
-            b->last = ngx_cpymem(b->last, "nginx", sizeof("nginx") - 1);
+            *pos++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("nginx") - 1);
+            pos = ngx_cpymem(pos, "nginx", sizeof("nginx") - 1);
         }
     }
 
     if (r->headers_out.date == NULL) {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_DATE_INDEX);
-        *b->last++ = (u_char) ngx_cached_http_time.len;
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_DATE_INDEX);
+        *pos++ = (u_char) ngx_cached_http_time.len;
 
-        b->last = ngx_cpymem(b->last, ngx_cached_http_time.data,
-                             ngx_cached_http_time.len);
+        pos = ngx_cpymem(pos, ngx_cached_http_time.data,
+                         ngx_cached_http_time.len);
     }
 
     if (r->headers_out.content_type.len) {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_CONTENT_TYPE_INDEX);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_CONTENT_TYPE_INDEX);
 
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
             && r->headers_out.charset.len)
         {
-            *b->last = NGX_HTTP_V2_ENCODE_RAW;
-            b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
-                                            r->headers_out.content_type.len
-                                            + sizeof("; charset=") - 1
-                                            + r->headers_out.charset.len);
+            *pos = NGX_HTTP_V2_ENCODE_RAW;
+            pos = ngx_http_v2_write_int(pos, ngx_http_v2_prefix(7),
+                                        r->headers_out.content_type.len
+                                        + sizeof("; charset=") - 1
+                                        + r->headers_out.charset.len);
 
-            p = b->last;
+            p = pos;
 
-            b->last = ngx_cpymem(p, r->headers_out.content_type.data,
-                                 r->headers_out.content_type.len);
+            pos = ngx_cpymem(pos, r->headers_out.content_type.data,
+                             r->headers_out.content_type.len);
 
-            b->last = ngx_cpymem(b->last, "; charset=",
-                                 sizeof("; charset=") - 1);
+            pos = ngx_cpymem(pos, "; charset=", sizeof("; charset=") - 1);
 
-            b->last = ngx_cpymem(b->last, r->headers_out.charset.data,
-                                 r->headers_out.charset.len);
+            pos = ngx_cpymem(pos, r->headers_out.charset.data,
+                             r->headers_out.charset.len);
 
             /* update r->headers_out.content_type for possible logging */
 
-            r->headers_out.content_type.len = b->last - p;
+            r->headers_out.content_type.len = pos - p;
             r->headers_out.content_type.data = p;
 
         } else {
-            *b->last = NGX_HTTP_V2_ENCODE_RAW;
-            b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
-                                            r->headers_out.content_type.len);
-            b->last = ngx_cpymem(b->last, r->headers_out.content_type.data,
-                                 r->headers_out.content_type.len);
+            *pos = NGX_HTTP_V2_ENCODE_RAW;
+            pos = ngx_http_v2_write_int(pos, ngx_http_v2_prefix(7),
+                                        r->headers_out.content_type.len);
+            pos = ngx_cpymem(pos, r->headers_out.content_type.data,
+                             r->headers_out.content_type.len);
         }
     }
 
     if (r->headers_out.content_length == NULL
         && r->headers_out.content_length_n >= 0)
     {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_CONTENT_LENGTH_INDEX);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_CONTENT_LENGTH_INDEX);
 
-        p = b->last;
-        b->last = ngx_sprintf(b->last + 1, "%O",
-                              r->headers_out.content_length_n);
-        *p = NGX_HTTP_V2_ENCODE_RAW | (u_char) (b->last - p - 1);
+        p = pos;
+        pos = ngx_sprintf(pos + 1, "%O", r->headers_out.content_length_n);
+        *p = NGX_HTTP_V2_ENCODE_RAW | (u_char) (pos - p - 1);
     }
 
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LAST_MODIFIED_INDEX);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LAST_MODIFIED_INDEX);
 
-        *b->last++ = NGX_HTTP_V2_ENCODE_RAW
-                     | (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
-        b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
+        *pos++ = NGX_HTTP_V2_ENCODE_RAW
+                 | (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
+        pos = ngx_http_time(pos, r->headers_out.last_modified_time);
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LOCATION_INDEX);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LOCATION_INDEX);
 
-        *b->last = NGX_HTTP_V2_ENCODE_RAW;
-        b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
-                                        r->headers_out.location->value.len);
-        b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,
-                                      r->headers_out.location->value.len);
+        *pos = NGX_HTTP_V2_ENCODE_RAW;
+        pos = ngx_http_v2_write_int(pos, ngx_http_v2_prefix(7),
+                                    r->headers_out.location->value.len);
+        pos = ngx_cpymem(pos, r->headers_out.location->value.data,
+                              r->headers_out.location->value.len);
     }
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
-        *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_VARY_INDEX);
-        *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("Accept-Encoding") - 1);
-        b->last = ngx_cpymem(b->last, "Accept-Encoding",
-                             sizeof("Accept-Encoding") - 1);
+        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_VARY_INDEX);
+        *pos++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("Accept-Encoding") - 1);
+        pos = ngx_cpymem(pos, "Accept-Encoding", sizeof("Accept-Encoding") - 1);
     }
 #endif
-
-    continuation = 0;
-    head = b->pos;
-
-    len = b->last - head - NGX_HTTP_V2_FRAME_HEADER_SIZE;
-    rest = frame_size - len;
 
     part = &r->headers_out.headers.part;
     header = part->elts;
@@ -535,82 +513,26 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
             continue;
         }
 
-        len = 1 + NGX_HTTP_V2_INT_OCTETS * 2
-              + header[i].key.len
-              + header[i].value.len;
+        *pos++ = 0;
 
-        if (len > rest) {
-            len = b->last - head - NGX_HTTP_V2_FRAME_HEADER_SIZE;
+        *pos = NGX_HTTP_V2_ENCODE_RAW;
+        pos = ngx_http_v2_write_int(pos, ngx_http_v2_prefix(7),
+                                    header[i].key.len);
+        ngx_strlow(pos, header[i].key.data, header[i].key.len);
+        pos += header[i].key.len;
 
-            if (continuation) {
-                ngx_http_v2_write_continuation_head(head, len,
-                                                    stream->node->id, 0);
-            } else {
-                continuation = 1;
-                ngx_http_v2_write_headers_head(head, len, stream->node->id, 0,
-                                               r->header_only);
-            }
-
-            rest = frame_size;
-            head = b->last;
-
-            b->last += NGX_HTTP_V2_FRAME_HEADER_SIZE;
-        }
-
-        p = b->last;
-
-        *p++ = 0;
-
-        *p = NGX_HTTP_V2_ENCODE_RAW;
-        p = ngx_http_v2_write_int(p, ngx_http_v2_prefix(7), header[i].key.len);
-        ngx_strlow(p, header[i].key.data, header[i].key.len);
-        p += header[i].key.len;
-
-        *p = NGX_HTTP_V2_ENCODE_RAW;
-        p = ngx_http_v2_write_int(p, ngx_http_v2_prefix(7),
-                                  header[i].value.len);
-        p = ngx_cpymem(p, header[i].value.data, header[i].value.len);
-
-        rest -= p - b->last;
-        b->last = p;
+        *pos = NGX_HTTP_V2_ENCODE_RAW;
+        pos = ngx_http_v2_write_int(pos, ngx_http_v2_prefix(7),
+                                    header[i].value.len);
+        pos = ngx_cpymem(pos, header[i].value.data, header[i].value.len);
     }
 
-    len = b->last - head - NGX_HTTP_V2_FRAME_HEADER_SIZE;
-
-    if (continuation) {
-        ngx_http_v2_write_continuation_head(head, len, stream->node->id, 1);
-
-    } else {
-        ngx_http_v2_write_headers_head(head, len, stream->node->id, 1,
-                                       r->header_only);
-    }
-
-    cl = ngx_alloc_chain_link(r->pool);
-    if (cl == NULL) {
-        return NGX_ERROR;
-    }
-
-    cl->buf = b;
-    cl->next = NULL;
-
-    frame = ngx_palloc(r->pool, sizeof(ngx_http_v2_out_frame_t));
+    frame = ngx_http_v2_create_headers_frame(r, start, pos);
     if (frame == NULL) {
         return NGX_ERROR;
     }
 
-    frame->first = cl;
-    frame->last = cl;
-    frame->handler = ngx_http_v2_headers_frame_handler;
-    frame->stream = stream;
-    frame->length = b->last - b->pos - NGX_HTTP_V2_FRAME_HEADER_SIZE;
-    frame->blocked = 1;
-    frame->fin = r->header_only;
-
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, stream->request->connection->log, 0,
-                   "http2:%ui create HEADERS frame %p: len:%uz",
-                   stream->node->id, frame, frame->length);
-
-    ngx_http_v2_queue_blocked_frame(stream->connection, frame);
+    ngx_http_v2_queue_blocked_frame(r->stream->connection, frame);
 
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
@@ -618,14 +540,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     cln->handler = ngx_http_v2_filter_cleanup;
-    cln->data = stream;
+    cln->data = r->stream;
 
-    stream->queued = 1;
+    r->stream->queued = 1;
 
     fc->send_chain = ngx_http_v2_send_chain;
     fc->need_last_buf = 1;
 
-    return ngx_http_v2_filter_send(fc, stream);
+    return ngx_http_v2_filter_send(fc, r->stream);
 }
 
 
@@ -651,41 +573,104 @@ ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix, ngx_uint_t value)
 }
 
 
-static void
-ngx_http_v2_write_headers_head(u_char *pos, size_t length, ngx_uint_t sid,
-    ngx_uint_t end_headers, ngx_uint_t end_stream)
+static ngx_http_v2_out_frame_t *
+ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
+    u_char *end)
 {
-    u_char  flags;
+    u_char                    type, flags;
+    size_t                    rest, frame_size;
+    ngx_buf_t                *b;
+    ngx_chain_t              *cl, **ll;
+    ngx_http_v2_stream_t     *stream;
+    ngx_http_v2_out_frame_t  *frame;
 
-    pos = ngx_http_v2_write_len_and_type(pos, length,
-                                         NGX_HTTP_V2_HEADERS_FRAME);
+    stream = r->stream;
+    rest = end - pos;
 
-    flags = NGX_HTTP_V2_NO_FLAG;
-
-    if (end_headers) {
-        flags |= NGX_HTTP_V2_END_HEADERS_FLAG;
+    frame = ngx_palloc(r->pool, sizeof(ngx_http_v2_out_frame_t));
+    if (frame == NULL) {
+        return NULL;
     }
 
-    if (end_stream) {
-        flags |= NGX_HTTP_V2_END_STREAM_FLAG;
+    frame->handler = ngx_http_v2_headers_frame_handler;
+    frame->stream = stream;
+    frame->length = rest;
+    frame->blocked = 1;
+    frame->fin = r->header_only;
+
+    ll = &frame->first;
+
+    type = NGX_HTTP_V2_HEADERS_FRAME;
+    flags = r->header_only ? NGX_HTTP_V2_END_STREAM_FLAG : NGX_HTTP_V2_NO_FLAG;
+    frame_size = stream->connection->frame_size;
+
+    for ( ;; ) {
+        if (rest <= frame_size) {
+            frame_size = rest;
+            flags |= NGX_HTTP_V2_END_HEADERS_FLAG;
+        }
+
+        b = ngx_create_temp_buf(r->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE);
+        if (b == NULL) {
+            return NULL;
+        }
+
+        b->last = ngx_http_v2_write_len_and_type(b->last, frame_size, type);
+        *b->last++ = flags;
+        b->last = ngx_http_v2_write_sid(b->last, stream->node->id);
+
+        cl = ngx_alloc_chain_link(r->pool);
+        if (cl == NULL) {
+            return NULL;
+        }
+
+        cl->buf = b;
+
+        *ll = cl;
+        ll = &cl->next;
+
+        b = ngx_calloc_buf(r->pool);
+        if (b == NULL) {
+            return NULL;
+        }
+
+        b->pos = pos;
+
+        pos += frame_size;
+
+        b->last = pos;
+        b->start = b->pos;
+        b->end = b->last;
+        b->temporary = 1;
+
+        cl = ngx_alloc_chain_link(r->pool);
+        if (cl == NULL) {
+            return NULL;
+        }
+
+        cl->buf = b;
+
+        *ll = cl;
+        ll = &cl->next;
+
+        rest -= frame_size;
+
+        if (rest) {
+            type = NGX_HTTP_V2_CONTINUATION_FRAME;
+            flags = NGX_HTTP_V2_NO_FLAG;
+            continue;
+        }
+
+        b->last_buf = r->header_only;
+        cl->next = NULL;
+        frame->last = cl;
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http2:%ui create HEADERS frame %p: len:%uz",
+                       stream->node->id, frame, frame->length);
+
+        return frame;
     }
-
-    *pos++ = flags;
-
-    (void) ngx_http_v2_write_sid(pos, sid);
-}
-
-
-static void
-ngx_http_v2_write_continuation_head(u_char *pos, size_t length, ngx_uint_t sid,
-    ngx_uint_t end_headers)
-{
-    pos = ngx_http_v2_write_len_and_type(pos, length,
-                                         NGX_HTTP_V2_CONTINUATION_FRAME);
-
-    *pos++ = end_headers ? NGX_HTTP_V2_END_HEADERS_FLAG : NGX_HTTP_V2_NO_FLAG;
-
-    (void) ngx_http_v2_write_sid(pos, sid);
 }
 
 
