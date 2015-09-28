@@ -2762,6 +2762,8 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
         return NULL;
     }
 
+    ngx_str_set(&r->http_protocol, "HTTP/2.0");
+
     r->http_version = NGX_HTTP_VERSION_20;
     r->valid_location = 1;
 
