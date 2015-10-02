@@ -2914,19 +2914,20 @@ ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
         weight += child->weight;
     }
 
+    parent = node->parent;
+
     for (q = ngx_queue_head(&node->children);
          q != ngx_queue_sentinel(&node->children);
          q = ngx_queue_next(q))
     {
         child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
+        child->parent = parent;
         child->weight = node->weight * child->weight / weight;
 
         if (child->weight == 0) {
             child->weight = 1;
         }
     }
-
-    parent = node->parent;
 
     if (parent == NGX_HTTP_V2_ROOT) {
         node->rank = 0;
@@ -3940,8 +3941,8 @@ static void
 ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_node_t *node, ngx_uint_t depend, ngx_uint_t exclusive)
 {
-    ngx_queue_t         *children;
-    ngx_http_v2_node_t  *parent, *next;
+    ngx_queue_t         *children, *q;
+    ngx_http_v2_node_t  *parent, *child, *next;
 
     parent = depend ? ngx_http_v2_get_node_by_id(h2c, depend, 0) : NULL;
 
@@ -4003,6 +4004,14 @@ ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
     }
 
     if (exclusive) {
+        for (q = ngx_queue_head(children);
+             q != ngx_queue_sentinel(children);
+             q = ngx_queue_next(q))
+        {
+            child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
+            child->parent = node;
+        }
+
         ngx_queue_add(&node->children, children);
         ngx_queue_init(children);
     }
