@@ -2377,12 +2377,6 @@ ngx_http_v2_connection_error(ngx_http_v2_connection_t *h2c,
         ngx_debug_point();
     }
 
-    if (h2c->state.stream) {
-        h2c->state.stream->out_closed = 1;
-        h2c->state.pool = NULL;
-        ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
-    }
-
     ngx_http_v2_finalize_connection(h2c, err);
 
     return NULL;
@@ -3813,6 +3807,12 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_srv_conf_t  *h2scf;
 
     c = h2c->connection;
+
+    if (h2c->state.stream) {
+        h2c->state.stream->out_closed = 1;
+        h2c->state.pool = NULL;
+        ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
+    }
 
     h2c->blocked = 1;
 
