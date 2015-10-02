@@ -1133,6 +1133,22 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->last_sid = h2c->state.sid;
 
+    if (depend == h2c->state.sid) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent HEADERS frame for stream %ui "
+                      "with incorrect dependency", h2c->state.sid);
+
+        if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid,
+                                        NGX_HTTP_V2_PROTOCOL_ERROR)
+            != NGX_OK)
+        {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
+        }
+
+        return ngx_http_v2_state_skip_headers(h2c, pos, end);
+    }
+
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
 
