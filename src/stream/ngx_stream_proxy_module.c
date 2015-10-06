@@ -759,6 +759,10 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
             u->peer.save_session(&u->peer, u->peer.data);
         }
 
+        if (pc->write->timer_set) {
+            ngx_del_timer(pc->write);
+        }
+
         ngx_stream_proxy_init_upstream(s);
 
         return;
