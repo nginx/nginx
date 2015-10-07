@@ -2045,7 +2045,7 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
         (void) ERR_get_error();
     }
 
-    ngx_log_error(level, log, err, "%s)", errstr);
+    ngx_log_error(level, log, err, "%*s)", p - errstr, errstr);
 }
 
 
