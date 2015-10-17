@@ -1175,7 +1175,7 @@ ngx_close_idle_connections(ngx_cycle_t *cycle)
 
         /* THREAD: lock */
 
-        if (c[i].fd != -1 && c[i].idle) {
+        if (c[i].fd != (ngx_socket_t) -1 && c[i].idle) {
             c[i].close = 1;
             c[i].read->handler(c[i].read);
         }
