@@ -4489,7 +4489,9 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf->alias = alias ? clcf->name.len : 0;
     clcf->root = value[1];
 
-    if (!alias && clcf->root.data[clcf->root.len - 1] == '/') {
+    if (!alias && clcf->root.len > 0
+        && clcf->root.data[clcf->root.len - 1] == '/')
+    {
         clcf->root.len--;
     }
 
