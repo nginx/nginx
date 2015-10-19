@@ -1233,7 +1233,7 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     } else {
         /* literal header field without indexing */
-        prefix = ngx_http_v2_prefix(3);
+        prefix = ngx_http_v2_prefix(4);
     }
 
     value = ngx_http_v2_parse_int(h2c, &pos, end, prefix);
