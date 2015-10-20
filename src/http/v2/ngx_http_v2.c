@@ -2417,12 +2417,12 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
         }
     }
 
-    if (end == start + NGX_HTTP_V2_INT_OCTETS) {
-        return NGX_DECLINED;
-    }
-
     if ((size_t) (end - start) >= h2c->state.length) {
         return NGX_ERROR;
+    }
+
+    if (end == start + NGX_HTTP_V2_INT_OCTETS) {
+        return NGX_DECLINED;
     }
 
     return NGX_AGAIN;
