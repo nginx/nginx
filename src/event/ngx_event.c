@@ -670,6 +670,15 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         }
     }
 
+#else
+
+    if (ngx_timer_resolution && !(ngx_event_flags & NGX_USE_TIMER_EVENT)) {
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "the \"timer_resolution\" directive is not supported "
+                      "with the configured event method, ignored");
+        ngx_timer_resolution = 0;
+    }
+
 #endif
 
     cycle->connections =
