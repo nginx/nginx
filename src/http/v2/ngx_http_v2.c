@@ -2396,8 +2396,8 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
         return value;
     }
 
-    if (end - p > NGX_HTTP_V2_INT_OCTETS - 1) {
-        end = p + NGX_HTTP_V2_INT_OCTETS - 1;
+    if (end - start > NGX_HTTP_V2_INT_OCTETS) {
+        end = start + NGX_HTTP_V2_INT_OCTETS;
     }
 
     for (shift = 0; p != end; shift += 7) {
@@ -2417,7 +2417,7 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
         }
     }
 
-    if ((size_t) (end - start) >= NGX_HTTP_V2_INT_OCTETS) {
+    if (end == start + NGX_HTTP_V2_INT_OCTETS) {
         return NGX_DECLINED;
     }
 
