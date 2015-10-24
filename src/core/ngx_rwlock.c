@@ -111,7 +111,7 @@ ngx_rwlock_unlock(ngx_atomic_t *lock)
 
 #else
 
-#if (NGX_HTTP_UPSTREAM_ZONE)
+#if (NGX_HTTP_UPSTREAM_ZONE || NGX_STREAM_UPSTREAM_ZONE)
 
 #error ngx_atomic_cmp_set() is not defined!
 
