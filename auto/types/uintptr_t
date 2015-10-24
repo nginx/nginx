@@ -4,8 +4,13 @@
 
 
 echo $ngx_n "checking for uintptr_t ...$ngx_c"
-echo >> $NGX_AUTOCONF_ERR
-echo "checking for uintptr_t" >> $NGX_AUTOCONF_ERR
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for uintptr_t
+
+END
 
 found=no
 

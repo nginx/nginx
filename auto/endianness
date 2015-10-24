@@ -4,8 +4,13 @@
 
 
 echo $ngx_n "checking for system byte ordering ...$ngx_c"
-echo >> $NGX_ERR
-echo "checking for system byte ordering" >> $NGX_ERR
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for system byte ordering
+
+END
 
 
 cat << END > $NGX_AUTOTEST.c
