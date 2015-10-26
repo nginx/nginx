@@ -484,9 +484,8 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LAST_MODIFIED_INDEX);
 
-        p = b->last;
-        b->last = ngx_http_time(b->last + 1, r->headers_out.last_modified_time);
-        *p = (u_char) (b->last - p - 1);
+        *b->last++ = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+        b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
