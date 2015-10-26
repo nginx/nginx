@@ -21,7 +21,8 @@
 #define NGX_HTTP_V2_MAX_FRAME_SIZE       ((1 << 24) - 1)
 
 #define NGX_HTTP_V2_INT_OCTETS           4
-#define NGX_HTTP_V2_MAX_FIELD            ((1 << NGX_HTTP_V2_INT_OCTETS * 7) - 1)
+#define NGX_HTTP_V2_MAX_FIELD                                                 \
+    (127 + (1 << (NGX_HTTP_V2_INT_OCTETS - 1) * 7) - 1)
 
 #define NGX_HTTP_V2_DATA_DISCARD         1
 #define NGX_HTTP_V2_DATA_ERROR           2
