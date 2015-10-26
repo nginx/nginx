@@ -20,6 +20,8 @@
 #define ngx_http_v2_indexed(i)      (128 + (i))
 #define ngx_http_v2_inc_indexed(i)  (64 + (i))
 
+#define NGX_HTTP_V2_ENCODE_RAW            0
+#define NGX_HTTP_V2_ENCODE_HUFF           0x80
 
 #define NGX_HTTP_V2_STATUS_INDEX          8
 #define NGX_HTTP_V2_STATUS_200_INDEX      8
@@ -406,7 +408,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     } else {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_STATUS_INDEX);
-        *b->last++ = 3;
+        *b->last++ = NGX_HTTP_V2_ENCODE_RAW | 3;
         b->last = ngx_sprintf(b->last, "%03ui", r->headers_out.status);
     }
 
@@ -414,11 +416,11 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
 
         if (clcf->server_tokens) {
-            *b->last++ = sizeof(NGINX_VER) - 1;
+            *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof(NGINX_VER) - 1);
             b->last = ngx_cpymem(b->last, NGINX_VER, sizeof(NGINX_VER) - 1);
 
         } else {
-            *b->last++ = sizeof("nginx") - 1;
+            *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("nginx") - 1);
             b->last = ngx_cpymem(b->last, "nginx", sizeof("nginx") - 1);
         }
     }
@@ -437,7 +439,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
             && r->headers_out.charset.len)
         {
-            *b->last = 0;
+            *b->last = NGX_HTTP_V2_ENCODE_RAW;
             b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
                                             r->headers_out.content_type.len
                                             + sizeof("; charset=") - 1
@@ -460,7 +462,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
             r->headers_out.content_type.data = p;
 
         } else {
-            *b->last = 0;
+            *b->last = NGX_HTTP_V2_ENCODE_RAW;
             b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
                                             r->headers_out.content_type.len);
             b->last = ngx_cpymem(b->last, r->headers_out.content_type.data,
@@ -476,7 +478,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         p = b->last;
         b->last = ngx_sprintf(b->last + 1, "%O",
                               r->headers_out.content_length_n);
-        *p = (u_char) (b->last - p - 1);
+        *p = NGX_HTTP_V2_ENCODE_RAW | (u_char) (b->last - p - 1);
     }
 
     if (r->headers_out.last_modified == NULL
@@ -484,14 +486,15 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LAST_MODIFIED_INDEX);
 
-        *b->last++ = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
+        *b->last++ = NGX_HTTP_V2_ENCODE_RAW
+                     | (sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1);
         b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LOCATION_INDEX);
 
-        *b->last = 0;
+        *b->last = NGX_HTTP_V2_ENCODE_RAW;
         b->last = ngx_http_v2_write_int(b->last, ngx_http_v2_prefix(7),
                                         r->headers_out.location->value.len);
         b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,
@@ -501,7 +504,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_VARY_INDEX);
-        *b->last++ = sizeof("Accept-Encoding") - 1;
+        *b->last++ = NGX_HTTP_V2_ENCODE_RAW | (sizeof("Accept-Encoding") - 1);
         b->last = ngx_cpymem(b->last, "Accept-Encoding",
                              sizeof("Accept-Encoding") - 1);
     }
@@ -558,12 +561,12 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
         *p++ = 0;
 
-        *p = 0;
+        *p = NGX_HTTP_V2_ENCODE_RAW;
         p = ngx_http_v2_write_int(p, ngx_http_v2_prefix(7), header[i].key.len);
         ngx_strlow(p, header[i].key.data, header[i].key.len);
         p += header[i].key.len;
 
-        *p = 0;
+        *p = NGX_HTTP_V2_ENCODE_RAW;
         p = ngx_http_v2_write_int(p, ngx_http_v2_prefix(7),
                                   header[i].value.len);
         p = ngx_cpymem(p, header[i].value.data, header[i].value.len);
