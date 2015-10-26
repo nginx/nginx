@@ -194,6 +194,9 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
             peer->tag.data = p + 4;
             peer->tag.len = len - 4;
 
+        } else if (len == 10 && ngx_strncmp(p, "nohostname", 10) == 0) {
+            peer->nohostname = 1;
+
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "unknown syslog parameter \"%s\"", p);
@@ -219,6 +222,11 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
     ngx_uint_t  pri;
 
     pri = peer->facility * 8 + peer->severity;
+
+    if (peer->nohostname) {
+        return ngx_sprintf(buf, "<%ui>%V %V: ", pri, &ngx_cached_syslog_time,
+                           &peer->tag);
+    }
 
     return ngx_sprintf(buf, "<%ui>%V %V %V: ", pri, &ngx_cached_syslog_time,
                        &ngx_cycle->hostname, &peer->tag);
