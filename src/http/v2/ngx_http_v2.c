@@ -1204,10 +1204,9 @@ static u_char *
 ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    u_char                   ch;
-    ngx_int_t                value;
-    ngx_uint_t               indexed, size_update, prefix;
-    ngx_http_v2_srv_conf_t  *h2scf;
+    u_char      ch;
+    ngx_int_t   value;
+    ngx_uint_t  indexed, size_update, prefix;
 
     if (end - pos < 1) {
         return ngx_http_v2_state_save(h2c, pos, end,
@@ -1288,20 +1287,11 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_state_header_complete(h2c, pos, end);
     }
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
-
-    h2c->state.field_limit = h2scf->max_field_size;
-
     if (value == 0) {
         h2c->state.parse_name = 1;
 
-    } else {
-        if (ngx_http_v2_get_indexed_header(h2c, value, 1) != NGX_OK) {
-            return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_COMP_ERROR);
-        }
-
-        h2c->state.field_limit -= h2c->state.header.name.len;
+    } else if (ngx_http_v2_get_indexed_header(h2c, value, 1) != NGX_OK) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_COMP_ERROR);
     }
 
     h2c->state.parse_value = 1;
@@ -1314,9 +1304,10 @@ static u_char *
 ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    size_t      alloc;
-    ngx_int_t   len;
-    ngx_uint_t  huff;
+    size_t                   alloc;
+    ngx_int_t                len;
+    ngx_uint_t               huff;
+    ngx_http_v2_srv_conf_t  *h2scf;
 
     if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)
         && h2c->state.length < NGX_HTTP_V2_INT_OCTETS)
@@ -1363,14 +1354,16 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
                    "http2 hpack %s string length: %i",
                    huff ? "encoded" : "raw", len);
 
-    if ((size_t) len > h2c->state.field_limit) {
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    if ((size_t) len > h2scf->max_field_size) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client exceeded http2_max_field_size limit");
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
 
-    h2c->state.field_limit -= len;
     h2c->state.field_rest = len;
 
     if (h2c->state.stream == NULL && !h2c->state.index) {
