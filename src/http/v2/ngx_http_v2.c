@@ -1664,7 +1664,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     h->key.len = header->name.len;
     h->key.data = header->name.data;
 
-    /* TODO Optimization: precalculate hash and hadnler for indexed headers. */
+    /* TODO Optimization: precalculate hash and handler for indexed headers. */
     h->hash = ngx_hash_key(h->key.data, h->key.len);
 
     h->value.len = header->value.len;
@@ -1818,7 +1818,7 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (depend == h2c->state.sid) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent PRIORITY frame for stream %ui "
-                      "with incorrect dependancy", h2c->state.sid);
+                      "with incorrect dependency", h2c->state.sid);
 
         node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
 
