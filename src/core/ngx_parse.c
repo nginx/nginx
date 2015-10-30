@@ -188,7 +188,7 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
             break;
 
         case 'm':
-            if (*p == 's') {
+            if (p < last && *p == 's') {
                 if (is_sec || step >= st_msec) {
                     return NGX_ERROR;
                 }
