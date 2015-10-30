@@ -19,18 +19,18 @@ syn match ngxComment ' *#.*$'
 syn keyword ngxBoolean on
 syn keyword ngxBoolean off
 
-syn keyword ngxDirectiveBlock http         contained
-syn keyword ngxDirectiveBlock mail         contained
-syn keyword ngxDirectiveBlock events       contained
-syn keyword ngxDirectiveBlock server       contained
-syn keyword ngxDirectiveBlock types        contained
-syn keyword ngxDirectiveBlock location     contained
-syn keyword ngxDirectiveBlock upstream     contained
-syn keyword ngxDirectiveBlock charset_map  contained
-syn keyword ngxDirectiveBlock limit_except contained
-syn keyword ngxDirectiveBlock if           contained
-syn keyword ngxDirectiveBlock geo          contained
-syn keyword ngxDirectiveBlock map          contained
+syn keyword ngxDirectiveBlock http          contained
+syn keyword ngxDirectiveBlock mail          contained
+syn keyword ngxDirectiveBlock events        contained
+syn keyword ngxDirectiveBlock server        contained
+syn keyword ngxDirectiveBlock types         contained
+syn keyword ngxDirectiveBlock location      contained
+syn keyword ngxDirectiveBlock upstream      contained
+syn keyword ngxDirectiveBlock charset_map   contained
+syn keyword ngxDirectiveBlock limit_except  contained
+syn keyword ngxDirectiveBlock if            contained
+syn keyword ngxDirectiveBlock geo           contained
+syn keyword ngxDirectiveBlock map           contained
 syn keyword ngxDirectiveBlock split_clients contained
 
 syn keyword ngxDirectiveImportant include
@@ -128,10 +128,12 @@ syn keyword ngxDirective fastcgi_cache
 syn keyword ngxDirective fastcgi_cache_bypass
 syn keyword ngxDirective fastcgi_cache_key
 syn keyword ngxDirective fastcgi_cache_lock
+syn keyword ngxDirective fastcgi_cache_lock_age
 syn keyword ngxDirective fastcgi_cache_lock_timeout
 syn keyword ngxDirective fastcgi_cache_methods
 syn keyword ngxDirective fastcgi_cache_min_uses
 syn keyword ngxDirective fastcgi_cache_path
+syn keyword ngxDirective fastcgi_cache_purge
 syn keyword ngxDirective fastcgi_cache_revalidate
 syn keyword ngxDirective fastcgi_cache_use_stale
 syn keyword ngxDirective fastcgi_cache_valid
@@ -144,16 +146,19 @@ syn keyword ngxDirective fastcgi_ignore_headers
 syn keyword ngxDirective fastcgi_index
 syn keyword ngxDirective fastcgi_intercept_errors
 syn keyword ngxDirective fastcgi_keep_conn
+syn keyword ngxDirective fastcgi_limit_rate
 syn keyword ngxDirective fastcgi_max_temp_file_size
 syn keyword ngxDirective fastcgi_next_upstream
 syn keyword ngxDirective fastcgi_next_upstream_timeout
 syn keyword ngxDirective fastcgi_next_upstream_tries
 syn keyword ngxDirective fastcgi_no_cache
 syn keyword ngxDirective fastcgi_param
+syn keyword ngxDirective fastcgi_pass
 syn keyword ngxDirective fastcgi_pass_header
 syn keyword ngxDirective fastcgi_pass_request_body
 syn keyword ngxDirective fastcgi_pass_request_headers
 syn keyword ngxDirective fastcgi_read_timeout
+syn keyword ngxDirective fastcgi_request_buffering
 syn keyword ngxDirective fastcgi_send_lowat
 syn keyword ngxDirective fastcgi_send_timeout
 syn keyword ngxDirective fastcgi_split_path_info
@@ -161,6 +166,8 @@ syn keyword ngxDirective fastcgi_store
 syn keyword ngxDirective fastcgi_store_access
 syn keyword ngxDirective fastcgi_temp_file_write_size
 syn keyword ngxDirective fastcgi_temp_path
+" syn keyword ngxDirective fastcgi_upstream_fail_timeout
+" syn keyword ngxDirective fastcgi_upstream_max_fails
 syn keyword ngxDirective flv
 syn keyword ngxDirective geoip_city
 syn keyword ngxDirective geoip_country
@@ -184,6 +191,7 @@ syn keyword ngxDirective gzip_types
 syn keyword ngxDirective gzip_vary
 syn keyword ngxDirective gzip_window
 syn keyword ngxDirective hash
+syn keyword ngxDirective health_check
 syn keyword ngxDirective if_modified_since
 syn keyword ngxDirective ignore_invalid_headers
 syn keyword ngxDirective image_filter
@@ -206,6 +214,7 @@ syn keyword ngxDirective kqueue_changes
 syn keyword ngxDirective kqueue_events
 syn keyword ngxDirective large_client_header_buffers
 syn keyword ngxDirective least_conn
+syn keyword ngxDirective least_time
 syn keyword ngxDirective limit_conn
 syn keyword ngxDirective limit_conn_log_level
 syn keyword ngxDirective limit_conn_status
@@ -217,6 +226,7 @@ syn keyword ngxDirective limit_req_log_level
 syn keyword ngxDirective limit_req_status
 syn keyword ngxDirective limit_req_zone
 syn keyword ngxDirective lingering_close
+syn keyword ngxDirective limit_zone
 syn keyword ngxDirective lingering_time
 syn keyword ngxDirective lingering_timeout
 syn keyword ngxDirective lock_file
@@ -247,6 +257,7 @@ syn keyword ngxDirective msie_padding
 syn keyword ngxDirective msie_refresh
 syn keyword ngxDirective multi_accept
 syn keyword ngxDirective mysql_test
+syn keyword ngxDirective ntlm
 syn keyword ngxDirective open_file_cache
 syn keyword ngxDirective open_file_cache_errors
 syn keyword ngxDirective open_file_cache_events
@@ -256,6 +267,7 @@ syn keyword ngxDirective open_log_file_cache
 syn keyword ngxDirective output_buffers
 syn keyword ngxDirective override_charset
 syn keyword ngxDirective pcre_jit
+syn keyword ngxDirective queue
 syn keyword ngxDirective perl
 syn keyword ngxDirective perl_modules
 syn keyword ngxDirective perl_require
@@ -270,7 +282,7 @@ syn keyword ngxDirective postpone_output
 syn keyword ngxDirective protocol
 syn keyword ngxDirective proxy
 syn keyword ngxDirective proxy_bind
-syn keyword ngxDirective proxy_buffer
+" syn keyword ngxDirective proxy_buffer
 syn keyword ngxDirective proxy_buffer_size
 syn keyword ngxDirective proxy_buffering
 syn keyword ngxDirective proxy_buffers
@@ -279,10 +291,12 @@ syn keyword ngxDirective proxy_cache
 syn keyword ngxDirective proxy_cache_bypass
 syn keyword ngxDirective proxy_cache_key
 syn keyword ngxDirective proxy_cache_lock
+syn keyword ngxDirective proxy_cache_lock_age
 syn keyword ngxDirective proxy_cache_lock_timeout
 syn keyword ngxDirective proxy_cache_methods
 syn keyword ngxDirective proxy_cache_min_uses
 syn keyword ngxDirective proxy_cache_path
+syn keyword ngxDirective proxy_cache_purge
 syn keyword ngxDirective proxy_cache_revalidate
 syn keyword ngxDirective proxy_cache_use_stale
 syn keyword ngxDirective proxy_cache_valid
@@ -297,6 +311,7 @@ syn keyword ngxDirective proxy_http_version
 syn keyword ngxDirective proxy_ignore_client_abort
 syn keyword ngxDirective proxy_ignore_headers
 syn keyword ngxDirective proxy_intercept_errors
+syn keyword ngxDirective proxy_limit_rate
 syn keyword ngxDirective proxy_max_temp_file_size
 syn keyword ngxDirective proxy_method
 syn keyword ngxDirective proxy_next_upstream
@@ -309,16 +324,21 @@ syn keyword ngxDirective proxy_pass_request_body
 syn keyword ngxDirective proxy_pass_request_headers
 syn keyword ngxDirective proxy_read_timeout
 syn keyword ngxDirective proxy_redirect
+syn keyword ngxDirective proxy_request_buffering
 syn keyword ngxDirective proxy_send_lowat
 syn keyword ngxDirective proxy_send_timeout
 syn keyword ngxDirective proxy_set_body
 syn keyword ngxDirective proxy_set_header
+syn keyword ngxDirective proxy_ssl_certificate
+syn keyword ngxDirective proxy_ssl_certificate_key
 syn keyword ngxDirective proxy_ssl_ciphers
 syn keyword ngxDirective proxy_ssl_crl
 syn keyword ngxDirective proxy_ssl_name
 syn keyword ngxDirective proxy_ssl_protocols
+syn keyword ngxDirective proxy_ssl_password_file
 syn keyword ngxDirective proxy_ssl_server_name
 syn keyword ngxDirective proxy_ssl_session_reuse
+syn keyword ngxDirective proxy_ssl_protocols
 syn keyword ngxDirective proxy_ssl_trusted_certificate
 syn keyword ngxDirective proxy_ssl_verify
 syn keyword ngxDirective proxy_ssl_verify_depth
@@ -326,7 +346,9 @@ syn keyword ngxDirective proxy_store
 syn keyword ngxDirective proxy_store_access
 syn keyword ngxDirective proxy_temp_file_write_size
 syn keyword ngxDirective proxy_temp_path
-syn keyword ngxDirective proxy_timeout
+" syn keyword ngxDirective proxy_timeout
+" syn keyword ngxDirective proxy_upstream_fail_timeout
+" syn keyword ngxDirective proxy_upstream_max_fails
 syn keyword ngxDirective random_index
 syn keyword ngxDirective read_ahead
 syn keyword ngxDirective real_ip_header
@@ -397,6 +419,7 @@ syn keyword ngxDirective smtp_auth
 syn keyword ngxDirective smtp_capabilities
 syn keyword ngxDirective smtp_client_buffer
 syn keyword ngxDirective smtp_greeting_delay
+syn keyword ngxDirective so_keepalive
 syn keyword ngxDirective source_charset
 syn keyword ngxDirective spdy_chunk_size
 syn keyword ngxDirective spdy_headers_comp
@@ -438,6 +461,8 @@ syn keyword ngxDirective ssl_trusted_certificate
 syn keyword ngxDirective ssl_verify_client
 syn keyword ngxDirective ssl_verify_depth
 syn keyword ngxDirective starttls
+syn keyword ngxDirective sticky
+syn keyword ngxDirective sticky_cookie_insert
 syn keyword ngxDirective stub_status
 syn keyword ngxDirective sub_filter
 syn keyword ngxDirective sub_filter_last_modified
@@ -531,16 +556,17 @@ syn keyword ngxDirective xslt_param
 syn keyword ngxDirective xslt_string_param
 syn keyword ngxDirective xslt_stylesheet
 syn keyword ngxDirective xslt_types
+syn keyword ngxDirective zone
 
 " 3rd party module list:
-" http://wiki.nginx.org/Nginx3rdPartyModules
+" https://www.nginx.com/resources/wiki/modules/
 
 " Accept Language Module <http://wiki.nginx.org/NginxAcceptLanguageModule>
 " Parses the Accept-Language header and gives the most suitable locale from a list of supported locales.
 syn keyword ngxDirectiveThirdParty set_from_accept_language
 
 " Access Key Module <http://wiki.nginx.org/NginxHttpAccessKeyModule>
-" Denies access unless the request URL contains an access key.
+" Denies access unless the request URL contains an access key. 
 syn keyword ngxDirectiveThirdParty accesskey
 syn keyword ngxDirectiveThirdParty accesskey_arg
 syn keyword ngxDirectiveThirdParty accesskey_hashmethod
@@ -583,7 +609,7 @@ syn keyword ngxDirectiveThirdParty drizzle_recv_rows_timeout
 syn keyword ngxDirectiveThirdParty drizzle_send_query_timeout
 syn keyword ngxDirectiveThirdParty drizzle_server
 
-" Echo Module <http://wiki.nginx.org/NginxHttpEchoModule>
+" Echo Module <https://github.com/openresty/echo-nginx-module>
 " Brings 'echo', 'sleep', 'time', 'exec' and more shell-style goodies to Nginx config file.
 syn keyword ngxDirectiveThirdParty echo
 syn keyword ngxDirectiveThirdParty echo_after_body
@@ -628,7 +654,7 @@ syn keyword ngxDirectiveThirdParty fancyindex_readme_mode
 " Country code lookups via the MaxMind GeoIP API.
 syn keyword ngxDirectiveThirdParty geoip_country_file
 
-" Headers More Module <http://wiki.nginx.org/NginxHttpHeadersMoreModule>
+" Headers More Module <https://github.com/openresty/headers-more-nginx-module>
 " Set and clear input and output headers...more than "add"!
 syn keyword ngxDirectiveThirdParty more_clear_headers
 syn keyword ngxDirectiveThirdParty more_clear_input_headers
@@ -679,8 +705,8 @@ syn keyword ngxDirectiveThirdParty memc_next_upstream
 syn keyword ngxDirectiveThirdParty memc_pass
 syn keyword ngxDirectiveThirdParty memc_read_timeout
 syn keyword ngxDirectiveThirdParty memc_send_timeout
-syn keyword ngxDirectiveThirdParty memc_upstream_fail_timeout
-syn keyword ngxDirectiveThirdParty memc_upstream_max_fails
+" syn keyword ngxDirectiveThirdParty memc_upstream_fail_timeout
+" syn keyword ngxDirectiveThirdParty memc_upstream_max_fails
 
 " Mogilefs Module <http://www.grid.net.ru/nginx/mogilefs.en.html>
 " Implements a MogileFS client, provides a replace to the Perlbal reverse proxy of the original MogileFS.
@@ -694,8 +720,8 @@ syn keyword ngxDirectiveThirdParty mogilefs_send_timeout
 syn keyword ngxDirectiveThirdParty mogilefs_tracker
 
 " MP4 Streaming Lite Module <http://wiki.nginx.org/NginxMP4StreamingLite>
-" Will seek to a certain time within H.264/MP4 files when provided with a 'start' parameter in the URL.
-syn keyword ngxDirectiveThirdParty mp4
+" Will seek to a certain time within H.264/MP4 files when provided with a 'start' parameter in the URL. 
+"syn keyword ngxDirectiveThirdParty mp4
 
 " Nginx Notice Module <http://xph.us/software/nginx-notice/>
 " Serve static file to POST requests.
@@ -805,8 +831,9 @@ syn keyword ngxDirectiveThirdParty consistent_hash
 
 " Upstream Hash Module <http://wiki.nginx.org/NginxHttpUpstreamRequestHashModule>
 " Provides simple upstream load distribution by hashing a configurable variable.
-syn keyword ngxDirectiveThirdParty hash
-syn keyword ngxDirectiveThirdParty hash_again
+" obsolete as of nginx 1.7.2 where its baked in
+" syn keyword ngxDirectiveThirdParty hash
+" syn keyword ngxDirectiveThirdParty hash_again
 
 " XSS Module <http://github.com/agentzh/xss-nginx-module>
 " Native support for cross-site scripting (XSS) in an nginx.
@@ -814,6 +841,105 @@ syn keyword ngxDirectiveThirdParty xss_callback_arg
 syn keyword ngxDirectiveThirdParty xss_get
 syn keyword ngxDirectiveThirdParty xss_input_types
 syn keyword ngxDirectiveThirdParty xss_output_type
+
+" Lua Module <https://github.com/openresty/lua-nginx-module?
+" Embed the Power of Lua into NGINX
+syn keyword ngxDirectiveThirdParty lua_use_default_type
+syn keyword ngxDirectiveThirdParty lua_code_cache
+syn keyword ngxDirectiveThirdParty lua_regex_cache_max_entries
+syn keyword ngxDirectiveThirdParty lua_regex_match_limit
+syn keyword ngxDirectiveThirdParty lua_package_path
+syn keyword ngxDirectiveThirdParty lua_package_cpath
+syn keyword ngxDirectiveThirdParty init_by_lua
+syn keyword ngxDirectiveThirdParty init_by_lua_block
+syn keyword ngxDirectiveThirdParty init_by_lua_file
+syn keyword ngxDirectiveThirdParty init_worker_by_lua
+syn keyword ngxDirectiveThirdParty init_worker_by_lua_block
+syn keyword ngxDirectiveThirdParty init_worker_by_lua_file
+syn keyword ngxDirectiveThirdParty set_by_lua
+syn keyword ngxDirectiveThirdParty set_by_lua_block
+syn keyword ngxDirectiveThirdParty set_by_lua_file
+syn keyword ngxDirectiveThirdParty content_by_lua
+syn keyword ngxDirectiveThirdParty content_by_lua_block
+syn keyword ngxDirectiveThirdParty content_by_lua_file
+syn keyword ngxDirectiveThirdParty rewrite_by_lua
+syn keyword ngxDirectiveThirdParty rewrite_by_lua_block
+syn keyword ngxDirectiveThirdParty rewrite_by_lua_file
+syn keyword ngxDirectiveThirdParty access_by_lua
+syn keyword ngxDirectiveThirdParty access_by_lua_block
+syn keyword ngxDirectiveThirdParty access_by_lua_file
+syn keyword ngxDirectiveThirdParty header_filter_by_lua
+syn keyword ngxDirectiveThirdParty header_filter_by_lua_block
+syn keyword ngxDirectiveThirdParty header_filter_by_lua_file
+syn keyword ngxDirectiveThirdParty body_filter_by_lua
+syn keyword ngxDirectiveThirdParty body_filter_by_lua_block
+syn keyword ngxDirectiveThirdParty body_filter_by_lua_file
+syn keyword ngxDirectiveThirdParty log_by_lua
+syn keyword ngxDirectiveThirdParty log_by_lua_block
+syn keyword ngxDirectiveThirdParty log_by_lua_file
+syn keyword ngxDirectiveThirdParty lua_need_request_body
+syn keyword ngxDirectiveThirdParty lua_shared_dict
+syn keyword ngxDirectiveThirdParty lua_socket_connect_timeout
+syn keyword ngxDirectiveThirdParty lua_socket_send_timeout
+syn keyword ngxDirectiveThirdParty lua_socket_send_lowat
+syn keyword ngxDirectiveThirdParty lua_socket_read_timeout
+syn keyword ngxDirectiveThirdParty lua_socket_buffer_size
+syn keyword ngxDirectiveThirdParty lua_socket_pool_size
+syn keyword ngxDirectiveThirdParty lua_socket_keepalive_timeout
+syn keyword ngxDirectiveThirdParty lua_socket_log_errors
+syn keyword ngxDirectiveThirdParty lua_ssl_ciphers
+syn keyword ngxDirectiveThirdParty lua_ssl_crl
+syn keyword ngxDirectiveThirdParty lua_ssl_protocols
+syn keyword ngxDirectiveThirdParty lua_ssl_trusted_certificate
+syn keyword ngxDirectiveThirdParty lua_ssl_verify_depth
+syn keyword ngxDirectiveThirdParty lua_http10_buffering
+syn keyword ngxDirectiveThirdParty rewrite_by_lua_no_postpone
+syn keyword ngxDirectiveThirdParty lua_transform_underscores_in_response_headers
+syn keyword ngxDirectiveThirdParty lua_check_client_abort
+syn keyword ngxDirectiveThirdParty lua_max_pending_timers
+syn keyword ngxDirectiveThirdParty lua_max_running_timers
+
+" Redis Module <https://github.com/openresty/redis2-nginx-module>
+" Nginx upstream module for the Redis 2.0 protocol
+syn keyword ngxDirectiveThirdParty redis2_query
+syn keyword ngxDirectiveThirdParty redis2_raw_query
+syn keyword ngxDirectiveThirdParty redis2_raw_queries
+syn keyword ngxDirectiveThirdParty redis2_literal_raw_query
+syn keyword ngxDirectiveThirdParty redis2_pass
+syn keyword ngxDirectiveThirdParty redis2_connect_timeout
+syn keyword ngxDirectiveThirdParty redis2_send_timeout
+syn keyword ngxDirectiveThirdParty redis2_read_timeout
+syn keyword ngxDirectiveThirdParty redis2_buffer_size
+syn keyword ngxDirectiveThirdParty redis2_next_upstream
+
+" set_misc  <https://www.nginx.com/resources/wiki/modules/set_misc/>
+" Various set_xxx directives added to NGINX’s rewrite module
+syn keyword ngxDirectiveThirdParty set_if_empty
+syn keyword ngxDirectiveThirdParty set_quote_sql_str
+syn keyword ngxDirectiveThirdParty set_quote_pgsql_str
+syn keyword ngxDirectiveThirdParty set_quote_json_str
+syn keyword ngxDirectiveThirdParty set_unescape_uri
+syn keyword ngxDirectiveThirdParty set_escape_uri
+syn keyword ngxDirectiveThirdParty set_hashed_upstream
+syn keyword ngxDirectiveThirdParty set_encode_base32
+syn keyword ngxDirectiveThirdParty set_base32_padding
+syn keyword ngxDirectiveThirdParty set_misc_base32_padding
+syn keyword ngxDirectiveThirdParty set_base32_alphabet
+syn keyword ngxDirectiveThirdParty set_decode_base32
+syn keyword ngxDirectiveThirdParty set_encode_base64
+syn keyword ngxDirectiveThirdParty set_decode_base64
+syn keyword ngxDirectiveThirdParty set_encode_hex
+syn keyword ngxDirectiveThirdParty set_decode_hex
+syn keyword ngxDirectiveThirdParty set_sha1
+syn keyword ngxDirectiveThirdParty set_md5
+syn keyword ngxDirectiveThirdParty set_hmac_sha1
+syn keyword ngxDirectiveThirdParty set_random
+syn keyword ngxDirectiveThirdParty set_secure_random_alphanum
+syn keyword ngxDirectiveThirdParty set_secure_random_lcalpha
+syn keyword ngxDirectiveThirdParty set_rotate
+syn keyword ngxDirectiveThirdParty set_local_today
+syn keyword ngxDirectiveThirdParty set_formatted_gmt_time
+syn keyword ngxDirectiveThirdParty set_formatted_local_time
 
 " highlight
 
