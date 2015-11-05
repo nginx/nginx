@@ -870,8 +870,6 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
-    stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
-
     h2c->state.stream = stream;
 
     return ngx_http_v2_state_read_data(h2c, pos, end);
@@ -899,6 +897,8 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (stream->skip_data) {
+        stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
+
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                        "skipping http2 DATA frame, reason: %d",
                        stream->skip_data);
@@ -988,7 +988,9 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
                                       ngx_http_v2_state_read_data);
     }
 
-    if (stream->in_closed) {
+    if (h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG) {
+        stream->in_closed = 1;
+
         if (r->headers_in.content_length_n < 0) {
             r->headers_in.content_length_n = rb->rest;
 
