@@ -1157,25 +1157,24 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     if (u->method.len) {
         /* HEAD was changed to GET to cache response */
         method = u->method;
-        method.len++;
 
     } else if (plcf->method.len) {
         method = plcf->method;
 
     } else {
         method = r->method_name;
-        method.len++;
     }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
-    if (method.len == 5
-        && ngx_strncasecmp(method.data, (u_char *) "HEAD ", 5) == 0)
+    if (method.len == 4
+        && ngx_strncasecmp(method.data, (u_char *) "HEAD", 4) == 0)
     {
         ctx->head = 1;
     }
 
-    len = method.len + sizeof(ngx_http_proxy_version) - 1 + sizeof(CRLF) - 1;
+    len = method.len + 1 + sizeof(ngx_http_proxy_version) - 1
+          + sizeof(CRLF) - 1;
 
     escape = 0;
     loc_len = 0;
@@ -1294,6 +1293,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     /* the request line */
 
     b->last = ngx_copy(b->last, method.data, method.len);
+    *b->last++ = ' ';
 
     u->uri.data = b->last;
 
@@ -3158,13 +3158,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
 
     ngx_conf_merge_str_value(conf->method, prev->method, "");
-
-    if (conf->method.len
-        && conf->method.data[conf->method.len - 1] != ' ')
-    {
-        conf->method.data[conf->method.len] = ' ';
-        conf->method.len++;
-    }
 
     ngx_conf_merge_value(conf->upstream.pass_request_headers,
                               prev->upstream.pass_request_headers, 1);
