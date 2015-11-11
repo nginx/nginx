@@ -193,6 +193,7 @@ typedef struct {
     ngx_msec_t                       cache_lock_age;
 
     ngx_flag_t                       cache_revalidate;
+    ngx_flag_t                       cache_convert_head;
 
     ngx_array_t                     *cache_valid;
     ngx_array_t                     *cache_bypass;

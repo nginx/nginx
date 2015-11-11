@@ -764,7 +764,7 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return rc;
         }
 
-        if (r->method & NGX_HTTP_HEAD) {
+        if ((r->method & NGX_HTTP_HEAD) && u->conf->cache_convert_head) {
             u->method = ngx_http_core_get_method;
         }
 
