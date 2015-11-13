@@ -2949,6 +2949,8 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         return NGX_ERROR;
     }
 
+    r->invalid_header = 0;
+
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     for (i = (header->name.data[0] == ':'); i != header->name.len; i++) {
