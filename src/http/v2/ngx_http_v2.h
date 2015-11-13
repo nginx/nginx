@@ -178,7 +178,7 @@ struct ngx_http_v2_stream_s {
     size_t                           recv_window;
 
     ngx_http_v2_out_frame_t         *free_frames;
-    ngx_chain_t                     *free_data_headers;
+    ngx_chain_t                     *free_frame_headers;
     ngx_chain_t                     *free_bufs;
 
     ngx_queue_t                      queue;

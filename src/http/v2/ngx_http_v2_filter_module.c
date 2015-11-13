@@ -624,6 +624,8 @@ ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
         *b->last++ = flags;
         b->last = ngx_http_v2_write_sid(b->last, stream->node->id);
 
+        b->tag = (ngx_buf_tag_t) &ngx_http_v2_module;
+
         cl = ngx_alloc_chain_link(r->pool);
         if (cl == NULL) {
             return NULL;
@@ -929,7 +931,7 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
                    stream->node->id, frame, len, (ngx_uint_t) flags);
 
     cl = ngx_chain_get_free_buf(stream->request->pool,
-                                &stream->free_data_headers);
+                                &stream->free_frame_headers);
     if (cl == NULL) {
         return NULL;
     }
@@ -946,7 +948,7 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
         buf->end = buf->start + NGX_HTTP_V2_FRAME_HEADER_SIZE;
         buf->last = buf->end;
 
-        buf->tag = (ngx_buf_tag_t) &ngx_http_v2_filter_get_data_frame;
+        buf->tag = (ngx_buf_tag_t) &ngx_http_v2_module;
         buf->memory = 1;
     }
 
@@ -1054,7 +1056,7 @@ static ngx_int_t
 ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
 {
-    ngx_chain_t           *cl;
+    ngx_chain_t           *cl, *ln;
     ngx_http_v2_stream_t  *stream;
 
     stream = frame->stream;
@@ -1071,18 +1073,27 @@ ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
             return NGX_AGAIN;
         }
 
+        ln = cl->next;
+
+        if (cl->buf->tag == (ngx_buf_tag_t) &ngx_http_v2_module) {
+            cl->next = stream->free_frame_headers;
+            stream->free_frame_headers = cl;
+
+        } else {
+            cl->next = stream->free_bufs;
+            stream->free_bufs = cl;
+        }
+
         if (cl == frame->last) {
             break;
         }
 
-        cl = cl->next;
+        cl = ln;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2:%ui HEADERS frame %p was sent",
                    stream->node->id, frame);
-
-    ngx_free_chain(stream->request->pool, frame->first);
 
     ngx_http_v2_handle_frame(stream, frame);
 
@@ -1104,7 +1115,7 @@ ngx_http_v2_data_frame_handler(ngx_http_v2_connection_t *h2c,
 
     cl = frame->first;
 
-    if (cl->buf->tag == (ngx_buf_tag_t) &ngx_http_v2_filter_get_data_frame) {
+    if (cl->buf->tag == (ngx_buf_tag_t) &ngx_http_v2_module) {
 
         if (cl->buf->pos != cl->buf->last) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
@@ -1116,8 +1127,8 @@ ngx_http_v2_data_frame_handler(ngx_http_v2_connection_t *h2c,
 
         ln = cl->next;
 
-        cl->next = stream->free_data_headers;
-        stream->free_data_headers = cl;
+        cl->next = stream->free_frame_headers;
+        stream->free_frame_headers = cl;
 
         if (cl == frame->last) {
             goto done;
