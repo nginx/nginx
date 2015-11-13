@@ -1054,16 +1054,29 @@ static ngx_int_t
 ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
 {
-    ngx_buf_t             *buf;
+    ngx_chain_t           *cl;
     ngx_http_v2_stream_t  *stream;
 
-    buf = frame->first->buf;
-
-    if (buf->pos != buf->last) {
-        return NGX_AGAIN;
-    }
-
     stream = frame->stream;
+    cl = frame->first;
+
+    for ( ;; ) {
+        if (cl->buf->pos != cl->buf->last) {
+            frame->first = cl;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2:%ui HEADERS frame %p was sent partially",
+                           stream->node->id, frame);
+
+            return NGX_AGAIN;
+        }
+
+        if (cl == frame->last) {
+            break;
+        }
+
+        cl = cl->next;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2:%ui HEADERS frame %p was sent",
