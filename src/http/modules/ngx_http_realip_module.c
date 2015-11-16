@@ -43,7 +43,12 @@ static char *ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void *ngx_http_realip_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_realip_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
+static ngx_int_t ngx_http_realip_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_realip_init(ngx_conf_t *cf);
+
+
+static ngx_int_t ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 
 static ngx_command_t  ngx_http_realip_commands[] = {
@@ -75,7 +80,7 @@ static ngx_command_t  ngx_http_realip_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_realip_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_realip_add_variables,         /* preconfiguration */
     ngx_http_realip_init,                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -102,6 +107,15 @@ ngx_module_t  ngx_http_realip_module = {
     NULL,                                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
+};
+
+
+static ngx_http_variable_t  ngx_http_realip_vars[] = {
+
+    { ngx_string("realip_remote_addr"), NULL,
+      ngx_http_realip_remote_addr_variable, 0, 0, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
 
@@ -417,6 +431,25 @@ ngx_http_realip_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
+ngx_http_realip_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t  *var, *v;
+
+    for (v = ngx_http_realip_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_realip_init(ngx_conf_t *cf)
 {
     ngx_http_handler_pt        *h;
@@ -437,6 +470,43 @@ ngx_http_realip_init(ngx_conf_t *cf)
     }
 
     *h = ngx_http_realip_handler;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t              *addr_text;
+    ngx_pool_cleanup_t     *cln;
+    ngx_http_realip_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_realip_module);
+
+    if (ctx == NULL && (r->internal || r->filter_finalize)) {
+
+        /*
+         * if module context was reset, the original address
+         * can still be found in the cleanup handler
+         */
+
+        for (cln = r->pool->cleanup; cln; cln = cln->next) {
+            if (cln->handler == ngx_http_realip_cleanup) {
+                ctx = cln->data;
+                break;
+            }
+        }
+    }
+
+    addr_text = ctx ? &ctx->addr_text : &r->connection->addr_text;
+
+    v->len = addr_text->len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = addr_text->data;
 
     return NGX_OK;
 }
