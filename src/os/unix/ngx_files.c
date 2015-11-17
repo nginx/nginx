@@ -367,6 +367,38 @@ ngx_writev_file(ngx_file_t *file, ngx_array_t *vec, size_t size, off_t offset)
     ssize_t    n;
     ngx_err_t  err;
 
+    ngx_log_debug3(NGX_LOG_DEBUG_CORE, file->log, 0,
+                   "writev: %d, %uz, %O", file->fd, size, offset);
+
+#if (NGX_HAVE_PWRITEV)
+
+eintr:
+
+    n = pwritev(file->fd, vec->elts, vec->nelts, offset);
+
+    if (n == -1) {
+        err = ngx_errno;
+
+        if (err == NGX_EINTR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_CORE, file->log, err,
+                           "pwritev() was interrupted");
+            goto eintr;
+        }
+
+        ngx_log_error(NGX_LOG_CRIT, file->log, err,
+                      "pwritev() \"%s\" failed", file->name.data);
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n != size) {
+        ngx_log_error(NGX_LOG_CRIT, file->log, 0,
+                      "pwritev() \"%s\" has written only %z of %uz",
+                      file->name.data, n, size);
+        return NGX_ERROR;
+    }
+
+#else
+
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
@@ -402,10 +434,10 @@ eintr:
         return NGX_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, file->log, 0,
-                   "writev: %d, %z", file->fd, n);
-
     file->sys_offset += n;
+
+#endif
+
     file->offset += n;
 
     return n;

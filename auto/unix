@@ -589,6 +589,22 @@ ngx_feature_test="char buf[1]; ssize_t n; n = pwrite(1, buf, 1, 0);
 . auto/feature
 
 
+# pwritev() was introduced in FreeBSD 6 and Linux 2.6.30, glibc 2.10
+
+ngx_feature="pwritev()"
+ngx_feature_name="NGX_HAVE_PWRITEV"
+ngx_feature_run=no
+ngx_feature_incs='#include <sys/uio.h>'
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="char buf[1]; struct iovec vec[1]; ssize_t n;
+                  vec[0].iov_base = buf;
+                  vec[0].iov_len = 1;
+                  n = pwritev(1, vec, 1, 0);
+                  if (n == -1) return 1"
+. auto/feature
+
+
 ngx_feature="sys_nerr"
 ngx_feature_name="NGX_SYS_NERR"
 ngx_feature_run=value
