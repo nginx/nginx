@@ -30,7 +30,7 @@ the "proxy_cache_convert_head" directive.
 переменная $realip_remote_addr в модуле ngx_http_realip_module.
 </para>
 <para lang="en">
-the $realip_remote_addr in the ngx_http_realip_module.
+the $realip_remote_addr variable in the ngx_http_realip_module.
 </para>
 </change>
 
