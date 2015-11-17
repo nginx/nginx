@@ -226,6 +226,7 @@ ngx_write_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
             return NGX_ERROR;
         }
 
+        file->sys_offset += n;
         file->offset += n;
         written += n;
 
