@@ -633,7 +633,17 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         u->ssl_name = u->resolved->host;
 #endif
 
+        host = &u->resolved->host;
+
         if (u->resolved->sockaddr) {
+
+            if (u->resolved->port == 0) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "no port in upstream \"%V\"", host);
+                ngx_http_upstream_finalize_request(r, u,
+                                                   NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
 
             if (ngx_http_upstream_create_round_robin_peer(r, u->resolved)
                 != NGX_OK)
@@ -647,8 +657,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
             return;
         }
-
-        host = &u->resolved->host;
 
         umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 

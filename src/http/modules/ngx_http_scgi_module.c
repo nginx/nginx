@@ -569,9 +569,10 @@ ngx_http_scgi_eval(ngx_http_request_t *r, ngx_http_scgi_loc_conf_t * scf)
 
     } else {
         u->resolved->host = url.host;
-        u->resolved->port = url.port;
-        u->resolved->no_port = url.no_port;
     }
+
+    u->resolved->port = url.port;
+    u->resolved->no_port = url.no_port;
 
     return NGX_OK;
 }
