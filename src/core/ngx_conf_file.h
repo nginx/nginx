@@ -50,7 +50,7 @@
 #define NGX_DIRECT_CONF      0x00010000
 
 #define NGX_MAIN_CONF        0x01000000
-#define NGX_ANY_CONF         0x0F000000
+#define NGX_ANY_CONF         0x1F000000
 
 
 
