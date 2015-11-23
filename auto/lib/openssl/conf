@@ -105,6 +105,7 @@ else
 
         if [ $ngx_found = yes ]; then
             have=NGX_SSL . auto/have
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs $NGX_LIBDL"
             OPENSSL=YES
         fi
