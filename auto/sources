@@ -254,9 +254,6 @@ NGX_WIN32_ICONS="src/os/win32/nginx.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"
 
 
-# the http modules that have their logging formats
-# must be after ngx_http_log_module
-
 HTTP_MODULES="ngx_http_module \
               ngx_http_core_module \
               ngx_http_log_module \
