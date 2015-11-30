@@ -3294,9 +3294,6 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 
     ngx_memcpy(p, ending, sizeof(ending));
 
-    /* some modules expect the space character after method name */
-    r->method_name.data = r->request_line.data;
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http2 http request line: \"%V\"", &r->request_line);
 
