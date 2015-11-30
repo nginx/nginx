@@ -3503,7 +3503,7 @@ ngx_http_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     /* TODO: it does not merge, it inits only */
 
     ngx_conf_merge_size_value(conf->connection_pool_size,
-                              prev->connection_pool_size, 256);
+                              prev->connection_pool_size, NGX_PTR_SIZE * 64);
     ngx_conf_merge_size_value(conf->request_pool_size,
                               prev->request_pool_size, 4096);
     ngx_conf_merge_msec_value(conf->client_header_timeout,
