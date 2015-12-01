@@ -641,7 +641,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "no port in upstream \"%V\"", host);
                 ngx_http_upstream_finalize_request(r, u,
-                                                   NGX_HTTP_INTERNAL_SERVER_ERROR);
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;
             }
 
