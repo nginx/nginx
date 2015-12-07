@@ -360,6 +360,10 @@ HTTP_USERID_FILTER_MODULE=ngx_http_userid_filter_module
 HTTP_USERID_SRCS=src/http/modules/ngx_http_userid_filter_module.c
 
 
+HTTP_SLICE_FILTER_MODULE=ngx_http_slice_filter_module
+HTTP_SLICE_SRCS=src/http/modules/ngx_http_slice_filter_module.c
+
+
 HTTP_REALIP_MODULE=ngx_http_realip_module
 HTTP_REALIP_SRCS=src/http/modules/ngx_http_realip_module.c
 

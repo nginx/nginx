@@ -154,7 +154,7 @@ ngx_http_range_header_filter(ngx_http_request_t *r)
 
     if (r->http_version < NGX_HTTP_VERSION_10
         || r->headers_out.status != NGX_HTTP_OK
-        || r != r->main
+        || (r != r->main && !r->subrequest_ranges)
         || r->headers_out.content_length_n == -1
         || !r->allow_ranges)
     {
@@ -222,6 +222,8 @@ parse:
         return NGX_ERROR;
     }
 
+    ctx->offset = r->headers_out.content_offset;
+
     if (ngx_array_init(&ctx->ranges, r->pool, 1, sizeof(ngx_http_range_t))
         != NGX_OK)
     {
@@ -273,10 +275,21 @@ static ngx_int_t
 ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
     ngx_uint_t ranges)
 {
-    u_char            *p;
-    off_t              start, end, size, content_length, cutoff, cutlim;
-    ngx_uint_t         suffix;
-    ngx_http_range_t  *range;
+    u_char                       *p;
+    off_t                         start, end, size, content_length, cutoff,
+                                  cutlim;
+    ngx_uint_t                    suffix;
+    ngx_http_range_t             *range;
+    ngx_http_range_filter_ctx_t  *mctx;
+
+    if (r != r->main) {
+        mctx = ngx_http_get_module_ctx(r->main,
+                                       ngx_http_range_body_filter_module);
+        if (mctx) {
+            ctx->ranges = mctx->ranges;
+            return NGX_OK;
+        }
+    }
 
     p = r->headers_in.range->value.data + 6;
     size = 0;
@@ -395,6 +408,10 @@ ngx_http_range_singlepart_header(ngx_http_request_t *r,
     ngx_table_elt_t   *content_range;
     ngx_http_range_t  *range;
 
+    if (r != r->main) {
+        return ngx_http_next_header_filter(r);
+    }
+
     content_range = ngx_list_push(&r->headers_out.headers);
     if (content_range == NULL) {
         return NGX_ERROR;
@@ -422,6 +439,7 @@ ngx_http_range_singlepart_header(ngx_http_request_t *r,
                                - content_range->value.data;
 
     r->headers_out.content_length_n = range->end - range->start;
+    r->headers_out.content_offset = range->start;
 
     if (r->headers_out.content_length) {
         r->headers_out.content_length->hash = 0;
