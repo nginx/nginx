@@ -79,6 +79,7 @@ win32:
 		--with-http_auth_request_module				\
 		--with-http_random_index_module				\
 		--with-http_secure_link_module				\
+		--with-http_slice_module				\
 		--with-mail						\
 		--with-stream						\
 		--with-openssl=$(OBJS)/lib/$(OPENSSL)			\
