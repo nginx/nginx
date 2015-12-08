@@ -837,6 +837,10 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     c = ngx_ssl_get_connection(ssl_conn);
 
+    if (c->ssl->renegotiation) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "SSL server name: \"%s\"", servername);
 
