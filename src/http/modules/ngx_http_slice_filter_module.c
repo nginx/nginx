@@ -239,6 +239,10 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return rc;
     }
 
+    if (r->buffered) {
+        return rc;
+    }
+
     if (ngx_http_subrequest(r, &r->uri, &r->args, &sr, NULL, 0) != NGX_OK) {
         return NGX_ERROR;
     }
