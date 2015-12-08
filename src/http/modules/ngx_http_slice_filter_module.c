@@ -222,6 +222,7 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (cl = in; cl; cl = cl->next) {
         if (cl->buf->last_buf) {
             cl->buf->last_buf = 0;
+            cl->buf->last_in_chain = 1;
             cl->buf->sync = 1;
             ctx->last = 1;
         }
