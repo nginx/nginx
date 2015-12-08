@@ -5,6 +5,60 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.8" date="08.12.2015">
+
+<change type="feature">
+<para lang="ru">
+поддержка pwritev().
+</para>
+<para lang="en">
+pwritev() support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива include в блоке upstream.
+</para>
+<para lang="en">
+the "include" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_slice_module.
+</para>
+<para lang="en">
+the ngx_http_slice_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании LibreSSL
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.9.6.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using LibreSSL;
+the bug had appeared in 1.9.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться на OS X.
+</para>
+<para lang="en">
+nginx could not be built on OS X in some cases.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.7" date="17.11.2015">
 
 <change type="feature">
