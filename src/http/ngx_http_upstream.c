@@ -642,7 +642,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         if (u->resolved->sockaddr) {
 
-            if (u->resolved->port == 0) {
+            if (u->resolved->port == 0
+                && u->resolved->sockaddr->sa_family != AF_UNIX)
+            {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "no port in upstream \"%V\"", host);
                 ngx_http_upstream_finalize_request(r, u,
