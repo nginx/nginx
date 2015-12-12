@@ -465,7 +465,7 @@ connection limiting in the stream module.
 
 <change type="feature">
 <para lang="ru">
-органичение скорости в модуле stream.
+ограничение скорости в модуле stream.
 </para>
 <para lang="en">
 data rate limiting in the stream module.
