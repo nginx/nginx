@@ -1441,6 +1441,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     u->request_sent = 0;
+    u->request_body_sent = 0;
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, u->conf->connect_timeout);
@@ -1824,6 +1825,8 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     /* rc == NGX_OK */
+
+    u->request_body_sent = 1;
 
     if (c->write->timer_set) {
         ngx_del_timer(c->write);

@@ -302,6 +302,10 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
         goto invalid;
     }
 
+    if (!u->request_body_sent) {
+        goto invalid;
+    }
+
     if (ngx_terminate || ngx_exiting) {
         goto invalid;
     }
