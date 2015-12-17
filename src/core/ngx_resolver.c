@@ -2396,7 +2396,6 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 {
     char                 *err;
     size_t                len;
-    u_char                text[NGX_SOCKADDR_STRLEN];
     in_addr_t             addr;
     int32_t               ttl;
     ngx_int_t             octet;
@@ -2413,12 +2412,14 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     struct in6_addr       addr6;
 #endif
 
-    if (ngx_resolver_copy(r, NULL, buf,
+    if (ngx_resolver_copy(r, &name, buf,
                           buf + sizeof(ngx_resolver_hdr_t), buf + n)
         != NGX_OK)
     {
         return;
     }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0, "resolver qs:%V", &name);
 
     /* AF_INET */
 
@@ -2446,10 +2447,6 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
 
         tree = &r->addr_rbtree;
         expire_queue = &r->addr_expire_queue;
-
-        addr = htonl(addr);
-        name.len = ngx_inet_ntop(AF_INET, &addr, text, NGX_SOCKADDR_STRLEN);
-        name.data = text;
 
         goto valid;
     }
@@ -2495,9 +2492,6 @@ invalid_in_addr_arpa:
         tree = &r->addr6_rbtree;
         expire_queue = &r->addr6_expire_queue;
 
-        name.len = ngx_inet6_ntop(addr6.s6_addr, text, NGX_SOCKADDR_STRLEN);
-        name.data = text;
-
         goto valid;
     }
 
@@ -2506,6 +2500,7 @@ invalid_ip6_arpa:
 
     ngx_log_error(r->log_level, r->log, 0,
                   "invalid in-addr.arpa or ip6.arpa name in DNS response");
+    ngx_resolver_free(r, name.data);
     return;
 
 valid:
@@ -2513,6 +2508,7 @@ valid:
     if (rn == NULL || rn->query == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
                       "unexpected response for %V", &name);
+        ngx_resolver_free(r, name.data);
         goto failed;
     }
 
@@ -2522,8 +2518,11 @@ valid:
         ngx_log_error(r->log_level, r->log, 0,
                       "wrong ident %ui response for %V, expect %ui",
                       ident, &name, qident);
+        ngx_resolver_free(r, name.data);
         goto failed;
     }
+
+    ngx_resolver_free(r, name.data);
 
     if (code == 0 && nan == 0) {
         code = NGX_RESOLVE_NXDOMAIN;
