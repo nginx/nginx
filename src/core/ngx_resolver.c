@@ -2401,7 +2401,7 @@ ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     int32_t               ttl;
     ngx_int_t             octet;
     ngx_str_t             name;
-    ngx_uint_t            i, mask, qident, class;
+    ngx_uint_t            mask, type, class, qident, a, i, start;
     ngx_queue_t          *expire_queue;
     ngx_rbtree_t         *tree;
     ngx_resolver_an_t    *an;
@@ -2554,44 +2554,90 @@ valid:
 
     i += sizeof(ngx_resolver_qs_t);
 
-    if (i + 2 + sizeof(ngx_resolver_an_t) >= n) {
+    for (a = 0; a < nan; a++) {
+
+        start = i;
+
+        while (i < n) {
+
+            if (buf[i] & 0xc0) {
+                i += 2;
+                goto found;
+            }
+
+            if (buf[i] == 0) {
+                i++;
+                goto test_length;
+            }
+
+            i += 1 + buf[i];
+        }
+
         goto short_response;
+
+    test_length:
+
+        if (i - start < 2) {
+            err = "invalid name in DNS response";
+            goto invalid;
+        }
+
+    found:
+
+        if (i + sizeof(ngx_resolver_an_t) >= n) {
+            goto short_response;
+        }
+
+        an = (ngx_resolver_an_t *) &buf[i];
+
+        type = (an->type_hi << 8) + an->type_lo;
+        class = (an->class_hi << 8) + an->class_lo;
+        len = (an->len_hi << 8) + an->len_lo;
+        ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
+            + (an->ttl[2] << 8) + (an->ttl[3]);
+
+        if (class != 1) {
+            ngx_log_error(r->log_level, r->log, 0,
+                          "unexpected RR class %ui", class);
+            goto failed;
+        }
+
+        if (ttl < 0) {
+            ttl = 0;
+        }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
+                      "resolver qt:%ui cl:%ui len:%uz",
+                      type, class, len);
+
+        i += sizeof(ngx_resolver_an_t);
+
+        switch (type) {
+
+        case NGX_RESOLVE_PTR:
+
+            goto ptr;
+
+        case NGX_RESOLVE_CNAME:
+
+            break;
+
+        default:
+
+            ngx_log_error(r->log_level, r->log, 0,
+                          "unexpected RR type %ui", type);
+        }
+
+        i += len;
     }
 
-    /* compression pointer to *.arpa */
+    /* unlock addr mutex */
 
-    if (buf[i] != 0xc0 || buf[i + 1] != sizeof(ngx_resolver_hdr_t)) {
-        err = "invalid in-addr.arpa or ip6.arpa name in DNS response";
-        goto invalid;
-    }
+    ngx_log_error(r->log_level, r->log, 0,
+                  "no PTR type in DNS response");
+    return;
 
-    an = (ngx_resolver_an_t *) &buf[i + 2];
-
-    class = (an->class_hi << 8) + an->class_lo;
-    len = (an->len_hi << 8) + an->len_lo;
-    ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
-        + (an->ttl[2] << 8) + (an->ttl[3]);
-
-    if (class != 1) {
-        ngx_log_error(r->log_level, r->log, 0,
-                      "unexpected RR class %ui", class);
-        goto failed;
-    }
-
-    if (ttl < 0) {
-        ttl = 0;
-    }
-
-    ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
-                  "resolver qt:%ui cl:%ui len:%uz",
-                  (an->type_hi << 8) + an->type_lo,
-                  class, len);
-
-    i += 2 + sizeof(ngx_resolver_an_t);
-
-    if (i + len > n) {
-        goto short_response;
-    }
+ptr:
 
     if (ngx_resolver_copy(r, &name, buf, buf + i, buf + n) != NGX_OK) {
         goto failed;
