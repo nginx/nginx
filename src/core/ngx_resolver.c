@@ -1738,7 +1738,7 @@ dns_error:
 
 
 static void
-ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
+ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_uint_t ident, ngx_uint_t code, ngx_uint_t qtype,
     ngx_uint_t nan, ngx_uint_t trunc, ngx_uint_t ans)
 {
@@ -1750,7 +1750,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     in_addr_t                  *addr;
     ngx_str_t                   name;
     ngx_addr_t                 *addrs;
-    ngx_uint_t                  type, class, qident, naddrs, a, i, n, start;
+    ngx_uint_t                  type, class, qident, naddrs, a, i, j, start;
 #if (NGX_HAVE_INET6)
     struct in6_addr            *addr6;
 #endif
@@ -1760,7 +1760,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     ngx_resolver_connection_t  *rec;
 
     if (ngx_resolver_copy(r, &name, buf,
-                          buf + sizeof(ngx_resolver_hdr_t), buf + last)
+                          buf + sizeof(ngx_resolver_hdr_t), buf + n)
         != NGX_OK)
     {
         return;
@@ -1966,7 +1966,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
         start = i;
 
-        while (i < last) {
+        while (i < n) {
 
             if (buf[i] & 0xc0) {
                 i += 2;
@@ -1992,7 +1992,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
     found:
 
-        if (i + sizeof(ngx_resolver_an_t) >= last) {
+        if (i + sizeof(ngx_resolver_an_t) >= n) {
             goto short_response;
         }
 
@@ -2032,7 +2032,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
                 goto invalid;
             }
 
-            if (i + 4 > last) {
+            if (i + 4 > n) {
                 goto short_response;
             }
 
@@ -2053,7 +2053,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
                 goto invalid;
             }
 
-            if (i + 16 > last) {
+            if (i + 16 > n) {
                 goto short_response;
             }
 
@@ -2134,7 +2134,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 #endif
         }
 
-        n = 0;
+        j = 0;
         i = ans;
 
         for (a = 0; a < nan; a++) {
@@ -2163,10 +2163,10 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             if (type == NGX_RESOLVE_A) {
 
-                addr[n] = htonl((buf[i] << 24) + (buf[i + 1] << 16)
+                addr[j] = htonl((buf[i] << 24) + (buf[i + 1] << 16)
                                 + (buf[i + 2] << 8) + (buf[i + 3]));
 
-                if (++n == naddrs) {
+                if (++j == naddrs) {
 
 #if (NGX_HAVE_INET6)
                     if (rn->naddrs6 == (u_short) -1) {
@@ -2181,9 +2181,9 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 #if (NGX_HAVE_INET6)
             else if (type == NGX_RESOLVE_AAAA) {
 
-                ngx_memcpy(addr6[n].s6_addr, &buf[i], 16);
+                ngx_memcpy(addr6[j].s6_addr, &buf[i], 16);
 
-                if (++n == naddrs) {
+                if (++j == naddrs) {
 
                     if (rn->naddrs == (u_short) -1) {
                         goto next;
@@ -2308,7 +2308,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             goto next;
         }
 
-        if (ngx_resolver_copy(r, &name, buf, cname, buf + last) != NGX_OK) {
+        if (ngx_resolver_copy(r, &name, buf, cname, buf + n) != NGX_OK) {
             goto failed;
         }
 
