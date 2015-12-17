@@ -1927,6 +1927,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 #if (NGX_HTTP_V2)
         addrs6[i].conf.http2 = addr[i].opt.http2;
 #endif
+        addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 
         if (addr[i].hash.buckets == NULL
             && (addr[i].wc_head == NULL
