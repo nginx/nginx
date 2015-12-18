@@ -329,6 +329,44 @@ ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)"
 . auto/feature
 
 
+# NetBSD bind to any address for transparent proxying
+
+ngx_feature="SO_BINDANY"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_BINDANY, NULL, 0)"
+. auto/feature
+
+
+# Linux transparent proxying
+
+ngx_feature="IP_TRANSPARENT"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_TRANSPARENT, NULL, 0)"
+. auto/feature
+
+
+# FreeBSD bind to any address for transparent proxying
+
+ngx_feature="IP_BINDANY"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BINDANY, NULL, 0)"
+. auto/feature
+
+
 # BSD way to get IPv4 datagram destination address
 
 ngx_feature="IP_RECVDSTADDR"

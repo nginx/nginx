@@ -12,6 +12,9 @@
 
 typedef struct {
     ngx_addr_t                      *addr;
+#if (NGX_HAVE_TRANSPARENT_PROXY)
+    ngx_uint_t                       transparent; /* unsigned  transparent:1; */
+#endif
 } ngx_stream_upstream_local_t;
 
 
@@ -120,7 +123,7 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NULL },
 
     { ngx_string("proxy_bind"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE12,
       ngx_stream_proxy_bind,
       NGX_STREAM_SRV_CONF_OFFSET,
       0,
@@ -443,15 +446,62 @@ static ngx_int_t
 ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     ngx_stream_upstream_local_t *local)
 {
+    ngx_addr_t           *addr;
+    ngx_connection_t     *c;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
+
     if (local == NULL) {
         u->peer.local = NULL;
         return NGX_OK;
     }
 
+#if (NGX_HAVE_TRANSPARENT_PROXY)
+    u->peer.transparent = local->transparent;
+#endif
+
     if (local->addr) {
         u->peer.local = local->addr;
         return NGX_OK;
     }
+
+    /* $remote_addr */
+
+    c = s->connection;
+
+    addr = ngx_palloc(c->pool, sizeof(ngx_addr_t));
+    if (addr == NULL) {
+        return NGX_ERROR;
+    }
+
+    addr->socklen = c->socklen;
+
+    addr->sockaddr = ngx_palloc(c->pool, addr->socklen);
+    if (addr->sockaddr == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(addr->sockaddr, c->sockaddr, c->socklen);
+
+    switch (addr->sockaddr->sa_family) {
+
+    case AF_INET:
+        sin = (struct sockaddr_in *) addr->sockaddr;
+        sin->sin_port = 0;
+        break;
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) addr->sockaddr;
+        sin6->sin6_port = 0;
+        break;
+#endif
+    }
+
+    addr->name = c->addr_text;
+    u->peer.local = addr;
 
     return NGX_OK;
 }
@@ -1676,7 +1726,7 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "off") == 0) {
+    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "off") == 0) {
         pscf->local = NULL;
         return NGX_CONF_OK;
     }
@@ -1688,25 +1738,44 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     pscf->local = local;
 
-    local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
-    if (local->addr == NULL) {
-        return NGX_CONF_ERROR;
+    if (ngx_strcmp(value[1].data, "$remote_addr") != 0) {
+        local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
+        if (local->addr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
+
+        switch (rc) {
+        case NGX_OK:
+            local->addr->name = value[1];
+            break;
+
+        case NGX_DECLINED:
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid address \"%V\"", &value[1]);
+            /* fall through */
+
+        default:
+            return NGX_CONF_ERROR;
+        }
     }
 
-    rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
+    if (cf->args->nelts > 2) {
+        if (ngx_strcmp(value[2].data, "transparent") == 0) {
+#if (NGX_HAVE_TRANSPARENT_PROXY)
+            local->transparent = 1;
 
-    switch (rc) {
-    case NGX_OK:
-        local->addr->name = value[1];
-        break;
-
-    case NGX_DECLINED:
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid address \"%V\"", &value[1]);
-        /* fall through */
-
-    default:
-        return NGX_CONF_ERROR;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "transparent proxying is not supported "
+                               "on this platform, ignored");
+#endif
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
     }
 
     return NGX_CONF_OK;
