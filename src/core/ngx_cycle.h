@@ -88,6 +88,7 @@ typedef struct {
 
      int                      priority;
 
+     ngx_uint_t               cpu_affinity_auto;
      ngx_uint_t               cpu_affinity_n;
      uint64_t                *cpu_affinity;
 

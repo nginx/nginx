@@ -961,6 +961,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
      *     ccf->pid = NULL;
      *     ccf->oldpid = NULL;
      *     ccf->priority = 0;
+     *     ccf->cpu_affinity_auto = 0;
      *     ccf->cpu_affinity_n = 0;
      *     ccf->cpu_affinity = NULL;
      */
@@ -1002,7 +1003,8 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if (NGX_HAVE_CPU_AFFINITY)
 
-    if (ccf->cpu_affinity_n
+    if (!ccf->cpu_affinity_auto
+        && ccf->cpu_affinity_n
         && ccf->cpu_affinity_n != 1
         && ccf->cpu_affinity_n != (ngx_uint_t) ccf->worker_processes)
     {
@@ -1273,7 +1275,24 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    for (n = 1; n < cf->args->nelts; n++) {
+    if (ngx_strcmp(value[1].data, "auto") == 0) {
+
+        if (cf->args->nelts > 3) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid number of arguments in "
+                               "\"worker_cpu_affinity\" directive");
+            return NGX_CONF_ERROR;
+        }
+
+        ccf->cpu_affinity_auto = 1;
+        mask[0] = (uint64_t) -1 >> (64 - ngx_min(64, ngx_ncpu));
+        n = 2;
+
+    } else {
+        n = 1;
+    }
+
+    for ( /* void */ ; n < cf->args->nelts; n++) {
 
         if (value[n].len > 64) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1323,6 +1342,8 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 uint64_t
 ngx_get_cpu_affinity(ngx_uint_t n)
 {
+    uint64_t          mask;
+    ngx_uint_t        i;
     ngx_core_conf_t  *ccf;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
@@ -1330,6 +1351,24 @@ ngx_get_cpu_affinity(ngx_uint_t n)
 
     if (ccf->cpu_affinity == NULL) {
         return 0;
+    }
+
+    if (ccf->cpu_affinity_auto) {
+        mask = ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+
+        if (mask == 0) {
+            return 0;
+        }
+
+        for (i = 0; /* void */ ; i++) {
+            if ((mask & ((uint64_t) 1 << (i % 64))) && n-- == 0) {
+                break;
+            }
+
+            /* void */
+        }
+
+        return (uint64_t) 1 << (i % 64);
     }
 
     if (ccf->cpu_affinity_n > n) {
