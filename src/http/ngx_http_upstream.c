@@ -2499,6 +2499,7 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
             if (r->method != NGX_HTTP_HEAD) {
                 r->method = NGX_HTTP_GET;
+                r->method_name = ngx_http_core_get_method;
             }
 
             ngx_http_internal_redirect(r, &uri, &args);
