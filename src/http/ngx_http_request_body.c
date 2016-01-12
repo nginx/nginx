@@ -172,9 +172,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
                 b->file = &rb->temp_file->file;
 
                 rb->bufs = cl;
-
-            } else {
-                rb->bufs = NULL;
             }
         }
 
@@ -466,9 +463,6 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             b->file = &rb->temp_file->file;
 
             rb->bufs = cl;
-
-        } else {
-            rb->bufs = NULL;
         }
     }
 
