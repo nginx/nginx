@@ -64,6 +64,7 @@ struct ngx_listening_s {
     unsigned            nonblocking:1;
     unsigned            shared:1;    /* shared between threads or processes */
     unsigned            addr_ntop:1;
+    unsigned            wildcard:1;
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
     unsigned            ipv6only:1;
@@ -141,6 +142,8 @@ struct ngx_connection_s {
 
     ngx_pool_t         *pool;
 
+    int                 type;
+
     struct sockaddr    *sockaddr;
     socklen_t           socklen;
     ngx_str_t           addr_text;
@@ -174,6 +177,7 @@ struct ngx_connection_s {
     unsigned            idle:1;
     unsigned            reusable:1;
     unsigned            close:1;
+    unsigned            shared:1;
 
     unsigned            sendfile:1;
     unsigned            sndlowat:1;

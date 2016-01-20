@@ -252,7 +252,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     in_port_t                     port;
     ngx_str_t                    *value;
     ngx_url_t                     u;
-    ngx_uint_t                    i;
+    ngx_uint_t                    i, backlog;
     struct sockaddr              *sa;
     struct sockaddr_in           *sin;
     ngx_stream_listen_t          *ls;
@@ -343,6 +343,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;
+    ls->type = SOCK_STREAM;
     ls->wildcard = u.wildcard;
     ls->ctx = cf->ctx;
 
@@ -350,7 +351,16 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ls->ipv6only = 1;
 #endif
 
+    backlog = 0;
+
     for (i = 2; i < cf->args->nelts; i++) {
+
+#if !(NGX_WIN32)
+        if (ngx_strcmp(value[i].data, "udp") == 0) {
+            ls->type = SOCK_DGRAM;
+            continue;
+        }
+#endif
 
         if (ngx_strcmp(value[i].data, "bind") == 0) {
             ls->bind = 1;
@@ -366,6 +376,8 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                    "invalid backlog \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
             }
+
+            backlog = 1;
 
             continue;
         }
@@ -528,6 +540,22 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the invalid \"%V\" parameter", &value[i]);
         return NGX_CONF_ERROR;
+    }
+
+    if (ls->type == SOCK_DGRAM) {
+        if (backlog) {
+            return "\"backlog\" parameter is incompatible with \"udp\"";
+        }
+
+#if (NGX_STREAM_SSL)
+        if (ls->ssl) {
+            return "\"ssl\" parameter is incompatible with \"udp\"";
+        }
+#endif
+
+        if (ls->so_keepalive) {
+            return "\"so_keepalive\" parameter is incompatible with \"udp\"";
+        }
     }
 
     return NGX_CONF_OK;

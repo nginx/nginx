@@ -275,8 +275,11 @@ ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
 
     port = ports->elts;
     for (i = 0; i < ports->nelts; i++) {
-        if (p == port[i].port && sa->sa_family == port[i].family) {
 
+        if (p == port[i].port
+            && listen->type == port[i].type
+            && sa->sa_family == port[i].family)
+        {
             /* a port is already in the port list */
 
             port = &port[i];
@@ -292,6 +295,7 @@ ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     }
 
     port->family = sa->sa_family;
+    port->type = listen->type;
     port->port = p;
 
     if (ngx_array_init(&port->addrs, cf->temp_pool, 2,
@@ -364,6 +368,7 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->addr_ntop = 1;
             ls->handler = ngx_stream_init_connection;
             ls->pool_size = 256;
+            ls->type = addr[i].opt.type;
 
             cscf = addr->opt.ctx->srv_conf[ngx_stream_core_module.ctx_index];
 
@@ -372,6 +377,8 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->log.handler = ngx_accept_log_error;
 
             ls->backlog = addr[i].opt.backlog;
+
+            ls->wildcard = addr[i].opt.wildcard;
 
             ls->keepalive = addr[i].opt.so_keepalive;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)

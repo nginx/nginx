@@ -479,8 +479,8 @@ cat << END
   --without-mail_imap_module         disable ngx_mail_imap_module
   --without-mail_smtp_module         disable ngx_mail_smtp_module
 
-  --with-stream                      enable TCP proxy module
-  --with-stream=dynamic              enable dynamic TCP proxy module
+  --with-stream                      enable TCP/UDP proxy module
+  --with-stream=dynamic              enable dynamic TCP/UDP proxy module
   --with-stream_ssl_module           enable ngx_stream_ssl_module
   --without-stream_limit_conn_module disable ngx_stream_limit_conn_module
   --without-stream_access_module     disable ngx_stream_access_module

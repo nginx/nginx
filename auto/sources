@@ -165,6 +165,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_udp_recv.c \
             src/os/unix/ngx_send.c \
             src/os/unix/ngx_writev_chain.c \
+            src/os/unix/ngx_udp_send.c \
             src/os/unix/ngx_channel.c \
             src/os/unix/ngx_shmem.c \
             src/os/unix/ngx_process.c \

@@ -329,6 +329,45 @@ ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)"
 . auto/feature
 
 
+# BSD way to get IPv4 datagram destination address
+
+ngx_feature="IP_RECVDSTADDR"
+ngx_feature_name="NGX_HAVE_IP_RECVDSTADDR"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_RECVDSTADDR, NULL, 0)"
+. auto/feature
+
+
+# Linux way to get IPv4 datagram destination address
+
+ngx_feature="IP_PKTINFO"
+ngx_feature_name="NGX_HAVE_IP_PKTINFO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_PKTINFO, NULL, 0)"
+. auto/feature
+
+
+# RFC 3542 way to get IPv6 datagram destination address
+
+ngx_feature="IPV6_RECVPKTINFO"
+ngx_feature_name="NGX_HAVE_IPV6_RECVPKTINFO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IPV6, IPV6_RECVPKTINFO, NULL, 0)"
+. auto/feature
+
+
 ngx_feature="TCP_DEFER_ACCEPT"
 ngx_feature_name="NGX_HAVE_DEFERRED_ACCEPT"
 ngx_feature_run=no

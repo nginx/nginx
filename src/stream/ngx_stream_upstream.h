@@ -84,6 +84,7 @@ typedef struct {
     ngx_buf_t                          upstream_buf;
     off_t                              received;
     time_t                             start_sec;
+    ngx_uint_t                         responses;
 #if (NGX_STREAM_SSL)
     ngx_str_t                          ssl_name;
 #endif

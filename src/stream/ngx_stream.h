@@ -66,6 +66,7 @@ typedef struct {
     int                     tcp_keepcnt;
 #endif
     int                     backlog;
+    int                     type;
 } ngx_stream_listen_t;
 
 
@@ -102,6 +103,7 @@ typedef struct {
 
 typedef struct {
     int                     family;
+    int                     type;
     in_port_t               port;
     ngx_array_t             addrs;       /* array of ngx_stream_conf_addr_t */
 } ngx_stream_conf_port_t;

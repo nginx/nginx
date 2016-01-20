@@ -24,6 +24,7 @@ ngx_os_io_t ngx_os_io = {
     ngx_readv_chain,
     ngx_udp_unix_recv,
     ngx_unix_send,
+    ngx_udp_unix_send,
     ngx_writev_chain,
     0
 };
