@@ -2001,10 +2001,32 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
         ngx_queue_insert_head(&r->name_expire_queue, &rn->queue);
 
+        ngx_resolver_free(r, rn->query);
+        rn->query = NULL;
+#if (NGX_HAVE_INET6)
+        rn->query6 = NULL;
+#endif
+
         ctx = rn->waiting;
         rn->waiting = NULL;
 
         if (ctx) {
+
+            if (ctx->recursion++ >= NGX_RESOLVER_MAX_RECURSION) {
+
+                /* unlock name mutex */
+
+                do {
+                    ctx->state = NGX_RESOLVE_NXDOMAIN;
+                    next = ctx->next;
+
+                    ctx->handler(ctx);
+
+                    ctx = next;
+                } while (ctx);
+
+                return;
+            }
 
             for (next = ctx; next; next = next->next) {
                 next->node = NULL;
@@ -2012,12 +2034,6 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
 
             (void) ngx_resolve_name_locked(r, ctx, &name);
         }
-
-        ngx_resolver_free(r, rn->query);
-        rn->query = NULL;
-#if (NGX_HAVE_INET6)
-        rn->query6 = NULL;
-#endif
 
         /* unlock name mutex */
 
