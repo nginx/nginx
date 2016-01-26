@@ -5,6 +5,109 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.10" date="26.01.2016">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки ответов DNS-сервера
+могло происходить разыменование некорректного адреса,
+что позволяло атакующему,
+имеющему возможность подделывать UDP-пакеты от DNS-сервера,
+вызвать segmentation fault в рабочем процессе (CVE-2016-0742).
+</para>
+<para lang="en">
+invalid pointer dereference might occur
+during DNS server response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to forge UDP packets from the DNS server
+to cause segmentation fault in a worker process (CVE-2016-0742).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+могло произойти обращение к ранее освобождённой памяти,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать segmentation fault в рабочем процессе,
+а также потенциально могло иметь другие последствия (CVE-2016-0746).
+</para>
+<para lang="en">
+use-after-free condition might occur
+during CNAME response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger name resolution
+to cause segmentation fault in a worker process,
+or might have potential other impact (CVE-2016-0746).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+не во всех случаях проверялось ограничение
+на максимальное количество записей в цепочке,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать чрезмерное потребление ресурсов рабочими процессами (CVE-2016-0747).
+</para>
+<para lang="en">
+CNAME resolution was insufficiently limited
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger arbitrary name resolution
+to cause excessive resource consumption in worker processes (CVE-2016-0747).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр auto директивы worker_cpu_affinity.
+</para>
+<para lang="en">
+the "auto" parameter of the "worker_cpu_affinity" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр proxy_protocol директивы listen не работал
+с IPv6 listen-сокетами.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive did not work
+with IPv6 listen sockets.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы keepalive
+соединения к бэкендам могли кэшироваться некорректно.
+</para>
+<para lang="en">
+connections to upstream servers might be cached incorrectly
+when using the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления запроса с помощью X-Accel-Redirect
+при проксировании использовался HTTP-метод оригинального запроса.
+</para>
+<para lang="en">
+proxying used the HTTP method of the original request
+after an "X-Accel-Redirect" redirection.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.9" date="09.12.2015">
 
 <change type="bugfix">
