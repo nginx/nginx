@@ -161,6 +161,8 @@ struct ngx_resolver_ctx_s {
     ngx_uint_t                quick;  /* unsigned  quick:1; */
     ngx_uint_t                recursion;
     ngx_event_t              *event;
+
+    ngx_resolver_node_t      *node;
 };
 
 
