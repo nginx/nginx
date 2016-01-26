@@ -1312,7 +1312,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
         times = 0;
 
         for (q = ngx_queue_head(&r->name_resend_queue);
-             q != ngx_queue_sentinel(&r->name_resend_queue) || times++ < 100;
+             q != ngx_queue_sentinel(&r->name_resend_queue) && times++ < 100;
              q = ngx_queue_next(q))
         {
             rn = ngx_queue_data(q, ngx_resolver_node_t, queue);
