@@ -5,6 +5,165 @@
 <change_log title="nginx">
 
 
+<changes ver="1.8.1" date="26.01.2016">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки ответов DNS-сервера
+могло происходить разыменование некорректного адреса,
+что позволяло атакующему,
+имеющему возможность подделывать UDP-пакеты от DNS-сервера,
+вызвать segmentation fault в рабочем процессе (CVE-2016-0742).
+</para>
+<para lang="en">
+invalid pointer dereference might occur
+during DNS server response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to forge UDP packets from the DNS server
+to cause segmentation fault in a worker process (CVE-2016-0742).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+могло произойти обращение к ранее освобождённой памяти,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать segmentation fault в рабочем процессе,
+а также потенциально могло иметь другие последствия (CVE-2016-0746).
+</para>
+<para lang="en">
+use-after-free condition might occur
+during CNAME response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger name resolution
+to cause segmentation fault in a worker process,
+or might have potential other impact (CVE-2016-0746).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+не во всех случаях проверялось ограничение
+на максимальное количество записей в цепочке,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать чрезмерное потребление ресурсов рабочими процессами (CVE-2016-0747).
+</para>
+<para lang="en">
+CNAME resolution was insufficiently limited
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger arbitrary name resolution
+to cause excessive resource consumption in worker processes (CVE-2016-0747).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр proxy_protocol директивы listen не работал,
+если не был указан в первой директиве listen для данного listen-сокета.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive did not work
+if not specified in the first "listen" directive for a listen socket.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не запускаться на некоторых старых версиях Linux;
+ошибка появилась в 1.7.11.
+</para>
+<para lang="en">
+nginx might fail to start on some old Linux variants;
+the bug had appeared in 1.7.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при совместном использовании директив try_files и alias
+внутри location'а, заданного регулярным выражением,
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.7.1.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "try_files" and "alias" directives were used
+inside a location given by a regular expression;
+the bug had appeared in 1.7.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива try_files внутри вложенного location'а, заданного регулярным
+выражением, работала неправильно, если во внешнем location'е использовалась
+директива alias.
+</para>
+<para lang="en">
+the "try_files" directive inside a nested location
+given by a regular expression worked incorrectly
+if the "alias" directive was used in the outer location.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэша
+в логах могли появляться сообщения "header already sent";
+ошибка появилась в 1.7.5.
+</para>
+<para lang="en">
+"header already sent" alerts might appear in logs
+when using cache;
+the bug had appeared in 1.7.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании различных настроек ssl_session_cache
+в разных виртуальных серверах
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if different ssl_session_cache settings were used
+in different virtual servers.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива expires могла не срабатывать при использовании переменных.
+</para>
+<para lang="en">
+the "expires" directive might not work when using variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_spdy_module,
+протокол SPDY мог быть использован клиентом,
+даже если не был указан параметр spdy директивы listen.
+</para>
+<para lang="en">
+if nginx was built with the ngx_http_spdy_module
+it was possible to use the SPDY protocol
+even if the "spdy" parameter of the "listen" directive was not specified.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.8.0" date="21.04.2015">
 
 <change>
