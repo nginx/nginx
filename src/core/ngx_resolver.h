@@ -37,12 +37,12 @@
 
 
 typedef struct {
-    ngx_connection_t         *connection;
+    ngx_connection_t         *udp;
     struct sockaddr          *sockaddr;
     socklen_t                 socklen;
     ngx_str_t                 server;
     ngx_log_t                 log;
-} ngx_udp_connection_t;
+} ngx_resolver_connection_t;
 
 
 typedef struct ngx_resolver_ctx_s  ngx_resolver_ctx_t;
@@ -107,7 +107,7 @@ typedef struct {
     ngx_int_t                 ident;
 
     /* simple round robin DNS peers balancer */
-    ngx_array_t               udp_connections;
+    ngx_array_t               connections;
     ngx_uint_t                last_connection;
 
     ngx_rbtree_t              name_rbtree;

@@ -53,7 +53,7 @@ typedef struct {
         ((u_char *) (n) - offsetof(ngx_resolver_node_t, node))
 
 
-ngx_int_t ngx_udp_connect(ngx_udp_connection_t *uc);
+ngx_int_t ngx_udp_connect(ngx_resolver_connection_t *rec);
 
 
 static void ngx_resolver_cleanup(void *data);
@@ -110,12 +110,12 @@ static ngx_resolver_node_t *ngx_resolver_lookup_addr6(ngx_resolver_t *r,
 ngx_resolver_t *
 ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
 {
-    ngx_str_t              s;
-    ngx_url_t              u;
-    ngx_uint_t             i, j;
-    ngx_resolver_t        *r;
-    ngx_pool_cleanup_t    *cln;
-    ngx_udp_connection_t  *uc;
+    ngx_str_t                   s;
+    ngx_url_t                   u;
+    ngx_uint_t                  i, j;
+    ngx_resolver_t             *r;
+    ngx_pool_cleanup_t         *cln;
+    ngx_resolver_connection_t  *rec;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
@@ -172,8 +172,8 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
     r->log_level = NGX_LOG_ERR;
 
     if (n) {
-        if (ngx_array_init(&r->udp_connections, cf->pool, n,
-                           sizeof(ngx_udp_connection_t))
+        if (ngx_array_init(&r->connections, cf->pool, n,
+                           sizeof(ngx_resolver_connection_t))
             != NGX_OK)
         {
             return NULL;
@@ -230,17 +230,17 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
             return NULL;
         }
 
-        uc = ngx_array_push_n(&r->udp_connections, u.naddrs);
-        if (uc == NULL) {
+        rec = ngx_array_push_n(&r->connections, u.naddrs);
+        if (rec == NULL) {
             return NULL;
         }
 
-        ngx_memzero(uc, u.naddrs * sizeof(ngx_udp_connection_t));
+        ngx_memzero(rec, u.naddrs * sizeof(ngx_resolver_connection_t));
 
         for (j = 0; j < u.naddrs; j++) {
-            uc[j].sockaddr = u.addrs[j].sockaddr;
-            uc[j].socklen = u.addrs[j].socklen;
-            uc[j].server = u.addrs[j].name;
+            rec[j].sockaddr = u.addrs[j].sockaddr;
+            rec[j].socklen = u.addrs[j].socklen;
+            rec[j].server = u.addrs[j].name;
         }
     }
 
@@ -253,8 +253,8 @@ ngx_resolver_cleanup(void *data)
 {
     ngx_resolver_t  *r = data;
 
-    ngx_uint_t             i;
-    ngx_udp_connection_t  *uc;
+    ngx_uint_t                  i;
+    ngx_resolver_connection_t  *rec;
 
     if (r) {
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
@@ -273,11 +273,11 @@ ngx_resolver_cleanup(void *data)
         }
 
 
-        uc = r->udp_connections.elts;
+        rec = r->connections.elts;
 
-        for (i = 0; i < r->udp_connections.nelts; i++) {
-            if (uc[i].connection) {
-                ngx_close_connection(uc[i].connection);
+        for (i = 0; i < r->connections.nelts; i++) {
+            if (rec[i].udp) {
+                ngx_close_connection(rec[i].udp);
             }
         }
 
@@ -340,7 +340,7 @@ ngx_resolve_start(ngx_resolver_t *r, ngx_resolver_ctx_t *temp)
         }
     }
 
-    if (r->udp_connections.nelts == 0) {
+    if (r->connections.nelts == 0) {
         return NGX_NO_RESOLVER;
     }
 
@@ -1094,55 +1094,55 @@ ngx_resolver_expire(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 static ngx_int_t
 ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
 {
-    ssize_t                n;
-    ngx_udp_connection_t  *uc;
+    ssize_t                     n;
+    ngx_resolver_connection_t  *rec;
 
-    uc = r->udp_connections.elts;
+    rec = r->connections.elts;
 
-    uc = &uc[r->last_connection++];
-    if (r->last_connection == r->udp_connections.nelts) {
+    rec = &rec[r->last_connection++];
+    if (r->last_connection == r->connections.nelts) {
         r->last_connection = 0;
     }
 
-    if (uc->connection == NULL) {
+    if (rec->udp == NULL) {
 
-        uc->log = *r->log;
-        uc->log.handler = ngx_resolver_log_error;
-        uc->log.data = uc;
-        uc->log.action = "resolving";
+        rec->log = *r->log;
+        rec->log.handler = ngx_resolver_log_error;
+        rec->log.data = rec;
+        rec->log.action = "resolving";
 
-        if (ngx_udp_connect(uc) != NGX_OK) {
+        if (ngx_udp_connect(rec) != NGX_OK) {
             return NGX_ERROR;
         }
 
-        uc->connection->data = r;
-        uc->connection->read->handler = ngx_resolver_read_response;
-        uc->connection->read->resolver = 1;
+        rec->udp->data = r;
+        rec->udp->read->handler = ngx_resolver_read_response;
+        rec->udp->read->resolver = 1;
     }
 
     if (rn->naddrs == (u_short) -1) {
-        n = ngx_send(uc->connection, rn->query, rn->qlen);
+        n = ngx_send(rec->udp, rn->query, rn->qlen);
 
         if (n == -1) {
             return NGX_ERROR;
         }
 
         if ((size_t) n != (size_t) rn->qlen) {
-            ngx_log_error(NGX_LOG_CRIT, &uc->log, 0, "send() incomplete");
+            ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
             return NGX_ERROR;
         }
     }
 
 #if (NGX_HAVE_INET6)
     if (rn->query6 && rn->naddrs6 == (u_short) -1) {
-        n = ngx_send(uc->connection, rn->query6, rn->qlen);
+        n = ngx_send(rec->udp, rn->query6, rn->qlen);
 
         if (n == -1) {
             return NGX_ERROR;
         }
 
         if ((size_t) n != (size_t) rn->qlen) {
-            ngx_log_error(NGX_LOG_CRIT, &uc->log, 0, "send() incomplete");
+            ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
             return NGX_ERROR;
         }
     }
@@ -3074,8 +3074,8 @@ ngx_resolver_strerror(ngx_int_t err)
 static u_char *
 ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
-    u_char                *p;
-    ngx_udp_connection_t  *uc;
+    u_char                     *p;
+    ngx_resolver_connection_t  *rec;
 
     p = buf;
 
@@ -3084,10 +3084,10 @@ ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len)
         len -= p - buf;
     }
 
-    uc = log->data;
+    rec = log->data;
 
-    if (uc) {
-        p = ngx_snprintf(p, len, ", resolver: %V", &uc->server);
+    if (rec) {
+        p = ngx_snprintf(p, len, ", resolver: %V", &rec->server);
     }
 
     return p;
@@ -3095,7 +3095,7 @@ ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
 
 ngx_int_t
-ngx_udp_connect(ngx_udp_connection_t *uc)
+ngx_udp_connect(ngx_resolver_connection_t *rec)
 {
     int                rc;
     ngx_int_t          event;
@@ -3103,21 +3103,21 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
     ngx_socket_t       s;
     ngx_connection_t  *c;
 
-    s = ngx_socket(uc->sockaddr->sa_family, SOCK_DGRAM, 0);
+    s = ngx_socket(rec->sockaddr->sa_family, SOCK_DGRAM, 0);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &uc->log, 0, "UDP socket %d", s);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &rec->log, 0, "UDP socket %d", s);
 
     if (s == (ngx_socket_t) -1) {
-        ngx_log_error(NGX_LOG_ALERT, &uc->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
                       ngx_socket_n " failed");
         return NGX_ERROR;
     }
 
-    c = ngx_get_connection(s, &uc->log);
+    c = ngx_get_connection(s, &rec->log);
 
     if (c == NULL) {
         if (ngx_close_socket(s) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, &uc->log, ngx_socket_errno,
+            ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
                           ngx_close_socket_n "failed");
         }
 
@@ -3125,7 +3125,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
     }
 
     if (ngx_nonblocking(s) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, &uc->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
 
         goto failed;
@@ -3134,22 +3134,22 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
     rev = c->read;
     wev = c->write;
 
-    rev->log = &uc->log;
-    wev->log = &uc->log;
+    rev->log = &rec->log;
+    wev->log = &rec->log;
 
-    uc->connection = c;
+    rec->udp = c;
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, &uc->log, 0,
-                   "connect to %V, fd:%d #%uA", &uc->server, s, c->number);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, &rec->log, 0,
+                   "connect to %V, fd:%d #%uA", &rec->server, s, c->number);
 
-    rc = connect(s, uc->sockaddr, uc->socklen);
+    rc = connect(s, rec->sockaddr, rec->socklen);
 
     /* TODO: iocp */
 
     if (rc == -1) {
-        ngx_log_error(NGX_LOG_CRIT, &uc->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_CRIT, &rec->log, ngx_socket_errno,
                       "connect() failed");
 
         goto failed;
@@ -3172,7 +3172,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
 failed:
 
     ngx_close_connection(c);
-    uc->connection = NULL;
+    rec->udp = NULL;
 
     return NGX_ERROR;
 }
