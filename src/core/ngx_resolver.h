@@ -93,6 +93,8 @@ typedef struct {
     time_t                    valid;
     uint32_t                  ttl;
 
+    ngx_uint_t                last_connection;
+
     ngx_resolver_ctx_t       *waiting;
 } ngx_resolver_node_t;
 

@@ -685,6 +685,11 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         return NGX_OK;
     }
 
+    rn->last_connection = r->last_connection++;
+    if (r->last_connection == r->connections.nelts) {
+        r->last_connection = 0;
+    }
+
     rn->naddrs = (u_short) -1;
 #if (NGX_HAVE_INET6)
     rn->naddrs6 = r->ipv6 ? (u_short) -1 : 0;
@@ -897,6 +902,11 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         goto failed;
     }
 
+    rn->last_connection = r->last_connection++;
+    if (r->last_connection == r->connections.nelts) {
+        r->last_connection = 0;
+    }
+
     rn->naddrs = (u_short) -1;
 #if (NGX_HAVE_INET6)
     rn->naddrs6 = (u_short) -1;
@@ -1098,11 +1108,7 @@ ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
     ngx_resolver_connection_t  *rec;
 
     rec = r->connections.elts;
-
-    rec = &rec[r->last_connection++];
-    if (r->last_connection == r->connections.nelts) {
-        r->last_connection = 0;
-    }
+    rec = &rec[rn->last_connection];
 
     if (rec->udp == NULL) {
 
@@ -1243,6 +1249,10 @@ ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
         ngx_queue_remove(q);
 
         if (rn->waiting) {
+
+            if (++rn->last_connection == r->connections.nelts) {
+                rn->last_connection = 0;
+            }
 
             (void) ngx_resolver_send_query(r, rn);
 
