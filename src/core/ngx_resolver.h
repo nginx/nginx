@@ -36,12 +36,19 @@
 #define NGX_RESOLVER_MAX_RECURSION    50
 
 
+typedef struct ngx_resolver_s  ngx_resolver_t;
+
+
 typedef struct {
     ngx_connection_t         *udp;
+    ngx_connection_t         *tcp;
     struct sockaddr          *sockaddr;
     socklen_t                 socklen;
     ngx_str_t                 server;
     ngx_log_t                 log;
+    ngx_buf_t                *read_buf;
+    ngx_buf_t                *write_buf;
+    ngx_resolver_t           *resolver;
 } ngx_resolver_connection_t;
 
 
@@ -93,13 +100,18 @@ typedef struct {
     time_t                    valid;
     uint32_t                  ttl;
 
+    unsigned                  tcp:1;
+#if (NGX_HAVE_INET6)
+    unsigned                  tcp6:1;
+#endif
+
     ngx_uint_t                last_connection;
 
     ngx_resolver_ctx_t       *waiting;
 } ngx_resolver_node_t;
 
 
-typedef struct {
+struct ngx_resolver_s {
     /* has to be pointer because of "incomplete type" */
     ngx_event_t              *event;
     void                     *dummy;
@@ -133,11 +145,12 @@ typedef struct {
 #endif
 
     time_t                    resend_timeout;
+    time_t                    tcp_timeout;
     time_t                    expire;
     time_t                    valid;
 
     ngx_uint_t                log_level;
-} ngx_resolver_t;
+};
 
 
 struct ngx_resolver_ctx_s {

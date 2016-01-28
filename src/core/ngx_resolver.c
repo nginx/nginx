@@ -12,6 +12,9 @@
 
 #define NGX_RESOLVER_UDP_SIZE   4096
 
+#define NGX_RESOLVER_TCP_RSIZE  (2 + 65535)
+#define NGX_RESOLVER_TCP_WSIZE  8192
+
 
 typedef struct {
     u_char  ident_hi;
@@ -54,6 +57,7 @@ typedef struct {
 
 
 ngx_int_t ngx_udp_connect(ngx_resolver_connection_t *rec);
+ngx_int_t ngx_tcp_connect(ngx_resolver_connection_t *rec);
 
 
 static void ngx_resolver_cleanup(void *data);
@@ -64,6 +68,10 @@ static void ngx_resolver_expire(ngx_resolver_t *r, ngx_rbtree_t *tree,
     ngx_queue_t *queue);
 static ngx_int_t ngx_resolver_send_query(ngx_resolver_t *r,
     ngx_resolver_node_t *rn);
+static ngx_int_t ngx_resolver_send_udp_query(ngx_resolver_t *r,
+    ngx_resolver_connection_t *rec, u_char *query, u_short qlen);
+static ngx_int_t ngx_resolver_send_tcp_query(ngx_resolver_t *r,
+    ngx_resolver_connection_t *rec, u_char *query, u_short qlen);
 static ngx_int_t ngx_resolver_create_name_query(ngx_resolver_t *r,
     ngx_resolver_node_t *rn, ngx_str_t *name);
 static ngx_int_t ngx_resolver_create_addr_query(ngx_resolver_t *r,
@@ -72,12 +80,14 @@ static void ngx_resolver_resend_handler(ngx_event_t *ev);
 static time_t ngx_resolver_resend(ngx_resolver_t *r, ngx_rbtree_t *tree,
     ngx_queue_t *queue);
 static ngx_uint_t ngx_resolver_resend_empty(ngx_resolver_t *r);
-static void ngx_resolver_read_response(ngx_event_t *rev);
+static void ngx_resolver_udp_read(ngx_event_t *rev);
+static void ngx_resolver_tcp_write(ngx_event_t *wev);
+static void ngx_resolver_tcp_read(ngx_event_t *rev);
 static void ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf,
-    size_t n);
+    size_t n, ngx_uint_t tcp);
 static void ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_uint_t ident, ngx_uint_t code, ngx_uint_t qtype,
-    ngx_uint_t nan, ngx_uint_t ans);
+    ngx_uint_t nan, ngx_uint_t trunc, ngx_uint_t ans);
 static void ngx_resolver_process_ptr(ngx_resolver_t *r, u_char *buf, size_t n,
     ngx_uint_t ident, ngx_uint_t code, ngx_uint_t nan);
 static ngx_resolver_node_t *ngx_resolver_lookup_name(ngx_resolver_t *r,
@@ -165,6 +175,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
     r->ident = -1;
 
     r->resend_timeout = 5;
+    r->tcp_timeout = 5;
     r->expire = 30;
     r->valid = 0;
 
@@ -241,6 +252,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
             rec[j].sockaddr = u.addrs[j].sockaddr;
             rec[j].socklen = u.addrs[j].socklen;
             rec[j].server = u.addrs[j].name;
+            rec[j].resolver = r;
         }
     }
 
@@ -278,6 +290,10 @@ ngx_resolver_cleanup(void *data)
         for (i = 0; i < r->connections.nelts; i++) {
             if (rec[i].udp) {
                 ngx_close_connection(rec[i].udp);
+            }
+
+            if (rec[i].tcp) {
+                ngx_close_connection(rec[i].tcp);
             }
         }
 
@@ -691,8 +707,10 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
     }
 
     rn->naddrs = (u_short) -1;
+    rn->tcp = 0;
 #if (NGX_HAVE_INET6)
     rn->naddrs6 = r->ipv6 ? (u_short) -1 : 0;
+    rn->tcp6 = 0;
 #endif
 
     if (ngx_resolver_send_query(r, rn) != NGX_OK) {
@@ -908,8 +926,10 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
     }
 
     rn->naddrs = (u_short) -1;
+    rn->tcp = 0;
 #if (NGX_HAVE_INET6)
     rn->naddrs6 = (u_short) -1;
+    rn->tcp6 = 0;
 #endif
 
     if (ngx_resolver_send_query(r, rn) != NGX_OK) {
@@ -1104,55 +1124,156 @@ ngx_resolver_expire(ngx_resolver_t *r, ngx_rbtree_t *tree, ngx_queue_t *queue)
 static ngx_int_t
 ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
 {
-    ssize_t                     n;
+    ngx_int_t                   rc;
     ngx_resolver_connection_t  *rec;
 
     rec = r->connections.elts;
     rec = &rec[rn->last_connection];
 
-    if (rec->udp == NULL) {
-
+    if (rec->log.handler == NULL) {
         rec->log = *r->log;
         rec->log.handler = ngx_resolver_log_error;
         rec->log.data = rec;
         rec->log.action = "resolving";
-
-        if (ngx_udp_connect(rec) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        rec->udp->data = r;
-        rec->udp->read->handler = ngx_resolver_read_response;
-        rec->udp->read->resolver = 1;
     }
 
     if (rn->naddrs == (u_short) -1) {
-        n = ngx_send(rec->udp, rn->query, rn->qlen);
+        rc = rn->tcp ? ngx_resolver_send_tcp_query(r, rec, rn->query, rn->qlen)
+                     : ngx_resolver_send_udp_query(r, rec, rn->query, rn->qlen);
 
-        if (n == -1) {
-            return NGX_ERROR;
-        }
-
-        if ((size_t) n != (size_t) rn->qlen) {
-            ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
-            return NGX_ERROR;
+        if (rc != NGX_OK) {
+            return rc;
         }
     }
 
 #if (NGX_HAVE_INET6)
+
     if (rn->query6 && rn->naddrs6 == (u_short) -1) {
-        n = ngx_send(rec->udp, rn->query6, rn->qlen);
+        rc = rn->tcp6
+                    ? ngx_resolver_send_tcp_query(r, rec, rn->query6, rn->qlen)
+                    : ngx_resolver_send_udp_query(r, rec, rn->query6, rn->qlen);
 
-        if (n == -1) {
-            return NGX_ERROR;
-        }
-
-        if ((size_t) n != (size_t) rn->qlen) {
-            ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
-            return NGX_ERROR;
+        if (rc != NGX_OK) {
+            return rc;
         }
     }
+
 #endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_resolver_send_udp_query(ngx_resolver_t *r, ngx_resolver_connection_t  *rec,
+    u_char *query, u_short qlen)
+{
+    ssize_t  n;
+
+    if (rec->udp == NULL) {
+        if (ngx_udp_connect(rec) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        rec->udp->data = rec;
+        rec->udp->read->handler = ngx_resolver_udp_read;
+        rec->udp->read->resolver = 1;
+    }
+
+    n = ngx_send(rec->udp, query, qlen);
+
+    if (n == -1) {
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n != (size_t) qlen) {
+        ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
+    u_char *query, u_short qlen)
+{
+    ngx_buf_t  *b;
+    ngx_int_t   rc;
+
+    rc = NGX_OK;
+
+    if (rec->tcp == NULL) {
+        b = rec->read_buf;
+
+        if (b == NULL) {
+            b = ngx_resolver_calloc(r, sizeof(ngx_buf_t));
+            if (b == NULL) {
+                return NGX_ERROR;
+            }
+
+            b->start = ngx_resolver_alloc(r, NGX_RESOLVER_TCP_RSIZE);
+            if (b->start == NULL) {
+                return NGX_ERROR;
+            }
+
+            b->end = b->start + NGX_RESOLVER_TCP_RSIZE;
+
+            rec->read_buf = b;
+        }
+
+        b->pos = b->start;
+        b->last = b->start;
+
+        b = rec->write_buf;
+
+        if (b == NULL) {
+            b = ngx_resolver_calloc(r, sizeof(ngx_buf_t));
+            if (b == NULL) {
+                return NGX_ERROR;
+            }
+
+            b->start = ngx_resolver_alloc(r, NGX_RESOLVER_TCP_WSIZE);
+            if (b->start == NULL) {
+                return NGX_ERROR;
+            }
+
+            b->end = b->start + NGX_RESOLVER_TCP_WSIZE;
+
+            rec->write_buf = b;
+        }
+
+        b->pos = b->start;
+        b->last = b->start;
+
+        rc = ngx_tcp_connect(rec);
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        rec->tcp->data = rec;
+        rec->tcp->write->handler = ngx_resolver_tcp_write;
+        rec->tcp->read->handler = ngx_resolver_tcp_read;
+        rec->tcp->read->resolver = 1;
+
+        ngx_add_timer(rec->tcp->write, (ngx_msec_t) (r->tcp_timeout * 1000));
+    }
+
+    b = rec->write_buf;
+
+    if (b->end - b->last <  2 + qlen) {
+        ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "buffer overflow");
+        return NGX_ERROR;
+    }
+
+    *b->last++ = (u_char) (qlen >> 8);
+    *b->last++ = (u_char) qlen;
+    b->last = ngx_cpymem(b->last, query, qlen);
+
+    if (rc == NGX_OK) {
+        ngx_resolver_tcp_write(rec->tcp->write);
+    }
 
     return NGX_OK;
 }
@@ -1282,13 +1403,15 @@ ngx_resolver_resend_empty(ngx_resolver_t *r)
 
 
 static void
-ngx_resolver_read_response(ngx_event_t *rev)
+ngx_resolver_udp_read(ngx_event_t *rev)
 {
-    ssize_t            n;
-    ngx_connection_t  *c;
-    u_char             buf[NGX_RESOLVER_UDP_SIZE];
+    ssize_t                     n;
+    ngx_connection_t           *c;
+    ngx_resolver_connection_t  *rec;
+    u_char                      buf[NGX_RESOLVER_UDP_SIZE];
 
     c = rev->data;
+    rec = c->data;
 
     do {
         n = ngx_udp_recv(c, buf, NGX_RESOLVER_UDP_SIZE);
@@ -1297,17 +1420,144 @@ ngx_resolver_read_response(ngx_event_t *rev)
             return;
         }
 
-        ngx_resolver_process_response(c->data, buf, n);
+        ngx_resolver_process_response(rec->resolver, buf, n, 0);
 
     } while (rev->ready);
 }
 
 
 static void
-ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
+ngx_resolver_tcp_write(ngx_event_t *wev)
+{
+    off_t                       sent;
+    ssize_t                     n;
+    ngx_buf_t                  *b;
+    ngx_resolver_t             *r;
+    ngx_connection_t           *c;
+    ngx_resolver_connection_t  *rec;
+
+    c = wev->data;
+    rec = c->data;
+    b = rec->write_buf;
+    r = rec->resolver;
+
+    if (wev->timedout) {
+        goto failed;
+    }
+
+    sent = c->sent;
+
+    while (wev->ready && b->pos < b->last) {
+        n = ngx_send(c, b->pos, b->last - b->pos);
+
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
+        if (n == NGX_ERROR) {
+            goto failed;
+        }
+
+        b->pos += n;
+    }
+
+    if (b->pos != b->start) {
+        b->last = ngx_movemem(b->start, b->pos, b->last - b->pos);
+        b->pos = b->start;
+    }
+
+    if (c->sent != sent) {
+        ngx_add_timer(wev, (ngx_msec_t) (r->tcp_timeout * 1000));
+    }
+
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    return;
+
+failed:
+
+    ngx_close_connection(c);
+    rec->tcp = NULL;
+}
+
+
+static void
+ngx_resolver_tcp_read(ngx_event_t *rev)
+{
+    u_char                     *p;
+    size_t                      size;
+    ssize_t                     n;
+    u_short                     qlen;
+    ngx_buf_t                  *b;
+    ngx_resolver_t             *r;
+    ngx_connection_t           *c;
+    ngx_resolver_connection_t  *rec;
+
+    c = rev->data;
+    rec = c->data;
+    b = rec->read_buf;
+    r = rec->resolver;
+
+    while (rev->ready) {
+        n = ngx_recv(c, b->last, b->end - b->last);
+
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
+        if (n == NGX_ERROR || n == 0) {
+            goto failed;
+        }
+
+        b->last += n;
+
+        for ( ;; ) {
+            p = b->pos;
+            size = b->last - p;
+
+            if (size < 2) {
+                break;
+            }
+
+            qlen = (u_short) *p++ << 8;
+            qlen += *p++;
+
+            if (size < (size_t) (2 + qlen)) {
+                break;
+            }
+
+            ngx_resolver_process_response(r, p, qlen, 1);
+
+            b->pos += 2 + qlen;
+        }
+
+        if (b->pos != b->start) {
+            b->last = ngx_movemem(b->start, b->pos, b->last - b->pos);
+            b->pos = b->start;
+        }
+    }
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    return;
+
+failed:
+
+    ngx_close_connection(c);
+    rec->tcp = NULL;
+}
+
+
+static void
+ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
+    ngx_uint_t tcp)
 {
     char                 *err;
-    ngx_uint_t            i, times, ident, qident, flags, code, nqs, nan,
+    ngx_uint_t            i, times, ident, qident, flags, code, nqs, nan, trunc,
                           qtype, qclass;
 #if (NGX_HAVE_INET6)
     ngx_uint_t            qident6;
@@ -1327,6 +1577,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
     flags = (response->flags_hi << 8) + response->flags_lo;
     nqs = (response->nqs_hi << 8) + response->nqs_lo;
     nan = (response->nan_hi << 8) + response->nan_lo;
+    trunc = flags & 0x0200;
 
     ngx_log_debug6(NGX_LOG_DEBUG_CORE, r->log, 0,
                    "resolver DNS response %ui fl:%04Xui %ui/%ui/%ud/%ud",
@@ -1335,9 +1586,10 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n)
                    (response->nar_hi << 8) + response->nar_lo);
 
     /* response to a standard query */
-    if ((flags & 0xf870) != 0x8000) {
+    if ((flags & 0xf870) != 0x8000 || (trunc && tcp)) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "invalid DNS response %ui fl:%04Xui", ident, flags);
+                      "invalid %s DNS response %ui fl:%04Xui",
+                      tcp ? "TCP" : "UDP", ident, flags);
         return;
     }
 
@@ -1427,7 +1679,7 @@ found:
     case NGX_RESOLVE_AAAA:
 #endif
 
-        ngx_resolver_process_a(r, buf, n, ident, code, qtype, nan,
+        ngx_resolver_process_a(r, buf, n, ident, code, qtype, nan, trunc,
                                i + sizeof(ngx_resolver_qs_t));
 
         break;
@@ -1476,23 +1728,24 @@ dns_error:
 static void
 ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     ngx_uint_t ident, ngx_uint_t code, ngx_uint_t qtype,
-    ngx_uint_t nan, ngx_uint_t ans)
+    ngx_uint_t nan, ngx_uint_t trunc, ngx_uint_t ans)
 {
-    char                 *err;
-    u_char               *cname;
-    size_t                len;
-    int32_t               ttl;
-    uint32_t              hash;
-    in_addr_t            *addr;
-    ngx_str_t             name;
-    ngx_addr_t           *addrs;
-    ngx_uint_t            type, class, qident, naddrs, a, i, n, start;
+    char                       *err;
+    u_char                     *cname;
+    size_t                      len;
+    int32_t                     ttl;
+    uint32_t                    hash;
+    in_addr_t                  *addr;
+    ngx_str_t                   name;
+    ngx_addr_t                 *addrs;
+    ngx_uint_t                  type, class, qident, naddrs, a, i, n, start;
 #if (NGX_HAVE_INET6)
-    struct in6_addr      *addr6;
+    struct in6_addr            *addr6;
 #endif
-    ngx_resolver_an_t    *an;
-    ngx_resolver_ctx_t   *ctx, *next;
-    ngx_resolver_node_t  *rn;
+    ngx_resolver_an_t          *an;
+    ngx_resolver_ctx_t         *ctx, *next;
+    ngx_resolver_node_t        *rn;
+    ngx_resolver_connection_t  *rec;
 
     if (ngx_resolver_copy(r, &name, buf,
                           buf + sizeof(ngx_resolver_hdr_t), buf + last)
@@ -1528,6 +1781,11 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
             goto failed;
         }
 
+        if (trunc && rn->tcp6) {
+            ngx_resolver_free(r, name.data);
+            goto failed;
+        }
+
         qident = (rn->query6[0] << 8) + rn->query6[1];
 
         break;
@@ -1538,6 +1796,11 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
         if (rn->query == NULL || rn->naddrs != (u_short) -1) {
             ngx_log_error(r->log_level, r->log, 0,
                           "unexpected response for %V", &name);
+            ngx_resolver_free(r, name.data);
+            goto failed;
+        }
+
+        if (trunc && rn->tcp) {
             ngx_resolver_free(r, name.data);
             goto failed;
         }
@@ -1554,6 +1817,45 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t last,
     }
 
     ngx_resolver_free(r, name.data);
+
+    if (trunc) {
+
+        ngx_queue_remove(&rn->queue);
+
+        if (rn->waiting == NULL) {
+            ngx_rbtree_delete(&r->name_rbtree, &rn->node);
+            ngx_resolver_free_node(r, rn);
+            goto next;
+        }
+
+        rec = r->connections.elts;
+        rec = &rec[rn->last_connection];
+
+        switch (qtype) {
+
+#if (NGX_HAVE_INET6)
+        case NGX_RESOLVE_AAAA:
+
+            rn->tcp6 = 1;
+
+            (void) ngx_resolver_send_tcp_query(r, rec, rn->query6, rn->qlen);
+
+            break;
+#endif
+
+        default: /* NGX_RESOLVE_A */
+
+            rn->tcp = 1;
+
+            (void) ngx_resolver_send_tcp_query(r, rec, rn->query, rn->qlen);
+        }
+
+        rn->expire = ngx_time() + r->resend_timeout;
+
+        ngx_queue_insert_head(&r->name_resend_queue, &rn->queue);
+
+        goto next;
+    }
 
     if (code == 0 && rn->code) {
         code = rn->code;
@@ -3183,6 +3485,189 @@ failed:
 
     ngx_close_connection(c);
     rec->udp = NULL;
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
+ngx_tcp_connect(ngx_resolver_connection_t *rec)
+{
+    int                rc;
+    ngx_int_t          event;
+    ngx_err_t          err;
+    ngx_uint_t         level;
+    ngx_socket_t       s;
+    ngx_event_t       *rev, *wev;
+    ngx_connection_t  *c;
+
+    s = ngx_socket(rec->sockaddr->sa_family, SOCK_STREAM, 0);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &rec->log, 0, "TCP socket %d", s);
+
+    if (s == (ngx_socket_t) -1) {
+        ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
+                      ngx_socket_n " failed");
+        return NGX_ERROR;
+    }
+
+    c = ngx_get_connection(s, &rec->log);
+
+    if (c == NULL) {
+        if (ngx_close_socket(s) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
+                          ngx_close_socket_n "failed");
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (ngx_nonblocking(s) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
+                      ngx_nonblocking_n " failed");
+
+        goto failed;
+    }
+
+    rev = c->read;
+    wev = c->write;
+
+    rev->log = &rec->log;
+    wev->log = &rec->log;
+
+    rec->tcp = c;
+
+    c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+
+    if (ngx_add_conn) {
+        if (ngx_add_conn(c) == NGX_ERROR) {
+            goto failed;
+        }
+    }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, &rec->log, 0,
+                   "connect to %V, fd:%d #%uA", &rec->server, s, c->number);
+
+    rc = connect(s, rec->sockaddr, rec->socklen);
+
+    if (rc == -1) {
+        err = ngx_socket_errno;
+
+
+        if (err != NGX_EINPROGRESS
+#if (NGX_WIN32)
+            /* Winsock returns WSAEWOULDBLOCK (NGX_EAGAIN) */
+            && err != NGX_EAGAIN
+#endif
+            )
+        {
+            if (err == NGX_ECONNREFUSED
+#if (NGX_LINUX)
+                /*
+                 * Linux returns EAGAIN instead of ECONNREFUSED
+                 * for unix sockets if listen queue is full
+                 */
+                || err == NGX_EAGAIN
+#endif
+                || err == NGX_ECONNRESET
+                || err == NGX_ENETDOWN
+                || err == NGX_ENETUNREACH
+                || err == NGX_EHOSTDOWN
+                || err == NGX_EHOSTUNREACH)
+            {
+                level = NGX_LOG_ERR;
+
+            } else {
+                level = NGX_LOG_CRIT;
+            }
+
+            ngx_log_error(level, c->log, err, "connect() to %V failed",
+                          &rec->server);
+
+            ngx_close_connection(c);
+            rec->tcp = NULL;
+
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_add_conn) {
+        if (rc == -1) {
+
+            /* NGX_EINPROGRESS */
+
+            return NGX_AGAIN;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, &rec->log, 0, "connected");
+
+        wev->ready = 1;
+
+        return NGX_OK;
+    }
+
+    if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, &rec->log, ngx_socket_errno,
+                       "connect(): %d", rc);
+
+        if (ngx_blocking(s) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, &rec->log, ngx_socket_errno,
+                          ngx_blocking_n " failed");
+            goto failed;
+        }
+
+        /*
+         * FreeBSD's aio allows to post an operation on non-connected socket.
+         * NT does not support it.
+         *
+         * TODO: check in Win32, etc. As workaround we can use NGX_ONESHOT_EVENT
+         */
+
+        rev->ready = 1;
+        wev->ready = 1;
+
+        return NGX_OK;
+    }
+
+    if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
+
+        /* kqueue */
+
+        event = NGX_CLEAR_EVENT;
+
+    } else {
+
+        /* select, poll, /dev/poll */
+
+        event = NGX_LEVEL_EVENT;
+    }
+
+    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
+        goto failed;
+    }
+
+    if (rc == -1) {
+
+        /* NGX_EINPROGRESS */
+
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, event) != NGX_OK) {
+            goto failed;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, &rec->log, 0, "connected");
+
+    wev->ready = 1;
+
+    return NGX_OK;
+
+failed:
+
+    ngx_close_connection(c);
+    rec->tcp = NULL;
 
     return NGX_ERROR;
 }
