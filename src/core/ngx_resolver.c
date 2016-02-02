@@ -1215,6 +1215,7 @@ ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
 
             b->start = ngx_resolver_alloc(r, NGX_RESOLVER_TCP_RSIZE);
             if (b->start == NULL) {
+                ngx_resolver_free(r, b);
                 return NGX_ERROR;
             }
 
@@ -1236,6 +1237,7 @@ ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
 
             b->start = ngx_resolver_alloc(r, NGX_RESOLVER_TCP_WSIZE);
             if (b->start == NULL) {
+                ngx_resolver_free(r, b);
                 return NGX_ERROR;
             }
 
