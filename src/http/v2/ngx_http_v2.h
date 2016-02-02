@@ -167,7 +167,6 @@ struct ngx_http_v2_stream_s {
     ngx_http_v2_connection_t        *connection;
     ngx_http_v2_node_t              *node;
 
-    ngx_uint_t                       header_buffers;
     ngx_uint_t                       queued;
 
     /*
