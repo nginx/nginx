@@ -1733,10 +1733,20 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end, ngx_http_v2_handler_pt handler)
 {
     u_char    *p;
-    size_t     len;
+    size_t     len, skip;
     uint32_t   head;
 
     len = h2c->state.length;
+
+    if (h2c->state.padding && (size_t) (end - pos) > len) {
+        skip = ngx_min(h2c->state.padding, (end - pos) - len);
+
+        h2c->state.padding -= skip;
+
+        p = pos;
+        pos += skip;
+        ngx_memmove(pos, p, len);
+    }
 
     if ((size_t) (end - pos) < len + NGX_HTTP_V2_FRAME_HEADER_SIZE) {
         return ngx_http_v2_state_save(h2c, pos, end, handler);
