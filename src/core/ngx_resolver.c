@@ -295,6 +295,16 @@ ngx_resolver_cleanup(void *data)
             if (rec[i].tcp) {
                 ngx_close_connection(rec[i].tcp);
             }
+
+            if (rec[i].read_buf) {
+                ngx_resolver_free(r, rec[i].read_buf->start);
+                ngx_resolver_free(r, rec[i].read_buf);
+            }
+
+            if (rec[i].write_buf) {
+                ngx_resolver_free(r, rec[i].write_buf->start);
+                ngx_resolver_free(r, rec[i].write_buf);
+            }
         }
 
         ngx_free(r);
