@@ -1185,6 +1185,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
+    stream->request->request_length = h2c->state.length;
+
     stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
     stream->node = node;
 
@@ -1751,7 +1753,6 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
-    h2c->state.length += ngx_http_v2_parse_length(head);
     h2c->state.flags |= p[4];
 
     if (h2c->state.sid != ngx_http_v2_parse_sid(&p[5])) {
@@ -1765,6 +1766,14 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     pos += NGX_HTTP_V2_FRAME_HEADER_SIZE;
 
     ngx_memcpy(pos, p, len);
+
+    len = ngx_http_v2_parse_length(head);
+
+    h2c->state.length += len;
+
+    if (h2c->state.stream) {
+        h2c->state.stream->request->request_length += len;
+    }
 
     h2c->state.handler = handler;
     return pos;
