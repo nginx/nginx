@@ -251,7 +251,7 @@ ngx_http_v2_init(ngx_event_t *rev)
         return;
     }
 
-    cln = ngx_pool_cleanup_add(c->pool, sizeof(ngx_pool_cleanup_file_t));
+    cln = ngx_pool_cleanup_add(c->pool, 0);
     if (cln == NULL) {
         ngx_http_close_connection(c);
         return;
