@@ -237,12 +237,12 @@ ngx_mail_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+    for (m = 0; cf->cycle->modules[m]; m++) {
+        if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cf->cycle->modules[m]->ctx;
 
         if (module->create_srv_conf) {
             mconf = module->create_srv_conf(cf);
@@ -250,7 +250,7 @@ ngx_mail_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
-            ctx->srv_conf[ngx_modules[m]->ctx_index] = mconf;
+            ctx->srv_conf[cf->cycle->modules[m]->ctx_index] = mconf;
         }
     }
 
@@ -392,12 +392,12 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
     if (cscf->protocol == NULL) {
-        for (m = 0; ngx_modules[m]; m++) {
-            if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+        for (m = 0; cf->cycle->modules[m]; m++) {
+            if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
                 continue;
             }
 
-            module = ngx_modules[m]->ctx;
+            module = cf->cycle->modules[m]->ctx;
 
             if (module->protocol == NULL) {
                 continue;
@@ -595,12 +595,12 @@ ngx_mail_core_protocol(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+    for (m = 0; cf->cycle->modules[m]; m++) {
+        if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cf->cycle->modules[m]->ctx;
 
         if (module->protocol
             && ngx_strcmp(module->protocol->name.data, value[1].data) == 0)

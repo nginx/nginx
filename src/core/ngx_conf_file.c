@@ -329,9 +329,9 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
     found = 0;
 
-    for (i = 0; ngx_modules[i]; i++) {
+    for (i = 0; cf->cycle->modules[i]; i++) {
 
-        cmd = ngx_modules[i]->commands;
+        cmd = cf->cycle->modules[i]->commands;
         if (cmd == NULL) {
             continue;
         }
@@ -348,8 +348,8 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
             found = 1;
 
-            if (ngx_modules[i]->type != NGX_CONF_MODULE
-                && ngx_modules[i]->type != cf->module_type)
+            if (cf->cycle->modules[i]->type != NGX_CONF_MODULE
+                && cf->cycle->modules[i]->type != cf->module_type)
             {
                 continue;
             }
@@ -411,16 +411,16 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             conf = NULL;
 
             if (cmd->type & NGX_DIRECT_CONF) {
-                conf = ((void **) cf->ctx)[ngx_modules[i]->index];
+                conf = ((void **) cf->ctx)[cf->cycle->modules[i]->index];
 
             } else if (cmd->type & NGX_MAIN_CONF) {
-                conf = &(((void **) cf->ctx)[ngx_modules[i]->index]);
+                conf = &(((void **) cf->ctx)[cf->cycle->modules[i]->index]);
 
             } else if (cf->ctx) {
                 confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                 if (confp) {
-                    conf = confp[ngx_modules[i]->ctx_index];
+                    conf = confp[cf->cycle->modules[i]->ctx_index];
                 }
             }
 

@@ -606,16 +606,16 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
+    for (m = 0; cycle->modules[m]; m++) {
+        if (cycle->modules[m]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        if (ngx_modules[m]->ctx_index != ecf->use) {
+        if (cycle->modules[m]->ctx_index != ecf->use) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cycle->modules[m]->ctx;
 
         if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
             /* fatal */
@@ -905,16 +905,17 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *(void **) conf = ctx;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
+    for (i = 0; cf->cycle->modules[i]; i++) {
+        if (cf->cycle->modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        m = ngx_modules[i]->ctx;
+        m = cf->cycle->modules[i]->ctx;
 
         if (m->create_conf) {
-            (*ctx)[ngx_modules[i]->ctx_index] = m->create_conf(cf->cycle);
-            if ((*ctx)[ngx_modules[i]->ctx_index] == NULL) {
+            (*ctx)[cf->cycle->modules[i]->ctx_index] =
+                                                     m->create_conf(cf->cycle);
+            if ((*ctx)[cf->cycle->modules[i]->ctx_index] == NULL) {
                 return NGX_CONF_ERROR;
             }
         }
@@ -933,15 +934,16 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return rv;
     }
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
+    for (i = 0; cf->cycle->modules[i]; i++) {
+        if (cf->cycle->modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        m = ngx_modules[i]->ctx;
+        m = cf->cycle->modules[i]->ctx;
 
         if (m->init_conf) {
-            rv = m->init_conf(cf->cycle, (*ctx)[ngx_modules[i]->ctx_index]);
+            rv = m->init_conf(cf->cycle,
+                              (*ctx)[cf->cycle->modules[i]->ctx_index]);
             if (rv != NGX_CONF_OK) {
                 return rv;
             }
@@ -1002,15 +1004,15 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
+    for (m = 0; cf->cycle->modules[m]; m++) {
+        if (cf->cycle->modules[m]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cf->cycle->modules[m]->ctx;
         if (module->name->len == value[1].len) {
             if (ngx_strcmp(module->name->data, value[1].data) == 0) {
-                ecf->use = ngx_modules[m]->ctx_index;
+                ecf->use = cf->cycle->modules[m]->ctx_index;
                 ecf->name = module->name->data;
 
                 if (ngx_process == NGX_PROCESS_SINGLE
@@ -1225,20 +1227,20 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 #endif
 
     if (module == NULL) {
-        for (i = 0; ngx_modules[i]; i++) {
+        for (i = 0; cycle->modules[i]; i++) {
 
-            if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
+            if (cycle->modules[i]->type != NGX_EVENT_MODULE) {
                 continue;
             }
 
-            event_module = ngx_modules[i]->ctx;
+            event_module = cycle->modules[i]->ctx;
 
             if (ngx_strcmp(event_module->name->data, event_core_name.data) == 0)
             {
                 continue;
             }
 
-            module = ngx_modules[i];
+            module = cycle->modules[i];
             break;
         }
     }

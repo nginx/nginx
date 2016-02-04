@@ -32,9 +32,9 @@ ngx_init_modules(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_module) {
-            if (ngx_modules[i]->init_module(cycle) != NGX_OK) {
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->init_module) {
+            if (cycle->modules[i]->init_module(cycle) != NGX_OK) {
                 return NGX_ERROR;
             }
         }
@@ -53,12 +53,12 @@ ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
 
     /* count appropriate modules, set up their indices */
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != type) {
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->type != type) {
             continue;
         }
 
-        ngx_modules[i]->ctx_index = max++;
+        cycle->modules[i]->ctx_index = max++;
     }
 
     return max;

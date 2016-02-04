@@ -294,9 +294,9 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_process) {
-            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->init_process) {
+            if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
                 /* fatal */
                 exit(2);
             }
@@ -310,9 +310,9 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
         if (ngx_terminate || ngx_quit) {
 
-            for (i = 0; ngx_modules[i]; i++) {
-                if (ngx_modules[i]->exit_process) {
-                    ngx_modules[i]->exit_process(cycle);
+            for (i = 0; cycle->modules[i]; i++) {
+                if (cycle->modules[i]->exit_process) {
+                    cycle->modules[i]->exit_process(cycle);
                 }
             }
 
@@ -689,9 +689,9 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->exit_master) {
-            ngx_modules[i]->exit_master(cycle);
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->exit_master) {
+            cycle->modules[i]->exit_master(cycle);
         }
     }
 
@@ -895,9 +895,9 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         ls[i].previous = NULL;
     }
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->init_process) {
-            if (ngx_modules[i]->init_process(cycle) == NGX_ERROR) {
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->init_process) {
+            if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
                 /* fatal */
                 exit(2);
             }
@@ -949,9 +949,9 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     ngx_uint_t         i;
     ngx_connection_t  *c;
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->exit_process) {
-            ngx_modules[i]->exit_process(cycle);
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->exit_process) {
+            cycle->modules[i]->exit_process(cycle);
         }
     }
 

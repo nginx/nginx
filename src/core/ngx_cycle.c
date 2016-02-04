@@ -212,12 +212,15 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_strlow(cycle->hostname.data, (u_char *) hostname, cycle->hostname.len);
 
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
+    cycle->modules = ngx_modules;
+
+
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->type != NGX_CORE_MODULE) {
             continue;
         }
 
-        module = ngx_modules[i]->ctx;
+        module = cycle->modules[i]->ctx;
 
         if (module->create_conf) {
             rv = module->create_conf(cycle);
@@ -225,7 +228,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 ngx_destroy_pool(pool);
                 return NULL;
             }
-            cycle->conf_ctx[ngx_modules[i]->index] = rv;
+            cycle->conf_ctx[cycle->modules[i]->index] = rv;
         }
     }
 
@@ -276,15 +279,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                        cycle->conf_file.data);
     }
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_CORE_MODULE) {
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->type != NGX_CORE_MODULE) {
             continue;
         }
 
-        module = ngx_modules[i]->ctx;
+        module = cycle->modules[i]->ctx;
 
         if (module->init_conf) {
-            if (module->init_conf(cycle, cycle->conf_ctx[ngx_modules[i]->index])
+            if (module->init_conf(cycle,
+                                  cycle->conf_ctx[cycle->modules[i]->index])
                 == NGX_CONF_ERROR)
             {
                 environ = senv;

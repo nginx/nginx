@@ -560,12 +560,12 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_HTTP_MODULE) {
+    for (i = 0; cf->cycle->modules[i]; i++) {
+        if (cf->cycle->modules[i]->type != NGX_HTTP_MODULE) {
             continue;
         }
 
-        module = ngx_modules[i]->ctx;
+        module = cf->cycle->modules[i]->ctx;
 
         if (module->create_loc_conf) {
 
@@ -574,7 +574,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                  return NGX_CONF_ERROR;
             }
 
-            ctx->loc_conf[ngx_modules[i]->ctx_index] = mconf;
+            ctx->loc_conf[cf->cycle->modules[i]->ctx_index] = mconf;
         }
     }
 
