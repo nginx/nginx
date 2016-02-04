@@ -55,6 +55,45 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
 fi
 
 
+HTTP_MODULES=
+HTTP_DEPS=
+HTTP_INCS=
+
+ngx_module_type=HTTP
+
+if :; then
+    ngx_module_name="ngx_http_module \
+                     ngx_http_core_module \
+                     ngx_http_log_module \
+                     ngx_http_upstream_module"
+    ngx_module_incs="src/http src/http/modules"
+    ngx_module_deps="src/http/ngx_http.h \
+                     src/http/ngx_http_request.h \
+                     src/http/ngx_http_config.h \
+                     src/http/ngx_http_core_module.h \
+                     src/http/ngx_http_cache.h \
+                     src/http/ngx_http_variables.h \
+                     src/http/ngx_http_script.h \
+                     src/http/ngx_http_upstream.h \
+                     src/http/ngx_http_upstream_round_robin.h"
+    ngx_module_srcs="src/http/ngx_http.c \
+                     src/http/ngx_http_core_module.c \
+                     src/http/ngx_http_special_response.c \
+                     src/http/ngx_http_request.c \
+                     src/http/ngx_http_parse.c \
+                     src/http/modules/ngx_http_log_module.c \
+                     src/http/ngx_http_request_body.c \
+                     src/http/ngx_http_variables.c \
+                     src/http/ngx_http_script.c \
+                     src/http/ngx_http_upstream.c \
+                     src/http/ngx_http_upstream_round_robin.c"
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
+
+
 if [ $HTTP != YES ]; then
     have=NGX_CRYPT . auto/nohave
     CRYPT_LIB=
@@ -117,303 +156,871 @@ fi
 #     ngx_http_not_modified_filter
 #     ngx_http_slice_filter
 
-HTTP_FILTER_MODULES="$HTTP_WRITE_FILTER_MODULE \
-                     $HTTP_HEADER_FILTER_MODULE \
-                     $HTTP_CHUNKED_FILTER_MODULE"
+ngx_module_type=HTTP_FILTER
+HTTP_FILTER_MODULES=
 
-if [ $HTTP_V2 = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_V2_FILTER_MODULE"
+if :; then
+    ngx_module_name=ngx_http_write_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/ngx_http_write_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
 fi
 
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_RANGE_HEADER_FILTER_MODULE"
+if :; then
+    ngx_module_name=ngx_http_header_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/ngx_http_header_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
+
+if :; then
+    ngx_module_name=ngx_http_chunked_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_chunked_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
+
+if [ $HTTP_V2 = YES ]; then
+    ngx_module_name=ngx_http_v2_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/v2/ngx_http_v2_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_V2
+
+    . auto/module
+fi
+
+if :; then
+    ngx_module_name=ngx_http_range_header_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_range_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
 
 if [ $HTTP_GZIP = YES ]; then
     have=NGX_HTTP_GZIP . auto/have
     USE_ZLIB=YES
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_GZIP_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_GZIP_SRCS"
+
+    ngx_module_name=ngx_http_gzip_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_gzip_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_GZIP
+
+    . auto/module
 fi
 
 if [ $HTTP_POSTPONE = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_POSTPONE_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_POSTPONE_FILTER_SRCS"
+    ngx_module_name=ngx_http_postpone_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/ngx_http_postpone_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_POSTPONE
+
+    . auto/module
 fi
 
 if [ $HTTP_SSI = YES ]; then
     have=NGX_HTTP_SSI . auto/have
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SSI_FILTER_MODULE"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_SSI_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SSI_SRCS"
+
+    ngx_module_name=ngx_http_ssi_filter_module
+    ngx_module_incs=
+    ngx_module_deps=src/http/modules/ngx_http_ssi_filter_module.h
+    ngx_module_srcs=src/http/modules/ngx_http_ssi_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SSI
+
+    . auto/module
 fi
 
 if [ $HTTP_CHARSET = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_CHARSET_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_CHARSET_SRCS"
+    ngx_module_name=ngx_http_charset_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_charset_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_CHARSET
+
+    . auto/module
 fi
 
 if [ $HTTP_XSLT = YES ]; then
-    USE_LIBXSLT=YES
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_XSLT_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_XSLT_SRCS"
+    ngx_module_name=ngx_http_xslt_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_xslt_filter_module.c
+    ngx_module_libs=LIBXSLT
+    ngx_module_link=$HTTP_XSLT
+
+    . auto/module
 fi
 
 if [ $HTTP_IMAGE_FILTER = YES ]; then
-    USE_LIBGD=YES
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_IMAGE_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_IMAGE_SRCS"
+    ngx_module_name=ngx_http_image_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_image_filter_module.c
+    ngx_module_libs=LIBGD
+    ngx_module_link=$HTTP_IMAGE_FILTER
+
+    . auto/module
 fi
 
 if [ $HTTP_SUB = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_SUB_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SUB_SRCS"
+    ngx_module_name=ngx_http_sub_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_sub_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SUB
+
+    . auto/module
 fi
 
 if [ $HTTP_ADDITION = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_ADDITION_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_ADDITION_SRCS"
+    ngx_module_name=ngx_http_addition_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_addition_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SUB
+
+    . auto/module
 fi
 
 if [ $HTTP_GUNZIP = YES ]; then
     have=NGX_HTTP_GZIP . auto/have
     USE_ZLIB=YES
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_GUNZIP_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_GUNZIP_SRCS"
+
+    ngx_module_name=ngx_http_gunzip_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_gunzip_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_GUNZIP
+
+    . auto/module
 fi
 
 if [ $HTTP_USERID = YES ]; then
-    HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_USERID_FILTER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_USERID_SRCS"
+    ngx_module_name=ngx_http_userid_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_userid_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_USERID
+
+    . auto/module
 fi
 
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES $HTTP_HEADERS_FILTER_MODULE"
+if :; then
+    ngx_module_name=ngx_http_headers_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_headers_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
 
 
-HTTP_INIT_FILTER_MODULES="$HTTP_COPY_FILTER_MODULE \
-                          $HTTP_RANGE_BODY_FILTER_MODULE \
-                          $HTTP_NOT_MODIFIED_FILTER_MODULE"
+ngx_module_type=HTTP_INIT_FILTER
+HTTP_INIT_FILTER_MODULES=
+
+if :; then
+    ngx_module_name=ngx_http_copy_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/ngx_http_copy_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
+
+if :; then
+    ngx_module_name=ngx_http_range_body_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
+
+if :; then
+    ngx_module_name=ngx_http_not_modified_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_not_modified_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
 
 if [ $HTTP_SLICE = YES ]; then
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SLICE_SRCS"
-    HTTP_INIT_FILTER_MODULES="$HTTP_INIT_FILTER_MODULES \
-                              $HTTP_SLICE_FILTER_MODULE"
+    ngx_module_name=ngx_http_slice_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_slice_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SLICE
+
+    . auto/module
 fi
 
+
+ngx_module_type=HTTP
 
 if [ $HTTP_V2 = YES ]; then
     have=NGX_HTTP_V2 . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_V2_MODULE"
-    HTTP_INCS="$HTTP_INCS $HTTP_V2_INCS"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_V2_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_V2_SRCS"
+
+    ngx_module_name=ngx_http_v2_module
+    ngx_module_incs=src/http/v2
+    ngx_module_deps="src/http/v2/ngx_http_v2.h src/http/v2/ngx_http_v2_module.h"
+    ngx_module_srcs="src/http/v2/ngx_http_v2.c \
+                     src/http/v2/ngx_http_v2_table.c \
+                     src/http/v2/ngx_http_v2_huff_decode.c \
+                     src/http/v2/ngx_http_v2_huff_encode.c \
+                     src/http/v2/ngx_http_v2_module.c"
+    ngx_module_libs=
+    ngx_module_link=$HTTP_V2
+
+    . auto/module
 fi
 
-HTTP_MODULES="$HTTP_MODULES $HTTP_STATIC_MODULE"
+if :; then
+    ngx_module_name=ngx_http_static_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_static_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
 
 if [ $HTTP_GZIP_STATIC = YES ]; then
     have=NGX_HTTP_GZIP . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_GZIP_STATIC_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_GZIP_STATIC_SRCS"
+
+    ngx_module_name=ngx_http_gzip_static_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_gzip_static_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_GZIP_STATIC
+
+    . auto/module
 fi
 
 if [ $HTTP_DAV = YES ]; then
     have=NGX_HTTP_DAV . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_DAV_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_DAV_SRCS"
+
+    ngx_module_name=ngx_http_dav_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_dav_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_DAV
+
+    . auto/module
 fi
 
 if [ $HTTP_AUTOINDEX = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_AUTOINDEX_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_AUTOINDEX_SRCS"
+    ngx_module_name=ngx_http_autoindex_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_autoindex_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_AUTOINDEX
+
+    . auto/module
 fi
 
-HTTP_MODULES="$HTTP_MODULES $HTTP_INDEX_MODULE"
+if :; then
+    ngx_module_name=ngx_http_index_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_index_module.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
+fi
 
 if [ $HTTP_RANDOM_INDEX = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_RANDOM_INDEX_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_RANDOM_INDEX_SRCS"
+    ngx_module_name=ngx_http_random_index_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_random_index_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_RANDOM_INDEX
+
+    . auto/module
 fi
 
 if [ $HTTP_AUTH_REQUEST = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_AUTH_REQUEST_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_AUTH_REQUEST_SRCS"
+    ngx_module_name=ngx_http_auth_request_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_auth_request_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_AUTH_REQUEST
+
+    . auto/module
 fi
 
 if [ $HTTP_AUTH_BASIC = YES ]; then
     USE_MD5=YES
     USE_SHA1=YES
     have=NGX_CRYPT . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_AUTH_BASIC_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_AUTH_BASIC_SRCS"
+
+    ngx_module_name=ngx_http_auth_basic_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_auth_basic_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_AUTH_BASIC
+
+    . auto/module
     CORE_LIBS="$CORE_LIBS $CRYPT_LIB"
 fi
 
 if [ $HTTP_ACCESS = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_ACCESS_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_ACCESS_SRCS"
+    ngx_module_name=ngx_http_access_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_access_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_ACCESS
+
+    . auto/module
 fi
 
 if [ $HTTP_LIMIT_CONN = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_LIMIT_CONN_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_LIMIT_CONN_SRCS"
+    ngx_module_name=ngx_http_limit_conn_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_limit_conn_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_LIMIT_CONN
+
+    . auto/module
 fi
 
 if [ $HTTP_LIMIT_REQ = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_LIMIT_REQ_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_LIMIT_REQ_SRCS"
+    ngx_module_name=ngx_http_limit_req_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_limit_req_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_LIMIT_REQ
+
+    . auto/module
 fi
 
 if [ $HTTP_REALIP = YES ]; then
     have=NGX_HTTP_REALIP . auto/have
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_REALIP_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_REALIP_SRCS"
+
+    ngx_module_name=ngx_http_realip_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_realip_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_REALIP
+
+    . auto/module
 fi
 
 if [ $HTTP_STATUS = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_STATUS_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_STATUS_SRCS"
+    ngx_module_name=ngx_http_status_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_status_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_STATUS
+
+    . auto/module
 fi
 
 if [ $HTTP_GEO = YES ]; then
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_GEO_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_GEO_SRCS"
+
+    ngx_module_name=ngx_http_geo_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_geo_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_GEO
+
+    . auto/module
 fi
 
 if [ $HTTP_GEOIP = YES ]; then
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_GEOIP_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_GEOIP_SRCS"
+
+    ngx_module_name=ngx_http_geoip_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_geoip_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_GEOIP
+
+    . auto/module
 fi
 
 if [ $HTTP_MAP = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_MAP_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_MAP_SRCS"
+    ngx_module_name=ngx_http_map_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_map_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_MAP
+
+    . auto/module
 fi
 
 if [ $HTTP_SPLIT_CLIENTS = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_SPLIT_CLIENTS_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SPLIT_CLIENTS_SRCS"
+    ngx_module_name=ngx_http_split_clients_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_split_clients_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SPLIT_CLIENTS
+
+    . auto/module
 fi
 
 if [ $HTTP_REFERER = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_REFERER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_REFERER_SRCS"
+    ngx_module_name=ngx_http_referer_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_referer_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_REFERER
+
+    . auto/module
 fi
 
 if [ $HTTP_REWRITE = YES -a $USE_PCRE != DISABLED ]; then
     USE_PCRE=YES
-    HTTP_MODULES="$HTTP_MODULES $HTTP_REWRITE_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_REWRITE_SRCS"
+
+    ngx_module_name=ngx_http_rewrite_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_rewrite_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_REWRITE
+
+    . auto/module
 fi
 
 if [ $HTTP_SSL = YES ]; then
     USE_OPENSSL=YES
     have=NGX_HTTP_SSL . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_SSL_MODULE"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_SSL_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SSL_SRCS"
+
+    ngx_module_name=ngx_http_ssl_module
+    ngx_module_incs=
+    ngx_module_deps=src/http/modules/ngx_http_ssl_module.h
+    ngx_module_srcs=src/http/modules/ngx_http_ssl_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SSL
+
+    . auto/module
 fi
 
 if [ $HTTP_PROXY = YES ]; then
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
     #USE_MD5=YES
-    HTTP_MODULES="$HTTP_MODULES $HTTP_PROXY_MODULE"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_PROXY_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_PROXY_SRCS"
+
+    ngx_module_name=ngx_http_proxy_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_proxy_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_PROXY
+
+    . auto/module
 fi
 
 if [ $HTTP_FASTCGI = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_FASTCGI_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_FASTCGI_SRCS"
+    ngx_module_name=ngx_http_fastcgi_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_fastcgi_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_FASTCGI
+
+    . auto/module
 fi
 
 if [ $HTTP_UWSGI = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UWSGI_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UWSGI_SRCS"
+    ngx_module_name=ngx_http_uwsgi_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_uwsgi_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UWSGI
+
+    . auto/module
 fi
 
 if [ $HTTP_SCGI = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_SCGI_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SCGI_SRCS"
+    ngx_module_name=ngx_http_scgi_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_scgi_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SCGI
+
+    . auto/module
 fi
 
 if [ $HTTP_PERL = YES ]; then
     USE_PERL=YES
-    HTTP_MODULES="$HTTP_MODULES $HTTP_PERL_MODULE"
-    HTTP_INCS="$HTTP_INCS $HTTP_PERL_INCS"
-    HTTP_DEPS="$HTTP_DEPS $HTTP_PERL_DEPS"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_PERL_SRCS"
+
+    ngx_module_name=ngx_http_perl_module
+    ngx_module_incs=src/http/modules/perl
+    ngx_module_deps=src/http/modules/perl/ngx_http_perl_module.h
+    ngx_module_srcs=src/http/modules/perl/ngx_http_perl_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_PERL
+
+    . auto/module
 fi
 
 if [ $HTTP_MEMCACHED = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_MEMCACHED_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_MEMCACHED_SRCS"
+    ngx_module_name=ngx_http_memcached_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_memcached_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_MEMCACHED
+
+    . auto/module
 fi
 
 if [ $HTTP_EMPTY_GIF = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_EMPTY_GIF_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_EMPTY_GIF_SRCS"
+    ngx_module_name=ngx_http_empty_gif_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_empty_gif_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_EMPTY_GIF
+
+    . auto/module
 fi
 
 if [ $HTTP_BROWSER = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_BROWSER_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_BROWSER_SRCS"
+    ngx_module_name=ngx_http_browser_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_browser_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_BROWSER
+
+    . auto/module
 fi
 
 if [ $HTTP_SECURE_LINK = YES ]; then
     USE_MD5=YES
-    HTTP_MODULES="$HTTP_MODULES $HTTP_SECURE_LINK_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_SECURE_LINK_SRCS"
+
+    ngx_module_name=ngx_http_secure_link_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_secure_link_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SECURE_LINK
+
+    . auto/module
 fi
 
 if [ $HTTP_DEGRADATION = YES ]; then
     have=NGX_HTTP_DEGRADATION . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_DEGRADATION_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_DEGRADATION_SRCS"
+
+    ngx_module_name=ngx_http_degradation_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_degradation_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_DEGRADATION
+
+    . auto/module
 fi
 
 if [ $HTTP_FLV = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_FLV_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_FLV_SRCS"
+    ngx_module_name=ngx_http_flv_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_flv_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_FLV
+
+    . auto/module
 fi
 
 if [ $HTTP_MP4 = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_MP4_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_MP4_SRCS"
+    ngx_module_name=ngx_http_mp4_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_mp4_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_MP4
+
+    . auto/module
 fi
 
 if [ $HTTP_UPSTREAM_HASH = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UPSTREAM_HASH_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UPSTREAM_HASH_SRCS"
+    ngx_module_name=ngx_http_upstream_hash_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_upstream_hash_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UPSTREAM_HASH
+
+    . auto/module
 fi
 
 if [ $HTTP_UPSTREAM_IP_HASH = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UPSTREAM_IP_HASH_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UPSTREAM_IP_HASH_SRCS"
+    ngx_module_name=ngx_http_upstream_ip_hash_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_upstream_ip_hash_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UPSTREAM_IP_HASH
+
+    . auto/module
 fi
 
 if [ $HTTP_UPSTREAM_LEAST_CONN = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UPSTREAM_LEAST_CONN_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UPSTREAM_LEAST_CONN_SRCS"
+    ngx_module_name=ngx_http_upstream_least_conn_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_upstream_least_conn_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UPSTREAM_LEAST_CONN
+
+    . auto/module
 fi
 
 if [ $HTTP_UPSTREAM_KEEPALIVE = YES ]; then
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UPSTREAM_KEEPALIVE_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UPSTREAM_KEEPALIVE_SRCS"
+    ngx_module_name=ngx_http_upstream_keepalive_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_upstream_keepalive_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UPSTREAM_KEEPALIVE
+
+    . auto/module
 fi
 
 if [ $HTTP_UPSTREAM_ZONE = YES ]; then
     have=NGX_HTTP_UPSTREAM_ZONE . auto/have
-    HTTP_MODULES="$HTTP_MODULES $HTTP_UPSTREAM_ZONE_MODULE"
-    HTTP_SRCS="$HTTP_SRCS $HTTP_UPSTREAM_ZONE_SRCS"
+
+    ngx_module_name=ngx_http_upstream_zone_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_upstream_zone_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_UPSTREAM_ZONE
+
+    . auto/module
 fi
 
 if [ $HTTP_STUB_STATUS = YES ]; then
     have=NGX_STAT_STUB . auto/have
-    HTTP_MODULES="$HTTP_MODULES ngx_http_stub_status_module"
-    HTTP_SRCS="$HTTP_SRCS src/http/modules/ngx_http_stub_status_module.c"
+
+    ngx_module_name=ngx_http_stub_status_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/modules/ngx_http_stub_status_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_STUB_STATUS
+
+    . auto/module
 fi
+
+
+if [ $MAIL == YES ]; then
+    MAIL_MODULES=
+    MAIL_DEPS=
+    MAIL_INCS=
+
+    ngx_module_type=MAIL
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    ngx_module_name="ngx_mail_module ngx_mail_core_module"
+    ngx_module_incs="src/mail"
+    ngx_module_deps="src/mail/ngx_mail.h"
+    ngx_module_srcs="src/mail/ngx_mail.c \
+                     src/mail/ngx_mail_core_module.c \
+                     src/mail/ngx_mail_handler.c \
+                     src/mail/ngx_mail_parse.c"
+
+    . auto/module
+
+    ngx_module_incs=
+
+    if [ $MAIL_SSL = YES ]; then
+        USE_OPENSSL=YES
+        have=NGX_MAIL_SSL . auto/have
+
+        ngx_module_name=ngx_mail_ssl_module
+        ngx_module_deps=src/mail/ngx_mail_ssl_module.h
+        ngx_module_srcs=src/mail/ngx_mail_ssl_module.c
+
+        . auto/module
+    fi
+
+    if [ $MAIL_POP3 = YES ]; then
+        ngx_module_name=ngx_mail_pop3_module
+        ngx_module_deps=src/mail/ngx_mail_pop3_module.h
+        ngx_module_srcs="src/mail/ngx_mail_pop3_module.c \
+                         src/mail/ngx_mail_pop3_handler.c"
+
+        . auto/module
+    fi
+
+    if [ $MAIL_IMAP = YES ]; then
+        ngx_module_name=ngx_mail_imap_module
+        ngx_module_deps=src/mail/ngx_mail_imap_module.h
+        ngx_module_srcs="src/mail/ngx_mail_imap_module.c \
+                         src/mail/ngx_mail_imap_handler.c"
+
+        . auto/module
+    fi
+
+    if [ $MAIL_SMTP = YES ]; then
+        ngx_module_name=ngx_mail_smtp_module
+        ngx_module_deps=src/mail/ngx_mail_smtp_module.h
+        ngx_module_srcs="src/mail/ngx_mail_smtp_module.c \
+                         src/mail/ngx_mail_smtp_handler.c"
+
+        . auto/module
+    fi
+
+    ngx_module_name=ngx_mail_auth_http_module
+    ngx_module_deps=
+    ngx_module_srcs=src/mail/ngx_mail_auth_http_module.c
+
+    . auto/module
+
+    ngx_module_name=ngx_mail_proxy_module
+    ngx_module_deps=
+    ngx_module_srcs=src/mail/ngx_mail_proxy_module.c
+
+    . auto/module
+fi
+
+
+if [ $STREAM = YES ]; then
+    STREAM_MODULES=
+    STREAM_DEPS=
+    STREAM_INCS=
+
+    have=NGX_STREAM . auto/have
+
+    ngx_module_type=STREAM
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    ngx_module_name="ngx_stream_module \
+                     ngx_stream_core_module \
+                     ngx_stream_proxy_module \
+                     ngx_stream_upstream_module"
+    ngx_module_incs="src/stream"
+    ngx_module_deps="src/stream/ngx_stream.h \
+                     src/stream/ngx_stream_upstream.h \
+                     src/stream/ngx_stream_upstream_round_robin.h"
+    ngx_module_srcs="src/stream/ngx_stream.c \
+                     src/stream/ngx_stream_handler.c \
+                     src/stream/ngx_stream_core_module.c \
+                     src/stream/ngx_stream_proxy_module.c \
+                     src/stream/ngx_stream_upstream.c \
+                     src/stream/ngx_stream_upstream_round_robin.c"
+
+    . auto/module
+
+    ngx_module_incs=
+
+    if [ $STREAM_SSL = YES ]; then
+        USE_OPENSSL=YES
+        have=NGX_STREAM_SSL . auto/have
+
+        ngx_module_name=ngx_stream_ssl_module
+        ngx_module_deps=src/stream/ngx_stream_ssl_module.h
+        ngx_module_srcs=src/stream/ngx_stream_ssl_module.c
+
+        . auto/module
+    fi
+
+    if [ $STREAM_LIMIT_CONN = YES ]; then
+        ngx_module_name=ngx_stream_limit_conn_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_limit_conn_module.c
+
+        . auto/module
+    fi
+
+    if [ $STREAM_ACCESS = YES ]; then
+        ngx_module_name=ngx_stream_access_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_access_module.c
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_HASH = YES ]; then
+        ngx_module_name=ngx_stream_upstream_hash_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_hash_module.c
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_LEAST_CONN = YES ]; then
+        ngx_module_name=ngx_stream_upstream_least_conn_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_least_conn_module.c
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_ZONE = YES ]; then
+        have=NGX_STREAM_UPSTREAM_ZONE . auto/have
+
+        ngx_module_name=ngx_stream_upstream_zone_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_zone_module.c
+
+        . auto/module
+    fi
+fi
+
 
 #if [ -r $NGX_OBJS/auto ]; then
 #    . $NGX_OBJS/auto
@@ -428,6 +1035,14 @@ if test -n "$NGX_ADDONS"; then
     do
         echo "adding module in $ngx_addon_dir"
 
+        ngx_module_type=
+        ngx_module_name=
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=
+        ngx_module_libs=
+        ngx_module_link=ADDON
+
         if test -f $ngx_addon_dir/config; then
             . $ngx_addon_dir/config
 
@@ -441,15 +1056,30 @@ if test -n "$NGX_ADDONS"; then
 fi
 
 
-if [ $MAIL_SSL = YES ]; then
-    have=NGX_MAIL_SSL . auto/have
-    USE_OPENSSL=YES
+if [ $USE_OPENSSL = YES ]; then
+    ngx_module_type=CORE
+    ngx_module_name=ngx_openssl_module
+    ngx_module_incs=
+    ngx_module_deps=src/event/ngx_event_openssl.h
+    ngx_module_srcs="src/event/ngx_event_openssl.c
+                     src/event/ngx_event_openssl_stapling.c"
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
 fi
 
 
-if [ $STREAM_SSL = YES ]; then
-    have=NGX_STREAM_SSL . auto/have
-    USE_OPENSSL=YES
+if [ $USE_PCRE = YES ]; then
+    ngx_module_type=CORE
+    ngx_module_name=ngx_regex_module
+    ngx_module_incs=
+    ngx_module_deps=src/core/ngx_regex.h
+    ngx_module_srcs=src/core/ngx_regex.c
+    ngx_module_libs=
+    ngx_module_link=YES
+
+    . auto/module
 fi
 
 
@@ -462,18 +1092,6 @@ if [ $USE_THREADS = YES ]; then
 fi
 
 
-if [ $USE_OPENSSL = YES ]; then
-    modules="$modules $OPENSSL_MODULE"
-    CORE_DEPS="$CORE_DEPS $OPENSSL_DEPS"
-    CORE_SRCS="$CORE_SRCS $OPENSSL_SRCS"
-fi
-
-if [ $USE_PCRE = YES ]; then
-    modules="$modules $REGEX_MODULE"
-    CORE_DEPS="$CORE_DEPS $REGEX_DEPS"
-    CORE_SRCS="$CORE_SRCS $REGEX_SRCS"
-fi
-
 if [ $HTTP = YES ]; then
     modules="$modules $HTTP_MODULES $HTTP_FILTER_MODULES \
              $HTTP_AUX_FILTER_MODULES $HTTP_INIT_FILTER_MODULES"
@@ -484,91 +1102,42 @@ fi
 
 if [ $MAIL = YES ]; then
     modules="$modules $MAIL_MODULES"
-
-    if [ $MAIL_SSL = YES ]; then
-        modules="$modules $MAIL_SSL_MODULE"
-        MAIL_DEPS="$MAIL_DEPS $MAIL_SSL_DEPS"
-        MAIL_SRCS="$MAIL_SRCS $MAIL_SSL_SRCS"
-    fi
-
-    if [ $MAIL_POP3 = YES ]; then
-        modules="$modules $MAIL_POP3_MODULE"
-        MAIL_DEPS="$MAIL_DEPS $MAIL_POP3_DEPS"
-        MAIL_SRCS="$MAIL_SRCS $MAIL_POP3_SRCS"
-    fi
-
-    if [ $MAIL_IMAP = YES ]; then
-        modules="$modules $MAIL_IMAP_MODULE"
-        MAIL_DEPS="$MAIL_DEPS $MAIL_IMAP_DEPS"
-        MAIL_SRCS="$MAIL_SRCS $MAIL_IMAP_SRCS"
-    fi
-
-    if [ $MAIL_SMTP = YES ]; then
-        modules="$modules $MAIL_SMTP_MODULE"
-        MAIL_DEPS="$MAIL_DEPS $MAIL_SMTP_DEPS"
-        MAIL_SRCS="$MAIL_SRCS $MAIL_SMTP_SRCS"
-    fi
-
-    modules="$modules $MAIL_AUTH_HTTP_MODULE"
-    MAIL_SRCS="$MAIL_SRCS $MAIL_AUTH_HTTP_SRCS"
-
-    modules="$modules $MAIL_PROXY_MODULE"
-    MAIL_SRCS="$MAIL_SRCS $MAIL_PROXY_SRCS"
-
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(MAIL_DEPS)"
 fi
 
 
 if [ $STREAM = YES ]; then
-    have=NGX_STREAM . auto/have
     modules="$modules $STREAM_MODULES"
-
-    if [ $STREAM_SSL = YES ]; then
-        modules="$modules $STREAM_SSL_MODULE"
-        STREAM_DEPS="$STREAM_DEPS $STREAM_SSL_DEPS"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_SSL_SRCS"
-    fi
-
-    if [ $STREAM_LIMIT_CONN = YES ]; then
-        modules="$modules $STREAM_LIMIT_CONN_MODULE"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_LIMIT_CONN_SRCS"
-    fi
-
-    if [ $STREAM_ACCESS = YES ]; then
-        modules="$modules $STREAM_ACCESS_MODULE"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_ACCESS_SRCS"
-    fi
-
-    if [ $STREAM_UPSTREAM_HASH = YES ]; then
-        modules="$modules $STREAM_UPSTREAM_HASH_MODULE"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_HASH_SRCS"
-    fi
-
-    if [ $STREAM_UPSTREAM_LEAST_CONN = YES ]; then
-        modules="$modules $STREAM_UPSTREAM_LEAST_CONN_MODULE"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_LEAST_CONN_SRCS"
-    fi
-
-    if [ $STREAM_UPSTREAM_ZONE = YES ]; then
-        have=NGX_STREAM_UPSTREAM_ZONE . auto/have
-        modules="$modules $STREAM_UPSTREAM_ZONE_MODULE"
-        STREAM_SRCS="$STREAM_SRCS $STREAM_UPSTREAM_ZONE_SRCS"
-    fi
-
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(STREAM_DEPS)"
 fi
 
 
-if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
-    modules="$modules $NGX_GOOGLE_PERFTOOLS_MODULE"
-    NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_GOOGLE_PERFTOOLS_SRCS"
-fi
+ngx_module_type=MISC
+MISC_MODULES=
 
+if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
+    ngx_module_name=ngx_google_perftools_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/misc/ngx_google_perftools_module.c
+    ngx_module_libs=
+    ngx_module_link=$NGX_GOOGLE_PERFTOOLS
+
+    . auto/module
+fi
 
 if [ $NGX_CPP_TEST = YES ]; then
-    NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_CPP_TEST_SRCS"
-    CORE_LIBS="$CORE_LIBS -lstdc++"
+    ngx_module_name=
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/misc/ngx_cpp_test_module.cpp
+    ngx_module_libs=-lstdc++
+    ngx_module_link=$NGX_CPP_TEST
+
+    . auto/module
 fi
+
+modules="$modules $MISC_MODULES"
 
 
 cat << END                                    > $NGX_MODULES_C

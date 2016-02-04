@@ -148,7 +148,7 @@ END
 fi
 
 
-ngx_all_srcs="$ngx_all_srcs $NGX_MISC_SRCS"
+ngx_all_srcs="$ngx_all_srcs $MISC_SRCS"
 
 
 if test -n "$NGX_ADDON_SRCS"; then
@@ -365,11 +365,11 @@ fi
 
 # the misc sources
 
-if test -n "$NGX_MISC_SRCS"; then
+if test -n "$MISC_SRCS"; then
 
     ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
 
-    for ngx_src in $NGX_MISC_SRCS
+    for ngx_src in $MISC_SRCS
     do
         ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
         ngx_obj=`echo $ngx_src \

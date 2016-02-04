@@ -1,0 +1,71 @@
+
+# Copyright (C) Ruslan Ermilov
+# Copyright (C) Nginx, Inc.
+
+
+case $ngx_module_type in
+    HTTP_*) ngx_var=HTTP ;;
+    *)      ngx_var=$ngx_module_type ;;
+esac
+
+
+if [ "$ngx_module_link" = YES ]; then
+
+    eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
+                                      $ngx_module_name\"
+
+    eval ${ngx_var}_SRCS=\"\$${ngx_var}_SRCS $ngx_module_srcs\"
+
+    if test -n "$ngx_module_incs"; then
+        eval ${ngx_var}_INCS=\"\$${ngx_var}_INCS $ngx_module_incs\"
+    fi
+
+    if test -n "$ngx_module_deps"; then
+        eval ${ngx_var}_DEPS=\"\$${ngx_var}_DEPS $ngx_module_deps\"
+    fi
+
+    for lib in $ngx_module_libs
+    do
+        case $lib in
+
+            PCRE | OPENSSL | MD5 | SHA1 | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+                eval USE_${lib}=YES
+            ;;
+
+            *)
+                CORE_LIBS="$CORE_LIBS $lib"
+            ;;
+
+        esac
+    done
+
+elif [ "$ngx_module_link" = ADDON ]; then
+
+    eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
+                                      $ngx_module_name\"
+
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_module_srcs"
+
+    if test -n "$ngx_module_incs"; then
+        eval ${ngx_var}_INCS=\"\$${ngx_var}_INCS $ngx_module_incs\"
+    fi
+
+    if test -n "$ngx_module_deps"; then
+        NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ngx_module_deps"
+    fi
+
+    for lib in $ngx_module_libs
+    do
+        case $lib in
+
+            PCRE | OPENSSL | MD5 | SHA1 | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+                eval USE_${lib}=YES
+            ;;
+
+            *)
+                CORE_LIBS="$CORE_LIBS $lib"
+            ;;
+
+        esac
+    done
+fi
