@@ -215,8 +215,8 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->headers_out.server == NULL) {
-        len += 1 + clcf->server_tokens ? ngx_http_v2_literal_size(NGINX_VER)
-                                       : ngx_http_v2_literal_size("nginx");
+        len += 1 + (clcf->server_tokens ? ngx_http_v2_literal_size(NGINX_VER)
+                                        : ngx_http_v2_literal_size("nginx"));
     }
 
     if (r->headers_out.date == NULL) {
