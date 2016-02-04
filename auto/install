@@ -26,6 +26,18 @@ case ".$NGX_SBIN_PATH" in
 esac
 
 
+case ".$NGX_MODULES_PATH" in
+    ./*)
+    ;;
+
+    *)
+        NGX_MODULES_PATH=$NGX_PREFIX/$NGX_MODULES_PATH
+    ;;
+esac
+
+NGX_MODULES_PATH=`dirname $NGX_MODULES_PATH/.`
+
+
 case ".$NGX_CONF_PATH" in
     ./*)
     ;;
@@ -158,12 +170,24 @@ END
 fi
 
 
+if test -n "$NGX_MODULES"; then
+    cat << END                                                >> $NGX_MAKEFILE
+
+	test -d '\$(DESTDIR)$NGX_MODULES_PATH' \
+		|| mkdir -p '\$(DESTDIR)$NGX_MODULES_PATH'
+	cp $NGX_MODULES '\$(DESTDIR)$NGX_MODULES_PATH'
+END
+
+fi
+
+
 # create Makefile
 
 cat << END >> Makefile
 
 build:
 	\$(MAKE) -f $NGX_MAKEFILE
+	\$(MAKE) -f $NGX_MAKEFILE modules
 	\$(MAKE) -f $NGX_MAKEFILE manpage
 
 install:

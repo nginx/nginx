@@ -12,10 +12,15 @@ OS_CONFIG="$WIN32_CONFIG"
 NGX_ICONS="$NGX_WIN32_ICONS"
 SELECT_SRCS=$WIN32_SELECT_SRCS
 
+ngx_pic_opt=
+
 case "$NGX_CC_NAME" in
 
     gcc)
         CORE_LIBS="$CORE_LIBS -ladvapi32 -lws2_32"
+        MAIN_LINK="$MAIN_LINK -Wl,--export-all-symbols"
+        MAIN_LINK="$MAIN_LINK -Wl,--out-implib=$NGX_OBJS/libnginx.a"
+        MODULE_LINK="-shared -L $NGX_OBJS -lnginx"
     ;;
 
     *)

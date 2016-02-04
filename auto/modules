@@ -159,6 +159,35 @@ fi
 ngx_module_type=HTTP_FILTER
 HTTP_FILTER_MODULES=
 
+ngx_module_order="ngx_http_static_module \
+                  ngx_http_gzip_static_module \
+                  ngx_http_dav_module \
+                  ngx_http_autoindex_module \
+                  ngx_http_index_module \
+                  ngx_http_random_index_module \
+                  ngx_http_access_module \
+                  ngx_http_realip_module \
+                  ngx_http_write_filter_module \
+                  ngx_http_header_filter_module \
+                  ngx_http_chunked_filter_module \
+                  ngx_http_v2_filter_module \
+                  ngx_http_range_header_filter_module \
+                  ngx_http_gzip_filter_module \
+                  ngx_http_postpone_filter_module \
+                  ngx_http_ssi_filter_module \
+                  ngx_http_charset_filter_module \
+                  ngx_http_xslt_filter_module \
+                  ngx_http_image_filter_module \
+                  ngx_http_sub_filter_module \
+                  ngx_http_addition_filter_module \
+                  ngx_http_gunzip_filter_module \
+                  ngx_http_userid_filter_module \
+                  ngx_http_headers_filter_module \
+                  ngx_http_copy_filter_module \
+                  ngx_http_range_body_filter_module \
+                  ngx_http_not_modified_filter_module \
+                  ngx_http_slice_filter_module"
+
 if :; then
     ngx_module_name=ngx_http_write_filter_module
     ngx_module_incs=
@@ -263,7 +292,7 @@ if [ $HTTP_CHARSET = YES ]; then
     . auto/module
 fi
 
-if [ $HTTP_XSLT = YES ]; then
+if [ $HTTP_XSLT != NO ]; then
     ngx_module_name=ngx_http_xslt_filter_module
     ngx_module_incs=
     ngx_module_deps=
@@ -274,7 +303,7 @@ if [ $HTTP_XSLT = YES ]; then
     . auto/module
 fi
 
-if [ $HTTP_IMAGE_FILTER = YES ]; then
+if [ $HTTP_IMAGE_FILTER != NO ]; then
     ngx_module_name=ngx_http_image_filter_module
     ngx_module_incs=
     ngx_module_deps=
@@ -579,14 +608,14 @@ if [ $HTTP_GEO = YES ]; then
     . auto/module
 fi
 
-if [ $HTTP_GEOIP = YES ]; then
+if [ $HTTP_GEOIP != NO ]; then
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
 
     ngx_module_name=ngx_http_geoip_module
     ngx_module_incs=
     ngx_module_deps=
     ngx_module_srcs=src/http/modules/ngx_http_geoip_module.c
-    ngx_module_libs=
+    ngx_module_libs=GEOIP
     ngx_module_link=$HTTP_GEOIP
 
     . auto/module
@@ -864,7 +893,7 @@ if [ $HTTP_STUB_STATUS = YES ]; then
 fi
 
 
-if [ $MAIL == YES ]; then
+if [ $MAIL != NO ]; then
     MAIL_MODULES=
     MAIL_DEPS=
     MAIL_INCS=
@@ -872,6 +901,8 @@ if [ $MAIL == YES ]; then
     ngx_module_type=MAIL
     ngx_module_libs=
     ngx_module_link=YES
+
+    ngx_module_order=
 
     ngx_module_name="ngx_mail_module ngx_mail_core_module"
     ngx_module_incs="src/mail"
@@ -937,7 +968,7 @@ if [ $MAIL == YES ]; then
 fi
 
 
-if [ $STREAM = YES ]; then
+if [ $STREAM != NO ]; then
     STREAM_MODULES=
     STREAM_DEPS=
     STREAM_INCS=
@@ -947,6 +978,8 @@ if [ $STREAM = YES ]; then
     ngx_module_type=STREAM
     ngx_module_libs=
     ngx_module_link=YES
+
+    ngx_module_order=
 
     ngx_module_name="ngx_stream_module \
                      ngx_stream_core_module \
@@ -1041,7 +1074,38 @@ if test -n "$NGX_ADDONS"; then
         ngx_module_deps=
         ngx_module_srcs=
         ngx_module_libs=
+        ngx_module_order=
         ngx_module_link=ADDON
+
+        if test -f $ngx_addon_dir/config; then
+            . $ngx_addon_dir/config
+
+            echo " + $ngx_addon_name was configured"
+
+        else
+            echo "$0: error: no $ngx_addon_dir/config was found"
+            exit 1
+        fi
+    done
+fi
+
+
+if test -n "$DYNAMIC_ADDONS"; then
+
+    echo configuring additional dynamic modules
+
+    for ngx_addon_dir in $DYNAMIC_ADDONS
+    do
+        echo "adding module in $ngx_addon_dir"
+
+        ngx_module_type=
+        ngx_module_name=
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=
+        ngx_module_libs=
+        ngx_module_order=
+        ngx_module_link=DYNAMIC
 
         if test -f $ngx_addon_dir/config; then
             . $ngx_addon_dir/config
@@ -1065,6 +1129,7 @@ if [ $USE_OPENSSL = YES ]; then
                      src/event/ngx_event_openssl_stapling.c"
     ngx_module_libs=
     ngx_module_link=YES
+    ngx_module_order=
 
     . auto/module
 fi
@@ -1078,6 +1143,7 @@ if [ $USE_PCRE = YES ]; then
     ngx_module_srcs=src/core/ngx_regex.c
     ngx_module_libs=
     ngx_module_link=YES
+    ngx_module_order=
 
     . auto/module
 fi
@@ -1100,14 +1166,42 @@ if [ $HTTP = YES ]; then
 fi
 
 
-if [ $MAIL = YES ]; then
-    modules="$modules $MAIL_MODULES"
+if [ $MAIL != NO ]; then
+
+    if [ $MAIL = YES ]; then
+        modules="$modules $MAIL_MODULES"
+
+    elif [ $MAIL = DYNAMIC ]; then
+        ngx_module_name=$MAIL_MODULES
+        ngx_module_incs=
+        ngx_module_deps=$MAIL_DEPS
+        ngx_module_srcs=$MAIL_SRCS
+        ngx_module_libs=
+        ngx_module_link=DYNAMIC
+
+        . auto/module
+    fi
+
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(MAIL_DEPS)"
 fi
 
 
-if [ $STREAM = YES ]; then
-    modules="$modules $STREAM_MODULES"
+if [ $STREAM != NO ]; then
+
+    if [ $STREAM = YES ]; then
+        modules="$modules $STREAM_MODULES"
+
+    elif [ $STREAM = DYNAMIC ]; then
+        ngx_module_name=$STREAM_MODULES
+        ngx_module_incs=
+        ngx_module_deps=$STREAM_DEPS
+        ngx_module_srcs=$STREAM_SRCS
+        ngx_module_libs=
+        ngx_module_link=DYNAMIC
+
+        . auto/module
+    fi
+
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS \$(STREAM_DEPS)"
 fi
 
@@ -1160,6 +1254,19 @@ echo 'ngx_module_t *ngx_modules[] = {'        >> $NGX_MODULES_C
 for mod in $modules
 do
     echo "    &$mod,"                         >> $NGX_MODULES_C
+done
+
+cat << END                                    >> $NGX_MODULES_C
+    NULL
+};
+
+END
+
+echo 'char *ngx_module_names[] = {'           >> $NGX_MODULES_C
+
+for mod in $modules
+do
+    echo "    \"$mod\","                      >> $NGX_MODULES_C
 done
 
 cat << END                                    >> $NGX_MODULES_C

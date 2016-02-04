@@ -118,6 +118,12 @@ NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
 CORE_LINK="$NGX_RES $CORE_LINK"
 
 
+# dynamic modules
+#MAIN_LINK="-link -def:$NGX_OBJS/nginx.def"
+#MODULE_LINK="-LD $NGX_OBJS/nginx.lib"
+
+
+ngx_pic_opt=
 ngx_objout="-Fo"
 ngx_binout="-Fe"
 ngx_objext="obj"

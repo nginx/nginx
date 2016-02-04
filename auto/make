@@ -98,9 +98,11 @@ fi
 
 # the mail dependencies and include paths
 
-if [ $MAIL = YES ]; then
+if [ $MAIL != NO ]; then
 
-    ngx_all_srcs="$ngx_all_srcs $MAIL_SRCS"
+    if [ $MAIL = YES ]; then
+        ngx_all_srcs="$ngx_all_srcs $MAIL_SRCS"
+    fi
 
     ngx_deps=`echo $MAIL_DEPS \
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
@@ -124,9 +126,11 @@ fi
 
 # the stream dependencies and include paths
 
-if [ $STREAM = YES ]; then
+if [ $STREAM != NO ]; then
 
-    ngx_all_srcs="$ngx_all_srcs $STREAM_SRCS"
+    if [ $STREAM = YES ]; then
+        ngx_all_srcs="$ngx_all_srcs $STREAM_SRCS"
+    fi
 
     ngx_deps=`echo $STREAM_DEPS \
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
@@ -204,6 +208,7 @@ ngx_objs=`echo $ngx_all_objs $ngx_modules_obj \
     | sed -e "s/  *\([^ ][^ ]*\)/$ngx_long_regex_cont\1/g" \
           -e "s/\//$ngx_regex_dirsep/g"`
 
+ngx_libs=
 if test -n "$NGX_LD_OPT$CORE_LIBS"; then
     ngx_libs=`echo $NGX_LD_OPT $CORE_LIBS \
         | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`
@@ -212,13 +217,18 @@ fi
 ngx_link=${CORE_LINK:+`echo $CORE_LINK \
     | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
 
+ngx_main_link=${MAIN_LINK:+`echo $MAIN_LINK \
+    | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
+
 
 cat << END                                                    >> $NGX_MAKEFILE
 
 $NGX_OBJS${ngx_dirsep}nginx${ngx_binext}:	$ngx_deps$ngx_spacer
-	\$(LINK) ${ngx_long_start}${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_long_cont$ngx_objs$ngx_libs$ngx_link
+	\$(LINK) ${ngx_long_start}${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_long_cont$ngx_objs$ngx_libs$ngx_link$ngx_main_link
 	$ngx_rcc
 ${ngx_long_end}
+
+modules:
 END
 
 
@@ -472,3 +482,186 @@ $ngx_pch
 END
 
 fi
+
+
+# dynamic modules
+
+if test -n "$NGX_PCH"; then
+    ngx_cc="\$(CC) $ngx_compile_opt $ngx_pic_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
+else
+    ngx_cc="\$(CC) $ngx_compile_opt $ngx_pic_opt \$(CFLAGS) \$(ALL_INCS)"
+fi
+
+ngx_obj_deps="\$(CORE_DEPS)"
+if [ $HTTP != NO ]; then
+    ngx_obj_deps="$ngx_obj_deps \$(HTTP_DEPS)"
+fi
+if [ $MAIL != NO ]; then
+    ngx_obj_deps="$ngx_obj_deps \$(MAIL_DEPS)"
+fi
+if [ $STREAM != NO ]; then
+    ngx_obj_deps="$ngx_obj_deps \$(STREAM_DEPS)"
+fi
+
+for ngx_module in $DYNAMIC_MODULES
+do
+    eval ngx_module_srcs="\$${ngx_module}_SRCS"
+    eval eval ngx_module_libs="\\\"\$${ngx_module}_LIBS\\\""
+
+    eval ngx_module_modules="\$${ngx_module}_MODULES"
+    eval ngx_module_order="\$${ngx_module}_ORDER"
+
+    ngx_modules_c=$NGX_OBJS/${ngx_module}_modules.c
+
+    cat << END                                    > $ngx_modules_c
+
+#include <ngx_config.h>
+#include <ngx_core.h>
+
+END
+
+    for mod in $ngx_module_modules
+    do
+        echo "extern ngx_module_t  $mod;"         >> $ngx_modules_c
+    done
+
+    echo                                          >> $ngx_modules_c
+    echo 'ngx_module_t *ngx_modules[] = {'        >> $ngx_modules_c
+
+    for mod in $ngx_module_modules
+    do
+        echo "    &$mod,"                         >> $ngx_modules_c
+    done
+
+    cat << END                                    >> $ngx_modules_c
+    NULL
+};
+
+END
+
+    echo 'char *ngx_module_names[] = {'           >> $ngx_modules_c
+
+    for mod in $ngx_module_modules
+    do
+        echo "    \"$mod\","                      >> $ngx_modules_c
+    done
+
+    cat << END                                    >> $ngx_modules_c
+    NULL
+};
+
+END
+
+    echo 'char *ngx_module_order[] = {'           >> $ngx_modules_c
+
+    for mod in $ngx_module_order
+    do
+        echo "    \"$mod\","                      >> $ngx_modules_c
+    done
+
+    cat << END                                    >> $ngx_modules_c
+    NULL
+};
+
+END
+
+    ngx_modules_c=`echo $ngx_modules_c | sed -e "s/\//$ngx_regex_dirsep/g"`
+
+    ngx_modules_obj=`echo $ngx_modules_c \
+        | sed -e "s/\(.*\.\)c/\1$ngx_objext/"`
+
+    ngx_module_objs=
+    for ngx_src in $ngx_module_srcs
+    do
+        case "$ngx_src" in
+            src/*)
+                ngx_obj=$ngx_src
+                ;;
+            *)
+                ngx_obj="addon/`basename \`dirname $ngx_src\``"
+                mkdir -p $NGX_OBJS/$ngx_obj
+                ngx_obj="$ngx_obj/`basename $ngx_src`"
+                ;;
+        esac
+
+        ngx_module_objs="$ngx_module_objs $ngx_obj"
+    done
+
+    ngx_module_objs=`echo $ngx_module_objs \
+        | sed -e "s#\([^ ]*\.\)cpp#$NGX_OBJS\/\1$ngx_objext#g" \
+              -e "s#\([^ ]*\.\)cc#$NGX_OBJS\/\1$ngx_objext#g" \
+              -e "s#\([^ ]*\.\)c#$NGX_OBJS\/\1$ngx_objext#g" \
+              -e "s#\([^ ]*\.\)S#$NGX_OBJS\/\1$ngx_objext#g"`
+
+    ngx_deps=`echo $ngx_module_objs $ngx_modules_obj $LINK_DEPS \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
+
+    ngx_objs=`echo $ngx_module_objs $ngx_modules_obj \
+        | sed -e "s/  *\([^ ][^ ]*\)/$ngx_long_regex_cont\1/g" \
+              -e "s/\//$ngx_regex_dirsep/g"`
+
+    ngx_obj=$NGX_OBJS${ngx_dirsep}${ngx_module}${ngx_modext}
+
+    NGX_MODULES="$NGX_MODULES $ngx_obj"
+
+    if [ "$NGX_PLATFORM" = win32 ]; then
+        ngx_module_libs="$CORE_LIBS $ngx_module_libs"
+    fi
+
+    ngx_libs=
+    if test -n "$NGX_LD_OPT$ngx_module_libs"; then
+        ngx_libs=`echo $NGX_LD_OPT $ngx_module_libs \
+            | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`
+    fi
+
+    ngx_link=${CORE_LINK:+`echo $CORE_LINK \
+        | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
+
+    ngx_module_link=${MODULE_LINK:+`echo $MODULE_LINK \
+        | sed -e "s/\//$ngx_regex_dirsep/g" -e "s/^/$ngx_long_regex_cont/"`}
+
+
+    cat << END                                            >> $NGX_MAKEFILE
+
+modules:	$ngx_obj
+
+$ngx_obj:	$ngx_deps$ngx_spacer
+	\$(LINK) $ngx_long_start$ngx_binout$ngx_obj$ngx_long_cont$ngx_objs$ngx_libs$ngx_link$ngx_module_link
+$ngx_long_end
+
+$ngx_modules_obj:	\$(CORE_DEPS)$ngx_cont$ngx_modules_c
+	$ngx_cc$ngx_tab$ngx_objout$ngx_modules_obj$ngx_tab$ngx_modules_c$NGX_AUX
+
+END
+
+    for ngx_src in $ngx_module_srcs
+    do
+        case "$ngx_src" in
+            src/*)
+                ngx_obj=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+                ;;
+            *)
+                ngx_obj="addon/`basename \`dirname $ngx_src\``"
+                ngx_obj=`echo $ngx_obj/\`basename $ngx_src\` \
+                    | sed -e "s/\//$ngx_regex_dirsep/g"`
+                ;;
+        esac
+
+        ngx_obj=`echo $ngx_obj \
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
+
+        ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+
+        cat << END                                        >> $NGX_MAKEFILE
+
+$ngx_obj:	$ngx_obj_deps$ngx_cont$ngx_src
+	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
+
+END
+
+    done
+done

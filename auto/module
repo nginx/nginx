@@ -9,7 +9,58 @@ case $ngx_module_type in
 esac
 
 
-if [ "$ngx_module_link" = YES ]; then
+if [ "$ngx_module_link" = DYNAMIC ]; then
+
+    for ngx_module in $ngx_module_name; do
+        # extract the first name
+        break
+    done
+
+    DYNAMIC_MODULES="$DYNAMIC_MODULES $ngx_module"
+    eval ${ngx_module}_SRCS=\"$ngx_module_srcs\"
+
+    eval ${ngx_module}_MODULES=\"$ngx_module_name\"
+
+    if [ -z "$ngx_module_order" -a \
+         \( "$ngx_module_type" = "HTTP_FILTER" \
+         -o "$ngx_module_type" = "HTTP_AUX_FILTER" \) ]
+    then
+        eval ${ngx_module}_ORDER=\"$ngx_module_name \
+                                   ngx_http_copy_filter_module\"
+    else
+        eval ${ngx_module}_ORDER=\"$ngx_module_order\"
+    fi
+
+    if test -n "$ngx_module_incs"; then
+        CORE_INCS="$CORE_INCS $ngx_module_incs"
+    fi
+
+    libs=
+    for lib in $ngx_module_libs
+    do
+        case $lib in
+
+            LIBXSLT | LIBGD | GEOIP)
+                libs="$libs \$NGX_LIB_$lib"
+
+                if eval [ "\$USE_${lib}" = NO ] ; then
+                    eval USE_${lib}=DYNAMIC
+                fi
+            ;;
+
+            PCRE | OPENSSL | MD5 | SHA1 | ZLIB | PERL)
+                eval USE_${lib}=YES
+            ;;
+
+            *)
+                libs="$libs $lib"
+            ;;
+
+        esac
+    done
+    eval ${ngx_module}_LIBS=\'$libs\'
+
+elif [ "$ngx_module_link" = YES ]; then
 
     eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
                                       $ngx_module_name\"

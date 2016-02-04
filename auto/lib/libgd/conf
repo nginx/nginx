@@ -67,7 +67,12 @@ fi
 if [ $ngx_found = yes ]; then
 
     CORE_INCS="$CORE_INCS $ngx_feature_path"
-    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+    if [ $USE_LIBGD = YES ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+    fi
+
+    NGX_LIB_LIBGD=$ngx_feature_libs
 
 else
 

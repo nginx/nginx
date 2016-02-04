@@ -24,6 +24,10 @@ static char *ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+#if (NGX_HAVE_DLOPEN)
+static void ngx_unload_module(void *data);
+#endif
 
 
 static ngx_conf_enum_t  ngx_debug_points[] = {
@@ -129,6 +133,13 @@ static ngx_command_t  ngx_core_commands[] = {
     { ngx_string("env"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_set_env,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("load_module"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_load_module,
       0,
       0,
       NULL },
@@ -1403,3 +1414,101 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+static char *
+ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (NGX_HAVE_DLOPEN)
+    void                *handle;
+    char               **names, **order;
+    ngx_str_t           *value, file;
+    ngx_uint_t           i;
+    ngx_module_t        *module, **modules;
+    ngx_pool_cleanup_t  *cln;
+
+    if (cf->cycle->modules_used) {
+        return "is specified too late";
+    }
+
+    value = cf->args->elts;
+
+    file = value[1];
+
+    if (ngx_conf_full_name(cf->cycle, &file, 0) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    cln = ngx_pool_cleanup_add(cf->cycle->pool, 0);
+    if (cln == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    handle = ngx_dlopen(file.data);
+    if (handle == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           ngx_dlopen_n " \"%s\" failed (%s)",
+                           file.data, ngx_dlerror());
+        return NGX_CONF_ERROR;
+    }
+
+    cln->handler = ngx_unload_module;
+    cln->data = handle;
+
+    modules = ngx_dlsym(handle, "ngx_modules");
+    if (modules == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           ngx_dlsym_n " \"%V\", \"%s\" failed (%s)",
+                           &value[1], "ngx_modules", ngx_dlerror());
+        return NGX_CONF_ERROR;
+    }
+
+    names = ngx_dlsym(handle, "ngx_module_names");
+    if (names == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           ngx_dlsym_n " \"%V\", \"%s\" failed (%s)",
+                           &value[1], "ngx_module_names", ngx_dlerror());
+        return NGX_CONF_ERROR;
+    }
+
+    order = ngx_dlsym(handle, "ngx_module_order");
+
+    for (i = 0; modules[i]; i++) {
+        module = modules[i];
+        module->name = names[i];
+
+        if (ngx_add_module(cf, &file, module, order) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, cf->log, 0, "module: %s i:%i",
+                       module->name, module->index);
+    }
+
+    return NGX_CONF_OK;
+
+#else
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"load_module\" is not supported "
+                       "on this platform");
+    return NGX_CONF_ERROR;
+
+#endif
+}
+
+
+#if (NGX_HAVE_DLOPEN)
+
+static void
+ngx_unload_module(void *data)
+{
+    void  *handle = data;
+
+    if (ngx_dlclose(handle) != 0) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      ngx_dlclose_n " failed (%s)", ngx_dlerror());
+    }
+}
+
+#endif
