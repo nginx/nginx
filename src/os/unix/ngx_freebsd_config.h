@@ -49,6 +49,8 @@
 #include <osreldate.h>
 #include <sys/sysctl.h>
 
+#include <dlfcn.h>
+
 
 #if __FreeBSD_version < 400017
 

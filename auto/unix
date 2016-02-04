@@ -255,7 +255,7 @@ ngx_feature_test="struct statvfs  fs;
 
 
 ngx_feature="dlopen()"
-ngx_feature_name=
+ngx_feature_name="NGX_HAVE_DLOPEN"
 ngx_feature_run=no
 ngx_feature_incs="#include <dlfcn.h>"
 ngx_feature_path=
@@ -271,7 +271,7 @@ if [ $ngx_found != yes ]; then
     . auto/feature
 
     if [ $ngx_found = yes ]; then
-        NGX_LIBDL="-ldl"
+        CORE_LIBS="$CORE_LIBS -ldl"
     fi
 fi
 

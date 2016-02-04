@@ -55,6 +55,8 @@
 #include <crypt.h>
 #include <sys/utsname.h>        /* uname() */
 
+#include <dlfcn.h>
+
 
 #include <ngx_auto_config.h>
 

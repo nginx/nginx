@@ -152,6 +152,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/unix/ngx_socket.h \
             src/os/unix/ngx_os.h \
             src/os/unix/ngx_user.h \
+            src/os/unix/ngx_dlopen.h \
             src/os/unix/ngx_process_cycle.h"
 
 # add to UNIX_DEPS
@@ -183,6 +184,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_setproctitle.c \
             src/os/unix/ngx_posix_init.c \
             src/os/unix/ngx_user.c \
+            src/os/unix/ngx_dlopen.c \
             src/os/unix/ngx_process_cycle.c"
 
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
@@ -228,6 +230,7 @@ WIN32_DEPS="$CORE_DEPS $EVENT_DEPS \
             src/os/win32/ngx_socket.h \
             src/os/win32/ngx_os.h \
             src/os/win32/ngx_user.h \
+            src/os/win32/ngx_dlopen.h \
             src/os/win32/ngx_process_cycle.h"
 
 WIN32_CONFIG=src/os/win32/ngx_win32_config.h
@@ -248,6 +251,7 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_wsasend_chain.c \
             src/os/win32/ngx_win32_init.c \
             src/os/win32/ngx_user.c \
+            src/os/win32/ngx_dlopen.c \
             src/os/win32/ngx_event_log.c \
             src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
