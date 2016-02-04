@@ -91,14 +91,7 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* count the number of the stream modules and set up their indices */
 
-    ngx_stream_max_module = 0;
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_STREAM_MODULE) {
-            continue;
-        }
-
-        ngx_modules[m]->ctx_index = ngx_stream_max_module++;
-    }
+    ngx_stream_max_module = ngx_count_modules(cf->cycle, NGX_STREAM_MODULE);
 
 
     /* the stream main_conf context, it's the same in the all stream contexts */

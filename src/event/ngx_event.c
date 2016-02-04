@@ -891,14 +891,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* count the number of the event modules and set up their indices */
 
-    ngx_event_max_module = 0;
-    for (i = 0; ngx_modules[i]; i++) {
-        if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
-            continue;
-        }
-
-        ngx_modules[i]->ctx_index = ngx_event_max_module++;
-    }
+    ngx_event_max_module = ngx_count_modules(cf->cycle, NGX_EVENT_MODULE);
 
     ctx = ngx_pcalloc(cf->pool, sizeof(void *));
     if (ctx == NULL) {

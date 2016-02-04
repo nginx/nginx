@@ -160,8 +160,6 @@ ngx_module_t  ngx_core_module = {
 };
 
 
-ngx_uint_t          ngx_max_module;
-
 static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
@@ -260,9 +258,8 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    ngx_max_module = 0;
-    for (i = 0; ngx_modules[i]; i++) {
-        ngx_modules[i]->index = ngx_max_module++;
+    if (ngx_preinit_modules() != NGX_OK) {
+        return 1;
     }
 
     cycle = ngx_init_cycle(&init_cycle);

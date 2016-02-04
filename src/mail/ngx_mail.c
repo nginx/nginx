@@ -91,14 +91,7 @@ ngx_mail_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     /* count the number of the mail modules and set up their indices */
 
-    ngx_mail_max_module = 0;
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
-            continue;
-        }
-
-        ngx_modules[m]->ctx_index = ngx_mail_max_module++;
-    }
+    ngx_mail_max_module = ngx_count_modules(cf->cycle, NGX_MAIL_MODULE);
 
 
     /* the mail main_conf context, it is the same in the all mail contexts */

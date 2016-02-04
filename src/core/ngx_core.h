@@ -83,6 +83,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #endif
 #include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>
+#include <ngx_module.h>
 #include <ngx_open_file_cache.h>
 #include <ngx_os.h>
 #include <ngx_connection.h>
