@@ -331,7 +331,7 @@ if [ $HTTP_ADDITION = YES ]; then
     ngx_module_deps=
     ngx_module_srcs=src/http/modules/ngx_http_addition_filter_module.c
     ngx_module_libs=
-    ngx_module_link=$HTTP_SUB
+    ngx_module_link=$HTTP_ADDITION
 
     . auto/module
 fi
