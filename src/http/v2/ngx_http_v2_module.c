@@ -33,8 +33,8 @@ static char *ngx_http_v2_pool_size(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_v2_streams_index_mask(ngx_conf_t *cf, void *post,
     void *data);
 static char *ngx_http_v2_chunk_size(ngx_conf_t *cf, void *post, void *data);
-static char *ngx_http_v2_spdy_deprecated(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
+/*static char *ngx_http_v2_spdy_deprecated(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);*/
 
 
 static ngx_conf_post_t  ngx_http_v2_recv_buffer_size_post =
@@ -112,7 +112,7 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       offsetof(ngx_http_v2_loc_conf_t, chunk_size),
       &ngx_http_v2_chunk_size_post },
 
-    { ngx_string("spdy_recv_buffer_size"),
+    /*{ ngx_string("spdy_recv_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_http_v2_spdy_deprecated,
       NGX_HTTP_MAIN_CONF_OFFSET,
@@ -166,7 +166,7 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       ngx_http_v2_spdy_deprecated,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL },
+      NULL },*/
 
       ngx_null_command
 };
@@ -457,7 +457,7 @@ ngx_http_v2_chunk_size(ngx_conf_t *cf, void *post, void *data)
     return NGX_CONF_OK;
 }
 
-
+/*
 static char *
 ngx_http_v2_spdy_deprecated(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -467,3 +467,4 @@ ngx_http_v2_spdy_deprecated(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+*/

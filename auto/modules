@@ -232,6 +232,17 @@ if [ $HTTP_V2 = YES ]; then
     . auto/module
 fi
 
+if [ $HTTP_SPDY = YES ]; then
+    ngx_module_name=ngx_http_spdy_filter_module
+    ngx_module_incs=
+    ngx_module_deps=
+    ngx_module_srcs=src/http/ngx_http_spdy_filter_module.c
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SPDY
+
+    . auto/module
+fi
+
 if :; then
     ngx_module_name=ngx_http_range_header_filter_module
     ngx_module_incs=
@@ -436,6 +447,20 @@ if [ $HTTP_V2 = YES ]; then
                      src/http/v2/ngx_http_v2_module.c"
     ngx_module_libs=
     ngx_module_link=$HTTP_V2
+
+    . auto/module
+fi
+
+if [ $HTTP_SPDY = YES ]; then
+    have=NGX_HTTP_SPDY . auto/have
+
+    ngx_module_name=ngx_http_spdy_module
+    ngx_module_incs=
+    ngx_module_deps="src/http/ngx_http_spdy.h src/http/ngx_http_spdy_module.h"
+    ngx_module_srcs="src/http/ngx_http_spdy.c \
+                     src/http/ngx_http_spdy_module.c"
+    ngx_module_libs=
+    ngx_module_link=$HTTP_SPDY
 
     . auto/module
 fi
