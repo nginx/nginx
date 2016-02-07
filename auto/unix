@@ -260,7 +260,7 @@ ngx_feature_run=no
 ngx_feature_incs="#include <dlfcn.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="dlopen(NULL, 0)"
+ngx_feature_test="dlopen(NULL, 0); dlsym(NULL, NULL)"
 . auto/feature
 
 
