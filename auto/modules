@@ -973,8 +973,6 @@ if [ $STREAM != NO ]; then
     STREAM_DEPS=
     STREAM_INCS=
 
-    have=NGX_STREAM . auto/have
-
     ngx_module_type=STREAM
     ngx_module_libs=
     ngx_module_link=YES
