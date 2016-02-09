@@ -5,6 +5,49 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.11" date="09.02.2016">
+
+<change type="feature">
+<para lang="ru">
+теперь resolver поддерживает TCP.
+</para>
+<para lang="en">
+TCP support in resolver.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+динамические модули.
+</para>
+<para lang="en">
+dynamic modules.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+переменная $request_length не учитывала размер заголовков запроса.
+</para>
+<para lang="en">
+the $request_length variable did not include size of request headers
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.10" date="26.01.2016">
 
 <change type="security">
