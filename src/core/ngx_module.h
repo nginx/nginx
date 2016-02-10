@@ -253,7 +253,7 @@ struct ngx_module_s {
     ngx_uint_t            spare1;
 
     ngx_uint_t            version;
-    char                 *signature;
+    const char           *signature;
 
     void                 *ctx;
     ngx_command_t        *commands;
