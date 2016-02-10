@@ -530,11 +530,10 @@ if [ $HTTP_AUTH_BASIC = YES ]; then
     ngx_module_incs=
     ngx_module_deps=
     ngx_module_srcs=src/http/modules/ngx_http_auth_basic_module.c
-    ngx_module_libs=
+    ngx_module_libs=$CRYPT_LIB
     ngx_module_link=$HTTP_AUTH_BASIC
 
     . auto/module
-    CORE_LIBS="$CORE_LIBS $CRYPT_LIB"
 fi
 
 if [ $HTTP_ACCESS = YES ]; then
