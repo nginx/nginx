@@ -10,9 +10,6 @@
 #include <ngx_stream.h>
 
 
-typedef void (*ngx_stream_proxy_handler_pt)(ngx_stream_session_t *s);
-
-
 typedef struct {
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       timeout;
