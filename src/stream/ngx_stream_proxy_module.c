@@ -432,8 +432,6 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
 
-    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
     if (rc == NGX_ERROR) {
         ngx_stream_proxy_finalize(s, NGX_ERROR);
         return;
@@ -467,6 +465,8 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 
     pc->read->handler = ngx_stream_proxy_connect_handler;
     pc->write->handler = ngx_stream_proxy_connect_handler;
+
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
     ngx_add_timer(pc->write, pscf->connect_timeout);
 }
