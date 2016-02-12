@@ -231,6 +231,10 @@ ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
         buf = pending ? code << (sizeof(buf) * 8 - pending) : 0;
     }
 
+    if (pending == 0) {
+        return hlen;
+    }
+
     buf |= (ngx_uint_t) -1 >> pending;
 
     pending = ngx_align(pending, 8);
@@ -241,10 +245,10 @@ ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
 
     buf >>= sizeof(buf) * 8 - pending;
 
-    while (pending) {
+    do {
         pending -= 8;
         dst[hlen++] = (u_char) (buf >> pending);
-    }
+    } while (pending);
 
     return hlen;
 }
