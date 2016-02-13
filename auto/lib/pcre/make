@@ -5,13 +5,13 @@
 
 case "$NGX_CC_NAME" in
 
-    msvc*)
+    msvc)
         ngx_makefile=makefile.msvc
         ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
         ngx_pcre="PCRE=\"$PCRE\""
     ;;
 
-    owc*)
+    owc)
         ngx_makefile=makefile.owc
         ngx_opt="CPU_OPT=\"$CPU_OPT\""
         ngx_pcre=`echo PCRE=\"$PCRE\" | sed -e "s/\//$ngx_regex_dirsep/g"`

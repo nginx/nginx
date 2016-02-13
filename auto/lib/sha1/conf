@@ -10,12 +10,12 @@ if [ $SHA1 != NONE ]; then
 
     case "$NGX_CC_NAME" in
 
-        msvc* | owc* | bcc)
+        msvc | owc | bcc)
             LINK_DEPS="$LINK_DEPS $SHA1/sha1.lib"
             CORE_LIBS="$CORE_LIBS $SHA1/sha1.lib"
         ;;
 
-        icc*)
+        icc)
             LINK_DEPS="$LINK_DEPS $SHA1/libsha.a"
 
             # to allow -ipo optimization we link with the *.o but not library
