@@ -274,6 +274,8 @@ ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
 
 ngx_int_t ngx_http_v2_huff_decode(u_char *state, u_char *src, size_t len,
     u_char **dst, ngx_uint_t last, ngx_log_t *log);
+size_t ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst,
+    ngx_uint_t lower);
 
 
 #define ngx_http_v2_prefix(bits)  ((1 << (bits)) - 1)

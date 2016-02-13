@@ -171,7 +171,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
     if (module->version != nginx_version) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "module \"%V\" version %ui instead of %ui",
-                           file, module->version, nginx_version);
+                           file, module->version, (ngx_uint_t) nginx_version);
         return NGX_ERROR;
     }
 

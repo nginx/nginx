@@ -8,7 +8,7 @@ if [ $PCRE != NONE ]; then
 
     case "$NGX_CC_NAME" in
 
-        msvc* | owc* | bcc)
+        msvc | owc | bcc)
             have=NGX_PCRE . auto/have
             have=PCRE_STATIC . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
@@ -16,7 +16,7 @@ if [ $PCRE != NONE ]; then
             CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
         ;;
 
-        icc* )
+        icc)
             have=NGX_PCRE . auto/have
             CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
 

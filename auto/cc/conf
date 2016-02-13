@@ -225,6 +225,16 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/feature
 
 
+    ngx_feature="gcc builtin 64 bit byteswap"
+    ngx_feature_name="NGX_HAVE_GCC_BSWAP64"
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="__builtin_bswap64(0)"
+    . auto/feature
+
+
 #    ngx_feature="inline"
 #    ngx_feature_name=
 #    ngx_feature_run=no
