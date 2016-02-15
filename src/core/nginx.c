@@ -481,6 +481,12 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
         }
     }
 
+    if (v != p) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "invalid socket number \"%s\" in " NGINX_VAR
+                      " environment variable, ignoring", v);
+    }
+
     ngx_inherited = 1;
 
     return ngx_set_inherited_sockets(cycle);
