@@ -421,6 +421,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     start = pos;
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 output header: \":status: %03ui\"",
+                   r->headers_out.status);
+
     if (status) {
         *pos++ = status;
 
@@ -431,6 +435,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.server == NULL) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"server: %s\"",
+                       clcf->server_tokens ? NGINX_VER : "nginx");
+
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
 
         if (clcf->server_tokens) {
@@ -448,6 +456,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.date == NULL) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"date: %V\"",
+                       &ngx_cached_http_time);
+
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_DATE_INDEX);
         pos = ngx_http_v2_write_value(pos, ngx_cached_http_time.data,
                                       ngx_cached_http_time.len, tmp);
@@ -481,6 +493,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
             r->headers_out.content_type.data = p - len;
         }
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"content-type: %V\"",
+                       &r->headers_out.content_type);
+
         pos = ngx_http_v2_write_value(pos, r->headers_out.content_type.data,
                                       r->headers_out.content_type.len, tmp);
     }
@@ -488,6 +504,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     if (r->headers_out.content_length == NULL
         && r->headers_out.content_length_n >= 0)
     {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"content-length: %O\"",
+                       r->headers_out.content_length_n);
+
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_CONTENT_LENGTH_INDEX);
 
         p = pos;
@@ -503,6 +523,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         ngx_http_time(pos, r->headers_out.last_modified_time);
         len = sizeof("Wed, 31 Dec 1986 18:00:00 GMT") - 1;
 
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"last-modified: %*s\"",
+                       len, pos);
+
         /*
          * Date will always be encoded using huffman in the temporary buffer,
          * so it's safe here to use src and dst pointing to the same address.
@@ -511,6 +535,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"location: %V\"",
+                       &r->headers_out.location->value);
+
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_LOCATION_INDEX);
         pos = ngx_http_v2_write_value(pos, r->headers_out.location->value.data,
                                       r->headers_out.location->value.len, tmp);
@@ -518,6 +546,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 output header: \"vary: Accept-Encoding\"");
+
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_VARY_INDEX);
         pos = ngx_cpymem(pos, accept_encoding, sizeof(accept_encoding));
     }
@@ -541,6 +572,16 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         if (header[i].hash == 0) {
             continue;
         }
+
+#if (NGX_DEBUG)
+        if (fc->log->log_level & NGX_LOG_DEBUG_HTTP) {
+            ngx_strlow(tmp, header[i].key.data, header[i].key.len);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output header: \"%*s: %V\"",
+                           header[i].key.len, tmp, &header[i].value);
+        }
+#endif
 
         *pos++ = 0;
 
