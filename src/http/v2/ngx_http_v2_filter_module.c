@@ -387,14 +387,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         }
 
         if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
                           "too long response header name: \"%V\"",
                           &header[i].key);
             return NGX_ERROR;
         }
 
         if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
                           "too long response header value: \"%V: %V\"",
                           &header[i].key, &header[i].value);
             return NGX_ERROR;
