@@ -784,9 +784,9 @@ static void
 ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 {
     sigset_t          set;
-    uint64_t          cpu_affinity;
     ngx_int_t         n;
     ngx_uint_t        i;
+    ngx_cpuset_t     *cpu_affinity;
     struct rlimit     rlmt;
     ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls;

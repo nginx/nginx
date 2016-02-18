@@ -1270,16 +1270,16 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_CPU_AFFINITY)
     ngx_core_conf_t  *ccf = conf;
 
-    u_char            ch;
-    uint64_t         *mask;
+    u_char            ch, *p;
     ngx_str_t        *value;
     ngx_uint_t        i, n;
+    ngx_cpuset_t     *mask;
 
     if (ccf->cpu_affinity) {
         return "is duplicate";
     }
 
-    mask = ngx_palloc(cf->pool, (cf->args->nelts - 1) * sizeof(uint64_t));
+    mask = ngx_palloc(cf->pool, (cf->args->nelts - 1) * sizeof(ngx_cpuset_t));
     if (mask == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -1299,7 +1299,12 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         ccf->cpu_affinity_auto = 1;
-        mask[0] = (uint64_t) -1 >> (64 - ngx_min(64, ngx_ncpu));
+
+        CPU_ZERO(&mask[0]);
+        for (i = 0; i < (ngx_uint_t) ngx_min(ngx_ncpu, CPU_SETSIZE); i++) {
+            CPU_SET(i, &mask[0]);
+        }
+
         n = 2;
 
     } else {
@@ -1308,30 +1313,34 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for ( /* void */ ; n < cf->args->nelts; n++) {
 
-        if (value[n].len > 64) {
+        if (value[n].len > CPU_SETSIZE) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                         "\"worker_cpu_affinity\" supports up to 64 CPUs only");
+                         "\"worker_cpu_affinity\" supports up to %d CPUs only",
+                         CPU_SETSIZE);
             return NGX_CONF_ERROR;
         }
 
-        mask[n - 1] = 0;
+        i = 0;
+        CPU_ZERO(&mask[n - 1]);
 
-        for (i = 0; i < value[n].len; i++) {
-
-            ch = value[n].data[i];
+        for (p = value[n].data + value[n].len - 1;
+             p >= value[n].data;
+             p--)
+        {
+            ch = *p;
 
             if (ch == ' ') {
                 continue;
             }
 
-            mask[n - 1] <<= 1;
+            i++;
 
             if (ch == '0') {
                 continue;
             }
 
             if (ch == '1') {
-                mask[n - 1] |= 1;
+                CPU_SET(i - 1, &mask[n - 1]);
                 continue;
             }
 
@@ -1353,43 +1362,57 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-uint64_t
+ngx_cpuset_t *
 ngx_get_cpu_affinity(ngx_uint_t n)
 {
-    uint64_t          mask;
-    ngx_uint_t        i;
+#if (NGX_HAVE_CPU_AFFINITY)
+    ngx_uint_t        i, j;
+    ngx_cpuset_t     *mask;
     ngx_core_conf_t  *ccf;
+
+    static ngx_cpuset_t  result;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
                                            ngx_core_module);
 
     if (ccf->cpu_affinity == NULL) {
-        return 0;
+        return NULL;
     }
 
     if (ccf->cpu_affinity_auto) {
-        mask = ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+        mask = &ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
 
-        if (mask == 0) {
-            return 0;
-        }
+        for (i = 0, j = n; /* void */ ; i++) {
 
-        for (i = 0; /* void */ ; i++) {
-            if ((mask & ((uint64_t) 1 << (i % 64))) && n-- == 0) {
+            if (CPU_ISSET(i % CPU_SETSIZE, mask) && j-- == 0) {
                 break;
+            }
+
+            if (i == CPU_SETSIZE && j == n) {
+                /* empty mask */
+                return NULL;
             }
 
             /* void */
         }
 
-        return (uint64_t) 1 << (i % 64);
+        CPU_ZERO(&result);
+        CPU_SET(i % CPU_SETSIZE, &result);
+
+        return &result;
     }
 
     if (ccf->cpu_affinity_n > n) {
-        return ccf->cpu_affinity[n];
+        return &ccf->cpu_affinity[n];
     }
 
-    return ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+    return &ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+
+#else
+
+    return NULL;
+
+#endif
 }
 
 
