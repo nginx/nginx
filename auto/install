@@ -104,8 +104,7 @@ $NGX_OBJS/nginx.8:	$NGX_MAN $NGX_AUTO_CONFIG_H
 		-e "s|%%ERROR_LOG_PATH%%|${NGX_ERROR_LOG_PATH:-stderr}|" \\
 		< $NGX_MAN > \$@
 
-install:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext} \
-		$NGX_INSTALL_PERL_MODULES
+install:	build $NGX_INSTALL_PERL_MODULES
 	test -d '\$(DESTDIR)$NGX_PREFIX' || mkdir -p '\$(DESTDIR)$NGX_PREFIX'
 
 	test -d '\$(DESTDIR)`dirname "$NGX_SBIN_PATH"`' \
@@ -187,8 +186,6 @@ cat << END >> Makefile
 
 build:
 	\$(MAKE) -f $NGX_MAKEFILE
-	\$(MAKE) -f $NGX_MAKEFILE modules
-	\$(MAKE) -f $NGX_MAKEFILE manpage
 
 install:
 	\$(MAKE) -f $NGX_MAKEFILE install
