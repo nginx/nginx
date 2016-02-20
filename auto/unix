@@ -272,6 +272,7 @@ if [ $ngx_found != yes ]; then
 
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS -ldl"
+        NGX_LIBDL="-ldl"
     fi
 fi
 

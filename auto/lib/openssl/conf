@@ -32,6 +32,7 @@ if [ $OPENSSL != NONE ]; then
             CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
             CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
             CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
 
             if [ "$NGX_PLATFORM" = win32 ]; then
                 CORE_LIBS="$CORE_LIBS -lgdi32 -lcrypt32 -lws2_32"
@@ -50,7 +51,7 @@ else
         ngx_feature_run=no
         ngx_feature_incs="#include <openssl/ssl.h>"
         ngx_feature_path=
-        ngx_feature_libs="-lssl -lcrypto"
+        ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL"
         ngx_feature_test="SSL_library_init()"
         . auto/feature
 
@@ -62,9 +63,9 @@ else
             ngx_feature_path="/usr/local/include"
 
             if [ $NGX_RPATH = YES ]; then
-                ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lssl -lcrypto"
+                ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lssl -lcrypto $NGX_LIBDL"
             else
-                ngx_feature_libs="-L/usr/local/lib -lssl -lcrypto"
+                ngx_feature_libs="-L/usr/local/lib -lssl -lcrypto $NGX_LIBDL"
             fi
 
             . auto/feature
@@ -78,9 +79,9 @@ else
             ngx_feature_path="/usr/pkg/include"
 
             if [ $NGX_RPATH = YES ]; then
-                ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lssl -lcrypto"
+                ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lssl -lcrypto $NGX_LIBDL"
             else
-                ngx_feature_libs="-L/usr/pkg/lib -lssl -lcrypto"
+                ngx_feature_libs="-L/usr/pkg/lib -lssl -lcrypto $NGX_LIBDL"
             fi
 
             . auto/feature
@@ -94,9 +95,9 @@ else
             ngx_feature_path="/opt/local/include"
 
             if [ $NGX_RPATH = YES ]; then
-                ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lssl -lcrypto"
+                ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lssl -lcrypto $NGX_LIBDL"
             else
-                ngx_feature_libs="-L/opt/local/lib -lssl -lcrypto"
+                ngx_feature_libs="-L/opt/local/lib -lssl -lcrypto $NGX_LIBDL"
             fi
 
             . auto/feature

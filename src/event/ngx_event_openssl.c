@@ -1767,6 +1767,19 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     int        n, sslerr, mode;
     ngx_err_t  err;
 
+    if (SSL_in_init(c->ssl->connection)) {
+        /*
+         * OpenSSL 1.0.2f complains if SSL_shutdown() is called during
+         * an SSL handshake, while previous versions always return 0.
+         * Avoid calling SSL_shutdown() if handshake wasn't completed.
+         */
+
+        SSL_free(c->ssl->connection);
+        c->ssl = NULL;
+
+        return NGX_OK;
+    }
+
     if (c->timedout) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
         SSL_set_quiet_shutdown(c->ssl->connection, 1);
@@ -1797,7 +1810,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     sslerr = 0;
 
-    /* SSL_shutdown() never returns -1, on error it returns 0 */
+    /* before 0.9.8m SSL_shutdown() returned 0 instead of -1 on errors */
 
     if (n != 1 && ERR_peek_error()) {
         sslerr = SSL_get_error(c->ssl->connection, n);
