@@ -112,8 +112,6 @@ static u_char *ngx_http_v2_state_skip_padded(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_skip(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
-static u_char *ngx_http_v2_state_skip_headers(ngx_http_v2_connection_t *h2c,
-    u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_save(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
 static u_char *ngx_http_v2_connection_error(ngx_http_v2_connection_t *h2c,
@@ -1133,6 +1131,11 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->last_sid = h2c->state.sid;
 
+    h2c->state.pool = ngx_create_pool(1024, h2c->connection->log);
+    if (h2c->state.pool == NULL) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+    }
+
     if (depend == h2c->state.sid) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent HEADERS frame for stream %ui "
@@ -1146,7 +1149,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                                                 NGX_HTTP_V2_INTERNAL_ERROR);
         }
 
-        return ngx_http_v2_state_skip_headers(h2c, pos, end);
+        return ngx_http_v2_state_header_block(h2c, pos, end);
     }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
@@ -1166,7 +1169,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                                                 NGX_HTTP_V2_INTERNAL_ERROR);
         }
 
-        return ngx_http_v2_state_skip_headers(h2c, pos, end);
+        return ngx_http_v2_state_header_block(h2c, pos, end);
     }
 
     node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
@@ -1185,15 +1188,17 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
+    h2c->state.stream = stream;
+
+    stream->pool = h2c->state.pool;
+    h2c->state.keep_pool = 1;
+
     stream->request->request_length = h2c->state.length;
 
     stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
     stream->node = node;
 
     node->stream = stream;
-
-    h2c->state.stream = stream;
-    h2c->state.pool = stream->request->pool;
 
     if (priority || node->parent == NULL) {
         node->weight = weight;
@@ -1686,7 +1691,6 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 error:
 
     h2c->state.stream = NULL;
-    h2c->state.pool = NULL;
 
     return ngx_http_v2_state_header_complete(h2c, pos, end);
 }
@@ -1699,8 +1703,7 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_v2_stream_t  *stream;
 
     if (h2c->state.length) {
-        h2c->state.handler = h2c->state.pool ? ngx_http_v2_state_header_block
-                                             : ngx_http_v2_state_skip_headers;
+        h2c->state.handler = ngx_http_v2_state_header_block;
         return pos;
     }
 
@@ -1713,12 +1716,14 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (stream) {
         ngx_http_v2_run_request(stream->request);
+    }
 
-    } else if (h2c->state.pool) {
+    if (!h2c->state.keep_pool) {
         ngx_destroy_pool(h2c->state.pool);
     }
 
     h2c->state.pool = NULL;
+    h2c->state.keep_pool = 0;
 
     if (h2c->state.padding) {
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
@@ -2333,19 +2338,6 @@ ngx_http_v2_state_skip(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
                    "http2 frame skip %uz", h2c->state.length);
 
     return ngx_http_v2_state_complete(h2c, pos + h2c->state.length, end);
-}
-
-
-static u_char *
-ngx_http_v2_state_skip_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
-    u_char *end)
-{
-    h2c->state.pool = ngx_create_pool(1024, h2c->connection->log);
-    if (h2c->state.pool == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
-
-    return ngx_http_v2_state_header_block(h2c, pos, end);
 }
 
 
@@ -3633,6 +3625,7 @@ ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
 void
 ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 {
+    ngx_pool_t                *pool;
     ngx_event_t               *ev;
     ngx_connection_t          *fc;
     ngx_http_v2_node_t        *node;
@@ -3670,7 +3663,24 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     ngx_queue_insert_tail(&h2c->closed, &node->reuse);
     h2c->closed_nodes++;
 
+    /*
+     * This pool keeps decoded request headers which can be used by log phase
+     * handlers in ngx_http_free_request().
+     *
+     * The pointer is stored into local variable because the stream object
+     * will be destroyed after a call to ngx_http_free_request().
+     */
+    pool = stream->pool;
+
     ngx_http_free_request(stream->request, rc);
+
+    if (pool != h2c->state.pool) {
+        ngx_destroy_pool(pool);
+
+    } else {
+        /* pool will be destroyed when the complete header is parsed */
+        h2c->state.keep_pool = 0;
+    }
 
     ev = fc->read;
 
@@ -3825,7 +3835,6 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
     if (h2c->state.stream) {
         h2c->state.stream->out_closed = 1;
-        h2c->state.pool = NULL;
         ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
     }
 

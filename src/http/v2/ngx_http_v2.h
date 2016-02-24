@@ -73,6 +73,7 @@ typedef struct {
     unsigned                         flags:8;
 
     unsigned                         incomplete:1;
+    unsigned                         keep_pool:1;
 
     /* HPACK */
     unsigned                         parse_name:1;
@@ -185,6 +186,8 @@ struct ngx_http_v2_stream_s {
     ngx_array_t                     *cookies;
 
     size_t                           header_limit;
+
+    ngx_pool_t                      *pool;
 
     unsigned                         handled:1;
     unsigned                         blocked:1;
