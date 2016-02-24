@@ -3661,6 +3661,10 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
         }
     }
 
+    if (h2c->state.stream == stream) {
+        h2c->state.stream = NULL;
+    }
+
     node->stream = NULL;
 
     ngx_queue_insert_tail(&h2c->closed, &node->reuse);
