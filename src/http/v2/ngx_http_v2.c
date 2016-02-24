@@ -114,6 +114,8 @@ static u_char *ngx_http_v2_state_skip(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_save(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
+static u_char *ngx_http_v2_state_headers_save(ngx_http_v2_connection_t *h2c,
+    u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
 static u_char *ngx_http_v2_connection_error(ngx_http_v2_connection_t *h2c,
     ngx_uint_t err);
 
@@ -162,6 +164,7 @@ static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
 static ngx_int_t ngx_http_v2_construct_cookie_header(ngx_http_request_t *r);
 static void ngx_http_v2_run_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_init_request_body(ngx_http_request_t *r);
+static void ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r);
 
 static ngx_int_t ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream, ngx_uint_t status);
@@ -430,6 +433,10 @@ ngx_http_v2_write_handler(ngx_event_t *wev)
                        "run http2 stream %ui", stream->node->id);
 
         wev = stream->request->connection->write;
+
+        wev->active = 0;
+        wev->ready = 1;
+
         wev->handler(wev);
     }
 
@@ -883,6 +890,7 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_buf_t                 *buf;
     ngx_int_t                  rc;
     ngx_temp_file_t           *tf;
+    ngx_connection_t          *fc;
     ngx_http_request_t        *r;
     ngx_http_v2_stream_t      *stream;
     ngx_http_request_body_t   *rb;
@@ -919,6 +927,7 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
+    fc = r->connection;
     rb = r->request_body;
     tf = rb->temp_file;
     buf = rb->buf;
@@ -929,7 +938,7 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         if (r->headers_in.content_length_n != -1
             && r->headers_in.content_length_n < rb->rest)
         {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                           "client intended to send body data "
                           "larger than declared");
 
@@ -942,7 +951,7 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
             if (clcf->client_max_body_size
                 && clcf->client_max_body_size < rb->rest)
             {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, fc->log, 0,
                               "client intended to send "
                               "too large chunked body: %O bytes", rb->rest);
 
@@ -982,6 +991,11 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (h2c->state.length) {
+        if (rb->post_handler) {
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_add_timer(fc->read, clcf->client_body_timeout);
+        }
+
         return ngx_http_v2_state_save(h2c, pos, end,
                                       ngx_http_v2_state_read_data);
     }
@@ -993,7 +1007,7 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
             r->headers_in.content_length_n = rb->rest;
 
         } else if (r->headers_in.content_length_n != rb->rest) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                           "client prematurely closed stream: "
                           "only %O out of %O bytes of request body received",
                           rb->rest, r->headers_in.content_length_n);
@@ -1013,9 +1027,17 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         }
 
         if (rb->post_handler) {
+            if (fc->read->timer_set) {
+                ngx_del_timer(fc->read);
+            }
+
             r->read_event_handler = ngx_http_block_reading;
             rb->post_handler(r);
         }
+
+    } else if (rb->post_handler) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_add_timer(fc->read, clcf->client_body_timeout);
     }
 
     if (h2c->state.padding) {
@@ -1027,6 +1049,9 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
 error:
 
     if (rb->post_handler) {
+        if (fc->read->timer_set) {
+            ngx_del_timer(fc->read);
+        }
 
         if (stream->skip_data == NGX_HTTP_V2_DATA_ERROR) {
             rc = (r->headers_in.content_length_n == -1)
@@ -1218,8 +1243,8 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_uint_t  indexed, size_update, prefix;
 
     if (end - pos < 1) {
-        return ngx_http_v2_state_save(h2c, pos, end,
-                                      ngx_http_v2_state_header_block);
+        return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                              ngx_http_v2_state_header_block);
     }
 
     if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)
@@ -1262,8 +1287,8 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (value < 0) {
         if (value == NGX_AGAIN) {
-            return ngx_http_v2_state_save(h2c, pos, end,
-                                          ngx_http_v2_state_header_block);
+            return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                               ngx_http_v2_state_header_block);
         }
 
         if (value == NGX_DECLINED) {
@@ -1333,8 +1358,8 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (end - pos < 1) {
-        return ngx_http_v2_state_save(h2c, pos, end,
-                                      ngx_http_v2_state_field_len);
+        return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                              ngx_http_v2_state_field_len);
     }
 
     huff = *pos >> 7;
@@ -1342,8 +1367,8 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (len < 0) {
         if (len == NGX_AGAIN) {
-            return ngx_http_v2_state_save(h2c, pos, end,
-                                          ngx_http_v2_state_field_len);
+            return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                                  ngx_http_v2_state_field_len);
         }
 
         if (len == NGX_DECLINED) {
@@ -1435,8 +1460,8 @@ ngx_http_v2_state_field_huff(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (h2c->state.length) {
-        return ngx_http_v2_state_save(h2c, pos, end,
-                                      ngx_http_v2_state_field_huff);
+        return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                              ngx_http_v2_state_field_huff);
     }
 
     if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
@@ -1480,8 +1505,8 @@ ngx_http_v2_state_field_raw(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (h2c->state.length) {
-        return ngx_http_v2_state_save(h2c, pos, end,
-                                      ngx_http_v2_state_field_raw);
+        return ngx_http_v2_state_headers_save(h2c, pos, end,
+                                              ngx_http_v2_state_field_raw);
     }
 
     if (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
@@ -1754,7 +1779,7 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if ((size_t) (end - pos) < len + NGX_HTTP_V2_FRAME_HEADER_SIZE) {
-        return ngx_http_v2_state_save(h2c, pos, end, handler);
+        return ngx_http_v2_state_headers_save(h2c, pos, end, handler);
     }
 
     p = pos + len;
@@ -2229,8 +2254,10 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
 
             wev = stream->request->connection->write;
 
-            if (!wev->timer_set) {
-                wev->delayed = 0;
+            wev->active = 0;
+            wev->ready = 1;
+
+            if (!wev->delayed) {
                 wev->handler(wev);
             }
         }
@@ -2262,8 +2289,10 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         wev = stream->request->connection->write;
 
-        if (!wev->timer_set) {
-            wev->delayed = 0;
+        wev->active = 0;
+        wev->ready = 1;
+
+        if (!wev->delayed) {
             wev->handler(wev);
 
             if (h2c->send_window == 0) {
@@ -2367,6 +2396,28 @@ ngx_http_v2_state_save(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end,
     h2c->state.incomplete = 1;
 
     return end;
+}
+
+
+static u_char *
+ngx_http_v2_state_headers_save(ngx_http_v2_connection_t *h2c, u_char *pos,
+    u_char *end, ngx_http_v2_handler_pt handler)
+{
+    ngx_event_t               *rev;
+    ngx_http_request_t        *r;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    if (h2c->state.stream) {
+        r = h2c->state.stream->request;
+        rev = r->connection->read;
+
+        if (!rev->timer_set) {
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+            ngx_add_timer(rev, cscf->client_header_timeout);
+        }
+    }
+
+    return ngx_http_v2_state_save(h2c, pos, end, handler);
 }
 
 
@@ -2748,6 +2799,7 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
     ngx_memcpy(log, h2c->connection->log, sizeof(ngx_log_t));
 
     log->data = ctx;
+    log->action = "reading client request headers";
 
     ngx_memzero(rev, sizeof(ngx_event_t));
 
@@ -3554,7 +3606,8 @@ ngx_int_t
 ngx_http_v2_read_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler)
 {
-    ngx_http_v2_stream_t  *stream;
+    ngx_http_v2_stream_t      *stream;
+    ngx_http_core_loc_conf_t  *clcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http2 read request body");
@@ -3590,10 +3643,45 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
 
     r->request_body->post_handler = post_handler;
 
-    r->read_event_handler = ngx_http_test_reading;
+    r->read_event_handler = ngx_http_v2_read_client_request_body_handler;
     r->write_event_handler = ngx_http_request_empty_handler;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    ngx_add_timer(r->connection->read, clcf->client_body_timeout);
+
     return NGX_AGAIN;
+}
+
+
+static void
+ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
+{
+    ngx_connection_t  *fc;
+
+    fc = r->connection;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 read client request body handler");
+
+    if (fc->read->timedout) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, NGX_ETIMEDOUT, "client timed out");
+
+        fc->timedout = 1;
+        r->stream->skip_data = NGX_HTTP_V2_DATA_DISCARD;
+
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
+
+    if (fc->error) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client prematurely closed stream");
+
+        r->stream->skip_data = NGX_HTTP_V2_DATA_DISCARD;
+
+        ngx_http_finalize_request(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
 }
 
 
@@ -3647,7 +3735,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 
     if (!stream->out_closed) {
         if (ngx_http_v2_send_rst_stream(h2c, node->id,
-                                        NGX_HTTP_V2_INTERNAL_ERROR)
+                                     fc->timedout ? NGX_HTTP_V2_PROTOCOL_ERROR
+                                                  : NGX_HTTP_V2_INTERNAL_ERROR)
             != NGX_OK)
         {
             h2c->connection->error = 1;
@@ -3684,11 +3773,6 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 
     ev = fc->read;
 
-    if (ev->active || ev->disabled) {
-        ngx_log_error(NGX_LOG_ALERT, h2c->connection->log, 0,
-                      "fake read event was activated");
-    }
-
     if (ev->timer_set) {
         ngx_del_timer(ev);
     }
@@ -3698,11 +3782,6 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     }
 
     ev = fc->write;
-
-    if (ev->active || ev->disabled) {
-        ngx_log_error(NGX_LOG_ALERT, h2c->connection->log, 0,
-                      "fake write event was activated");
-    }
 
     if (ev->timer_set) {
         ngx_del_timer(ev);
@@ -3737,8 +3816,17 @@ ngx_http_v2_close_stream_handler(ngx_event_t *ev)
     fc = ev->data;
     r = fc->data;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 close stream handler");
+
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, NGX_ETIMEDOUT, "client timed out");
+
+        fc->timedout = 1;
+
+        ngx_http_v2_close_stream(r->stream, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
 
     ngx_http_v2_close_stream(r->stream, 0);
 }
@@ -3747,7 +3835,11 @@ ngx_http_v2_close_stream_handler(ngx_event_t *ev)
 static void
 ngx_http_v2_handle_connection_handler(ngx_event_t *rev)
 {
-    ngx_connection_t  *c;
+    ngx_connection_t          *c;
+    ngx_http_v2_connection_t  *h2c;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "http2 handle connection handler");
 
     rev->handler = ngx_http_v2_read_handler;
 
@@ -3757,6 +3849,12 @@ ngx_http_v2_handle_connection_handler(ngx_event_t *rev)
     }
 
     c = rev->data;
+    h2c = c->data;
+
+    if (h2c->last_out && ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
+        ngx_http_v2_finalize_connection(h2c, 0);
+        return;
+    }
 
     ngx_http_v2_handle_connection(c->data);
 }
@@ -3878,9 +3976,7 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
             if (stream->queued) {
                 stream->queued = 0;
-
                 ev = fc->write;
-                ev->delayed = 0;
 
             } else {
                 ev = fc->read;
@@ -3949,8 +4045,10 @@ ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c, ssize_t delta)
 
                 wev = stream->request->connection->write;
 
-                if (!wev->timer_set) {
-                    wev->delayed = 0;
+                wev->active = 0;
+                wev->ready = 1;
+
+                if (!wev->delayed) {
                     wev->handler(wev);
                 }
             }

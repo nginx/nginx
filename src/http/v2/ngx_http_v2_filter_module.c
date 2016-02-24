@@ -799,7 +799,9 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     if (in == NULL) {
 
         if (stream->queued) {
-            fc->write->delayed = 1;
+            fc->write->active = 1;
+            fc->write->ready = 0;
+
         } else {
             fc->buffered &= ~NGX_HTTP_V2_BUFFERED;
         }
@@ -810,7 +812,8 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     h2c = stream->connection;
 
     if (size && ngx_http_v2_flow_control(h2c, stream) == NGX_DECLINED) {
-        fc->write->delayed = 1;
+        fc->write->active = 1;
+        fc->write->ready = 0;
         return in;
     }
 
@@ -947,7 +950,8 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     }
 
     if (in && ngx_http_v2_flow_control(h2c, stream) == NGX_DECLINED) {
-        fc->write->delayed = 1;
+        fc->write->active = 1;
+        fc->write->ready = 0;
     }
 
     return in;
@@ -1078,7 +1082,8 @@ ngx_http_v2_filter_send(ngx_connection_t *fc, ngx_http_v2_stream_t *stream)
 
     if (stream->queued) {
         fc->buffered |= NGX_HTTP_V2_BUFFERED;
-        fc->write->delayed = 1;
+        fc->write->active = 1;
+        fc->write->ready = 0;
         return NGX_AGAIN;
     }
 
@@ -1316,14 +1321,7 @@ ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
 
     wev = stream->request->connection->write;
 
-    /*
-     * This timer can only be set if the stream was delayed because of rate
-     * limit.  In that case the event should be triggered by the timer.
-     */
-
-    if (!wev->timer_set) {
-        wev->delayed = 0;
-
+    if (!wev->delayed) {
         stream->handled = 1;
         ngx_queue_insert_tail(&h2c->posted, &stream->queue);
     }
