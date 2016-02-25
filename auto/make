@@ -437,9 +437,9 @@ fi
 
 # the addons config.make
 
-if test -n "$NGX_ADDONS"; then
+if test -n "$NGX_ADDONS$DYNAMIC_ADDONS"; then
 
-    for ngx_addon_dir in $NGX_ADDONS
+    for ngx_addon_dir in $NGX_ADDONS $DYNAMIC_ADDONS
     do
         if test -f $ngx_addon_dir/config.make; then
             . $ngx_addon_dir/config.make
