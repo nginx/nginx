@@ -27,7 +27,6 @@ ngx_preinit_modules()
 {
     ngx_uint_t  i;
 
-    ngx_max_module = 0;
     for (i = 0; ngx_modules[i]; i++) {
         ngx_modules[i]->index = i;
         ngx_modules[i]->name = ngx_module_names[i];
