@@ -281,7 +281,7 @@ if [ $HTTP = YES ]; then
         ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
     else
         ngx_cc="\$(CC) $ngx_compile_opt \$(CFLAGS) \$(CORE_INCS) \$(HTTP_INCS)"
-        ngx_perl_cc="\$(CC) $ngx_compile_opt \$(NGX_PERL_CFLAGS) "
+        ngx_perl_cc="\$(CC) $ngx_compile_opt \$(NGX_PERL_CFLAGS)"
         ngx_perl_cc="$ngx_perl_cc \$(CORE_INCS) \$(HTTP_INCS)"
     fi
 
@@ -494,6 +494,8 @@ if test -n "$NGX_PCH"; then
     ngx_cc="\$(CC) $ngx_compile_opt $ngx_pic_opt \$(CFLAGS) $ngx_use_pch \$(ALL_INCS)"
 else
     ngx_cc="\$(CC) $ngx_compile_opt $ngx_pic_opt \$(CFLAGS) \$(ALL_INCS)"
+    ngx_perl_cc="\$(CC) $ngx_compile_opt $ngx_pic_opt \$(NGX_PERL_CFLAGS)"
+    ngx_perl_cc="$ngx_perl_cc \$(ALL_INCS)"
 fi
 
 ngx_obj_deps="\$(CORE_DEPS)"
@@ -639,15 +641,15 @@ $ngx_modules_obj:	\$(CORE_DEPS)$ngx_cont$ngx_modules_c
 
 END
 
-    for ngx_src in $ngx_module_srcs
+    for ngx_source in $ngx_module_srcs
     do
-        case "$ngx_src" in
+        case "$ngx_source" in
             src/*)
-                ngx_obj=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+                ngx_obj=`echo $ngx_source | sed -e "s/\//$ngx_regex_dirsep/g"`
                 ;;
             *)
-                ngx_obj="addon/`basename \`dirname $ngx_src\``"
-                ngx_obj=`echo $ngx_obj/\`basename $ngx_src\` \
+                ngx_obj="addon/`basename \`dirname $ngx_source\``"
+                ngx_obj=`echo $ngx_obj/\`basename $ngx_source\` \
                     | sed -e "s/\//$ngx_regex_dirsep/g"`
                 ;;
         esac
@@ -658,14 +660,25 @@ END
                   -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
                   -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
 
-        ngx_src=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_src=`echo $ngx_source | sed -e "s/\//$ngx_regex_dirsep/g"`
 
-        cat << END                                        >> $NGX_MAKEFILE
+        if [ $ngx_source = src/http/modules/perl/ngx_http_perl_module.c ]; then
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$ngx_obj:	$ngx_obj_deps$ngx_cont$ngx_src
+	$ngx_perl_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
+
+END
+        else
+
+            cat << END                                        >> $NGX_MAKEFILE
 
 $ngx_obj:	$ngx_obj_deps$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
 
+        fi
     done
 done

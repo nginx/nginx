@@ -727,14 +727,12 @@ if [ $HTTP_SCGI = YES ]; then
     . auto/module
 fi
 
-if [ $HTTP_PERL = YES ]; then
-    USE_PERL=YES
-
+if [ $HTTP_PERL != NO ]; then
     ngx_module_name=ngx_http_perl_module
     ngx_module_incs=src/http/modules/perl
     ngx_module_deps=src/http/modules/perl/ngx_http_perl_module.h
     ngx_module_srcs=src/http/modules/perl/ngx_http_perl_module.c
-    ngx_module_libs=
+    ngx_module_libs=PERL
     ngx_module_link=$HTTP_PERL
 
     . auto/module

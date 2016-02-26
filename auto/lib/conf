@@ -66,7 +66,7 @@ if [ $USE_LIBGD != NO ]; then
     . auto/lib/libgd/conf
 fi
 
-if [ $USE_PERL = YES ]; then
+if [ $USE_PERL != NO ]; then
     . auto/lib/perl/conf
 fi
 

@@ -271,6 +271,7 @@ do
         --without-http_upstream_zone_module) HTTP_UPSTREAM_ZONE=NO  ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
+        --with-http_perl_module=dynamic) HTTP_PERL=DYNAMIC          ;;
         --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;
         --with-perl=*)                   NGX_PERL="$value"          ;;
 
@@ -452,6 +453,7 @@ cat << END
                                      disable ngx_http_upstream_zone_module
 
   --with-http_perl_module            enable ngx_http_perl_module
+  --with-http_perl_module=dynamic    enable dynamic ngx_http_perl_module
   --with-perl_modules_path=PATH      set Perl modules path
   --with-perl=PATH                   set perl binary pathname
 

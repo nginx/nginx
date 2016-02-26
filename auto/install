@@ -3,7 +3,7 @@
 # Copyright (C) Nginx, Inc.
 
 
-if [ $USE_PERL = YES ]; then
+if [ $USE_PERL != NO ]; then
 
     cat << END                                                >> $NGX_MAKEFILE
 
