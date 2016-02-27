@@ -529,14 +529,16 @@ ngx_int_t
 ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
 {
     u_char  *p;
+    size_t   len;
 
     p = u->url.data;
+    len = u->url.len;
 
-    if (ngx_strncasecmp(p, (u_char *) "unix:", 5) == 0) {
+    if (len >= 5 && ngx_strncasecmp(p, (u_char *) "unix:", 5) == 0) {
         return ngx_parse_unix_domain_url(pool, u);
     }
 
-    if (p[0] == '[') {
+    if (len && p[0] == '[') {
         return ngx_parse_inet6_url(pool, u);
     }
 
