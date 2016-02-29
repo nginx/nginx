@@ -190,6 +190,9 @@ build:
 install:
 	\$(MAKE) -f $NGX_MAKEFILE install
 
+modules:
+	\$(MAKE) -f $NGX_MAKEFILE modules
+
 upgrade:
 	$NGX_SBIN_PATH -t
 
