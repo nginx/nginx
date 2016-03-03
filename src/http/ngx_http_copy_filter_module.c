@@ -204,10 +204,11 @@ ngx_http_copy_aio_event_handler(ngx_event_t *ev)
 static ssize_t
 ngx_http_copy_aio_sendfile_preload(ngx_buf_t *file)
 {
-    ssize_t              n;
-    static u_char        buf[1];
-    ngx_event_aio_t     *aio;
-    ngx_http_request_t  *r;
+    ssize_t                  n;
+    static u_char            buf[1];
+    ngx_event_aio_t         *aio;
+    ngx_http_request_t      *r;
+    ngx_output_chain_ctx_t  *ctx;
 
     n = ngx_file_aio_read(file->file, buf, 1, file->file_pos, NULL);
 
@@ -218,6 +219,9 @@ ngx_http_copy_aio_sendfile_preload(ngx_buf_t *file)
         r = aio->data;
         r->main->blocked++;
         r->aio = 1;
+
+        ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
+        ctx->aio = 1;
     }
 
     return n;
@@ -252,6 +256,7 @@ ngx_http_copy_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
     ngx_str_t                  name;
     ngx_thread_pool_t         *tp;
     ngx_http_request_t        *r;
+    ngx_output_chain_ctx_t    *ctx;
     ngx_http_core_loc_conf_t  *clcf;
 
     r = file->thread_ctx;
@@ -284,6 +289,9 @@ ngx_http_copy_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
 
     r->main->blocked++;
     r->aio = 1;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_copy_filter_module);
+    ctx->aio = 1;
 
     return NGX_OK;
 }

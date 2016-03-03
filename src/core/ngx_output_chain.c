@@ -581,7 +581,6 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
             n = ngx_thread_read(&ctx->thread_task, src->file, dst->pos,
                                 (size_t) size, src->file_pos, ctx->pool);
             if (n == NGX_AGAIN) {
-                ctx->aio = 1;
                 return NGX_AGAIN;
             }
 
