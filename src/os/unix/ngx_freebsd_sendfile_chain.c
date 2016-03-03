@@ -247,6 +247,19 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 #if (NGX_HAVE_AIO_SENDFILE)
 
         if (ebusy) {
+            if (aio->event.active) {
+                /*
+                 * tolerate duplicate calls; they can happen due to subrequests
+                 * or multiple calls of the next body filter from a filter
+                 */
+
+                if (sent) {
+                    c->busy_count = 0;
+                }
+
+                return in;
+            }
+
             if (sent == 0) {
                 c->busy_count++;
 
