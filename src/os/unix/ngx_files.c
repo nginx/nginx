@@ -14,7 +14,8 @@
 static void ngx_thread_read_handler(void *data, ngx_log_t *log);
 #endif
 
-static ssize_t ngx_writev_file(ngx_file_t *file, ngx_array_t *vec, size_t size,
+static ngx_chain_t *ngx_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *cl);
+static ssize_t ngx_writev_file(ngx_file_t *file, ngx_iovec_t *vec,
     off_t offset);
 
 
@@ -276,17 +277,13 @@ ngx_open_tempfile(u_char *name, ngx_uint_t persistent, ngx_uint_t access)
 }
 
 
-#define NGX_IOVS  8
-
 ssize_t
 ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
     ngx_pool_t *pool)
 {
-    u_char        *prev;
-    size_t         size;
     ssize_t        total, n;
-    ngx_array_t    vec;
-    struct iovec  *iov, iovs[NGX_IOVS];
+    ngx_iovec_t    vec;
+    struct iovec   iovs[NGX_IOVS_PREALLOCATE];
 
     /* use pwrite() if there is the only buf in a chain */
 
@@ -298,46 +295,18 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 
     total = 0;
 
-    vec.elts = iovs;
-    vec.size = sizeof(struct iovec);
-    vec.nalloc = NGX_IOVS;
-    vec.pool = pool;
+    vec.iovs = iovs;
+    vec.nalloc = NGX_IOVS_PREALLOCATE;
 
     do {
-        prev = NULL;
-        iov = NULL;
-        size = 0;
-
-        vec.nelts = 0;
-
         /* create the iovec and coalesce the neighbouring bufs */
-
-        while (cl && vec.nelts < IOV_MAX) {
-            if (prev == cl->buf->pos) {
-                iov->iov_len += cl->buf->last - cl->buf->pos;
-
-            } else {
-                iov = ngx_array_push(&vec);
-                if (iov == NULL) {
-                    return NGX_ERROR;
-                }
-
-                iov->iov_base = (void *) cl->buf->pos;
-                iov->iov_len = cl->buf->last - cl->buf->pos;
-            }
-
-            size += cl->buf->last - cl->buf->pos;
-            prev = cl->buf->last;
-            cl = cl->next;
-        }
+        cl = ngx_chain_to_iovec(&vec, cl);
 
         /* use pwrite() if there is the only iovec buffer */
 
-        if (vec.nelts == 1) {
-            iov = vec.elts;
-
-            n = ngx_write_file(file, (u_char *) iov[0].iov_base,
-                               iov[0].iov_len, offset);
+        if (vec.count == 1) {
+            n = ngx_write_file(file, (u_char *) iovs[0].iov_base,
+                               iovs[0].iov_len, offset);
 
             if (n == NGX_ERROR) {
                 return n;
@@ -346,7 +315,7 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
             return total + n;
         }
 
-        n = ngx_writev_file(file, &vec, size, offset);
+        n = ngx_writev_file(file, &vec, offset);
 
         if (n == NGX_ERROR) {
             return n;
@@ -361,20 +330,61 @@ ngx_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
 }
 
 
+static ngx_chain_t *
+ngx_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *cl)
+{
+    size_t         total, size;
+    u_char        *prev;
+    ngx_uint_t     n;
+    struct iovec  *iov;
+
+    iov = NULL;
+    prev = NULL;
+    total = 0;
+    n = 0;
+
+    for ( /* void */ ; cl; cl = cl->next) {
+        size = cl->buf->last - cl->buf->pos;
+
+        if (prev == cl->buf->pos) {
+            iov->iov_len += size;
+
+        } else {
+            if (n == vec->nalloc) {
+                break;
+            }
+
+            iov = &vec->iovs[n++];
+
+            iov->iov_base = (void *) cl->buf->pos;
+            iov->iov_len = size;
+        }
+
+        prev = cl->buf->pos + size;
+        total += size;
+    }
+
+    vec->count = n;
+    vec->size = total;
+
+    return cl;
+}
+
+
 static ssize_t
-ngx_writev_file(ngx_file_t *file, ngx_array_t *vec, size_t size, off_t offset)
+ngx_writev_file(ngx_file_t *file, ngx_iovec_t *vec, off_t offset)
 {
     ssize_t    n;
     ngx_err_t  err;
 
     ngx_log_debug3(NGX_LOG_DEBUG_CORE, file->log, 0,
-                   "writev: %d, %uz, %O", file->fd, size, offset);
+                   "writev: %d, %uz, %O", file->fd, vec->size, offset);
 
 #if (NGX_HAVE_PWRITEV)
 
 eintr:
 
-    n = pwritev(file->fd, vec->elts, vec->nelts, offset);
+    n = pwritev(file->fd, vec->iovs, vec->count, offset);
 
     if (n == -1) {
         err = ngx_errno;
@@ -390,10 +400,10 @@ eintr:
         return NGX_ERROR;
     }
 
-    if ((size_t) n != size) {
+    if ((size_t) n != vec->size) {
         ngx_log_error(NGX_LOG_CRIT, file->log, 0,
                       "pwritev() \"%s\" has written only %z of %uz",
-                      file->name.data, n, size);
+                      file->name.data, n, vec->size);
         return NGX_ERROR;
     }
 
@@ -411,7 +421,7 @@ eintr:
 
 eintr:
 
-    n = writev(file->fd, vec->elts, vec->nelts);
+    n = writev(file->fd, vec->iovs, vec->count);
 
     if (n == -1) {
         err = ngx_errno;
@@ -427,10 +437,10 @@ eintr:
         return NGX_ERROR;
     }
 
-    if ((size_t) n != size) {
+    if ((size_t) n != vec->size) {
         ngx_log_error(NGX_LOG_CRIT, file->log, 0,
                       "writev() \"%s\" has written only %z of %uz",
-                      file->name.data, n, size);
+                      file->name.data, n, vec->size);
         return NGX_ERROR;
     }
 
