@@ -2861,6 +2861,11 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
     }
 
+    if (r->header_only && !u->cacheable && !u->store) {
+        ngx_http_upstream_finalize_request(r, u, 0);
+        return;
+    }
+
 #endif
 
     p = u->pipe;
