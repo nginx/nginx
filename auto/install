@@ -169,15 +169,29 @@ END
 fi
 
 
-if test -n "$NGX_MODULES"; then
+if test -n "$DYNAMIC_MODULES"; then
     cat << END                                                >> $NGX_MAKEFILE
 
 	test -d '\$(DESTDIR)$NGX_MODULES_PATH' \
 		|| mkdir -p '\$(DESTDIR)$NGX_MODULES_PATH'
-	cp $NGX_MODULES '\$(DESTDIR)$NGX_MODULES_PATH'
 END
 
 fi
+
+
+for ngx_module in $DYNAMIC_MODULES
+do
+    ngx_module=$ngx_module$ngx_modext
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+	test ! -f '\$(DESTDIR)$NGX_MODULES_PATH/$ngx_module' \
+		|| mv '\$(DESTDIR)$NGX_MODULES_PATH/$ngx_module' \
+			'\$(DESTDIR)$NGX_MODULES_PATH/$ngx_module.old'
+	cp $NGX_OBJS/$ngx_module '\$(DESTDIR)$NGX_MODULES_PATH/$ngx_module'
+END
+
+done
 
 
 # create Makefile

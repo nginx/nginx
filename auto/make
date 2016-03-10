@@ -609,8 +609,6 @@ END
 
     ngx_obj=$NGX_OBJS$ngx_dirsep$ngx_module$ngx_modext
 
-    NGX_MODULES="$NGX_MODULES $ngx_obj"
-
     if [ "$NGX_PLATFORM" = win32 ]; then
         ngx_module_libs="$CORE_LIBS $ngx_module_libs"
     fi
