@@ -225,12 +225,12 @@ cat << END                                                    >> $NGX_MAKEFILE
 
 build:	binary modules manpage
 
-binary:	$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}
+binary:	$NGX_OBJS${ngx_dirsep}nginx$ngx_binext
 
-$NGX_OBJS${ngx_dirsep}nginx${ngx_binext}:	$ngx_deps$ngx_spacer
-	\$(LINK) ${ngx_long_start}${ngx_binout}$NGX_OBJS${ngx_dirsep}nginx$ngx_long_cont$ngx_objs$ngx_libs$ngx_link$ngx_main_link
+$NGX_OBJS${ngx_dirsep}nginx$ngx_binext:	$ngx_deps$ngx_spacer
+	\$(LINK) $ngx_long_start$ngx_binout$NGX_OBJS${ngx_dirsep}nginx$ngx_long_cont$ngx_objs$ngx_libs$ngx_link$ngx_main_link
 	$ngx_rcc
-${ngx_long_end}
+$ngx_long_end
 
 modules:
 END
@@ -607,7 +607,7 @@ END
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_long_regex_cont\1/g" \
               -e "s/\//$ngx_regex_dirsep/g"`
 
-    ngx_obj=$NGX_OBJS${ngx_dirsep}${ngx_module}${ngx_modext}
+    ngx_obj=$NGX_OBJS$ngx_dirsep$ngx_module$ngx_modext
 
     NGX_MODULES="$NGX_MODULES $ngx_obj"
 
