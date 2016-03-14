@@ -436,7 +436,7 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
             default:
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                    "unexpected event %04Xd for closed and removed socket %d, ",
+                    "unexpected event %04Xd for closed and removed socket %d, "
                     "ioctl(DP_ISPOLLED) returned rc:%d, fd:%d, event %04Xd",
                     revents, fd, rc, pfd.fd, pfd.revents);
 
