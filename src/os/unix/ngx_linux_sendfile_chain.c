@@ -343,7 +343,12 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
     if (task->event.complete) {
         task->event.complete = 0;
 
-        if (ctx->err && ctx->err != NGX_EAGAIN) {
+        if (ctx->err == NGX_EAGAIN) {
+            *sent = 0;
+            return NGX_AGAIN;
+        }
+
+        if (ctx->err) {
             wev->error = 1;
             ngx_connection_error(c, ctx->err, "sendfile() failed");
             return NGX_ERROR;
