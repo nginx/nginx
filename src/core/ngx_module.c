@@ -23,7 +23,7 @@ static ngx_uint_t  ngx_modules_n;
 
 
 ngx_int_t
-ngx_preinit_modules()
+ngx_preinit_modules(void)
 {
     ngx_uint_t  i;
 
