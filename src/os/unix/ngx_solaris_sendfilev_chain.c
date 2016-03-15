@@ -48,6 +48,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ssize_t         n;
     ngx_int_t       eintr;
     ngx_err_t       err;
+    ngx_buf_t      *file;
     ngx_uint_t      nsfv;
     sendfilevec_t  *sfv, sfvs[NGX_SENDFILEVECS];
     ngx_event_t    *wev;
@@ -77,6 +78,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         fd = SFV_FD_SELF;
         prev = NULL;
         fprev = 0;
+        file = NULL;
         sfv = NULL;
         eintr = 0;
         sent = 0;
@@ -153,6 +155,7 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     sfv->sfv_len = (size_t) size;
                 }
 
+                file = cl->buf;
                 fprev = cl->buf->file_pos + size;
                 send += size;
             }
@@ -179,6 +182,26 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, err,
                           "sendfilev() sent only %uz bytes", sent);
+
+        } else if (n == 0 && sent == 0) {
+
+            /*
+             * sendfilev() is documented to return -1 with errno
+             * set to EINVAL if svf_len is greater than the file size,
+             * but at least Solaris 11 returns 0 instead
+             */
+
+            if (file) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                        "sendfilev() reported that \"%s\" was truncated at %O",
+                        file->file->name.data, file->file_pos);
+
+            } else {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "sendfilev() returned 0 with memory buffers");
+            }
+
+            return NGX_CHAIN_ERROR;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
