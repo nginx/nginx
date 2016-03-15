@@ -231,6 +231,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     server_tokens = clcf->server_tokens;
 
+#if (NGX_SUPPRESS_WARN)
+    ngx_str_null(&tokens);
+#endif
+
     if (r->headers_out.server == NULL) {
 
         if (server_tokens == 0) {
