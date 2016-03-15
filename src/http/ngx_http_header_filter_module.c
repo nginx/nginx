@@ -277,6 +277,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+#if (NGX_SUPPRESS_WARN)
+    ngx_str_null(&tokens);
+#endif
+
     if (r->headers_out.server == NULL) {
         if (clcf->server_tokens == 0) {
             ngx_str_set(&tokens, ngx_http_server_string);
