@@ -32,6 +32,12 @@ static u_char ngx_http_error_tail[] =
 ;
 
 
+static u_char ngx_http_error_no_tail[] =
+"</body>" CRLF
+"</html>" CRLF
+;
+
+
 static u_char ngx_http_msie_padding[] =
 "<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
 "<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
@@ -609,26 +615,45 @@ static ngx_int_t
 ngx_http_send_special_response(ngx_http_request_t *r,
     ngx_http_core_loc_conf_t *clcf, ngx_uint_t err)
 {
-    u_char       *tail;
-    size_t        len;
     ngx_int_t     rc;
+    ngx_str_t     tail, tokens;
     ngx_buf_t    *b;
     ngx_uint_t    msie_padding;
     ngx_chain_t   out[3];
 
-    if (clcf->server_tokens) {
-        len = sizeof(ngx_http_error_full_tail) - 1;
-        tail = ngx_http_error_full_tail;
-
-    } else {
-        len = sizeof(ngx_http_error_tail) - 1;
-        tail = ngx_http_error_tail;
-    }
-
     msie_padding = 0;
 
     if (ngx_http_error_pages[err].len) {
-        r->headers_out.content_length_n = ngx_http_error_pages[err].len + len;
+
+        if (clcf->server_tokens == 0) {
+            ngx_str_set(&tail, ngx_http_error_tail);
+
+        } else if (clcf->server_tokens == 1) {
+            ngx_str_set(&tail, ngx_http_error_full_tail);
+
+        } else {
+            if (ngx_http_complex_value(r, &clcf->server_tokens_value, &tokens)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            if (tokens.len == 3
+                && ngx_strncmp(tokens.data, "off", 3) == 0)
+            {
+                ngx_str_set(&tail, ngx_http_error_tail);
+
+            } else if (tokens.len) {
+                ngx_str_set(&tail, ngx_http_error_full_tail);
+
+            } else {
+                ngx_str_set(&tail, ngx_http_error_no_tail);
+            }
+        }
+
+        r->headers_out.content_length_n = ngx_http_error_pages[err].len
+                                          + tail.len;
+
         if (clcf->msie_padding
             && (r->headers_in.msie || r->headers_in.chrome)
             && r->http_version >= NGX_HTTP_VERSION_10
@@ -645,6 +670,10 @@ ngx_http_send_special_response(ngx_http_request_t *r,
 
     } else {
         r->headers_out.content_length_n = 0;
+
+#if (NGX_SUPPRESS_WARN)
+        ngx_str_null(&tail);
+#endif
     }
 
     if (r->headers_out.content_length) {
@@ -684,9 +713,8 @@ ngx_http_send_special_response(ngx_http_request_t *r,
     }
 
     b->memory = 1;
-
-    b->pos = tail;
-    b->last = tail + len;
+    b->pos = tail.data;
+    b->last = tail.data + tail.len;
 
     out[1].buf = b;
     out[1].next = NULL;
