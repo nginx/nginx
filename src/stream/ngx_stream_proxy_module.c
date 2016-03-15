@@ -54,7 +54,7 @@ static void ngx_stream_proxy_process_connection(ngx_event_t *ev,
     ngx_uint_t from_upstream);
 static void ngx_stream_proxy_connect_handler(ngx_event_t *ev);
 static ngx_int_t ngx_stream_proxy_test_connect(ngx_connection_t *c);
-static ngx_int_t ngx_stream_proxy_process(ngx_stream_session_t *s,
+static void ngx_stream_proxy_process(ngx_stream_session_t *s,
     ngx_uint_t from_upstream, ngx_uint_t do_write);
 static void ngx_stream_proxy_next_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_int_t rc);
@@ -406,8 +406,8 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
         u->proxy_protocol = 0;
     }
 
-    if (ngx_stream_proxy_process(s, 0, 0) != NGX_OK) {
-        return;
+    if (c->read->ready) {
+        ngx_post_event(c->read, &ngx_posted_events);
     }
 
     ngx_stream_proxy_connect(s);
@@ -560,8 +560,8 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     pc->read->handler = ngx_stream_proxy_upstream_handler;
     pc->write->handler = ngx_stream_proxy_upstream_handler;
 
-    if (ngx_stream_proxy_process(s, 1, 0) != NGX_OK) {
-        return;
+    if (pc->read->ready) {
+        ngx_post_event(pc->read, &ngx_posted_events);
     }
 
     ngx_stream_proxy_process(s, 0, 1);
@@ -1019,7 +1019,7 @@ ngx_stream_proxy_test_connect(ngx_connection_t *c)
 }
 
 
-static ngx_int_t
+static void
 ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     ngx_uint_t do_write)
 {
@@ -1068,7 +1068,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
                 if (n == NGX_ERROR) {
                     ngx_stream_proxy_finalize(s, NGX_DECLINED);
-                    return NGX_ERROR;
+                    return;
                 }
 
                 if (n > 0) {
@@ -1147,20 +1147,20 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         c->log->handler = handler;
 
         ngx_stream_proxy_finalize(s, NGX_OK);
-        return NGX_DONE;
+        return;
     }
 
     flags = src->read->eof ? NGX_CLOSE_EVENT : 0;
 
     if (ngx_handle_read_event(src->read, flags) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_ERROR);
-        return NGX_ERROR;
+        return;
     }
 
     if (dst) {
         if (ngx_handle_write_event(dst->write, 0) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_ERROR);
-            return NGX_ERROR;
+            return;
         }
 
         if (!c->read->delayed && !pc->read->delayed) {
@@ -1170,8 +1170,6 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
             ngx_del_timer(c->write);
         }
     }
-
-    return NGX_OK;
 }
 
 
