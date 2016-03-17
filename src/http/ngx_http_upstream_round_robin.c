@@ -176,6 +176,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 }
 
                 peer[n].host->name = server[i].host;
+                peer[n].host->service = server[i].service;
 
                 peer[n].sockaddr = server[i].addrs[0].sockaddr;
                 peer[n].socklen = server[i].addrs[0].socklen;
@@ -245,7 +246,15 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             }
         }
 
-        if (n + r == 0) {
+        if (n == 0
+#if (NGX_HTTP_UPSTREAM_ZONE)
+            && !resolve
+#endif
+        ) {
+            return NGX_OK;
+        }
+
+        if (n + r == 0 && !(us->flags & NGX_HTTP_UPSTREAM_BACKUP)) {
             return NGX_OK;
         }
 
@@ -293,6 +302,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 }
 
                 peer[n].host->name = server[i].host;
+                peer[n].host->service = server[i].service;
 
                 peer[n].sockaddr = server[i].addrs[0].sockaddr;
                 peer[n].socklen = server[i].addrs[0].socklen;
