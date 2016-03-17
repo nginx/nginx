@@ -6306,6 +6306,19 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             resolve = 1;
             continue;
         }
+
+        if (ngx_strncmp(value[i].data, "service=", 8) == 0) {
+
+            us->service.len = value[i].len - 8;
+            us->service.data = &value[i].data[8];
+
+            if (us->service.len == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "service is empty");
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
 #endif
 
         goto invalid;
@@ -6321,6 +6334,15 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         /* resolve at run time */
         u.no_resolve = 1;
     }
+
+    if (us->service.len && !resolve) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "service upstream \"%V\" requires "
+                           "\"resolve\" parameter",
+                           &u.url);
+        return NGX_CONF_ERROR;
+    }
+
 #endif
 
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
@@ -6335,6 +6357,22 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     us->name = u.url;
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
+
+    if (us->service.len && !u.no_port) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "service upstream \"%V\" may not have port",
+                           &us->name);
+
+        return NGX_CONF_ERROR;
+    }
+
+    if (us->service.len && u.naddrs) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "service upstream \"%V\" requires domain name",
+                           &us->name);
+
+        return NGX_CONF_ERROR;
+    }
 
     if (resolve && u.naddrs == 0) {
         ngx_addr_t  *addr;

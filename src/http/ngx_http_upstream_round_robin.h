@@ -24,6 +24,7 @@ typedef struct {
     ngx_event_t                     event;         /* must be first */
     ngx_uint_t                      worker;
     ngx_str_t                       name;
+    ngx_str_t                       service;
     ngx_http_upstream_rr_peers_t   *peers;
     ngx_http_upstream_rr_peer_t    *peer;
 } ngx_http_upstream_host_t;
@@ -150,7 +151,7 @@ ngx_http_upstream_rr_peer_free_locked(ngx_http_upstream_rr_peers_t *peers,
     ngx_slab_free_locked(peers->shpool, peer->sockaddr);
     ngx_slab_free_locked(peers->shpool, peer->name.data);
 
-    if (peer->server.data && (peer->host == NULL || peer->host->peer == peer)) {
+    if (peer->server.data) {
         ngx_slab_free_locked(peers->shpool, peer->server.data);
     }
 

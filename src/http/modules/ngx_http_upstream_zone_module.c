@@ -359,6 +359,18 @@ ngx_http_upstream_zone_copy_peer(ngx_http_upstream_rr_peers_t *peers,
             dst->host->name.len = src->host->name.len;
             ngx_memcpy(dst->host->name.data, src->host->name.data,
                        src->host->name.len);
+
+            if (src->host->service.len) {
+                dst->host->service.data = ngx_slab_alloc_locked(pool,
+                                                        src->host->service.len);
+                if (dst->host->service.data == NULL) {
+                    goto failed;
+                }
+
+                dst->host->service.len = src->host->service.len;
+                ngx_memcpy(dst->host->service.data, src->host->service.data,
+                           src->host->service.len);
+            }
         }
     }
 
@@ -367,6 +379,10 @@ ngx_http_upstream_zone_copy_peer(ngx_http_upstream_rr_peers_t *peers,
 failed:
 
     if (dst->host) {
+        if (dst->host->name.data) {
+            ngx_slab_free_locked(pool, dst->host->name.data);
+        }
+
         ngx_slab_free_locked(pool, dst->host);
     }
 
@@ -510,6 +526,7 @@ ngx_http_upstream_zone_resolve_timer(ngx_event_t *event)
     ctx->handler = ngx_http_upstream_zone_resolve_handler;
     ctx->data = host;
     ctx->timeout = uscf->resolver_timeout;
+    ctx->service = host->service;
     ctx->cancelable = 1;
 
     if (ngx_resolve_name(ctx) == NGX_OK) {
@@ -522,15 +539,28 @@ retry:
 }
 
 
+#define ngx_http_upstream_zone_addr_marked(addr)                              \
+    ((uintptr_t) (addr)->sockaddr & 1)
+
+#define ngx_http_upstream_zone_mark_addr(addr)                                \
+    (addr)->sockaddr = (struct sockaddr *) ((uintptr_t) (addr)->sockaddr | 1)
+
+#define ngx_http_upstream_zone_unmark_addr(addr)                              \
+    (addr)->sockaddr =                                                        \
+        (struct sockaddr *) ((uintptr_t) (addr)->sockaddr & ~((uintptr_t) 1))
+
 static void
 ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 {
     time_t                         now;
+    u_short                        min_priority;
     in_port_t                      port;
+    ngx_str_t                     *server;
     ngx_msec_t                     timer;
-    ngx_uint_t                     i, j;
+    ngx_uint_t                     i, j, backup, addr_backup;
     ngx_event_t                   *event;
     ngx_resolver_addr_t           *addr;
+    ngx_resolver_srv_name_t       *srv;
     ngx_http_upstream_host_t      *host;
     ngx_http_upstream_rr_peer_t   *peer, *template, **peerp;
     ngx_http_upstream_rr_peers_t  *peers;
@@ -546,11 +576,32 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 
     now = ngx_time();
 
+    for (i = 0; i < ctx->nsrvs; i++) {
+        srv = &ctx->srvs[i];
+
+        if (srv->state) {
+            ngx_log_error(NGX_LOG_ERR, event->log, 0,
+                          "%V could not be resolved (%i: %s) "
+                          "while resolving service %V of %V",
+                          &srv->name, srv->state,
+                          ngx_resolver_strerror(srv->state), &ctx->service,
+                          &ctx->name);
+        }
+    }
+
     if (ctx->state) {
-        ngx_log_error(NGX_LOG_ERR, event->log, 0,
-                      "%V could not be resolved (%i: %s)",
-                      &ctx->name, ctx->state,
-                      ngx_resolver_strerror(ctx->state));
+        if (ctx->service.len) {
+            ngx_log_error(NGX_LOG_ERR, event->log, 0,
+                          "service %V of %V could not be resolved (%i: %s)",
+                          &ctx->service, &ctx->name, ctx->state,
+                          ngx_resolver_strerror(ctx->state));
+
+        } else {
+            ngx_log_error(NGX_LOG_ERR, event->log, 0,
+                          "%V could not be resolved (%i: %s)",
+                          &ctx->name, ctx->state,
+                          ngx_resolver_strerror(ctx->state));
+        }
 
         if (ctx->state != NGX_RESOLVE_NXDOMAIN) {
             ngx_http_upstream_rr_peers_unlock(peers);
@@ -566,6 +617,13 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
         ctx->naddrs = 0;
     }
 
+    backup = 0;
+    min_priority = 65535;
+
+    for (i = 0; i < ctx->naddrs; i++) {
+        min_priority = ngx_min(ctx->addrs[i].priority, min_priority);
+    }
+
 #if (NGX_DEBUG)
     {
     u_char  text[NGX_SOCKADDR_STRLEN];
@@ -573,13 +631,19 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 
     for (i = 0; i < ctx->naddrs; i++) {
         len = ngx_sock_ntop(ctx->addrs[i].sockaddr, ctx->addrs[i].socklen,
-                            text, NGX_SOCKADDR_STRLEN, 0);
+                            text, NGX_SOCKADDR_STRLEN, 1);
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, event->log, 0,
-                       "name %V was resolved to %*s", &host->name, len, text);
+        ngx_log_debug7(NGX_LOG_DEBUG_HTTP, event->log, 0,
+                       "name %V was resolved to %*s "
+                       "s:\"%V\" n:\"%V\" w:%d %s",
+                       &host->name, len, text, &host->service,
+                       &ctx->addrs[i].name, ctx->addrs[i].weight,
+                       ctx->addrs[i].priority != min_priority ? "backup" : "");
     }
     }
 #endif
+
+again:
 
     for (peerp = &peers->peer; *peerp; /* void */ ) {
         peer = *peerp;
@@ -592,14 +656,39 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 
             addr = &ctx->addrs[j];
 
-            if (addr->name.len == 0
-                && ngx_cmp_sockaddr(peer->sockaddr, peer->socklen,
-                                    addr->sockaddr, addr->socklen, 0)
-                   == NGX_OK)
-            {
-                addr->name.len = 1;
-                goto next;
+            addr_backup = (addr->priority != min_priority);
+            if (addr_backup != backup) {
+                continue;
             }
+
+            if (ngx_http_upstream_zone_addr_marked(addr)) {
+                continue;
+            }
+
+            if (ngx_cmp_sockaddr(peer->sockaddr, peer->socklen,
+                                 addr->sockaddr, addr->socklen,
+                                 host->service.len != 0)
+                != NGX_OK)
+            {
+                continue;
+            }
+
+            if (host->service.len) {
+                if (addr->name.len != peer->server.len
+                    || ngx_strncmp(addr->name.data, peer->server.data,
+                                   addr->name.len))
+                {
+                    continue;
+                }
+
+                if (template->weight == 1 && addr->weight != peer->weight) {
+                    continue;
+                }
+            }
+
+            ngx_http_upstream_zone_mark_addr(addr);
+
+            goto next;
         }
 
         *peerp = peer->next;
@@ -618,8 +707,13 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 
         addr = &ctx->addrs[i];
 
-        if (addr->name.len == 1) {
-            addr->name.len = 0;
+        addr_backup = (addr->priority != min_priority);
+        if (addr_backup != backup) {
+            continue;
+        }
+
+        if (ngx_http_upstream_zone_addr_marked(addr)) {
+            ngx_http_upstream_zone_unmark_addr(addr);
             continue;
         }
 
@@ -631,21 +725,14 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
             ngx_log_error(NGX_LOG_ERR, event->log, 0,
                           "cannot add new server to upstream \"%V\", "
                           "memory exhausted", peers->name);
-            break;
+            goto done;
         }
 
         ngx_memcpy(peer->sockaddr, addr->sockaddr, addr->socklen);
 
-        port = ((struct sockaddr_in *) template->sockaddr)->sin_port;
-
-        switch (peer->sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            ((struct sockaddr_in6 *) peer->sockaddr)->sin6_port = port;
-            break;
-#endif
-        default: /* AF_INET */
-            ((struct sockaddr_in *) peer->sockaddr)->sin_port = port;
+        if (host->service.len == 0) {
+            port = ngx_inet_get_port(template->sockaddr);
+            ngx_inet_set_port(peer->sockaddr, port);
         }
 
         peer->socklen = addr->socklen;
@@ -654,9 +741,30 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
                                        peer->name.data, NGX_SOCKADDR_STRLEN, 1);
 
         peer->host = template->host;
-        peer->server = template->server;
 
-        peer->weight = template->weight;
+        server = host->service.len ? &addr->name : &template->server;
+
+        peer->server.data = ngx_slab_alloc(peers->shpool, server->len);
+        if (peer->server.data == NULL) {
+            ngx_http_upstream_rr_peer_free(peers, peer);
+
+            ngx_log_error(NGX_LOG_ERR, event->log, 0,
+                          "cannot add new server to upstream \"%V\", "
+                          "memory exhausted", peers->name);
+            goto done;
+        }
+
+        peer->server.len = server->len;
+        ngx_memcpy(peer->server.data, server->data, server->len);
+
+        if (host->service.len == 0) {
+            peer->weight = template->weight;
+
+        } else {
+            peer->weight = (template->weight != 1 ? template->weight
+                                                  : addr->weight);
+        }
+
         peer->effective_weight = peer->weight;
         peer->max_conns = template->max_conns;
         peer->max_fails = template->max_fails;
@@ -675,7 +783,24 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
         ngx_http_upstream_zone_set_single(uscf);
     }
 
+    if (host->service.len && peers->next) {
+        ngx_http_upstream_rr_peers_unlock(peers);
+
+        peers = peers->next;
+        backup = 1;
+
+        ngx_http_upstream_rr_peers_wlock(peers);
+
+        goto again;
+    }
+
+done:
+
     ngx_http_upstream_rr_peers_unlock(peers);
+
+    while (++i < ctx->naddrs) {
+        ngx_http_upstream_zone_unmark_addr(&ctx->addrs[i]);
+    }
 
     timer = (ngx_msec_t) 1000 * (ctx->valid > now ? ctx->valid - now + 1 : 1);
 
