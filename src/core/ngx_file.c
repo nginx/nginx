@@ -124,6 +124,15 @@ ngx_write_chain_to_temp_file(ngx_temp_file_t *tf, ngx_chain_t *chain)
         }
     }
 
+#if (NGX_THREADS && NGX_HAVE_PWRITEV)
+
+    if (tf->thread_write) {
+        return ngx_thread_write_chain_to_file(&tf->file, chain, tf->offset,
+                                              tf->pool);
+    }
+
+#endif
+
     return ngx_write_chain_to_file(&tf->file, chain, tf->offset, tf->pool);
 }
 

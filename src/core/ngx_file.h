@@ -78,6 +78,7 @@ typedef struct {
     unsigned                   log_level:8;
     unsigned                   persistent:1;
     unsigned                   clean:1;
+    unsigned                   thread_write:1;
 } ngx_temp_file_t;
 
 
