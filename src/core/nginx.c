@@ -10,7 +10,7 @@
 #include <nginx.h>
 
 
-static void ngx_show_version_info();
+static void ngx_show_version_info(void);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_get_options(int argc, char *const *argv);
 static ngx_int_t ngx_process_options(ngx_cycle_t *cycle);
@@ -372,7 +372,7 @@ main(int argc, char *const *argv)
 
 
 static void
-ngx_show_version_info()
+ngx_show_version_info(void)
 {
     ngx_write_stderr("nginx version: " NGINX_VER_BUILD NGX_LINEFEED);
 
