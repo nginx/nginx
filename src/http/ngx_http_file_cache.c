@@ -691,12 +691,13 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 #if (NGX_THREADS)
 
     if (clcf->aio == NGX_HTTP_AIO_THREADS) {
+        c->file.thread_task = c->thread_task;
         c->file.thread_handler = ngx_http_cache_thread_handler;
         c->file.thread_ctx = r;
 
-        n = ngx_thread_read(&c->thread_task, &c->file, c->buf->pos,
-                            c->body_start, 0, r->pool);
+        n = ngx_thread_read(&c->file, c->buf->pos, c->body_start, 0, r->pool);
 
+        c->thread_task = c->file.thread_task;
         c->reading = (n == NGX_AGAIN);
 
         return n;

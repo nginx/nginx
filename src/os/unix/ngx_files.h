@@ -385,8 +385,8 @@ extern ngx_uint_t  ngx_file_aio;
 #endif
 
 #if (NGX_THREADS)
-ssize_t ngx_thread_read(ngx_thread_task_t **taskp, ngx_file_t *file,
-    u_char *buf, size_t size, off_t offset, ngx_pool_t *pool);
+ssize_t ngx_thread_read(ngx_file_t *file, u_char *buf, size_t size,
+    off_t offset, ngx_pool_t *pool);
 #endif
 
 

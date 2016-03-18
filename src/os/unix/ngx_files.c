@@ -88,8 +88,8 @@ typedef struct {
 
 
 ssize_t
-ngx_thread_read(ngx_thread_task_t **taskp, ngx_file_t *file, u_char *buf,
-    size_t size, off_t offset, ngx_pool_t *pool)
+ngx_thread_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
+    ngx_pool_t *pool)
 {
     ngx_thread_task_t      *task;
     ngx_thread_read_ctx_t  *ctx;
@@ -98,7 +98,7 @@ ngx_thread_read(ngx_thread_task_t **taskp, ngx_file_t *file, u_char *buf,
                    "thread read: %d, %p, %uz, %O",
                    file->fd, buf, size, offset);
 
-    task = *taskp;
+    task = file->thread_task;
 
     if (task == NULL) {
         task = ngx_thread_task_alloc(pool, sizeof(ngx_thread_read_ctx_t));
@@ -108,7 +108,7 @@ ngx_thread_read(ngx_thread_task_t **taskp, ngx_file_t *file, u_char *buf,
 
         task->handler = ngx_thread_read_handler;
 
-        *taskp = task;
+        file->thread_task = task;
     }
 
     ctx = task->ctx;
