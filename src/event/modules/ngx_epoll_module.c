@@ -840,6 +840,9 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             }
 
             wev->ready = 1;
+#if (NGX_THREADS)
+            wev->complete = 1;
+#endif
 
             if (flags & NGX_POST_EVENTS) {
                 ngx_post_event(wev, &ngx_posted_events);

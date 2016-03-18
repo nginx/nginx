@@ -328,7 +328,6 @@ static ngx_int_t
 ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
     size_t *sent)
 {
-    ngx_uint_t                 flags;
     ngx_event_t               *wev;
     ngx_thread_task_t         *task;
     ngx_linux_sendfile_ctx_t  *ctx;
@@ -358,6 +357,11 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
 
         if (ctx->err == NGX_EAGAIN) {
             *sent = 0;
+
+            if (wev->complete) {
+                return NGX_DONE;
+            }
+
             return NGX_AGAIN;
         }
 
@@ -382,7 +386,11 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
 
         *sent = ctx->sent;
 
-        return (ctx->sent == ctx->size) ? NGX_DONE : NGX_AGAIN;
+        if (ctx->sent == ctx->size || wev->complete) {
+            return NGX_DONE;
+        }
+
+        return NGX_AGAIN;
     }
 
     if (task->event.active && ctx->file == file) {
@@ -400,14 +408,7 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
     ctx->socket = c->fd;
     ctx->size = size;
 
-    if (wev->active) {
-        flags = (ngx_event_flags & NGX_USE_CLEAR_EVENT) ? NGX_CLEAR_EVENT
-                                                        : NGX_LEVEL_EVENT;
-
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, flags) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-    }
+    wev->complete = 0;
 
     if (file->file->thread_handler(task, file->file) != NGX_OK) {
         return NGX_ERROR;
