@@ -137,8 +137,9 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     len = ngx_sock_ntop(c->sockaddr, c->socklen, text, NGX_SOCKADDR_STRLEN, 1);
 
-    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%uA client %*s connected to %V",
-                  c->number, len, text, &addr_conf->addr_text);
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "*%uA %sclient %*s connected to %V",
+                  c->number, c->type == SOCK_DGRAM ? "udp " : "",
+                  len, text, &addr_conf->addr_text);
 
     c->log->connection = c->number;
     c->log->handler = ngx_stream_log_error;
@@ -328,7 +329,8 @@ ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
     s = log->data;
 
-    p = ngx_snprintf(buf, len, ", client: %V, server: %V",
+    p = ngx_snprintf(buf, len, ", %sclient: %V, server: %V",
+                     s->connection->type == SOCK_DGRAM ? "udp " : "",
                      &s->connection->addr_text,
                      &s->connection->listening->addr_text);
     len -= p - buf;

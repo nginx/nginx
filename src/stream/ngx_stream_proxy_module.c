@@ -552,7 +552,9 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
             handler = c->log->handler;
             c->log->handler = NULL;
 
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "proxy %V connected to %V",
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "%sproxy %V connected to %V",
+                          pc->type == SOCK_DGRAM ? "udp " : "",
                           &str, u->peer.name);
 
             c->log->handler = handler;
@@ -1222,9 +1224,10 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         c->log->handler = NULL;
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "%s disconnected"
+                      "%s%s disconnected"
                       ", bytes from/to client:%O/%O"
                       ", bytes from/to upstream:%O/%O",
+                      src->type == SOCK_DGRAM ? "udp " : "",
                       from_upstream ? "upstream" : "client",
                       s->received, c->sent, u->received, pc ? pc->sent : 0);
 
