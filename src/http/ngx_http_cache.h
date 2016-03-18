@@ -153,6 +153,8 @@ struct ngx_http_file_cache_s {
 
     time_t                           inactive;
 
+    time_t                           fail_time;
+
     ngx_uint_t                       files;
     ngx_uint_t                       loader_files;
     ngx_msec_t                       last;

@@ -2094,6 +2094,12 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         fcn = ngx_slab_calloc_locked(cache->shpool,
                                      sizeof(ngx_http_file_cache_node_t));
         if (fcn == NULL) {
+            if (cache->fail_time != ngx_time()) {
+                cache->fail_time = ngx_time();
+                ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                           "could not allocate node%s", cache->shpool->log_ctx);
+            }
+
             ngx_shmtx_unlock(&cache->shpool->mutex);
             return NGX_ERROR;
         }
