@@ -62,6 +62,7 @@ static ngx_int_t ngx_http_file_cache_add(ngx_http_file_cache_t *cache,
     ngx_http_cache_t *c);
 static ngx_int_t ngx_http_file_cache_delete_file(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
+static void ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache);
 
 
 ngx_str_t  ngx_http_cache_status[] = {
@@ -147,6 +148,8 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     cache->sh->cold = 1;
     cache->sh->loading = 0;
     cache->sh->size = 0;
+    cache->sh->count = 0;
+    cache->sh->watermark = (ngx_uint_t) -1;
 
     cache->bsize = ngx_fs_bsize(cache->path->name.data);
 
@@ -861,6 +864,8 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
     fcn = ngx_slab_calloc_locked(cache->shpool,
                                  sizeof(ngx_http_file_cache_node_t));
     if (fcn == NULL) {
+        ngx_http_file_cache_set_watermark(cache);
+
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
         (void) ngx_http_file_cache_forced_expire(cache);
@@ -876,6 +881,8 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
             goto failed;
         }
     }
+
+    cache->sh->count++;
 
     ngx_memcpy((u_char *) &fcn->node.key, c->key, sizeof(ngx_rbtree_key_t));
 
@@ -1631,6 +1638,7 @@ ngx_http_file_cache_free(ngx_http_cache_t *c, ngx_temp_file_t *tf)
         ngx_queue_remove(&fcn->queue);
         ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
         ngx_slab_free_locked(cache->shpool, fcn);
+        cache->sh->count--;
         c->node = NULL;
     }
 
@@ -1883,6 +1891,7 @@ ngx_http_file_cache_delete(ngx_http_file_cache_t *cache, ngx_queue_t *q,
         ngx_queue_remove(q);
         ngx_rbtree_delete(&cache->sh->rbtree, &fcn->node);
         ngx_slab_free_locked(cache->shpool, fcn);
+        cache->sh->count--;
     }
 }
 
@@ -1892,8 +1901,9 @@ ngx_http_file_cache_manager(void *data)
 {
     ngx_http_file_cache_t  *cache = data;
 
-    off_t   size;
-    time_t  next, wait;
+    off_t       size;
+    time_t      next, wait;
+    ngx_uint_t  count, watermark;
 
     next = ngx_http_file_cache_expire(cache);
 
@@ -1904,13 +1914,16 @@ ngx_http_file_cache_manager(void *data)
         ngx_shmtx_lock(&cache->shpool->mutex);
 
         size = cache->sh->size;
+        count = cache->sh->count;
+        watermark = cache->sh->watermark;
 
         ngx_shmtx_unlock(&cache->shpool->mutex);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "http file cache size: %O", size);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "http file cache size: %O c:%ui w:%i",
+                       size, count, (ngx_int_t) watermark);
 
-        if (size < cache->max_size) {
+        if (size < cache->max_size && count < watermark) {
             return next;
         }
 
@@ -2094,11 +2107,15 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         fcn = ngx_slab_calloc_locked(cache->shpool,
                                      sizeof(ngx_http_file_cache_node_t));
         if (fcn == NULL) {
+            ngx_http_file_cache_set_watermark(cache);
+
             if (cache->fail_time != ngx_time()) {
                 cache->fail_time = ngx_time();
                 ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                            "could not allocate node%s", cache->shpool->log_ctx);
             }
+
+            cache->sh->count++;
 
             ngx_shmtx_unlock(&cache->shpool->mutex);
             return NGX_ERROR;
@@ -2143,6 +2160,16 @@ ngx_http_file_cache_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache)
+{
+    cache->sh->watermark = cache->sh->count - cache->sh->count / 8;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "http file cache watermark: %ui", cache->sh->watermark);
 }
 
 
