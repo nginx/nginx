@@ -76,6 +76,13 @@ static void
 static ngx_int_t ngx_http_upstream_non_buffered_filter_init(void *data);
 static ngx_int_t ngx_http_upstream_non_buffered_filter(void *data,
     ssize_t bytes);
+#if (NGX_THREADS)
+static ngx_int_t ngx_http_upstream_thread_handler(ngx_thread_task_t *task,
+    ngx_file_t *file);
+static void ngx_http_upstream_thread_event_handler(ngx_event_t *ev);
+#endif
+static ngx_int_t ngx_http_upstream_output_filter(void *data,
+    ngx_chain_t *chain);
 static void ngx_http_upstream_process_downstream(ngx_http_request_t *r);
 static void ngx_http_upstream_process_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
@@ -2870,7 +2877,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     p = u->pipe;
 
-    p->output_filter = (ngx_event_pipe_output_filter_pt) ngx_http_output_filter;
+    p->output_filter = ngx_http_upstream_output_filter;
     p->output_ctx = r;
     p->tag = u->output.tag;
     p->bufs = u->conf->bufs;
@@ -2912,6 +2919,13 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     p->max_temp_file_size = u->conf->max_temp_file_size;
     p->temp_file_write_size = u->conf->temp_file_write_size;
+
+#if (NGX_THREADS)
+    if (clcf->aio == NGX_HTTP_AIO_THREADS && clcf->aio_write) {
+        p->thread_handler = ngx_http_upstream_thread_handler;
+        p->thread_ctx = r;
+    }
+#endif
 
     p->preread_bufs = ngx_alloc_chain_link(r->pool);
     if (p->preread_bufs == NULL) {
@@ -3487,6 +3501,97 @@ ngx_http_upstream_non_buffered_filter(void *data, ssize_t bytes)
 }
 
 
+#if (NGX_THREADS)
+
+static ngx_int_t
+ngx_http_upstream_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
+{
+    ngx_str_t                  name;
+    ngx_event_pipe_t          *p;
+    ngx_thread_pool_t         *tp;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    r = file->thread_ctx;
+    p = r->upstream->pipe;
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    tp = clcf->thread_pool;
+
+    if (tp == NULL) {
+        if (ngx_http_complex_value(r, clcf->thread_pool_value, &name)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        tp = ngx_thread_pool_get((ngx_cycle_t *) ngx_cycle, &name);
+
+        if (tp == NULL) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "thread pool \"%V\" not found", &name);
+            return NGX_ERROR;
+        }
+    }
+
+    task->event.data = r;
+    task->event.handler = ngx_http_upstream_thread_event_handler;
+
+    if (ngx_thread_task_post(tp, task) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    r->main->blocked++;
+    r->aio = 1;
+    p->aio = 1;
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    r = ev->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream thread: \"%V?%V\"", &r->uri, &r->args);
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    r->write_event_handler(r);
+
+    ngx_http_run_posted_requests(c);
+}
+
+#endif
+
+
+static ngx_int_t
+ngx_http_upstream_output_filter(void *data, ngx_chain_t *chain)
+{
+    ngx_int_t            rc;
+    ngx_event_pipe_t    *p;
+    ngx_http_request_t  *r;
+
+    r = data;
+    p = r->upstream->pipe;
+
+    rc = ngx_http_output_filter(r, chain);
+
+    p->aio = r->aio;
+
+    return rc;
+}
+
+
 static void
 ngx_http_upstream_process_downstream(ngx_http_request_t *r)
 {
@@ -3504,6 +3609,10 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
                    "http upstream process downstream");
 
     c->log->action = "sending to client";
+
+#if (NGX_THREADS)
+    p->aio = r->aio;
+#endif
 
     if (wev->timedout) {
 
@@ -3633,6 +3742,12 @@ ngx_http_upstream_process_request(ngx_http_request_t *r,
     ngx_event_pipe_t  *p;
 
     p = u->pipe;
+
+#if (NGX_THREADS)
+    if (p->writing) {
+        return;
+    }
+#endif
 
     if (u->peer.connection) {
 
