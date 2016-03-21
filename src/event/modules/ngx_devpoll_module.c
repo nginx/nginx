@@ -14,7 +14,9 @@
 
 /* Solaris declarations */
 
+#ifndef POLLREMOVE
 #define POLLREMOVE   0x0800
+#endif
 #define DP_POLL      0xD001
 #define DP_ISPOLLED  0xD002
 
