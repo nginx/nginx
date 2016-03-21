@@ -2503,8 +2503,8 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c, ngx_uint_t ack)
     ngx_http_v2_srv_conf_t   *h2scf;
     ngx_http_v2_out_frame_t  *frame;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 send SETTINGS frame");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send SETTINGS frame ack:%ui", ack);
 
     frame = ngx_palloc(h2c->pool, sizeof(ngx_http_v2_out_frame_t));
     if (frame == NULL) {
@@ -2595,6 +2595,10 @@ ngx_http_v2_send_window_update(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
     ngx_buf_t                *buf;
     ngx_http_v2_out_frame_t  *frame;
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send WINDOW_UPDATE frame sid:%ui, window:%uz",
+                   sid, window);
+
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_WINDOW_UPDATE_SIZE,
                                   NGX_HTTP_V2_WINDOW_UPDATE_FRAME,
                                   NGX_HTTP_V2_NO_FLAG, sid);
@@ -2619,6 +2623,10 @@ ngx_http_v2_send_rst_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
     ngx_buf_t                *buf;
     ngx_http_v2_out_frame_t  *frame;
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send RST_STREAM frame sid:%ui, status:%uz",
+                   sid, status);
+
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_RST_STREAM_SIZE,
                                   NGX_HTTP_V2_RST_STREAM_FRAME,
                                   NGX_HTTP_V2_NO_FLAG, sid);
@@ -2641,6 +2649,9 @@ ngx_http_v2_send_goaway(ngx_http_v2_connection_t *h2c, ngx_uint_t status)
 {
     ngx_buf_t                *buf;
     ngx_http_v2_out_frame_t  *frame;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send GOAWAY frame, status:%uz", status);
 
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_GOAWAY_SIZE,
                                   NGX_HTTP_V2_GOAWAY_FRAME,
