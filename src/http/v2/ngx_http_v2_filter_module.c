@@ -252,14 +252,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            if (tokens.len == 3
-                && ngx_strncmp(tokens.data, "off", 3) == 0)
+            if (tokens.len == 0
+                || (tokens.len == 3 && ngx_strncmp(tokens.data, "off", 3) == 0))
             {
                 server_tokens = 0;
                 len += 1 + sizeof(nginx);
                 ngx_str_set(&tokens, "nginx");
 
-            } else if (tokens.len) {
+            } else {
                 server_tokens = 1;
                 len += 1 + nginx_ver_len;
                 ngx_str_set(&tokens, NGINX_VER);
@@ -468,7 +468,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         pos = ngx_sprintf(pos, "%03ui", r->headers_out.status);
     }
 
-    if (r->headers_out.server == NULL && tokens.len) {
+    if (r->headers_out.server == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                        "http2 output header: \"server: %V\"",
                        &tokens);

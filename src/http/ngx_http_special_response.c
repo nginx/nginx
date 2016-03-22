@@ -32,12 +32,6 @@ static u_char ngx_http_error_tail[] =
 ;
 
 
-static u_char ngx_http_error_no_tail[] =
-"</body>" CRLF
-"</html>" CRLF
-;
-
-
 static u_char ngx_http_msie_padding[] =
 "<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
 "<!-- a padding to disable MSIE and Chrome friendly error page -->" CRLF
@@ -638,16 +632,13 @@ ngx_http_send_special_response(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            if (tokens.len == 3
-                && ngx_strncmp(tokens.data, "off", 3) == 0)
+            if (tokens.len == 0
+                || (tokens.len == 3 && ngx_strncmp(tokens.data, "off", 3) == 0))
             {
                 ngx_str_set(&tail, ngx_http_error_tail);
 
-            } else if (tokens.len) {
-                ngx_str_set(&tail, ngx_http_error_full_tail);
-
             } else {
-                ngx_str_set(&tail, ngx_http_error_no_tail);
+                ngx_str_set(&tail, ngx_http_error_full_tail);
             }
         }
 

@@ -295,12 +295,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            if (tokens.len == 3
-                && ngx_strncmp(tokens.data, "off", 3) == 0)
+            if (tokens.len == 0
+                || (tokens.len == 3 && ngx_strncmp(tokens.data, "off", 3) == 0))
             {
                 ngx_str_set(&tokens, ngx_http_server_string);
 
-            } else if (tokens.len) {
+            } else {
                 ngx_str_set(&tokens, ngx_http_server_full_string);
             }
         }
@@ -481,7 +481,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     }
     *b->last++ = CR; *b->last++ = LF;
 
-    if (r->headers_out.server == NULL && tokens.len) {
+    if (r->headers_out.server == NULL) {
         b->last = ngx_cpymem(b->last, tokens.data, tokens.len);
     }
 
