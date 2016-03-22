@@ -59,8 +59,6 @@ static char *ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char *ngx_http_core_server_tokens(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_try_files(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -594,10 +592,10 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
     { ngx_string("server_tokens"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_core_server_tokens,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      0,
+      offsetof(ngx_http_core_loc_conf_t, server_tokens),
       NULL },
 
     { ngx_string("if_modified_since"),
@@ -3645,9 +3643,9 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->log_not_found = NGX_CONF_UNSET;
     clcf->log_subrequest = NGX_CONF_UNSET;
     clcf->recursive_error_pages = NGX_CONF_UNSET;
+    clcf->server_tokens = NGX_CONF_UNSET;
     clcf->chunked_transfer_encoding = NGX_CONF_UNSET;
     clcf->etag = NGX_CONF_UNSET;
-    clcf->server_tokens = NGX_CONF_UNSET_UINT;
     clcf->types_hash_max_size = NGX_CONF_UNSET_UINT;
     clcf->types_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
@@ -3911,14 +3909,10 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->log_subrequest, prev->log_subrequest, 0);
     ngx_conf_merge_value(conf->recursive_error_pages,
                               prev->recursive_error_pages, 0);
+    ngx_conf_merge_value(conf->server_tokens, prev->server_tokens, 1);
     ngx_conf_merge_value(conf->chunked_transfer_encoding,
                               prev->chunked_transfer_encoding, 1);
     ngx_conf_merge_value(conf->etag, prev->etag, 1);
-
-    if (conf->server_tokens == NGX_CONF_UNSET_UINT) {
-        ngx_conf_merge_uint_value(conf->server_tokens, prev->server_tokens, 1);
-        conf->server_tokens_value = prev->server_tokens_value;
-    }
 
     ngx_conf_merge_ptr_value(conf->open_file_cache,
                               prev->open_file_cache, NULL);
@@ -4796,46 +4790,6 @@ ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (clcf->directio == (off_t) NGX_ERROR) {
         return "invalid value";
     }
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_core_server_tokens(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_http_core_loc_conf_t *clcf = conf;
-
-    ngx_str_t                         *value;
-    ngx_http_compile_complex_value_t   ccv;
-
-    if (clcf->server_tokens != NGX_CONF_UNSET_UINT) {
-        return "is duplicate";
-    }
-
-    value = cf->args->elts;
-
-    if (ngx_strcmp(value[1].data, "on") == 0) {
-        clcf->server_tokens = 1;
-        return NGX_CONF_OK;
-    }
-
-    if (ngx_strcmp(value[1].data, "off") == 0) {
-        clcf->server_tokens = 0;
-        return NGX_CONF_OK;
-    }
-
-    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-
-    ccv.cf = cf;
-    ccv.value = &value[1];
-    ccv.complex_value = &clcf->server_tokens_value;
-
-    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-        return NGX_CONF_ERROR;
-    }
-
-    clcf->server_tokens = 2;
 
     return NGX_CONF_OK;
 }

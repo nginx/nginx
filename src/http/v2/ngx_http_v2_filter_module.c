@@ -128,8 +128,8 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 {
     u_char                     status, *pos, *start, *p, *tmp;
     size_t                     len, tmp_len;
-    ngx_str_t                  host, location, tokens;
-    ngx_uint_t                 i, port, server_tokens;
+    ngx_str_t                  host, location;
+    ngx_uint_t                 i, port;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *fc;
@@ -229,42 +229,8 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    server_tokens = clcf->server_tokens;
-
-#if (NGX_SUPPRESS_WARN)
-    ngx_str_null(&tokens);
-#endif
-
     if (r->headers_out.server == NULL) {
-
-        if (server_tokens == 0) {
-            len += 1 + sizeof(nginx);
-            ngx_str_set(&tokens, "nginx");
-
-        } else if (server_tokens == 1) {
-            len += 1 + nginx_ver_len;
-            ngx_str_set(&tokens, NGINX_VER);
-
-        } else {
-            if (ngx_http_complex_value(r, &clcf->server_tokens_value, &tokens)
-                != NGX_OK)
-            {
-                return NGX_ERROR;
-            }
-
-            if (tokens.len == 0
-                || (tokens.len == 3 && ngx_strncmp(tokens.data, "off", 3) == 0))
-            {
-                server_tokens = 0;
-                len += 1 + sizeof(nginx);
-                ngx_str_set(&tokens, "nginx");
-
-            } else {
-                server_tokens = 1;
-                len += 1 + nginx_ver_len;
-                ngx_str_set(&tokens, NGINX_VER);
-            }
-        }
+        len += 1 + (clcf->server_tokens ? nginx_ver_len : sizeof(nginx));
     }
 
     if (r->headers_out.date == NULL) {
@@ -470,15 +436,12 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.server == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
-                       "http2 output header: \"server: %V\"",
-                       &tokens);
+                       "http2 output header: \"server: %s\"",
+                       clcf->server_tokens ? NGINX_VER : "nginx");
 
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
 
-        if (server_tokens == 0) {
-            pos = ngx_cpymem(pos, nginx, sizeof(nginx));
-
-        } else {
+        if (clcf->server_tokens) {
             if (nginx_ver[0] == '\0') {
                 p = ngx_http_v2_write_value(nginx_ver, (u_char *) NGINX_VER,
                                             sizeof(NGINX_VER) - 1, tmp);
@@ -486,6 +449,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
             }
 
             pos = ngx_cpymem(pos, nginx_ver, nginx_ver_len);
+
+        } else {
+            pos = ngx_cpymem(pos, nginx, sizeof(nginx));
         }
     }
 

@@ -46,8 +46,8 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static u_char ngx_http_server_string[] = "Server: nginx" CRLF;
-static u_char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
+static char ngx_http_server_string[] = "Server: nginx" CRLF;
+static char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -152,7 +152,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 {
     u_char                    *p;
     size_t                     len;
-    ngx_str_t                  host, *status_line, tokens;
+    ngx_str_t                  host, *status_line;
     ngx_buf_t                 *b;
     ngx_uint_t                 status, i, port;
     ngx_chain_t                out;
@@ -277,35 +277,9 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-#if (NGX_SUPPRESS_WARN)
-    ngx_str_null(&tokens);
-#endif
-
     if (r->headers_out.server == NULL) {
-        if (clcf->server_tokens == 0) {
-            ngx_str_set(&tokens, ngx_http_server_string);
-
-        } else if (clcf->server_tokens == 1) {
-            ngx_str_set(&tokens, ngx_http_server_full_string);
-
-        } else {
-            if (ngx_http_complex_value(r, &clcf->server_tokens_value, &tokens)
-                != NGX_OK)
-            {
-                return NGX_ERROR;
-            }
-
-            if (tokens.len == 0
-                || (tokens.len == 3 && ngx_strncmp(tokens.data, "off", 3) == 0))
-            {
-                ngx_str_set(&tokens, ngx_http_server_string);
-
-            } else {
-                ngx_str_set(&tokens, ngx_http_server_full_string);
-            }
-        }
-
-        len += tokens.len;
+        len += clcf->server_tokens ? sizeof(ngx_http_server_full_string) - 1:
+                                     sizeof(ngx_http_server_string) - 1;
     }
 
     if (r->headers_out.date == NULL) {
@@ -482,7 +456,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
     *b->last++ = CR; *b->last++ = LF;
 
     if (r->headers_out.server == NULL) {
-        b->last = ngx_cpymem(b->last, tokens.data, tokens.len);
+        if (clcf->server_tokens) {
+            p = (u_char *) ngx_http_server_full_string;
+            len = sizeof(ngx_http_server_full_string) - 1;
+
+        } else {
+            p = (u_char *) ngx_http_server_string;
+            len = sizeof(ngx_http_server_string) - 1;
+        }
+
+        b->last = ngx_cpymem(b->last, p, len);
     }
 
     if (r->headers_out.date == NULL) {
