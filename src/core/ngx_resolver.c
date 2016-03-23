@@ -2758,7 +2758,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
         }
 
         rn->u.srvs = srvs;
-        rn->nsrvs = nsrvs;
+        rn->nsrvs = (u_short) nsrvs;
 
         j = 0;
         i = ans;
@@ -4243,8 +4243,7 @@ ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
 static void
 ngx_resolver_report_srv(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
 {
-    u_short                   nsrvs;
-    ngx_uint_t                naddrs, nw, i, j, k, l, m, n, w;
+    ngx_uint_t                naddrs, nsrvs, nw, i, j, k, l, m, n, w;
     ngx_resolver_addr_t      *addrs;
     ngx_resolver_srv_name_t  *srvs;
 
