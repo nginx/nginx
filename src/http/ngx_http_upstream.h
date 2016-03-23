@@ -281,7 +281,7 @@ typedef struct {
     ngx_uint_t                       no_port; /* unsigned no_port:1 */
 
     ngx_uint_t                       naddrs;
-    ngx_addr_t                      *addrs;
+    ngx_resolver_addr_t             *addrs;
 
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;

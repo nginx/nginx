@@ -21,6 +21,7 @@
 #if (NGX_HAVE_INET6)
 #define NGX_RESOLVE_AAAA      28
 #endif
+#define NGX_RESOLVE_SRV       33
 #define NGX_RESOLVE_DNAME     39
 
 #define NGX_RESOLVE_FORMERR   1
@@ -58,6 +59,36 @@ typedef void (*ngx_resolver_handler_pt)(ngx_resolver_ctx_t *ctx);
 
 
 typedef struct {
+    struct sockaddr          *sockaddr;
+    socklen_t                 socklen;
+    ngx_str_t                 name;
+    u_short                   priority;
+    u_short                   weight;
+} ngx_resolver_addr_t;
+
+
+typedef struct {
+    ngx_str_t                 name;
+    u_short                   priority;
+    u_short                   weight;
+    u_short                   port;
+} ngx_resolver_srv_t;
+
+
+typedef struct {
+    ngx_str_t                 name;
+    u_short                   priority;
+    u_short                   weight;
+    u_short                   port;
+
+    ngx_resolver_ctx_t       *ctx;
+
+    ngx_uint_t                naddrs;
+    ngx_addr_t               *addrs;
+} ngx_resolver_srv_name_t;
+
+
+typedef struct {
     ngx_rbtree_node_t         node;
     ngx_queue_t               queue;
 
@@ -81,10 +112,12 @@ typedef struct {
         in_addr_t             addr;
         in_addr_t            *addrs;
         u_char               *cname;
+        ngx_resolver_srv_t   *srvs;
     } u;
 
     u_char                    code;
     u_short                   naddrs;
+    u_short                   nsrvs;
     u_short                   cnlen;
 
 #if (NGX_HAVE_INET6)
@@ -127,13 +160,18 @@ struct ngx_resolver_s {
     ngx_rbtree_t              name_rbtree;
     ngx_rbtree_node_t         name_sentinel;
 
+    ngx_rbtree_t              srv_rbtree;
+    ngx_rbtree_node_t         srv_sentinel;
+
     ngx_rbtree_t              addr_rbtree;
     ngx_rbtree_node_t         addr_sentinel;
 
     ngx_queue_t               name_resend_queue;
+    ngx_queue_t               srv_resend_queue;
     ngx_queue_t               addr_resend_queue;
 
     ngx_queue_t               name_expire_queue;
+    ngx_queue_t               srv_expire_queue;
     ngx_queue_t               addr_expire_queue;
 
 #if (NGX_HAVE_INET6)
@@ -163,12 +201,17 @@ struct ngx_resolver_ctx_s {
 
     ngx_int_t                 state;
     ngx_str_t                 name;
+    ngx_str_t                 service;
 
     time_t                    valid;
     ngx_uint_t                naddrs;
-    ngx_addr_t               *addrs;
-    ngx_addr_t                addr;
+    ngx_resolver_addr_t      *addrs;
+    ngx_resolver_addr_t       addr;
     struct sockaddr_in        sin;
+
+    ngx_uint_t                count;
+    ngx_uint_t                nsrvs;
+    ngx_resolver_srv_name_t  *srvs;
 
     ngx_resolver_handler_pt   handler;
     void                     *data;
