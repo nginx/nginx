@@ -611,7 +611,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
 
         if (rn->waiting) {
 
-            if (ctx->event == NULL) {
+            if (ctx->event == NULL && ctx->timeout) {
                 ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
                 if (ctx->event == NULL) {
                     return NGX_ERROR;
@@ -729,7 +729,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         goto failed;
     }
 
-    if (ctx->event == NULL) {
+    if (ctx->event == NULL && ctx->timeout) {
         ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
         if (ctx->event == NULL) {
             goto failed;
@@ -872,17 +872,19 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
         if (rn->waiting) {
 
-            ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-            if (ctx->event == NULL) {
-                return NGX_ERROR;
+            if (ctx->event == NULL && ctx->timeout) {
+                ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
+                if (ctx->event == NULL) {
+                    return NGX_ERROR;
+                }
+
+                ctx->event->handler = ngx_resolver_timeout_handler;
+                ctx->event->data = ctx;
+                ctx->event->log = r->log;
+                ctx->ident = -1;
+
+                ngx_add_timer(ctx->event, ctx->timeout);
             }
-
-            ctx->event->handler = ngx_resolver_timeout_handler;
-            ctx->event->data = ctx;
-            ctx->event->log = r->log;
-            ctx->ident = -1;
-
-            ngx_add_timer(ctx->event, ctx->timeout);
 
             ctx->next = rn->waiting;
             rn->waiting = ctx;
@@ -949,17 +951,19 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         goto failed;
     }
 
-    ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-    if (ctx->event == NULL) {
-        goto failed;
+    if (ctx->event == NULL && ctx->timeout) {
+        ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
+        if (ctx->event == NULL) {
+            goto failed;
+        }
+
+        ctx->event->handler = ngx_resolver_timeout_handler;
+        ctx->event->data = ctx;
+        ctx->event->log = r->log;
+        ctx->ident = -1;
+
+        ngx_add_timer(ctx->event, ctx->timeout);
     }
-
-    ctx->event->handler = ngx_resolver_timeout_handler;
-    ctx->event->data = ctx;
-    ctx->event->log = r->log;
-    ctx->ident = -1;
-
-    ngx_add_timer(ctx->event, ctx->timeout);
 
     if (ngx_queue_empty(resend_queue)) {
         ngx_add_timer(r->event, (ngx_msec_t) (r->resend_timeout * 1000));
