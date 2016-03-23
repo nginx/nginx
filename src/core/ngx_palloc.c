@@ -9,6 +9,8 @@
 #include <ngx_core.h>
 
 
+static ngx_inline void *ngx_palloc_small(ngx_pool_t *pool, size_t size,
+    ngx_uint_t align);
 static void *ngx_palloc_block(ngx_pool_t *pool, size_t size);
 static void *ngx_palloc_large(ngx_pool_t *pool, size_t size);
 
@@ -120,27 +122,8 @@ ngx_reset_pool(ngx_pool_t *pool)
 void *
 ngx_palloc(ngx_pool_t *pool, size_t size)
 {
-    u_char      *m;
-    ngx_pool_t  *p;
-
     if (size <= pool->max) {
-
-        p = pool->current;
-
-        do {
-            m = ngx_align_ptr(p->d.last, NGX_ALIGNMENT);
-
-            if ((size_t) (p->d.end - m) >= size) {
-                p->d.last = m + size;
-
-                return m;
-            }
-
-            p = p->d.next;
-
-        } while (p);
-
-        return ngx_palloc_block(pool, size);
+        return ngx_palloc_small(pool, size, 1);
     }
 
     return ngx_palloc_large(pool, size);
@@ -150,30 +133,40 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
 void *
 ngx_pnalloc(ngx_pool_t *pool, size_t size)
 {
-    u_char      *m;
-    ngx_pool_t  *p;
-
     if (size <= pool->max) {
-
-        p = pool->current;
-
-        do {
-            m = p->d.last;
-
-            if ((size_t) (p->d.end - m) >= size) {
-                p->d.last = m + size;
-
-                return m;
-            }
-
-            p = p->d.next;
-
-        } while (p);
-
-        return ngx_palloc_block(pool, size);
+        return ngx_palloc_small(pool, size, 0);
     }
 
     return ngx_palloc_large(pool, size);
+}
+
+
+static ngx_inline void *
+ngx_palloc_small(ngx_pool_t *pool, size_t size, ngx_uint_t align)
+{
+    u_char      *m;
+    ngx_pool_t  *p;
+
+    p = pool->current;
+
+    do {
+        m = p->d.last;
+
+        if (align) {
+            m = ngx_align_ptr(m, NGX_ALIGNMENT);
+        }
+
+        if ((size_t) (p->d.end - m) >= size) {
+            p->d.last = m + size;
+
+            return m;
+        }
+
+        p = p->d.next;
+
+    } while (p);
+
+    return ngx_palloc_block(pool, size);
 }
 
 
