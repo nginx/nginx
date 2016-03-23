@@ -164,6 +164,7 @@ struct ngx_resolver_ctx_s {
     ngx_int_t                 state;
     ngx_str_t                 name;
 
+    time_t                    valid;
     ngx_uint_t                naddrs;
     ngx_addr_t               *addrs;
     ngx_addr_t                addr;

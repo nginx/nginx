@@ -551,6 +551,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
 
                 do {
                     ctx->state = NGX_OK;
+                    ctx->valid = rn->valid;
                     ctx->naddrs = naddrs;
 
                     if (addrs == NULL) {
@@ -597,6 +598,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
 
             do {
                 ctx->state = NGX_RESOLVE_NXDOMAIN;
+                ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
                 next = ctx->next;
 
                 ctx->handler(ctx);
@@ -859,6 +861,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             /* unlock addr mutex */
 
             ctx->state = NGX_OK;
+            ctx->valid = rn->valid;
 
             ctx->handler(ctx);
 
@@ -1948,6 +1951,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         while (next) {
             ctx = next;
             ctx->state = code;
+            ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
             next = ctx->next;
 
             ctx->handler(ctx);
@@ -2262,6 +2266,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         while (next) {
             ctx = next;
             ctx->state = NGX_OK;
+            ctx->valid = rn->valid;
             ctx->naddrs = naddrs;
 
             if (addrs == NULL) {
@@ -2541,6 +2546,7 @@ valid:
         while (next) {
             ctx = next;
             ctx->state = code;
+            ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
             next = ctx->next;
 
             ctx->handler(ctx);
@@ -2675,6 +2681,7 @@ ptr:
     while (next) {
         ctx = next;
         ctx->state = NGX_OK;
+        ctx->valid = rn->valid;
         ctx->name = name;
         next = ctx->next;
 
