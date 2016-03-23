@@ -231,7 +231,7 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
         }
     }
 
-    large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
+    large = ngx_palloc_small(pool, sizeof(ngx_pool_large_t), 1);
     if (large == NULL) {
         ngx_free(p);
         return NULL;
@@ -256,7 +256,7 @@ ngx_pmemalign(ngx_pool_t *pool, size_t size, size_t alignment)
         return NULL;
     }
 
-    large = ngx_palloc(pool, sizeof(ngx_pool_large_t));
+    large = ngx_palloc_small(pool, sizeof(ngx_pool_large_t), 1);
     if (large == NULL) {
         ngx_free(p);
         return NULL;
