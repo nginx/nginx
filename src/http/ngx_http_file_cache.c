@@ -2115,11 +2115,11 @@ ngx_http_file_cache_add(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
                            "could not allocate node%s", cache->shpool->log_ctx);
             }
 
-            cache->sh->count++;
-
             ngx_shmtx_unlock(&cache->shpool->mutex);
             return NGX_ERROR;
         }
+
+        cache->sh->count++;
 
         ngx_memcpy((u_char *) &fcn->node.key, c->key, sizeof(ngx_rbtree_key_t));
 
