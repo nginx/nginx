@@ -210,6 +210,18 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         olen = sizeof(int);
 
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_TYPE, (void *) &ls[i].type,
+                       &olen)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
+                          "getsockopt(SO_TYPE) %V failed", &ls[i].addr_text);
+            ls[i].ignore = 1;
+            continue;
+        }
+
+        olen = sizeof(int);
+
         if (getsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF, (void *) &ls[i].rcvbuf,
                        &olen)
             == -1)
@@ -273,6 +285,10 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
 #endif
+
+        if (ls[i].type != SOCK_STREAM) {
+            continue;
+        }
 
 #if (NGX_HAVE_TCP_FASTOPEN)
 

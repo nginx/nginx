@@ -512,6 +512,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                     continue;
                 }
 
+                if (ls[i].type != nls[n].type) {
+                    continue;
+                }
+
                 if (ngx_cmp_sockaddr(nls[n].sockaddr, nls[n].socklen,
                                      ls[i].sockaddr, ls[i].socklen, 1)
                     == NGX_OK)
