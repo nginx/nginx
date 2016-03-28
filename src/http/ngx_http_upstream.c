@@ -3947,42 +3947,36 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "upstream timed out");
     }
 
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR
-        && (!u->request_sent || !r->request_body_no_buffering))
-    {
-        status = 0;
-
+    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
         /* TODO: inform balancer instead */
-
         u->peer.tries++;
+    }
 
-    } else {
-        switch (ft_type) {
+    switch (ft_type) {
 
-        case NGX_HTTP_UPSTREAM_FT_TIMEOUT:
-            status = NGX_HTTP_GATEWAY_TIME_OUT;
-            break;
+    case NGX_HTTP_UPSTREAM_FT_TIMEOUT:
+        status = NGX_HTTP_GATEWAY_TIME_OUT;
+        break;
 
-        case NGX_HTTP_UPSTREAM_FT_HTTP_500:
-            status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            break;
+    case NGX_HTTP_UPSTREAM_FT_HTTP_500:
+        status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        break;
 
-        case NGX_HTTP_UPSTREAM_FT_HTTP_403:
-            status = NGX_HTTP_FORBIDDEN;
-            break;
+    case NGX_HTTP_UPSTREAM_FT_HTTP_403:
+        status = NGX_HTTP_FORBIDDEN;
+        break;
 
-        case NGX_HTTP_UPSTREAM_FT_HTTP_404:
-            status = NGX_HTTP_NOT_FOUND;
-            break;
+    case NGX_HTTP_UPSTREAM_FT_HTTP_404:
+        status = NGX_HTTP_NOT_FOUND;
+        break;
 
-        /*
-         * NGX_HTTP_UPSTREAM_FT_BUSY_LOCK and NGX_HTTP_UPSTREAM_FT_MAX_WAITING
-         * never reach here
-         */
+    /*
+     * NGX_HTTP_UPSTREAM_FT_BUSY_LOCK and NGX_HTTP_UPSTREAM_FT_MAX_WAITING
+     * never reach here
+     */
 
-        default:
-            status = NGX_HTTP_BAD_GATEWAY;
-        }
+    default:
+        status = NGX_HTTP_BAD_GATEWAY;
     }
 
     if (r->connection->error) {
@@ -3991,37 +3985,36 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return;
     }
 
-    if (status) {
-        u->state->status = status;
-        timeout = u->conf->next_upstream_timeout;
+    u->state->status = status;
 
-        if (u->peer.tries == 0
-            || !(u->conf->next_upstream & ft_type)
-            || (u->request_sent && r->request_body_no_buffering)
-            || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
-        {
+    timeout = u->conf->next_upstream_timeout;
+
+    if (u->peer.tries == 0
+        || !(u->conf->next_upstream & ft_type)
+        || (u->request_sent && r->request_body_no_buffering)
+        || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
+    {
 #if (NGX_HTTP_CACHE)
 
-            if (u->cache_status == NGX_HTTP_CACHE_EXPIRED
-                && (u->conf->cache_use_stale & ft_type))
-            {
-                ngx_int_t  rc;
+        if (u->cache_status == NGX_HTTP_CACHE_EXPIRED
+            && (u->conf->cache_use_stale & ft_type))
+        {
+            ngx_int_t  rc;
 
-                rc = u->reinit_request(r);
+            rc = u->reinit_request(r);
 
-                if (rc == NGX_OK) {
-                    u->cache_status = NGX_HTTP_CACHE_STALE;
-                    rc = ngx_http_upstream_cache_send(r, u);
-                }
-
-                ngx_http_upstream_finalize_request(r, u, rc);
-                return;
+            if (rc == NGX_OK) {
+                u->cache_status = NGX_HTTP_CACHE_STALE;
+                rc = ngx_http_upstream_cache_send(r, u);
             }
-#endif
 
-            ngx_http_upstream_finalize_request(r, u, status);
+            ngx_http_upstream_finalize_request(r, u, rc);
             return;
         }
+#endif
+
+        ngx_http_upstream_finalize_request(r, u, status);
+        return;
     }
 
     if (u->peer.connection) {
