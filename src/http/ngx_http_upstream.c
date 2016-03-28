@@ -3989,8 +3989,14 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     timeout = u->conf->next_upstream_timeout;
 
+    if (u->request_sent
+        && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
+    {
+        ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
+    }
+
     if (u->peer.tries == 0
-        || !(u->conf->next_upstream & ft_type)
+        || ((u->conf->next_upstream & ft_type) != ft_type)
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
     {
