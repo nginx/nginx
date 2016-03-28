@@ -128,7 +128,7 @@
 #endif
 
 
-#if (NGX_HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL) && !(NGX_TEST_BUILD_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>
 #endif

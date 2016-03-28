@@ -343,7 +343,8 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_DISABLE_EVENT  EV_DISABLE
 
 
-#elif (NGX_HAVE_DEVPOLL || NGX_HAVE_EVENTPORT)
+#elif (NGX_HAVE_DEVPOLL && !(NGX_TEST_BUILD_DEVPOLL)) \
+      || (NGX_HAVE_EVENTPORT && !(NGX_TEST_BUILD_EVENTPORT))
 
 #define NGX_READ_EVENT     POLLIN
 #define NGX_WRITE_EVENT    POLLOUT
@@ -352,7 +353,7 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define NGX_ONESHOT_EVENT  1
 
 
-#elif (NGX_HAVE_EPOLL)
+#elif (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
 
 #define NGX_READ_EVENT     (EPOLLIN|EPOLLRDHUP)
 #define NGX_WRITE_EVENT    EPOLLOUT

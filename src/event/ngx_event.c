@@ -1208,7 +1208,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #endif
 
-#if (NGX_HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL) && !(NGX_TEST_BUILD_DEVPOLL)
 
     module = &ngx_devpoll_module;
 
