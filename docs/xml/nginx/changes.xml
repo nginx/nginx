@@ -5,6 +5,172 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.13" date="29.03.2016">
+
+<change type="change">
+<para lang="ru">
+неидемпотентные запросы (POST, LOCK, PATCH)
+теперь по умолчанию не передаются на другой сервер,
+если запрос уже был отправлен на бэкенд;
+параметр non_idempotent директивы proxy_next_upstream
+явно разрешает повторять такие запросы.
+</para>
+<para lang="en">
+non-idempotent requests (POST, LOCK, PATCH)
+are no longer passed to the next server by default
+if a request has been sent to a backend;
+the "non_idempotent" parameter of the "proxy_next_upstream" directive
+explicitly allows retrying such requests.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module теперь можно собрать динамически.
+</para>
+<para lang="en">
+the ngx_http_perl_module can be built dynamically.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка UDP в модуле stream.
+</para>
+<para lang="en">
+UDP support in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива aio_write.
+</para>
+<para lang="en">
+the "aio_write" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь cache manager следит за количеством элементов в кэше
+и старается не допускать переполнений зоны разделяемой памяти.
+</para>
+<para lang="en">
+now cache manager monitors number of elements in caches
+and tries to avoid cache keys zone overflows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив sendfile и aio с подзапросами
+в логах могли появляться сообщения "task already active" и "second aio post".
+</para>
+<para lang="en">
+
+"task already active" and "second aio post" alerts might appear in logs
+when using the "sendfile" and "aio" directives with subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования
+в логах могли появляться сообщения "zero size buf in output",
+если клиент закрывал соединение преждевременно.
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+if caching was used
+and a client closed a connection prematurely.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования 
+соединения с клиентами могли закрываться без необходимости.<br/>
+Спасибо Justin Li.
+</para>
+<para lang="en">
+connections with clients might be closed needlessly
+if caching was used.<br/>
+Thanks to Justin Li.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог нагружать процессор
+при использовании директивы sendfile на Linux и Solaris,
+если отправляемый файл был изменён в процессе отправки.
+</para>
+<para lang="en">
+nginx might hog CPU
+if the "sendfile" directive was used on Linux or Solaris
+and a file being sent was changed during sending.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив sendfile и "aio threads"
+соединения могли зависать.
+</para>
+<para lang="en">
+connections might hang
+when using the "sendfile" and "aio threads" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy_pass, fastcgi_pass, scgi_pass и uwsgi_pass
+при использовании переменных.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the "proxy_pass", "fastcgi_pass", "scgi_pass", and "uwsgi_pass" directives
+when using variables.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_sub_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_sub_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в закэшированном соединении к бэкенду происходила ошибка,
+запрос передавался на другой сервер
+без учёта директивы proxy_next_upstream.
+</para>
+<para lang="en">
+if an error occurred in a cached backend connection,
+the request was passed to the next server
+regardless of the proxy_next_upstream directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "CreateFile() failed" при создании временных файлов на Windows.
+</para>
+<para lang="en">
+"CreateFile() failed" errors when creating temporary files on Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.12" date="24.02.2016">
 
 <change type="feature">
