@@ -196,7 +196,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
         err = ngx_errno;
 
-        if (err == NGX_EEXIST) {
+        if (err == NGX_EEXIST_FILE) {
             n = (uint32_t) ngx_next_temp_number(1);
             continue;
         }
@@ -692,7 +692,7 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
 
 #if (NGX_WIN32)
 
-    if (err == NGX_EEXIST) {
+    if (err == NGX_EEXIST || err == NGX_EEXIST_FILE) {
         err = ngx_win32_rename_file(src, to, ext->log);
 
         if (err == 0) {
