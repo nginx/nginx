@@ -544,7 +544,7 @@ failed:
 
     if (ngx_close_file(fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                      ngx_close_file_n " \"%V\" failed", name);
+                      ngx_close_file_n " \"%s\" failed", name);
     }
 
     ngx_set_errno(err);
