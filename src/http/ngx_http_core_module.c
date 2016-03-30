@@ -1597,7 +1597,8 @@ ngx_http_core_find_static_location(ngx_http_request_t *r,
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "test location: \"%*s\"", node->len, node->name);
+                       "test location: \"%*s\"",
+                       (size_t) node->len, node->name);
 
         n = (len <= (size_t) node->len) ? len : node->len;
 

@@ -1834,7 +1834,7 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
 
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                       "ignore long locked inactive cache entry %*s, count:%d",
-                      2 * NGX_HTTP_CACHE_KEY_LEN, key, fcn->count);
+                      (size_t) 2 * NGX_HTTP_CACHE_KEY_LEN, key, fcn->count);
     }
 
     ngx_shmtx_unlock(&cache->shpool->mutex);

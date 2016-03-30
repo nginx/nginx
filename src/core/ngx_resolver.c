@@ -1873,7 +1873,7 @@ dns_error_name:
     ngx_log_error(r->log_level, r->log, 0,
                   "DNS error (%ui: %s), query id:%ui, name:\"%*s\"",
                   code, ngx_resolver_strerror(code), ident,
-                  rn->nlen, rn->name);
+                  (size_t) rn->nlen, rn->name);
     return;
 
 dns_error:

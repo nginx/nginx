@@ -913,7 +913,7 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
 
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "mp4 atom: %*s @%O:%uL",
-                       4, atom_name, mp4->offset, atom_size);
+                       (size_t) 4, atom_name, mp4->offset, atom_size);
 
         if (atom_size > (uint64_t) (NGX_MAX_OFF_T_VALUE - mp4->offset)
             || mp4->offset + (off_t) atom_size > end)
@@ -1958,7 +1958,7 @@ ngx_http_mp4_read_stsd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                    "stsd entries:%uD, media:%*s",
                    ngx_mp4_get_32value(stsd_atom->entries),
-                   4, stsd_atom->media_name);
+                   (size_t) 4, stsd_atom->media_name);
 
     trak = ngx_mp4_last_trak(mp4);
 

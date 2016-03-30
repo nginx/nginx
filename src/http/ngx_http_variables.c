@@ -2428,9 +2428,8 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 
         v = cmcf->variables.elts;
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http regex set $%V to \"%*s\"",
-                       &v[index].name, vv->len, vv->data);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http regex set $%V to \"%v\"", &v[index].name, vv);
         }
 #endif
     }
