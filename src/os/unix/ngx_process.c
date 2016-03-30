@@ -622,7 +622,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_int_t pid)
             }
 
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "kill(%P, %d) failed", pid, sig->signo);
+                          "kill(%P, %d) failed", (ngx_pid_t) pid, sig->signo);
         }
     }
 

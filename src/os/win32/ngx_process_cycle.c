@@ -581,7 +581,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
 
     ngx_log_debug0(NGX_LOG_DEBUG_CORE, log, 0, "worker started");
 
-    ngx_sprintf((u_char *) wtevn, "ngx_worker_term_%ul%Z", ngx_pid);
+    ngx_sprintf((u_char *) wtevn, "ngx_worker_term_%P%Z", ngx_pid);
     events[0] = CreateEvent(NULL, 1, 0, wtevn);
     if (events[0] == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -589,7 +589,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         goto failed;
     }
 
-    ngx_sprintf((u_char *) wqevn, "ngx_worker_quit_%ul%Z", ngx_pid);
+    ngx_sprintf((u_char *) wqevn, "ngx_worker_quit_%P%Z", ngx_pid);
     events[1] = CreateEvent(NULL, 1, 0, wqevn);
     if (events[1] == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -597,7 +597,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
         goto failed;
     }
 
-    ngx_sprintf((u_char *) wroevn, "ngx_worker_reopen_%ul%Z", ngx_pid);
+    ngx_sprintf((u_char *) wroevn, "ngx_worker_reopen_%P%Z", ngx_pid);
     events[2] = CreateEvent(NULL, 1, 0, wroevn);
     if (events[2] == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
@@ -1007,7 +1007,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_int_t pid)
     ngx_int_t  rc;
     char       evn[NGX_PROCESS_SYNC_NAME];
 
-    ngx_sprintf((u_char *) evn, "Global\\ngx_%s_%ul%Z", sig, pid);
+    ngx_sprintf((u_char *) evn, "Global\\ngx_%s_%P%Z", sig, (ngx_pid_t) pid);
 
     ev = OpenEvent(EVENT_MODIFY_STATE, 0, evn);
     if (ev == NULL) {

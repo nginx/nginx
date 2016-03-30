@@ -76,9 +76,9 @@ ngx_spawn_process(ngx_cycle_t *cycle, char *name, ngx_int_t respawn)
     ngx_processes[s].pid = pid;
     ngx_processes[s].name = name;
 
-    ngx_sprintf(ngx_processes[s].term_event, "ngx_%s_term_%ul%Z", name, pid);
-    ngx_sprintf(ngx_processes[s].quit_event, "ngx_%s_quit_%ul%Z", name, pid);
-    ngx_sprintf(ngx_processes[s].reopen_event, "ngx_%s_reopen_%ul%Z",
+    ngx_sprintf(ngx_processes[s].term_event, "ngx_%s_term_%P%Z", name, pid);
+    ngx_sprintf(ngx_processes[s].quit_event, "ngx_%s_quit_%P%Z", name, pid);
+    ngx_sprintf(ngx_processes[s].reopen_event, "ngx_%s_reopen_%P%Z",
                 name, pid);
 
     events[0] = ngx_master_process_event;
