@@ -392,7 +392,8 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
 done:
 
-    ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0, "slab alloc: %p", p);
+    ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
+                   "slab alloc: %p", (void *) p);
 
     return (void *) p;
 }

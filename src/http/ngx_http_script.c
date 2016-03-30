@@ -1488,7 +1488,7 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     r = e->request;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http script file op %p \"%V\"", code->op, &path);
+                   "http script file op %p \"%V\"", (void *) code->op, &path);
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 

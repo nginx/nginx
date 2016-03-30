@@ -451,7 +451,7 @@ again:
 #endif
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "sendfile: %z (err: %i) of %uz @%O",
+                   "sendfile: %z (err: %d) of %uz @%O",
                    n, ctx->err, ctx->size, file->file_pos);
 
     if (ctx->err == NGX_EINTR) {

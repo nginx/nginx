@@ -431,7 +431,7 @@ ngx_mail_auth_http_ignore_status_line(ngx_mail_session_t *s,
             }
 
             ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                          "auth http server &V sent invalid response",
+                          "auth http server %V sent invalid response",
                           ctx->peer.name);
             ngx_close_connection(ctx->peer.connection);
             ngx_destroy_pool(ctx->pool);

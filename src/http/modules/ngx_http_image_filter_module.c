@@ -737,7 +737,7 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "image size: %d x %d", width, height);
+                   "image size: %d x %d", (int) width, (int) height);
 
     ctx->width = width;
     ctx->height = height;

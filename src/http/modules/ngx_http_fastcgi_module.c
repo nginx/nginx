@@ -1653,7 +1653,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 && f->type != NGX_HTTP_FASTCGI_STDERR)
             {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent unexpected FastCGI record: %d",
+                              "upstream sent unexpected FastCGI record: %ui",
                               f->type);
 
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
@@ -1834,7 +1834,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
             rc = ngx_http_parse_header_line(r, &u->buffer, 1);
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http fastcgi parser: %d", rc);
+                           "http fastcgi parser: %i", rc);
 
             if (rc == NGX_AGAIN) {
                 break;
@@ -2505,7 +2505,7 @@ ngx_http_fastcgi_non_buffered_filter(void *data, ssize_t bytes)
 
         for (cl = u->out_bufs; cl; cl = cl->next) {
             ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http fastcgi in memory %p-%p %uz",
+                           "http fastcgi in memory %p-%p %O",
                            cl->buf->pos, cl->buf->last, ngx_buf_size(cl->buf));
 
             if (buf->last == cl->buf->pos) {

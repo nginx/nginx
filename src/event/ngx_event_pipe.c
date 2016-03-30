@@ -660,7 +660,7 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
     flush:
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
-                       "pipe write: out:%p, f:%d", out, flush);
+                       "pipe write: out:%p, f:%ui", out, flush);
 
         if (out == NULL) {
 

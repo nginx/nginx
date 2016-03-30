@@ -141,7 +141,7 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     *v = *value;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http map: \"%v\" \"%v\"", &val, v);
+                   "http map: \"%V\" \"%v\"", &val, v);
 
     return NGX_OK;
 }

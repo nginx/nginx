@@ -902,7 +902,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
         events = io_getevents(ngx_aio_ctx, 1, 64, event, &ts);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "io_getevents: %l", events);
+                       "io_getevents: %d", events);
 
         if (events > 0) {
             ready -= events;

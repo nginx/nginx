@@ -841,7 +841,7 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
 
         if ((size_t) n != len) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
-                          ngx_read_fd_n " has read only %z of %uz from %s",
+                          ngx_read_fd_n " has read only %z of %O from %s",
                           n, size, from);
             goto failed;
         }
@@ -856,7 +856,7 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
 
         if ((size_t) n != len) {
             ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
-                          ngx_write_fd_n " has written only %z of %uz to %s",
+                          ngx_write_fd_n " has written only %z of %O to %s",
                           n, size, to);
             goto failed;
         }

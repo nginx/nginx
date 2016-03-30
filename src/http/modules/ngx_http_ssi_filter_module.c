@@ -468,12 +468,12 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         while (ctx->pos < ctx->buf->last) {
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "saved: %d state: %d", ctx->saved, ctx->state);
+                           "saved: %uz state: %ui", ctx->saved, ctx->state);
 
             rc = ngx_http_ssi_parse(r, ctx);
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "parse: %d, looked: %d %p-%p",
+                           "parse: %i, looked: %uz %p-%p",
                            rc, ctx->looked, ctx->copy_start, ctx->copy_end);
 
             if (rc == NGX_ERROR) {
@@ -485,7 +485,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 if (ctx->output) {
 
                     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                                   "saved: %d", ctx->saved);
+                                   "saved: %uz", ctx->saved);
 
                     if (ctx->saved) {
 
@@ -1911,7 +1911,7 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
 
     if (rc < NGX_REGEX_NO_MATCHED) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                      ngx_regex_exec_n " failed: %i on \"%V\" using \"%V\"",
+                      ngx_regex_exec_n " failed: %d on \"%V\" using \"%V\"",
                       rc, str, pattern);
         return NGX_HTTP_SSI_ERROR;
     }

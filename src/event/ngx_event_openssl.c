@@ -1596,7 +1596,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL buf copy: %d", size);
+                           "SSL buf copy: %z", size);
 
             ngx_memcpy(buf->last, in->buf->pos, size);
 
@@ -1668,7 +1668,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
     ngx_ssl_clear_error(c->log);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %d", size);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %uz", size);
 
     n = SSL_write(c->ssl->connection, data, size);
 

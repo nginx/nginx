@@ -1219,7 +1219,7 @@ ngx_ssl_ocsp_create_request(ngx_ssl_ocsp_ctx_t *ctx)
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp request length %z, escape %d",
-                   base64.len, escape);
+                   base64.len, (int) escape);
 
     len = sizeof("GET ") - 1 + ctx->uri.len + sizeof("/") - 1
           + base64.len + 2 * escape + sizeof(" HTTP/1.0" CRLF) - 1
