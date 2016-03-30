@@ -6365,7 +6365,7 @@ successfully respond to the request.
 теперь символы 0x7F-0xFF в access_log записываются в виде \xXX.
 </para>
 <para lang="en">
-now the 0x7F-0x1F characters are escaped as \xXX in an access_log.
+now the 0x7F-0xFF characters are escaped as \xXX in an access_log.
 </para>
 </change>
 
