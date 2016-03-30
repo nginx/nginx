@@ -79,35 +79,35 @@ struct ngx_cycle_s {
 
 
 typedef struct {
-     ngx_flag_t               daemon;
-     ngx_flag_t               master;
+    ngx_flag_t                daemon;
+    ngx_flag_t                master;
 
-     ngx_msec_t               timer_resolution;
+    ngx_msec_t                timer_resolution;
 
-     ngx_int_t                worker_processes;
-     ngx_int_t                debug_points;
+    ngx_int_t                 worker_processes;
+    ngx_int_t                 debug_points;
 
-     ngx_int_t                rlimit_nofile;
-     off_t                    rlimit_core;
+    ngx_int_t                 rlimit_nofile;
+    off_t                     rlimit_core;
 
-     int                      priority;
+    int                       priority;
 
-     ngx_uint_t               cpu_affinity_auto;
-     ngx_uint_t               cpu_affinity_n;
-     ngx_cpuset_t            *cpu_affinity;
+    ngx_uint_t                cpu_affinity_auto;
+    ngx_uint_t                cpu_affinity_n;
+    ngx_cpuset_t             *cpu_affinity;
 
-     char                    *username;
-     ngx_uid_t                user;
-     ngx_gid_t                group;
+    char                     *username;
+    ngx_uid_t                 user;
+    ngx_gid_t                 group;
 
-     ngx_str_t                working_directory;
-     ngx_str_t                lock_file;
+    ngx_str_t                 working_directory;
+    ngx_str_t                 lock_file;
 
-     ngx_str_t                pid;
-     ngx_str_t                oldpid;
+    ngx_str_t                 pid;
+    ngx_str_t                 oldpid;
 
-     ngx_array_t              env;
-     char                   **environment;
+    ngx_array_t               env;
+    char                    **environment;
 } ngx_core_conf_t;
 
 

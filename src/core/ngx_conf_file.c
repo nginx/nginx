@@ -613,9 +613,9 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 need_space = 0;
 
             } else {
-                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                    "unexpected \"%c\"", ch);
-                 return NGX_ERROR;
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "unexpected \"%c\"", ch);
+                return NGX_ERROR;
             }
         }
 

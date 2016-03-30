@@ -312,13 +312,13 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     conf->ssl.log = cf->log;
 
     if (conf->enable) {
-       mode = "ssl";
+        mode = "ssl";
 
     } else if (conf->starttls != NGX_MAIL_STARTTLS_OFF) {
-       mode = "starttls";
+        mode = "starttls";
 
     } else {
-       mode = "";
+        mode = "";
     }
 
     if (conf->file == NULL) {

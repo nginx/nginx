@@ -215,7 +215,7 @@ static ngx_http_variable_t  ngx_http_v2_vars[] = {
 static ngx_int_t
 ngx_http_v2_add_variables(ngx_conf_t *cf)
 {
-   ngx_http_variable_t  *var, *v;
+    ngx_http_variable_t  *var, *v;
 
     for (v = ngx_http_v2_vars; v->name.len; v++) {
         var = ngx_http_add_variable(cf, &v->name, v->flags);

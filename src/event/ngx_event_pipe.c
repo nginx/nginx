@@ -434,7 +434,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             /* STUB */ cl->buf->num = p->num++;
 
             if (p->input_filter(p, cl->buf) == NGX_ERROR) {
-                 return NGX_ABORT;
+                return NGX_ABORT;
             }
 
             ngx_free_chain(p->pool, cl);
@@ -801,12 +801,12 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         }
 
         if (cl) {
-           p->in = cl;
-           *ll = NULL;
+            p->in = cl;
+            *ll = NULL;
 
         } else {
-           p->in = NULL;
-           p->last_in = &p->in;
+            p->in = NULL;
+            p->last_in = &p->in;
         }
 
     } else {

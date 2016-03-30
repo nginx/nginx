@@ -2542,9 +2542,9 @@ done:
 void
 ngx_ssl_remove_cached_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 {
-     SSL_CTX_remove_session(ssl, sess);
+    SSL_CTX_remove_session(ssl, sess);
 
-     ngx_ssl_remove_session(ssl, sess);
+    ngx_ssl_remove_session(ssl, sess);
 }
 
 

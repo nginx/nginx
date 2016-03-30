@@ -222,11 +222,11 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
                             if (bitmap[n] == NGX_SLAB_BUSY) {
                                 for (n = n + 1; n < map; n++) {
-                                     if (bitmap[n] != NGX_SLAB_BUSY) {
-                                         p = (uintptr_t) bitmap + i;
+                                    if (bitmap[n] != NGX_SLAB_BUSY) {
+                                        p = (uintptr_t) bitmap + i;
 
-                                         goto done;
-                                     }
+                                        goto done;
+                                    }
                                 }
 
                                 prev = (ngx_slab_page_t *)

@@ -155,7 +155,7 @@ ngx_create_temp_file(ngx_file_t *file, ngx_path_t *path, ngx_pool_t *pool,
 
 #if 0
     for (i = 0; i < file->name.len; i++) {
-         file->name.data[i] = 'X';
+        file->name.data[i] = 'X';
     }
 #endif
 

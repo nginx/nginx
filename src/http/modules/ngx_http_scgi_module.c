@@ -876,7 +876,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
         next:
 
             continue;
-         }
+        }
     }
 
     *b->last++ = (u_char) ',';

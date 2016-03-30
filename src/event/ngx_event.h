@@ -188,7 +188,7 @@ typedef struct {
     ngx_int_t  (*notify)(ngx_event_handler_pt handler);
 
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
-                   ngx_uint_t flags);
+                                 ngx_uint_t flags);
 
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);

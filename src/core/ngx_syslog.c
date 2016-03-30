@@ -10,9 +10,9 @@
 
 
 #define NGX_SYSLOG_MAX_STR                                                    \
-     NGX_MAX_ERROR_STR + sizeof("<255>Jan 01 00:00:00 ") - 1                  \
-     + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                               \
-     + 32 /* tag */ + 2 /* colon, space */
+    NGX_MAX_ERROR_STR + sizeof("<255>Jan 01 00:00:00 ") - 1                   \
+    + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
+    + 32 /* tag */ + 2 /* colon, space */
 
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);

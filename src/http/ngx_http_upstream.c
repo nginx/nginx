@@ -1883,17 +1883,17 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
 
     if (!r->request_body_no_buffering) {
 
-       /* buffered request body */
+        /* buffered request body */
 
-       if (!u->request_sent) {
-           u->request_sent = 1;
-           out = u->request_bufs;
+        if (!u->request_sent) {
+            u->request_sent = 1;
+            out = u->request_bufs;
 
-       } else {
-           out = NULL;
-       }
+        } else {
+            out = NULL;
+        }
 
-       return ngx_output_chain(&u->output, out);
+        return ngx_output_chain(&u->output, out);
     }
 
     if (!u->request_sent) {
@@ -4327,10 +4327,10 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     pa = &u->headers_in.cache_control;
 
     if (pa->elts == NULL) {
-       if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
-       {
-           return NGX_ERROR;
-       }
+        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
     }
 
     ph = ngx_array_push(pa);

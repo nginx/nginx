@@ -47,21 +47,21 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
     switch (ls->sockaddr->sa_family) {
 #if (NGX_HAVE_INET6)
     case AF_INET6:
-         ls->addr_text_max_len = NGX_INET6_ADDRSTRLEN;
-         break;
+        ls->addr_text_max_len = NGX_INET6_ADDRSTRLEN;
+        break;
 #endif
 #if (NGX_HAVE_UNIX_DOMAIN)
     case AF_UNIX:
-         ls->addr_text_max_len = NGX_UNIX_ADDRSTRLEN;
-         len++;
-         break;
+        ls->addr_text_max_len = NGX_UNIX_ADDRSTRLEN;
+        len++;
+        break;
 #endif
     case AF_INET:
-         ls->addr_text_max_len = NGX_INET_ADDRSTRLEN;
-         break;
+        ls->addr_text_max_len = NGX_INET_ADDRSTRLEN;
+        break;
     default:
-         ls->addr_text_max_len = NGX_SOCKADDR_STRLEN;
-         break;
+        ls->addr_text_max_len = NGX_SOCKADDR_STRLEN;
+        break;
     }
 
     ls->addr_text.data = ngx_pnalloc(cf->pool, len);
@@ -168,22 +168,22 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
-             ls[i].addr_text_max_len = NGX_INET6_ADDRSTRLEN;
-             len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1;
-             break;
+            ls[i].addr_text_max_len = NGX_INET6_ADDRSTRLEN;
+            len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1;
+            break;
 #endif
 
 #if (NGX_HAVE_UNIX_DOMAIN)
         case AF_UNIX:
-             ls[i].addr_text_max_len = NGX_UNIX_ADDRSTRLEN;
-             len = NGX_UNIX_ADDRSTRLEN;
-             break;
+            ls[i].addr_text_max_len = NGX_UNIX_ADDRSTRLEN;
+            len = NGX_UNIX_ADDRSTRLEN;
+            break;
 #endif
 
         case AF_INET:
-             ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
-             len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
-             break;
+            ls[i].addr_text_max_len = NGX_INET_ADDRSTRLEN;
+            len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+            break;
 
         default:
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,

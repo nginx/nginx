@@ -232,10 +232,10 @@ typedef struct {
 
 
 typedef struct {
-     ngx_hash_combined_t       names;
+    ngx_hash_combined_t        names;
 
-     ngx_uint_t                nregex;
-     ngx_http_server_name_t   *regex;
+    ngx_uint_t                 nregex;
+    ngx_http_server_name_t    *regex;
 } ngx_http_virtual_names_t;
 
 
@@ -544,7 +544,7 @@ typedef ngx_int_t (*ngx_http_request_body_filter_pt)
 ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_request_body_save_filter(ngx_http_request_t *r,
-   ngx_chain_t *chain);
+    ngx_chain_t *chain);
 
 
 ngx_int_t ngx_http_set_disable_symlinks(ngx_http_request_t *r,

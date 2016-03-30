@@ -42,7 +42,7 @@ static u_char  smtp_username[] = "334 VXNlcm5hbWU6" CRLF;
 static u_char  smtp_password[] = "334 UGFzc3dvcmQ6" CRLF;
 static u_char  smtp_invalid_command[] = "500 5.5.1 Invalid command" CRLF;
 static u_char  smtp_invalid_pipelining[] =
-   "503 5.5.0 Improper use of SMTP command pipelining" CRLF;
+    "503 5.5.0 Improper use of SMTP command pipelining" CRLF;
 static u_char  smtp_invalid_argument[] = "501 5.5.4 Invalid argument" CRLF;
 static u_char  smtp_auth_required[] = "530 5.7.1 Authentication required" CRLF;
 static u_char  smtp_bad_sequence[] = "503 5.5.1 Bad sequence of commands" CRLF;

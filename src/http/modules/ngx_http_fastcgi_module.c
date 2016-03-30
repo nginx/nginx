@@ -751,7 +751,7 @@ ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
     url.no_resolve = 1;
 
     if (ngx_parse_url(r->pool, &url) != NGX_OK) {
-         if (url.err) {
+        if (url.err) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "%s in upstream \"%V\"", url.err, &url.url);
         }
@@ -1800,7 +1800,7 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
             } else {
                 r->cache->header_start += u->buffer.pos - start
-                                           - sizeof(ngx_http_fastcgi_header_t);
+                                          - sizeof(ngx_http_fastcgi_header_t);
             }
 
             f->large_stderr = 0;
@@ -2558,8 +2558,8 @@ ngx_http_fastcgi_process_record(ngx_http_request_t *r,
             case NGX_HTTP_FASTCGI_STDOUT:
             case NGX_HTTP_FASTCGI_STDERR:
             case NGX_HTTP_FASTCGI_END_REQUEST:
-                 f->type = (ngx_uint_t) ch;
-                 break;
+                f->type = (ngx_uint_t) ch;
+                break;
             default:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent invalid FastCGI "
@@ -2654,7 +2654,7 @@ ngx_http_fastcgi_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 static ngx_int_t
 ngx_http_fastcgi_add_variables(ngx_conf_t *cf)
 {
-   ngx_http_variable_t  *var, *v;
+    ngx_http_variable_t  *var, *v;
 
     for (v = ngx_http_fastcgi_vars; v->name.len; v++) {
         var = ngx_http_add_variable(cf, &v->name, v->flags);

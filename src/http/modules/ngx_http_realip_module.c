@@ -328,8 +328,8 @@ ngx_http_realip_from(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_UNIX_DOMAIN)
 
     if (ngx_strcmp(value[1].data, "unix:") == 0) {
-         cidr->family = AF_UNIX;
-         return NGX_CONF_OK;
+        cidr->family = AF_UNIX;
+        return NGX_CONF_OK;
     }
 
 #endif

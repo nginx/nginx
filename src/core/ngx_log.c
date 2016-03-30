@@ -33,14 +33,14 @@ typedef struct {
 
 static ngx_command_t  ngx_errlog_commands[] = {
 
-    {ngx_string("error_log"),
-     NGX_MAIN_CONF|NGX_CONF_1MORE,
-     ngx_error_log,
-     0,
-     0,
-     NULL},
+    { ngx_string("error_log"),
+      NGX_MAIN_CONF|NGX_CONF_1MORE,
+      ngx_error_log,
+      0,
+      0,
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 
@@ -585,7 +585,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
             return NGX_CONF_ERROR;
         }
 
-     } else if (ngx_strncmp(value[1].data, "memory:", 7) == 0) {
+    } else if (ngx_strncmp(value[1].data, "memory:", 7) == 0) {
 
 #if (NGX_DEBUG)
         size_t                 size, needed;
@@ -644,7 +644,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
         return NGX_CONF_ERROR;
 #endif
 
-     } else if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
+    } else if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
         peer = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
         if (peer == NULL) {
             return NGX_CONF_ERROR;

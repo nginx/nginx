@@ -621,11 +621,11 @@ destination_done:
     if ((r->uri.data[r->uri.len - 1] == '/' && *(last - 1) != '/')
         || (r->uri.data[r->uri.len - 1] != '/' && *(last - 1) == '/'))
     {
-         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                       "both URI \"%V\" and \"Destination\" URI \"%V\" "
-                       "should be either collections or non-collections",
-                       &r->uri, &dest->value);
-         return NGX_HTTP_CONFLICT;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "both URI \"%V\" and \"Destination\" URI \"%V\" "
+                      "should be either collections or non-collections",
+                      &r->uri, &dest->value);
+        return NGX_HTTP_CONFLICT;
     }
 
     depth = ngx_http_dav_depth(r, NGX_HTTP_DAV_INFINITY_DEPTH);

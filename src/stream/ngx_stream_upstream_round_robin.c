@@ -356,7 +356,7 @@ failed:
                 / (8 * sizeof(uintptr_t));
 
         for (i = 0; i < n; i++) {
-             rrp->tried[i] = 0;
+            rrp->tried[i] = 0;
         }
 
         ngx_stream_upstream_rr_peers_unlock(peers);

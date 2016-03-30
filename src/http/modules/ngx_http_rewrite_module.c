@@ -571,7 +571,7 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             mconf = module->create_loc_conf(cf);
             if (mconf == NULL) {
-                 return NGX_CONF_ERROR;
+                return NGX_CONF_ERROR;
             }
 
             ctx->loc_conf[cf->cycle->modules[i]->ctx_index] = mconf;

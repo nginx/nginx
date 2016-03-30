@@ -342,7 +342,7 @@ typedef struct {
 
     void                       *(*create_srv_conf)(ngx_conf_t *cf);
     char                       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev,
-                                      void *conf);
+                                                  void *conf);
 } ngx_mail_module_t;
 
 

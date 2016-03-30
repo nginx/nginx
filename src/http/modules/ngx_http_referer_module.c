@@ -109,7 +109,7 @@ ngx_module_t  ngx_http_referer_module = {
 
 static ngx_int_t
 ngx_http_referer_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
-     uintptr_t data)
+    uintptr_t data)
 {
     u_char                    *p, *ref, *last;
     size_t                     len;

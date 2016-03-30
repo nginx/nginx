@@ -165,8 +165,8 @@ ngx_crypt_to64(u_char *p, uint32_t v, size_t n)
         "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     while (n--) {
-       *p++ = itoa64[v & 0x3f];
-       v >>= 6;
+        *p++ = itoa64[v & 0x3f];
+        v >>= 6;
     }
 
     return p;

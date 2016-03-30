@@ -2555,14 +2555,14 @@ ngx_http_mp4_crop_ctts_data(ngx_http_mp4_file_t *mp4,
                        "sample:%uD, count:%uD, offset:%uD",
                        start_sample, count, ngx_mp4_get_32value(entry->offset));
 
-         if (start_sample <= count) {
-             rest = start_sample - 1;
-             goto found;
-         }
+        if (start_sample <= count) {
+            rest = start_sample - 1;
+            goto found;
+        }
 
-         start_sample -= count;
-         entries--;
-         entry++;
+        start_sample -= count;
+        entries--;
+        entry++;
     }
 
     if (start) {
