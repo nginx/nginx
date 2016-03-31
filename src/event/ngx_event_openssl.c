@@ -1956,6 +1956,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_INAPPROPRIATE_FALLBACK                     /*  373 */
 #endif
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
+#ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
             || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE             /* 1010 */
             || n == SSL_R_SSLV3_ALERT_BAD_RECORD_MAC                 /* 1020 */
             || n == SSL_R_TLSV1_ALERT_DECRYPTION_FAILED              /* 1021 */
@@ -1978,7 +1979,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_TLSV1_ALERT_INSUFFICIENT_SECURITY          /* 1071 */
             || n == SSL_R_TLSV1_ALERT_INTERNAL_ERROR                 /* 1080 */
             || n == SSL_R_TLSV1_ALERT_USER_CANCELLED                 /* 1090 */
-            || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION)              /* 1100 */
+            || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION               /* 1100 */
+#endif
+            )
         {
             switch (c->log_error) {
 
