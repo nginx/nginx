@@ -39,6 +39,17 @@
 #endif
 
 
+#if (OPENSSL_VERSION_NUMBER >= 0x10100001L)
+
+#define ngx_ssl_version()       OpenSSL_version(OPENSSL_VERSION)
+
+#else
+
+#define ngx_ssl_version()       SSLeay_version(SSLEAY_VERSION)
+
+#endif
+
+
 #define ngx_ssl_session_t       SSL_SESSION
 #define ngx_ssl_conn_t          SSL
 

@@ -413,13 +413,12 @@ ngx_show_version_info(void)
 #endif
 
 #if (NGX_SSL)
-        if (SSLeay() == SSLEAY_VERSION_NUMBER) {
+        if (ngx_strcmp(ngx_ssl_version(), OPENSSL_VERSION_TEXT) == 0) {
             ngx_write_stderr("built with " OPENSSL_VERSION_TEXT NGX_LINEFEED);
         } else {
             ngx_write_stderr("built with " OPENSSL_VERSION_TEXT
                              " (running with ");
-            ngx_write_stderr((char *) (uintptr_t)
-                             SSLeay_version(SSLEAY_VERSION));
+            ngx_write_stderr((char *) (uintptr_t) ngx_ssl_version());
             ngx_write_stderr(")" NGX_LINEFEED);
         }
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
