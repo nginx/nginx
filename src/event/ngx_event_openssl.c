@@ -2157,7 +2157,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
     int                   n, i;
     X509                 *cert;
     X509_NAME            *name;
-    EVP_MD_CTX            md;
+    EVP_MD_CTX           *md;
     unsigned int          len;
     STACK_OF(X509_NAME)  *list;
     u_char                buf[EVP_MAX_MD_SIZE];
@@ -2167,15 +2167,18 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
      * the server certificate, and the client CA list.
      */
 
-    EVP_MD_CTX_init(&md);
+    md = EVP_MD_CTX_create();
+    if (md == NULL) {
+        return NGX_ERROR;
+    }
 
-    if (EVP_DigestInit_ex(&md, EVP_sha1(), NULL) == 0) {
+    if (EVP_DigestInit_ex(md, EVP_sha1(), NULL) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "EVP_DigestInit_ex() failed");
         goto failed;
     }
 
-    if (EVP_DigestUpdate(&md, sess_ctx->data, sess_ctx->len) == 0) {
+    if (EVP_DigestUpdate(md, sess_ctx->data, sess_ctx->len) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "EVP_DigestUpdate() failed");
         goto failed;
@@ -2189,7 +2192,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
         goto failed;
     }
 
-    if (EVP_DigestUpdate(&md, buf, len) == 0) {
+    if (EVP_DigestUpdate(md, buf, len) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "EVP_DigestUpdate() failed");
         goto failed;
@@ -2209,7 +2212,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
                 goto failed;
             }
 
-            if (EVP_DigestUpdate(&md, buf, len) == 0) {
+            if (EVP_DigestUpdate(md, buf, len) == 0) {
                 ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                               "EVP_DigestUpdate() failed");
                 goto failed;
@@ -2217,13 +2220,13 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
         }
     }
 
-    if (EVP_DigestFinal_ex(&md, buf, &len) == 0) {
+    if (EVP_DigestFinal_ex(md, buf, &len) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "EVP_DigestUpdate() failed");
         goto failed;
     }
 
-    EVP_MD_CTX_cleanup(&md);
+    EVP_MD_CTX_destroy(md);
 
     if (SSL_CTX_set_session_id_context(ssl->ctx, buf, len) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -2235,7 +2238,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
 
 failed:
 
-    EVP_MD_CTX_cleanup(&md);
+    EVP_MD_CTX_destroy(md);
 
     return NGX_ERROR;
 }
