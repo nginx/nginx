@@ -39,6 +39,9 @@ ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
 static ngx_ssl_session_t *ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+    const
+#endif
     u_char *id, int len, int *copy);
 static void ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess);
 static void ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
@@ -2445,8 +2448,11 @@ failed:
 
 
 static ngx_ssl_session_t *
-ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
-    int *copy)
+ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+    const
+#endif
+    u_char *id, int len, int *copy)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x0090707fL
     const
@@ -2463,7 +2469,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
     ngx_connection_t         *c;
 
-    hash = ngx_crc32_short(id, (size_t) len);
+    hash = ngx_crc32_short((u_char *) (uintptr_t) id, (size_t) len);
     *copy = 0;
 
     c = ngx_ssl_get_connection(ssl_conn);
@@ -2501,7 +2507,8 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn, u_char *id, int len,
 
         sess_id = (ngx_ssl_sess_id_t *) node;
 
-        rc = ngx_memn2cmp(id, sess_id->id, (size_t) len, (size_t) node->data);
+        rc = ngx_memn2cmp((u_char *) (uintptr_t) id, sess_id->id,
+                          (size_t) len, (size_t) node->data);
 
         if (rc == 0) {
 
