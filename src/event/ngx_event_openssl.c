@@ -111,6 +111,12 @@ int  ngx_ssl_stapling_index;
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+
+#else
+
 #ifndef OPENSSL_IS_BORINGSSL
     OPENSSL_config(NULL);
 #endif
@@ -119,6 +125,8 @@ ngx_ssl_init(ngx_log_t *log)
     SSL_load_error_strings();
 
     OpenSSL_add_all_algorithms();
+
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef SSL_OP_NO_COMPRESSION
@@ -3548,8 +3556,12 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static void
 ngx_openssl_exit(ngx_cycle_t *cycle)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100003L
+
     EVP_cleanup();
 #ifndef OPENSSL_NO_ENGINE
     ENGINE_cleanup();
+#endif
+
 #endif
 }

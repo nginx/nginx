@@ -52,7 +52,7 @@ else
         ngx_feature_incs="#include <openssl/ssl.h>"
         ngx_feature_path=
         ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL"
-        ngx_feature_test="SSL_library_init()"
+        ngx_feature_test="SSL_CTX_set_options(NULL, 0)"
         . auto/feature
 
         if [ $ngx_found = no ]; then
