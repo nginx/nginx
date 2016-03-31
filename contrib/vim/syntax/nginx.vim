@@ -57,6 +57,7 @@ syn keyword ngxDirectiveError post_action
 syn keyword ngxDirectiveDeprecated connections
 syn keyword ngxDirectiveDeprecated imap
 syn keyword ngxDirectiveDeprecated limit_zone
+syn keyword ngxDirectiveDeprecated mysql_test
 syn keyword ngxDirectiveDeprecated open_file_cache_retest
 syn keyword ngxDirectiveDeprecated optimize_server_names
 syn keyword ngxDirectiveDeprecated satisfy_any
@@ -246,7 +247,6 @@ syn keyword ngxDirective mp4_max_buffer_size
 syn keyword ngxDirective msie_padding
 syn keyword ngxDirective msie_refresh
 syn keyword ngxDirective multi_accept
-syn keyword ngxDirective mysql_test
 syn keyword ngxDirective open_file_cache
 syn keyword ngxDirective open_file_cache_errors
 syn keyword ngxDirective open_file_cache_events

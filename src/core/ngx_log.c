@@ -86,7 +86,7 @@ static ngx_str_t err_levels[] = {
 
 static const char *debug_levels[] = {
     "debug_core", "debug_alloc", "debug_mutex", "debug_event",
-    "debug_http", "debug_mail", "debug_mysql", "debug_stream"
+    "debug_http", "debug_mail", "debug_stream"
 };
 
 

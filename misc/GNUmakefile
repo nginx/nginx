@@ -20,8 +20,6 @@ release: export
 	rm $(TEMP)/$(NGINX)/src/event/modules/ngx_iocp_module.*
 	rm -r $(TEMP)/$(NGINX)/src/os/win32
 
-	rm -r $(TEMP)/$(NGINX)/src/mysql
-
 	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
