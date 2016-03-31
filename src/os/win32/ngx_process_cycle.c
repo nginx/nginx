@@ -1001,13 +1001,13 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
 
 ngx_int_t
-ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_int_t pid)
+ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_pid_t pid)
 {
     HANDLE     ev;
     ngx_int_t  rc;
     char       evn[NGX_PROCESS_SYNC_NAME];
 
-    ngx_sprintf((u_char *) evn, "Global\\ngx_%s_%P%Z", sig, (ngx_pid_t) pid);
+    ngx_sprintf((u_char *) evn, "Global\\ngx_%s_%P%Z", sig, pid);
 
     ev = OpenEvent(EVENT_MODIFY_STATE, 0, evn);
     if (ev == NULL) {

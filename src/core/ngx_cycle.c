@@ -1006,7 +1006,7 @@ ngx_int_t
 ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 {
     ssize_t           n;
-    ngx_int_t         pid;
+    ngx_pid_t         pid;
     ngx_file_t        file;
     ngx_core_conf_t  *ccf;
     u_char            buf[NGX_INT64_LEN + 2];
@@ -1044,7 +1044,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 
     pid = ngx_atoi(buf, ++n);
 
-    if (pid == NGX_ERROR) {
+    if (pid == (ngx_pid_t) NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "invalid PID number \"%*s\" in \"%s\"",
                       n, buf, file.name.data);
