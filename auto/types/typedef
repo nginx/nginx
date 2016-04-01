@@ -50,7 +50,11 @@ END
     fi
 
     if [ $ngx_found = no ]; then
-        echo $ngx_n " $ngx_try not found$ngx_c"
+        if [ $ngx_try = $ngx_type ]; then
+            echo $ngx_n " $ngx_try not found$ngx_c"
+        else
+            echo $ngx_n ", $ngx_try not found$ngx_c"
+        fi
 
         echo "----------"    >> $NGX_AUTOCONF_ERR
         cat $NGX_AUTOTEST.c  >> $NGX_AUTOCONF_ERR
