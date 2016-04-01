@@ -45,9 +45,6 @@ if [ -x $NGX_AUTOTEST ]; then
 fi
 
 
-rm -rf $NGX_AUTOTEST*
-
-
 case $ngx_size in
     4)
         ngx_max_value=2147483647
@@ -69,6 +66,11 @@ case $ngx_size in
         echo $ngx_test       >> $NGX_AUTOCONF_ERR
         echo "----------"    >> $NGX_AUTOCONF_ERR
 
+        rm -rf $NGX_AUTOTEST*
+
         exit 1
 esac
+
+
+rm -rf $NGX_AUTOTEST*
 
