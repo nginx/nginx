@@ -89,7 +89,7 @@ and a client closed a connection prematurely.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании кэширования 
+при использовании кэширования
 соединения с клиентами могли закрываться без необходимости.<br/>
 Спасибо Justin Li.
 </para>
