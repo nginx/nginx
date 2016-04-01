@@ -260,6 +260,7 @@ void ngx_http_v2_request_headers_init(void);
 
 ngx_int_t ngx_http_v2_read_request_body(ngx_http_request_t *r,
     ngx_http_client_body_handler_pt post_handler);
+ngx_int_t ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r);
 
 void ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc);
 

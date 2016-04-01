@@ -48,7 +48,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
 #if (NGX_HTTP_V2)
     if (r->stream) {
-        r->request_body_no_buffering = 0;
         rc = ngx_http_v2_read_request_body(r, post_handler);
         goto done;
     }
@@ -214,6 +213,18 @@ ngx_int_t
 ngx_http_read_unbuffered_request_body(ngx_http_request_t *r)
 {
     ngx_int_t  rc;
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        rc = ngx_http_v2_read_unbuffered_request_body(r);
+
+        if (rc == NGX_OK) {
+            r->reading_body = 0;
+        }
+
+        return rc;
+    }
+#endif
 
     if (r->connection->read->timedout) {
         r->connection->timedout = 1;
