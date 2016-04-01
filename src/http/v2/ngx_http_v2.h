@@ -24,10 +24,6 @@
 #define NGX_HTTP_V2_MAX_FIELD                                                 \
     (127 + (1 << (NGX_HTTP_V2_INT_OCTETS - 1) * 7) - 1)
 
-#define NGX_HTTP_V2_DATA_DISCARD         1
-#define NGX_HTTP_V2_DATA_ERROR           2
-#define NGX_HTTP_V2_DATA_INTERNAL_ERROR  3
-
 #define NGX_HTTP_V2_FRAME_HEADER_SIZE    9
 
 /* frame types */
@@ -195,7 +191,8 @@ struct ngx_http_v2_stream_s {
     unsigned                         in_closed:1;
     unsigned                         out_closed:1;
     unsigned                         rst_sent:1;
-    unsigned                         skip_data:2;
+    unsigned                         no_flow_control:1;
+    unsigned                         skip_data:1;
 };
 
 

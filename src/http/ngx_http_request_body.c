@@ -40,19 +40,19 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->main->count++;
 
-#if (NGX_HTTP_V2)
-    if (r->stream && r == r->main) {
-        r->request_body_no_buffering = 0;
-        rc = ngx_http_v2_read_request_body(r, post_handler);
-        goto done;
-    }
-#endif
-
     if (r != r->main || r->request_body || r->discard_body) {
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
     }
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        r->request_body_no_buffering = 0;
+        rc = ngx_http_v2_read_request_body(r, post_handler);
+        goto done;
+    }
+#endif
 
     if (ngx_http_test_expect(r) != NGX_OK) {
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -503,16 +503,16 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     ngx_int_t     rc;
     ngx_event_t  *rev;
 
-#if (NGX_HTTP_V2)
-    if (r->stream && r == r->main) {
-        r->stream->skip_data = NGX_HTTP_V2_DATA_DISCARD;
-        return NGX_OK;
-    }
-#endif
-
     if (r != r->main || r->discard_body || r->request_body) {
         return NGX_OK;
     }
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        r->stream->skip_data = 1;
+        return NGX_OK;
+    }
+#endif
 
     if (ngx_http_test_expect(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
