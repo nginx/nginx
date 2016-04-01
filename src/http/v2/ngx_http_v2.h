@@ -194,6 +194,7 @@ struct ngx_http_v2_stream_s {
     unsigned                         exhausted:1;
     unsigned                         in_closed:1;
     unsigned                         out_closed:1;
+    unsigned                         rst_sent:1;
     unsigned                         skip_data:2;
 };
 

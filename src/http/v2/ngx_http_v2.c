@@ -3709,7 +3709,7 @@ ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
         return NGX_ERROR;
     }
 
-    stream->out_closed = 1;
+    stream->rst_sent = 1;
 
     fc = stream->request->connection;
     fc->error = 1;
@@ -3744,13 +3744,23 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
         return;
     }
 
-    if (!stream->out_closed) {
-        if (ngx_http_v2_send_rst_stream(h2c, node->id,
-                                     fc->timedout ? NGX_HTTP_V2_PROTOCOL_ERROR
-                                                  : NGX_HTTP_V2_INTERNAL_ERROR)
-            != NGX_OK)
-        {
-            h2c->connection->error = 1;
+    if (!stream->rst_sent && !h2c->connection->error) {
+
+        if (!stream->out_closed) {
+            if (ngx_http_v2_send_rst_stream(h2c, node->id,
+                                      fc->timedout ? NGX_HTTP_V2_PROTOCOL_ERROR
+                                                   : NGX_HTTP_V2_INTERNAL_ERROR)
+                != NGX_OK)
+            {
+                h2c->connection->error = 1;
+            }
+
+        } else if (!stream->in_closed) {
+            if (ngx_http_v2_send_rst_stream(h2c, node->id, NGX_HTTP_V2_NO_ERROR)
+                != NGX_OK)
+            {
+                h2c->connection->error = 1;
+            }
         }
     }
 
@@ -3942,15 +3952,16 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
     c = h2c->connection;
 
-    if (h2c->state.stream) {
-        h2c->state.stream->out_closed = 1;
-        ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
-    }
-
     h2c->blocked = 1;
 
     if (!c->error && ngx_http_v2_send_goaway(h2c, status) != NGX_ERROR) {
         (void) ngx_http_v2_send_output_queue(h2c);
+    }
+
+    c->error = 1;
+
+    if (h2c->state.stream) {
+        ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
     }
 
     if (!h2c->processing) {
@@ -3958,7 +3969,6 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
         return;
     }
 
-    c->error = 1;
     c->read->handler = ngx_http_empty_handler;
     c->write->handler = ngx_http_empty_handler;
 
