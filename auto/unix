@@ -260,7 +260,7 @@ ngx_feature_run=no
 ngx_feature_incs="#include <dlfcn.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="dlopen(NULL, 0); dlsym(NULL, NULL)"
+ngx_feature_test="dlopen(NULL, RTLD_NOW | RTLD_GLOBAL); dlsym(NULL, NULL)"
 . auto/feature
 
 
@@ -547,6 +547,7 @@ ngx_param=NGX_PTR_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 NGX_INCLUDE_AUTO_CONFIG_H="#include \"ngx_auto_config.h\""
 
+ngx_type="uint32_t"; ngx_types="u_int32_t"; . auto/types/typedef
 ngx_type="uint64_t"; ngx_types="u_int64_t"; . auto/types/typedef
 
 ngx_type="sig_atomic_t"; ngx_types="int"; . auto/types/typedef
@@ -555,7 +556,7 @@ ngx_param=NGX_SIG_ATOMIC_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 ngx_type="socklen_t"; ngx_types="int"; . auto/types/typedef
 
-ngx_type="in_addr_t"; ngx_types="uint32_t"; . auto/types/typedef
+ngx_type="in_addr_t"; ngx_types="uint32_t u_int32_t"; . auto/types/typedef
 
 ngx_type="in_port_t"; ngx_types="u_short"; . auto/types/typedef
 
