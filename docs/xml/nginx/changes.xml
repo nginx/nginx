@@ -5,6 +5,64 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.14" date="05.04.2016">
+
+<change type="feature">
+<para lang="ru">
+совместимость с OpenSSL 1.1.0.
+</para>
+<para lang="en">
+OpenSSL 1.1.0 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_request_buffering, fastcgi_request_buffering,
+scgi_request_buffering и uwsgi_request_buffering
+теперь работают при использовании HTTP/2.
+</para>
+<para lang="en">
+the "proxy_request_buffering", "fastcgi_request_buffering",
+"scgi_request_buffering", and "uwsgi_request_buffering" directives
+now work with HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+в логах могли появляться сообщения "zero size buf in output".
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+директива client_max_body_size могла работать неверно.
+</para>
+<para lang="en">
+the "client_max_body_size" directive might work incorrectly
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных ошибок логгирования.
+</para>
+<para lang="en">
+of minor bugs in logging.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.13" date="29.03.2016">
 
 <change type="change">
