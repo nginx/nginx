@@ -2005,7 +2005,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     if (uri && file) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "inlcusion may be either virtual=\"%V\" or file=\"%V\"",
+                      "inclusion may be either virtual=\"%V\" or file=\"%V\"",
                       uri, file);
         return NGX_HTTP_SSI_ERROR;
     }

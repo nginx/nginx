@@ -604,7 +604,7 @@ syn keyword ngxDirectiveThirdParty echo_subrequest
 syn keyword ngxDirectiveThirdParty echo_subrequest_async
 
 " Events Module <http://docs.dutov.org/nginx_modules_events_en.html>
-" Privides options for start/stop events.
+" Provides options for start/stop events.
 syn keyword ngxDirectiveThirdParty on_start
 syn keyword ngxDirectiveThirdParty on_stop
 

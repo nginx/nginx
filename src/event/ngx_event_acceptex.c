@@ -189,7 +189,7 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
             err = ngx_socket_errno;
             if (err != WSA_IO_PENDING) {
                 ngx_log_error(NGX_LOG_ALERT, &ls->log, err,
-                              "AcceptEx() %V falied", &ls->addr_text);
+                              "AcceptEx() %V failed", &ls->addr_text);
 
                 ngx_close_posted_connection(c);
                 return NGX_ERROR;

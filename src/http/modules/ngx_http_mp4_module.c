@@ -1433,10 +1433,10 @@ typedef struct {
     u_char    layer[2];
     u_char    group[2];
     u_char    volume[2];
-    u_char    reverved3[2];
+    u_char    reserved3[2];
     u_char    matrix[36];
     u_char    width[4];
-    u_char    heigth[4];
+    u_char    height[4];
 } ngx_mp4_tkhd_atom_t;
 
 typedef struct {
@@ -1453,10 +1453,10 @@ typedef struct {
     u_char    layer[2];
     u_char    group[2];
     u_char    volume[2];
-    u_char    reverved3[2];
+    u_char    reserved3[2];
     u_char    matrix[36];
     u_char    width[4];
-    u_char    heigth[4];
+    u_char    height[4];
 } ngx_mp4_tkhd64_atom_t;
 
 
