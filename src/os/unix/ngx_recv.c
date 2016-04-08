@@ -93,9 +93,7 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                         rev->ready = 0;
                     }
 
-                    if (rev->available < 0) {
-                        rev->available = 0;
-                    }
+                    rev->available = 0;
                 }
 
                 return n;

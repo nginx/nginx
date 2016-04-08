@@ -143,9 +143,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
                         rev->ready = 0;
                     }
 
-                    if (rev->available < 0) {
-                        rev->available = 0;
-                    }
+                    rev->available = 0;
                 }
 
                 return n;
