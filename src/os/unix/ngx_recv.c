@@ -54,7 +54,24 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "recv: fd:%d %z of %uz", c->fd, n, size);
 
-        if (n >= 0) {
+        if (n == 0) {
+            rev->ready = 0;
+            rev->eof = 1;
+
+            /*
+             * on FreeBSD recv() may return 0 on closed socket
+             * even if kqueue reported about available data
+             */
+
+            if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
+                rev->available = 0;
+            }
+
+            return 0;
+        }
+
+        if (n > 0) {
+
             if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                 rev->available -= n;
 
@@ -73,18 +90,6 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                     }
                 }
 
-                if (n == 0) {
-
-                    /*
-                     * on FreeBSD recv() may return 0 on closed socket
-                     * even if kqueue reported about available data
-                     */
-
-                    rev->ready = 0;
-                    rev->eof = 1;
-                    rev->available = 0;
-                }
-
                 return n;
             }
 
@@ -92,10 +97,6 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                 && !(ngx_event_flags & NGX_USE_GREEDY_EVENT))
             {
                 rev->ready = 0;
-            }
-
-            if (n == 0) {
-                rev->eof = 1;
             }
 
             return n;
