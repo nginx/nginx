@@ -1733,7 +1733,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     trunc = flags & 0x0200;
 
     ngx_log_debug6(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolver DNS response %ui fl:%04Xui %ui/%ui/%ud/%ud",
+                   "resolver DNS response %ui fl:%04Xi %ui/%ui/%ud/%ud",
                    ident, flags, nqs, nan,
                    (response->nns_hi << 8) + response->nns_lo,
                    (response->nar_hi << 8) + response->nar_lo);
@@ -1741,7 +1741,7 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     /* response to a standard query */
     if ((flags & 0xf870) != 0x8000 || (trunc && tcp)) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "invalid %s DNS response %ui fl:%04Xui",
+                      "invalid %s DNS response %ui fl:%04Xi",
                       tcp ? "TCP" : "UDP", ident, flags);
         return;
     }

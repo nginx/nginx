@@ -348,7 +348,7 @@ ngx_inet6_ntop(u_char *p, u_char *text, size_t len)
             continue;
         }
 
-        dst = ngx_sprintf(dst, "%uxd", p[i] * 256 + p[i + 1]);
+        dst = ngx_sprintf(dst, "%xd", p[i] * 256 + p[i + 1]);
 
         if (i < 14) {
             *dst++ = ':';

@@ -484,7 +484,7 @@ ngx_reap_worker(ngx_cycle_t *cycle, HANDLE h)
         }
 
         ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
-                      "%s process %P exited with code %Xul",
+                      "%s process %P exited with code %Xl",
                       ngx_processes[n].name, ngx_processes[n].pid, code);
 
         ngx_close_handle(ngx_processes[n].reopen);

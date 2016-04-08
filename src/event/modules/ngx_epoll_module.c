@@ -910,7 +910,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
             for (i = 0; i < events; i++) {
 
                 ngx_log_debug4(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                               "io_event: %uXL %uXL %L %L",
+                               "io_event: %XL %XL %L %L",
                                 event[i].data, event[i].obj,
                                 event[i].res, event[i].res2);
 
