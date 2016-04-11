@@ -1177,6 +1177,11 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
         while (body) {
 
+            if (ngx_buf_special(body->buf)) {
+                body = body->next;
+                continue;
+            }
+
             if (body->buf->in_file) {
                 file_pos = body->buf->file_pos;
 
