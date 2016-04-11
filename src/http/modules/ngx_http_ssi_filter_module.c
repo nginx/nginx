@@ -2525,7 +2525,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "evaluted left: \"%V\"", &left);
+                   "evaluated left: \"%V\"", &left);
 
     if (p == last) {
         if (left.len) {
@@ -2589,7 +2589,7 @@ ngx_http_ssi_if(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "evaluted right: \"%V\"", &right);
+                   "evaluated right: \"%V\"", &right);
 
     if (noregex) {
         if (left.len != right.len) {
