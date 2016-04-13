@@ -11,6 +11,11 @@
 
 
 typedef struct {
+    ngx_addr_t                      *addr;
+} ngx_stream_upstream_local_t;
+
+
+typedef struct {
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       timeout;
     ngx_msec_t                       next_upstream_timeout;
@@ -21,7 +26,7 @@ typedef struct {
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
     ngx_flag_t                       proxy_protocol;
-    ngx_addr_t                      *local;
+    ngx_stream_upstream_local_t     *local;
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -47,6 +52,8 @@ typedef struct {
 
 
 static void ngx_stream_proxy_handler(ngx_stream_session_t *s);
+static ngx_int_t ngx_stream_proxy_set_local(ngx_stream_session_t *s,
+    ngx_stream_upstream_t *u, ngx_stream_upstream_local_t *local);
 static void ngx_stream_proxy_connect(ngx_stream_session_t *s);
 static void ngx_stream_proxy_init_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_upstream_handler(ngx_event_t *ev);
@@ -358,7 +365,11 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     u->peer.log = c->log;
     u->peer.log_error = NGX_ERROR_ERR;
 
-    u->peer.local = pscf->local;
+    if (ngx_stream_proxy_set_local(s, u, pscf->local) != NGX_OK) {
+        ngx_stream_proxy_finalize(s, NGX_ERROR);
+        return;
+    }
+
     u->peer.type = c->type;
 
     uscf = pscf->upstream;
@@ -425,6 +436,24 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     }
 
     ngx_stream_proxy_connect(s);
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
+    ngx_stream_upstream_local_t *local)
+{
+    if (local == NULL) {
+        u->peer.local = NULL;
+        return NGX_OK;
+    }
+
+    if (local->addr) {
+        u->peer.local = local->addr;
+        return NGX_OK;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -1637,8 +1666,9 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_stream_proxy_srv_conf_t *pscf = conf;
 
-    ngx_int_t   rc;
-    ngx_str_t  *value;
+    ngx_int_t                     rc;
+    ngx_str_t                    *value;
+    ngx_stream_upstream_local_t  *local;
 
     if (pscf->local != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
@@ -1651,17 +1681,24 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    pscf->local = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
-    if (pscf->local == NULL) {
+    local = ngx_palloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
+    if (local == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    rc = ngx_parse_addr(cf->pool, pscf->local, value[1].data, value[1].len);
+    pscf->local = local;
+
+    local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
+    if (local->addr == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
 
     switch (rc) {
     case NGX_OK:
-        pscf->local->name = value[1];
-        return NGX_CONF_OK;
+        local->addr->name = value[1];
+        break;
 
     case NGX_DECLINED:
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1671,4 +1708,6 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     default:
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
 }
