@@ -165,8 +165,8 @@ static char *ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static char *ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-static ngx_addr_t *ngx_http_upstream_get_local(ngx_http_request_t *r,
-    ngx_http_upstream_local_t *local);
+static ngx_int_t ngx_http_upstream_set_local(ngx_http_request_t *r,
+  ngx_http_upstream_t *u, ngx_http_upstream_local_t *local);
 
 static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -588,7 +588,10 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         return;
     }
 
-    u->peer.local = ngx_http_upstream_get_local(r, u->conf->local);
+    if (ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -5815,34 +5818,35 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
         *local->value = cv;
 
-        return NGX_CONF_OK;
+    } else {
+        local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
+        if (local->addr == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
+
+        switch (rc) {
+        case NGX_OK:
+            local->addr->name = value[1];
+            break;
+
+        case NGX_DECLINED:
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid address \"%V\"", &value[1]);
+            /* fall through */
+
+        default:
+            return NGX_CONF_ERROR;
+        }
     }
 
-    local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
-    if (local->addr == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
-
-    switch (rc) {
-    case NGX_OK:
-        local->addr->name = value[1];
-        return NGX_CONF_OK;
-
-    case NGX_DECLINED:
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid address \"%V\"", &value[1]);
-        /* fall through */
-
-    default:
-        return NGX_CONF_ERROR;
-    }
+    return NGX_CONF_OK;
 }
 
 
-static ngx_addr_t *
-ngx_http_upstream_get_local(ngx_http_request_t *r,
+static ngx_int_t
+ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_http_upstream_local_t *local)
 {
     ngx_int_t    rc;
@@ -5850,41 +5854,43 @@ ngx_http_upstream_get_local(ngx_http_request_t *r,
     ngx_addr_t  *addr;
 
     if (local == NULL) {
-        return NULL;
+        u->peer.local = NULL;
+        return NGX_OK;
     }
 
     if (local->value == NULL) {
-        return local->addr;
+        u->peer.local = local->addr;
+        return NGX_OK;
     }
 
     if (ngx_http_complex_value(r, local->value, &val) != NGX_OK) {
-        return NULL;
+        return NGX_ERROR;
     }
 
     if (val.len == 0) {
-        return NULL;
+        return NGX_OK;
     }
 
     addr = ngx_palloc(r->pool, sizeof(ngx_addr_t));
     if (addr == NULL) {
-        return NULL;
+        return NGX_ERROR;
     }
 
     rc = ngx_parse_addr(r->pool, addr, val.data, val.len);
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
 
-    switch (rc) {
-    case NGX_OK:
-        addr->name = val;
-        return addr;
-
-    case NGX_DECLINED:
+    if (rc != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "invalid local address \"%V\"", &val);
-        /* fall through */
-
-    default:
-        return NULL;
+        return NGX_OK;
     }
+
+    addr->name = val;
+    u->peer.local = addr;
+
+    return NGX_OK;
 }
 
 
