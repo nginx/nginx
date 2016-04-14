@@ -948,6 +948,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 {
     size_t                   size;
     ngx_uint_t               padded, priority, depend, dependency, excl, weight;
+    ngx_uint_t               status;
     ngx_http_v2_node_t      *node;
     ngx_http_v2_stream_t    *stream;
     ngx_http_v2_srv_conf_t  *h2scf;
@@ -1040,15 +1041,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                       "client sent HEADERS frame for stream %ui "
                       "with incorrect dependency", h2c->state.sid);
 
-        if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid,
-                                        NGX_HTTP_V2_PROTOCOL_ERROR)
-            != NGX_OK)
-        {
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_INTERNAL_ERROR);
-        }
-
-        return ngx_http_v2_state_header_block(h2c, pos, end);
+        status = NGX_HTTP_V2_PROTOCOL_ERROR;
+        goto rst_stream;
     }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
@@ -1060,15 +1054,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "concurrent streams exceeded %ui", h2c->processing);
 
-        if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid,
-                                        NGX_HTTP_V2_REFUSED_STREAM)
-            != NGX_OK)
-        {
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_INTERNAL_ERROR);
-        }
-
-        return ngx_http_v2_state_header_block(h2c, pos, end);
+        status = NGX_HTTP_V2_REFUSED_STREAM;
+        goto rst_stream;
     }
 
     node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
@@ -1102,6 +1089,14 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (priority || node->parent == NULL) {
         node->weight = weight;
         ngx_http_v2_set_dependency(h2c, node, depend, excl);
+    }
+
+    return ngx_http_v2_state_header_block(h2c, pos, end);
+
+rst_stream:
+
+    if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid, status) != NGX_OK) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
     return ngx_http_v2_state_header_block(h2c, pos, end);
