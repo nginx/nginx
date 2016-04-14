@@ -3860,11 +3860,33 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
             }
 
         } else if (!stream->in_closed) {
+#if 0
             if (ngx_http_v2_send_rst_stream(h2c, node->id, NGX_HTTP_V2_NO_ERROR)
                 != NGX_OK)
             {
                 h2c->connection->error = 1;
             }
+#else
+            /*
+             * At the time of writing at least the latest versions of Chrome
+             * do not properly handle RST_STREAM with NO_ERROR status.
+             *
+             * See: https://bugs.chromium.org/p/chromium/issues/detail?id=603182
+             *
+             * As a workaround, the stream window is maximized before closing
+             * the stream.  This allows a client to send up to 2 GB of data
+             * before getting blocked on flow control.
+             */
+
+            if (stream->recv_window < NGX_HTTP_V2_MAX_WINDOW
+                && ngx_http_v2_send_window_update(h2c, node->id,
+                                                  NGX_HTTP_V2_MAX_WINDOW
+                                                  - stream->recv_window)
+                   != NGX_OK)
+            {
+                h2c->connection->error = 1;
+            }
+#endif
         }
     }
 
