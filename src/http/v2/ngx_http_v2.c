@@ -1058,6 +1058,12 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         goto rst_stream;
     }
 
+    if (!h2c->settings_ack && !(h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG))
+    {
+        status = NGX_HTTP_V2_REFUSED_STREAM;
+        goto rst_stream;
+    }
+
     node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
 
     if (node == NULL) {
@@ -1878,7 +1884,7 @@ ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
             return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
         }
 
-        /* TODO settings acknowledged */
+        h2c->settings_ack = 1;
 
         return ngx_http_v2_state_complete(h2c, pos, end);
     }
