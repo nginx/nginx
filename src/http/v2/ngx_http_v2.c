@@ -1060,6 +1060,10 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (!h2c->settings_ack && !(h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG))
     {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent stream with data "
+                      "before settings were acknowledged");
+
         status = NGX_HTTP_V2_REFUSED_STREAM;
         goto rst_stream;
     }
