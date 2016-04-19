@@ -3414,6 +3414,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
     ngx_http_v2_stream_t      *stream;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_v2_connection_t  *h2c;
 
     stream = r->stream;
 
@@ -3497,6 +3498,15 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
         {
             stream->skip_data = 1;
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        h2c = stream->connection;
+
+        if (!h2c->blocked) {
+            if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
+                stream->skip_data = 1;
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
         }
     }
 
