@@ -3481,20 +3481,21 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
         return ngx_http_v2_process_request_body(r, NULL, 0, 1);
     }
 
-    if (r->request_body_no_buffering) {
-        stream->no_flow_control = 0;
-        stream->recv_window = (size_t) len;
+    if (len) {
+        if (r->request_body_no_buffering) {
+            stream->recv_window = (size_t) len;
 
-    } else {
-        stream->no_flow_control = 1;
-        stream->recv_window = NGX_HTTP_V2_MAX_WINDOW;
-    }
+        } else {
+            stream->no_flow_control = 1;
+            stream->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+        }
 
-    if (ngx_http_v2_send_window_update(stream->connection, stream->node->id,
-                                       stream->recv_window)
-        == NGX_ERROR)
-    {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        if (ngx_http_v2_send_window_update(stream->connection, stream->node->id,
+                                           stream->recv_window)
+            == NGX_ERROR)
+        {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     ngx_add_timer(r->connection->read, clcf->client_body_timeout);
