@@ -5,6 +5,61 @@
 <change_log title="nginx">
 
 
+<changes ver="1.9.15" date="19.04.2016">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HHVM в качестве FastCGI-сервера
+могли возникать ошибки "recv() failed".
+</para>
+<para lang="en">
+"recv() failed" errors might occur
+when using HHVM as a FastCGI server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директив limit_req или auth_request
+при чтении тела запроса мог произойти таймаут
+или ошибка "client violated flow control";
+ошибка появилась в 1.9.14.
+</para>
+<para lang="en">
+when using HTTP/2 and the "limit_req" or "auth_request" directives
+a timeout or a "client violated flow control" error
+might occur while reading client request body;
+the bug had appeared in 1.9.14.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании HTTP/2 ответ мог не показываться некоторыми браузерами,
+если тело запроса было прочитано не целиком;
+ошибка появилась в 1.9.14.
+</para>
+<para lang="en">
+a response might not be shown by some browsers
+if HTTP/2 was used and client request body was not fully read;
+the bug had appeared in 1.9.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "aio threads" соединения могли зависать.<br/>
+Спасибо Mindaugas Rasiukevicius.
+</para>
+<para lang="en">
+connections might hang when using the "aio threads" directive.<br/>
+Thanks to Mindaugas Rasiukevicius.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.14" date="05.04.2016">
 
 <change type="feature">
