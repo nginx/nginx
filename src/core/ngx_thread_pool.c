@@ -345,6 +345,8 @@ ngx_thread_pool_cycle(void *data)
         *ngx_thread_pool_done.last = task;
         ngx_thread_pool_done.last = &task->next;
 
+        ngx_memory_barrier();
+
         ngx_unlock(&ngx_thread_pool_done_lock);
 
         (void) ngx_notify(ngx_thread_pool_handler);
@@ -365,6 +367,8 @@ ngx_thread_pool_handler(ngx_event_t *ev)
     task = ngx_thread_pool_done.first;
     ngx_thread_pool_done.first = NULL;
     ngx_thread_pool_done.last = &ngx_thread_pool_done.first;
+
+    ngx_memory_barrier();
 
     ngx_unlock(&ngx_thread_pool_done_lock);
 
