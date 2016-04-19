@@ -3473,6 +3473,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
     }
 
     if (rb->buf == NULL) {
+        stream->skip_data = 1;
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -3494,6 +3495,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
                                            stream->recv_window)
             == NGX_ERROR)
         {
+            stream->skip_data = 1;
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
