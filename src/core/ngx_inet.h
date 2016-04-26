@@ -87,7 +87,6 @@ typedef struct {
     unsigned                  listen:1;
     unsigned                  uri_part:1;
     unsigned                  no_resolve:1;
-    unsigned                  one_addr:1;  /* compatibility */
 
     unsigned                  no_port:1;
     unsigned                  wildcard:1;
