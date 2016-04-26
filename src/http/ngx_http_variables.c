@@ -98,6 +98,8 @@ static ngx_int_t ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_id(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
@@ -273,6 +275,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("request_time"), NULL, ngx_http_variable_request_time,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("request_id"), NULL,
+      ngx_http_variable_request_id,
+      0, 0, 0 },
 
     { ngx_string("status"), NULL,
       ngx_http_variable_status, 0,
@@ -2062,6 +2068,47 @@ ngx_http_variable_request_time(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_id(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *id;
+
+#if (NGX_OPENSSL)
+    u_char   random_bytes[16];
+#endif
+
+    id = ngx_pnalloc(r->pool, 32);
+    if (id == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->len = 32;
+    v->data = id;
+
+#if (NGX_OPENSSL)
+
+    if (RAND_bytes(random_bytes, 16) == 1) {
+        ngx_hex_dump(id, random_bytes, 16);
+        return NGX_OK;
+    }
+
+    ngx_ssl_error(NGX_LOG_ERR, r->connection->log, 0, "RAND_bytes() failed");
+
+#endif
+
+    ngx_sprintf(id, "%08xD%08xD%08xD%08xD",
+                (uint32_t) ngx_random(), (uint32_t) ngx_random(),
+                (uint32_t) ngx_random(), (uint32_t) ngx_random());
 
     return NGX_OK;
 }
