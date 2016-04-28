@@ -217,8 +217,6 @@ ngx_event_accept(ngx_event_t *ev)
         c->local_sockaddr = ls->sockaddr;
         c->local_socklen = ls->socklen;
 
-        c->unexpected_eof = 1;
-
 #if (NGX_HAVE_UNIX_DOMAIN)
         if (c->sockaddr->sa_family == AF_UNIX) {
             c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;

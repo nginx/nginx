@@ -793,8 +793,6 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->log->action = NULL;
 
-    r->connection->unexpected_eof = 0;
-
     if (!r->internal) {
         switch (r->headers_in.connection_type) {
         case 0:
