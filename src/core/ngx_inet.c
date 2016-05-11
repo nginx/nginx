@@ -861,7 +861,12 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
             last = uri;
         }
 
-        if (*port == ':') {
+        if (port < last) {
+            if (*port != ':') {
+                u->err = "invalid host";
+                return NGX_ERROR;
+            }
+
             port++;
 
             len = last - port;
