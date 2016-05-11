@@ -843,52 +843,49 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    if (last - p) {
+    port = p + 1;
 
-        port = p + 1;
+    uri = ngx_strlchr(port, last, '/');
 
-        uri = ngx_strlchr(port, last, '/');
-
-        if (uri) {
-            if (u->listen || !u->uri_part) {
-                u->err = "invalid host";
-                return NGX_ERROR;
-            }
-
-            u->uri.len = last - uri;
-            u->uri.data = uri;
-
-            last = uri;
+    if (uri) {
+        if (u->listen || !u->uri_part) {
+            u->err = "invalid host";
+            return NGX_ERROR;
         }
 
-        if (port < last) {
-            if (*port != ':') {
-                u->err = "invalid host";
-                return NGX_ERROR;
-            }
+        u->uri.len = last - uri;
+        u->uri.data = uri;
 
-            port++;
+        last = uri;
+    }
 
-            len = last - port;
-
-            n = ngx_atoi(port, len);
-
-            if (n < 1 || n > 65535) {
-                u->err = "invalid port";
-                return NGX_ERROR;
-            }
-
-            u->port = (in_port_t) n;
-            sin6->sin6_port = htons((in_port_t) n);
-
-            u->port_text.len = len;
-            u->port_text.data = port;
-
-        } else {
-            u->no_port = 1;
-            u->port = u->default_port;
-            sin6->sin6_port = htons(u->default_port);
+    if (port < last) {
+        if (*port != ':') {
+            u->err = "invalid host";
+            return NGX_ERROR;
         }
+
+        port++;
+
+        len = last - port;
+
+        n = ngx_atoi(port, len);
+
+        if (n < 1 || n > 65535) {
+            u->err = "invalid port";
+            return NGX_ERROR;
+        }
+
+        u->port = (in_port_t) n;
+        sin6->sin6_port = htons((in_port_t) n);
+
+        u->port_text.len = len;
+        u->port_text.data = port;
+
+    } else {
+        u->no_port = 1;
+        u->port = u->default_port;
+        sin6->sin6_port = htons(u->default_port);
     }
 
     len = p - host;
