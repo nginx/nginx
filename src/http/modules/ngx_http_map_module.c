@@ -20,7 +20,6 @@ typedef struct {
     ngx_hash_keys_arrays_t      keys;
 
     ngx_array_t                *values_hash;
-    ngx_array_t                 var_values;
 #if (NGX_PCRE)
     ngx_array_t                 regexes;
 #endif
@@ -110,7 +109,8 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 {
     ngx_http_map_ctx_t  *map = (ngx_http_map_ctx_t *) data;
 
-    ngx_str_t                   val;
+    ngx_str_t                   val, str;
+    ngx_http_complex_value_t   *cv;
     ngx_http_variable_value_t  *value;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -131,14 +131,21 @@ ngx_http_map_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     }
 
     if (!value->valid) {
-        value = ngx_http_get_flushed_variable(r, (uintptr_t) value->data);
+        cv = (ngx_http_complex_value_t *) value->data;
 
-        if (value == NULL || value->not_found) {
-            value = &ngx_http_variable_null_value;
+        if (ngx_http_complex_value(r, cv, &str) != NGX_OK) {
+            return NGX_ERROR;
         }
-    }
 
-    *v = *value;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->len = str.len;
+        v->data = str.data;
+
+    } else {
+        *v = *value;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http map: \"%V\" \"%v\"", &val, v);
@@ -242,14 +249,6 @@ ngx_http_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ctx.values_hash = ngx_pcalloc(pool, sizeof(ngx_array_t) * ctx.keys.hsize);
     if (ctx.values_hash == NULL) {
-        ngx_destroy_pool(pool);
-        return NGX_CONF_ERROR;
-    }
-
-    if (ngx_array_init(&ctx.var_values, cf->pool, 2,
-                       sizeof(ngx_http_variable_value_t))
-        != NGX_OK)
-    {
         ngx_destroy_pool(pool);
         return NGX_CONF_ERROR;
     }
@@ -375,11 +374,15 @@ ngx_http_map_cmp_dns_wildcards(const void *one, const void *two)
 static char *
 ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 {
-    ngx_int_t                   rv, index;
-    ngx_str_t                  *value, name;
-    ngx_uint_t                  i, key;
-    ngx_http_map_conf_ctx_t    *ctx;
-    ngx_http_variable_value_t  *var, **vp;
+    u_char                            *data;
+    size_t                             len;
+    ngx_int_t                          rv;
+    ngx_str_t                         *value, v;
+    ngx_uint_t                         i, key;
+    ngx_http_map_conf_ctx_t           *ctx;
+    ngx_http_complex_value_t           cv, *cvp;
+    ngx_http_variable_value_t         *var, **vp;
+    ngx_http_compile_complex_value_t   ccv;
 
     ctx = cf->ctx;
 
@@ -401,39 +404,6 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         return ngx_conf_include(cf, dummy, conf);
     }
 
-    if (value[1].data[0] == '$') {
-        name = value[1];
-        name.len--;
-        name.data++;
-
-        index = ngx_http_get_variable_index(ctx->cf, &name);
-        if (index == NGX_ERROR) {
-            return NGX_CONF_ERROR;
-        }
-
-        var = ctx->var_values.elts;
-
-        for (i = 0; i < ctx->var_values.nelts; i++) {
-            if (index == (intptr_t) var[i].data) {
-                var = &var[i];
-                goto found;
-            }
-        }
-
-        var = ngx_array_push(&ctx->var_values);
-        if (var == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        var->valid = 0;
-        var->no_cacheable = 0;
-        var->not_found = 0;
-        var->len = 0;
-        var->data = (u_char *) (intptr_t) index;
-
-        goto found;
-    }
-
     key = 0;
 
     for (i = 0; i < value[1].len; i++) {
@@ -446,11 +416,22 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     if (vp) {
         for (i = 0; i < ctx->values_hash[key].nelts; i++) {
-            if (value[1].len != (size_t) vp[i]->len) {
+
+            if (vp[i]->valid) {
+                data = vp[i]->data;
+                len = vp[i]->len;
+
+            } else {
+                cvp = (ngx_http_complex_value_t *) vp[i]->data;
+                data = cvp->value.data;
+                len = cvp->value.len;
+            }
+
+            if (value[1].len != len) {
                 continue;
             }
 
-            if (ngx_strncmp(value[1].data, vp[i]->data, value[1].len) == 0) {
+            if (ngx_strncmp(value[1].data, data, len) == 0) {
                 var = vp[i];
                 goto found;
             }
@@ -470,13 +451,40 @@ ngx_http_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    var->len = value[1].len;
-    var->data = ngx_pstrdup(ctx->keys.pool, &value[1]);
-    if (var->data == NULL) {
+    v.len = value[1].len;
+    v.data = ngx_pstrdup(ctx->keys.pool, &value[1]);
+    if (v.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    var->valid = 1;
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = ctx->cf;
+    ccv.value = &v;
+    ccv.complex_value = &cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cv.lengths != NULL) {
+        cvp = ngx_palloc(ctx->keys.pool, sizeof(ngx_http_complex_value_t));
+        if (cvp == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *cvp = cv;
+
+        var->len = 0;
+        var->data = (u_char *) cvp;
+        var->valid = 0;
+
+    } else {
+        var->len = v.len;
+        var->data = v.data;
+        var->valid = 1;
+    }
+
     var->no_cacheable = 0;
     var->not_found = 0;
 
