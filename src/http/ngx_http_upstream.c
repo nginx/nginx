@@ -1222,8 +1222,12 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 
 #if (NGX_HAVE_EPOLLRDHUP)
 
-    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && ev->pending_eof) {
+    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && ngx_use_epoll_rdhup) {
         socklen_t  len;
+
+        if (!ev->pending_eof) {
+            return;
+        }
 
         ev->eof = 1;
         c->error = 1;

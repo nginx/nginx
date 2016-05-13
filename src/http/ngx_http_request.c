@@ -2752,8 +2752,12 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
 #if (NGX_HAVE_EPOLLRDHUP)
 
-    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && rev->pending_eof) {
+    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && ngx_use_epoll_rdhup) {
         socklen_t  len;
+
+        if (!rev->pending_eof) {
+            return;
+        }
 
         rev->eof = 1;
         c->error = 1;

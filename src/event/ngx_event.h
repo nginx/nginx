@@ -96,6 +96,10 @@ struct ngx_event_s {
      *   write:      available space in buffer when event is ready
      *               or lowat when event is set with NGX_LOWAT_EVENT flag
      *
+     * epoll with EPOLLRDHUP:
+     *   accept:     1 if accept many, 0 otherwise
+     *   read:       1 if there can be data to read, 0 otherwise
+     *
      * iocp: TODO
      *
      * otherwise:
@@ -196,6 +200,9 @@ typedef struct {
 
 
 extern ngx_event_actions_t   ngx_event_actions;
+#if (NGX_HAVE_EPOLLRDHUP)
+extern ngx_uint_t            ngx_use_epoll_rdhup;
+#endif
 
 
 /*

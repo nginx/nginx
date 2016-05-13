@@ -50,6 +50,21 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
 #endif
 
+#if (NGX_HAVE_EPOLLRDHUP)
+
+    if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "recv: eof:%d, avail:%d",
+                       rev->pending_eof, rev->available);
+
+        if (!rev->available && !rev->pending_eof) {
+            rev->ready = 0;
+            return NGX_AGAIN;
+        }
+    }
+
+#endif
+
     do {
         n = recv(c->fd, buf, size, 0);
 
@@ -89,6 +104,24 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
                  */
 
                 if (rev->available <= 0) {
+                    if (!rev->pending_eof) {
+                        rev->ready = 0;
+                    }
+
+                    rev->available = 0;
+                }
+
+                return n;
+            }
+
+#endif
+
+#if (NGX_HAVE_EPOLLRDHUP)
+
+            if ((ngx_event_flags & NGX_USE_EPOLL_EVENT)
+                && ngx_use_epoll_rdhup)
+            {
+                if ((size_t) n < size) {
                     if (!rev->pending_eof) {
                         rev->ready = 0;
                     }
