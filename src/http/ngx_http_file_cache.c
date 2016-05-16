@@ -1403,6 +1403,7 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
     ngx_shmtx_lock(&cache->shpool->mutex);
 
     c->node->count--;
+    c->node->error = 0;
     c->node->uniq = uniq;
     c->node->body_start = c->body_start;
 
