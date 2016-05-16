@@ -1000,8 +1000,8 @@ ngx_epoll_module_init(ngx_cycle_t *cycle)
         ngx_use_epoll_rdhup = ee.events & EPOLLRDHUP;
 
     } else {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_wait() timedout");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, NGX_ETIMEDOUT,
+                      "epoll_wait() timed out");
     }
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
