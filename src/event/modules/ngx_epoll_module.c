@@ -463,16 +463,8 @@ ngx_epoll_notify_handler(ngx_event_t *ev)
 static void
 ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
 {
-    int                 epfd, s[2], events;
+    int                 s[2], events;
     struct epoll_event  ee;
-
-    epfd = epoll_create(1);
-
-    if (epfd == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_create() failed");
-        return;
-    }
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -482,7 +474,7 @@ ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
 
     ee.events = EPOLLET|EPOLLIN|EPOLLRDHUP;
 
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, s[0], &ee) == -1) {
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, s[0], &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "epoll_ctl() failed");
         return;
@@ -494,7 +486,7 @@ ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
         return;
     }
 
-    events = epoll_wait(epfd, &ee, 1, 5000);
+    events = epoll_wait(ep, &ee, 1, 5000);
 
     if (events == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -503,7 +495,6 @@ ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
     }
 
     (void) close(s[0]);
-    (void) close(epfd);
 
     if (events) {
         ngx_use_epoll_rdhup = ee.events & EPOLLRDHUP;
