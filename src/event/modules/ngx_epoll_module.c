@@ -477,24 +477,25 @@ ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
     if (epoll_ctl(ep, EPOLL_CTL_ADD, s[0], &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "epoll_ctl() failed");
-        return;
+        goto failed;
     }
 
     if (close(s[1]) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "close() failed");
-        return;
+        s[1] = -1;
+        goto failed;
     }
+
+    s[1] = -1;
 
     events = epoll_wait(ep, &ee, 1, 5000);
 
     if (events == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "epoll_wait() failed");
-        return;
+        goto failed;
     }
-
-    (void) close(s[0]);
 
     if (events) {
         ngx_use_epoll_rdhup = ee.events & EPOLLRDHUP;
@@ -507,6 +508,18 @@ ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "testing the EPOLLRDHUP flag: %s",
                    ngx_use_epoll_rdhup ? "success" : "fail");
+
+failed:
+
+    if (s[1] != -1 && close(s[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+    }
+
+    if (close(s[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+    }
 }
 
 #endif
