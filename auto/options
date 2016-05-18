@@ -118,6 +118,7 @@ STREAM_SSL=NO
 STREAM_LIMIT_CONN=YES
 STREAM_ACCESS=YES
 STREAM_MAP=YES
+STREAM_RETURN=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_ZONE=YES
@@ -296,6 +297,7 @@ use the \"--with-mail_ssl_module\" option instead"
                                          STREAM_LIMIT_CONN=NO       ;;
         --without-stream_access_module)  STREAM_ACCESS=NO           ;;
         --without-stream_map_module)     STREAM_MAP=NO              ;;
+        --without-stream_return_module)  STREAM_RETURN=NO           ;;
         --without-stream_upstream_hash_module)
                                          STREAM_UPSTREAM_HASH=NO    ;;
         --without-stream_upstream_least_conn_module)
@@ -495,6 +497,7 @@ cat << END
   --without-stream_limit_conn_module disable ngx_stream_limit_conn_module
   --without-stream_access_module     disable ngx_stream_access_module
   --without-stream_map_module        disable ngx_stream_map_module
+  --without-stream_return_module     disable ngx_stream_return_module
   --without-stream_upstream_hash_module
                                      disable ngx_stream_upstream_hash_module
   --without-stream_upstream_least_conn_module
