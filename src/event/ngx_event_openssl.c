@@ -105,6 +105,7 @@ int  ngx_ssl_server_conf_index;
 int  ngx_ssl_session_cache_index;
 int  ngx_ssl_session_ticket_keys_index;
 int  ngx_ssl_certificate_index;
+int  ngx_ssl_next_certificate_index;
 int  ngx_ssl_stapling_index;
 
 
@@ -187,6 +188,13 @@ ngx_ssl_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
+    ngx_ssl_next_certificate_index = X509_get_ex_new_index(0, NULL, NULL, NULL,
+                                                           NULL);
+    if (ngx_ssl_next_certificate_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
     ngx_ssl_stapling_index = X509_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
     if (ngx_ssl_stapling_index == -1) {
@@ -209,6 +217,12 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     }
 
     if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_server_conf_index, data) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_ex_data() failed");
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_index, NULL) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set_ex_data() failed");
         return NGX_ERROR;
@@ -350,6 +364,16 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_ERROR;
     }
 
+    if (X509_set_ex_data(x509, ngx_ssl_next_certificate_index,
+                      SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index))
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
+        X509_free(x509);
+        BIO_free(bio);
+        return NGX_ERROR;
+    }
+
     if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_index, x509)
         == 0)
     {
@@ -359,8 +383,6 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         BIO_free(bio);
         return NGX_ERROR;
     }
-
-    X509_free(x509);
 
     /* read rest of the chain */
 
@@ -2163,7 +2185,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
 
     /*
      * Session ID context is set based on the string provided,
-     * the server certificate, and the client CA list.
+     * the server certificates, and the client CA list.
      */
 
     md = EVP_MD_CTX_create();
@@ -2183,18 +2205,21 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
         goto failed;
     }
 
-    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+    for (cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+         cert;
+         cert = X509_get_ex_data(cert, ngx_ssl_next_certificate_index))
+    {
+        if (X509_digest(cert, EVP_sha1(), buf, &len) == 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "X509_digest() failed");
+            goto failed;
+        }
 
-    if (X509_digest(cert, EVP_sha1(), buf, &len) == 0) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "X509_digest() failed");
-        goto failed;
-    }
-
-    if (EVP_DigestUpdate(md, buf, len) == 0) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "EVP_DigestUpdate() failed");
-        goto failed;
+        if (EVP_DigestUpdate(md, buf, len) == 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "EVP_DigestUpdate() failed");
+            goto failed;
+        }
     }
 
     list = SSL_CTX_get_client_CA_list(ssl->ctx);
@@ -2949,6 +2974,16 @@ void
 ngx_ssl_cleanup_ctx(void *data)
 {
     ngx_ssl_t  *ssl = data;
+
+    X509  *cert, *next;
+
+    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+
+    while (cert) {
+        next = X509_get_ex_data(cert, ngx_ssl_next_certificate_index);
+        X509_free(cert);
+        cert = next;
+    }
 
     SSL_CTX_free(ssl->ctx);
 }

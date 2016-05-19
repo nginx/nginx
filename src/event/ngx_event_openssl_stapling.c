@@ -126,12 +126,15 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
 {
     X509  *cert;
 
-    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
-
-    if (ngx_ssl_stapling_certificate(cf, ssl, cert, file, responder, verify)
-        != NGX_OK)
+    for (cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+         cert;
+         cert = X509_get_ex_data(cert, ngx_ssl_next_certificate_index))
     {
-        return NGX_ERROR;
+        if (ngx_ssl_stapling_certificate(cf, ssl, cert, file, responder, verify)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
     }
 
     SSL_CTX_set_tlsext_status_cb(ssl->ctx, ngx_ssl_certificate_status_callback);
@@ -455,11 +458,14 @@ ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     X509                *cert;
     ngx_ssl_stapling_t  *staple;
 
-    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
-    staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
-
-    staple->resolver = resolver;
-    staple->resolver_timeout = resolver_timeout;
+    for (cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+         cert;
+         cert = X509_get_ex_data(cert, ngx_ssl_next_certificate_index))
+    {
+        staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
+        staple->resolver = resolver;
+        staple->resolver_timeout = resolver_timeout;
+    }
 
     return NGX_OK;
 }
