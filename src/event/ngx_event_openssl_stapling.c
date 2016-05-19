@@ -83,6 +83,8 @@ struct ngx_ssl_ocsp_ctx_s {
 };
 
 
+static ngx_int_t ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    X509 *cert, ngx_str_t *file, ngx_str_t *responder, ngx_uint_t verify);
 static ngx_int_t ngx_ssl_stapling_file(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_ssl_stapling_t *staple, ngx_str_t *file);
 static ngx_int_t ngx_ssl_stapling_issuer(ngx_conf_t *cf, ngx_ssl_t *ssl,
@@ -122,10 +124,29 @@ ngx_int_t
 ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
     ngx_str_t *responder, ngx_uint_t verify)
 {
-    X509                      *cert;
-    ngx_int_t                  rc;
-    ngx_pool_cleanup_t        *cln;
-    ngx_ssl_stapling_t        *staple;
+    X509  *cert;
+
+    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+
+    if (ngx_ssl_stapling_certificate(cf, ssl, cert, file, responder, verify)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    SSL_CTX_set_tlsext_status_cb(ssl->ctx, ngx_ssl_certificate_status_callback);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
+    ngx_str_t *file, ngx_str_t *responder, ngx_uint_t verify)
+{
+    ngx_int_t            rc;
+    ngx_pool_cleanup_t  *cln;
+    ngx_ssl_stapling_t  *staple;
 
     staple = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_stapling_t));
     if (staple == NULL) {
@@ -139,8 +160,6 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
 
     cln->handler = ngx_ssl_stapling_cleanup;
     cln->data = staple;
-
-    cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
 
     if (X509_set_ex_data(cert, ngx_ssl_stapling_index, staple) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
@@ -159,7 +178,7 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
             return NGX_ERROR;
         }
 
-        goto done;
+        return NGX_OK;
     }
 
     rc = ngx_ssl_stapling_issuer(cf, ssl, staple);
@@ -181,10 +200,6 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
     if (rc != NGX_OK) {
         return NGX_ERROR;
     }
-
-done:
-
-    SSL_CTX_set_tlsext_status_cb(ssl->ctx, ngx_ssl_certificate_status_callback);
 
     return NGX_OK;
 }
