@@ -15,7 +15,7 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
 
 
 #define NGX_DEFAULT_CIPHERS     "HIGH:!aNULL:!MD5"
-#define NGX_DEFAULT_ECDH_CURVE  "prime256v1"
+#define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 #define NGX_HTTP_NPN_ADVERTISE  "\x08http/1.1"
 

@@ -11,7 +11,7 @@
 
 
 #define NGX_DEFAULT_CIPHERS     "HIGH:!aNULL:!MD5"
-#define NGX_DEFAULT_ECDH_CURVE  "prime256v1"
+#define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 
 static void *ngx_stream_ssl_create_conf(ngx_conf_t *cf);
