@@ -185,7 +185,6 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
 done:
 
     SSL_CTX_set_tlsext_status_cb(ssl->ctx, ngx_ssl_certificate_status_callback);
-    SSL_CTX_set_tlsext_status_arg(ssl->ctx, staple);
 
     return NGX_OK;
 }
@@ -455,6 +454,7 @@ static int
 ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
 {
     int                  rc;
+    X509                *cert;
     u_char              *p;
     ngx_connection_t    *c;
     ngx_ssl_stapling_t  *staple;
@@ -464,8 +464,14 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL certificate status callback");
 
-    staple = data;
     rc = SSL_TLSEXT_ERR_NOACK;
+
+    cert = SSL_get_certificate(ssl_conn);
+    staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
+
+    if (staple == NULL) {
+        return rc;
+    }
 
     if (staple->staple.len
         && staple->valid >= ngx_time())
