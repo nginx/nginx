@@ -1069,11 +1069,11 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
     /*
      * Elliptic-Curve Diffie-Hellman parameters are either "named curves"
      * from RFC 4492 section 5.1.1, or explicitly described curves over
-     * binary fields. OpenSSL only supports the "named curves", which provide
+     * binary fields.  OpenSSL only supports the "named curves", which provide
      * maximum interoperability.
      */
 
-    nid = OBJ_sn2nid((const char *) name->data);
+    nid = OBJ_sn2nid((char *) name->data);
     if (nid == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "OBJ_sn2nid(\"%s\") failed: unknown curve", name->data);
@@ -2165,7 +2165,7 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
          * session reuse (see SSL_SESS_CACHE_OFF above), then
          * Outlook Express fails to upload a sent email to
          * the Sent Items folder on the IMAP server via a separate IMAP
-         * connection in the background. Therefore we have a special
+         * connection in the background.  Therefore we have a special
          * mode (SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE)
          * where the server pretends that it supports session reuse,
          * but it does not actually store any session.
@@ -3602,7 +3602,7 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    engine = ENGINE_by_id((const char *) value[1].data);
+    engine = ENGINE_by_id((char *) value[1].data);
 
     if (engine == NULL) {
         ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
