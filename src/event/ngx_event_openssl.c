@@ -408,6 +408,24 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             return NGX_ERROR;
         }
 
+#ifdef SSL_CTRL_CHAIN_CERT
+
+        /*
+         * SSL_CTX_add0_chain_cert() is needed to add chain to
+         * a particular certificate when multiple certificates are used;
+         * only available in OpenSSL 1.0.2+
+         */
+
+        if (SSL_CTX_add0_chain_cert(ssl->ctx, x509) == 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "SSL_CTX_add0_chain_cert(\"%s\") failed",
+                          cert->data);
+            X509_free(x509);
+            BIO_free(bio);
+            return NGX_ERROR;
+        }
+
+#else
         if (SSL_CTX_add_extra_chain_cert(ssl->ctx, x509) == 0) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                           "SSL_CTX_add_extra_chain_cert(\"%s\") failed",
@@ -416,6 +434,7 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             BIO_free(bio);
             return NGX_ERROR;
         }
+#endif
     }
 
     BIO_free(bio);

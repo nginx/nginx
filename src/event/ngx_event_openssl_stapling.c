@@ -287,7 +287,13 @@ ngx_ssl_stapling_issuer(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     cert = staple->cert;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+#ifdef SSL_CTRL_SELECT_CURRENT_CERT
+    /* OpenSSL 1.0.2+ */
+    SSL_CTX_select_current_cert(ssl->ctx, cert);
+#endif
+
+#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
+    /* OpenSSL 1.0.1+ */
     SSL_CTX_get_extra_chain_certs(ssl->ctx, &chain);
 #else
     chain = ssl->ctx->extra_certs;
@@ -621,7 +627,13 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
         goto error;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+#ifdef SSL_CTRL_SELECT_CURRENT_CERT
+    /* OpenSSL 1.0.2+ */
+    SSL_CTX_select_current_cert(staple->ssl_ctx, ctx->cert);
+#endif
+
+#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
+    /* OpenSSL 1.0.1+ */
     SSL_CTX_get_extra_chain_certs(staple->ssl_ctx, &chain);
 #else
     chain = staple->ssl_ctx->extra_certs;
