@@ -1076,14 +1076,14 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
     nid = OBJ_sn2nid((const char *) name->data);
     if (nid == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "Unknown curve name \"%s\"", name->data);
+                      "OBJ_sn2nid(\"%s\") failed: unknown curve", name->data);
         return NGX_ERROR;
     }
 
     ecdh = EC_KEY_new_by_curve_name(nid);
     if (ecdh == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "Unable to create curve \"%s\"", name->data);
+                      "EC_KEY_new_by_curve_name(\"%s\") failed", name->data);
         return NGX_ERROR;
     }
 
