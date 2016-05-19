@@ -322,6 +322,29 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 
 
 ngx_int_t
+ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
+    ngx_array_t *keys, ngx_array_t *passwords)
+{
+    ngx_str_t   *cert, *key;
+    ngx_uint_t   i;
+
+    cert = certs->elts;
+    key = keys->elts;
+
+    for (i = 0; i < certs->nelts; i++) {
+
+        if (ngx_ssl_certificate(cf, ssl, &cert[i], &key[i], passwords)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_str_t *key, ngx_array_t *passwords)
 {
