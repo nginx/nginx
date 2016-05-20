@@ -210,6 +210,14 @@ static char ngx_http_error_416_page[] =
 ;
 
 
+static char ngx_http_error_421_page[] =
+"<html>" CRLF
+"<head><title>421 Misdirected Request</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>421 Misdirected Request</h1></center>" CRLF
+;
+
+
 static char ngx_http_error_494_page[] =
 "<html>" CRLF
 "<head><title>400 Request Header Or Cookie Too Large</title></head>"
@@ -334,8 +342,13 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_414_page),
     ngx_string(ngx_http_error_415_page),
     ngx_string(ngx_http_error_416_page),
+    ngx_null_string,                     /* 417 */
+    ngx_null_string,                     /* 418 */
+    ngx_null_string,                     /* 419 */
+    ngx_null_string,                     /* 420 */
+    ngx_string(ngx_http_error_421_page),
 
-#define NGX_HTTP_LAST_4XX  417
+#define NGX_HTTP_LAST_4XX  422
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string(ngx_http_error_494_page), /* 494, request header too large */
