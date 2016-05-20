@@ -210,7 +210,7 @@ struct ngx_connection_s {
     }
 
 
-ngx_listening_t *ngx_create_listening(ngx_conf_t *cf, void *sockaddr,
+ngx_listening_t *ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     socklen_t socklen);
 ngx_int_t ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls);
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
