@@ -1215,14 +1215,8 @@ static ngx_int_t
 ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_conf_port_t *port, ngx_http_listen_opt_t *lsopt)
 {
-    u_char                *p;
-    size_t                 len, off;
     ngx_uint_t             i, default_server, proxy_protocol;
-    struct sockaddr       *sa;
     ngx_http_conf_addr_t  *addr;
-#if (NGX_HAVE_UNIX_DOMAIN)
-    struct sockaddr_un    *saun;
-#endif
 #if (NGX_HTTP_SSL)
     ngx_uint_t             ssl;
 #endif
@@ -1235,37 +1229,14 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
      * may fill some fields in inherited sockaddr struct's
      */
 
-    sa = &lsopt->u.sockaddr;
-
-    switch (sa->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        off = offsetof(struct sockaddr_in6, sin6_addr);
-        len = 16;
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        off = offsetof(struct sockaddr_un, sun_path);
-        len = sizeof(saun->sun_path);
-        break;
-#endif
-
-    default: /* AF_INET */
-        off = offsetof(struct sockaddr_in, sin_addr);
-        len = 4;
-        break;
-    }
-
-    p = lsopt->u.sockaddr_data + off;
-
     addr = port->addrs.elts;
 
     for (i = 0; i < port->addrs.nelts; i++) {
 
-        if (ngx_memcmp(p, addr[i].opt.u.sockaddr_data + off, len) != 0) {
+        if (ngx_cmp_sockaddr(&lsopt->u.sockaddr, lsopt->socklen,
+                             &addr[i].opt.u.sockaddr, addr[i].opt.socklen, 0)
+            != NGX_OK)
+        {
             continue;
         }
 

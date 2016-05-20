@@ -67,7 +67,6 @@ typedef struct {
 #if (NGX_HAVE_UNIX_DOMAIN)
         struct sockaddr_un     sockaddr_un;
 #endif
-        u_char                 sockaddr_data[NGX_SOCKADDRLEN];
     } u;
 
     socklen_t                  socklen;
