@@ -387,6 +387,10 @@ ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t  *value;
 
+    if (rlcf->type != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "X-Real-IP") == 0) {
