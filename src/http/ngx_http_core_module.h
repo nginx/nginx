@@ -58,7 +58,7 @@ typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
 
 typedef struct {
-    ngx_sockaddr_t             u;
+    ngx_sockaddr_t             sockaddr;
     socklen_t                  socklen;
 
     unsigned                   set:1;

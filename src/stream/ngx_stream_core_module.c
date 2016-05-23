@@ -280,7 +280,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_stream_listen_t));
 
-    ngx_memcpy(&ls->u.sockaddr, &u.sockaddr, u.socklen);
+    ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;
@@ -328,7 +328,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             size_t  len;
             u_char  buf[NGX_SOCKADDR_STRLEN];
 
-            if (ls->u.sockaddr.sa_family == AF_INET6) {
+            if (ls->sockaddr.sockaddr.sa_family == AF_INET6) {
 
                 if (ngx_strcmp(&value[i].data[10], "n") == 0) {
                     ls->ipv6only = 1;
@@ -346,7 +346,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ls->bind = 1;
 
             } else {
-                len = ngx_sock_ntop(&ls->u.sockaddr, ls->socklen, buf,
+                len = ngx_sock_ntop(&ls->sockaddr.sockaddr, ls->socklen, buf,
                                     NGX_SOCKADDR_STRLEN, 1);
 
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -505,8 +505,8 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_cmp_sockaddr(&als[i].u.sockaddr, als[i].socklen,
-                             &ls->u.sockaddr, ls->socklen, 1)
+        if (ngx_cmp_sockaddr(&als[i].sockaddr.sockaddr, als[i].socklen,
+                             &ls->sockaddr.sockaddr, ls->socklen, 1)
             != NGX_OK)
         {
             continue;

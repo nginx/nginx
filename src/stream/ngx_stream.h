@@ -31,7 +31,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_sockaddr_t          u;
+    ngx_sockaddr_t          sockaddr;
     socklen_t               socklen;
 
     /* server ctx */

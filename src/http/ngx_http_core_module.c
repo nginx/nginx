@@ -3030,7 +3030,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     if (rv == NGX_CONF_OK && !cscf->listen) {
         ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-        sin = &lsopt.u.sockaddr_in;
+        sin = &lsopt.sockaddr.sockaddr_in;
 
         sin->sin_family = AF_INET;
 #if (NGX_WIN32)
@@ -3053,8 +3053,8 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 #endif
         lsopt.wildcard = 1;
 
-        (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.socklen, lsopt.addr,
-                             NGX_SOCKADDR_STRLEN, 1);
+        (void) ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen,
+                             lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
 
         if (ngx_http_add_listen(cf, cscf, &lsopt) != NGX_OK) {
             return NGX_CONF_ERROR;
@@ -3998,7 +3998,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-    ngx_memcpy(&lsopt.u.sockaddr, &u.sockaddr, u.socklen);
+    ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
 
     lsopt.socklen = u.socklen;
     lsopt.backlog = NGX_LISTEN_BACKLOG;
@@ -4015,7 +4015,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lsopt.ipv6only = 1;
 #endif
 
-    (void) ngx_sock_ntop(&lsopt.u.sockaddr, lsopt.socklen, lsopt.addr,
+    (void) ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr,
                          NGX_SOCKADDR_STRLEN, 1);
 
     for (n = 2; n < cf->args->nelts; n++) {
@@ -4144,7 +4144,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
             struct sockaddr  *sa;
 
-            sa = &lsopt.u.sockaddr;
+            sa = &lsopt.sockaddr.sockaddr;
 
             if (sa->sa_family == AF_INET6) {
 
