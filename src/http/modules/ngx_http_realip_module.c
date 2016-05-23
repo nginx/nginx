@@ -138,6 +138,10 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     ngx_list_part_t             *part;
     ngx_table_elt_t             *header;
     ngx_connection_t            *c;
+    struct sockaddr_in          *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6         *sin6;
+#endif
     ngx_http_realip_ctx_t       *ctx;
     ngx_http_realip_loc_conf_t  *rlcf;
 
@@ -237,6 +241,24 @@ found:
                                     rlcf->recursive)
         != NGX_DECLINED)
     {
+        if (rlcf->type == NGX_HTTP_REALIP_PROXY) {
+
+            switch (addr.sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+            case AF_INET6:
+                sin6 = (struct sockaddr_in6 *) addr.sockaddr;
+                sin6->sin6_port = htons(c->proxy_protocol_port);
+                break;
+#endif
+
+            default: /* AF_INET */
+                sin = (struct sockaddr_in *) addr.sockaddr;
+                sin->sin_port = htons(c->proxy_protocol_port);
+                break;
+            }
+        }
+
         return ngx_http_realip_set_addr(r, &addr);
     }
 
