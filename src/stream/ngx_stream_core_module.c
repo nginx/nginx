@@ -251,7 +251,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                    *value;
     ngx_url_t                     u;
     ngx_uint_t                    i, backlog;
-    ngx_stream_listen_t          *ls;
+    ngx_stream_listen_t          *ls, *als;
     ngx_stream_core_main_conf_t  *cmcf;
 
     value = cf->args->elts;
@@ -272,22 +272,6 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
-
-    ls = cmcf->listen.elts;
-
-    for (i = 0; i < cmcf->listen.nelts; i++) {
-
-        if (ngx_cmp_sockaddr(&ls[i].u.sockaddr, ls[i].socklen,
-                             (struct sockaddr *) &u.sockaddr, u.socklen, 1)
-            != NGX_OK)
-        {
-            continue;
-        }
-
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "duplicate \"%V\" address and port pair", &u.url);
-        return NGX_CONF_ERROR;
-    }
 
     ls = ngx_array_push(&cmcf->listen);
     if (ls == NULL) {
@@ -512,6 +496,25 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ls->so_keepalive) {
             return "\"so_keepalive\" parameter is incompatible with \"udp\"";
         }
+    }
+
+    als = cmcf->listen.elts;
+
+    for (i = 0; i < cmcf->listen.nelts - 1; i++) {
+        if (ls->type != als[i].type) {
+            continue;
+        }
+
+        if (ngx_cmp_sockaddr(&als[i].u.sockaddr, als[i].socklen,
+                             &ls->u.sockaddr, ls->socklen, 1)
+            != NGX_OK)
+        {
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "duplicate \"%V\" address and port pair", &u.url);
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
