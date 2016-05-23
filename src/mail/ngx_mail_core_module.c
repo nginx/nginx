@@ -337,7 +337,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_mail_listen_t));
 
-    ngx_memcpy(&ls->u.sockaddr, u.sockaddr, u.socklen);
+    ngx_memcpy(&ls->u.sockaddr, &u.sockaddr, u.socklen);
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;

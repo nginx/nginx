@@ -13,14 +13,6 @@
 #include <ngx_core.h>
 
 
-/*
- * TODO: autoconfigure NGX_SOCKADDRLEN and NGX_SOCKADDR_STRLEN as
- *       sizeof(struct sockaddr_storage)
- *       sizeof(struct sockaddr_un)
- *       sizeof(struct sockaddr_in6)
- *       sizeof(struct sockaddr_in)
- */
-
 #define NGX_INET_ADDRSTRLEN   (sizeof("255.255.255.255") - 1)
 #define NGX_INET6_ADDRSTRLEN                                                 \
     (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
@@ -29,15 +21,26 @@
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 #define NGX_SOCKADDR_STRLEN   (sizeof("unix:") - 1 + NGX_UNIX_ADDRSTRLEN)
-#else
+#elif (NGX_HAVE_INET6)
 #define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1)
+#else
+#define NGX_SOCKADDR_STRLEN   (NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1)
 #endif
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_un)
-#else
-#define NGX_SOCKADDRLEN       512
+/* compatibility */
+#define NGX_SOCKADDRLEN       sizeof(ngx_sockaddr_t)
+
+
+typedef union {
+    struct sockaddr           sockaddr;
+    struct sockaddr_in        sockaddr_in;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6       sockaddr_in6;
 #endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+    struct sockaddr_un        sockaddr_un;
+#endif
+} ngx_sockaddr_t;
 
 
 typedef struct {
@@ -92,7 +95,7 @@ typedef struct {
     unsigned                  wildcard:1;
 
     socklen_t                 socklen;
-    u_char                    sockaddr[NGX_SOCKADDRLEN];
+    ngx_sockaddr_t            sockaddr;
 
     ngx_addr_t               *addrs;
     ngx_uint_t                naddrs;

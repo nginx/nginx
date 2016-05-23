@@ -763,7 +763,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
             return NGX_ERROR;
         }
 
-        ngx_memcpy(sin, u->sockaddr, sizeof(struct sockaddr_in));
+        ngx_memcpy(sin, &u->sockaddr, sizeof(struct sockaddr_in));
 
         u->addrs[0].sockaddr = (struct sockaddr *) sin;
         u->addrs[0].socklen = sizeof(struct sockaddr_in);
@@ -790,7 +790,7 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
     u->family = u->addrs[0].sockaddr->sa_family;
     u->socklen = u->addrs[0].socklen;
-    ngx_memcpy(u->sockaddr, u->addrs[0].sockaddr, u->addrs[0].socklen);
+    ngx_memcpy(&u->sockaddr, u->addrs[0].sockaddr, u->addrs[0].socklen);
 
     switch (u->family) {
 
@@ -920,7 +920,7 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
         return NGX_ERROR;
     }
 
-    ngx_memcpy(sin6, u->sockaddr, sizeof(struct sockaddr_in6));
+    ngx_memcpy(sin6, &u->sockaddr, sizeof(struct sockaddr_in6));
 
     u->addrs[0].sockaddr = (struct sockaddr *) sin6;
     u->addrs[0].socklen = sizeof(struct sockaddr_in6);

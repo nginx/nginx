@@ -151,12 +151,12 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
-        ls[i].sockaddr = ngx_palloc(cycle->pool, NGX_SOCKADDRLEN);
+        ls[i].sockaddr = ngx_palloc(cycle->pool, sizeof(ngx_sockaddr_t));
         if (ls[i].sockaddr == NULL) {
             return NGX_ERROR;
         }
 
-        ls[i].socklen = NGX_SOCKADDRLEN;
+        ls[i].socklen = sizeof(ngx_sockaddr_t);
         if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
                           "getsockname() of the inherited "
@@ -1278,7 +1278,7 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
 {
     socklen_t             len;
     ngx_uint_t            addr;
-    u_char                sa[NGX_SOCKADDRLEN];
+    ngx_sockaddr_t        sa;
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
     ngx_uint_t            i;
@@ -1316,9 +1316,9 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
 
     if (addr == 0) {
 
-        len = NGX_SOCKADDRLEN;
+        len = sizeof(ngx_sockaddr_t);
 
-        if (getsockname(c->fd, (struct sockaddr *) &sa, &len) == -1) {
+        if (getsockname(c->fd, &sa.sockaddr, &len) == -1) {
             ngx_connection_error(c, ngx_socket_errno, "getsockname() failed");
             return NGX_ERROR;
         }

@@ -27,17 +27,7 @@ typedef struct {
 
 
 typedef struct {
-    union {
-        struct sockaddr     sockaddr;
-        struct sockaddr_in  sockaddr_in;
-#if (NGX_HAVE_INET6)
-        struct sockaddr_in6 sockaddr_in6;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-        struct sockaddr_un  sockaddr_un;
-#endif
-    } u;
-
+    ngx_sockaddr_t          u;
     socklen_t               socklen;
 
     /* server ctx */

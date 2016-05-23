@@ -3998,7 +3998,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-    ngx_memcpy(&lsopt.u.sockaddr, u.sockaddr, u.socklen);
+    ngx_memcpy(&lsopt.u.sockaddr, &u.sockaddr, u.socklen);
 
     lsopt.socklen = u.socklen;
     lsopt.backlog = NGX_LISTEN_BACKLOG;
