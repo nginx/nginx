@@ -45,9 +45,13 @@ static char *ngx_http_realip_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_realip_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_realip_init(ngx_conf_t *cf);
+static ngx_http_realip_ctx_t *ngx_http_realip_get_module_ctx(
+    ngx_http_request_t *r);
 
 
 static ngx_int_t ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
 
@@ -114,6 +118,9 @@ static ngx_http_variable_t  ngx_http_realip_vars[] = {
 
     { ngx_string("realip_remote_addr"), NULL,
       ngx_http_realip_remote_addr_variable, 0, 0, 0 },
+
+    { ngx_string("realip_remote_port"), NULL,
+      ngx_http_realip_remote_port_variable, 0, 0, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -475,11 +482,9 @@ ngx_http_realip_init(ngx_conf_t *cf)
 }
 
 
-static ngx_int_t
-ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data)
+static ngx_http_realip_ctx_t *
+ngx_http_realip_get_module_ctx(ngx_http_request_t *r)
 {
-    ngx_str_t              *addr_text;
     ngx_pool_cleanup_t     *cln;
     ngx_http_realip_ctx_t  *ctx;
 
@@ -500,6 +505,19 @@ ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
         }
     }
 
+    return ctx;
+}
+
+
+static ngx_int_t
+ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t              *addr_text;
+    ngx_http_realip_ctx_t  *ctx;
+
+    ctx = ngx_http_realip_get_module_ctx(r);
+
     addr_text = ctx ? &ctx->addr_text : &r->connection->addr_text;
 
     v->len = addr_text->len;
@@ -507,6 +525,55 @@ ngx_http_realip_remote_addr_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = addr_text->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t              port;
+    struct sockaddr        *sa;
+    ngx_http_realip_ctx_t  *ctx;
+
+    ctx = ngx_http_realip_get_module_ctx(r);
+
+    sa = ctx ? ctx->sockaddr : r->connection->sockaddr;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = ngx_pnalloc(r->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    switch (sa->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        port = ntohs(((struct sockaddr_in6 *) sa)->sin6_port);
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        port = 0;
+        break;
+#endif
+
+    default: /* AF_INET */
+        port = ntohs(((struct sockaddr_in *) sa)->sin_port);
+        break;
+    }
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
 
     return NGX_OK;
 }
