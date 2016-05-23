@@ -2910,7 +2910,9 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
             }
         }
 
-        if (ngx_parse_addr(r->pool, &paddr, p, xfflen - (p - xff)) != NGX_OK) {
+        if (ngx_parse_addr_port(r->pool, &paddr, p, xfflen - (p - xff))
+            != NGX_OK)
+        {
             return NGX_DECLINED;
         }
 
