@@ -590,13 +590,13 @@ ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
 #if (NGX_HAVE_INET6)
     case AF_INET6:
         sin6 = (struct sockaddr_in6 *) addr->sockaddr;
-        sin6->sin6_port = htons(port);
+        sin6->sin6_port = htons((in_port_t) port);
         break;
 #endif
 
     default: /* AF_INET */
         sin = (struct sockaddr_in *) addr->sockaddr;
-        sin->sin_port = htons(port);
+        sin->sin_port = htons((in_port_t) port);
         break;
     }
 
