@@ -30,6 +30,7 @@ static char *ngx_http_v2_merge_loc_conf(ngx_conf_t *cf, void *parent,
 static char *ngx_http_v2_recv_buffer_size(ngx_conf_t *cf, void *post,
     void *data);
 static char *ngx_http_v2_pool_size(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_v2_preread_size(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_http_v2_streams_index_mask(ngx_conf_t *cf, void *post,
     void *data);
 static char *ngx_http_v2_chunk_size(ngx_conf_t *cf, void *post, void *data);
@@ -41,6 +42,8 @@ static ngx_conf_post_t  ngx_http_v2_recv_buffer_size_post =
     { ngx_http_v2_recv_buffer_size };
 static ngx_conf_post_t  ngx_http_v2_pool_size_post =
     { ngx_http_v2_pool_size };
+static ngx_conf_post_t  ngx_http_v2_preread_size_post =
+    { ngx_http_v2_preread_size };
 static ngx_conf_post_t  ngx_http_v2_streams_index_mask_post =
     { ngx_http_v2_streams_index_mask };
 static ngx_conf_post_t  ngx_http_v2_chunk_size_post =
@@ -83,6 +86,13 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v2_srv_conf_t, max_header_size),
       NULL },
+
+    { ngx_string("http2_body_preread_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v2_srv_conf_t, preread_size),
+      &ngx_http_v2_preread_size_post },
 
     { ngx_string("http2_streams_index_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -316,6 +326,8 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
     h2scf->max_field_size = NGX_CONF_UNSET_SIZE;
     h2scf->max_header_size = NGX_CONF_UNSET_SIZE;
 
+    h2scf->preread_size = NGX_CONF_UNSET_SIZE;
+
     h2scf->streams_index_mask = NGX_CONF_UNSET_UINT;
 
     h2scf->recv_timeout = NGX_CONF_UNSET_MSEC;
@@ -340,6 +352,8 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               4096);
     ngx_conf_merge_size_value(conf->max_header_size, prev->max_header_size,
                               16384);
+
+    ngx_conf_merge_size_value(conf->preread_size, prev->preread_size, 65536);
 
     ngx_conf_merge_uint_value(conf->streams_index_mask,
                               prev->streams_index_mask, 32 - 1);
@@ -411,6 +425,23 @@ ngx_http_v2_pool_size(ngx_conf_t *cf, void *post, void *data)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "the pool size must be a multiple of %uz",
                            NGX_POOL_ALIGNMENT);
+
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_v2_preread_size(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp > NGX_HTTP_V2_MAX_WINDOW) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "the maximum body preread buffer size is %uz",
+                           NGX_HTTP_V2_MAX_WINDOW);
 
         return NGX_CONF_ERROR;
     }

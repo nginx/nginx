@@ -25,6 +25,7 @@ typedef struct {
     ngx_uint_t                      concurrent_streams;
     size_t                          max_field_size;
     size_t                          max_header_size;
+    size_t                          preread_size;
     ngx_uint_t                      streams_index_mask;
     ngx_msec_t                      recv_timeout;
     ngx_msec_t                      idle_timeout;
