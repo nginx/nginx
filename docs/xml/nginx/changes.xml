@@ -5,6 +5,162 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.0" date="24.05.2016">
+
+<change type="feature">
+<para lang="ru">
+параметр transparent директив proxy_bind, fastcgi_bind,
+memcached_bind, scgi_bind и uwsgi_bind.
+</para>
+<para lang="en">
+the "transparent" parameter of the "proxy_bind", "fastcgi_bind",
+"memcached_bind", "scgi_bind", and "uwsgi_bind" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $request_id.
+</para>
+<para lang="en">
+the $request_id variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает комбинации нескольких переменных
+в качестве результирующих значений.
+</para>
+<para lang="en">
+the "map" directive supports combinations of multiple variables
+as resulting values.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании метода epoll
+nginx проверяет, поддерживает ли ядро события EPOLLRDHUP,
+и соответственно оптимизирует обработку соединений.
+</para>
+<para lang="en">
+now nginx checks if EPOLLRDHUP events are supported by kernel,
+and optimizes connection handling accordingly
+if the "epoll" method is used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_certificate и ssl_certificate_key
+теперь можно указывать несколько раз
+для загрузки сертификатов разных типов (например, RSA и ECDSA).
+</para>
+<para lang="en">
+the "ssl_certificate" and "ssl_certificate_key" directives
+can be specified multiple times
+to load certificates of different types (for example, RSA and ECDSA).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при использовании OpenSSL 1.0.2 и новее
+с помощью директивы ssl_ecdh_curve теперь можно задать список кривых;
+по умолчанию используется встроенный в OpenSSL список кривых.
+</para>
+<para lang="en">
+the "ssl_ecdh_curve" directive now allows specifying a list of curves
+when using OpenSSL 1.0.2 or newer;
+by default a list built into OpenSSL is used.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+для использования DHE-шифров теперь надо явно задавать файл параметров
+с помощью директивы ssl_dhparam.
+</para>
+<para lang="en">
+to use DHE ciphers it is now required to specify parameters
+using the "ssl_dhparam" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $proxy_protocol_port.
+</para>
+<para lang="en">
+the $proxy_protocol_port variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $realip_remote_port в модуле ngx_http_realip_module.
+</para>
+<para lang="en">
+the $realip_remote_port variable in the ngx_http_realip_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_realip_module теперь позволяет устанавливать
+не только адрес, но и порт клиента.
+</para>
+<para lang="en">
+the ngx_http_realip_module is now able to set the client port
+in addition to the address.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при попытке запросить виртуальный сервер,
+отличающийся от согласованного в процессе SSL handshake,
+теперь возвращается ответ "421 Misdirected Request";
+это улучшает совместимость с некоторыми HTTP/2-клиентами
+в случае использования клиентских сертификатов.
+</para>
+<para lang="en">
+the "421 Misdirected Request" response now used 
+when rejecting requests to a virtual server
+different from one negotiated during an SSL handshake;
+this improves interoperability with some HTTP/2 clients
+when using client certificates.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+HTTP/2-клиенты теперь могут сразу присылать тело запроса;
+директива http2_body_preread_size позволяет указать размер буфера, который
+будет использоваться до того, как nginx начнёт читать тело.
+</para>
+<para lang="en">
+HTTP/2 clients can now start sending request body immediately;
+the "http2_body_preread_size" directive controls size of the buffer used
+before nginx will start reading client request body.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы proxy_cache_bypass 
+не обновлялись закэшированные ошибочные ответы.
+</para>
+<para lang="en">
+cached error responses were not updated
+when using the "proxy_cache_bypass" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.15" date="19.04.2016">
 
 <change type="bugfix">
