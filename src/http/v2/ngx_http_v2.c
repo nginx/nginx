@@ -3544,7 +3544,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
     }
 
     if (r->request_body_no_buffering) {
-        size = len - h2scf->preread_size;
+        size = (size_t) len - h2scf->preread_size;
 
     } else {
         stream->no_flow_control = 1;
