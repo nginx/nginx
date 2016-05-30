@@ -126,7 +126,7 @@ in addition to the address.
 в случае использования клиентских сертификатов.
 </para>
 <para lang="en">
-the "421 Misdirected Request" response now used 
+the "421 Misdirected Request" response now used
 when rejecting requests to a virtual server
 different from one negotiated during an SSL handshake;
 this improves interoperability with some HTTP/2 clients
@@ -149,7 +149,7 @@ before nginx will start reading client request body.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании директивы proxy_cache_bypass 
+при использовании директивы proxy_cache_bypass
 не обновлялись закэшированные ошибочные ответы.
 </para>
 <para lang="en">
