@@ -5,6 +5,26 @@
 <change_log title="nginx">
 
 
+<changes ver="1.10.1" date="31.05.2016">
+
+<change type="security">
+<para lang="ru">
+при записи тела специально созданного запроса во временный файл
+в рабочем процессе мог происходить segmentation fault
+(CVE-2016-4450);
+ошибка появилась в 1.3.9.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+while writing a specially crafted request body to a temporary file
+(CVE-2016-4450);
+the bug had appeared in 1.3.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.10.0" date="26.04.2016">
 
 <change>
