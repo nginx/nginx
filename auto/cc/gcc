@@ -151,9 +151,13 @@ CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Winline"
 #CFLAGS="$CFLAGS -Wmissing-prototypes"
 
-
 case "$NGX_GCC_VER" in
-    [3-5].*)
+    2.*)
+        # we have a lot of the unused function arguments
+        CFLAGS="$CFLAGS -Wno-unused"
+    ;;
+
+    *)
         # we have a lot of the unused function arguments
         CFLAGS="$CFLAGS -Wno-unused-parameter"
         # 4.2.1 shows the warning in wrong places
@@ -163,11 +167,6 @@ case "$NGX_GCC_VER" in
         if [ "$NGX_SYSTEM" = "Darwin" ]; then
             CFLAGS="$CFLAGS -Wno-deprecated-declarations"
         fi
-    ;;
-
-    *)
-        # we have a lot of the unused function arguments
-        CFLAGS="$CFLAGS -Wno-unused"
     ;;
 esac
 
