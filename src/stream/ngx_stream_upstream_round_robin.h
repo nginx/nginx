@@ -130,6 +130,8 @@ ngx_int_t ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_stream_upstream_srv_conf_t *us);
 ngx_int_t ngx_stream_upstream_init_round_robin_peer(ngx_stream_session_t *s,
     ngx_stream_upstream_srv_conf_t *us);
+ngx_int_t ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
+    ngx_stream_upstream_resolved_t *ur);
 ngx_int_t ngx_stream_upstream_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 void ngx_stream_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,
