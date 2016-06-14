@@ -11,14 +11,75 @@
 #include <nginx.h>
 
 
+static ngx_int_t ngx_stream_variable_binary_remote_addr(
+    ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_remote_addr(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_remote_port(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_server_addr(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_server_port(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_bytes_sent(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_connection(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+
 static ngx_int_t ngx_stream_variable_nginx_version(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_hostname(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_pid(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_msec(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_time_iso8601(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_time_local(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 
 
 static ngx_stream_variable_t  ngx_stream_core_variables[] = {
 
+    { ngx_string("binary_remote_addr"), NULL,
+      ngx_stream_variable_binary_remote_addr, 0, 0, 0 },
+
+    { ngx_string("remote_addr"), NULL,
+      ngx_stream_variable_remote_addr, 0, 0, 0 },
+
+    { ngx_string("remote_port"), NULL,
+      ngx_stream_variable_remote_port, 0, 0, 0 },
+
+    { ngx_string("server_addr"), NULL,
+      ngx_stream_variable_server_addr, 0, 0, 0 },
+
+    { ngx_string("server_port"), NULL,
+      ngx_stream_variable_server_port, 0, 0, 0 },
+
+    { ngx_string("bytes_sent"), NULL, ngx_stream_variable_bytes_sent,
+      0, 0, 0 },
+
+    { ngx_string("connection"), NULL,
+      ngx_stream_variable_connection, 0, 0, 0 },
+
     { ngx_string("nginx_version"), NULL, ngx_stream_variable_nginx_version,
       0, 0, 0 },
+
+    { ngx_string("hostname"), NULL, ngx_stream_variable_hostname,
+      0, 0, 0 },
+
+    { ngx_string("pid"), NULL, ngx_stream_variable_pid,
+      0, 0, 0 },
+
+    { ngx_string("msec"), NULL, ngx_stream_variable_msec,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("time_iso8601"), NULL, ngx_stream_variable_time_iso8601,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("time_local"), NULL, ngx_stream_variable_time_local,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -259,6 +320,189 @@ ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
 
 
 static ngx_int_t
+ngx_stream_variable_binary_remote_addr(ngx_stream_session_t *s,
+     ngx_stream_variable_value_t *v, uintptr_t data)
+ {
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
+
+    switch (s->connection->sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) s->connection->sockaddr;
+
+        v->len = sizeof(struct in6_addr);
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = sin6->sin6_addr.s6_addr;
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) s->connection->sockaddr;
+
+        v->len = sizeof(in_addr_t);
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) &sin->sin_addr;
+
+        break;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_remote_addr(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    v->len = s->connection->addr_text.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = s->connection->addr_text.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_remote_port(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t  port;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = ngx_pnalloc(s->connection->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    port = ngx_inet_get_port(s->connection->sockaddr);
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_server_addr(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t  str;
+    u_char     addr[NGX_SOCKADDR_STRLEN];
+
+    str.len = NGX_SOCKADDR_STRLEN;
+    str.data = addr;
+
+    if (ngx_connection_local_sockaddr(s->connection, &str, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    str.data = ngx_pnalloc(s->connection->pool, str.len);
+    if (str.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(str.data, addr, str.len);
+
+    v->len = str.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = str.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_server_port(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t  port;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (ngx_connection_local_sockaddr(s->connection, NULL, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    v->data = ngx_pnalloc(s->connection->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    port = ngx_inet_get_port(s->connection->local_sockaddr);
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_bytes_sent(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%O", s->connection->sent) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_connection(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, NGX_ATOMIC_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%uA", s->connection->number) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_stream_variable_nginx_version(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data)
 {
@@ -267,6 +511,112 @@ ngx_stream_variable_nginx_version(ngx_stream_session_t *s,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) NGINX_VERSION;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_hostname(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    v->len = ngx_cycle->hostname.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = ngx_cycle->hostname.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_pid(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, NGX_INT64_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%P", ngx_pid) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_msec(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char      *p;
+    ngx_time_t  *tp;
+
+    p = ngx_pnalloc(s->connection->pool, NGX_TIME_T_LEN + 4);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    tp = ngx_timeofday();
+
+    v->len = ngx_sprintf(p, "%T.%03M", tp->sec, tp->msec) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_time_iso8601(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, ngx_cached_http_log_iso8601.len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(p, ngx_cached_http_log_iso8601.data,
+               ngx_cached_http_log_iso8601.len);
+
+    v->len = ngx_cached_http_log_iso8601.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_time_local(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, ngx_cached_http_log_time.len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(p, ngx_cached_http_log_time.data, ngx_cached_http_log_time.len);
+
+    v->len = ngx_cached_http_log_time.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
 
     return NGX_OK;
 }
