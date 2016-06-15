@@ -2325,13 +2325,9 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
         }
     }
 
-    if (SSL_CTX_set_cipher_list(uwcf->upstream.ssl->ctx,
-                                (const char *) uwcf->ssl_ciphers.data)
-        == 0)
+    if (ngx_ssl_ciphers(cf, uwcf->upstream.ssl, &uwcf->ssl_ciphers, 0)
+        != NGX_OK)
     {
-        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                      "SSL_CTX_set_cipher_list(\"%V\") failed",
-                      &uwcf->ssl_ciphers);
         return NGX_ERROR;
     }
 

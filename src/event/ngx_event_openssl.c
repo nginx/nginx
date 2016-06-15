@@ -592,6 +592,30 @@ ngx_ssl_password_callback(char *buf, int size, int rwflag, void *userdata)
 
 
 ngx_int_t
+ngx_ssl_ciphers(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *ciphers,
+    ngx_uint_t prefer_server_ciphers)
+{
+    if (SSL_CTX_set_cipher_list(ssl->ctx, (char *) ciphers->data) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_cipher_list(\"%V\") failed",
+                      ciphers);
+        return NGX_ERROR;
+    }
+
+    if (prefer_server_ciphers) {
+        SSL_CTX_set_options(ssl->ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+    }
+
+#if (OPENSSL_VERSION_NUMBER < 0x10100001L && !defined LIBRESSL_VERSION_NUMBER)
+    /* a temporary 512-bit RSA key is required for export versions of MSIE */
+    SSL_CTX_set_tmp_rsa_callback(ssl->ctx, ngx_ssl_rsa512_key_callback);
+#endif
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_int_t depth)
 {

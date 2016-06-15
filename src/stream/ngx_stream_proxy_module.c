@@ -1640,13 +1640,7 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
         }
     }
 
-    if (SSL_CTX_set_cipher_list(pscf->ssl->ctx,
-                                (const char *) pscf->ssl_ciphers.data)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
-                      "SSL_CTX_set_cipher_list(\"%V\") failed",
-                      &pscf->ssl_ciphers);
+    if (ngx_ssl_ciphers(cf, pscf->ssl, &pscf->ssl_ciphers, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
