@@ -93,6 +93,7 @@ static ngx_command_t  ngx_stream_limit_conn_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_limit_conn_module_ctx = {
+    NULL,                                  /* preconfiguration */
     ngx_stream_limit_conn_init,            /* postconfiguration */
 
     NULL,                                  /* create main configuration */
