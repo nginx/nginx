@@ -3890,6 +3890,10 @@ ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
     ngx_event_t       *rev;
     ngx_connection_t  *fc;
 
+    if (stream->rst_sent) {
+        return NGX_OK;
+    }
+
     if (ngx_http_v2_send_rst_stream(h2c, stream->node->id, status)
         == NGX_ERROR)
     {
@@ -3897,6 +3901,7 @@ ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
     }
 
     stream->rst_sent = 1;
+    stream->skip_data = 1;
 
     fc = stream->request->connection;
     fc->error = 1;
