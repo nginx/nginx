@@ -3424,7 +3424,9 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         return;
     }
 
-    r->headers_in.chunked = (r->headers_in.content_length_n == -1);
+    if (r->headers_in.content_length_n == -1 && !r->stream->in_closed) {
+        r->headers_in.chunked = 1;
+    }
 
     ngx_http_process_request(r);
 }
@@ -3638,7 +3640,7 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
             rb->buf = NULL;
         }
 
-        if (r->headers_in.content_length_n == -1) {
+        if (r->headers_in.chunked) {
             r->headers_in.content_length_n = rb->received;
         }
 
