@@ -3935,6 +3935,7 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 
     if (stream->queued) {
         fc->write->handler = ngx_http_v2_close_stream_handler;
+        fc->read->handler = ngx_http_empty_handler;
         return;
     }
 
