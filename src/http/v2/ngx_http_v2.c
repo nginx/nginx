@@ -4169,10 +4169,6 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
     c->error = 1;
 
-    if (h2c->state.stream) {
-        ngx_http_v2_close_stream(h2c->state.stream, NGX_HTTP_BAD_REQUEST);
-    }
-
     if (!h2c->processing) {
         ngx_http_close_connection(c);
         return;
