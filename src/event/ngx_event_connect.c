@@ -21,6 +21,9 @@ ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
     int                rc, type;
+#if (NGX_HAVE_IP_BIND_ADDRESS_NO_PORT || NGX_LINUX)
+    in_port_t          port;
+#endif
     ngx_int_t          event;
     ngx_err_t          err;
     ngx_uint_t         level;
@@ -87,9 +90,13 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
 #endif
 
+#if (NGX_HAVE_IP_BIND_ADDRESS_NO_PORT || NGX_LINUX)
+        port = ngx_inet_get_port(pc->sockaddr);
+#endif
+
 #if (NGX_HAVE_IP_BIND_ADDRESS_NO_PORT)
 
-        if (pc->sockaddr->sa_family != AF_UNIX) {
+        if (pc->sockaddr->sa_family != AF_UNIX && port == 0) {
             static int  bind_address_no_port = 1;
 
             if (bind_address_no_port) {
@@ -108,6 +115,23 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                         bind_address_no_port = 0;
                     }
                 }
+            }
+        }
+
+#endif
+
+#if (NGX_LINUX)
+
+        if (pc->type == SOCK_DGRAM && port != 0) {
+            int  reuse_addr = 1;
+
+            if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
+                           (const void *) &reuse_addr, sizeof(int))
+                 == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
+                              "setsockopt(SO_REUSEADDR) failed");
+                goto failed;
             }
         }
 
