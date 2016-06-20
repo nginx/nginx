@@ -13,8 +13,9 @@
 typedef struct {
     ngx_addr_t                      *addr;
 #if (NGX_HAVE_TRANSPARENT_PROXY)
-    ngx_uint_t                       transparent; /* unsigned  transparent:1; */
+    unsigned                         transparent:1;
 #endif
+    unsigned                         no_port:1;
 } ngx_stream_upstream_local_t;
 
 
@@ -463,7 +464,7 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
         return NGX_OK;
     }
 
-    /* $remote_addr */
+    /* $remote_addr, $remote_addr:$remote_port, [$remote_addr]:$remote_port */
 
     c = s->connection;
 
@@ -474,13 +475,18 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
 
     addr->socklen = c->socklen;
 
-    addr->sockaddr = ngx_palloc(c->pool, addr->socklen);
-    if (addr->sockaddr == NULL) {
-        return NGX_ERROR;
-    }
+    if (local->no_port) {
+        addr->sockaddr = ngx_palloc(c->pool, addr->socklen);
+        if (addr->sockaddr == NULL) {
+            return NGX_ERROR;
+        }
 
-    ngx_memcpy(addr->sockaddr, c->sockaddr, c->socklen);
-    ngx_inet_set_port(addr->sockaddr, 0);
+        ngx_memcpy(addr->sockaddr, c->sockaddr, c->socklen);
+        ngx_inet_set_port(addr->sockaddr, 0);
+
+    } else {
+        addr->sockaddr = c->sockaddr;
+    }
 
     addr->name = c->addr_text;
     u->peer.local = addr;
@@ -1714,7 +1720,12 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     pscf->local = local;
 
-    if (ngx_strcmp(value[1].data, "$remote_addr") != 0) {
+    if (ngx_strcmp(value[1].data, "$remote_addr") == 0) {
+        local->no_port = 1;
+
+    } else if (ngx_strcmp(value[1].data, "$remote_addr:$remote_port") != 0
+               && ngx_strcmp(value[1].data, "[$remote_addr]:$remote_port") != 0)
+    {
         local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
         if (local->addr == NULL) {
             return NGX_CONF_ERROR;
