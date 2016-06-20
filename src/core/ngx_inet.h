@@ -121,6 +121,8 @@ ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
     struct sockaddr *sa2, socklen_t slen2, ngx_uint_t cmp_port);
+in_port_t ngx_inet_get_port(struct sockaddr *sa);
+void ngx_inet_set_port(struct sockaddr *sa, in_port_t port);
 
 
 #endif /* _NGX_INET_H_INCLUDED_ */

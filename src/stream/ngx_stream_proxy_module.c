@@ -446,12 +446,8 @@ static ngx_int_t
 ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     ngx_stream_upstream_local_t *local)
 {
-    ngx_addr_t           *addr;
-    ngx_connection_t     *c;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    ngx_addr_t        *addr;
+    ngx_connection_t  *c;
 
     if (local == NULL) {
         u->peer.local = NULL;
@@ -484,21 +480,7 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     }
 
     ngx_memcpy(addr->sockaddr, c->sockaddr, c->socklen);
-
-    switch (addr->sockaddr->sa_family) {
-
-    case AF_INET:
-        sin = (struct sockaddr_in *) addr->sockaddr;
-        sin->sin_port = 0;
-        break;
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) addr->sockaddr;
-        sin6->sin6_port = 0;
-        break;
-#endif
-    }
+    ngx_inet_set_port(addr->sockaddr, 0);
 
     addr->name = c->addr_text;
     u->peer.local = addr;

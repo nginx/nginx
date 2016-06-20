@@ -1201,11 +1201,7 @@ static ngx_int_t
 ngx_http_variable_remote_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t            port;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    ngx_uint_t  port;
 
     v->len = 0;
     v->valid = 1;
@@ -1217,26 +1213,7 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    switch (r->connection->sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
-        port = ntohs(sin6->sin6_port);
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        port = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        sin = (struct sockaddr_in *) r->connection->sockaddr;
-        port = ntohs(sin->sin_port);
-        break;
-    }
+    port = ngx_inet_get_port(r->connection->sockaddr);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
@@ -1321,11 +1298,7 @@ static ngx_int_t
 ngx_http_variable_server_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t            port;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    ngx_uint_t  port;
 
     v->len = 0;
     v->valid = 1;
@@ -1341,26 +1314,7 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    switch (r->connection->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) r->connection->local_sockaddr;
-        port = ntohs(sin6->sin6_port);
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        port = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        sin = (struct sockaddr_in *) r->connection->local_sockaddr;
-        port = ntohs(sin->sin_port);
-        break;
-    }
+    port = ngx_inet_get_port(r->connection->local_sockaddr);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;

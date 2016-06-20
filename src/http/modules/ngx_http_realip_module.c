@@ -138,10 +138,6 @@ ngx_http_realip_handler(ngx_http_request_t *r)
     ngx_list_part_t             *part;
     ngx_table_elt_t             *header;
     ngx_connection_t            *c;
-    struct sockaddr_in          *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6         *sin6;
-#endif
     ngx_http_realip_ctx_t       *ctx;
     ngx_http_realip_loc_conf_t  *rlcf;
 
@@ -242,21 +238,7 @@ found:
         != NGX_DECLINED)
     {
         if (rlcf->type == NGX_HTTP_REALIP_PROXY) {
-
-            switch (addr.sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                sin6 = (struct sockaddr_in6 *) addr.sockaddr;
-                sin6->sin6_port = htons(c->proxy_protocol_port);
-                break;
-#endif
-
-            default: /* AF_INET */
-                sin = (struct sockaddr_in *) addr.sockaddr;
-                sin->sin_port = htons(c->proxy_protocol_port);
-                break;
-            }
+            ngx_inet_set_port(addr.sockaddr, c->proxy_protocol_port);
         }
 
         return ngx_http_realip_set_addr(r, &addr);
@@ -578,24 +560,7 @@ ngx_http_realip_remote_port_variable(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    switch (sa->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        port = ntohs(((struct sockaddr_in6 *) sa)->sin6_port);
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        port = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        port = ntohs(((struct sockaddr_in *) sa)->sin_port);
-        break;
-    }
+    port = ngx_inet_get_port(sa);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;

@@ -354,16 +354,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
             }
 
             ngx_memcpy(sockaddr, ur->addrs[i].sockaddr, socklen);
-
-            switch (sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                ((struct sockaddr_in6 *) sockaddr)->sin6_port = htons(ur->port);
-                break;
-#endif
-            default: /* AF_INET */
-                ((struct sockaddr_in *) sockaddr)->sin_port = htons(ur->port);
-            }
+            ngx_inet_set_port(sockaddr, ur->port);
 
             p = ngx_pnalloc(r->pool, NGX_SOCKADDR_STRLEN);
             if (p == NULL) {

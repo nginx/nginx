@@ -141,19 +141,11 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET:
         buf = ngx_cpymem(buf, "PROXY TCP4 ", sizeof("PROXY TCP4 ") - 1);
-
-        port = ntohs(((struct sockaddr_in *) c->sockaddr)->sin_port);
-        lport = ntohs(((struct sockaddr_in *) c->local_sockaddr)->sin_port);
-
         break;
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
         buf = ngx_cpymem(buf, "PROXY TCP6 ", sizeof("PROXY TCP6 ") - 1);
-
-        port = ntohs(((struct sockaddr_in6 *) c->sockaddr)->sin6_port);
-        lport = ntohs(((struct sockaddr_in6 *) c->local_sockaddr)->sin6_port);
-
         break;
 #endif
 
@@ -168,6 +160,9 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     buf += ngx_sock_ntop(c->local_sockaddr, c->local_socklen, buf, last - buf,
                          0);
+
+    port = ngx_inet_get_port(c->sockaddr);
+    lport = ngx_inet_get_port(c->local_sockaddr);
 
     return ngx_slprintf(buf, last, " %ui %ui" CRLF, port, lport);
 }

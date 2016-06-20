@@ -228,35 +228,11 @@ ngx_mail_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     in_port_t              p;
     ngx_uint_t             i;
     struct sockaddr       *sa;
-    struct sockaddr_in    *sin;
     ngx_mail_conf_port_t  *port;
     ngx_mail_conf_addr_t  *addr;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6   *sin6;
-#endif
 
     sa = &listen->sockaddr.sockaddr;
-
-    switch (sa->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = &listen->sockaddr.sockaddr_in6;
-        p = sin6->sin6_port;
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        p = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        sin = &listen->sockaddr.sockaddr_in;
-        p = sin->sin_port;
-        break;
-    }
+    p = ngx_inet_get_port(sa);
 
     port = ports->elts;
     for (i = 0; i < ports->nelts; i++) {

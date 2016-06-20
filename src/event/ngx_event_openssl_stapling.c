@@ -920,7 +920,6 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
 
     u_char           *p;
     size_t            len;
-    in_port_t         port;
     socklen_t         socklen;
     ngx_uint_t        i;
     struct sockaddr  *sockaddr;
@@ -962,8 +961,6 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
         goto failed;
     }
 
-    port = htons(ctx->port);
-
     for (i = 0; i < resolve->naddrs; i++) {
 
         socklen = resolve->addrs[i].socklen;
@@ -974,16 +971,7 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
         }
 
         ngx_memcpy(sockaddr, resolve->addrs[i].sockaddr, socklen);
-
-        switch (sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            ((struct sockaddr_in6 *) sockaddr)->sin6_port = port;
-            break;
-#endif
-        default: /* AF_INET */
-            ((struct sockaddr_in *) sockaddr)->sin_port = port;
-        }
+        ngx_inet_set_port(sockaddr, ctx->port);
 
         ctx->addrs[i].sockaddr = sockaddr;
         ctx->addrs[i].socklen = socklen;

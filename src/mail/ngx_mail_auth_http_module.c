@@ -462,15 +462,11 @@ static void
 ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx)
 {
-    u_char               *p;
-    time_t                timer;
-    size_t                len, size;
-    ngx_int_t             rc, port, n;
-    ngx_addr_t           *peer;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    u_char      *p;
+    time_t       timer;
+    size_t       len, size;
+    ngx_int_t    rc, port, n;
+    ngx_addr_t  *peer;
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
                    "mail auth http process headers");
@@ -813,20 +809,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
-            switch (peer->sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                sin6 = (struct sockaddr_in6 *) peer->sockaddr;
-                sin6->sin6_port = htons((in_port_t) port);
-                break;
-#endif
-
-            default: /* AF_INET */
-                sin = (struct sockaddr_in *) peer->sockaddr;
-                sin->sin_port = htons((in_port_t) port);
-                break;
-            }
+            ngx_inet_set_port(peer->sockaddr, port);
 
             len = ctx->addr.len + 1 + ctx->port.len;
 

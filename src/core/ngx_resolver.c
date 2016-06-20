@@ -2996,12 +2996,8 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
     ngx_addr_t               *addrs;
     ngx_resolver_t           *r;
     ngx_sockaddr_t           *sockaddr;
-    struct sockaddr_in       *sin;
     ngx_resolver_ctx_t       *ctx;
     ngx_resolver_srv_name_t  *srv;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6      *sin6;
-#endif
 
     r = cctx->resolver;
     ctx = cctx->data;
@@ -3045,17 +3041,7 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
             ngx_memcpy(&sockaddr[i], cctx->addrs[i].sockaddr,
                        addrs[i].socklen);
 
-            switch (addrs[i].sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                sin6 = (struct sockaddr_in6 *) addrs[i].sockaddr;
-                sin6->sin6_port = htons(srv->port);
-                break;
-#endif
-            default: /* AF_INET */
-                sin = (struct sockaddr_in *) addrs[i].sockaddr;
-                sin->sin_port = htons(srv->port);
-            }
+            ngx_inet_set_port(addrs[i].sockaddr, srv->port);
         }
 
         srv->addrs = addrs;
