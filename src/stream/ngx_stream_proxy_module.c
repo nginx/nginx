@@ -1720,7 +1720,8 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
+        rc = ngx_parse_addr_port(cf->pool, local->addr, value[1].data,
+                                 value[1].len);
 
         switch (rc) {
         case NGX_OK:

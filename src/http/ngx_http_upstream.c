@@ -5828,7 +5828,8 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
             return NGX_CONF_ERROR;
         }
 
-        rc = ngx_parse_addr(cf->pool, local->addr, value[1].data, value[1].len);
+        rc = ngx_parse_addr_port(cf->pool, local->addr, value[1].data,
+                                 value[1].len);
 
         switch (rc) {
         case NGX_OK:
@@ -5900,7 +5901,7 @@ ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return NGX_ERROR;
     }
 
-    rc = ngx_parse_addr(r->pool, addr, val.data, val.len);
+    rc = ngx_parse_addr_port(r->pool, addr, val.data, val.len);
     if (rc == NGX_ERROR) {
         return NGX_ERROR;
     }
