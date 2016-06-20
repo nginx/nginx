@@ -809,7 +809,7 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 return;
             }
 
-            ngx_inet_set_port(peer->sockaddr, port);
+            ngx_inet_set_port(peer->sockaddr, (in_port_t) port);
 
             len = ctx->addr.len + 1 + ctx->port.len;
 

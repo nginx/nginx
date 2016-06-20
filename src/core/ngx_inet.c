@@ -581,7 +581,7 @@ ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
         return rc;
     }
 
-    ngx_inet_set_port(addr->sockaddr, port);
+    ngx_inet_set_port(addr->sockaddr, (in_port_t) port);
 
     return NGX_OK;
 }
