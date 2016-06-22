@@ -1753,7 +1753,6 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strcmp(value[2].data, "transparent") == 0) {
 #if (NGX_HAVE_TRANSPARENT_PROXY)
             local->transparent = 1;
-
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "transparent proxying is not supported "
