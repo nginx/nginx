@@ -1713,7 +1713,7 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    local = ngx_palloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
+    local = ngx_pcalloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
     if (local == NULL) {
         return NGX_CONF_ERROR;
     }
