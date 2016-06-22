@@ -974,11 +974,10 @@ static ngx_http_v2_out_frame_t *
 ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
     size_t len, ngx_chain_t *first, ngx_chain_t *last)
 {
-    u_char                      flags;
-    ngx_buf_t                  *buf;
-    ngx_chain_t                *cl;
+    u_char                    flags;
+    ngx_buf_t                *buf;
+    ngx_chain_t              *cl;
     ngx_http_v2_out_frame_t  *frame;
-
 
     frame = stream->free_frames;
 
@@ -1007,7 +1006,7 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
 
     buf = cl->buf;
 
-    if (!buf->start) {
+    if (buf->start == NULL) {
         buf->start = ngx_palloc(stream->request->pool,
                                 NGX_HTTP_V2_FRAME_HEADER_SIZE);
         if (buf->start == NULL) {
@@ -1182,7 +1181,6 @@ ngx_http_v2_data_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t  *stream;
 
     stream = frame->stream;
-
     cl = frame->first;
 
     if (cl->buf->tag == (ngx_buf_tag_t) &ngx_http_v2_module) {
