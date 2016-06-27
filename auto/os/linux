@@ -44,6 +44,7 @@ ngx_feature_test="int efd = 0;
                   struct epoll_event ee;
                   ee.events = EPOLLIN|EPOLLOUT|EPOLLET;
                   ee.data.ptr = NULL;
+                  (void) ee;
                   efd = epoll_create(100);
                   if (efd == -1) return 1;"
 . auto/feature

@@ -75,7 +75,7 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
     ngx_feature_incs="#include <sys/event.h>"
     ngx_feature_path=
     ngx_feature_libs=
-    ngx_feature_test="int kq; kq = kqueue()"
+    ngx_feature_test="(void) kqueue()"
     . auto/feature
 
     if [ $ngx_found = yes ]; then
@@ -92,7 +92,8 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
         ngx_feature_path=
         ngx_feature_libs=
         ngx_feature_test="struct kevent  kev;
-                          kev.fflags = NOTE_LOWAT;"
+                          kev.fflags = NOTE_LOWAT;
+                          (void) kev"
         . auto/feature
 
 
@@ -492,9 +493,9 @@ if [ $NGX_FILE_AIO = YES ]; then
     ngx_feature_incs="#include <aio.h>"
     ngx_feature_path=
     ngx_feature_libs=
-    ngx_feature_test="int  n; struct aiocb  iocb;
+    ngx_feature_test="struct aiocb  iocb;
                       iocb.aio_sigevent.sigev_notify = SIGEV_KEVENT;
-                      n = aio_read(&iocb)"
+                      (void) aio_read(&iocb)"
     . auto/feature
 
     if [ $ngx_found = yes ]; then
@@ -514,6 +515,7 @@ if [ $NGX_FILE_AIO = YES ]; then
                           iocb.aio_lio_opcode = IOCB_CMD_PREAD;
                           iocb.aio_flags = IOCB_FLAG_RESFD;
                           iocb.aio_resfd = -1;
+                          (void) iocb;
                           (void) eventfd(0, 0)"
         . auto/feature
 
@@ -529,11 +531,12 @@ if [ $NGX_FILE_AIO = YES ]; then
         ngx_feature="Linux AIO support (SYS_eventfd)"
         ngx_feature_incs="#include <linux/aio_abi.h>
                           #include <sys/syscall.h>"
-        ngx_feature_test="int  n = SYS_eventfd;
-                          struct iocb  iocb;
+        ngx_feature_test="struct iocb  iocb;
                           iocb.aio_lio_opcode = IOCB_CMD_PREAD;
                           iocb.aio_flags = IOCB_FLAG_RESFD;
-                          iocb.aio_resfd = -1;"
+                          iocb.aio_resfd = -1;
+                          (void) iocb;
+                          (void) SYS_eventfd"
         . auto/feature
 
         if [ $ngx_found = yes ]; then
@@ -571,7 +574,7 @@ else
 
         ngx_feature="eventfd() (SYS_eventfd)"
         ngx_feature_incs="#include <sys/syscall.h>"
-        ngx_feature_test="int n = SYS_eventfd"
+        ngx_feature_test="(void) SYS_eventfd"
         . auto/feature
     fi
 fi
@@ -644,7 +647,8 @@ if [ $NGX_IPV6 = YES ]; then
     ngx_feature_path=
     ngx_feature_libs=
     ngx_feature_test="struct sockaddr_in6  sin6;
-                      sin6.sin6_family = AF_INET6;"
+                      sin6.sin6_family = AF_INET6;
+                      (void) sin6"
     . auto/feature
 fi
 

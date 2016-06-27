@@ -113,6 +113,6 @@ ngx_feature_run=no
 ngx_feature_incs="#include <libkern/OSAtomic.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="int32_t  lock, n;
-                  n = OSAtomicCompareAndSwap32Barrier(0, 1, &lock)"
+ngx_feature_test="int32_t  lock = 0;
+                  if (!OSAtomicCompareAndSwap32Barrier(0, 1, &lock)) return 1"
 . auto/feature
