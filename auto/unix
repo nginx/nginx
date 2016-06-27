@@ -264,7 +264,7 @@ ngx_feature_test="dlopen(NULL, RTLD_NOW | RTLD_GLOBAL); dlsym(NULL, NULL)"
 . auto/feature
 
 
-if [ $ngx_found != yes ]; then
+if [ $ngx_found = no ]; then
 
     ngx_feature="dlopen() in libdl"
     ngx_feature_libs="-ldl"
@@ -287,7 +287,7 @@ ngx_feature_test="sched_yield()"
 . auto/feature
 
 
-if [ $ngx_found != yes ]; then
+if [ $ngx_found = no ]; then
 
     ngx_feature="sched_yield() in librt"
     ngx_feature_libs="-lrt"
