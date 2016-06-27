@@ -105,16 +105,16 @@ static ngx_stream_module_t  ngx_stream_limit_conn_module_ctx = {
 
 ngx_module_t  ngx_stream_limit_conn_module = {
     NGX_MODULE_V1,
-    &ngx_stream_limit_conn_module_ctx,       /* module context */
-    ngx_stream_limit_conn_commands,          /* module directives */
-    NGX_STREAM_MODULE,                       /* module type */
-    NULL,                                    /* init master */
-    NULL,                                    /* init module */
-    NULL,                                    /* init process */
-    NULL,                                    /* init thread */
-    NULL,                                    /* exit thread */
-    NULL,                                    /* exit process */
-    NULL,                                    /* exit master */
+    &ngx_stream_limit_conn_module_ctx,     /* module context */
+    ngx_stream_limit_conn_commands,        /* module directives */
+    NGX_STREAM_MODULE,                     /* module type */
+    NULL,                                  /* init master */
+    NULL,                                  /* init module */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
