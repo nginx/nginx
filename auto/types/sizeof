@@ -25,7 +25,7 @@ $NGX_INCLUDE_UNISTD_H
 $NGX_INCLUDE_INTTYPES_H
 $NGX_INCLUDE_AUTO_CONFIG_H
 
-int main() {
+int main(void) {
     printf("%d", (int) sizeof($ngx_type));
     return 0;
 }

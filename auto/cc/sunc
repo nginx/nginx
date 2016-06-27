@@ -20,7 +20,10 @@ have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
 
 cat << END > $NGX_AUTOTEST.c
 
-int main() { printf("%d", __SUNPRO_C); }
+int main(void) {
+    printf("%d", __SUNPRO_C);
+    return 0;
+}
 
 END
 

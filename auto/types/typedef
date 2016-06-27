@@ -27,7 +27,7 @@ do
 #include <netinet/in.h>
 $NGX_INCLUDE_INTTYPES_H
 
-int main() {
+int main(void) {
     $ngx_try i = 0;
     return (int) i;
 }

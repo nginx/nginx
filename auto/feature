@@ -31,7 +31,7 @@ cat << END > $NGX_AUTOTEST.c
 $NGX_INCLUDE_UNISTD_H
 $ngx_feature_incs
 
-int main() {
+int main(void) {
     $ngx_feature_test;
     return 0;
 }
