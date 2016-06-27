@@ -45,9 +45,6 @@ if [ -x $NGX_AUTOTEST ]; then
 
     eval "NGX_INCLUDE_$ngx_name='#include <$ngx_include>'"
 
-    #STUB
-    eval "NGX_$ngx_name='#include <$ngx_include>'"
-
 else
     echo " not found"
 
