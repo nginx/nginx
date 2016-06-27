@@ -220,7 +220,7 @@ ngx_parse_http_time(u_char *value, size_t len)
     }
 
     if (hour > 23 || min > 59 || sec > 59) {
-         return NGX_ERROR;
+        return NGX_ERROR;
     }
 
     if (day == 29 && month == 1) {

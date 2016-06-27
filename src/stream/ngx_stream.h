@@ -31,18 +31,7 @@ typedef struct {
 
 
 typedef struct {
-    union {
-        struct sockaddr     sockaddr;
-        struct sockaddr_in  sockaddr_in;
-#if (NGX_HAVE_INET6)
-        struct sockaddr_in6 sockaddr_in6;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-        struct sockaddr_un  sockaddr_un;
-#endif
-        u_char              sockaddr_data[NGX_SOCKADDRLEN];
-    } u;
-
+    ngx_sockaddr_t          sockaddr;
     socklen_t               socklen;
 
     /* server ctx */
@@ -66,6 +55,7 @@ typedef struct {
     int                     tcp_keepcnt;
 #endif
     int                     backlog;
+    int                     type;
 } ngx_stream_listen_t;
 
 
@@ -102,6 +92,7 @@ typedef struct {
 
 typedef struct {
     int                     family;
+    int                     type;
     in_port_t               port;
     ngx_array_t             addrs;       /* array of ngx_stream_conf_addr_t */
 } ngx_stream_conf_port_t;

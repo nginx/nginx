@@ -27,28 +27,28 @@ static ngx_str_t      iocp_name = ngx_string("iocp");
 
 static ngx_command_t  ngx_iocp_commands[] = {
 
-    {ngx_string("iocp_threads"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_iocp_conf_t, threads),
-     NULL},
+    { ngx_string("iocp_threads"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_iocp_conf_t, threads),
+      NULL },
 
-    {ngx_string("post_acceptex"),
-     NGX_EVENT_CONF|NGX_CONF_TAKE1,
-     ngx_conf_set_num_slot,
-     0,
-     offsetof(ngx_iocp_conf_t, post_acceptex),
-     NULL},
+    { ngx_string("post_acceptex"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      0,
+      offsetof(ngx_iocp_conf_t, post_acceptex),
+      NULL },
 
-    {ngx_string("acceptex_read"),
-     NGX_EVENT_CONF|NGX_CONF_FLAG,
-     ngx_conf_set_flag_slot,
-     0,
-     offsetof(ngx_iocp_conf_t, acceptex_read),
-     NULL},
+    { ngx_string("acceptex_read"),
+      NGX_EVENT_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_iocp_conf_t, acceptex_read),
+      NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 

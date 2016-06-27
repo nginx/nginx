@@ -108,6 +108,11 @@
 #include <ngx_auto_config.h>
 
 
+#if (NGX_HAVE_DLOPEN)
+#include <dlfcn.h>
+#endif
+
+
 #if (NGX_HAVE_POSIX_SEM)
 #include <semaphore.h>
 #endif
@@ -123,7 +128,7 @@
 #endif
 
 
-#if (NGX_HAVE_DEVPOLL)
+#if (NGX_HAVE_DEVPOLL) && !(NGX_TEST_BUILD_DEVPOLL)
 #include <sys/ioctl.h>
 #include <sys/devpoll.h>
 #endif

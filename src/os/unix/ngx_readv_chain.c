@@ -53,6 +53,20 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
 
 #endif
 
+#if (NGX_HAVE_EPOLLRDHUP)
+
+    if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "readv: eof:%d, avail:%d",
+                       rev->pending_eof, rev->available);
+
+        if (!rev->available && !rev->pending_eof) {
+            return NGX_AGAIN;
+        }
+    }
+
+#endif
+
     prev = NULL;
     iov = NULL;
     size = 0;
@@ -101,12 +115,32 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "readv: %d, last:%d", vec.nelts, iov->iov_len);
+                   "readv: %ui, last:%uz", vec.nelts, iov->iov_len);
 
     do {
         n = readv(c->fd, (struct iovec *) vec.elts, vec.nelts);
 
-        if (n >= 0) {
+        if (n == 0) {
+            rev->ready = 0;
+            rev->eof = 1;
+
+#if (NGX_HAVE_KQUEUE)
+
+            /*
+             * on FreeBSD readv() may return 0 on closed socket
+             * even if kqueue reported about available data
+             */
+
+            if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
+                rev->available = 0;
+            }
+
+#endif
+
+            return 0;
+        }
+
+        if (n > 0) {
 
 #if (NGX_HAVE_KQUEUE)
 
@@ -115,7 +149,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
 
                 /*
                  * rev->available may be negative here because some additional
-                 * bytes may be received between kevent() and recv()
+                 * bytes may be received between kevent() and readv()
                  */
 
                 if (rev->available <= 0) {
@@ -123,40 +157,34 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
                         rev->ready = 0;
                     }
 
-                    if (rev->available < 0) {
-                        rev->available = 0;
-                    }
-                }
-
-                if (n == 0) {
-
-                    /*
-                     * on FreeBSD recv() may return 0 on closed socket
-                     * even if kqueue reported about available data
-                     */
-
-#if 0
-                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                                  "readv() returned 0 while kevent() reported "
-                                  "%d available bytes", rev->available);
-#endif
-
-                    rev->ready = 0;
-                    rev->eof = 1;
                     rev->available = 0;
                 }
 
                 return n;
             }
 
-#endif /* NGX_HAVE_KQUEUE */
+#endif
+
+#if (NGX_HAVE_EPOLLRDHUP)
+
+            if ((ngx_event_flags & NGX_USE_EPOLL_EVENT)
+                && ngx_use_epoll_rdhup)
+            {
+                if (n < size) {
+                    if (!rev->pending_eof) {
+                        rev->ready = 0;
+                    }
+
+                    rev->available = 0;
+                }
+
+                return n;
+            }
+
+#endif
 
             if (n < size && !(ngx_event_flags & NGX_USE_GREEDY_EVENT)) {
                 rev->ready = 0;
-            }
-
-            if (n == 0) {
-                rev->eof = 1;
             }
 
             return n;

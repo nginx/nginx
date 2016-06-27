@@ -35,7 +35,7 @@ typedef struct {
 
 ngx_int_t ngx_os_init(ngx_log_t *log);
 void ngx_os_status(ngx_log_t *log);
-ngx_int_t ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_int_t pid);
+ngx_int_t ngx_os_signal_process(ngx_cycle_t *cycle, char *sig, ngx_pid_t pid);
 
 ssize_t ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);
 ssize_t ngx_overlapped_wsarecv(ngx_connection_t *c, u_char *buf, size_t size);

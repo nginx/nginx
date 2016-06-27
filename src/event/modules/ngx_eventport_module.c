@@ -49,7 +49,7 @@ typedef struct  port_notify {
     void       *portnfy_user;   /* user defined */
 } port_notify_t;
 
-#if (__FreeBSD_version < 700005)
+#if (__FreeBSD__ && __FreeBSD_version < 700005) || (NGX_DARWIN)
 
 typedef struct itimerspec {     /* definition per POSIX.4 */
     struct timespec it_interval;/* timer period */
@@ -526,18 +526,18 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "eventport: fd:%d, ev:%04Xd",
-                           event_list[i].portev_object, revents);
+                           (int) event_list[i].portev_object, revents);
 
             if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
                 ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                                "port_getn() error fd:%d ev:%04Xd",
-                               event_list[i].portev_object, revents);
+                               (int) event_list[i].portev_object, revents);
             }
 
             if (revents & ~(POLLIN|POLLOUT|POLLERR|POLLHUP|POLLNVAL)) {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                               "strange port_getn() events fd:%d ev:%04Xd",
-                              event_list[i].portev_object, revents);
+                              (int) event_list[i].portev_object, revents);
             }
 
             if ((revents & (POLLERR|POLLHUP|POLLNVAL))
@@ -615,7 +615,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         default:
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                           "unexpected eventport object %d",
-                          event_list[i].portev_object);
+                          (int) event_list[i].portev_object);
             continue;
         }
     }

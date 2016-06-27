@@ -14,6 +14,9 @@ CORE_SRCS="$UNIX_SRCS $DARWIN_SRCS"
 ngx_spacer='
 '
 
+MAIN_LINK=
+MODULE_LINK="-shared -Wl,-undefined,dynamic_lookup"
+
 # kqueue
 
 echo " + kqueue found"

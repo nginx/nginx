@@ -64,7 +64,7 @@ ngx_http_chunked_header_filter(ngx_http_request_t *r)
         || r->headers_out.status == NGX_HTTP_NO_CONTENT
         || r->headers_out.status < NGX_HTTP_OK
         || r != r->main
-        || (r->method & NGX_HTTP_HEAD))
+        || r->method == NGX_HTTP_HEAD)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -121,7 +121,7 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     for ( ;; ) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http chunk: %d", ngx_buf_size(cl->buf));
+                       "http chunk: %O", ngx_buf_size(cl->buf));
 
         size += ngx_buf_size(cl->buf);
 

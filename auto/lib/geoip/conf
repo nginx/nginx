@@ -67,7 +67,12 @@ fi
 if [ $ngx_found = yes ]; then
 
     CORE_INCS="$CORE_INCS $ngx_feature_path"
-    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+    if [ $USE_GEOIP = YES ]; then
+        CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+    fi
+
+    NGX_LIB_GEOIP=$ngx_feature_libs
 
     if [ $NGX_IPV6 = YES ]; then
         ngx_feature="GeoIP IPv6 support"

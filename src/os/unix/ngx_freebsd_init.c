@@ -32,6 +32,7 @@ static ngx_os_io_t ngx_freebsd_io = {
     ngx_readv_chain,
     ngx_udp_unix_recv,
     ngx_unix_send,
+    ngx_udp_unix_send,
 #if (NGX_HAVE_SENDFILE)
     ngx_freebsd_sendfile_chain,
     NGX_IO_SENDFILE

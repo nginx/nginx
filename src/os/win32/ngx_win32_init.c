@@ -152,7 +152,7 @@ ngx_os_init(ngx_log_t *log)
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (s == (ngx_socket_t) -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                      ngx_socket_n " falied");
+                      ngx_socket_n " failed");
         return NGX_ERROR;
     }
 

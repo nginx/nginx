@@ -95,17 +95,17 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("414 Request-URI Too Large"),
     ngx_string("415 Unsupported Media Type"),
     ngx_string("416 Requested Range Not Satisfiable"),
+    ngx_null_string,  /* "417 Expectation Failed" */
+    ngx_null_string,  /* "418 unused" */
+    ngx_null_string,  /* "419 unused" */
+    ngx_null_string,  /* "420 unused" */
+    ngx_string("421 Misdirected Request"),
 
-    /* ngx_null_string, */  /* "417 Expectation Failed" */
-    /* ngx_null_string, */  /* "418 unused" */
-    /* ngx_null_string, */  /* "419 unused" */
-    /* ngx_null_string, */  /* "420 unused" */
-    /* ngx_null_string, */  /* "421 unused" */
     /* ngx_null_string, */  /* "422 Unprocessable Entity" */
     /* ngx_null_string, */  /* "423 Locked" */
     /* ngx_null_string, */  /* "424 Failed Dependency" */
 
-#define NGX_HTTP_LAST_4XX  417
+#define NGX_HTTP_LAST_4XX  422
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string("500 Internal Server Error"),
@@ -113,10 +113,10 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("502 Bad Gateway"),
     ngx_string("503 Service Temporarily Unavailable"),
     ngx_string("504 Gateway Time-out"),
-
     ngx_null_string,        /* "505 HTTP Version Not Supported" */
     ngx_null_string,        /* "506 Variant Also Negotiates" */
     ngx_string("507 Insufficient Storage"),
+
     /* ngx_null_string, */  /* "508 unused" */
     /* ngx_null_string, */  /* "509 unused" */
     /* ngx_null_string, */  /* "510 Not Extended" */
@@ -161,10 +161,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
-    struct sockaddr_in        *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6       *sin6;
-#endif
     u_char                     addr[NGX_SOCKADDR_STRLEN];
 
     if (r->header_sent) {
@@ -333,24 +329,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
             }
         }
 
-        switch (c->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
-            port = ntohs(sin6->sin6_port);
-            break;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-        case AF_UNIX:
-            port = 0;
-            break;
-#endif
-        default: /* AF_INET */
-            sin = (struct sockaddr_in *) c->local_sockaddr;
-            port = ntohs(sin->sin_port);
-            break;
-        }
+        port = ngx_inet_get_port(c->local_sockaddr);
 
         len += sizeof("Location: https://") - 1
                + host.len

@@ -161,6 +161,12 @@ ngx_http_dav_handler(ngx_http_request_t *r)
             return NGX_HTTP_CONFLICT;
         }
 
+        if (r->headers_in.content_range) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "PUT with range is unsupported");
+            return NGX_HTTP_NOT_IMPLEMENTED;
+        }
+
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
         r->request_body_in_clean_file = 1;
@@ -621,11 +627,11 @@ destination_done:
     if ((r->uri.data[r->uri.len - 1] == '/' && *(last - 1) != '/')
         || (r->uri.data[r->uri.len - 1] != '/' && *(last - 1) == '/'))
     {
-         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                       "both URI \"%V\" and \"Destination\" URI \"%V\" "
-                       "should be either collections or non-collections",
-                       &r->uri, &dest->value);
-         return NGX_HTTP_CONFLICT;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "both URI \"%V\" and \"Destination\" URI \"%V\" "
+                      "should be either collections or non-collections",
+                      &r->uri, &dest->value);
+        return NGX_HTTP_CONFLICT;
     }
 
     depth = ngx_http_dav_depth(r, NGX_HTTP_DAV_INFINITY_DEPTH);

@@ -27,18 +27,7 @@ typedef struct {
 
 
 typedef struct {
-    union {
-        struct sockaddr     sockaddr;
-        struct sockaddr_in  sockaddr_in;
-#if (NGX_HAVE_INET6)
-        struct sockaddr_in6 sockaddr_in6;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-        struct sockaddr_un  sockaddr_un;
-#endif
-        u_char              sockaddr_data[NGX_SOCKADDRLEN];
-    } u;
-
+    ngx_sockaddr_t          sockaddr;
     socklen_t               socklen;
 
     /* server ctx */
@@ -342,7 +331,7 @@ typedef struct {
 
     void                       *(*create_srv_conf)(ngx_conf_t *cf);
     char                       *(*merge_srv_conf)(ngx_conf_t *cf, void *prev,
-                                      void *conf);
+                                                  void *conf);
 } ngx_mail_module_t;
 
 

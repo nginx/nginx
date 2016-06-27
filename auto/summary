@@ -60,6 +60,7 @@ echo
 cat << END
   nginx path prefix: "$NGX_PREFIX"
   nginx binary file: "$NGX_SBIN_PATH"
+  nginx modules path: "$NGX_MODULES_PATH"
   nginx configuration prefix: "$NGX_CONF_PREFIX"
   nginx configuration file: "$NGX_CONF_PATH"
   nginx pid file: "$NGX_PID_PATH"

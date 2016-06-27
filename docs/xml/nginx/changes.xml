@@ -5,6 +5,855 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.1" date="31.05.2016">
+
+<change type="security">
+<para lang="ru">
+при записи тела специально созданного запроса во временный файл
+в рабочем процессе мог происходить segmentation fault
+(CVE-2016-4450);
+ошибка появилась в 1.3.9.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+while writing a specially crafted request body to a temporary file
+(CVE-2016-4450);
+the bug had appeared in 1.3.9.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.11.0" date="24.05.2016">
+
+<change type="feature">
+<para lang="ru">
+параметр transparent директив proxy_bind, fastcgi_bind,
+memcached_bind, scgi_bind и uwsgi_bind.
+</para>
+<para lang="en">
+the "transparent" parameter of the "proxy_bind", "fastcgi_bind",
+"memcached_bind", "scgi_bind", and "uwsgi_bind" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $request_id.
+</para>
+<para lang="en">
+the $request_id variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива map поддерживает комбинации нескольких переменных
+в качестве результирующих значений.
+</para>
+<para lang="en">
+the "map" directive supports combinations of multiple variables
+as resulting values.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании метода epoll
+nginx проверяет, поддерживает ли ядро события EPOLLRDHUP,
+и соответственно оптимизирует обработку соединений.
+</para>
+<para lang="en">
+now nginx checks if EPOLLRDHUP events are supported by kernel,
+and optimizes connection handling accordingly
+if the "epoll" method is used.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_certificate и ssl_certificate_key
+теперь можно указывать несколько раз
+для загрузки сертификатов разных типов (например, RSA и ECDSA).
+</para>
+<para lang="en">
+the "ssl_certificate" and "ssl_certificate_key" directives
+can be specified multiple times
+to load certificates of different types (for example, RSA and ECDSA).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при использовании OpenSSL 1.0.2 и новее
+с помощью директивы ssl_ecdh_curve теперь можно задать список кривых;
+по умолчанию используется встроенный в OpenSSL список кривых.
+</para>
+<para lang="en">
+the "ssl_ecdh_curve" directive now allows specifying a list of curves
+when using OpenSSL 1.0.2 or newer;
+by default a list built into OpenSSL is used.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+для использования DHE-шифров теперь надо явно задавать файл параметров
+с помощью директивы ssl_dhparam.
+</para>
+<para lang="en">
+to use DHE ciphers it is now required to specify parameters
+using the "ssl_dhparam" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $proxy_protocol_port.
+</para>
+<para lang="en">
+the $proxy_protocol_port variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $realip_remote_port в модуле ngx_http_realip_module.
+</para>
+<para lang="en">
+the $realip_remote_port variable in the ngx_http_realip_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_realip_module теперь позволяет устанавливать
+не только адрес, но и порт клиента.
+</para>
+<para lang="en">
+the ngx_http_realip_module is now able to set the client port
+in addition to the address.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при попытке запросить виртуальный сервер,
+отличающийся от согласованного в процессе SSL handshake,
+теперь возвращается ответ "421 Misdirected Request";
+это улучшает совместимость с некоторыми HTTP/2-клиентами
+в случае использования клиентских сертификатов.
+</para>
+<para lang="en">
+the "421 Misdirected Request" response now used
+when rejecting requests to a virtual server
+different from one negotiated during an SSL handshake;
+this improves interoperability with some HTTP/2 clients
+when using client certificates.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+HTTP/2-клиенты теперь могут сразу присылать тело запроса;
+директива http2_body_preread_size позволяет указать размер буфера, который
+будет использоваться до того, как nginx начнёт читать тело.
+</para>
+<para lang="en">
+HTTP/2 clients can now start sending request body immediately;
+the "http2_body_preread_size" directive controls size of the buffer used
+before nginx will start reading client request body.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы proxy_cache_bypass
+не обновлялись закэшированные ошибочные ответы.
+</para>
+<para lang="en">
+cached error responses were not updated
+when using the "proxy_cache_bypass" directive.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.15" date="19.04.2016">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HHVM в качестве FastCGI-сервера
+могли возникать ошибки "recv() failed".
+</para>
+<para lang="en">
+"recv() failed" errors might occur
+when using HHVM as a FastCGI server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директив limit_req или auth_request
+при чтении тела запроса мог произойти таймаут
+или ошибка "client violated flow control";
+ошибка появилась в 1.9.14.
+</para>
+<para lang="en">
+when using HTTP/2 and the "limit_req" or "auth_request" directives
+a timeout or a "client violated flow control" error
+might occur while reading client request body;
+the bug had appeared in 1.9.14.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании HTTP/2 ответ мог не показываться некоторыми браузерами,
+если тело запроса было прочитано не целиком;
+ошибка появилась в 1.9.14.
+</para>
+<para lang="en">
+a response might not be shown by some browsers
+if HTTP/2 was used and client request body was not fully read;
+the bug had appeared in 1.9.14.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "aio threads" соединения могли зависать.<br/>
+Спасибо Mindaugas Rasiukevicius.
+</para>
+<para lang="en">
+connections might hang when using the "aio threads" directive.<br/>
+Thanks to Mindaugas Rasiukevicius.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.14" date="05.04.2016">
+
+<change type="feature">
+<para lang="ru">
+совместимость с OpenSSL 1.1.0.
+</para>
+<para lang="en">
+OpenSSL 1.1.0 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_request_buffering, fastcgi_request_buffering,
+scgi_request_buffering и uwsgi_request_buffering
+теперь работают при использовании HTTP/2.
+</para>
+<para lang="en">
+the "proxy_request_buffering", "fastcgi_request_buffering",
+"scgi_request_buffering", and "uwsgi_request_buffering" directives
+now work with HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+в логах могли появляться сообщения "zero size buf in output".
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+директива client_max_body_size могла работать неверно.
+</para>
+<para lang="en">
+the "client_max_body_size" directive might work incorrectly
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных ошибок логгирования.
+</para>
+<para lang="en">
+of minor bugs in logging.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.13" date="29.03.2016">
+
+<change type="change">
+<para lang="ru">
+неидемпотентные запросы (POST, LOCK, PATCH)
+теперь по умолчанию не передаются на другой сервер,
+если запрос уже был отправлен на бэкенд;
+параметр non_idempotent директивы proxy_next_upstream
+явно разрешает повторять такие запросы.
+</para>
+<para lang="en">
+non-idempotent requests (POST, LOCK, PATCH)
+are no longer passed to the next server by default
+if a request has been sent to a backend;
+the "non_idempotent" parameter of the "proxy_next_upstream" directive
+explicitly allows retrying such requests.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_perl_module теперь можно собрать динамически.
+</para>
+<para lang="en">
+the ngx_http_perl_module can be built dynamically.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка UDP в модуле stream.
+</para>
+<para lang="en">
+UDP support in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива aio_write.
+</para>
+<para lang="en">
+the "aio_write" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь cache manager следит за количеством элементов в кэше
+и старается не допускать переполнений зоны разделяемой памяти.
+</para>
+<para lang="en">
+now cache manager monitors number of elements in caches
+and tries to avoid cache keys zone overflows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив sendfile и aio с подзапросами
+в логах могли появляться сообщения "task already active" и "second aio post".
+</para>
+<para lang="en">
+
+"task already active" and "second aio post" alerts might appear in logs
+when using the "sendfile" and "aio" directives with subrequests.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования
+в логах могли появляться сообщения "zero size buf in output",
+если клиент закрывал соединение преждевременно.
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+if caching was used
+and a client closed a connection prematurely.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэширования
+соединения с клиентами могли закрываться без необходимости.<br/>
+Спасибо Justin Li.
+</para>
+<para lang="en">
+connections with clients might be closed needlessly
+if caching was used.<br/>
+Thanks to Justin Li.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог нагружать процессор
+при использовании директивы sendfile на Linux и Solaris,
+если отправляемый файл был изменён в процессе отправки.
+</para>
+<para lang="en">
+nginx might hog CPU
+if the "sendfile" directive was used on Linux or Solaris
+and a file being sent was changed during sending.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив sendfile и "aio threads"
+соединения могли зависать.
+</para>
+<para lang="en">
+connections might hang
+when using the "sendfile" and "aio threads" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах proxy_pass, fastcgi_pass, scgi_pass и uwsgi_pass
+при использовании переменных.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the "proxy_pass", "fastcgi_pass", "scgi_pass", and "uwsgi_pass" directives
+when using variables.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_sub_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_sub_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в закэшированном соединении к бэкенду происходила ошибка,
+запрос передавался на другой сервер
+без учёта директивы proxy_next_upstream.
+</para>
+<para lang="en">
+if an error occurred in a cached backend connection,
+the request was passed to the next server
+regardless of the proxy_next_upstream directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибки "CreateFile() failed" при создании временных файлов на Windows.
+</para>
+<para lang="en">
+"CreateFile() failed" errors when creating temporary files on Windows.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.12" date="24.02.2016">
+
+<change type="feature">
+<para lang="ru">
+кодирование Хаффмана заголовков ответов в HTTP/2.<br/>
+Спасибо Владу Краснову.
+</para>
+<para lang="en">
+Huffman encoding of response headers in HTTP/2.<br/>
+Thanks to Vlad Krasnov.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_cpu_affinity теперь поддерживает более 64 процессоров.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive now supports more than 64 CPUs.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+совместимость со сторонними модулями на C++;
+ошибка появилась в 1.9.11.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+compatibility with 3rd party C++ modules;
+the bug had appeared in 1.9.11.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался статически с OpenSSL на Linux;
+ошибка появилась в 1.9.11.
+</para>
+<para lang="en">
+nginx could not be built statically with OpenSSL on Linux;
+the bug had appeared in 1.9.11.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "add_header ... always" с пустым значением
+не удаляла из заголовков ошибочных ответов
+строки Last-Modified и ETag.
+</para>
+<para lang="en">
+the "add_header ... always" directive with an empty value
+did not delete "Last-Modified" and "ETag" header lines
+from error responses.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании OpenSSL 1.0.2f в логах могли появляться
+сообщения "called a function you should not call" и
+"shutdown while in init".
+</para>
+<para lang="en">
+"called a function you should not call"
+and "shutdown while in init" messages might appear in logs
+when using OpenSSL 1.0.2f.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ошибочные заголовки могли логгироваться некорректно.
+</para>
+<para lang="en">
+invalid headers might be logged incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов при использовании HTTP/2.
+</para>
+<para lang="en">
+socket leak when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.11" date="09.02.2016">
+
+<change type="feature">
+<para lang="ru">
+теперь resolver поддерживает TCP.
+</para>
+<para lang="en">
+TCP support in resolver.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+динамические модули.
+</para>
+<para lang="en">
+dynamic modules.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+переменная $request_length не учитывала размер заголовков запроса.
+</para>
+<para lang="en">
+the $request_length variable did not include size of request headers
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.10" date="26.01.2016">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки ответов DNS-сервера
+могло происходить разыменование некорректного адреса,
+что позволяло атакующему,
+имеющему возможность подделывать UDP-пакеты от DNS-сервера,
+вызвать segmentation fault в рабочем процессе (CVE-2016-0742).
+</para>
+<para lang="en">
+invalid pointer dereference might occur
+during DNS server response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to forge UDP packets from the DNS server
+to cause segmentation fault in a worker process (CVE-2016-0742).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+могло произойти обращение к ранее освобождённой памяти,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать segmentation fault в рабочем процессе,
+а также потенциально могло иметь другие последствия (CVE-2016-0746).
+</para>
+<para lang="en">
+use-after-free condition might occur
+during CNAME response processing
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger name resolution
+to cause segmentation fault in a worker process,
+or might have potential other impact (CVE-2016-0746).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки CNAME-записей
+не во всех случаях проверялось ограничение
+на максимальное количество записей в цепочке,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование произвольных имён в адреса,
+вызвать чрезмерное потребление ресурсов рабочими процессами (CVE-2016-0747).
+</para>
+<para lang="en">
+CNAME resolution was insufficiently limited
+if the "resolver" directive was used,
+allowing an attacker who is able to trigger arbitrary name resolution
+to cause excessive resource consumption in worker processes (CVE-2016-0747).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр auto директивы worker_cpu_affinity.
+</para>
+<para lang="en">
+the "auto" parameter of the "worker_cpu_affinity" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр proxy_protocol директивы listen не работал
+с IPv6 listen-сокетами.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive did not work
+with IPv6 listen sockets.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы keepalive
+соединения к бэкендам могли кэшироваться некорректно.
+</para>
+<para lang="en">
+connections to upstream servers might be cached incorrectly
+when using the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+после перенаправления запроса с помощью X-Accel-Redirect
+при проксировании использовался HTTP-метод оригинального запроса.
+</para>
+<para lang="en">
+proxying used the HTTP method of the original request
+after an "X-Accel-Redirect" redirection.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.9" date="09.12.2015">
+
+<change type="bugfix">
+<para lang="ru">
+проксирование в unix domain сокеты не работало при использовании переменных;
+ошибка появилась в 1.9.8.
+</para>
+<para lang="en">
+proxying to unix domain sockets did not work when using variables;
+the bug had appeared in 1.9.8.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.8" date="08.12.2015">
+
+<change type="feature">
+<para lang="ru">
+поддержка pwritev().
+</para>
+<para lang="en">
+pwritev() support.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива include в блоке upstream.
+</para>
+<para lang="en">
+the "include" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_slice_module.
+</para>
+<para lang="en">
+the ngx_http_slice_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании LibreSSL
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.9.6.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using LibreSSL;
+the bug had appeared in 1.9.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться на OS X.
+</para>
+<para lang="en">
+nginx could not be built on OS X in some cases.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.9.7" date="17.11.2015">
+
+<change type="feature">
+<para lang="ru">
+параметр nohostname логгирования в syslog.
+</para>
+<para lang="en">
+the "nohostname" parameter of logging to syslog.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_cache_convert_head.
+</para>
+<para lang="en">
+the "proxy_cache_convert_head" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $realip_remote_addr в модуле ngx_http_realip_module.
+</para>
+<para lang="en">
+the $realip_remote_addr variable in the ngx_http_realip_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива expires могла не срабатывать при использовании переменных.
+</para>
+<para lang="en">
+the "expires" directive might not work when using variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.9.6.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using HTTP/2;
+the bug had appeared in 1.9.6.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с модулем ngx_http_v2_module,
+протокол HTTP/2 мог быть использован клиентом,
+даже если не был указан параметр http2 директивы listen.
+</para>
+<para lang="en">
+if nginx was built with the ngx_http_v2_module
+it was possible to use the HTTP/2 protocol
+even if the "http2" parameter of the "listen" directive was not specified.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.9.6" date="27.10.2015">
 
 <change type="bugfix">
@@ -319,7 +1168,7 @@ connection limiting in the stream module.
 
 <change type="feature">
 <para lang="ru">
-органичение скорости в модуле stream.
+ограничение скорости в модуле stream.
 </para>
 <para lang="en">
 data rate limiting in the stream module.
@@ -5805,7 +6654,7 @@ successfully respond to the request.
 теперь символы 0x7F-0xFF в access_log записываются в виде \xXX.
 </para>
 <para lang="en">
-now the 0x7F-0x1F characters are escaped as \xXX in an access_log.
+now the 0x7F-0xFF characters are escaped as \xXX in an access_log.
 </para>
 </change>
 

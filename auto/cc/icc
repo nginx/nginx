@@ -89,7 +89,7 @@ CFLAGS="$CFLAGS -wd1419"
 
 case "$NGX_ICC_VER" in
     9.*)
-        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
+        # "cc" clobber ignored, warnings for Linux's htonl()/htons()
         CFLAGS="$CFLAGS -wd1469"
         # explicit conversion of a 64-bit integral type to a smaller
         # integral type
@@ -103,7 +103,7 @@ case "$NGX_ICC_VER" in
     ;;
 
     8.*)
-        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
+        # "cc" clobber ignored, warnings for Linux's htonl()/htons()
         CFLAGS="$CFLAGS -wd1469"
         # floating-point equality and inequality comparisons are unreliable,
         # warning on SvTRUE()

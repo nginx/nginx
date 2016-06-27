@@ -154,7 +154,7 @@ ngx_time_update(void)
 
     p2 = &cached_http_log_time[slot][0];
 
-    (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02d%02d",
+    (void) ngx_sprintf(p2, "%02d/%s/%d:%02d:%02d:%02d %c%02i%02i",
                        tm.ngx_tm_mday, months[tm.ngx_tm_mon - 1],
                        tm.ngx_tm_year, tm.ngx_tm_hour,
                        tm.ngx_tm_min, tm.ngx_tm_sec,
@@ -163,7 +163,7 @@ ngx_time_update(void)
 
     p3 = &cached_http_log_iso8601[slot][0];
 
-    (void) ngx_sprintf(p3, "%4d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d",
+    (void) ngx_sprintf(p3, "%4d-%02d-%02dT%02d:%02d:%02d%c%02i:%02i",
                        tm.ngx_tm_year, tm.ngx_tm_mon,
                        tm.ngx_tm_mday, tm.ngx_tm_hour,
                        tm.ngx_tm_min, tm.ngx_tm_sec,

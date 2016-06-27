@@ -5,14 +5,14 @@
 
 case "$NGX_CC_NAME" in
 
-    msvc*)
+    msvc)
         ngx_makefile=makefile.msvc
         ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
         ngx_zlib="ZLIB=\"$ZLIB\""
 
     ;;
 
-    owc*)
+    owc)
         ngx_makefile=makefile.owc
         ngx_opt="CPU_OPT=\"$CPU_OPT\""
         ngx_zlib=`echo ZLIB=\"$ZLIB\" | sed -e "s/\//$ngx_regex_dirsep/g"`

@@ -25,31 +25,8 @@ fi
 
 
 if [ "$CC" = cl ]; then
-    if `$NGX_WINE $CC -v 2>&1 \
-        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 16' \
-        >/dev/null 2>&1`; then
-
-        NGX_CC_NAME=msvc10
-        echo " + using Microsoft Visual C++ 10 compiler"
-
-    elif `$NGX_WINE $CC -v 2>&1 \
-        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 14' \
-        >/dev/null 2>&1`; then
-
-        NGX_CC_NAME=msvc8
-        echo " + using Microsoft Visual C++ 8 compiler"
-
-    elif `$NGX_WINE $CC -v 2>&1 \
-        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 13' \
-        >/dev/null 2>&1`; then
-
-        NGX_CC_NAME=msvc7
-        echo " + using Microsoft Visual C++ 7 compiler"
-
-    else
-        NGX_CC_NAME=msvc
-        echo " + using Microsoft Visual C++ compiler"
-    fi
+    NGX_CC_NAME=msvc
+    echo " + using Microsoft Visual C++ compiler"
 
 elif [ "$CC" = wcl386 ]; then
     NGX_CC_NAME=owc

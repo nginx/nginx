@@ -39,6 +39,6 @@
 /
 / ld.so.1: nginx: fatal: hardware capability unsupported: 0x2000  [ PAUSE ]
 
-       .inline ngx_cpu_pause,0
-       rep; nop
-       .end
+        .inline ngx_cpu_pause,0
+        rep; nop
+        .end

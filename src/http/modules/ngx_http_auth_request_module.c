@@ -168,7 +168,7 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
         }
 
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "auth request unexpected status: %d", ctx->status);
+                      "auth request unexpected status: %ui", ctx->status);
 
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -219,7 +219,7 @@ ngx_http_auth_request_done(ngx_http_request_t *r, void *data, ngx_int_t rc)
     ngx_http_auth_request_ctx_t   *ctx = data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "auth request done s:%d", r->headers_out.status);
+                   "auth request done s:%ui", r->headers_out.status);
 
     ctx->done = 1;
     ctx->status = r->headers_out.status;

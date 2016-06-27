@@ -7,6 +7,7 @@ help=no
 
 NGX_PREFIX=
 NGX_SBIN_PATH=
+NGX_MODULES_PATH=
 NGX_CONF_PREFIX=
 NGX_CONF_PATH=
 NGX_ERROR_LOG_PATH=
@@ -71,6 +72,7 @@ HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_AUTH_REQUEST=NO
 HTTP_USERID=YES
+HTTP_SLICE=NO
 HTTP_AUTOINDEX=YES
 HTTP_RANDOM_INDEX=NO
 HTTP_STATUS=NO
@@ -119,7 +121,11 @@ STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_ZONE=YES
 
+DYNAMIC_MODULES=
+
 NGX_ADDONS=
+NGX_ADDON_DEPS=
+DYNAMIC_ADDONS=
 
 USE_PCRE=NO
 PCRE=NONE
@@ -150,6 +156,7 @@ NGX_PERL=perl
 
 USE_LIBXSLT=NO
 USE_LIBGD=NO
+USE_GEOIP=NO
 
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
@@ -177,6 +184,7 @@ do
         --prefix=)                       NGX_PREFIX="!"             ;;
         --prefix=*)                      NGX_PREFIX="$value"        ;;
         --sbin-path=*)                   NGX_SBIN_PATH="$value"     ;;
+        --modules-path=*)                NGX_MODULES_PATH="$value"  ;;
         --conf-path=*)                   NGX_CONF_PATH="$value"     ;;
         --error-log-path=*)              NGX_ERROR_LOG_PATH="$value";;
         --pid-path=*)                    NGX_PID_PATH="$value"      ;;
@@ -214,8 +222,13 @@ do
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
+        --with-http_xslt_module=dynamic) HTTP_XSLT=DYNAMIC          ;;
         --with-http_image_filter_module) HTTP_IMAGE_FILTER=YES      ;;
+        --with-http_image_filter_module=dynamic)
+                                         HTTP_IMAGE_FILTER=DYNAMIC  ;;
         --with-http_geoip_module)        HTTP_GEOIP=YES             ;;
+        --with-http_geoip_module=dynamic)
+                                         HTTP_GEOIP=DYNAMIC         ;;
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
@@ -226,6 +239,7 @@ do
         --with-http_random_index_module) HTTP_RANDOM_INDEX=YES      ;;
         --with-http_secure_link_module)  HTTP_SECURE_LINK=YES       ;;
         --with-http_degradation_module)  HTTP_DEGRADATION=YES       ;;
+        --with-http_slice_module)        HTTP_SLICE=YES             ;;
 
         --without-http_charset_module)   HTTP_CHARSET=NO            ;;
         --without-http_gzip_module)      HTTP_GZIP=NO               ;;
@@ -257,6 +271,7 @@ do
         --without-http_upstream_zone_module) HTTP_UPSTREAM_ZONE=NO  ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
+        --with-http_perl_module=dynamic) HTTP_PERL=DYNAMIC          ;;
         --with-perl_modules_path=*)      NGX_PERL_MODULES="$value"  ;;
         --with-perl=*)                   NGX_PERL="$value"          ;;
 
@@ -264,6 +279,7 @@ do
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
 
         --with-mail)                     MAIL=YES                   ;;
+        --with-mail=dynamic)             MAIL=DYNAMIC               ;;
         --with-mail_ssl_module)          MAIL_SSL=YES               ;;
         # STUB
         --with-imap)
@@ -283,6 +299,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
         --with-stream)                   STREAM=YES                 ;;
+        --with-stream=dynamic)           STREAM=DYNAMIC             ;;
         --with-stream_ssl_module)        STREAM_SSL=YES             ;;
         --without-stream_limit_conn_module)
                                          STREAM_LIMIT_CONN=NO       ;;
@@ -298,6 +315,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-cpp_test_module)          NGX_CPP_TEST=YES           ;;
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
+        --add-dynamic-module=*)          DYNAMIC_ADDONS="$DYNAMIC_ADDONS $value" ;;
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;
@@ -354,6 +372,7 @@ cat << END
 
   --prefix=PATH                      set installation prefix
   --sbin-path=PATH                   set nginx binary pathname
+  --modules-path=PATH                set modules path
   --conf-path=PATH                   set nginx.conf pathname
   --error-log-path=PATH              set error log pathname
   --pid-path=PATH                    set nginx.pid pathname
@@ -382,8 +401,12 @@ cat << END
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module
+  --with-http_xslt_module=dynamic    enable dynamic ngx_http_xslt_module
   --with-http_image_filter_module    enable ngx_http_image_filter_module
+  --with-http_image_filter_module=dynamic
+                                     enable dynamic ngx_http_image_filter_module
   --with-http_geoip_module           enable ngx_http_geoip_module
+  --with-http_geoip_module=dynamic   enable dynamic ngx_http_geoip_module
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
@@ -394,6 +417,7 @@ cat << END
   --with-http_random_index_module    enable ngx_http_random_index_module
   --with-http_secure_link_module     enable ngx_http_secure_link_module
   --with-http_degradation_module     enable ngx_http_degradation_module
+  --with-http_slice_module           enable ngx_http_slice_module
   --with-http_stub_status_module     enable ngx_http_stub_status_module
 
   --without-http_charset_module      disable ngx_http_charset_module
@@ -429,6 +453,7 @@ cat << END
                                      disable ngx_http_upstream_zone_module
 
   --with-http_perl_module            enable ngx_http_perl_module
+  --with-http_perl_module=dynamic    enable dynamic ngx_http_perl_module
   --with-perl_modules_path=PATH      set Perl modules path
   --with-perl=PATH                   set perl binary pathname
 
@@ -448,12 +473,14 @@ cat << END
   --without-http-cache               disable HTTP cache
 
   --with-mail                        enable POP3/IMAP4/SMTP proxy module
+  --with-mail=dynamic                enable dynamic POP3/IMAP4/SMTP proxy module
   --with-mail_ssl_module             enable ngx_mail_ssl_module
   --without-mail_pop3_module         disable ngx_mail_pop3_module
   --without-mail_imap_module         disable ngx_mail_imap_module
   --without-mail_smtp_module         disable ngx_mail_smtp_module
 
-  --with-stream                      enable TCP proxy module
+  --with-stream                      enable TCP/UDP proxy module
+  --with-stream=dynamic              enable dynamic TCP/UDP proxy module
   --with-stream_ssl_module           enable ngx_stream_ssl_module
   --without-stream_limit_conn_module disable ngx_stream_limit_conn_module
   --without-stream_access_module     disable ngx_stream_access_module
@@ -467,7 +494,8 @@ cat << END
   --with-google_perftools_module     enable ngx_google_perftools_module
   --with-cpp_test_module             enable ngx_cpp_test_module
 
-  --add-module=PATH                  enable an external module
+  --add-module=PATH                  enable external module
+  --add-dynamic-module=PATH          enable dynamic external module
 
   --with-cc=PATH                     set C compiler pathname
   --with-cpp=PATH                    set C preprocessor pathname
@@ -530,6 +558,7 @@ fi
 
 
 NGX_SBIN_PATH=${NGX_SBIN_PATH:-sbin/nginx}
+NGX_MODULES_PATH=${NGX_MODULES_PATH:-modules}
 NGX_CONF_PATH=${NGX_CONF_PATH:-conf/nginx.conf}
 NGX_CONF_PREFIX=`dirname $NGX_CONF_PATH`
 NGX_PID_PATH=${NGX_PID_PATH:-logs/nginx.pid}

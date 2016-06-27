@@ -57,6 +57,9 @@ case "$NGX_MACHINE" in
 
 esac
 
+MAIN_LINK=
+MODULE_LINK="-G"
+
 
 # optimizations
 

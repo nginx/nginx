@@ -237,12 +237,12 @@ ngx_mail_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+    for (m = 0; cf->cycle->modules[m]; m++) {
+        if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cf->cycle->modules[m]->ctx;
 
         if (module->create_srv_conf) {
             mconf = module->create_srv_conf(cf);
@@ -250,7 +250,7 @@ ngx_mail_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
-            ctx->srv_conf[ngx_modules[m]->ctx_index] = mconf;
+            ctx->srv_conf[cf->cycle->modules[m]->ctx_index] = mconf;
         }
     }
 
@@ -288,19 +288,12 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_mail_core_srv_conf_t  *cscf = conf;
 
-    size_t                      len, off;
-    in_port_t                   port;
     ngx_str_t                  *value;
     ngx_url_t                   u;
     ngx_uint_t                  i, m;
-    struct sockaddr            *sa;
     ngx_mail_listen_t          *ls;
     ngx_mail_module_t          *module;
-    struct sockaddr_in         *sin;
     ngx_mail_core_main_conf_t  *cmcf;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6        *sin6;
-#endif
 
     value = cf->args->elts;
 
@@ -325,46 +318,10 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 0; i < cmcf->listen.nelts; i++) {
 
-        sa = &ls[i].u.sockaddr;
-
-        if (sa->sa_family != u.family) {
-            continue;
-        }
-
-        switch (sa->sa_family) {
-
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            off = offsetof(struct sockaddr_in6, sin6_addr);
-            len = 16;
-            sin6 = &ls[i].u.sockaddr_in6;
-            port = ntohs(sin6->sin6_port);
-            break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-        case AF_UNIX:
-            off = offsetof(struct sockaddr_un, sun_path);
-            len = sizeof(((struct sockaddr_un *) sa)->sun_path);
-            port = 0;
-            break;
-#endif
-
-        default: /* AF_INET */
-            off = offsetof(struct sockaddr_in, sin_addr);
-            len = 4;
-            sin = &ls[i].u.sockaddr_in;
-            port = ntohs(sin->sin_port);
-            break;
-        }
-
-        if (ngx_memcmp(ls[i].u.sockaddr_data + off, u.sockaddr + off, len)
-            != 0)
+        if (ngx_cmp_sockaddr(&ls[i].sockaddr.sockaddr, ls[i].socklen,
+                             (struct sockaddr *) &u.sockaddr, u.socklen, 1)
+            != NGX_OK)
         {
-            continue;
-        }
-
-        if (port != u.port) {
             continue;
         }
 
@@ -380,7 +337,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(ls, sizeof(ngx_mail_listen_t));
 
-    ngx_memcpy(&ls->u.sockaddr, u.sockaddr, u.socklen);
+    ngx_memcpy(&ls->sockaddr.sockaddr, &u.sockaddr, u.socklen);
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;
@@ -392,12 +349,12 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
     if (cscf->protocol == NULL) {
-        for (m = 0; ngx_modules[m]; m++) {
-            if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+        for (m = 0; cf->cycle->modules[m]; m++) {
+            if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
                 continue;
             }
 
-            module = ngx_modules[m]->ctx;
+            module = cf->cycle->modules[m]->ctx;
 
             if (module->protocol == NULL) {
                 continue;
@@ -434,11 +391,10 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strncmp(value[i].data, "ipv6only=o", 10) == 0) {
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+            size_t  len;
             u_char  buf[NGX_SOCKADDR_STRLEN];
 
-            sa = &ls->u.sockaddr;
-
-            if (sa->sa_family == AF_INET6) {
+            if (ls->sockaddr.sockaddr.sa_family == AF_INET6) {
 
                 if (ngx_strcmp(&value[i].data[10], "n") == 0) {
                     ls->ipv6only = 1;
@@ -456,7 +412,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ls->bind = 1;
 
             } else {
-                len = ngx_sock_ntop(sa, ls->socklen, buf,
+                len = ngx_sock_ntop(&ls->sockaddr.sockaddr, ls->socklen, buf,
                                     NGX_SOCKADDR_STRLEN, 1);
 
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -595,12 +551,12 @@ ngx_mail_core_protocol(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    for (m = 0; ngx_modules[m]; m++) {
-        if (ngx_modules[m]->type != NGX_MAIL_MODULE) {
+    for (m = 0; cf->cycle->modules[m]; m++) {
+        if (cf->cycle->modules[m]->type != NGX_MAIL_MODULE) {
             continue;
         }
 
-        module = ngx_modules[m]->ctx;
+        module = cf->cycle->modules[m]->ctx;
 
         if (module->protocol
             && ngx_strcmp(module->protocol->name.data, value[1].data) == 0)

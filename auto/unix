@@ -255,12 +255,12 @@ ngx_feature_test="struct statvfs  fs;
 
 
 ngx_feature="dlopen()"
-ngx_feature_name=
+ngx_feature_name="NGX_HAVE_DLOPEN"
 ngx_feature_run=no
 ngx_feature_incs="#include <dlfcn.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="dlopen(NULL, 0)"
+ngx_feature_test="dlopen(NULL, RTLD_NOW | RTLD_GLOBAL); dlsym(NULL, NULL)"
 . auto/feature
 
 
@@ -271,6 +271,7 @@ if [ $ngx_found != yes ]; then
     . auto/feature
 
     if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -ldl"
         NGX_LIBDL="-ldl"
     fi
 fi
@@ -325,6 +326,96 @@ ngx_feature_incs="#include <sys/socket.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)"
+. auto/feature
+
+
+# NetBSD bind to any address for transparent proxying
+
+ngx_feature="SO_BINDANY"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_BINDANY, NULL, 0)"
+. auto/feature
+
+
+# Linux IP_BIND_ADDRESS_NO_PORT
+
+ngx_feature="IP_BIND_ADDRESS_NO_PORT"
+ngx_feature_name="NGX_HAVE_IP_BIND_ADDRESS_NO_PORT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, NULL, 0)"
+. auto/feature
+
+
+# Linux transparent proxying
+
+ngx_feature="IP_TRANSPARENT"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_TRANSPARENT, NULL, 0)"
+. auto/feature
+
+
+# FreeBSD bind to any address for transparent proxying
+
+ngx_feature="IP_BINDANY"
+ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BINDANY, NULL, 0)"
+. auto/feature
+
+
+# BSD way to get IPv4 datagram destination address
+
+ngx_feature="IP_RECVDSTADDR"
+ngx_feature_name="NGX_HAVE_IP_RECVDSTADDR"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_RECVDSTADDR, NULL, 0)"
+. auto/feature
+
+
+# Linux way to get IPv4 datagram destination address
+
+ngx_feature="IP_PKTINFO"
+ngx_feature_name="NGX_HAVE_IP_PKTINFO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_PKTINFO, NULL, 0)"
+. auto/feature
+
+
+# RFC 3542 way to get IPv6 datagram destination address
+
+ngx_feature="IPV6_RECVPKTINFO"
+ngx_feature_name="NGX_HAVE_IPV6_RECVPKTINFO"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IPV6, IPV6_RECVPKTINFO, NULL, 0)"
 . auto/feature
 
 
@@ -507,6 +598,7 @@ ngx_param=NGX_PTR_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 NGX_INCLUDE_AUTO_CONFIG_H="#include \"ngx_auto_config.h\""
 
+ngx_type="uint32_t"; ngx_types="u_int32_t"; . auto/types/typedef
 ngx_type="uint64_t"; ngx_types="u_int64_t"; . auto/types/typedef
 
 ngx_type="sig_atomic_t"; ngx_types="int"; . auto/types/typedef
@@ -515,7 +607,7 @@ ngx_param=NGX_SIG_ATOMIC_T_SIZE; ngx_value=$ngx_size; . auto/types/value
 
 ngx_type="socklen_t"; ngx_types="int"; . auto/types/typedef
 
-ngx_type="in_addr_t"; ngx_types="uint32_t"; . auto/types/typedef
+ngx_type="in_addr_t"; ngx_types="uint32_t u_int32_t"; . auto/types/typedef
 
 ngx_type="in_port_t"; ngx_types="u_short"; . auto/types/typedef
 
@@ -585,6 +677,22 @@ ngx_feature_incs=
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="char buf[1]; ssize_t n; n = pwrite(1, buf, 1, 0);
+                  if (n == -1) return 1"
+. auto/feature
+
+
+# pwritev() was introduced in FreeBSD 6 and Linux 2.6.30, glibc 2.10
+
+ngx_feature="pwritev()"
+ngx_feature_name="NGX_HAVE_PWRITEV"
+ngx_feature_run=no
+ngx_feature_incs='#include <sys/uio.h>'
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="char buf[1]; struct iovec vec[1]; ssize_t n;
+                  vec[0].iov_base = buf;
+                  vec[0].iov_len = 1;
+                  n = pwritev(1, vec, 1, 0);
                   if (n == -1) return 1"
 . auto/feature
 

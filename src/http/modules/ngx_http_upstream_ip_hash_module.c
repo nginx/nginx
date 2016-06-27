@@ -199,7 +199,7 @@ ngx_http_upstream_get_ip_hash_peer(ngx_peer_connection_t *pc, void *data)
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                       "get ip hash peer, hash: %ui %04XA", p, m);
+                       "get ip hash peer, hash: %ui %04XL", p, (uint64_t) m);
 
         if (peer->down) {
             goto next;

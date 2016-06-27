@@ -3,9 +3,24 @@
 # Copyright (C) Nginx, Inc.
 
 
-# MSVC 6.0 SP2
-# MSVC Toolkit 2003 (7.1)
-# MSVC 2005 Express Edition SP1 (8.0)
+# MSVC 6.0 SP2                            cl 12.00
+# MSVC Toolkit 2003 (7.1)                 cl 13.10
+# MSVC 2005 Express Edition SP1 (8.0)     cl 14.00
+# MSVC 2008 Express Edition (9.0)         cl 15.00
+# MSVC 2010 (10.0)                        cl 16.00
+# MSVC 2015 (14.0)                        cl 19.00
+
+
+NGX_MSVC_VER=`$NGX_WINE $CC 2>&1 | grep 'Compiler Version' 2>&1 \
+                                 | sed -e 's/^.* Version \(.*\)/\1/'`
+
+echo " + cl version: $NGX_MSVC_VER"
+
+have=NGX_COMPILER value="\"cl $NGX_MSVC_VER\"" . auto/define
+
+
+ngx_msvc_ver=`echo $NGX_MSVC_VER | sed -e 's/^\([0-9]*\).*/\1/'`
+
 
 # optimizations
 
@@ -90,17 +105,17 @@ CORE_LIBS="$CORE_LIBS kernel32.lib user32.lib"
 #CORE_LINK="$CORE_LINK -subsystem:windows -entry:mainCRTStartup"
 
 # debug
-# msvc8 under Wine issues
-#     Program database manager mismatch; please check your installation
-if [ $NGX_CC_NAME != msvc8 ]; then
+# msvc under Wine issues
+# C1902: Program database manager mismatch; please check your installation
+if [ -z "$NGX_WINE" ]; then
    CFLAGS="$CFLAGS -Zi"
    CORE_LINK="$CORE_LINK -debug"
 fi
 
 
 # MSVC 2005 supports C99 variadic macros
-if [ $NGX_CC_NAME = msvc8 ]; then
-   have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
+if [ "$ngx_msvc_ver" -ge 14 ]; then
+    have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 fi
 
 
@@ -118,6 +133,12 @@ NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
 CORE_LINK="$NGX_RES $CORE_LINK"
 
 
+# dynamic modules
+#MAIN_LINK="-link -def:$NGX_OBJS/nginx.def"
+#MODULE_LINK="-LD $NGX_OBJS/nginx.lib"
+
+
+ngx_pic_opt=
 ngx_objout="-Fo"
 ngx_binout="-Fe"
 ngx_objext="obj"

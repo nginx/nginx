@@ -27,6 +27,6 @@ if [ $NGX_LIBATOMIC != NO -a $NGX_LIBATOMIC != YES ]; then
     . auto/lib/libatomic/make
 fi
 
-if [ $USE_PERL = YES ]; then
+if [ $USE_PERL != NO ]; then
     . auto/lib/perl/make
 fi

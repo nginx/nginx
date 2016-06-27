@@ -737,6 +737,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
+            if (r->http_major > 99) {
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+
             r->http_major = r->http_major * 10 + ch - '0';
             break;
 
@@ -767,6 +771,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             if (ch < '0' || ch > '9') {
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+
+            if (r->http_minor > 99) {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
@@ -1680,6 +1688,10 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
+            if (r->http_major > 99) {
+                return NGX_ERROR;
+            }
+
             r->http_major = r->http_major * 10 + ch - '0';
             break;
 
@@ -1701,6 +1713,10 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
             }
 
             if (ch < '0' || ch > '9') {
+                return NGX_ERROR;
+            }
+
+            if (r->http_minor > 99) {
                 return NGX_ERROR;
             }
 

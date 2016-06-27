@@ -410,7 +410,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
                 hex = 2;
                 sign = 0;
                 zero = '0';
-                width = NGX_PTR_SIZE * 2;
+                width = 2 * sizeof(void *);
                 break;
 
             case 'c':

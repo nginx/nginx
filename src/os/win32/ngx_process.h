@@ -21,6 +21,9 @@ typedef DWORD               ngx_pid_t;
     (sizeof("ngx_cache_manager_mutex_") + NGX_INT32_LEN)
 
 
+typedef uint64_t            ngx_cpuset_t;
+
+
 typedef struct {
     HANDLE                  handle;
     ngx_pid_t               pid;

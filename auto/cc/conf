@@ -5,12 +5,17 @@
 
 LINK="\$(CC)"
 
+MAIN_LINK=
+MODULE_LINK="-shared"
+
 ngx_include_opt="-I "
 ngx_compile_opt="-c"
+ngx_pic_opt="-fPIC"
 ngx_objout="-o "
 ngx_binout="-o "
 ngx_objext="o"
 ngx_binext=
+ngx_modext=".so"
 
 ngx_long_start=
 ngx_long_end=
@@ -44,6 +49,9 @@ if test -n "$CFLAGS"; then
         ;;
 
         sunc)
+
+            MAIN_LINK=
+            MODULE_LINK="-G"
 
             case "$NGX_MACHINE" in
 
@@ -156,6 +164,20 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     fi
 
 
+    ngx_feature="-Wl,-E switch"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=-Wl,-E
+    ngx_feature_test=
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        MAIN_LINK="-Wl,-E"
+    fi
+
+
     ngx_feature="gcc builtin atomic operations"
     ngx_feature_name=NGX_HAVE_GCC_ATOMIC
     ngx_feature_run=yes
@@ -200,6 +222,16 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     ngx_feature_test="char  buf[30]; buf[0] = '0';
                       var(0, buf, \"%d\", 1);
                       if (buf[0] != '1') return 1"
+    . auto/feature
+
+
+    ngx_feature="gcc builtin 64 bit byteswap"
+    ngx_feature_name="NGX_HAVE_GCC_BSWAP64"
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="__builtin_bswap64(0)"
     . auto/feature
 
 

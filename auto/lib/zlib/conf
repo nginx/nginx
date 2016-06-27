@@ -8,13 +8,13 @@ if [ $ZLIB != NONE ]; then
 
     case "$NGX_CC_NAME" in
 
-        msvc* | owc* | bcc)
+        msvc | owc | bcc)
             have=NGX_ZLIB . auto/have
             LINK_DEPS="$LINK_DEPS $ZLIB/zlib.lib"
             CORE_LIBS="$CORE_LIBS $ZLIB/zlib.lib"
         ;;
 
-        icc*)
+        icc)
             have=NGX_ZLIB . auto/have
             LINK_DEPS="$LINK_DEPS $ZLIB/libz.a"
 

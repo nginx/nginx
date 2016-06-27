@@ -229,7 +229,7 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
             return ngx_http_next_header_filter(r);
         }
 
-        ctx->matches = ngx_pnalloc(r->pool, sizeof(ngx_array_t));
+        ctx->matches = ngx_palloc(r->pool, sizeof(ngx_array_t));
         if (ctx->matches == NULL) {
             return NGX_ERROR;
         }
@@ -237,7 +237,7 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
         ctx->matches->elts = matches;
         ctx->matches->nelts = j;
 
-        ctx->tables = ngx_pnalloc(r->pool, sizeof(ngx_http_sub_tables_t));
+        ctx->tables = ngx_palloc(r->pool, sizeof(ngx_http_sub_tables_t));
         if (ctx->tables == NULL) {
             return NGX_ERROR;
         }
@@ -341,7 +341,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             rc = ngx_http_sub_parse(r, ctx);
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "parse: %d, looked: \"%V\" %p-%p",
+                           "parse: %i, looked: \"%V\" %p-%p",
                            rc, &ctx->looked, ctx->copy_start, ctx->copy_end);
 
             if (rc == NGX_ERROR) {
@@ -859,7 +859,7 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         pairs = conf->pairs->elts;
         n = conf->pairs->nelts;
 
-        matches = ngx_pnalloc(cf->pool, sizeof(ngx_http_sub_match_t) * n);
+        matches = ngx_palloc(cf->pool, sizeof(ngx_http_sub_match_t) * n);
         if (matches == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -869,7 +869,7 @@ ngx_http_sub_merge_conf(ngx_conf_t *cf, void *parent, void *child)
             matches[i].value = &pairs[i].value;
         }
 
-        conf->matches = ngx_pnalloc(cf->pool, sizeof(ngx_array_t));
+        conf->matches = ngx_palloc(cf->pool, sizeof(ngx_array_t));
         if (conf->matches == NULL) {
             return NGX_CONF_ERROR;
         }

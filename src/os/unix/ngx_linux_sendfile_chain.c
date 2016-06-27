@@ -292,6 +292,19 @@ eintr:
         }
     }
 
+    if (n == 0) {
+        /*
+         * if sendfile returns zero, then someone has truncated the file,
+         * so the offset became beyond the end of the file
+         */
+
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "sendfile() reported that \"%s\" was truncated at %O",
+                      file->file->name.data, file->file_pos);
+
+        return NGX_ERROR;
+    }
+
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0, "sendfile: %z of %uz @%O",
                    n, size, file->file_pos);
 
@@ -315,7 +328,6 @@ static ngx_int_t
 ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
     size_t *sent)
 {
-    ngx_uint_t                 flags;
     ngx_event_t               *wev;
     ngx_thread_task_t         *task;
     ngx_linux_sendfile_ctx_t  *ctx;
@@ -343,29 +355,60 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size,
     if (task->event.complete) {
         task->event.complete = 0;
 
-        if (ctx->err && ctx->err != NGX_EAGAIN) {
+        if (ctx->err == NGX_EAGAIN) {
+            *sent = 0;
+
+            if (wev->complete) {
+                return NGX_DONE;
+            }
+
+            return NGX_AGAIN;
+        }
+
+        if (ctx->err) {
             wev->error = 1;
             ngx_connection_error(c, ctx->err, "sendfile() failed");
             return NGX_ERROR;
         }
 
+        if (ctx->sent == 0) {
+            /*
+             * if sendfile returns zero, then someone has truncated the file,
+             * so the offset became beyond the end of the file
+             */
+
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "sendfile() reported that \"%s\" was truncated at %O",
+                          file->file->name.data, file->file_pos);
+
+            return NGX_ERROR;
+        }
+
         *sent = ctx->sent;
 
-        return (ctx->sent == ctx->size) ? NGX_DONE : NGX_AGAIN;
+        if (ctx->sent == ctx->size || wev->complete) {
+            return NGX_DONE;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    if (task->event.active && ctx->file == file) {
+        /*
+         * tolerate duplicate calls; they can happen due to subrequests
+         * or multiple calls of the next body filter from a filter
+         */
+
+        *sent = 0;
+
+        return NGX_OK;
     }
 
     ctx->file = file;
     ctx->socket = c->fd;
     ctx->size = size;
 
-    if (wev->active) {
-        flags = (ngx_event_flags & NGX_USE_CLEAR_EVENT) ? NGX_CLEAR_EVENT
-                                                        : NGX_LEVEL_EVENT;
-
-        if (ngx_del_event(wev, NGX_WRITE_EVENT, flags) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-    }
+    wev->complete = 0;
 
     if (file->file->thread_handler(task, file->file) != NGX_OK) {
         return NGX_ERROR;
@@ -408,7 +451,7 @@ again:
 #endif
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "sendfile: %z (err: %i) of %uz @%O",
+                   "sendfile: %z (err: %d) of %uz @%O",
                    n, ctx->err, ctx->size, file->file_pos);
 
     if (ctx->err == NGX_EINTR) {

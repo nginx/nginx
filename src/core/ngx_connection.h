@@ -64,6 +64,7 @@ struct ngx_listening_s {
     unsigned            nonblocking:1;
     unsigned            shared:1;    /* shared between threads or processes */
     unsigned            addr_ntop:1;
+    unsigned            wildcard:1;
 
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
     unsigned            ipv6only:1;
@@ -94,25 +95,25 @@ struct ngx_listening_s {
 
 
 typedef enum {
-     NGX_ERROR_ALERT = 0,
-     NGX_ERROR_ERR,
-     NGX_ERROR_INFO,
-     NGX_ERROR_IGNORE_ECONNRESET,
-     NGX_ERROR_IGNORE_EINVAL
+    NGX_ERROR_ALERT = 0,
+    NGX_ERROR_ERR,
+    NGX_ERROR_INFO,
+    NGX_ERROR_IGNORE_ECONNRESET,
+    NGX_ERROR_IGNORE_EINVAL
 } ngx_connection_log_error_e;
 
 
 typedef enum {
-     NGX_TCP_NODELAY_UNSET = 0,
-     NGX_TCP_NODELAY_SET,
-     NGX_TCP_NODELAY_DISABLED
+    NGX_TCP_NODELAY_UNSET = 0,
+    NGX_TCP_NODELAY_SET,
+    NGX_TCP_NODELAY_DISABLED
 } ngx_connection_tcp_nodelay_e;
 
 
 typedef enum {
-     NGX_TCP_NOPUSH_UNSET = 0,
-     NGX_TCP_NOPUSH_SET,
-     NGX_TCP_NOPUSH_DISABLED
+    NGX_TCP_NOPUSH_UNSET = 0,
+    NGX_TCP_NOPUSH_SET,
+    NGX_TCP_NOPUSH_DISABLED
 } ngx_connection_tcp_nopush_e;
 
 
@@ -141,11 +142,14 @@ struct ngx_connection_s {
 
     ngx_pool_t         *pool;
 
+    int                 type;
+
     struct sockaddr    *sockaddr;
     socklen_t           socklen;
     ngx_str_t           addr_text;
 
     ngx_str_t           proxy_protocol_addr;
+    in_port_t           proxy_protocol_port;
 
 #if (NGX_SSL)
     ngx_ssl_connection_t  *ssl;
@@ -166,7 +170,6 @@ struct ngx_connection_s {
 
     unsigned            log_error:3;     /* ngx_connection_log_error_e */
 
-    unsigned            unexpected_eof:1;
     unsigned            timedout:1;
     unsigned            error:1;
     unsigned            destroyed:1;
@@ -174,6 +177,7 @@ struct ngx_connection_s {
     unsigned            idle:1;
     unsigned            reusable:1;
     unsigned            close:1;
+    unsigned            shared:1;
 
     unsigned            sendfile:1;
     unsigned            sndlowat:1;
@@ -207,7 +211,7 @@ struct ngx_connection_s {
     }
 
 
-ngx_listening_t *ngx_create_listening(ngx_conf_t *cf, void *sockaddr,
+ngx_listening_t *ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     socklen_t socklen);
 ngx_int_t ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls);
 ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);

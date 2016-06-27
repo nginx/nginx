@@ -233,11 +233,11 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         } else if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
 
-             /*
-              * if a socket was bound with I/O completion port then
-              * GetQueuedCompletionStatus() would anyway return its status
-              * despite that WSASend() was already complete
-              */
+            /*
+             * if a socket was bound with I/O completion port then
+             * GetQueuedCompletionStatus() would anyway return its status
+             * despite that WSASend() was already complete
+             */
 
             wev->active = 1;
             return in;

@@ -48,6 +48,8 @@
 #include <sys/sysctl.h>
 #include <xlocale.h>
 
+#include <dlfcn.h>
+
 
 #ifndef IOV_MAX
 #define IOV_MAX   64

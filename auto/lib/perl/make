@@ -8,7 +8,10 @@ v=`grep 'define NGINX_VERSION' src/core/nginx.h | sed -e 's/^.*"\(.*\)".*/\1/'`
 
 cat << END                                                    >> $NGX_MAKEFILE
 
-$NGX_OBJS/src/http/modules/perl/blib/arch/auto/nginx/nginx.$ngx_perl_dlext: \\
+$NGX_OBJS/src/http/modules/perl/ngx_http_perl_module.o: \\
+		$NGX_OBJS/$ngx_perl_module
+
+$NGX_OBJS/$ngx_perl_module: \\
 		\$(CORE_DEPS) \$(HTTP_DEPS) \\
 		src/http/modules/perl/ngx_http_perl_module.h \\
 		$NGX_OBJS/src/http/modules/perl/Makefile

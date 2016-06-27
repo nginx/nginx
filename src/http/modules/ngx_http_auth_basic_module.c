@@ -298,7 +298,7 @@ ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r,
                    &encrypted);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "rc: %d user: \"%V\" salt: \"%s\"",
+                   "rc: %i user: \"%V\" salt: \"%s\"",
                    rc, &r->headers_in.user, passwd->data);
 
     if (rc == NGX_OK) {

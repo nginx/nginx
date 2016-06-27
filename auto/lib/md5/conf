@@ -20,12 +20,12 @@ if [ $MD5 != NONE ]; then
 
     case "$NGX_CC_NAME" in
 
-        msvc* | owc* | bcc)
+        msvc | owc | bcc)
             LINK_DEPS="$LINK_DEPS $MD5/md5.lib"
             CORE_LIBS="$CORE_LIBS $MD5/md5.lib"
         ;;
 
-        icc*)
+        icc)
             LINK_DEPS="$LINK_DEPS $MD5/libmd5.a"
 
             # to allow -ipo optimization we link with the *.o but not library

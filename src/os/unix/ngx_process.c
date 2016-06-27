@@ -611,7 +611,7 @@ ngx_debug_point(void)
 
 
 ngx_int_t
-ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_int_t pid)
+ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_pid_t pid)
 {
     ngx_signal_t  *sig;
 

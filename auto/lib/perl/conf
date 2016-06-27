@@ -57,11 +57,14 @@ if test -n "$NGX_PERL_VER"; then
     if [ "$NGX_SYSTEM" = "Darwin" ]; then
         # OS X system perl wants to link universal binaries
         ngx_perl_ldopts=`echo $ngx_perl_ldopts \
-                         | sed -e 's/-arch x86_64 -arch i386//'`
+                         | sed -e 's/-arch i386//' -e 's/-arch x86_64//'`
     fi
 
-    CORE_LINK="$CORE_LINK $ngx_perl_ldopts"
-    LINK_DEPS="$LINK_DEPS $NGX_OBJS/$ngx_perl_module"
+    if [ $USE_PERL = YES ]; then
+        CORE_LINK="$CORE_LINK $ngx_perl_ldopts"
+    fi
+
+    NGX_LIB_PERL="$ngx_perl_ldopts"
 
     if test -n "$NGX_PERL_MODULES"; then
         have=NGX_PERL_MODULES value="(u_char *) \"$NGX_PERL_MODULES\""

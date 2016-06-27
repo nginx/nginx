@@ -13,14 +13,6 @@
 #include <ngx_core.h>
 
 
-/*
- * TODO: autoconfigure NGX_SOCKADDRLEN and NGX_SOCKADDR_STRLEN as
- *       sizeof(struct sockaddr_storage)
- *       sizeof(struct sockaddr_un)
- *       sizeof(struct sockaddr_in6)
- *       sizeof(struct sockaddr_in)
- */
-
 #define NGX_INET_ADDRSTRLEN   (sizeof("255.255.255.255") - 1)
 #define NGX_INET6_ADDRSTRLEN                                                 \
     (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
@@ -29,15 +21,26 @@
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 #define NGX_SOCKADDR_STRLEN   (sizeof("unix:") - 1 + NGX_UNIX_ADDRSTRLEN)
-#else
+#elif (NGX_HAVE_INET6)
 #define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1)
+#else
+#define NGX_SOCKADDR_STRLEN   (NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1)
 #endif
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-#define NGX_SOCKADDRLEN       sizeof(struct sockaddr_un)
-#else
-#define NGX_SOCKADDRLEN       512
+/* compatibility */
+#define NGX_SOCKADDRLEN       sizeof(ngx_sockaddr_t)
+
+
+typedef union {
+    struct sockaddr           sockaddr;
+    struct sockaddr_in        sockaddr_in;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6       sockaddr_in6;
 #endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+    struct sockaddr_un        sockaddr_un;
+#endif
+} ngx_sockaddr_t;
 
 
 typedef struct {
@@ -87,13 +90,12 @@ typedef struct {
     unsigned                  listen:1;
     unsigned                  uri_part:1;
     unsigned                  no_resolve:1;
-    unsigned                  one_addr:1;  /* compatibility */
 
     unsigned                  no_port:1;
     unsigned                  wildcard:1;
 
     socklen_t                 socklen;
-    u_char                    sockaddr[NGX_SOCKADDRLEN];
+    ngx_sockaddr_t            sockaddr;
 
     ngx_addr_t               *addrs;
     ngx_uint_t                naddrs;
@@ -113,10 +115,14 @@ size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr);
 ngx_int_t ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
     size_t len);
+ngx_int_t ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr,
+    u_char *text, size_t len);
 ngx_int_t ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u);
 ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
     struct sockaddr *sa2, socklen_t slen2, ngx_uint_t cmp_port);
+in_port_t ngx_inet_get_port(struct sockaddr *sa);
+void ngx_inet_set_port(struct sockaddr *sa, in_port_t port);
 
 
 #endif /* _NGX_INET_H_INCLUDED_ */

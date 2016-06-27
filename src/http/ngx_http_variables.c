@@ -58,6 +58,8 @@ static ngx_int_t ngx_http_variable_remote_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_port(ngx_http_request_t *r,
@@ -97,6 +99,8 @@ static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_time(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_id(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -192,6 +196,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("proxy_protocol_addr"), NULL,
       ngx_http_variable_proxy_protocol_addr, 0, 0, 0 },
 
+    { ngx_string("proxy_protocol_port"), NULL,
+      ngx_http_variable_proxy_protocol_port, 0, 0, 0 },
+
     { ngx_string("server_addr"), NULL, ngx_http_variable_server_addr, 0, 0, 0 },
 
     { ngx_string("server_port"), NULL, ngx_http_variable_server_port, 0, 0, 0 },
@@ -273,6 +280,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("request_time"), NULL, ngx_http_variable_request_time,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("request_id"), NULL,
+      ngx_http_variable_request_id,
+      0, 0, 0 },
 
     { ngx_string("status"), NULL,
       ngx_http_variable_status, 0,
@@ -1190,11 +1201,7 @@ static ngx_int_t
 ngx_http_variable_remote_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t            port;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    ngx_uint_t  port;
 
     v->len = 0;
     v->valid = 1;
@@ -1206,26 +1213,7 @@ ngx_http_variable_remote_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    switch (r->connection->sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) r->connection->sockaddr;
-        port = ntohs(sin6->sin6_port);
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        port = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        sin = (struct sockaddr_in *) r->connection->sockaddr;
-        port = ntohs(sin->sin_port);
-        break;
-    }
+    port = ngx_inet_get_port(r->connection->sockaddr);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
@@ -1244,6 +1232,32 @@ ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->connection->proxy_protocol_addr.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t  port;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = ngx_pnalloc(r->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    port = r->connection->proxy_protocol_port;
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
 
     return NGX_OK;
 }
@@ -1284,11 +1298,7 @@ static ngx_int_t
 ngx_http_variable_server_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t            port;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
+    ngx_uint_t  port;
 
     v->len = 0;
     v->valid = 1;
@@ -1304,26 +1314,7 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    switch (r->connection->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) r->connection->local_sockaddr;
-        port = ntohs(sin6->sin6_port);
-        break;
-#endif
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        port = 0;
-        break;
-#endif
-
-    default: /* AF_INET */
-        sin = (struct sockaddr_in *) r->connection->local_sockaddr;
-        port = ntohs(sin->sin_port);
-        break;
-    }
+    port = ngx_inet_get_port(r->connection->local_sockaddr);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
@@ -2068,6 +2059,47 @@ ngx_http_variable_request_time(ngx_http_request_t *r,
 
 
 static ngx_int_t
+ngx_http_variable_request_id(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *id;
+
+#if (NGX_OPENSSL)
+    u_char   random_bytes[16];
+#endif
+
+    id = ngx_pnalloc(r->pool, 32);
+    if (id == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->len = 32;
+    v->data = id;
+
+#if (NGX_OPENSSL)
+
+    if (RAND_bytes(random_bytes, 16) == 1) {
+        ngx_hex_dump(id, random_bytes, 16);
+        return NGX_OK;
+    }
+
+    ngx_ssl_error(NGX_LOG_ERR, r->connection->log, 0, "RAND_bytes() failed");
+
+#endif
+
+    ngx_sprintf(id, "%08xD%08xD%08xD%08xD",
+                (uint32_t) ngx_random(), (uint32_t) ngx_random(),
+                (uint32_t) ngx_random(), (uint32_t) ngx_random());
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_variable_connection(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
@@ -2428,9 +2460,8 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 
         v = cmcf->variables.elts;
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http regex set $%V to \"%*s\"",
-                       &v[index].name, vv->len, vv->data);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http regex set $%V to \"%v\"", &v[index].name, vv);
         }
 #endif
     }

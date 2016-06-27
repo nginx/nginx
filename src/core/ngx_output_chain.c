@@ -577,11 +577,15 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
         } else
 #endif
 #if (NGX_THREADS)
-        if (src->file->thread_handler) {
-            n = ngx_thread_read(&ctx->thread_task, src->file, dst->pos,
-                                (size_t) size, src->file_pos, ctx->pool);
+        if (ctx->thread_handler) {
+            src->file->thread_task = ctx->thread_task;
+            src->file->thread_handler = ctx->thread_handler;
+            src->file->thread_ctx = ctx->filter_ctx;
+
+            n = ngx_thread_read(src->file, dst->pos, (size_t) size,
+                                src->file_pos, ctx->pool);
             if (n == NGX_AGAIN) {
-                ctx->aio = 1;
+                ctx->thread_task = src->file->thread_task;
                 return NGX_AGAIN;
             }
 
