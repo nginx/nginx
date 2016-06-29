@@ -1020,6 +1020,14 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_MAP = YES ]; then
+        ngx_module_name=ngx_stream_map_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_map_module.c
+
+        . auto/module
+    fi
+
     if [ $STREAM_UPSTREAM_HASH = YES ]; then
         ngx_module_name=ngx_stream_upstream_hash_module
         ngx_module_deps=
