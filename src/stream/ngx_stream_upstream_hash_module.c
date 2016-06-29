@@ -23,6 +23,7 @@ typedef struct {
 
 
 typedef struct {
+    ngx_stream_complex_value_t            key;
     ngx_stream_upstream_chash_points_t   *points;
 } ngx_stream_upstream_hash_srv_conf_t;
 
@@ -141,7 +142,9 @@ ngx_stream_upstream_init_hash_peer(ngx_stream_session_t *s,
     hcf = ngx_stream_conf_upstream_srv_conf(us,
                                             ngx_stream_upstream_hash_module);
 
-    hp->key = s->connection->addr_text;
+    if (ngx_stream_complex_value(s, &hcf->key, &hp->key) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "upstream hash key:\"%V\"", &hp->key);
@@ -616,15 +619,21 @@ ngx_stream_upstream_hash_create_conf(ngx_conf_t *cf)
 static char *
 ngx_stream_upstream_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t                       *value;
-    ngx_stream_upstream_srv_conf_t  *uscf;
+    ngx_stream_upstream_hash_srv_conf_t  *hcf = conf;
+
+    ngx_str_t                           *value;
+    ngx_stream_upstream_srv_conf_t      *uscf;
+    ngx_stream_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "$remote_addr")) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "unsupported hash key \"%V\", use $remote_addr",
-                           &value[1]);
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &hcf->key;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 

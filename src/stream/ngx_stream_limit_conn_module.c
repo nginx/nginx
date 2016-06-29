@@ -11,33 +11,34 @@
 
 
 typedef struct {
-    u_char                     color;
-    u_char                     len;
-    u_short                    conn;
-    u_char                     data[1];
+    u_char                       color;
+    u_char                       len;
+    u_short                      conn;
+    u_char                       data[1];
 } ngx_stream_limit_conn_node_t;
 
 
 typedef struct {
-    ngx_shm_zone_t            *shm_zone;
-    ngx_rbtree_node_t         *node;
+    ngx_shm_zone_t              *shm_zone;
+    ngx_rbtree_node_t           *node;
 } ngx_stream_limit_conn_cleanup_t;
 
 
 typedef struct {
-    ngx_rbtree_t              *rbtree;
+    ngx_rbtree_t                *rbtree;
+    ngx_stream_complex_value_t   key;
 } ngx_stream_limit_conn_ctx_t;
 
 
 typedef struct {
-    ngx_shm_zone_t            *shm_zone;
-    ngx_uint_t                 conn;
+    ngx_shm_zone_t              *shm_zone;
+    ngx_uint_t                   conn;
 } ngx_stream_limit_conn_limit_t;
 
 
 typedef struct {
-    ngx_array_t                limits;
-    ngx_uint_t                 log_level;
+    ngx_array_t                  limits;
+    ngx_uint_t                   log_level;
 } ngx_stream_limit_conn_conf_t;
 
 
@@ -130,47 +131,35 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
     ngx_slab_pool_t                  *shpool;
     ngx_rbtree_node_t                *node;
     ngx_pool_cleanup_t               *cln;
-    struct sockaddr_in               *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6              *sin6;
-#endif
     ngx_stream_limit_conn_ctx_t      *ctx;
     ngx_stream_limit_conn_node_t     *lc;
     ngx_stream_limit_conn_conf_t     *lccf;
     ngx_stream_limit_conn_limit_t    *limits;
     ngx_stream_limit_conn_cleanup_t  *lccln;
 
-    switch (s->connection->sockaddr->sa_family) {
-
-    case AF_INET:
-        sin = (struct sockaddr_in *) s->connection->sockaddr;
-
-        key.len = sizeof(in_addr_t);
-        key.data = (u_char *) &sin->sin_addr;
-
-        break;
-
-#if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) s->connection->sockaddr;
-
-        key.len = sizeof(struct in6_addr);
-        key.data = sin6->sin6_addr.s6_addr;
-
-        break;
-#endif
-
-    default:
-        return NGX_DECLINED;
-    }
-
-    hash = ngx_crc32_short(key.data, key.len);
-
     lccf = ngx_stream_get_module_srv_conf(s, ngx_stream_limit_conn_module);
     limits = lccf->limits.elts;
 
     for (i = 0; i < lccf->limits.nelts; i++) {
         ctx = limits[i].shm_zone->data;
+
+        if (ngx_stream_complex_value(s, &ctx->key, &key) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (key.len == 0) {
+            continue;
+        }
+
+        if (key.len > 255) {
+            ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                          "the value of the \"%V\" key "
+                          "is more than 255 bytes: \"%V\"",
+                          &ctx->key.value, &key);
+            continue;
+        }
+
+        hash = ngx_crc32_short(key.data, key.len);
 
         shpool = (ngx_slab_pool_t *) limits[i].shm_zone->shm.addr;
 
@@ -383,6 +372,19 @@ ngx_stream_limit_conn_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     ctx = shm_zone->data;
 
     if (octx) {
+        if (ctx->key.value.len != octx->key.value.len
+            || ngx_strncmp(ctx->key.value.data, octx->key.value.data,
+                           ctx->key.value.len)
+               != 0)
+        {
+            ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
+                          "limit_conn_zone \"%V\" uses the \"%V\" key "
+                          "while previously it used the \"%V\" key",
+                          &shm_zone->shm.name, &ctx->key.value,
+                          &octx->key.value);
+            return NGX_ERROR;
+        }
+
         ctx->rbtree = octx->rbtree;
 
         return NGX_OK;
@@ -466,17 +468,28 @@ ngx_stream_limit_conn_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 static char *
 ngx_stream_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    u_char                       *p;
-    ssize_t                       size;
-    ngx_str_t                    *value, name, s;
-    ngx_uint_t                    i;
-    ngx_shm_zone_t               *shm_zone;
-    ngx_stream_limit_conn_ctx_t  *ctx;
+    u_char                              *p;
+    ssize_t                              size;
+    ngx_str_t                           *value, name, s;
+    ngx_uint_t                           i;
+    ngx_shm_zone_t                      *shm_zone;
+    ngx_stream_limit_conn_ctx_t         *ctx;
+    ngx_stream_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_limit_conn_ctx_t));
     if (ctx == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &ctx->key;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -538,17 +551,11 @@ ngx_stream_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (shm_zone->data) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "%V \"%V\" is already bound to key "
-                           "\"$binary_remote_addr\"",
-                           &cmd->name, &name);
-        return NGX_CONF_ERROR;
-    }
+        ctx = shm_zone->data;
 
-    if (ngx_strcmp(value[1].data, "$binary_remote_addr") != 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "unsupported key \"%V\", use "
-                           "$binary_remote_addr", &value[1]);
+                           "%V \"%V\" is already bound to key \"%V\"",
+                           &cmd->name, &name, &ctx->key.value);
         return NGX_CONF_ERROR;
     }
 

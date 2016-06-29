@@ -12,10 +12,10 @@
 
 typedef struct {
     ngx_addr_t                      *addr;
+    ngx_stream_complex_value_t      *value;
 #if (NGX_HAVE_TRANSPARENT_PROXY)
-    unsigned                         transparent:1;
+    ngx_uint_t                       transparent; /* unsigned  transparent:1; */
 #endif
-    unsigned                         no_port:1;
 } ngx_stream_upstream_local_t;
 
 
@@ -448,8 +448,9 @@ static ngx_int_t
 ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     ngx_stream_upstream_local_t *local)
 {
-    ngx_addr_t        *addr;
-    ngx_connection_t  *c;
+    ngx_int_t    rc;
+    ngx_str_t    val;
+    ngx_addr_t  *addr;
 
     if (local == NULL) {
         u->peer.local = NULL;
@@ -460,36 +461,36 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     u->peer.transparent = local->transparent;
 #endif
 
-    if (local->addr) {
+    if (local->value == NULL) {
         u->peer.local = local->addr;
         return NGX_OK;
     }
 
-    /* $remote_addr, $remote_addr:$remote_port, [$remote_addr]:$remote_port */
+    if (ngx_stream_complex_value(s, local->value, &val) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
-    c = s->connection;
+    if (val.len == 0) {
+        return NGX_OK;
+    }
 
-    addr = ngx_palloc(c->pool, sizeof(ngx_addr_t));
+    addr = ngx_palloc(s->connection->pool, sizeof(ngx_addr_t));
     if (addr == NULL) {
         return NGX_ERROR;
     }
 
-    addr->socklen = c->socklen;
-
-    if (local->no_port) {
-        addr->sockaddr = ngx_palloc(c->pool, addr->socklen);
-        if (addr->sockaddr == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(addr->sockaddr, c->sockaddr, c->socklen);
-        ngx_inet_set_port(addr->sockaddr, 0);
-
-    } else {
-        addr->sockaddr = c->sockaddr;
+    rc = ngx_parse_addr_port(s->connection->pool, addr, val.data, val.len);
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
     }
 
-    addr->name = c->addr_text;
+    if (rc != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "invalid local address \"%V\"", &val);
+        return NGX_OK;
+    }
+
+    addr->name = val;
     u->peer.local = addr;
 
     return NGX_OK;
@@ -1699,9 +1700,11 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_stream_proxy_srv_conf_t *pscf = conf;
 
-    ngx_int_t                     rc;
-    ngx_str_t                    *value;
-    ngx_stream_upstream_local_t  *local;
+    ngx_int_t                            rc;
+    ngx_str_t                           *value;
+    ngx_stream_complex_value_t           cv;
+    ngx_stream_upstream_local_t         *local;
+    ngx_stream_compile_complex_value_t   ccv;
 
     if (pscf->local != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
@@ -1714,6 +1717,16 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     local = ngx_pcalloc(cf->pool, sizeof(ngx_stream_upstream_local_t));
     if (local == NULL) {
         return NGX_CONF_ERROR;
@@ -1721,12 +1734,15 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     pscf->local = local;
 
-    if (ngx_strcmp(value[1].data, "$remote_addr") == 0) {
-        local->no_port = 1;
+    if (cv.lengths) {
+        local->value = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+        if (local->value == NULL) {
+            return NGX_CONF_ERROR;
+        }
 
-    } else if (ngx_strcmp(value[1].data, "$remote_addr:$remote_port") != 0
-               && ngx_strcmp(value[1].data, "[$remote_addr]:$remote_port") != 0)
-    {
+        *local->value = cv;
+
+    } else {
         local->addr = ngx_palloc(cf->pool, sizeof(ngx_addr_t));
         if (local->addr == NULL) {
             return NGX_CONF_ERROR;
