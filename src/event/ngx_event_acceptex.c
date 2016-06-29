@@ -41,8 +41,8 @@ ngx_event_acceptex(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed for %V",
                       &c->addr_text);
-    } else {
-        c->accept_context_updated = 1;
+        /* TODO: close socket */
+        return;
     }
 
     ngx_getacceptexsockaddrs(c->buffer->pos,

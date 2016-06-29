@@ -186,10 +186,6 @@ struct ngx_connection_s {
 
     unsigned            need_last_buf:1;
 
-#if (NGX_HAVE_IOCP)
-    unsigned            accept_context_updated:1;
-#endif
-
 #if (NGX_HAVE_AIO_SENDFILE)
     unsigned            busy_count:2;
 #endif

@@ -76,11 +76,6 @@ struct ngx_event_s {
 
     unsigned         cancelable:1;
 
-#if (NGX_WIN32)
-    /* setsockopt(SO_UPDATE_ACCEPT_CONTEXT) was successful */
-    unsigned         accept_context_updated:1;
-#endif
-
 #if (NGX_HAVE_KQUEUE)
     unsigned         kq_vnode:1;
 
