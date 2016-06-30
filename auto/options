@@ -136,16 +136,6 @@ PCRE_JIT=NO
 USE_OPENSSL=NO
 OPENSSL=NONE
 
-USE_MD5=NO
-MD5=NONE
-MD5_OPT=
-MD5_ASM=NO
-
-USE_SHA1=NO
-SHA1=NONE
-SHA1_OPT=
-SHA1_ASM=NO
-
 USE_ZLIB=NO
 ZLIB=NONE
 ZLIB_OPT=
@@ -333,13 +323,31 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-openssl=*)                OPENSSL="$value"           ;;
         --with-openssl-opt=*)            OPENSSL_OPT="$value"       ;;
 
-        --with-md5=*)                    MD5="$value"               ;;
-        --with-md5-opt=*)                MD5_OPT="$value"           ;;
-        --with-md5-asm)                  MD5_ASM=YES                ;;
+        --with-md5=*)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-md5\" option is deprecated"
+        ;;
+        --with-md5-opt=*)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-md5-opt\" option is deprecated"
+        ;;
+        --with-md5-asm)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-md5-asm\" option is deprecated"
+        ;;
 
-        --with-sha1=*)                   SHA1="$value"              ;;
-        --with-sha1-opt=*)               SHA1_OPT="$value"          ;;
-        --with-sha1-asm)                 SHA1_ASM=YES               ;;
+        --with-sha1=*)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-sha1\" option is deprecated"
+        ;;
+        --with-sha1-opt=*)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-sha1-opt\" option is deprecated"
+        ;;
+        --with-sha1-asm)
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--with-sha1-asm\" option is deprecated"
+        ;;
 
         --with-zlib=*)                   ZLIB="$value"              ;;
         --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
@@ -510,14 +518,6 @@ cat << END
   --with-pcre=DIR                    set path to PCRE library sources
   --with-pcre-opt=OPTIONS            set additional build options for PCRE
   --with-pcre-jit                    build PCRE with JIT compilation support
-
-  --with-md5=DIR                     set path to md5 library sources
-  --with-md5-opt=OPTIONS             set additional build options for md5
-  --with-md5-asm                     use md5 assembler sources
-
-  --with-sha1=DIR                    set path to sha1 library sources
-  --with-sha1-opt=OPTIONS            set additional build options for sha1
-  --with-sha1-asm                    use sha1 assembler sources
 
   --with-zlib=DIR                    set path to zlib library sources
   --with-zlib-opt=OPTIONS            set additional build options for zlib

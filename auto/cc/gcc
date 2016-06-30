@@ -128,12 +128,6 @@ else
     PCRE_OPT="$PCRE_OPT $PIPE"
 fi
 
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
-else
-    MD5_OPT="$MD5_OPT $PIPE"
-fi
-
 if [ ".$ZLIB_OPT" = "." ]; then
     ZLIB_OPT="-O2 -fomit-frame-pointer $PIPE $CPU_OPT"
 else

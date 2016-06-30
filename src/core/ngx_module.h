@@ -119,17 +119,8 @@
 #define NGX_MODULE_SIGNATURE_16  "0"
 #endif
 
-#if (NGX_HAVE_MD5)
-#define NGX_MODULE_SIGNATURE_17  "1"
-#else
 #define NGX_MODULE_SIGNATURE_17  "0"
-#endif
-
-#if (NGX_HAVE_SHA1)
-#define NGX_MODULE_SIGNATURE_18  "1"
-#else
 #define NGX_MODULE_SIGNATURE_18  "0"
-#endif
 
 #if (NGX_HAVE_OPENAT)
 #define NGX_MODULE_SIGNATURE_19  "1"

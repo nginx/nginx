@@ -101,7 +101,6 @@ fi
 
 
 if [ $HTTP_CACHE = YES ]; then
-    USE_MD5=YES
     have=NGX_HTTP_CACHE . auto/have
     HTTP_SRCS="$HTTP_SRCS $HTTP_FILE_CACHE_SRCS"
 fi
@@ -522,8 +521,6 @@ if [ $HTTP_AUTH_REQUEST = YES ]; then
 fi
 
 if [ $HTTP_AUTH_BASIC = YES ]; then
-    USE_MD5=YES
-    USE_SHA1=YES
     have=NGX_CRYPT . auto/have
 
     ngx_module_name=ngx_http_auth_basic_module
@@ -682,7 +679,6 @@ fi
 
 if [ $HTTP_PROXY = YES ]; then
     have=NGX_HTTP_X_FORWARDED_FOR . auto/have
-    #USE_MD5=YES
 
     ngx_module_name=ngx_http_proxy_module
     ngx_module_incs=
@@ -772,8 +768,6 @@ if [ $HTTP_BROWSER = YES ]; then
 fi
 
 if [ $HTTP_SECURE_LINK = YES ]; then
-    USE_MD5=YES
-
     ngx_module_name=ngx_http_secure_link_module
     ngx_module_incs=
     ngx_module_deps=

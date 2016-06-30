@@ -145,10 +145,6 @@ if [ ".$PCRE_OPT" = "." ]; then
     PCRE_OPT="$ngx_fast $IPO $CPU_OPT"
 fi
 
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="$ngx_fast $IPO $CPU_OPT"
-fi
-
 if [ ".$ZLIB_OPT" = "." ]; then
     ZLIB_OPT="$ngx_fast $IPO $CPU_OPT"
 fi

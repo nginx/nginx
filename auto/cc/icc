@@ -43,10 +43,6 @@ if [ ".$PCRE_OPT" = "." ]; then
     PCRE_OPT="-O $CPU_OPT"
 fi
 
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-O $CPU_OPT"
-fi
-
 if [ ".$ZLIB_OPT" = "." ]; then
     ZLIB_OPT="-O $CPU_OPT"
 fi

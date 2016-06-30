@@ -4,8 +4,6 @@
  * Copyright (C) Nginx, Inc.
  *
  * An internal SHA1 implementation.
- * It is not expected to be optimal and is used only
- * if no SHA1 implementation was found in system.
  */
 
 
@@ -13,8 +11,6 @@
 #include <ngx_core.h>
 #include <ngx_sha1.h>
 
-
-#if !(NGX_HAVE_SHA1)
 
 static const u_char *ngx_sha1_body(ngx_sha1_t *ctx, const u_char *data,
     size_t size);
@@ -296,5 +292,3 @@ ngx_sha1_body(ngx_sha1_t *ctx, const u_char *data, size_t size)
 
     return p;
 }
-
-#endif
