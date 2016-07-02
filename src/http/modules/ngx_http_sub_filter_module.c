@@ -83,7 +83,7 @@ static ngx_uint_t ngx_http_sub_cmp_index;
 static ngx_int_t ngx_http_sub_output(ngx_http_request_t *r,
     ngx_http_sub_ctx_t *ctx);
 static ngx_int_t ngx_http_sub_parse(ngx_http_request_t *r,
-    ngx_http_sub_ctx_t *ctx);
+    ngx_http_sub_ctx_t *ctx, ngx_uint_t flush);
 static ngx_int_t ngx_http_sub_match(ngx_http_sub_ctx_t *ctx, ngx_int_t start,
     ngx_str_t *m);
 
@@ -287,6 +287,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_str_t                 *sub;
+    ngx_uint_t                 flush, last;
     ngx_chain_t               *cl;
     ngx_http_sub_ctx_t        *ctx;
     ngx_http_sub_match_t      *match;
@@ -328,6 +329,9 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http sub filter \"%V\"", &r->uri);
 
+    flush = 0;
+    last = 0;
+
     while (ctx->in || ctx->buf) {
 
         if (ctx->buf == NULL) {
@@ -336,11 +340,19 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->pos = ctx->buf->pos;
         }
 
+        if (ctx->buf->flush || ctx->buf->recycled) {
+            flush = 1;
+        }
+
+        if (ctx->in == NULL) {
+            last = flush;
+        }
+
         b = NULL;
 
         while (ctx->pos < ctx->buf->last) {
 
-            rc = ngx_http_sub_parse(r, ctx);
+            rc = ngx_http_sub_parse(r, ctx, last);
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "parse: %i, looked: \"%V\" %p-%p",
@@ -592,7 +604,8 @@ ngx_http_sub_output(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
 
 static ngx_int_t
-ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
+ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx,
+    ngx_uint_t flush)
 {
     u_char                   *p, c;
     ngx_str_t                *m;
@@ -604,6 +617,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_sub_filter_module);
     tables = ctx->tables;
+    match = ctx->matches->elts;
 
     offset = ctx->offset;
     end = ctx->buf->last - ctx->pos;
@@ -630,7 +644,6 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
         /* a potential match */
 
         start = offset - (ngx_int_t) tables->min_match_len + 1;
-        match = ctx->matches->elts;
 
         i = ngx_max(tables->index[c], ctx->index);
         j = tables->index[c + 1];
@@ -669,6 +682,26 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
         offset++;
         ctx->index = 0;
+    }
+
+    if (flush) {
+        for ( ;; ) {
+            start = offset - (ngx_int_t) tables->min_match_len + 1;
+
+            if (start >= end) {
+                break;
+            }
+
+            for (i = 0; i < ctx->matches->nelts; i++) {
+                m = &match[i].match;
+
+                if (ngx_http_sub_match(ctx, start, m) == NGX_AGAIN) {
+                    goto again;
+                }
+            }
+
+            offset++;
+        }
     }
 
 again:
