@@ -84,6 +84,8 @@ static ngx_int_t ngx_http_sub_output(ngx_http_request_t *r,
     ngx_http_sub_ctx_t *ctx);
 static ngx_int_t ngx_http_sub_parse(ngx_http_request_t *r,
     ngx_http_sub_ctx_t *ctx);
+static ngx_int_t ngx_http_sub_match(ngx_http_sub_ctx_t *ctx, ngx_int_t start,
+    ngx_str_t *m);
 
 static char * ngx_http_sub_filter(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -592,7 +594,7 @@ ngx_http_sub_output(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 static ngx_int_t
 ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 {
-    u_char                   *p, *last, *pat, *pat_end, c;
+    u_char                   *p, c;
     ngx_str_t                *m;
     ngx_int_t                 offset, start, next, end, len, rc;
     ngx_uint_t                shift, i, j;
@@ -641,41 +643,15 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx)
 
             m = &match[i].match;
 
-            pat = m->data;
-            pat_end = m->data + m->len;
+            rc = ngx_http_sub_match(ctx, start, m);
 
-            if (start >= 0) {
-                p = ctx->pos + start;
-
-            } else {
-                last = ctx->looked.data + ctx->looked.len;
-                p = last + start;
-
-                while (p < last && pat < pat_end) {
-                    if (ngx_tolower(*p) != *pat) {
-                        goto next;
-                    }
-
-                    p++;
-                    pat++;
-                }
-
-                p = ctx->pos;
-            }
-
-            while (p < ctx->buf->last && pat < pat_end) {
-                if (ngx_tolower(*p) != *pat) {
-                    goto next;
-                }
-
-                p++;
-                pat++;
+            if (rc == NGX_DECLINED) {
+                goto next;
             }
 
             ctx->index = i;
 
-            if (pat != pat_end) {
-                /* partial match */
+            if (rc == NGX_AGAIN) {
                 goto again;
             }
 
@@ -728,6 +704,51 @@ done:
     ctx->offset -= end;
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_sub_match(ngx_http_sub_ctx_t *ctx, ngx_int_t start, ngx_str_t *m)
+{
+    u_char  *p, *last, *pat, *pat_end;
+
+    pat = m->data;
+    pat_end = m->data + m->len;
+
+    if (start >= 0) {
+        p = ctx->pos + start;
+
+    } else {
+        last = ctx->looked.data + ctx->looked.len;
+        p = last + start;
+
+        while (p < last && pat < pat_end) {
+            if (ngx_tolower(*p) != *pat) {
+                return NGX_DECLINED;
+            }
+
+            p++;
+            pat++;
+        }
+
+        p = ctx->pos;
+    }
+
+    while (p < ctx->buf->last && pat < pat_end) {
+        if (ngx_tolower(*p) != *pat) {
+            return NGX_DECLINED;
+        }
+
+        p++;
+        pat++;
+    }
+
+    if (pat != pat_end) {
+        /* partial match */
+        return NGX_AGAIN;
+    }
+
+    return NGX_OK;
 }
 
 
