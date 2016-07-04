@@ -10,7 +10,9 @@
 #include <ngx_stream.h>
 
 
+static ngx_int_t ngx_stream_core_preconfiguration(ngx_conf_t *cf);
 static void *ngx_stream_core_create_main_conf(ngx_conf_t *cf);
+static char *ngx_stream_core_init_main_conf(ngx_conf_t *cf, void *conf);
 static void *ngx_stream_core_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -23,6 +25,20 @@ static char *ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static ngx_command_t  ngx_stream_core_commands[] = {
+
+    { ngx_string("variables_hash_max_size"),
+      NGX_STREAM_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_STREAM_MAIN_CONF_OFFSET,
+      offsetof(ngx_stream_core_main_conf_t, variables_hash_max_size),
+      NULL },
+
+    { ngx_string("variables_hash_bucket_size"),
+      NGX_STREAM_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_STREAM_MAIN_CONF_OFFSET,
+      offsetof(ngx_stream_core_main_conf_t, variables_hash_bucket_size),
+      NULL },
 
     { ngx_string("server"),
       NGX_STREAM_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
@@ -57,11 +73,11 @@ static ngx_command_t  ngx_stream_core_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_core_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_stream_core_preconfiguration,      /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     ngx_stream_core_create_main_conf,      /* create main configuration */
-    NULL,                                  /* init main configuration */
+    ngx_stream_core_init_main_conf,        /* init main configuration */
 
     ngx_stream_core_create_srv_conf,       /* create server configuration */
     ngx_stream_core_merge_srv_conf         /* merge server configuration */
@@ -82,6 +98,13 @@ ngx_module_t  ngx_stream_core_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+
+static ngx_int_t
+ngx_stream_core_preconfiguration(ngx_conf_t *cf)
+{
+    return ngx_stream_variables_add_core_vars(cf);
+}
 
 
 static void *
@@ -107,7 +130,29 @@ ngx_stream_core_create_main_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    cmcf->variables_hash_max_size = NGX_CONF_UNSET_UINT;
+    cmcf->variables_hash_bucket_size = NGX_CONF_UNSET_UINT;
+
     return cmcf;
+}
+
+
+static char *
+ngx_stream_core_init_main_conf(ngx_conf_t *cf, void *conf)
+{
+    ngx_stream_core_main_conf_t *cmcf = conf;
+
+    ngx_conf_init_uint_value(cmcf->variables_hash_max_size, 1024);
+    ngx_conf_init_uint_value(cmcf->variables_hash_bucket_size, 64);
+
+    cmcf->variables_hash_bucket_size =
+               ngx_align(cmcf->variables_hash_bucket_size, ngx_cacheline_size);
+
+    if (cmcf->ncaptures) {
+        cmcf->ncaptures = (cmcf->ncaptures + 1) * 3;
+    }
+
+    return NGX_CONF_OK;
 }
 
 

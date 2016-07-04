@@ -976,9 +976,13 @@ if [ $STREAM != NO ]; then
                      ngx_stream_upstream_module"
     ngx_module_incs="src/stream"
     ngx_module_deps="src/stream/ngx_stream.h \
+                     src/stream/ngx_stream_variables.h \
+                     src/stream/ngx_stream_script.h \
                      src/stream/ngx_stream_upstream.h \
                      src/stream/ngx_stream_upstream_round_robin.h"
     ngx_module_srcs="src/stream/ngx_stream.c \
+                     src/stream/ngx_stream_variables.c \
+                     src/stream/ngx_stream_script.c \
                      src/stream/ngx_stream_handler.c \
                      src/stream/ngx_stream_core_module.c \
                      src/stream/ngx_stream_proxy_module.c \

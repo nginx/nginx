@@ -149,6 +149,15 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
 
+    s->variables = ngx_pcalloc(s->connection->pool,
+                               cmcf->variables.nelts
+                               * sizeof(ngx_stream_variable_value_t));
+
+    if (s->variables == NULL) {
+        ngx_stream_close_connection(c);
+        return;
+    }
+
     if (cmcf->limit_conn_handler) {
         rc = cmcf->limit_conn_handler(s);
 
