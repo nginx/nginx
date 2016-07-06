@@ -282,11 +282,9 @@ ngx_stream_script_compile(ngx_stream_script_compile_t *sc)
                 goto invalid_variable;
             }
 
-#if (NGX_PCRE)
-            {
-            ngx_uint_t  n;
-
             if (sc->source->data[i] >= '1' && sc->source->data[i] <= '9') {
+#if (NGX_PCRE)
+                ngx_uint_t  n;
 
                 n = sc->source->data[i] - '0';
 
@@ -297,9 +295,13 @@ ngx_stream_script_compile(ngx_stream_script_compile_t *sc)
                 i++;
 
                 continue;
-            }
-            }
+#else
+                ngx_conf_log_error(NGX_LOG_EMERG, sc->cf, 0,
+                                   "using variable \"$%c\" requires "
+                                   "PCRE library", sc->source->data[i]);
+                return NGX_ERROR;
 #endif
+            }
 
             if (sc->source->data[i] == '{') {
                 bracket = 1;
