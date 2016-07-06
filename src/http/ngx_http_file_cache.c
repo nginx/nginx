@@ -101,7 +101,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
             return NGX_ERROR;
         }
 
-        for (n = 0; n < 3; n++) {
+        for (n = 0; n < NGX_MAX_PATH_LEVEL; n++) {
             if (cache->path->level[n] != ocache->path->level[n]) {
                 ngx_log_error(NGX_LOG_EMERG, shm_zone->shm.log, 0,
                               "cache \"%V\" had previously different levels",
@@ -2257,7 +2257,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             p = value[i].data + 7;
             last = value[i].data + value[i].len;
 
-            for (n = 0; n < 3 && p < last; n++) {
+            for (n = 0; n < NGX_MAX_PATH_LEVEL && p < last; n++) {
 
                 if (*p > '0' && *p < '3') {
 
@@ -2268,7 +2268,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                         break;
                     }
 
-                    if (*p++ == ':' && n < 2 && p != last) {
+                    if (*p++ == ':' && n < NGX_MAX_PATH_LEVEL - 1 && p < last) {
                         continue;
                     }
 
@@ -2278,7 +2278,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto invalid_levels;
             }
 
-            if (cache->path->len < 10 + 3) {
+            if (cache->path->len < 10 + NGX_MAX_PATH_LEVEL) {
                 continue;
             }
 
@@ -2450,7 +2450,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_memcpy(p, "/temp", sizeof("/temp"));
 
         ngx_memcpy(&cache->temp_path->level, &cache->path->level,
-                   3 * sizeof(size_t));
+                   NGX_MAX_PATH_LEVEL * sizeof(size_t));
 
         cache->temp_path->len = cache->path->len;
         cache->temp_path->conf_file = cf->conf_file->file.name.data;

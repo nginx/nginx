@@ -49,7 +49,7 @@ typedef void (*ngx_path_loader_pt) (void *data);
 typedef struct {
     ngx_str_t                  name;
     size_t                     len;
-    size_t                     level[3];
+    size_t                     level[NGX_MAX_PATH_LEVEL];
 
     ngx_path_manager_pt        manager;
     ngx_path_loader_pt         loader;
@@ -62,7 +62,7 @@ typedef struct {
 
 typedef struct {
     ngx_str_t                  name;
-    size_t                     level[3];
+    size_t                     level[NGX_MAX_PATH_LEVEL];
 } ngx_path_init_t;
 
 
