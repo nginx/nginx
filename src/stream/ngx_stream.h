@@ -141,6 +141,9 @@ typedef struct {
     ngx_flag_t                     tcp_nodelay;
 
     ngx_log_t                     *error_log;
+
+    ngx_msec_t                     resolver_timeout;
+    ngx_resolver_t                *resolver;
 } ngx_stream_core_srv_conf_t;
 
 

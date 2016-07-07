@@ -22,6 +22,8 @@ static char *ngx_stream_core_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 
 static ngx_command_t  ngx_stream_core_commands[] = {
@@ -59,6 +61,20 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       ngx_stream_core_error_log,
       NGX_STREAM_SRV_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("resolver"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
+      ngx_stream_core_resolver,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("resolver_timeout"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_core_srv_conf_t, resolver_timeout),
       NULL },
 
     { ngx_string("tcp_nodelay"),
@@ -175,6 +191,7 @@ ngx_stream_core_create_srv_conf(ngx_conf_t *cf)
 
     cscf->file_name = cf->conf_file->file.name.data;
     cscf->line = cf->conf_file->line;
+    cscf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     cscf->tcp_nodelay = NGX_CONF_UNSET;
 
     return cscf;
@@ -186,6 +203,27 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_stream_core_srv_conf_t *prev = parent;
     ngx_stream_core_srv_conf_t *conf = child;
+
+    ngx_conf_merge_msec_value(conf->resolver_timeout,
+                              prev->resolver_timeout, 30000);
+
+    if (conf->resolver == NULL) {
+
+        if (prev->resolver == NULL) {
+
+            /*
+             * create dummy resolver in stream {} context
+             * to inherit it in all servers
+             */
+
+            prev->resolver = ngx_resolver_create(cf, NULL, 0);
+            if (prev->resolver == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
+
+        conf->resolver = prev->resolver;
+    }
 
     if (conf->handler == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
@@ -560,6 +598,28 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "duplicate \"%V\" address and port pair", &u.url);
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_stream_core_srv_conf_t  *cscf = conf;
+
+    ngx_str_t  *value;
+
+    if (cscf->resolver) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    cscf->resolver = ngx_resolver_create(cf, &value[1], cf->args->nelts - 1);
+    if (cscf->resolver == NULL) {
         return NGX_CONF_ERROR;
     }
 
