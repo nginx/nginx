@@ -298,7 +298,7 @@ size_t ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst,
 
 #define ngx_http_v2_parse_uint16(p)  ((p)[0] << 8 | (p)[1])
 #define ngx_http_v2_parse_uint32(p)                                           \
-    ((p)[0] << 24 | (p)[1] << 16 | (p)[2] << 8 | (p)[3])
+    ((uint32_t) (p)[0] << 24 | (p)[1] << 16 | (p)[2] << 8 | (p)[3])
 
 #endif
 
