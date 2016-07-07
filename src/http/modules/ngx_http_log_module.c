@@ -1000,7 +1000,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
         n = 0;
 
         while (size) {
-            if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+            if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
                 n++;
             }
             src++;
@@ -1011,7 +1011,7 @@ ngx_http_log_escape(u_char *dst, u_char *src, size_t size)
     }
 
     while (size) {
-        if (escape[*src >> 5] & (1 << (*src & 0x1f))) {
+        if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
             *dst++ = '\\';
             *dst++ = 'x';
             *dst++ = hex[*src >> 4];

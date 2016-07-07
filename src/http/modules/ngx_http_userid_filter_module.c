@@ -836,7 +836,7 @@ ngx_http_userid_init_worker(ngx_cycle_t *cycle)
     ngx_gettimeofday(&tp);
 
     /* use the most significant usec part that fits to 16 bits */
-    start_value = ((tp.tv_usec / 20) << 16) | ngx_pid;
+    start_value = (((uint32_t) tp.tv_usec / 20) << 16) | ngx_pid;
 
     return NGX_OK;
 }
