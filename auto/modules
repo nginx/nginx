@@ -1024,6 +1024,16 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_GEOIP != NO ]; then
+        ngx_module_name=ngx_stream_geoip_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_geoip_module.c
+        ngx_module_libs=GEOIP
+        ngx_module_link=$STREAM_GEOIP
+
+        . auto/module
+    fi
+
     if [ $STREAM_MAP = YES ]; then
         ngx_module_name=ngx_stream_map_module
         ngx_module_deps=
