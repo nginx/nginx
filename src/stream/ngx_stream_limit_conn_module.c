@@ -101,7 +101,7 @@ static ngx_stream_module_t  ngx_stream_limit_conn_module_ctx = {
     NULL,                                  /* init main configuration */
 
     ngx_stream_limit_conn_create_conf,     /* create server configuration */
-    ngx_stream_limit_conn_merge_conf,      /* merge server configuration */
+    ngx_stream_limit_conn_merge_conf       /* merge server configuration */
 };
 
 

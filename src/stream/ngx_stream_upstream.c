@@ -46,7 +46,7 @@ static ngx_stream_module_t  ngx_stream_upstream_module_ctx = {
     ngx_stream_upstream_init_main_conf,    /* init main configuration */
 
     NULL,                                  /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL                                   /* merge server configuration */
 };
 
 

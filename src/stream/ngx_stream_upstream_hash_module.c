@@ -84,7 +84,7 @@ static ngx_stream_module_t  ngx_stream_upstream_hash_module_ctx = {
     NULL,                                  /* init main configuration */
 
     ngx_stream_upstream_hash_create_conf,  /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL                                   /* merge server configuration */
 };
 
 

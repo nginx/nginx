@@ -48,7 +48,7 @@ static ngx_stream_module_t  ngx_stream_return_module_ctx = {
     NULL,                                  /* init main configuration */
 
     ngx_stream_return_create_srv_conf,     /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL                                   /* merge server configuration */
 };
 
 
