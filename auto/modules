@@ -965,8 +965,6 @@ if [ $STREAM != NO ]; then
     STREAM_INCS=
 
     ngx_module_type=STREAM
-    ngx_module_libs=
-    ngx_module_link=YES
 
     ngx_module_order=
 
@@ -1000,6 +998,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_ssl_module
         ngx_module_deps=src/stream/ngx_stream_ssl_module.h
         ngx_module_srcs=src/stream/ngx_stream_ssl_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_SSL
 
         . auto/module
     fi
@@ -1008,6 +1008,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_limit_conn_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_limit_conn_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_LIMIT_CONN
 
         . auto/module
     fi
@@ -1016,6 +1018,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_access_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_access_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_ACCESS
 
         . auto/module
     fi
@@ -1024,6 +1028,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_map_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_map_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_MAP
 
         . auto/module
     fi
@@ -1032,6 +1038,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_return_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_return_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_RETURN
 
         . auto/module
     fi
@@ -1040,6 +1048,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_upstream_hash_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_upstream_hash_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_HASH
 
         . auto/module
     fi
@@ -1048,6 +1058,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_upstream_least_conn_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_upstream_least_conn_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_LEAST_CONN
 
         . auto/module
     fi
@@ -1058,6 +1070,8 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_upstream_zone_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_upstream_zone_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_ZONE
 
         . auto/module
     fi
