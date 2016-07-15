@@ -27,6 +27,7 @@
 
 #define EPOLLRDHUP     0x2000
 
+#define EPOLLEXCLUSIVE 0x10000000
 #define EPOLLONESHOT   0x40000000
 #define EPOLLET        0x80000000
 
@@ -609,6 +610,12 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     } else {
         op = EPOLL_CTL_ADD;
     }
+
+#if (NGX_HAVE_EPOLLEXCLUSIVE && NGX_HAVE_EPOLLRDHUP)
+    if (flags & NGX_EXCLUSIVE_EVENT) {
+        events &= ~EPOLLRDHUP;
+    }
+#endif
 
     ee.events = events | (uint32_t) flags;
     ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);

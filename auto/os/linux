@@ -70,6 +70,22 @@ if [ $ngx_found = yes ]; then
                       ee.data.ptr = NULL;
                       epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ee)"
     . auto/feature
+
+
+    # EPOLLEXCLUSIVE appeared in Linux 4.5, glibc 2.24
+
+    ngx_feature="EPOLLEXCLUSIVE"
+    ngx_feature_name="NGX_HAVE_EPOLLEXCLUSIVE"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <sys/epoll.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="int efd = 0, fd = 0;
+                      struct epoll_event ee;
+                      ee.events = EPOLLIN|EPOLLEXCLUSIVE;
+                      ee.data.ptr = NULL;
+                      epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ee)"
+    . auto/feature
 fi
 
 

@@ -822,14 +822,37 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         rev->handler = (c->type == SOCK_STREAM) ? ngx_event_accept
                                                 : ngx_event_recvmsg;
 
-        if (ngx_use_accept_mutex
 #if (NGX_HAVE_REUSEPORT)
-            && !ls[i].reuseport
-#endif
-           )
-        {
+
+        if (ls[i].reuseport) {
+            if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
             continue;
         }
+
+#endif
+
+        if (ngx_use_accept_mutex) {
+            continue;
+        }
+
+#if (NGX_HAVE_EPOLLEXCLUSIVE)
+
+        if ((ngx_event_flags & NGX_USE_EPOLL_EVENT)
+            && ccf->worker_processes > 1)
+        {
+            if (ngx_add_event(rev, NGX_READ_EVENT, NGX_EXCLUSIVE_EVENT)
+                == NGX_ERROR)
+            {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+#endif
 
         if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
             return NGX_ERROR;
