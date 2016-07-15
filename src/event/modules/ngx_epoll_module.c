@@ -17,18 +17,18 @@
 #define EPOLLIN        0x001
 #define EPOLLPRI       0x002
 #define EPOLLOUT       0x004
+#define EPOLLERR       0x008
+#define EPOLLHUP       0x010
 #define EPOLLRDNORM    0x040
 #define EPOLLRDBAND    0x080
 #define EPOLLWRNORM    0x100
 #define EPOLLWRBAND    0x200
 #define EPOLLMSG       0x400
-#define EPOLLERR       0x008
-#define EPOLLHUP       0x010
 
 #define EPOLLRDHUP     0x2000
 
-#define EPOLLET        0x80000000
 #define EPOLLONESHOT   0x40000000
+#define EPOLLET        0x80000000
 
 #define EPOLL_CTL_ADD  1
 #define EPOLL_CTL_DEL  2
