@@ -599,7 +599,8 @@ error:
 static void
 ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 {
-    ngx_connection_t          *c;
+    ngx_int_t                rc;
+    ngx_connection_t        *c;
     ngx_http_v2_srv_conf_t  *h2scf;
 
     if (h2c->last_out || h2c->processing) {
@@ -614,7 +615,22 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     }
 
     if (c->buffered) {
-        return;
+        h2c->blocked = 1;
+
+        rc = ngx_http_v2_send_output_queue(h2c);
+
+        h2c->blocked = 0;
+
+        if (rc == NGX_ERROR) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        if (rc == NGX_AGAIN) {
+            return;
+        }
+
+        /* rc == NGX_OK */
     }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
