@@ -549,7 +549,7 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
         c->tcp_nodelay = NGX_TCP_NODELAY_SET;
     }
 
-    if (cl) {
+    if (!wev->ready) {
         ngx_add_timer(wev, clcf->send_timeout);
 
     } else {
