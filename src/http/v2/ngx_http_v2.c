@@ -615,7 +615,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     }
 
     if (ngx_terminate || ngx_exiting) {
-        ngx_http_close_connection(c);
+        ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
         return;
     }
 
