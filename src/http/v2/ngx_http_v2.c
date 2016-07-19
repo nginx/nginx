@@ -410,6 +410,16 @@ ngx_http_v2_write_handler(ngx_event_t *wev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http2 write handler");
 
+    if (h2c->last_out == NULL && !c->buffered) {
+
+        if (wev->timer_set) {
+            ngx_del_timer(wev);
+        }
+
+        ngx_http_v2_handle_connection(h2c);
+        return;
+    }
+
     h2c->blocked = 1;
 
     rc = ngx_http_v2_send_output_queue(h2c);
