@@ -1317,18 +1317,20 @@ static ngx_inline void
 ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
-    ngx_event_t  *wev;
+    ngx_connection_t  *fc;
 
-    if (stream->handled || stream->blocked || stream->exhausted) {
+    if (stream->handled || stream->blocked) {
         return;
     }
 
-    wev = stream->request->connection->write;
+    fc = stream->request->connection;
 
-    if (!wev->delayed) {
-        stream->handled = 1;
-        ngx_queue_insert_tail(&h2c->posted, &stream->queue);
+    if (!fc->error && (stream->exhausted || fc->write->delayed)) {
+        return;
     }
+
+    stream->handled = 1;
+    ngx_queue_insert_tail(&h2c->posted, &stream->queue);
 }
 
 
