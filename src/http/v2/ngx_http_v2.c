@@ -478,7 +478,7 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
     wev = c->write;
 
     if (!wev->ready) {
-        return NGX_OK;
+        return NGX_AGAIN;
     }
 
     cl = NULL;
@@ -549,15 +549,6 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
         c->tcp_nodelay = NGX_TCP_NODELAY_SET;
     }
 
-    if (!wev->ready) {
-        ngx_add_timer(wev, clcf->send_timeout);
-
-    } else {
-        if (wev->timer_set) {
-            ngx_del_timer(wev);
-        }
-    }
-
     for ( /* void */ ; out; out = fn) {
         fn = out->next;
 
@@ -581,6 +572,15 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
     }
 
     h2c->last_out = frame;
+
+    if (!wev->ready) {
+        ngx_add_timer(wev, clcf->send_timeout);
+        return NGX_AGAIN;
+    }
+
+    if (wev->timer_set) {
+        ngx_del_timer(wev);
+    }
 
     return NGX_OK;
 
