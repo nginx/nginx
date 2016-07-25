@@ -42,11 +42,11 @@ struct ngx_http_upstream_rr_peer_s {
     int                             ssl_session_len;
 #endif
 
-    ngx_http_upstream_rr_peer_t    *next;
-
 #if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_atomic_t                    lock;
 #endif
+
+    ngx_http_upstream_rr_peer_t    *next;
 };
 
 
