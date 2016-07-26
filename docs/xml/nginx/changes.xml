@@ -5,6 +5,87 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.3" date="26.07.2016">
+
+<change type="change">
+<para lang="ru">
+теперь accept_mutex по умолчанию выключен.
+</para>
+<para lang="en">
+now the "accept_mutex" directive is turned off by default.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx использует EPOLLEXCLUSIVE на Linux.
+</para>
+<para lang="en">
+now nginx uses EPOLLEXCLUSIVE on Linux.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_geo_module.
+</para>
+<para lang="en">
+the ngx_stream_geo_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_geoip_module.
+</para>
+<para lang="en">
+the ngx_stream_geoip_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_split_clients_module.
+</para>
+<para lang="en">
+the ngx_stream_split_clients_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_pass и proxy_ssl_name в модуле stream
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "proxy_pass" and "proxy_ssl_name" directives in the stream module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов при использовании HTTP/2.
+</para>
+<para lang="en">
+socket leak when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в configure.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in configure tests.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.2" date="05.07.2016">
 
 <change type="change">
