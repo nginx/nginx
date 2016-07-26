@@ -538,7 +538,7 @@ found:
         return;
     }
 
-#if (NGX_HTTP_SSL)
+#if (NGX_STREAM_SSL)
     u->ssl_name = uscf->host;
 #endif
 
@@ -1157,7 +1157,7 @@ ngx_stream_proxy_resolve_handler(ngx_resolver_ctx_t *ctx)
     u = s->upstream;
     ur = u->resolved;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "stream upstream resolve");
 
     if (ctx->state) {
