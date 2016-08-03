@@ -764,6 +764,8 @@ ngx_worker_thread(void *data)
     ngx_int_t     n;
     ngx_cycle_t  *cycle;
 
+    srand((ngx_pid << 16) ^ (unsigned) ngx_time());
+
     cycle = (ngx_cycle_t *) ngx_cycle;
 
     for (n = 0; cycle->modules[n]; n++) {
