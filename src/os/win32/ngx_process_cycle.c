@@ -762,9 +762,11 @@ static ngx_thread_value_t __stdcall
 ngx_worker_thread(void *data)
 {
     ngx_int_t     n;
+    ngx_time_t   *tp;
     ngx_cycle_t  *cycle;
 
-    srand((ngx_pid << 16) ^ (unsigned) ngx_time());
+    tp = ngx_timeofday();
+    srand((ngx_pid << 16) ^ (unsigned) tp->sec ^ tp->msec);
 
     cycle = (ngx_cycle_t *) ngx_cycle;
 
