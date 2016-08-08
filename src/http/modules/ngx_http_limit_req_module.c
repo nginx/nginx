@@ -362,15 +362,13 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 {
     size_t                      size;
     ngx_int_t                   rc, excess;
-    ngx_time_t                 *tp;
     ngx_msec_t                  now;
     ngx_msec_int_t              ms;
     ngx_rbtree_node_t          *node, *sentinel;
     ngx_http_limit_req_ctx_t   *ctx;
     ngx_http_limit_req_node_t  *lr;
 
-    tp = ngx_timeofday();
-    now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
+    now = ngx_current_msec;
 
     ctx = limit->shm_zone->data;
 
@@ -483,7 +481,6 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
     ngx_uint_t *ep, ngx_http_limit_req_limit_t **limit)
 {
     ngx_int_t                   excess;
-    ngx_time_t                 *tp;
     ngx_msec_t                  now, delay, max_delay;
     ngx_msec_int_t              ms;
     ngx_http_limit_req_ctx_t   *ctx;
@@ -509,9 +506,7 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 
         ngx_shmtx_lock(&ctx->shpool->mutex);
 
-        tp = ngx_timeofday();
-
-        now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
+        now = ngx_current_msec;
         ms = (ngx_msec_int_t) (now - lr->last);
 
         excess = lr->excess - ctx->rate * ngx_abs(ms) / 1000 + 1000;
@@ -549,16 +544,13 @@ static void
 ngx_http_limit_req_expire(ngx_http_limit_req_ctx_t *ctx, ngx_uint_t n)
 {
     ngx_int_t                   excess;
-    ngx_time_t                 *tp;
     ngx_msec_t                  now;
     ngx_queue_t                *q;
     ngx_msec_int_t              ms;
     ngx_rbtree_node_t          *node;
     ngx_http_limit_req_node_t  *lr;
 
-    tp = ngx_timeofday();
-
-    now = (ngx_msec_t) (tp->sec * 1000 + tp->msec);
+    now = ngx_current_msec;
 
     /*
      * n == 1 deletes one or two zero rate entries

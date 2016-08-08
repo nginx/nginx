@@ -2722,8 +2722,8 @@ static ngx_int_t
 ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t gmt)
 {
+    time_t               now;
     ngx_http_ssi_ctx_t  *ctx;
-    ngx_time_t          *tp;
     ngx_str_t           *timefmt;
     struct tm            tm;
     char                 buf[NGX_HTTP_SSI_DATE_LEN];
@@ -2732,7 +2732,7 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    tp = ngx_timeofday();
+    now = ngx_time();
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
@@ -2746,15 +2746,15 @@ ngx_http_ssi_date_gmt_local_variable(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        v->len = ngx_sprintf(v->data, "%T", tp->sec) - v->data;
+        v->len = ngx_sprintf(v->data, "%T", now) - v->data;
 
         return NGX_OK;
     }
 
     if (gmt) {
-        ngx_libc_gmtime(tp->sec, &tm);
+        ngx_libc_gmtime(now, &tm);
     } else {
-        ngx_libc_localtime(tp->sec, &tm);
+        ngx_libc_localtime(now, &tm);
     }
 
     v->len = strftime(buf, NGX_HTTP_SSI_DATE_LEN,
