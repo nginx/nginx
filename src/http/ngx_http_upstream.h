@@ -63,6 +63,7 @@ typedef struct {
     ngx_msec_t                       connect_time;
     ngx_msec_t                       header_time;
     off_t                            response_length;
+    off_t                            bytes_received;
 
     ngx_str_t                       *peer;
 } ngx_http_upstream_state_t;

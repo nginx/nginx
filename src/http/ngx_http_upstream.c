@@ -391,6 +391,10 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
       ngx_http_upstream_response_length_variable, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
+    { ngx_string("upstream_bytes_received"), NULL,
+      ngx_http_upstream_response_length_variable, 1,
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
 #if (NGX_HTTP_CACHE)
 
     { ngx_string("upstream_cache_status"), NULL,
@@ -2136,6 +2140,8 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
 
+        u->state->bytes_received += n;
+
         u->buffer.last += n;
 
 #if 0
@@ -2642,6 +2648,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
             return;
         }
 
+        u->state->bytes_received += n;
         u->state->response_length += n;
 
         if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
@@ -3215,6 +3222,10 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
                 do_write = 1;
                 b->last += n;
 
+                if (from_upstream) {
+                    u->state->bytes_received += n;
+                }
+
                 continue;
             }
 
@@ -3411,6 +3422,7 @@ ngx_http_upstream_process_non_buffered_request(ngx_http_request_t *r,
             }
 
             if (n > 0) {
+                u->state->bytes_received += n;
                 u->state->response_length += n;
 
                 if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
@@ -4095,6 +4107,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         u->state->response_time = ngx_current_msec - u->state->response_time;
 
         if (u->pipe && u->pipe->read_length) {
+            u->state->bytes_received += u->pipe->read_length
+                                        - u->pipe->preread_size;
             u->state->response_length = u->pipe->read_length;
         }
     }
@@ -5242,7 +5256,13 @@ ngx_http_upstream_response_length_variable(ngx_http_request_t *r,
     state = r->upstream_states->elts;
 
     for ( ;; ) {
-        p = ngx_sprintf(p, "%O", state[i].response_length);
+
+        if (data == 1) {
+            p = ngx_sprintf(p, "%O", state[i].bytes_received);
+
+        } else {
+            p = ngx_sprintf(p, "%O", state[i].response_length);
+        }
 
         if (++i == r->upstream_states->nelts) {
             break;
