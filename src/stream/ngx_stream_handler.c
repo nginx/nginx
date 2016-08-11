@@ -11,6 +11,7 @@
 #include <ngx_stream.h>
 
 
+static void ngx_stream_close_connection(ngx_connection_t *c);
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static void ngx_stream_init_session(ngx_connection_t *c);
 
@@ -166,8 +167,13 @@ ngx_stream_init_connection(ngx_connection_t *c)
     if (cmcf->limit_conn_handler) {
         rc = cmcf->limit_conn_handler(s);
 
-        if (rc != NGX_DECLINED) {
-            ngx_stream_close_connection(c);
+        if (rc == NGX_ERROR) {
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (rc == NGX_ABORT) {
+            ngx_stream_finalize_session(s, NGX_STREAM_SERVICE_UNAVAILABLE);
             return;
         }
     }
@@ -175,8 +181,13 @@ ngx_stream_init_connection(ngx_connection_t *c)
     if (cmcf->access_handler) {
         rc = cmcf->access_handler(s);
 
-        if (rc != NGX_OK && rc != NGX_DECLINED) {
-            ngx_stream_close_connection(c);
+        if (rc == NGX_ERROR) {
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (rc == NGX_ABORT) {
+            ngx_stream_finalize_session(s, NGX_STREAM_FORBIDDEN);
             return;
         }
     }
@@ -194,7 +205,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
         {
             ngx_connection_error(c, ngx_socket_errno,
                                  "setsockopt(TCP_NODELAY) failed");
-            ngx_stream_close_connection(c);
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
         }
 
@@ -215,7 +226,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
             ngx_log_error(NGX_LOG_ERR, c->log, 0,
                           "no \"ssl_certificate\" is defined "
                           "in server listening on SSL port");
-            ngx_stream_close_connection(c);
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
         }
 
@@ -242,7 +253,7 @@ ngx_stream_init_session(ngx_connection_t *c)
 
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_stream_max_module);
     if (s->ctx == NULL) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
@@ -258,15 +269,14 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
     ngx_stream_session_t   *s;
     ngx_stream_ssl_conf_t  *sslcf;
 
+    s = c->data;
+
     if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
     if (ngx_ssl_handshake(c) == NGX_AGAIN) {
-
-        s = c->data;
-
         sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
         ngx_add_timer(c->read, sslcf->handshake_timeout);
@@ -284,7 +294,7 @@ static void
 ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 {
     if (!c->ssl->handshaked) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(c->data, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
@@ -299,6 +309,18 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 
 
 void
+ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc)
+{
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
+                   "finalize stream session: %i", rc);
+
+    s->status = rc;
+
+    ngx_stream_close_connection(s->connection);
+}
+
+
+static void
 ngx_stream_close_connection(ngx_connection_t *c)
 {
     ngx_pool_t  *pool;

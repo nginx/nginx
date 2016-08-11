@@ -83,7 +83,7 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
     rscf = ngx_stream_get_module_srv_conf(s, ngx_stream_return_module);
 
     if (ngx_stream_complex_value(s, &rscf->text, &text) != NGX_OK) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
@@ -91,13 +91,13 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
                    "stream return text: \"%V\"", &text);
 
     if (text.len == 0) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_OK);
         return;
     }
 
     ctx = ngx_pcalloc(c->pool, sizeof(ngx_stream_return_ctx_t));
     if (ctx == NULL) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
@@ -126,7 +126,7 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
 
     if (ev->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "connection timed out");
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_OK);
         return;
     }
 
@@ -137,7 +137,7 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
 
         n = c->send(c, b->pos, b->last - b->pos);
         if (n == NGX_ERROR) {
-            ngx_stream_close_connection(c);
+            ngx_stream_finalize_session(s, NGX_STREAM_OK);
             return;
         }
 
@@ -145,14 +145,14 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
             b->pos += n;
 
             if (b->pos == b->last) {
-                ngx_stream_close_connection(c);
+                ngx_stream_finalize_session(s, NGX_STREAM_OK);
                 return;
             }
         }
     }
 
     if (ngx_handle_write_event(ev, 0) != NGX_OK) {
-        ngx_stream_close_connection(c);
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 

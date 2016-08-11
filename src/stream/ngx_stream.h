@@ -26,6 +26,13 @@ typedef struct ngx_stream_session_s  ngx_stream_session_t;
 #include <ngx_stream_upstream_round_robin.h>
 
 
+#define NGX_STREAM_OK                        200
+#define NGX_STREAM_FORBIDDEN                 403
+#define NGX_STREAM_INTERNAL_SERVER_ERROR     500
+#define NGX_STREAM_BAD_GATEWAY               502
+#define NGX_STREAM_SERVICE_UNAVAILABLE       503
+
+
 typedef struct {
     void                         **main_conf;
     void                         **srv_conf;
@@ -173,6 +180,8 @@ struct ngx_stream_session_s {
     int                           *captures;
     u_char                        *captures_data;
 #endif
+
+    ngx_uint_t                     status;
 };
 
 
@@ -223,7 +232,7 @@ typedef struct {
 
 
 void ngx_stream_init_connection(ngx_connection_t *c);
-void ngx_stream_close_connection(ngx_connection_t *c);
+void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
 
 
 extern ngx_module_t  ngx_stream_module;
