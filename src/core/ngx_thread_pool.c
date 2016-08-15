@@ -137,6 +137,13 @@ ngx_thread_pool_init(ngx_thread_pool_t *tp, ngx_log_t *log, ngx_pool_t *pool)
         return NGX_ERROR;
     }
 
+    err = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    if (err) {
+        ngx_log_error(NGX_LOG_ALERT, log, err,
+                      "pthread_attr_setdetachstate() failed");
+        return NGX_ERROR;
+    }
+
 #if 0
     err = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
     if (err) {
