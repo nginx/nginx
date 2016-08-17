@@ -279,6 +279,13 @@ ngx_mail_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *cf = pcf;
 
+    if (rv == NGX_CONF_OK && !cscf->listen) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"listen\" is defined for server in %s:%ui",
+                      cscf->file_name, cscf->line);
+        return NGX_CONF_ERROR;
+    }
+
     return rv;
 }
 
@@ -294,6 +301,8 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_mail_listen_t          *ls;
     ngx_mail_module_t          *module;
     ngx_mail_core_main_conf_t  *cmcf;
+
+    cscf->listen = 1;
 
     value = cf->args->elts;
 

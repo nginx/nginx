@@ -325,6 +325,13 @@ ngx_stream_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *cf = pcf;
 
+    if (rv == NGX_CONF_OK && !cscf->listen) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"listen\" is defined for server in %s:%ui",
+                      cscf->file_name, cscf->line);
+        return NGX_CONF_ERROR;
+    }
+
     return rv;
 }
 
@@ -332,11 +339,15 @@ ngx_stream_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    ngx_stream_core_srv_conf_t  *cscf = conf;
+
     ngx_str_t                    *value;
     ngx_url_t                     u;
     ngx_uint_t                    i, backlog;
     ngx_stream_listen_t          *ls, *als;
     ngx_stream_core_main_conf_t  *cmcf;
+
+    cscf->listen = 1;
 
     value = cf->args->elts;
 

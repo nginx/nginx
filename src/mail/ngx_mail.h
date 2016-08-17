@@ -124,6 +124,8 @@ typedef struct {
 
     /* server ctx */
     ngx_mail_conf_ctx_t    *ctx;
+
+    ngx_uint_t              listen;  /* unsigned  listen:1; */
 } ngx_mail_core_srv_conf_t;
 
 

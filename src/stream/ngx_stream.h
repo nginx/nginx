@@ -144,6 +144,8 @@ typedef struct {
 
     ngx_msec_t                     resolver_timeout;
     ngx_resolver_t                *resolver;
+
+    ngx_uint_t                     listen;  /* unsigned  listen:1; */
 } ngx_stream_core_srv_conf_t;
 
 
