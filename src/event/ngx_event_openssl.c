@@ -118,9 +118,7 @@ ngx_ssl_init(ngx_log_t *log)
 
 #else
 
-#ifndef OPENSSL_IS_BORINGSSL
     OPENSSL_config(NULL);
-#endif
 
     SSL_library_init();
     SSL_load_error_strings();
