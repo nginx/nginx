@@ -136,7 +136,7 @@ typedef struct {
     ngx_stream_conf_ctx_t         *ctx;
 
     u_char                        *file_name;
-    ngx_int_t                      line;
+    ngx_uint_t                     line;
 
     ngx_flag_t                     tcp_nodelay;
 
