@@ -469,7 +469,12 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             for (i = 0; i < 0x10000; i++) {
                 a = (ngx_array_t *) ctx.high.low[i];
 
-                if (a == NULL || a->nelts == 0) {
+                if (a == NULL) {
+                    continue;
+                }
+
+                if (a->nelts == 0) {
+                    ctx.high.low[i] = NULL;
                     continue;
                 }
 
