@@ -2986,7 +2986,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                      ngx_ssl_session_ticket_md(), NULL);
         ngx_memcpy(name, key[0].name, 16);
 
-        return 0;
+        return 1;
 
     } else {
         /* decrypt session ticket */
