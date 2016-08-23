@@ -896,7 +896,9 @@ ngx_stream_geo_add_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
 
     next:
 
-        continue;
+        if (h == 0xffff) {
+            break;
+        }
     }
 
     return NGX_CONF_OK;
@@ -935,7 +937,7 @@ ngx_stream_geo_delete_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
 
         if (a == NULL) {
             warn = 1;
-            continue;
+            goto next;
         }
 
         range = a->elts;
@@ -959,6 +961,12 @@ ngx_stream_geo_delete_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
             }
 
             warn = 1;
+        }
+
+    next:
+
+        if (h == 0xffff) {
+            break;
         }
     }
 
