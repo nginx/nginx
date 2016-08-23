@@ -890,9 +890,14 @@ ngx_stream_geo_add_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
             return NGX_CONF_ERROR;
         }
 
-        range->start = (u_short) s;
-        range->end = (u_short) e;
-        range->value = ctx->value;
+        range = a->elts;
+
+        ngx_memmove(&range[1], &range[0],
+                    (a->nelts - 1) * sizeof(ngx_stream_geo_range_t));
+
+        range[0].start = (u_short) s;
+        range[0].end = (u_short) e;
+        range[0].value = ctx->value;
 
     next:
 
