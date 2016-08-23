@@ -966,7 +966,7 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     warn = 0;
 
-    for (n = start; n <= end; n += 0x10000) {
+    for (n = start; n <= end; n = (n + 0x10000) & 0xffff0000) {
 
         h = n >> 16;
 
