@@ -940,7 +940,7 @@ ngx_stream_geo_delete_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
 
         a = (ngx_array_t *) ctx->high.low[h];
 
-        if (a == NULL) {
+        if (a == NULL || a->nelts == 0) {
             warn = 1;
             goto next;
         }
@@ -959,13 +959,9 @@ ngx_stream_geo_delete_range(ngx_conf_t *cf, ngx_stream_geo_conf_ctx_t *ctx,
                 break;
             }
 
-            if (s != (ngx_uint_t) range[i].start
-                && e != (ngx_uint_t) range[i].end)
-            {
-                continue;
+            if (i == a->nelts - 1) {
+                warn = 1;
             }
-
-            warn = 1;
         }
 
     next:
