@@ -819,7 +819,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 2], &range[i + 1],
-                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) s;
                 range[i + 1].end = (u_short) e;
@@ -858,7 +858,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 3], &range[i + 1],
-                           (a->nelts - 3 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 3 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 2].start = (u_short) (e + 1);
                 range[i + 2].end = range[i].end;
@@ -886,7 +886,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 1], &range[i],
-                           (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) (e + 1);
 
@@ -910,7 +910,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 2], &range[i + 1],
-                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) s;
                 range[i + 1].end = (u_short) e;
@@ -1002,7 +1002,7 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 && e == (ngx_uint_t) range[i].end)
             {
                 ngx_memmove(&range[i], &range[i + 1],
-                           (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
 
                 a->nelts--;
 
