@@ -28,6 +28,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
     size_t                        len;
     ngx_int_t                     rc;
     ngx_uint_t                    i;
+    ngx_time_t                   *tp;
     struct sockaddr              *sa;
     ngx_stream_port_t            *port;
     struct sockaddr_in           *sin;
@@ -157,6 +158,10 @@ ngx_stream_init_connection(ngx_connection_t *c)
         ngx_stream_close_connection(c);
         return;
     }
+
+    tp = ngx_timeofday();
+    s->start_sec = tp->sec;
+    s->start_msec = tp->msec;
 
     if (cmcf->limit_conn_handler) {
         rc = cmcf->limit_conn_handler(s);
