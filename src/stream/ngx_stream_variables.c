@@ -40,6 +40,8 @@ static ngx_int_t ngx_stream_variable_time_iso8601(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_variable_time_local(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_variable_protocol(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
 
 
 static ngx_stream_variable_t  ngx_stream_core_variables[] = {
@@ -88,6 +90,9 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
 
     { ngx_string("time_local"), NULL, ngx_stream_variable_time_local,
       0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("protocol"), NULL,
+      ngx_stream_variable_protocol, 0, 0, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -660,6 +665,20 @@ ngx_stream_variable_time_local(ngx_stream_session_t *s,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_variable_protocol(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    v->len = 3;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) (s->connection->type == SOCK_DGRAM ? "UDP" : "TCP");
 
     return NGX_OK;
 }
