@@ -21,7 +21,7 @@ static ngx_int_t ngx_stream_variable_server_addr(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_variable_server_port(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_stream_variable_bytes_sent(ngx_stream_session_t *s,
+static ngx_int_t ngx_stream_variable_bytes(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_variable_connection(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
@@ -57,8 +57,11 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
     { ngx_string("server_port"), NULL,
       ngx_stream_variable_server_port, 0, 0, 0 },
 
-    { ngx_string("bytes_sent"), NULL, ngx_stream_variable_bytes_sent,
+    { ngx_string("bytes_sent"), NULL, ngx_stream_variable_bytes,
       0, 0, 0 },
+
+    { ngx_string("bytes_received"), NULL, ngx_stream_variable_bytes,
+      1, 0, 0 },
 
     { ngx_string("connection"), NULL,
       ngx_stream_variable_connection, 0, 0, 0 },
@@ -461,7 +464,7 @@ ngx_stream_variable_server_port(ngx_stream_session_t *s,
 
 
 static ngx_int_t
-ngx_stream_variable_bytes_sent(ngx_stream_session_t *s,
+ngx_stream_variable_bytes(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data)
 {
     u_char  *p;
@@ -471,7 +474,13 @@ ngx_stream_variable_bytes_sent(ngx_stream_session_t *s,
         return NGX_ERROR;
     }
 
-    v->len = ngx_sprintf(p, "%O", s->connection->sent) - p;
+    if (data == 1) {
+        v->len = ngx_sprintf(p, "%O", s->received) - p;
+
+    } else {
+        v->len = ngx_sprintf(p, "%O", s->connection->sent) - p;
+    }
+
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
