@@ -264,7 +264,6 @@ ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
     }
 
     ctx = cln->data;
-    ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
     c = r->connection;
 
@@ -282,6 +281,7 @@ ngx_http_realip_set_addr(ngx_http_request_t *r, ngx_addr_t *addr)
     ngx_memcpy(p, text, len);
 
     cln->handler = ngx_http_realip_cleanup;
+    ngx_http_set_ctx(r, ctx, ngx_http_realip_module);
 
     ctx->connection = c;
     ctx->sockaddr = c->sockaddr;
