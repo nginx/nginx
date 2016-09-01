@@ -300,7 +300,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
 
             if (n == NGX_ERROR) {
                 p->upstream_error = 1;
-                return NGX_ERROR;
+                break;
             }
 
             if (n == NGX_AGAIN) {
