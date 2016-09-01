@@ -815,10 +815,12 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
     }
 
 #if (NGX_THREADS)
-    p->temp_file->thread_write = p->thread_handler ? 1 : 0;
-    p->temp_file->file.thread_task = p->thread_task;
-    p->temp_file->file.thread_handler = p->thread_handler;
-    p->temp_file->file.thread_ctx = p->thread_ctx;
+    if (p->thread_handler) {
+        p->temp_file->thread_write = 1;
+        p->temp_file->file.thread_task = p->thread_task;
+        p->temp_file->file.thread_handler = p->thread_handler;
+        p->temp_file->file.thread_ctx = p->thread_ctx;
+    }
 #endif
 
     n = ngx_write_chain_to_temp_file(p->temp_file, out);
