@@ -122,6 +122,7 @@ typedef struct {
     ngx_array_t                    servers;     /* ngx_stream_core_srv_conf_t */
     ngx_array_t                    listen;      /* ngx_stream_listen_t */
 
+    ngx_stream_access_pt           realip_handler;
     ngx_stream_access_pt           limit_conn_handler;
     ngx_stream_access_pt           access_handler;
     ngx_stream_access_pt           access_log_handler;

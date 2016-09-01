@@ -1007,6 +1007,16 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_REALIP = YES ]; then
+        ngx_module_name=ngx_stream_realip_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_realip_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_REALIP
+
+        . auto/module
+    fi
+
     if [ $STREAM_LIMIT_CONN = YES ]; then
         ngx_module_name=ngx_stream_limit_conn_module
         ngx_module_deps=

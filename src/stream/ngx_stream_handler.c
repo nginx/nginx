@@ -296,6 +296,15 @@ ngx_stream_init_session_handler(ngx_event_t *rev)
 
     cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
 
+    if (cmcf->realip_handler) {
+        rc = cmcf->realip_handler(s);
+
+        if (rc == NGX_ERROR) {
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
     if (cmcf->limit_conn_handler) {
         rc = cmcf->limit_conn_handler(s);
 
