@@ -1630,6 +1630,9 @@ ngx_stream_proxy_next_upstream(ngx_stream_session_t *s)
         }
 #endif
 
+        u->state->bytes_received = u->received;
+        u->state->bytes_sent = pc->sent;
+
         ngx_close_connection(pc);
         u->peer.connection = NULL;
     }
@@ -1658,12 +1661,19 @@ ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc)
         u->resolved->ctx = NULL;
     }
 
+    pc = u->peer.connection;
+
+    if (u->state) {
+        if (pc) {
+            u->state->bytes_received = u->received;
+            u->state->bytes_sent = pc->sent;
+        }
+    }
+
     if (u->peer.free && u->peer.sockaddr) {
         u->peer.free(&u->peer, u->peer.data, 0);
         u->peer.sockaddr = NULL;
     }
-
-    pc = u->peer.connection;
 
     if (pc) {
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,

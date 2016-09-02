@@ -79,6 +79,9 @@ struct ngx_stream_upstream_srv_conf_s {
 
 
 typedef struct {
+    off_t                              bytes_sent;
+    off_t                              bytes_received;
+
     ngx_str_t                         *peer;
 } ngx_stream_upstream_state_t;
 
