@@ -13,6 +13,8 @@
 static ngx_int_t ngx_stream_upstream_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_upstream_response_time_variable(
+    ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_upstream_bytes_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 
@@ -80,6 +82,18 @@ static ngx_stream_variable_t  ngx_stream_upstream_vars[] = {
 
     { ngx_string("upstream_bytes_sent"), NULL,
       ngx_stream_upstream_bytes_variable, 0,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_connect_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 2,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_first_byte_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 1,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_session_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 0,
       NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("upstream_bytes_received"), NULL,
@@ -204,6 +218,73 @@ ngx_stream_upstream_bytes_variable(ngx_stream_session_t *s,
         } else {
             p = ngx_sprintf(p, "%O", state[i].bytes_sent);
         }
+
+        if (++i == s->upstream_states->nelts) {
+            break;
+        }
+
+        *p++ = ',';
+        *p++ = ' ';
+    }
+
+    v->len = p - v->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_response_time_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char                       *p;
+    size_t                        len;
+    ngx_uint_t                    i;
+    ngx_msec_int_t                ms;
+    ngx_stream_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (s->upstream_states == NULL || s->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = s->upstream_states->nelts * (NGX_TIME_T_LEN + 4 + 2);
+
+    p = ngx_pnalloc(s->connection->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+    state = s->upstream_states->elts;
+
+    for ( ;; ) {
+
+        if (data == 1) {
+            if (state[i].first_byte_time == (ngx_msec_t) -1) {
+                *p++ = '-';
+                goto next;
+            }
+
+            ms = state[i].first_byte_time;
+
+        } else if (data == 2 && state[i].connect_time != (ngx_msec_t) -1) {
+            ms = state[i].connect_time;
+
+        } else {
+            ms = state[i].response_time;
+        }
+
+        ms = ngx_max(ms, 0);
+        p = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000);
+
+    next:
 
         if (++i == s->upstream_states->nelts) {
             break;

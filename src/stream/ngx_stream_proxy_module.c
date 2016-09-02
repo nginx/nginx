@@ -684,6 +684,10 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 
     u = s->upstream;
 
+    if (u->state) {
+        u->state->response_time = ngx_current_msec - u->state->response_time;
+    }
+
     u->state = ngx_array_push(s->upstream_states);
     if (u->state == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -691,6 +695,10 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     }
 
     ngx_memzero(u->state, sizeof(ngx_stream_upstream_state_t));
+
+    u->state->connect_time = (ngx_msec_t) -1;
+    u->state->first_byte_time = (ngx_msec_t) -1;
+    u->state->response_time = ngx_current_msec;
 
     rc = ngx_event_connect_peer(&u->peer);
 
@@ -812,6 +820,8 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
             c->log->handler = handler;
         }
     }
+
+    u->state->connect_time = ngx_current_msec - u->state->response_time;
 
     c->log->action = "proxying connection";
 
@@ -1518,6 +1528,13 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     }
                 }
 
+                if (from_upstream) {
+                    if (u->state->first_byte_time == (ngx_msec_t) -1) {
+                        u->state->first_byte_time = ngx_current_msec
+                                                    - u->state->response_time;
+                    }
+                }
+
                 if (c->type == SOCK_DGRAM && ++u->responses == pscf->responses)
                 {
                     src->read->ready = 0;
@@ -1664,6 +1681,8 @@ ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc)
     pc = u->peer.connection;
 
     if (u->state) {
+        u->state->response_time = ngx_current_msec - u->state->response_time;
+
         if (pc) {
             u->state->bytes_received = u->received;
             u->state->bytes_sent = pc->sent;
