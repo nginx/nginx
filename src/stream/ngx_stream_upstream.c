@@ -10,6 +10,10 @@
 #include <ngx_stream.h>
 
 
+static ngx_int_t ngx_stream_upstream_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+
 static char *ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
 static char *ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -39,7 +43,7 @@ static ngx_command_t  ngx_stream_upstream_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_upstream_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_stream_upstream_add_variables,     /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     ngx_stream_upstream_create_main_conf,  /* create main configuration */
@@ -64,6 +68,92 @@ ngx_module_t  ngx_stream_upstream_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+
+static ngx_stream_variable_t  ngx_stream_upstream_vars[] = {
+
+    { ngx_string("upstream_addr"), NULL,
+      ngx_stream_upstream_addr_variable, 0,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+};
+
+
+static ngx_int_t
+ngx_stream_upstream_add_variables(ngx_conf_t *cf)
+{
+    ngx_stream_variable_t  *var, *v;
+
+    for (v = ngx_stream_upstream_vars; v->name.len; v++) {
+        var = ngx_stream_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char                       *p;
+    size_t                        len;
+    ngx_uint_t                    i;
+    ngx_stream_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (s->upstream_states == NULL || s->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = 0;
+    state = s->upstream_states->elts;
+
+    for (i = 0; i < s->upstream_states->nelts; i++) {
+        if (state[i].peer) {
+            len += state[i].peer->len;
+        }
+
+        len += 2;
+    }
+
+    p = ngx_pnalloc(s->connection->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+
+    for ( ;; ) {
+        if (state[i].peer) {
+            p = ngx_cpymem(p, state[i].peer->data, state[i].peer->len);
+        }
+
+        if (++i == s->upstream_states->nelts) {
+            break;
+        }
+
+        *p++ = ',';
+        *p++ = ' ';
+    }
+
+    v->len = p - v->data;
+
+    return NGX_OK;
+}
 
 
 static char *

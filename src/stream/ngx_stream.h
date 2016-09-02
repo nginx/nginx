@@ -172,7 +172,8 @@ struct ngx_stream_session_s {
     void                         **srv_conf;
 
     ngx_stream_upstream_t         *upstream;
-
+    ngx_array_t                   *upstream_states;
+                                           /* of ngx_stream_upstream_state_t */
     ngx_stream_variable_value_t   *variables;
 
 #if (NGX_PCRE)

@@ -392,6 +392,13 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     c->write->handler = ngx_stream_proxy_downstream_handler;
     c->read->handler = ngx_stream_proxy_downstream_handler;
 
+    s->upstream_states = ngx_array_create(c->pool, 1,
+                                          sizeof(ngx_stream_upstream_state_t));
+    if (s->upstream_states == NULL) {
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     if (c->type == SOCK_STREAM) {
         p = ngx_pnalloc(c->pool, pscf->buffer_size);
         if (p == NULL) {
@@ -677,6 +684,14 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 
     u = s->upstream;
 
+    u->state = ngx_array_push(s->upstream_states);
+    if (u->state == NULL) {
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ngx_memzero(u->state, sizeof(ngx_stream_upstream_state_t));
+
     rc = ngx_event_connect_peer(&u->peer);
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
@@ -685,6 +700,8 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
+
+    u->state->peer = u->peer.name;
 
     if (rc == NGX_BUSY) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0, "no live upstreams");

@@ -79,6 +79,11 @@ struct ngx_stream_upstream_srv_conf_s {
 
 
 typedef struct {
+    ngx_str_t                         *peer;
+} ngx_stream_upstream_state_t;
+
+
+typedef struct {
     ngx_str_t                          host;
     in_port_t                          port;
     ngx_uint_t                         no_port; /* unsigned no_port:1 */
@@ -104,6 +109,7 @@ typedef struct {
     ngx_str_t                          ssl_name;
 #endif
     ngx_stream_upstream_resolved_t    *resolved;
+    ngx_stream_upstream_state_t       *state;
     unsigned                           connected:1;
     unsigned                           proxy_protocol:1;
 } ngx_stream_upstream_t;
