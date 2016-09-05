@@ -121,6 +121,7 @@ typedef struct {
 
     ngx_stream_access_pt           limit_conn_handler;
     ngx_stream_access_pt           access_handler;
+    ngx_stream_access_pt           access_log_handler;
 
     ngx_hash_t                     variables_hash;
 

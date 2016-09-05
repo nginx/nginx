@@ -311,10 +311,18 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 void
 ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc)
 {
+    ngx_stream_core_main_conf_t  *cmcf;
+
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "finalize stream session: %i", rc);
 
     s->status = rc;
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
+    if (cmcf->access_log_handler) {
+        (void) cmcf->access_log_handler(s);
+    }
 
     ngx_stream_close_connection(s->connection);
 }

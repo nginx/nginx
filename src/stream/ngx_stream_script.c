@@ -388,6 +388,73 @@ invalid_variable:
 }
 
 
+u_char *
+ngx_stream_script_run(ngx_stream_session_t *s, ngx_str_t *value,
+    void *code_lengths, size_t len, void *code_values)
+{
+    ngx_uint_t                      i;
+    ngx_stream_script_code_pt       code;
+    ngx_stream_script_engine_t      e;
+    ngx_stream_core_main_conf_t    *cmcf;
+    ngx_stream_script_len_code_pt   lcode;
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
+    for (i = 0; i < cmcf->variables.nelts; i++) {
+        if (s->variables[i].no_cacheable) {
+            s->variables[i].valid = 0;
+            s->variables[i].not_found = 0;
+        }
+    }
+
+    ngx_memzero(&e, sizeof(ngx_stream_script_engine_t));
+
+    e.ip = code_lengths;
+    e.session = s;
+    e.flushed = 1;
+
+    while (*(uintptr_t *) e.ip) {
+        lcode = *(ngx_stream_script_len_code_pt *) e.ip;
+        len += lcode(&e);
+    }
+
+
+    value->len = len;
+    value->data = ngx_pnalloc(s->connection->pool, len);
+    if (value->data == NULL) {
+        return NULL;
+    }
+
+    e.ip = code_values;
+    e.pos = value->data;
+
+    while (*(uintptr_t *) e.ip) {
+        code = *(ngx_stream_script_code_pt *) e.ip;
+        code((ngx_stream_script_engine_t *) &e);
+    }
+
+    return e.pos;
+}
+
+
+void
+ngx_stream_script_flush_no_cacheable_variables(ngx_stream_session_t *s,
+    ngx_array_t *indices)
+{
+    ngx_uint_t  n, *index;
+
+    if (indices) {
+        index = indices->elts;
+        for (n = 0; n < indices->nelts; n++) {
+            if (s->variables[index[n]].no_cacheable) {
+                s->variables[index[n]].valid = 0;
+                s->variables[index[n]].not_found = 0;
+            }
+        }
+    }
+}
+
+
 static ngx_int_t
 ngx_stream_script_init_arrays(ngx_stream_script_compile_t *sc)
 {

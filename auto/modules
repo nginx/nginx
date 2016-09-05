@@ -971,6 +971,7 @@ if [ $STREAM != NO ]; then
 
     ngx_module_name="ngx_stream_module \
                      ngx_stream_core_module \
+                     ngx_stream_log_module \
                      ngx_stream_proxy_module \
                      ngx_stream_upstream_module"
     ngx_module_incs="src/stream"
@@ -984,6 +985,7 @@ if [ $STREAM != NO ]; then
                      src/stream/ngx_stream_script.c \
                      src/stream/ngx_stream_handler.c \
                      src/stream/ngx_stream_core_module.c \
+                     src/stream/ngx_stream_log_module.c \
                      src/stream/ngx_stream_proxy_module.c \
                      src/stream/ngx_stream_upstream.c \
                      src/stream/ngx_stream_upstream_round_robin.c"
