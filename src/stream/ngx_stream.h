@@ -184,6 +184,10 @@ struct ngx_stream_session_s {
 #endif
 
     ngx_uint_t                     status;
+
+#if (NGX_STREAM_SSL)
+    ngx_uint_t                     ssl;  /* unsigned  ssl:1; */
+#endif
 };
 
 

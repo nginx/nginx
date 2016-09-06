@@ -13,6 +13,7 @@
 
 static void ngx_stream_close_connection(ngx_connection_t *c);
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
+static void ngx_stream_init_session_handler(ngx_event_t *rev);
 static void ngx_stream_init_session(ngx_connection_t *c);
 
 #if (NGX_STREAM_SSL)
@@ -24,12 +25,11 @@ static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
 void
 ngx_stream_init_connection(ngx_connection_t *c)
 {
-    int                           tcp_nodelay;
     u_char                        text[NGX_SOCKADDR_STRLEN];
     size_t                        len;
-    ngx_int_t                     rc;
     ngx_uint_t                    i;
     ngx_time_t                   *tp;
+    ngx_event_t                  *rev;
     struct sockaddr              *sa;
     ngx_stream_port_t            *port;
     struct sockaddr_in           *sin;
@@ -130,6 +130,10 @@ ngx_stream_init_connection(ngx_connection_t *c)
     s->main_conf = addr_conf->ctx->main_conf;
     s->srv_conf = addr_conf->ctx->srv_conf;
 
+#if (NGX_STREAM_SSL)
+    s->ssl = addr_conf->ssl;
+#endif
+
     s->connection = c;
     c->data = s;
 
@@ -164,6 +168,35 @@ ngx_stream_init_connection(ngx_connection_t *c)
     s->start_sec = tp->sec;
     s->start_msec = tp->msec;
 
+    rev = c->read;
+    rev->handler = ngx_stream_init_session_handler;
+
+    if (ngx_use_accept_mutex) {
+        ngx_post_event(rev, &ngx_posted_events);
+        return;
+    }
+
+    rev->handler(rev);
+}
+
+
+static void
+ngx_stream_init_session_handler(ngx_event_t *rev)
+{
+    int                           tcp_nodelay;
+    ngx_int_t                     rc;
+    ngx_connection_t             *c;
+    ngx_stream_session_t         *s;
+    ngx_stream_core_srv_conf_t   *cscf;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    c = rev->data;
+    s = c->data;
+
+    c->log->action = "initializing session";
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
     if (cmcf->limit_conn_handler) {
         rc = cmcf->limit_conn_handler(s);
 
@@ -192,6 +225,8 @@ ngx_stream_init_connection(ngx_connection_t *c)
         }
     }
 
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
     if (c->type == SOCK_STREAM
         && cscf->tcp_nodelay
         && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
@@ -219,7 +254,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
 
     sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
-    if (addr_conf->ssl) {
+    if (s->ssl) {
         c->log->action = "SSL handshaking";
 
         if (sslcf->ssl.ctx == NULL) {
