@@ -13,6 +13,7 @@
 
 static void ngx_stream_close_connection(ngx_connection_t *c);
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
+static void ngx_stream_proxy_protocol_handler(ngx_event_t *rev);
 static void ngx_stream_init_session_handler(ngx_event_t *rev);
 static void ngx_stream_init_session(ngx_connection_t *c);
 
@@ -171,12 +172,105 @@ ngx_stream_init_connection(ngx_connection_t *c)
     rev = c->read;
     rev->handler = ngx_stream_init_session_handler;
 
+    if (addr_conf->proxy_protocol) {
+        c->log->action = "reading PROXY protocol";
+
+        rev->handler = ngx_stream_proxy_protocol_handler;
+
+        if (!rev->ready) {
+            ngx_add_timer(rev, cscf->proxy_protocol_timeout);
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_stream_finalize_session(s,
+                                            NGX_STREAM_INTERNAL_SERVER_ERROR);
+            }
+
+            return;
+        }
+    }
+
     if (ngx_use_accept_mutex) {
         ngx_post_event(rev, &ngx_posted_events);
         return;
     }
 
     rev->handler(rev);
+}
+
+
+static void
+ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
+{
+    u_char                      *p, buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
+    size_t                       size;
+    ssize_t                      n;
+    ngx_err_t                    err;
+    ngx_connection_t            *c;
+    ngx_stream_session_t        *s;
+    ngx_stream_core_srv_conf_t  *cscf;
+
+    c = rev->data;
+    s = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                   "stream PROXY protocol handler");
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_stream_finalize_session(s, NGX_STREAM_OK);
+        return;
+    }
+
+    n = recv(c->fd, (char *) buf, sizeof(buf), MSG_PEEK);
+
+    err = ngx_socket_errno;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "recv(): %z", n);
+
+    if (n == -1) {
+        if (err == NGX_EAGAIN) {
+            rev->ready = 0;
+
+            if (!rev->timer_set) {
+                cscf = ngx_stream_get_module_srv_conf(s,
+                                                      ngx_stream_core_module);
+
+                ngx_add_timer(rev, cscf->proxy_protocol_timeout);
+            }
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_stream_finalize_session(s,
+                                            NGX_STREAM_INTERNAL_SERVER_ERROR);
+            }
+
+            return;
+        }
+
+        ngx_connection_error(c, err, "recv() failed");
+
+        ngx_stream_finalize_session(s, NGX_STREAM_OK);
+        return;
+    }
+
+    if (rev->timer_set) {
+        ngx_del_timer(rev);
+    }
+
+    p = ngx_proxy_protocol_read(c, buf, buf + n);
+
+    if (p == NULL) {
+        ngx_stream_finalize_session(s, NGX_STREAM_BAD_REQUEST);
+        return;
+    }
+
+    size = p - buf;
+
+    if (c->recv(c, buf, size) != (ssize_t) size) {
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ngx_stream_init_session_handler(rev);
 }
 
 

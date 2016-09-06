@@ -27,6 +27,7 @@ typedef struct ngx_stream_session_s  ngx_stream_session_t;
 
 
 #define NGX_STREAM_OK                        200
+#define NGX_STREAM_BAD_REQUEST               400
 #define NGX_STREAM_FORBIDDEN                 403
 #define NGX_STREAM_INTERNAL_SERVER_ERROR     500
 #define NGX_STREAM_BAD_GATEWAY               502
@@ -58,6 +59,7 @@ typedef struct {
     unsigned                       reuseport:1;
 #endif
     unsigned                       so_keepalive:2;
+    unsigned                       proxy_protocol:1;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                            tcp_keepidle;
     int                            tcp_keepintvl;
@@ -72,8 +74,9 @@ typedef struct {
     ngx_stream_conf_ctx_t         *ctx;
     ngx_str_t                      addr_text;
 #if (NGX_STREAM_SSL)
-    ngx_uint_t                     ssl;    /* unsigned   ssl:1; */
+    unsigned                       ssl:1;
 #endif
+    unsigned                       proxy_protocol:1;
 } ngx_stream_addr_conf_t;
 
 typedef struct {
@@ -152,6 +155,8 @@ typedef struct {
 
     ngx_msec_t                     resolver_timeout;
     ngx_resolver_t                *resolver;
+
+    ngx_msec_t                     proxy_protocol_timeout;
 
     ngx_uint_t                     listen;  /* unsigned  listen:1; */
 } ngx_stream_core_srv_conf_t;
