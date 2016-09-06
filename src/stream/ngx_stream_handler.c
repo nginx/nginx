@@ -15,7 +15,6 @@ static void ngx_stream_close_connection(ngx_connection_t *c);
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static void ngx_stream_proxy_protocol_handler(ngx_event_t *rev);
 static void ngx_stream_init_session_handler(ngx_event_t *rev);
-static void ngx_stream_init_session(ngx_connection_t *c);
 
 #if (NGX_STREAM_SSL)
 static void ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c);
@@ -153,6 +152,12 @@ ngx_stream_init_connection(ngx_connection_t *c)
     c->log->data = s;
     c->log->action = "initializing connection";
     c->log_error = NGX_ERROR_INFO;
+
+    s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_stream_max_module);
+    if (s->ctx == NULL) {
+        ngx_stream_close_connection(c);
+        return;
+    }
 
     cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
 
@@ -365,26 +370,7 @@ ngx_stream_init_session_handler(ngx_event_t *rev)
     }
 #endif
 
-    ngx_stream_init_session(c);
-}
-
-
-static void
-ngx_stream_init_session(ngx_connection_t *c)
-{
-    ngx_stream_session_t        *s;
-    ngx_stream_core_srv_conf_t  *cscf;
-
-    s = c->data;
     c->log->action = "handling client connection";
-
-    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
-
-    s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_stream_max_module);
-    if (s->ctx == NULL) {
-        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
 
     cscf->handler(s);
 }
@@ -422,6 +408,9 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 static void
 ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 {
+    ngx_stream_session_t        *s;
+    ngx_stream_core_srv_conf_t  *cscf;
+
     if (!c->ssl->handshaked) {
         ngx_stream_finalize_session(c->data, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
@@ -431,7 +420,13 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
         ngx_del_timer(c->read);
     }
 
-    ngx_stream_init_session(c);
+    c->log->action = "handling client connection";
+
+    s = c->data;
+
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    cscf->handler(s);
 }
 
 #endif
