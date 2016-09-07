@@ -466,6 +466,93 @@ ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr)
 
 
 ngx_int_t
+ngx_cidr_match(struct sockaddr *sa, ngx_array_t *cidrs)
+{
+#if (NGX_HAVE_INET6)
+    u_char           *p;
+#endif
+    in_addr_t         inaddr;
+    ngx_cidr_t       *cidr;
+    ngx_uint_t        family, i;
+#if (NGX_HAVE_INET6)
+    ngx_uint_t        n;
+    struct in6_addr  *inaddr6;
+#endif
+
+#if (NGX_SUPPRESS_WARN)
+    inaddr = 0;
+#if (NGX_HAVE_INET6)
+    inaddr6 = NULL;
+#endif
+#endif
+
+    family = sa->sa_family;
+
+    if (family == AF_INET) {
+        inaddr = ((struct sockaddr_in *) sa)->sin_addr.s_addr;
+    }
+
+#if (NGX_HAVE_INET6)
+    else if (family == AF_INET6) {
+        inaddr6 = &((struct sockaddr_in6 *) sa)->sin6_addr;
+
+        if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
+            family = AF_INET;
+
+            p = inaddr6->s6_addr;
+
+            inaddr = p[12] << 24;
+            inaddr += p[13] << 16;
+            inaddr += p[14] << 8;
+            inaddr += p[15];
+
+            inaddr = htonl(inaddr);
+        }
+    }
+#endif
+
+    for (cidr = cidrs->elts, i = 0; i < cidrs->nelts; i++) {
+        if (cidr[i].family != family) {
+            goto next;
+        }
+
+        switch (family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            for (n = 0; n < 16; n++) {
+                if ((inaddr6->s6_addr[n] & cidr[i].u.in6.mask.s6_addr[n])
+                    != cidr[i].u.in6.addr.s6_addr[n])
+                {
+                    goto next;
+                }
+            }
+            break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            break;
+#endif
+
+        default: /* AF_INET */
+            if ((inaddr & cidr[i].u.in.mask) != cidr[i].u.in.addr) {
+                goto next;
+            }
+            break;
+        }
+
+        return NGX_OK;
+
+    next:
+        continue;
+    }
+
+    return NGX_DECLINED;
+}
+
+
+ngx_int_t
 ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text, size_t len)
 {
     in_addr_t             inaddr;

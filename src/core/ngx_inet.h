@@ -113,6 +113,7 @@ size_t ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text,
     size_t len, ngx_uint_t port);
 size_t ngx_inet_ntop(int family, void *addr, u_char *text, size_t len);
 ngx_int_t ngx_ptocidr(ngx_str_t *text, ngx_cidr_t *cidr);
+ngx_int_t ngx_cidr_match(struct sockaddr *sa, ngx_array_t *cidrs);
 ngx_int_t ngx_parse_addr(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
     size_t len);
 ngx_int_t ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr,
