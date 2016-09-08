@@ -249,7 +249,7 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_msec_value(conf->proxy_protocol_timeout,
-                              prev->proxy_protocol_timeout, 5000);
+                              prev->proxy_protocol_timeout, 30000);
 
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
 
