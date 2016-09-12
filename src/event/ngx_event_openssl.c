@@ -2941,13 +2941,6 @@ failed:
 }
 
 
-#ifdef OPENSSL_NO_SHA256
-#define ngx_ssl_session_ticket_md  EVP_sha1
-#else
-#define ngx_ssl_session_ticket_md  EVP_sha256
-#endif
-
-
 static int
 ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
@@ -2958,12 +2951,21 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     ngx_array_t                   *keys;
     ngx_connection_t              *c;
     ngx_ssl_session_ticket_key_t  *key;
+    const EVP_MD                  *digest;
+    const EVP_CIPHER              *cipher;
 #if (NGX_DEBUG)
     u_char                         buf[32];
 #endif
 
     c = ngx_ssl_get_connection(ssl_conn);
     ssl_ctx = c->ssl->session_ctx;
+
+    cipher = EVP_aes_128_cbc();
+#ifdef OPENSSL_NO_SHA256
+    digest = EVP_sha1();
+#else
+    digest = EVP_sha256();
+#endif
 
     keys = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_session_ticket_keys_index);
     if (keys == NULL) {
@@ -2980,10 +2982,9 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                        ngx_hex_dump(buf, key[0].name, 16) - buf, buf,
                        SSL_session_reused(ssl_conn) ? "reused" : "new");
 
-        RAND_bytes(iv, 16);
-        EVP_EncryptInit_ex(ectx, EVP_aes_128_cbc(), NULL, key[0].aes_key, iv);
-        HMAC_Init_ex(hctx, key[0].hmac_key, 16,
-                     ngx_ssl_session_ticket_md(), NULL);
+        RAND_bytes(iv, EVP_CIPHER_iv_length(cipher));
+        EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv);
+        HMAC_Init_ex(hctx, key[0].hmac_key, 16, digest, NULL);
         ngx_memcpy(name, key[0].name, 16);
 
         return 1;
@@ -3010,9 +3011,8 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                        ngx_hex_dump(buf, key[i].name, 16) - buf, buf,
                        (i == 0) ? " (default)" : "");
 
-        HMAC_Init_ex(hctx, key[i].hmac_key, 16,
-                     ngx_ssl_session_ticket_md(), NULL);
-        EVP_DecryptInit_ex(ectx, EVP_aes_128_cbc(), NULL, key[i].aes_key, iv);
+        HMAC_Init_ex(hctx, key[i].hmac_key, 16, digest, NULL);
+        EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv);
 
         return (i == 0) ? 1 : 2 /* renew */;
     }
