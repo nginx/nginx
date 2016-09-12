@@ -2982,9 +2982,26 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                        ngx_hex_dump(buf, key[0].name, 16) - buf, buf,
                        SSL_session_reused(ssl_conn) ? "reused" : "new");
 
-        RAND_bytes(iv, EVP_CIPHER_iv_length(cipher));
-        EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv);
+        if (RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "RAND_bytes() failed");
+            return -1;
+        }
+
+        if (EVP_EncryptInit_ex(ectx, cipher, NULL, key[0].aes_key, iv) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                          "EVP_EncryptInit_ex() failed");
+            return -1;
+        }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+        if (HMAC_Init_ex(hctx, key[0].hmac_key, 16, digest, NULL) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
+            return -1;
+        }
+#else
         HMAC_Init_ex(hctx, key[0].hmac_key, 16, digest, NULL);
+#endif
+
         ngx_memcpy(name, key[0].name, 16);
 
         return 1;
@@ -3011,8 +3028,20 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
                        ngx_hex_dump(buf, key[i].name, 16) - buf, buf,
                        (i == 0) ? " (default)" : "");
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+        if (HMAC_Init_ex(hctx, key[i].hmac_key, 16, digest, NULL) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
+            return -1;
+        }
+#else
         HMAC_Init_ex(hctx, key[i].hmac_key, 16, digest, NULL);
-        EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv);
+#endif
+
+        if (EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                          "EVP_DecryptInit_ex() failed");
+            return -1;
+        }
 
         return (i == 0) ? 1 : 2 /* renew */;
     }
