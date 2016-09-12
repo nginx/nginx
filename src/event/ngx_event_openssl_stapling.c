@@ -376,6 +376,7 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
 {
     ngx_url_t                  u;
     char                      *s;
+    ngx_str_t                  rsp;
     STACK_OF(OPENSSL_STRING)  *aia;
 
     if (responder->len == 0) {
@@ -402,6 +403,8 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
             X509_email_free(aia);
             return NGX_DECLINED;
         }
+
+        responder = &rsp;
 
         responder->len = ngx_strlen(s);
         responder->data = ngx_palloc(cf->pool, responder->len);
