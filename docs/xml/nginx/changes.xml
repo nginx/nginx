@@ -5,6 +5,111 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.4" date="13.09.2016">
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_bytes_received.
+</para>
+<para lang="en">
+the $upstream_bytes_received variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $bytes_received, $session_time, $protocol, $status,
+$upstream_addr, $upstream_bytes_sent, $upstream_bytes_received,
+$upstream_connect_time, $upstream_first_byte_time
+и $upstream_session_time в модуле stream.
+</para>
+<para lang="en">
+the $bytes_received, $session_time, $protocol, $status,
+$upstream_addr, $upstream_bytes_sent, $upstream_bytes_received,
+$upstream_connect_time, $upstream_first_byte_time,
+and $upstream_session_time variables in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_log_module.
+</para>
+<para lang="en">
+the ngx_stream_log_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy_protocol в директиве listen,
+переменные $proxy_protocol_addr и $proxy_protocol_port
+в модуле stream.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive,
+the $proxy_protocol_addr and $proxy_protocol_port variables
+in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_realip_module.
+</para>
+<para lang="en">
+the ngx_stream_realip_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с модулем stream и модулем ngx_http_ssl_module,
+но без модуля ngx_stream_ssl_module;
+ошибка появилась в 1.11.3.
+</para>
+<para lang="en">
+nginx could not be built with the stream module and the ngx_http_ssl_module,
+but without ngx_stream_ssl_module;
+the bug had appeared in 1.11.3.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+опция сокета IP_BIND_ADDRESS_NO_PORT не использовалась;
+ошибка появилась в 1.11.2.
+</para>
+<para lang="en">
+the IP_BIND_ADDRESS_NO_PORT socket option was not used;
+the bug had appeared in 1.11.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в параметре ranges директивы geo.
+</para>
+<para lang="en">
+in the "ranges" parameter of the "geo" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив "aio threads" и sendfile
+мог возвращаться некорректный ответ; ошибка появилась в 1.9.13.
+</para>
+<para lang="en">
+an incorrect response might be returned
+when using the "aio threads" and "sendfile" directives;
+the bug had appeared in 1.9.13.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.3" date="26.07.2016">
 
 <change type="change">
