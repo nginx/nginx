@@ -1120,6 +1120,16 @@ if [ $STREAM != NO ]; then
 
         . auto/module
     fi
+
+    if [ $STREAM_SSL_PREREAD = YES ]; then
+        ngx_module_name=ngx_stream_ssl_preread_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_ssl_preread_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_SSL_PREREAD
+
+        . auto/module
+    fi
 fi
 
 
