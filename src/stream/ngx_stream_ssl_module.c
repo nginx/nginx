@@ -18,6 +18,10 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
 #define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 
+static ngx_int_t ngx_stream_ssl_handler(ngx_stream_session_t *s);
+static ngx_int_t ngx_stream_ssl_init_connection(ngx_ssl_t *ssl,
+    ngx_connection_t *c);
+static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
 static ngx_int_t ngx_stream_ssl_static_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_variable(ngx_stream_session_t *s,
@@ -32,6 +36,7 @@ static char *ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static ngx_int_t ngx_stream_ssl_init(ngx_conf_t *cf);
 
 
 static ngx_conf_bitmask_t  ngx_stream_ssl_protocols[] = {
@@ -143,7 +148,7 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
 
 static ngx_stream_module_t  ngx_stream_ssl_module_ctx = {
     ngx_stream_ssl_add_variables,          /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_stream_ssl_init,                   /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -191,6 +196,88 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
 
 
 static ngx_str_t ngx_stream_ssl_sess_id_ctx = ngx_string("STREAM");
+
+
+static ngx_int_t
+ngx_stream_ssl_handler(ngx_stream_session_t *s)
+{
+    ngx_connection_t       *c;
+    ngx_stream_ssl_conf_t  *sslcf;
+
+    c = s->connection;
+
+    sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+
+    if (s->ssl && c->ssl == NULL) {
+        c->log->action = "SSL handshaking";
+
+        if (sslcf->ssl.ctx == NULL) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "no \"ssl_certificate\" is defined "
+                          "in server listening on SSL port");
+            return NGX_ERROR;
+        }
+
+        return ngx_stream_ssl_init_connection(&sslcf->ssl, c);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
+{
+    ngx_int_t               rc;
+    ngx_stream_session_t   *s;
+    ngx_stream_ssl_conf_t  *sslcf;
+
+    s = c->data;
+
+    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    rc = ngx_ssl_handshake(c);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_AGAIN) {
+        sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+
+        ngx_add_timer(c->read, sslcf->handshake_timeout);
+
+        c->ssl->handler = ngx_stream_ssl_handshake_handler;
+
+        return NGX_AGAIN;
+    }
+
+    /* rc == NGX_OK */
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
+{
+    ngx_stream_session_t  *s;
+
+    s = c->data;
+
+    if (!c->ssl->handshaked) {
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+    ngx_stream_core_run_phases(s);
+}
 
 
 static ngx_int_t
@@ -564,4 +651,23 @@ invalid:
                        "invalid session cache \"%V\"", &value[i]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_init(ngx_conf_t *cf)
+{
+    ngx_stream_handler_pt        *h;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+
+    h = ngx_array_push(&cmcf->phases[NGX_STREAM_SSL_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_stream_ssl_handler;
+
+    return NGX_OK;
 }

@@ -115,17 +115,48 @@ typedef struct {
 } ngx_stream_conf_addr_t;
 
 
-typedef ngx_int_t (*ngx_stream_access_pt)(ngx_stream_session_t *s);
+typedef enum {
+    NGX_STREAM_POST_ACCEPT_PHASE = 0,
+    NGX_STREAM_PREACCESS_PHASE,
+    NGX_STREAM_ACCESS_PHASE,
+#if (NGX_STREAM_SSL)
+    NGX_STREAM_SSL_PHASE,
+#endif
+    NGX_STREAM_CONTENT_PHASE,
+    NGX_STREAM_LOG_PHASE
+} ngx_stream_phases;
+
+
+typedef struct ngx_stream_phase_handler_s  ngx_stream_phase_handler_t;
+
+typedef ngx_int_t (*ngx_stream_phase_handler_pt)(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph);
+typedef ngx_int_t (*ngx_stream_handler_pt)(ngx_stream_session_t *s);
+typedef void (*ngx_stream_content_handler_pt)(ngx_stream_session_t *s);
+
+
+struct ngx_stream_phase_handler_s {
+    ngx_stream_phase_handler_pt    checker;
+    ngx_stream_handler_pt          handler;
+    ngx_uint_t                     next;
+};
+
+
+typedef struct {
+    ngx_stream_phase_handler_t    *handlers;
+} ngx_stream_phase_engine_t;
+
+
+typedef struct {
+    ngx_array_t                    handlers;
+} ngx_stream_phase_t;
 
 
 typedef struct {
     ngx_array_t                    servers;     /* ngx_stream_core_srv_conf_t */
     ngx_array_t                    listen;      /* ngx_stream_listen_t */
 
-    ngx_stream_access_pt           realip_handler;
-    ngx_stream_access_pt           limit_conn_handler;
-    ngx_stream_access_pt           access_handler;
-    ngx_stream_access_pt           access_log_handler;
+    ngx_stream_phase_engine_t      phase_engine;
 
     ngx_hash_t                     variables_hash;
 
@@ -136,14 +167,13 @@ typedef struct {
     ngx_uint_t                     variables_hash_bucket_size;
 
     ngx_hash_keys_arrays_t        *variables_keys;
+
+    ngx_stream_phase_t             phases[NGX_STREAM_LOG_PHASE + 1];
 } ngx_stream_core_main_conf_t;
 
 
-typedef void (*ngx_stream_handler_pt)(ngx_stream_session_t *s);
-
-
 typedef struct {
-    ngx_stream_handler_pt          handler;
+    ngx_stream_content_handler_pt  handler;
 
     ngx_stream_conf_ctx_t         *ctx;
 
@@ -189,6 +219,7 @@ struct ngx_stream_session_s {
     u_char                        *captures_data;
 #endif
 
+    ngx_int_t                      phase_handler;
     ngx_uint_t                     status;
 
 #if (NGX_STREAM_SSL)
@@ -246,7 +277,15 @@ typedef struct {
 #define NGX_STREAM_WRITE_BUFFERED  0x10
 
 
+void ngx_stream_core_run_phases(ngx_stream_session_t *s);
+ngx_int_t ngx_stream_core_generic_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph);
+ngx_int_t ngx_stream_core_content_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph);
+
+
 void ngx_stream_init_connection(ngx_connection_t *c);
+void ngx_stream_session_handler(ngx_event_t *rev);
 void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
 
 

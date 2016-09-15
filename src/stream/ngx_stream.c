@@ -12,6 +12,10 @@
 
 
 static char *ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static ngx_int_t ngx_stream_init_phases(ngx_conf_t *cf,
+    ngx_stream_core_main_conf_t *cmcf);
+static ngx_int_t ngx_stream_init_phase_handlers(ngx_conf_t *cf,
+    ngx_stream_core_main_conf_t *cmcf);
 static ngx_int_t ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     ngx_stream_listen_t *listen);
 static char *ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports);
@@ -219,6 +223,10 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    if (ngx_stream_init_phases(cf, cmcf) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     for (m = 0; cf->cycle->modules[m]; m++) {
         if (cf->cycle->modules[m]->type != NGX_STREAM_MODULE) {
             continue;
@@ -239,6 +247,9 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *cf = pcf;
 
+    if (ngx_stream_init_phase_handlers(cf, cmcf) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     if (ngx_array_init(&ports, cf->temp_pool, 4, sizeof(ngx_stream_conf_port_t))
         != NGX_OK)
@@ -255,6 +266,105 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return ngx_stream_optimize_servers(cf, &ports);
+}
+
+
+static ngx_int_t
+ngx_stream_init_phases(ngx_conf_t *cf, ngx_stream_core_main_conf_t *cmcf)
+{
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_POST_ACCEPT_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_PREACCESS_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_ACCESS_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+#if (NGX_STREAM_SSL)
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_SSL_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+#endif
+
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_LOG_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_init_phase_handlers(ngx_conf_t *cf,
+    ngx_stream_core_main_conf_t *cmcf)
+{
+    ngx_int_t                     j;
+    ngx_uint_t                    i, n;
+    ngx_stream_handler_pt        *h;
+    ngx_stream_phase_handler_t   *ph;
+    ngx_stream_phase_handler_pt   checker;
+
+    n = 1 /* content phase */;
+
+    for (i = 0; i < NGX_STREAM_LOG_PHASE; i++) {
+        n += cmcf->phases[i].handlers.nelts;
+    }
+
+    ph = ngx_pcalloc(cf->pool,
+                     n * sizeof(ngx_stream_phase_handler_t) + sizeof(void *));
+    if (ph == NULL) {
+        return NGX_ERROR;
+    }
+
+    cmcf->phase_engine.handlers = ph;
+    n = 0;
+
+    for (i = 0; i < NGX_STREAM_LOG_PHASE; i++) {
+        h = cmcf->phases[i].handlers.elts;
+
+        switch (i) {
+
+        case NGX_STREAM_CONTENT_PHASE:
+            ph->checker = ngx_stream_core_content_phase;
+            n++;
+            ph++;
+
+            continue;
+
+        default:
+            checker = ngx_stream_core_generic_phase;
+        }
+
+        n += cmcf->phases[i].handlers.nelts;
+
+        for (j = cmcf->phases[i].handlers.nelts - 1; j >= 0; j--) {
+            ph->checker = checker;
+            ph->handler = h[j];
+            ph->next = n;
+            ph++;
+        }
+    }
+
+    return NGX_OK;
 }
 
 

@@ -178,7 +178,7 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
             if (node == NULL) {
                 ngx_shmtx_unlock(&shpool->mutex);
                 ngx_stream_limit_conn_cleanup_all(s->connection->pool);
-                return NGX_ABORT;
+                return NGX_STREAM_SERVICE_UNAVAILABLE;
             }
 
             lc = (ngx_stream_limit_conn_node_t *) &node->color;
@@ -203,7 +203,7 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
                               &limits[i].shm_zone->shm.name);
 
                 ngx_stream_limit_conn_cleanup_all(s->connection->pool);
-                return NGX_ABORT;
+                return NGX_STREAM_SERVICE_UNAVAILABLE;
             }
 
             lc->conn++;
@@ -630,11 +630,17 @@ ngx_stream_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_stream_limit_conn_init(ngx_conf_t *cf)
 {
+    ngx_stream_handler_pt        *h;
     ngx_stream_core_main_conf_t  *cmcf;
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-    cmcf->limit_conn_handler = ngx_stream_limit_conn_handler;
+    h = ngx_array_push(&cmcf->phases[NGX_STREAM_PREACCESS_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_stream_limit_conn_handler;
 
     return NGX_OK;
 }

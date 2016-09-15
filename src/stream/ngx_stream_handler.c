@@ -11,15 +11,10 @@
 #include <ngx_stream.h>
 
 
+static void ngx_stream_log_session(ngx_stream_session_t *s);
 static void ngx_stream_close_connection(ngx_connection_t *c);
 static u_char *ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static void ngx_stream_proxy_protocol_handler(ngx_event_t *rev);
-static void ngx_stream_init_session_handler(ngx_event_t *rev);
-
-#if (NGX_STREAM_SSL)
-static void ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c);
-static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
-#endif
 
 
 void
@@ -154,7 +149,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
     c->log->connection = c->number;
     c->log->handler = ngx_stream_log_error;
     c->log->data = s;
-    c->log->action = "initializing connection";
+    c->log->action = "initializing session";
     c->log_error = NGX_ERROR_INFO;
 
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_stream_max_module);
@@ -179,7 +174,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
     s->start_msec = tp->msec;
 
     rev = c->read;
-    rev->handler = ngx_stream_init_session_handler;
+    rev->handler = ngx_stream_session_handler;
 
     if (addr_conf->proxy_protocol) {
         c->log->action = "reading PROXY protocol";
@@ -279,189 +274,54 @@ ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
         return;
     }
 
-    ngx_stream_init_session_handler(rev);
+    c->log->action = "initializing session";
+
+    ngx_stream_session_handler(rev);
 }
 
 
-static void
-ngx_stream_init_session_handler(ngx_event_t *rev)
+void
+ngx_stream_session_handler(ngx_event_t *rev)
 {
-    int                           tcp_nodelay;
-    ngx_int_t                     rc;
-    ngx_connection_t             *c;
-    ngx_stream_session_t         *s;
-    ngx_stream_core_srv_conf_t   *cscf;
-    ngx_stream_core_main_conf_t  *cmcf;
+    ngx_connection_t      *c;
+    ngx_stream_session_t  *s;
 
     c = rev->data;
     s = c->data;
 
-    c->log->action = "initializing session";
-
-    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
-
-    if (cmcf->realip_handler) {
-        rc = cmcf->realip_handler(s);
-
-        if (rc == NGX_ERROR) {
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return;
-        }
-    }
-
-    if (cmcf->limit_conn_handler) {
-        rc = cmcf->limit_conn_handler(s);
-
-        if (rc == NGX_ERROR) {
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        if (rc == NGX_ABORT) {
-            ngx_stream_finalize_session(s, NGX_STREAM_SERVICE_UNAVAILABLE);
-            return;
-        }
-    }
-
-    if (cmcf->access_handler) {
-        rc = cmcf->access_handler(s);
-
-        if (rc == NGX_ERROR) {
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        if (rc == NGX_ABORT) {
-            ngx_stream_finalize_session(s, NGX_STREAM_FORBIDDEN);
-            return;
-        }
-    }
-
-    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
-
-    if (c->type == SOCK_STREAM
-        && cscf->tcp_nodelay
-        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
-    {
-        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0, "tcp_nodelay");
-
-        tcp_nodelay = 1;
-
-        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                       (const void *) &tcp_nodelay, sizeof(int)) == -1)
-        {
-            ngx_connection_error(c, ngx_socket_errno,
-                                 "setsockopt(TCP_NODELAY) failed");
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
-    }
-
-
-#if (NGX_STREAM_SSL)
-    {
-    ngx_stream_ssl_conf_t  *sslcf;
-
-    sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
-
-    if (s->ssl) {
-        c->log->action = "SSL handshaking";
-
-        if (sslcf->ssl.ctx == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no \"ssl_certificate\" is defined "
-                          "in server listening on SSL port");
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        ngx_stream_ssl_init_connection(&sslcf->ssl, c);
-        return;
-    }
-    }
-#endif
-
-    c->log->action = "handling client connection";
-
-    cscf->handler(s);
+    ngx_stream_core_run_phases(s);
 }
-
-
-#if (NGX_STREAM_SSL)
-
-static void
-ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
-{
-    ngx_stream_session_t   *s;
-    ngx_stream_ssl_conf_t  *sslcf;
-
-    s = c->data;
-
-    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
-        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    if (ngx_ssl_handshake(c) == NGX_AGAIN) {
-        sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
-
-        ngx_add_timer(c->read, sslcf->handshake_timeout);
-
-        c->ssl->handler = ngx_stream_ssl_handshake_handler;
-
-        return;
-    }
-
-    ngx_stream_ssl_handshake_handler(c);
-}
-
-
-static void
-ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
-{
-    ngx_stream_session_t        *s;
-    ngx_stream_core_srv_conf_t  *cscf;
-
-    if (!c->ssl->handshaked) {
-        ngx_stream_finalize_session(c->data, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    if (c->read->timer_set) {
-        ngx_del_timer(c->read);
-    }
-
-    c->log->action = "handling client connection";
-
-    s = c->data;
-
-    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
-
-    cscf->handler(s);
-}
-
-#endif
 
 
 void
 ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc)
 {
-    ngx_stream_core_main_conf_t  *cmcf;
-
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "finalize stream session: %i", rc);
 
     s->status = rc;
 
-    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
-
-    if (cmcf->access_log_handler) {
-        (void) cmcf->access_log_handler(s);
-    }
+    ngx_stream_log_session(s);
 
     ngx_stream_close_connection(s->connection);
+}
+
+
+static void
+ngx_stream_log_session(ngx_stream_session_t *s)
+{
+    ngx_uint_t                    i, n;
+    ngx_stream_handler_pt        *log_handler;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
+    log_handler = cmcf->phases[NGX_STREAM_LOG_PHASE].handlers.elts;
+    n = cmcf->phases[NGX_STREAM_LOG_PHASE].handlers.nelts;
+
+    for (i = 0; i < n; i++) {
+        log_handler[i](s);
+    }
 }
 
 

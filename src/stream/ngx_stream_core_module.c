@@ -123,6 +123,108 @@ ngx_module_t  ngx_stream_core_module = {
 };
 
 
+void
+ngx_stream_core_run_phases(ngx_stream_session_t *s)
+{
+    ngx_int_t                     rc;
+    ngx_stream_phase_handler_t   *ph;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
+    ph = cmcf->phase_engine.handlers;
+
+    while (ph[s->phase_handler].checker) {
+
+        rc = ph[s->phase_handler].checker(s, &ph[s->phase_handler]);
+
+        if (rc == NGX_OK) {
+            return;
+        }
+    }
+}
+
+
+ngx_int_t
+ngx_stream_core_generic_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph)
+{
+    ngx_int_t  rc;
+
+    /*
+     * generic phase checker,
+     * used by all phases, except for content
+     */
+
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
+                   "generic phase: %ui", s->phase_handler);
+
+    rc = ph->handler(s);
+
+    if (rc == NGX_OK) {
+        s->phase_handler = ph->next;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_DECLINED) {
+        s->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+        return NGX_OK;
+    }
+
+    if (rc == NGX_ERROR) {
+        rc = NGX_STREAM_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_stream_finalize_session(s, rc);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_stream_core_content_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph)
+{
+    int                          tcp_nodelay;
+    ngx_connection_t            *c;
+    ngx_stream_core_srv_conf_t  *cscf;
+
+    c = s->connection;
+
+    c->log->action = NULL;
+
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    if (c->type == SOCK_STREAM
+        && cscf->tcp_nodelay
+        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
+    {
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0, "tcp_nodelay");
+
+        tcp_nodelay = 1;
+
+        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                       (const void *) &tcp_nodelay, sizeof(int)) == -1)
+        {
+            ngx_connection_error(c, ngx_socket_errno,
+                                 "setsockopt(TCP_NODELAY) failed");
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return NGX_OK;
+        }
+
+        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+    }
+
+    cscf->handler(s);
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t
 ngx_stream_core_preconfiguration(ngx_conf_t *cf)
 {

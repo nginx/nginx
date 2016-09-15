@@ -279,11 +279,17 @@ ngx_stream_realip_add_variables(ngx_conf_t *cf)
 static ngx_int_t
 ngx_stream_realip_init(ngx_conf_t *cf)
 {
+    ngx_stream_handler_pt        *h;
     ngx_stream_core_main_conf_t  *cmcf;
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-    cmcf->realip_handler = ngx_stream_realip_handler;
+    h = ngx_array_push(&cmcf->phases[NGX_STREAM_POST_ACCEPT_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+
+    *h = ngx_stream_realip_handler;
 
     return NGX_OK;
 }
