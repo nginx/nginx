@@ -122,6 +122,7 @@ typedef enum {
 #if (NGX_STREAM_SSL)
     NGX_STREAM_SSL_PHASE,
 #endif
+    NGX_STREAM_PREREAD_PHASE,
     NGX_STREAM_CONTENT_PHASE,
     NGX_STREAM_LOG_PHASE
 } ngx_stream_phases;
@@ -181,6 +182,8 @@ typedef struct {
     ngx_uint_t                     line;
 
     ngx_flag_t                     tcp_nodelay;
+    size_t                         preread_buffer_size;
+    ngx_msec_t                     preread_timeout;
 
     ngx_log_t                     *error_log;
 
@@ -279,6 +282,8 @@ typedef struct {
 
 void ngx_stream_core_run_phases(ngx_stream_session_t *s);
 ngx_int_t ngx_stream_core_generic_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph);
+ngx_int_t ngx_stream_core_preread_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph);
 ngx_int_t ngx_stream_core_content_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph);

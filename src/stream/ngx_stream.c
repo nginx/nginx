@@ -302,6 +302,13 @@ ngx_stream_init_phases(ngx_conf_t *cf, ngx_stream_core_main_conf_t *cmcf)
     }
 #endif
 
+    if (ngx_array_init(&cmcf->phases[NGX_STREAM_PREREAD_PHASE].handlers,
+                       cf->pool, 1, sizeof(ngx_stream_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     if (ngx_array_init(&cmcf->phases[NGX_STREAM_LOG_PHASE].handlers,
                        cf->pool, 1, sizeof(ngx_stream_handler_pt))
         != NGX_OK)
@@ -342,6 +349,10 @@ ngx_stream_init_phase_handlers(ngx_conf_t *cf,
         h = cmcf->phases[i].handlers.elts;
 
         switch (i) {
+
+        case NGX_STREAM_PREREAD_PHASE:
+            checker = ngx_stream_core_preread_phase;
+            break;
 
         case NGX_STREAM_CONTENT_PHASE:
             ph->checker = ngx_stream_core_content_phase;

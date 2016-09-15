@@ -91,6 +91,20 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       offsetof(ngx_stream_core_srv_conf_t, tcp_nodelay),
       NULL },
 
+    { ngx_string("preread_buffer_size"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_core_srv_conf_t, preread_buffer_size),
+      NULL },
+
+    { ngx_string("preread_timeout"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_core_srv_conf_t, preread_timeout),
+      NULL },
+
       ngx_null_command
 };
 
@@ -153,7 +167,7 @@ ngx_stream_core_generic_phase(ngx_stream_session_t *s,
 
     /*
      * generic phase checker,
-     * used by all phases, except for content
+     * used by all phases, except for preread and content
      */
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
@@ -172,6 +186,112 @@ ngx_stream_core_generic_phase(ngx_stream_session_t *s,
     }
 
     if (rc == NGX_AGAIN || rc == NGX_DONE) {
+        return NGX_OK;
+    }
+
+    if (rc == NGX_ERROR) {
+        rc = NGX_STREAM_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_stream_finalize_session(s, rc);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_stream_core_preread_phase(ngx_stream_session_t *s,
+    ngx_stream_phase_handler_t *ph)
+{
+    size_t                       size;
+    ssize_t                      n;
+    ngx_int_t                    rc;
+    ngx_connection_t            *c;
+    ngx_stream_core_srv_conf_t  *cscf;
+
+    c = s->connection;
+
+    c->log->action = "prereading client data";
+
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    if (c->read->timedout) {
+        rc = NGX_STREAM_OK;
+
+    } else if (c->read->timer_set) {
+        rc = NGX_AGAIN;
+
+    } else {
+        rc = ph->handler(s);
+    }
+
+    while (rc == NGX_AGAIN) {
+
+        if (c->buffer == NULL) {
+            c->buffer = ngx_create_temp_buf(c->pool, cscf->preread_buffer_size);
+            if (c->buffer == NULL) {
+                rc = NGX_ERROR;
+                break;
+            }
+        }
+
+        size = c->buffer->end - c->buffer->last;
+
+        if (size == 0) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0, "preread buffer full");
+            rc = NGX_STREAM_BAD_REQUEST;
+            break;
+        }
+
+        if (c->read->eof) {
+            rc = NGX_STREAM_OK;
+            break;
+        }
+
+        if (!c->read->ready) {
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                rc = NGX_ERROR;
+                break;
+            }
+
+            if (!c->read->timer_set) {
+                ngx_add_timer(c->read, cscf->preread_timeout);
+            }
+
+            c->read->handler = ngx_stream_session_handler;
+
+            return NGX_OK;
+        }
+
+        n = c->recv(c, c->buffer->last, size);
+
+        if (n == NGX_ERROR) {
+            rc = NGX_STREAM_OK;
+            break;
+        }
+
+        if (n > 0) {
+            c->buffer->last += n;
+        }
+
+        rc = ph->handler(s);
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+    if (rc == NGX_OK) {
+        s->phase_handler = ph->next;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_DECLINED) {
+        s->phase_handler++;
+        return NGX_AGAIN;
+    }
+
+    if (rc == NGX_DONE) {
         return NGX_OK;
     }
 
@@ -303,6 +423,8 @@ ngx_stream_core_create_srv_conf(ngx_conf_t *cf)
     cscf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     cscf->proxy_protocol_timeout = NGX_CONF_UNSET_MSEC;
     cscf->tcp_nodelay = NGX_CONF_UNSET;
+    cscf->preread_buffer_size = NGX_CONF_UNSET_SIZE;
+    cscf->preread_timeout = NGX_CONF_UNSET_MSEC;
 
     return cscf;
 }
@@ -354,6 +476,12 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->proxy_protocol_timeout, 30000);
 
     ngx_conf_merge_value(conf->tcp_nodelay, prev->tcp_nodelay, 1);
+
+    ngx_conf_merge_size_value(conf->preread_buffer_size,
+                              prev->preread_buffer_size, 16384);
+
+    ngx_conf_merge_msec_value(conf->preread_timeout,
+                              prev->preread_timeout, 30000);
 
     return NGX_CONF_OK;
 }
