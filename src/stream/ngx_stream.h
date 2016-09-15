@@ -243,6 +243,9 @@ typedef struct {
         NULL)
 
 
+#define NGX_STREAM_WRITE_BUFFERED  0x10
+
+
 void ngx_stream_init_connection(ngx_connection_t *c);
 void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
 
@@ -250,6 +253,13 @@ void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
 extern ngx_module_t  ngx_stream_module;
 extern ngx_uint_t    ngx_stream_max_module;
 extern ngx_module_t  ngx_stream_core_module;
+
+
+typedef ngx_int_t (*ngx_stream_filter_pt)(ngx_stream_session_t *s,
+    ngx_chain_t *chain, ngx_uint_t from_upstream);
+
+
+extern ngx_stream_filter_pt  ngx_stream_top_filter;
 
 
 #endif /* _NGX_STREAM_H_INCLUDED_ */

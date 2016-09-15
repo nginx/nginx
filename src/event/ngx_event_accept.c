@@ -467,6 +467,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         *log = ls->log;
 
         c->send = ngx_udp_send;
+        c->send_chain = ngx_udp_send_chain;
 
         c->log = log;
         c->pool->log = log;

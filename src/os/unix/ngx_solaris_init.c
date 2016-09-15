@@ -20,6 +20,7 @@ static ngx_os_io_t ngx_solaris_io = {
     ngx_udp_unix_recv,
     ngx_unix_send,
     ngx_udp_unix_send,
+    ngx_udp_unix_sendmsg_chain,
 #if (NGX_HAVE_SENDFILE)
     ngx_solaris_sendfilev_chain,
     NGX_IO_SENDFILE

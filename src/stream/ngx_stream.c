@@ -27,6 +27,9 @@ static ngx_int_t ngx_stream_cmp_conf_addrs(const void *one, const void *two);
 ngx_uint_t  ngx_stream_max_module;
 
 
+ngx_stream_filter_pt  ngx_stream_top_filter;
+
+
 static ngx_command_t  ngx_stream_commands[] = {
 
     { ngx_string("stream"),

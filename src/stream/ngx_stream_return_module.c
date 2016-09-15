@@ -11,12 +11,12 @@
 
 
 typedef struct {
-    ngx_stream_complex_value_t  text;
+    ngx_stream_complex_value_t   text;
 } ngx_stream_return_srv_conf_t;
 
 
 typedef struct {
-    ngx_buf_t                   buf;
+    ngx_chain_t                 *out;
 } ngx_stream_return_ctx_t;
 
 
@@ -72,6 +72,7 @@ static void
 ngx_stream_return_handler(ngx_stream_session_t *s)
 {
     ngx_str_t                      text;
+    ngx_buf_t                     *b;
     ngx_connection_t              *c;
     ngx_stream_return_ctx_t       *ctx;
     ngx_stream_return_srv_conf_t  *rscf;
@@ -103,8 +104,25 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
 
     ngx_stream_set_ctx(s, ctx, ngx_stream_return_module);
 
-    ctx->buf.pos = text.data;
-    ctx->buf.last = text.data + text.len;
+    b = ngx_calloc_buf(c->pool);
+    if (b == NULL) {
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    b->memory = 1;
+    b->pos = text.data;
+    b->last = text.data + text.len;
+    b->last_buf = 1;
+
+    ctx->out = ngx_alloc_chain_link(c->pool);
+    if (ctx->out == NULL) {
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ctx->out->buf = b;
+    ctx->out->next = NULL;
 
     c->write->handler = ngx_stream_return_write_handler;
 
@@ -115,8 +133,6 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
 static void
 ngx_stream_return_write_handler(ngx_event_t *ev)
 {
-    ssize_t                   n;
-    ngx_buf_t                *b;
     ngx_connection_t         *c;
     ngx_stream_session_t     *s;
     ngx_stream_return_ctx_t  *ctx;
@@ -130,25 +146,20 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
         return;
     }
 
-    if (ev->ready) {
-        ctx = ngx_stream_get_module_ctx(s, ngx_stream_return_module);
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_return_module);
 
-        b = &ctx->buf;
+    if (ngx_stream_top_filter(s, ctx->out, 1) == NGX_ERROR) {
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
 
-        n = c->send(c, b->pos, b->last - b->pos);
-        if (n == NGX_ERROR) {
-            ngx_stream_finalize_session(s, NGX_STREAM_OK);
-            return;
-        }
+    ctx->out = NULL;
 
-        if (n > 0) {
-            b->pos += n;
-
-            if (b->pos == b->last) {
-                ngx_stream_finalize_session(s, NGX_STREAM_OK);
-                return;
-            }
-        }
+    if (!c->buffered) {
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "stream return done sending");
+        ngx_stream_finalize_session(s, NGX_STREAM_OK);
+        return;
     }
 
     if (ngx_handle_write_event(ev, 0) != NGX_OK) {

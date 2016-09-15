@@ -106,14 +106,24 @@ typedef struct {
 
 typedef struct {
     ngx_peer_connection_t              peer;
+
     ngx_buf_t                          downstream_buf;
     ngx_buf_t                          upstream_buf;
+
+    ngx_chain_t                       *free;
+    ngx_chain_t                       *upstream_out;
+    ngx_chain_t                       *upstream_busy;
+    ngx_chain_t                       *downstream_out;
+    ngx_chain_t                       *downstream_busy;
+
     off_t                              received;
     time_t                             start_sec;
     ngx_uint_t                         responses;
+
 #if (NGX_STREAM_SSL)
     ngx_str_t                          ssl_name;
 #endif
+
     ngx_stream_upstream_resolved_t    *resolved;
     ngx_stream_upstream_state_t       *state;
     unsigned                           connected:1;
