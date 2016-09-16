@@ -571,6 +571,7 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->tries++;
 
         if (hp->tries >= points->number) {
+            pc->name = hp->rrp.peers->name;
             ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
             return NGX_BUSY;
         }
