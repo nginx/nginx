@@ -85,9 +85,7 @@ struct ngx_output_chain_ctx_s {
 
     unsigned                     sendfile:1;
     unsigned                     directio:1;
-#if (NGX_HAVE_ALIGNED_DIRECTIO)
     unsigned                     unaligned:1;
-#endif
     unsigned                     need_in_memory:1;
     unsigned                     need_in_temp:1;
 #if (NGX_HAVE_FILE_AIO || NGX_THREADS)
