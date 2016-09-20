@@ -488,7 +488,7 @@ ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (scf->enable && (ngx_int_t) scf->starttls > NGX_MAIL_STARTTLS_OFF) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"starttls\" directive conflicts with \"ssl on\"");
         return NGX_CONF_ERROR;
     }
@@ -514,7 +514,7 @@ ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (scf->enable == 1 && (ngx_int_t) scf->starttls > NGX_MAIL_STARTTLS_OFF) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"ssl\" directive conflicts with \"starttls\"");
         return NGX_CONF_ERROR;
     }

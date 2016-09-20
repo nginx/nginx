@@ -3656,13 +3656,13 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     engine = ENGINE_by_id((char *) value[1].data);
 
     if (engine == NULL) {
-        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "ENGINE_by_id(\"%V\") failed", &value[1]);
         return NGX_CONF_ERROR;
     }
 
     if (ENGINE_set_default(engine, ENGINE_METHOD_ALL) == 0) {
-        ngx_ssl_error(NGX_LOG_WARN, cf->log, 0,
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
                       "ENGINE_set_default(\"%V\", ENGINE_METHOD_ALL) failed",
                       &value[1]);
 

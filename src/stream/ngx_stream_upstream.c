@@ -586,14 +586,14 @@ ngx_stream_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
         }
 
         if ((uscfp[i]->flags & NGX_STREAM_UPSTREAM_CREATE) && !u->no_port) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "upstream \"%V\" may not have port %d",
                                &u->host, u->port);
             return NULL;
         }
 
         if ((flags & NGX_STREAM_UPSTREAM_CREATE) && !uscfp[i]->no_port) {
-            ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "upstream \"%V\" may not have port %d in %s:%ui",
                           &u->host, uscfp[i]->port,
                           uscfp[i]->file_name, uscfp[i]->line);
