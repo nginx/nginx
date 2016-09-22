@@ -524,7 +524,6 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
              peer;
              peer = peer->next, i++)
         {
-
             n = i / (8 * sizeof(uintptr_t));
             m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 

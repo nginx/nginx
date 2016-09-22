@@ -136,7 +136,6 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
          peer;
          peer = peer->next, i++)
     {
-
         n = i / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 
