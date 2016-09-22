@@ -748,6 +748,8 @@ found:
         return;
     }
 
+    u->upstream = uscf;
+
 #if (NGX_HTTP_SSL)
     u->ssl_name = uscf->host;
 #endif

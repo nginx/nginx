@@ -521,6 +521,8 @@ found:
         return;
     }
 
+    u->upstream = uscf;
+
 #if (NGX_STREAM_SSL)
     u->ssl_name = uscf->host;
 #endif

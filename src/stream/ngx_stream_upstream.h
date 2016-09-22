@@ -124,6 +124,7 @@ typedef struct {
     ngx_str_t                          ssl_name;
 #endif
 
+    ngx_stream_upstream_srv_conf_t    *upstream;
     ngx_stream_upstream_resolved_t    *resolved;
     ngx_stream_upstream_state_t       *state;
     unsigned                           connected:1;
