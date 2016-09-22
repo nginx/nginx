@@ -491,12 +491,6 @@ failed:
         ngx_stream_upstream_rr_peers_wlock(peers);
     }
 
-    /* all peers failed, mark them as live for quick recovery */
-
-    for (peer = peers->peer; peer; peer = peer->next) {
-        peer->fails = 0;
-    }
-
     ngx_stream_upstream_rr_peers_unlock(peers);
 
     pc->name = peers->name;
