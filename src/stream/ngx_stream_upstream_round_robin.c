@@ -96,6 +96,7 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
                 peer[n].current_weight = 0;
+                peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
@@ -159,6 +160,7 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
                 peer[n].current_weight = 0;
+                peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
@@ -227,6 +229,7 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
         peer[i].weight = 1;
         peer[i].effective_weight = 1;
         peer[i].current_weight = 0;
+        peer[i].max_conns = 0;
         peer[i].max_fails = 1;
         peer[i].fail_timeout = 10;
         *peerp = &peer[i];
@@ -438,6 +441,10 @@ ngx_stream_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
             goto failed;
         }
 
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
+            goto failed;
+        }
+
         rrp->current = peer;
 
     } else {
@@ -536,6 +543,10 @@ ngx_stream_upstream_get_peer(ngx_stream_upstream_rr_peer_data_t *rrp)
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
         {
+            continue;
+        }
+
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
             continue;
         }
 

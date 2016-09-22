@@ -322,6 +322,7 @@ ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     uscf = ngx_stream_upstream_add(cf, &u, NGX_STREAM_UPSTREAM_CREATE
                                            |NGX_STREAM_UPSTREAM_WEIGHT
+                                           |NGX_STREAM_UPSTREAM_MAX_CONNS
                                            |NGX_STREAM_UPSTREAM_MAX_FAILS
                                            |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
                                            |NGX_STREAM_UPSTREAM_DOWN
@@ -407,7 +408,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                         fail_timeout;
     ngx_str_t                     *value, s;
     ngx_url_t                      u;
-    ngx_int_t                      weight, max_fails;
+    ngx_int_t                      weight, max_conns, max_fails;
     ngx_uint_t                     i;
     ngx_stream_upstream_server_t  *us;
 
@@ -421,6 +422,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     weight = 1;
+    max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
 
@@ -435,6 +437,21 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             weight = ngx_atoi(&value[i].data[7], value[i].len - 7);
 
             if (weight == NGX_ERROR || weight == 0) {
+                goto invalid;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "max_conns=", 10) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_MAX_CONNS)) {
+                goto not_supported;
+            }
+
+            max_conns = ngx_atoi(&value[i].data[10], value[i].len - 10);
+
+            if (max_conns == NGX_ERROR) {
                 goto invalid;
             }
 
@@ -522,6 +539,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     us->addrs = u.addrs;
     us->naddrs = u.naddrs;
     us->weight = weight;
+    us->max_conns = max_conns;
     us->max_fails = max_fails;
     us->fail_timeout = fail_timeout;
 

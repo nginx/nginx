@@ -21,6 +21,7 @@
 #define NGX_STREAM_UPSTREAM_FAIL_TIMEOUT  0x0008
 #define NGX_STREAM_UPSTREAM_DOWN          0x0010
 #define NGX_STREAM_UPSTREAM_BACKUP        0x0020
+#define NGX_STREAM_UPSTREAM_MAX_CONNS     0x0100
 
 
 typedef struct {
@@ -50,6 +51,7 @@ typedef struct {
     ngx_addr_t                        *addrs;
     ngx_uint_t                         naddrs;
     ngx_uint_t                         weight;
+    ngx_uint_t                         max_conns;
     ngx_uint_t                         max_fails;
     time_t                             fail_timeout;
 

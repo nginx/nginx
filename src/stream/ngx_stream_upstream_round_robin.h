@@ -27,6 +27,7 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_int_t                        weight;
 
     ngx_uint_t                       conns;
+    ngx_uint_t                       max_conns;
 
     ngx_uint_t                       fails;
     time_t                           accessed;

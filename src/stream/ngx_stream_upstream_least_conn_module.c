@@ -150,6 +150,10 @@ ngx_stream_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
             continue;
         }
 
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
+            continue;
+        }
+
         /*
          * select peer with least number of connections; if there are
          * multiple peers with the same number of connections, select
@@ -202,6 +206,10 @@ ngx_stream_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
                 && peer->fails >= peer->max_fails
                 && now - peer->checked <= peer->fail_timeout)
             {
+                continue;
+            }
+
+            if (peer->max_conns && peer->conns >= peer->max_conns) {
                 continue;
             }
 
@@ -292,6 +300,7 @@ ngx_stream_upstream_least_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     uscf->flags = NGX_STREAM_UPSTREAM_CREATE
                   |NGX_STREAM_UPSTREAM_WEIGHT
+                  |NGX_STREAM_UPSTREAM_MAX_CONNS
                   |NGX_STREAM_UPSTREAM_MAX_FAILS
                   |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
                   |NGX_STREAM_UPSTREAM_DOWN
