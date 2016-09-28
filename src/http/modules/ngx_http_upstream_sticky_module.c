@@ -69,7 +69,7 @@ typedef struct {
     ngx_shm_zone_t                             *shm_zone;    /* sessions */
 
     ngx_str_t                                   cookie_name;
-    ngx_str_t                                   cookie_domain;
+    ngx_http_complex_value_t                   *cookie_domain;
     ngx_str_t                                   cookie_path;
     time_t                                      cookie_expires;
     unsigned                                    cookie_httponly:1;
@@ -519,6 +519,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
 {
     size_t                                len;
     u_char                               *data, *p;
+    ngx_str_t                             domain;
     ngx_table_elt_t                      *cookie;
     ngx_http_request_t                   *r;
     ngx_http_upstream_sticky_srv_conf_t  *stcf;
@@ -548,8 +549,21 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
 
 #endif
 
-    len = stcf->cookie_name.len + 1 + pc->sid->len + stcf->cookie_domain.len
-          + stcf->cookie_path.len;
+    len = stcf->cookie_name.len + 1 + pc->sid->len + stcf->cookie_path.len;
+
+    ngx_str_set(&domain, "");
+
+    if (stcf->cookie_domain) {
+        if (ngx_http_complex_value(r, stcf->cookie_domain, &domain)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    if (domain.len) {
+        len += sizeof("; domain=") - 1 + domain.len;
+    }
 
     if (stcf->cookie_expires != (time_t) NGX_CONF_UNSET) {
         len += sizeof(expires) - 1;
@@ -583,7 +597,10 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         }
     }
 
-    p = ngx_copy(p, stcf->cookie_domain.data, stcf->cookie_domain.len);
+    if (domain.len) {
+        p = ngx_cpymem(p, "; domain=", 9);
+        p = ngx_copy(p, domain.data, domain.len);
+    }
 
     if (stcf->cookie_httponly) {
         p = ngx_copy(p, httponly, sizeof(httponly) - 1);
@@ -911,7 +928,7 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
      *     stcf->shm_zone = NULL;
      *
      *     stcf->cookie_name = { 0, NULL };
-     *     stcf->cookie_domain = { 0, NULL };
+     *     stcf->cookie_domain = NULL;
      *     stcf->cookie_path = { 0, NULL };
      *     stcf->cookie_httponly = 0;
      *     stcf->cookie_secure = 0;
@@ -997,10 +1014,11 @@ static char *
 ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
     ngx_http_upstream_sticky_srv_conf_t *stcf)
 {
-    u_char      *p;
-    ngx_str_t    name, *value;
-    ngx_int_t    index, *indexp;
-    ngx_uint_t   i;
+    u_char                            *p;
+    ngx_str_t                          name, *value;
+    ngx_int_t                          index, *indexp;
+    ngx_uint_t                         i;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
@@ -1014,7 +1032,7 @@ ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
 
         if (ngx_strncmp(value[i].data, "domain=", 7) == 0) {
 
-            if (stcf->cookie_domain.data != NULL) {
+            if (stcf->cookie_domain != NULL) {
                 return "parameter \"domain\" is duplicate";
             }
 
@@ -1025,19 +1043,21 @@ ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
                 return "no value for \"domain\"";
             }
 
-            stcf->cookie_domain.len = sizeof("; domain=") - 1
-                                      + value[i].len;
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 
-            stcf->cookie_domain.data = ngx_pnalloc(cf->pool,
-                                                   stcf->cookie_domain.len);
-            if (stcf->cookie_domain.data == NULL) {
+            stcf->cookie_domain = ngx_palloc(cf->pool,
+                                             sizeof(ngx_http_complex_value_t));
+            if (stcf->cookie_domain == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            p = ngx_cpymem(stcf->cookie_domain.data,
-                           "; domain=", sizeof("; domain=") - 1);
-            ngx_memcpy(p, value[i].data, value[i].len);
+            ccv.cf = cf;
+            ccv.value = &value[i];
+            ccv.complex_value = stcf->cookie_domain;
 
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
 
         } else if (ngx_strncmp(value[i].data, "path=", 5) == 0) {
 
