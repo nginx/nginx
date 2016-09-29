@@ -68,6 +68,9 @@ struct ngx_peer_connection_s {
 
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;
+
+    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_END
 };
 
 

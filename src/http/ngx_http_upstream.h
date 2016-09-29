@@ -102,6 +102,9 @@ typedef struct {
 
     unsigned                         down:1;
     unsigned                         backup:1;
+
+    NGX_COMPAT_BEGIN(6)
+    NGX_COMPAT_END
 } ngx_http_upstream_server_t;
 
 
@@ -229,6 +232,9 @@ typedef struct {
 #endif
 
     ngx_str_t                        module;
+
+    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_END
 } ngx_http_upstream_conf_t;
 
 
@@ -382,6 +388,9 @@ struct ngx_http_upstream_s {
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         header_sent:1;
+
+    NGX_COMPAT_BEGIN(1)
+    NGX_COMPAT_END
 };
 
 

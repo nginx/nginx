@@ -50,6 +50,9 @@ struct ngx_http_upstream_rr_peer_s {
 #endif
 
     ngx_http_upstream_rr_peer_t    *next;
+
+    NGX_COMPAT_BEGIN(32)
+    NGX_COMPAT_END
 };
 
 
