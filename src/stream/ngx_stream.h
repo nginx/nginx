@@ -229,6 +229,8 @@ struct ngx_stream_session_s {
     unsigned                       ssl:1;
 #endif
 
+    unsigned                       stat_processing:1;
+
     unsigned                       health_check:1;
 };
 

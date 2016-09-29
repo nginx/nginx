@@ -541,6 +541,7 @@ struct ngx_http_request_s {
     unsigned                          disable_not_modified:1;
     unsigned                          stat_reading:1;
     unsigned                          stat_writing:1;
+    unsigned                          stat_processing:1;
 
     unsigned                          health_check:1;
 
