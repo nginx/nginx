@@ -25,6 +25,8 @@ typedef ngx_int_t (*ngx_event_get_peer_pt)(ngx_peer_connection_t *pc,
     void *data);
 typedef void (*ngx_event_free_peer_pt)(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state);
+typedef void (*ngx_event_notify_peer_pt)(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t type);
 #if (NGX_SSL)
 
 typedef ngx_int_t (*ngx_event_set_peer_session_pt)(ngx_peer_connection_t *pc,
@@ -46,6 +48,7 @@ struct ngx_peer_connection_s {
 
     ngx_event_get_peer_pt            get;
     ngx_event_free_peer_pt           free;
+    ngx_event_notify_peer_pt         notify;
     void                            *data;
 
 #if (NGX_SSL)
