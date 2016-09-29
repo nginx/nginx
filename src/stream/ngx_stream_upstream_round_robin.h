@@ -38,7 +38,7 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_msec_t                       slow_start;
     ngx_msec_t                       start_time;
 
-    ngx_uint_t                       down;         /* unsigned  down:1; */
+    ngx_uint_t                       down;
 
 #if (NGX_STREAM_SSL)
     void                            *ssl_session;
