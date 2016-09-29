@@ -265,6 +265,7 @@ ngx_stream_upstream_init_round_robin_peer(ngx_stream_session_t *s,
 
     rrp->peers = us->peer.data;
     rrp->current = NULL;
+    rrp->config = 0;
 
     n = rrp->peers->number;
 
@@ -391,6 +392,7 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
 
     rrp->peers = peers;
     rrp->current = NULL;
+    rrp->config = 0;
 
     if (rrp->peers->number <= 8 * sizeof(uintptr_t)) {
         rrp->tried = &rrp->data;

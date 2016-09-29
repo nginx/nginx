@@ -122,6 +122,7 @@ struct ngx_http_upstream_rr_peers_s {
 
 
 typedef struct {
+    ngx_uint_t                      config;
     ngx_http_upstream_rr_peers_t   *peers;
     ngx_http_upstream_rr_peer_t    *current;
     uintptr_t                      *tried;
