@@ -347,6 +347,7 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
         peer[0].weight = 1;
         peer[0].effective_weight = 1;
         peer[0].current_weight = 0;
+        peer[0].max_conns = 0;
         peer[0].max_fails = 1;
         peer[0].fail_timeout = 10;
         peers->peer = peer;
@@ -380,6 +381,7 @@ ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
             peer[i].weight = 1;
             peer[i].effective_weight = 1;
             peer[i].current_weight = 0;
+            peer[i].max_conns = 0;
             peer[i].max_fails = 1;
             peer[i].fail_timeout = 10;
             *peerp = &peer[i];
