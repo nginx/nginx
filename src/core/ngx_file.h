@@ -43,6 +43,7 @@ struct ngx_file_s {
 
 
 typedef time_t (*ngx_path_manager_pt) (void *data);
+typedef ngx_msec_t (*ngx_path_purger_pt) (void *data);
 typedef void (*ngx_path_loader_pt) (void *data);
 
 
@@ -52,6 +53,7 @@ typedef struct {
     size_t                     level[NGX_MAX_PATH_LEVEL];
 
     ngx_path_manager_pt        manager;
+    ngx_path_purger_pt         purger;
     ngx_path_loader_pt         loader;
     void                      *data;
 

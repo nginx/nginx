@@ -205,6 +205,7 @@ typedef struct {
 
     ngx_array_t                     *cache_valid;
     ngx_array_t                     *cache_bypass;
+    ngx_array_t                     *cache_purge;
     ngx_array_t                     *no_cache;
 #endif
 

@@ -50,7 +50,8 @@ typedef struct {
     unsigned                         exists:1;
     unsigned                         updating:1;
     unsigned                         deleting:1;
-                                     /* 11 unused bits */
+    unsigned                         purged:1;
+                                     /* 10 unused bits */
 
     ngx_file_uniq_t                  uniq;
     time_t                           expire;
@@ -85,6 +86,7 @@ struct ngx_http_cache_s {
     ngx_uint_t                       min_uses;
     ngx_uint_t                       error;
     ngx_uint_t                       valid_msec;
+    ngx_uint_t                       vary_tag;
 
     ngx_buf_t                       *buf;
 
@@ -109,6 +111,7 @@ struct ngx_http_cache_s {
     unsigned                         updating:1;
     unsigned                         exists:1;
     unsigned                         temp_file:1;
+    unsigned                         purged:1;
     unsigned                         reading:1;
     unsigned                         secondary:1;
 };
