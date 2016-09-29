@@ -3006,6 +3006,7 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
     ctx->count--;
 
     srv->ctx = NULL;
+    srv->state = cctx->state;
 
     if (cctx->naddrs) {
 
