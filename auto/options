@@ -134,6 +134,8 @@ NGX_ADDONS=
 NGX_ADDON_DEPS=
 DYNAMIC_ADDONS=
 
+NGX_COMPAT=NO
+
 USE_PCRE=NO
 PCRE=NONE
 PCRE_OPT=
@@ -324,6 +326,8 @@ use the \"--with-mail_ssl_module\" option instead"
 
         --add-module=*)                  NGX_ADDONS="$NGX_ADDONS $value" ;;
         --add-dynamic-module=*)          DYNAMIC_ADDONS="$DYNAMIC_ADDONS $value" ;;
+
+        --with-compat)                   NGX_COMPAT=YES             ;;
 
         --with-cc=*)                     CC="$value"                ;;
         --with-cpp=*)                    CPP="$value"               ;;
@@ -531,6 +535,8 @@ cat << END
 
   --add-module=PATH                  enable external module
   --add-dynamic-module=PATH          enable dynamic external module
+
+  --with-compat                      dynamic modules compatibility
 
   --with-cc=PATH                     set C compiler pathname
   --with-cpp=PATH                    set C preprocessor pathname

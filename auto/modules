@@ -1312,6 +1312,18 @@ fi
 modules="$modules $MISC_MODULES"
 
 
+if [ $NGX_COMPAT = YES ]; then
+    have=NGX_COMPAT . auto/have
+    have=NGX_HTTP_GZIP . auto/have
+    have=NGX_HTTP_DAV . auto/have
+    have=NGX_HTTP_REALIP . auto/have
+    have=NGX_HTTP_X_FORWARDED_FOR . auto/have
+    have=NGX_HTTP_HEADERS . auto/have
+    have=NGX_HTTP_UPSTREAM_ZONE . auto/have
+    have=NGX_STREAM_UPSTREAM_ZONE . auto/have
+fi
+
+
 cat << END                                    > $NGX_MODULES_C
 
 #include <ngx_config.h>
