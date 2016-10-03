@@ -1144,7 +1144,7 @@ ngx_http_mp4_read_mdat_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     data = &mp4->mdat_data_buf;
     data->file = &mp4->file;
     data->in_file = 1;
-    data->last_buf = 1;
+    data->last_buf = (mp4->request == mp4->request->main) ? 1 : 0;
     data->last_in_chain = 1;
     data->file_last = mp4->offset + atom_data_size;
 
