@@ -73,13 +73,11 @@ struct ngx_listening_s {
     unsigned            add_reuseport:1;
     unsigned            keepalive:2;
 
-#if (NGX_HAVE_DEFERRED_ACCEPT)
     unsigned            deferred_accept:1;
     unsigned            delete_deferred:1;
     unsigned            add_deferred:1;
-#ifdef SO_ACCEPTFILTER
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     char               *accept_filter;
-#endif
 #endif
 #if (NGX_HAVE_SETFIB)
     int                 setfib;

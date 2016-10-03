@@ -80,11 +80,7 @@
 #define NGX_MODULE_SIGNATURE_11  "0"
 #endif
 
-#if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
 #define NGX_MODULE_SIGNATURE_12  "1"
-#else
-#define NGX_MODULE_SIGNATURE_12  "0"
-#endif
 
 #if (NGX_HAVE_SETFIB)
 #define NGX_MODULE_SIGNATURE_13  "1"
