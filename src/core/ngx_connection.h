@@ -66,7 +66,7 @@ struct ngx_listening_s {
     unsigned            addr_ntop:1;
     unsigned            wildcard:1;
 
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+#if (NGX_HAVE_INET6)
     unsigned            ipv6only:1;
 #endif
 #if (NGX_HAVE_REUSEPORT)

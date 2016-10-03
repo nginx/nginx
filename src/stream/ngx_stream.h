@@ -52,7 +52,7 @@ typedef struct {
 #if (NGX_STREAM_SSL)
     unsigned                       ssl:1;
 #endif
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+#if (NGX_HAVE_INET6)
     unsigned                       ipv6only:1;
 #endif
 #if (NGX_HAVE_REUSEPORT)

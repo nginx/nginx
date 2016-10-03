@@ -341,7 +341,7 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->keepcnt = addr[i].opt.tcp_keepcnt;
 #endif
 
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+#if (NGX_HAVE_INET6)
             ls->ipv6only = addr[i].opt.ipv6only;
 #endif
 

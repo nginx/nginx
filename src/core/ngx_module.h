@@ -71,11 +71,7 @@
 #define NGX_MODULE_SIGNATURE_8   "0"
 #endif
 
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
 #define NGX_MODULE_SIGNATURE_9   "1"
-#else
-#define NGX_MODULE_SIGNATURE_9   "0"
-#endif
 
 #if (NGX_HAVE_REUSEPORT)
 #define NGX_MODULE_SIGNATURE_10  "1"
