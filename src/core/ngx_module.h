@@ -158,11 +158,7 @@
 #define NGX_MODULE_SIGNATURE_24  "0"
 #endif
 
-#if (NGX_HTTP_V2)
 #define NGX_MODULE_SIGNATURE_25  "1"
-#else
-#define NGX_MODULE_SIGNATURE_25  "0"
-#endif
 
 #if (NGX_HTTP_GZIP)
 #define NGX_MODULE_SIGNATURE_26  "1"

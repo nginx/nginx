@@ -286,9 +286,7 @@ typedef struct {
     ngx_chain_t                      *bufs;
     ngx_buf_t                        *buf;
     off_t                             rest;
-#if (NGX_HTTP_V2)
     off_t                             received;
-#endif
     ngx_chain_t                      *free;
     ngx_chain_t                      *busy;
     ngx_http_chunked_t               *chunked;
@@ -438,9 +436,7 @@ struct ngx_http_request_s {
     ngx_uint_t                        err_status;
 
     ngx_http_connection_t            *http_connection;
-#if (NGX_HTTP_V2)
     ngx_http_v2_stream_t             *stream;
-#endif
 
     ngx_http_log_handler_pt           log_handler;
 
