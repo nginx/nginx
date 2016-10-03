@@ -327,9 +327,7 @@ struct ngx_http_core_loc_conf_s {
     unsigned      auto_redirect:1;
 #if (NGX_HTTP_GZIP)
     unsigned      gzip_disable_msie6:2;
-#if (NGX_HTTP_DEGRADATION)
     unsigned      gzip_disable_degradation:2;
-#endif
 #endif
 
     ngx_http_location_tree_node_t   *static_locations;
