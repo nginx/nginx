@@ -72,12 +72,7 @@
 #endif
 
 #define NGX_MODULE_SIGNATURE_9   "1"
-
-#if (NGX_HAVE_REUSEPORT)
 #define NGX_MODULE_SIGNATURE_10  "1"
-#else
-#define NGX_MODULE_SIGNATURE_10  "0"
-#endif
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
 #define NGX_MODULE_SIGNATURE_11  "1"

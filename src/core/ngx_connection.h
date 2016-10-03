@@ -69,10 +69,8 @@ struct ngx_listening_s {
 #if (NGX_HAVE_INET6)
     unsigned            ipv6only:1;
 #endif
-#if (NGX_HAVE_REUSEPORT)
     unsigned            reuseport:1;
     unsigned            add_reuseport:1;
-#endif
     unsigned            keepalive:2;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)
