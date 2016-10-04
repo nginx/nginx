@@ -55,7 +55,7 @@ static int ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     HMAC_CTX *hctx, int enc);
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10002002L
+#ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 static ngx_int_t ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *str);
 #endif
 
@@ -3092,7 +3092,7 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
         return NGX_ERROR;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002002L
+#ifdef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 
     /* X509_check_host() is only available in OpenSSL 1.0.2+ */
 
@@ -3209,7 +3209,7 @@ found:
 }
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10002002L
+#ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 
 static ngx_int_t
 ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *pattern)
