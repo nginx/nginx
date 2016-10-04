@@ -84,8 +84,7 @@ win32:
 		--with-openssl-opt=no-asm				\
 		--with-http_ssl_module					\
 		--with-mail_ssl_module					\
-		--with-stream_ssl_module				\
-		--with-ipv6
+		--with-stream_ssl_module
 
 
 zip: export
