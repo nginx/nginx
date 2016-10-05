@@ -1191,10 +1191,7 @@ ngx_close_connection(ngx_connection_t *c)
             level = NGX_LOG_CRIT;
         }
 
-        /* we use ngx_cycle->log because c->log was in c->pool */
-
-        ngx_log_error(level, ngx_cycle->log, err,
-                      ngx_close_socket_n " %d failed", fd);
+        ngx_log_error(level, c->log, err, ngx_close_socket_n " %d failed", fd);
     }
 }
 
