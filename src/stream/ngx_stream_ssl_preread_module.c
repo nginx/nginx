@@ -333,11 +333,12 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
                 return NGX_ERROR;
             }
 
-            ctx->host.len = size;
             dst = ctx->host.data;
             break;
 
         case sw_sni_host:
+            ctx->host.len = (p[1] << 8) + p[2];
+
             ngx_log_debug1(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: SNI hostname \"%V\"", &ctx->host);
             return NGX_OK;
