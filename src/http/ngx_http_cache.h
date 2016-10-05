@@ -166,6 +166,10 @@ struct ngx_http_file_cache_s {
     ngx_msec_t                       loader_sleep;
     ngx_msec_t                       loader_threshold;
 
+    ngx_uint_t                       manager_files;
+    ngx_msec_t                       manager_sleep;
+    ngx_msec_t                       manager_threshold;
+
     ngx_shm_zone_t                  *shm_zone;
 };
 

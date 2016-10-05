@@ -921,11 +921,11 @@ static void
 ngx_cache_manager_process_handler(void)
 {
     u_long        ev;
-    time_t        next, n;
     ngx_uint_t    i;
+    ngx_msec_t    next, n;
     ngx_path_t  **path;
 
-    next = 60 * 60;
+    next = 60 * 60 * 1000;
 
     path = ngx_cycle->paths.elts;
     for (i = 0; i < ngx_cycle->paths.nelts; i++) {
@@ -943,7 +943,7 @@ ngx_cache_manager_process_handler(void)
         next = 1;
     }
 
-    ev = WaitForSingleObject(ngx_cache_manager_event, (u_long) next * 1000);
+    ev = WaitForSingleObject(ngx_cache_manager_event, (u_long) next);
 
     if (ev != WAIT_TIMEOUT) {
 

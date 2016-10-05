@@ -1148,11 +1148,11 @@ ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data)
 static void
 ngx_cache_manager_process_handler(ngx_event_t *ev)
 {
-    time_t        next, n;
     ngx_uint_t    i;
+    ngx_msec_t    next, n;
     ngx_path_t  **path;
 
-    next = 60 * 60;
+    next = 60 * 60 * 1000;
 
     path = ngx_cycle->paths.elts;
     for (i = 0; i < ngx_cycle->paths.nelts; i++) {
@@ -1170,7 +1170,7 @@ ngx_cache_manager_process_handler(ngx_event_t *ev)
         next = 1;
     }
 
-    ngx_add_timer(ev, next * 1000);
+    ngx_add_timer(ev, next);
 }
 
 

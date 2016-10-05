@@ -42,7 +42,7 @@ struct ngx_file_s {
 #define NGX_MAX_PATH_LEVEL  3
 
 
-typedef time_t (*ngx_path_manager_pt) (void *data);
+typedef ngx_msec_t (*ngx_path_manager_pt) (void *data);
 typedef ngx_msec_t (*ngx_path_purger_pt) (void *data);
 typedef void (*ngx_path_loader_pt) (void *data);
 
