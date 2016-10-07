@@ -441,7 +441,7 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     u_char      *p;
     ngx_str_t   *value;
-    ngx_uint_t   i, right, shift, *access;
+    ngx_uint_t   i, right, shift, *access, user;
 
     access = (ngx_uint_t *) (confp + cmd->offset);
 
@@ -451,7 +451,8 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    *access = 0600;
+    *access = 0;
+    user = 0600;
 
     for (i = 1; i < cf->args->nelts; i++) {
 
@@ -460,6 +461,7 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ngx_strncmp(p, "user:", sizeof("user:") - 1) == 0) {
             shift = 6;
             p += sizeof("user:") - 1;
+            user = 0;
 
         } else if (ngx_strncmp(p, "group:", sizeof("group:") - 1) == 0) {
             shift = 3;
@@ -485,6 +487,8 @@ ngx_conf_set_access_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         *access |= right << shift;
     }
+
+    *access |= user;
 
     return NGX_CONF_OK;
 
