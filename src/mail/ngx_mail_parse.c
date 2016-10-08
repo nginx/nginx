@@ -905,13 +905,27 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
 
     if (arg[0].len == 8) {
 
-        if (s->args.nelts != 1) {
-            return NGX_MAIL_PARSE_INVALID_COMMAND;
-        }
-
         if (ngx_strncasecmp(arg[0].data, (u_char *) "CRAM-MD5", 8) == 0) {
+
+            if (s->args.nelts != 1) {
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
+            }
+
             return NGX_MAIL_AUTH_CRAM_MD5;
         }
+
+        if (ngx_strncasecmp(arg[0].data, (u_char *) "EXTERNAL", 8) == 0) {
+
+            if (s->args.nelts == 1) {
+                return NGX_MAIL_AUTH_EXTERNAL;
+            }
+
+            if (s->args.nelts == 2) {
+                return ngx_mail_auth_external(s, c, 1);
+            }
+        }
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
     return NGX_MAIL_PARSE_INVALID_COMMAND;

@@ -240,6 +240,10 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
         case ngx_pop3_auth_cram_md5:
             rc = ngx_mail_auth_cram_md5(s, c);
             break;
+
+        case ngx_pop3_auth_external:
+            rc = ngx_mail_auth_external(s, c, 0);
+            break;
         }
     }
 
@@ -494,6 +498,13 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
         }
 
         return NGX_ERROR;
+
+    case NGX_MAIL_AUTH_EXTERNAL:
+
+        ngx_str_set(&s->out, pop3_username);
+        s->mail_state = ngx_pop3_auth_external;
+
+        return NGX_OK;
     }
 
     return rc;

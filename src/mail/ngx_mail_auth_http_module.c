@@ -151,6 +151,7 @@ static ngx_str_t   ngx_mail_auth_http_method[] = {
     ngx_string("plain"),
     ngx_string("apop"),
     ngx_string("cram-md5"),
+    ngx_string("external"),
     ngx_string("none")
 };
 
