@@ -35,9 +35,7 @@ typedef struct {
 
     unsigned                bind:1;
     unsigned                wildcard:1;
-#if (NGX_MAIL_SSL)
     unsigned                ssl:1;
-#endif
 #if (NGX_HAVE_INET6)
     unsigned                ipv6only:1;
 #endif
@@ -54,9 +52,7 @@ typedef struct {
 typedef struct {
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
-#if (NGX_MAIL_SSL)
     ngx_uint_t              ssl;    /* unsigned   ssl:1; */
-#endif
 } ngx_mail_addr_conf_t;
 
 typedef struct {
