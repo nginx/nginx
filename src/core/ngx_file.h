@@ -30,7 +30,7 @@ struct ngx_file_s {
     ngx_thread_task_t         *thread_task;
 #endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_COMPAT)
     ngx_event_aio_t           *aio;
 #endif
 

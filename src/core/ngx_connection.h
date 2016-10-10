@@ -182,7 +182,7 @@ struct ngx_connection_s {
 
     unsigned            need_last_buf:1;
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
     unsigned            busy_count:2;
 #endif
 

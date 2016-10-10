@@ -152,7 +152,7 @@ struct ngx_event_aio_s {
     ngx_event_handler_pt       handler;
     ngx_file_t                *file;
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
     ssize_t                  (*preload_handler)(ngx_buf_t *file);
 #endif
 

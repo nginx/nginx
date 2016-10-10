@@ -35,13 +35,13 @@
 #define NGX_MODULE_SIGNATURE_2   "0"
 #endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_COMPAT)
 #define NGX_MODULE_SIGNATURE_3   "1"
 #else
 #define NGX_MODULE_SIGNATURE_3   "0"
 #endif
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
 #define NGX_MODULE_SIGNATURE_4   "1"
 #else
 #define NGX_MODULE_SIGNATURE_4   "0"
