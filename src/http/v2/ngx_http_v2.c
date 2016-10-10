@@ -3178,7 +3178,7 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_http_v2_header_t *header)
     p = r->method_name.data;
 
     do {
-        if ((*p < 'A' || *p > 'Z') && *p != '_') {
+        if ((*p < 'A' || *p > 'Z') && *p != '_' && *p != '-') {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent invalid method: \"%V\"",
                           &r->method_name);
