@@ -88,9 +88,7 @@ struct ngx_output_chain_ctx_s {
     unsigned                     unaligned:1;
     unsigned                     need_in_memory:1;
     unsigned                     need_in_temp:1;
-#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     unsigned                     aio:1;
-#endif
 
 #if (NGX_HAVE_FILE_AIO)
     ngx_output_chain_aio_pt      aio_handler;
@@ -99,7 +97,7 @@ struct ngx_output_chain_ctx_s {
 #endif
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
     ngx_int_t                  (*thread_handler)(ngx_thread_task_t *task,
                                                  ngx_file_t *file);
     ngx_thread_task_t           *thread_task;

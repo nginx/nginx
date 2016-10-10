@@ -127,7 +127,7 @@
 #define NGX_MODULE_SIGNATURE_21  "0"
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
 #define NGX_MODULE_SIGNATURE_22  "1"
 #else
 #define NGX_MODULE_SIGNATURE_22  "0"

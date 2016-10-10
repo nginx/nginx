@@ -47,7 +47,7 @@ struct ngx_event_pipe_s {
     ngx_event_pipe_output_filter_pt   output_filter;
     void                             *output_ctx;
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
     ngx_int_t                       (*thread_handler)(ngx_thread_task_t *task,
                                                       ngx_file_t *file);
     void                             *thread_ctx;

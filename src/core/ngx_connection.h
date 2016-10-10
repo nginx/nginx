@@ -186,7 +186,7 @@ struct ngx_connection_s {
     unsigned            busy_count:2;
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
     ngx_thread_task_t  *sendfile_task;
 #endif
 };

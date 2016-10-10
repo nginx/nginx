@@ -15,6 +15,8 @@
 
 #if (NGX_THREADS)
 #include <ngx_thread_pool.h>
+#elif (NGX_COMPAT)
+typedef struct ngx_thread_pool_s  ngx_thread_pool_t;
 #endif
 
 
@@ -409,7 +411,7 @@ struct ngx_http_core_loc_conf_s {
 #endif
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
     ngx_thread_pool_t         *thread_pool;
     ngx_http_complex_value_t  *thread_pool_value;
 #endif
