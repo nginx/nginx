@@ -1213,6 +1213,7 @@ ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
     struct sockaddr_in6  *sin61, *sin62;
 #endif
 #if (NGX_HAVE_UNIX_DOMAIN)
+    size_t                len;
     struct sockaddr_un   *saun1, *saun2;
 #endif
 
@@ -1242,15 +1243,21 @@ ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
 #if (NGX_HAVE_UNIX_DOMAIN)
     case AF_UNIX:
 
-        /* TODO length */
-
         saun1 = (struct sockaddr_un *) sa1;
         saun2 = (struct sockaddr_un *) sa2;
 
-        if (ngx_memcmp(&saun1->sun_path, &saun2->sun_path,
-                       sizeof(saun1->sun_path))
-            != 0)
-        {
+        if (slen1 < slen2) {
+            len = slen1 - offsetof(struct sockaddr_un, sun_path);
+
+        } else {
+            len = slen2 - offsetof(struct sockaddr_un, sun_path);
+        }
+
+        if (len > sizeof(saun1->sun_path)) {
+            len = sizeof(saun1->sun_path);
+        }
+
+        if (ngx_memcmp(&saun1->sun_path, &saun2->sun_path, len) != 0) {
             return NGX_DECLINED;
         }
 
