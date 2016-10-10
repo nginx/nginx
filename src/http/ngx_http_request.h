@@ -300,7 +300,7 @@ typedef struct {
     ngx_http_addr_conf_t             *addr_conf;
     ngx_http_conf_ctx_t              *conf_ctx;
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_str_t                        *ssl_servername;
 #if (NGX_PCRE)
     ngx_http_regex_t                 *ssl_servername_regex;
@@ -313,9 +313,7 @@ typedef struct {
     ngx_buf_t                       **free;
     ngx_int_t                         nfree;
 
-#if (NGX_HTTP_SSL)
     unsigned                          ssl:1;
-#endif
     unsigned                          proxy_protocol:1;
 } ngx_http_connection_t;
 

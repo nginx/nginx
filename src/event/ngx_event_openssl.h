@@ -54,14 +54,14 @@
 #define ngx_ssl_conn_t          SSL
 
 
-typedef struct {
+struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
-} ngx_ssl_t;
+};
 
 
-typedef struct {
+struct ngx_ssl_connection_s {
     ngx_ssl_conn_t             *connection;
     SSL_CTX                    *session_ctx;
 
@@ -80,7 +80,7 @@ typedef struct {
     unsigned                    no_wait_shutdown:1;
     unsigned                    no_send_shutdown:1;
     unsigned                    handshake_buffer_set:1;
-} ngx_ssl_connection_t;
+};
 
 
 #define NGX_SSL_NO_SCACHE            -2

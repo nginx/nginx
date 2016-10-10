@@ -40,7 +40,7 @@ struct ngx_http_upstream_rr_peer_s {
 
     ngx_uint_t                      down;
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
     void                           *ssl_session;
     int                             ssl_session_len;
 #endif

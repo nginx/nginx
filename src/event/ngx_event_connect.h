@@ -27,13 +27,10 @@ typedef void (*ngx_event_free_peer_pt)(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state);
 typedef void (*ngx_event_notify_peer_pt)(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t type);
-#if (NGX_SSL)
-
 typedef ngx_int_t (*ngx_event_set_peer_session_pt)(ngx_peer_connection_t *pc,
     void *data);
 typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
     void *data);
-#endif
 
 
 struct ngx_peer_connection_s {
@@ -51,7 +48,7 @@ struct ngx_peer_connection_s {
     ngx_event_notify_peer_pt         notify;
     void                            *data;
 
-#if (NGX_SSL)
+#if (NGX_SSL || NGX_COMPAT)
     ngx_event_set_peer_session_pt    set_session;
     ngx_event_save_peer_session_pt   save_session;
 #endif

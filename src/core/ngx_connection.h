@@ -147,7 +147,7 @@ struct ngx_connection_s {
     ngx_str_t           proxy_protocol_addr;
     in_port_t           proxy_protocol_port;
 
-#if (NGX_SSL)
+#if (NGX_SSL || NGX_COMPAT)
     ngx_ssl_connection_t  *ssl;
 #endif
 

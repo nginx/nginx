@@ -139,7 +139,7 @@
 #define NGX_MODULE_SIGNATURE_23  "0"
 #endif
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
 #define NGX_MODULE_SIGNATURE_24  "1"
 #else
 #define NGX_MODULE_SIGNATURE_24  "0"
