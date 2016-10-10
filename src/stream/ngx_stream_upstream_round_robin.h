@@ -40,10 +40,8 @@ struct ngx_stream_upstream_rr_peer_s {
 
     ngx_uint_t                       down;
 
-#if (NGX_STREAM_SSL)
     void                            *ssl_session;
     int                              ssl_session_len;
-#endif
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_atomic_t                     lock;
