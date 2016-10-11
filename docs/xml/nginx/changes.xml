@@ -5,6 +5,140 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.5" date="11.10.2016">
+
+<change type="change">
+<para lang="ru">
+параметр configure --with-ipv6 упразднён,
+поддержка IPv6 теперь собирается автоматически.
+</para>
+<para lang="en">
+the --with-ipv6 configure option was removed,
+now IPv6 support is configured automatically.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь, если в блоке upstream не оказалось доступных серверов,
+nginx не сбрасывает статистику ошибок всех серверов, как делал ранее,
+а ожидает истечения fail_timeout.
+</para>
+<para lang="en">
+now if there are no available servers in an upstream,
+nginx will not reset number of failures of all servers as it previously did,
+but will wait for fail_timeout to expire.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_ssl_preread_module.
+</para>
+<para lang="en">
+the ngx_stream_ssl_preread_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива server в блоке upstream поддерживает параметр max_conns.
+</para>
+<para lang="en">
+the "server" directive in the "upstream" context supports
+the "max_conns" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр configure --with-compat.
+</para>
+<para lang="en">
+the --with-compat configure option.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры manager_files, manager_threshold и manager_sleep
+директив proxy_cache_path, fastcgi_cache_path, scgi_cache_path и
+uwsgi_cache_path.
+</para>
+<para lang="en">
+"manager_files", "manager_threshold", and "manager_sleep" parameters
+of the "proxy_cache_path", "fastcgi_cache_path", "scgi_cache_path", and
+"uwsgi_cache_path" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при сборке perl-модуля не использовались флаги,
+заданные с помощью параметра configure --with-ld-opt.
+</para>
+<para lang="en">
+flags passed by the --with-ld-opt configure option
+were not used while building perl module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве add_after_body при использовании совместно с директивой sub_filter.
+</para>
+<para lang="en">
+in the "add_after_body" directive when used with the "sub_filter" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $realip_remote_addr.
+</para>
+<para lang="en">
+in the $realip_remote_addr variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы dav_access, proxy_store_access, fastcgi_store_access,
+scgi_store_access и uwsgi_store_access
+игнорировали права, заданные для пользователя.
+</para>
+<para lang="en">
+the "dav_access", "proxy_store_access", "fastcgi_store_access",
+"scgi_store_access", and "uwsgi_store_access" directives
+ignored permissions specified for user.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+unix domain listen-сокеты могли не наследоваться
+при обновлении исполняемого файла на Linux.
+</para>
+<para lang="en">
+unix domain listen sockets might not be inherited
+during binary upgrade on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 400 на запросы
+с символом "-" в HTTP-методе.
+</para>
+<para lang="en">
+nginx returned the 400 response on requests
+with the "-" character in the HTTP method.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.4" date="13.09.2016">
 
 <change type="feature">
