@@ -1920,17 +1920,18 @@ ngx_http_file_cache_manager(void *data)
     ngx_http_file_cache_t  *cache = data;
 
     off_t       size;
-    time_t      next, wait;
-    ngx_msec_t  elapsed;
+    time_t      wait;
+    ngx_msec_t  elapsed, next;
     ngx_uint_t  count, watermark;
 
     cache->last = ngx_current_msec;
     cache->files = 0;
 
-    next = ngx_http_file_cache_expire(cache);
+    next = (ngx_msec_t) ngx_http_file_cache_expire(cache) * 1000;
 
     if (next == 0) {
-        return cache->manager_sleep;
+        next = cache->manager_sleep;
+        goto done;
     }
 
     for ( ;; ) {
@@ -1947,21 +1948,23 @@ ngx_http_file_cache_manager(void *data)
                        size, count, (ngx_int_t) watermark);
 
         if (size < cache->max_size && count < watermark) {
-            return (ngx_msec_t) next * 1000;
+            break;
         }
 
         wait = ngx_http_file_cache_forced_expire(cache);
 
         if (wait > 0) {
-            return (ngx_msec_t) wait * 1000;
+            next = (ngx_msec_t) wait * 1000;
+            break;
         }
 
         if (ngx_quit || ngx_terminate) {
-            return (ngx_msec_t) next * 1000;
+            break;
         }
 
         if (++cache->files >= cache->manager_files) {
-            return cache->manager_sleep;
+            next = cache->manager_sleep;
+            break;
         }
 
         ngx_time_update();
@@ -1969,9 +1972,20 @@ ngx_http_file_cache_manager(void *data)
         elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
 
         if (elapsed >= cache->manager_threshold) {
-            return cache->manager_sleep;
+            next = cache->manager_sleep;
+            break;
         }
     }
+
+done:
+
+    elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "http file cache manager: %ui e:%M n:%M",
+                   cache->files, elapsed, next);
+
+    return next;
 }
 
 
