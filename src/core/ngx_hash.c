@@ -390,7 +390,6 @@ found:
 
         buckets[i] = (ngx_hash_elt_t *) elts;
         elts += test[i];
-
     }
 
     for (i = 0; i < size; i++) {
