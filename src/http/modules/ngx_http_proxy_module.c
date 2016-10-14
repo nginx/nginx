@@ -3357,6 +3357,20 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #endif
 
+    /*
+     * special handling to preserve conf->headers in the "http" section
+     * to inherit it to all servers
+     */
+
+    if (prev->headers.hash.buckets == NULL
+        && conf->headers_source == prev->headers_source)
+    {
+        prev->headers = conf->headers;
+#if (NGX_HTTP_CACHE)
+        prev->headers_cache = conf->headers_cache;
+#endif
+    }
+
     return NGX_CONF_OK;
 }
 

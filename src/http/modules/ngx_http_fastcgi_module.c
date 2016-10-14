@@ -3127,6 +3127,20 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #endif
 
+    /*
+     * special handling to preserve conf->params in the "http" section
+     * to inherit it to all servers
+     */
+
+    if (prev->params.hash.buckets == NULL
+        && conf->params_source == prev->params_source)
+    {
+        prev->params = conf->params;
+#if (NGX_HTTP_CACHE)
+        prev->params_cache = conf->params_cache;
+#endif
+    }
+
     return NGX_CONF_OK;
 }
 
