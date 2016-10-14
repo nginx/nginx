@@ -6021,12 +6021,7 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
 
         conf->hide_headers_hash = prev->hide_headers_hash;
 
-        if (conf->hide_headers_hash.buckets
-#if (NGX_HTTP_CACHE)
-            && ((conf->cache == 0) == (prev->cache == 0))
-#endif
-           )
-        {
+        if (conf->hide_headers_hash.buckets) {
             return NGX_OK;
         }
 
