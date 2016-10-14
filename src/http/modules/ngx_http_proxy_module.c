@@ -3392,14 +3392,6 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         return NGX_ERROR;
     }
 
-    if (conf->headers_source == NULL) {
-        conf->headers_source = ngx_array_create(cf->pool, 4,
-                                                sizeof(ngx_keyval_t));
-        if (conf->headers_source == NULL) {
-            return NGX_ERROR;
-        }
-    }
-
     headers->lengths = ngx_array_create(cf->pool, 64, 1);
     if (headers->lengths == NULL) {
         return NGX_ERROR;
@@ -3410,15 +3402,18 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         return NGX_ERROR;
     }
 
-    src = conf->headers_source->elts;
-    for (i = 0; i < conf->headers_source->nelts; i++) {
+    if (conf->headers_source) {
 
-        s = ngx_array_push(&headers_merged);
-        if (s == NULL) {
-            return NGX_ERROR;
+        src = conf->headers_source->elts;
+        for (i = 0; i < conf->headers_source->nelts; i++) {
+
+            s = ngx_array_push(&headers_merged);
+            if (s == NULL) {
+                return NGX_ERROR;
+            }
+
+            *s = src[i];
         }
-
-        *s = src[i];
     }
 
     h = default_headers;
