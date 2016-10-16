@@ -73,7 +73,7 @@ typedef struct {
     ngx_array_t                   *cookie_domains;
     ngx_array_t                   *cookie_paths;
 
-    ngx_str_t                      method;
+    ngx_http_complex_value_t      *method;
     ngx_str_t                      location;
     ngx_str_t                      url;
 
@@ -380,7 +380,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_method"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, method),
       NULL },
@@ -1159,8 +1159,10 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         /* HEAD was changed to GET to cache response */
         method = u->method;
 
-    } else if (plcf->method.len) {
-        method = plcf->method;
+    } else if (plcf->method) {
+        if (ngx_http_complex_value(r, plcf->method, &method) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
     } else {
         method = r->method_name;
@@ -2797,7 +2799,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.store_values = NULL;
      *     conf->upstream.ssl_name = NULL;
      *
-     *     conf->method = { 0, NULL };
+     *     conf->method = NULL;
      *     conf->headers_source = NULL;
      *     conf->headers.lengths = NULL;
      *     conf->headers.values = NULL;
@@ -3158,7 +3160,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #endif
 
-    ngx_conf_merge_str_value(conf->method, prev->method, "");
+    if (conf->method == NULL) {
+        conf->method = prev->method;
+    }
 
     ngx_conf_merge_value(conf->upstream.pass_request_headers,
                               prev->upstream.pass_request_headers, 1);
