@@ -5768,6 +5768,8 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 
         if (flags & NGX_HTTP_UPSTREAM_CREATE) {
             uscfp[i]->flags = flags;
+            uscfp[i]->port = 0;
+            uscfp[i]->default_port = 0;
         }
 
         return uscfp[i];
