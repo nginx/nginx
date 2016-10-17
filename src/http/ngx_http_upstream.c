@@ -5763,7 +5763,6 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
         if (flags & NGX_HTTP_UPSTREAM_CREATE) {
             uscfp[i]->flags = flags;
             uscfp[i]->port = 0;
-            uscfp[i]->default_port = 0;
         }
 
         return uscfp[i];
@@ -5779,7 +5778,6 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
     uscf->file_name = cf->conf_file->file.name.data;
     uscf->line = cf->conf_file->line;
     uscf->port = u->port;
-    uscf->default_port = u->default_port;
     uscf->no_port = u->no_port;
 
     if (u->naddrs == 1 && (u->port || u->family == AF_UNIX)) {
