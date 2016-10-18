@@ -951,6 +951,8 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
             return NGX_ERROR;
         }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100005L
+
         dh->p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
         dh->g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
 
@@ -959,6 +961,23 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
             DH_free(dh);
             return NGX_ERROR;
         }
+
+#else
+        {
+        BIGNUM  *p, *g;
+
+        p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
+        g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
+
+        if (p == NULL || g == NULL || !DH_set0_pqg(dh, p, NULL, g)) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "BN_bin2bn() failed");
+            DH_free(dh);
+            BN_free(p);
+            BN_free(g);
+            return NGX_ERROR;
+        }
+        }
+#endif
 
         SSL_CTX_set_tmp_dh(ssl->ctx, dh);
 
