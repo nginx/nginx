@@ -5,6 +5,121 @@
 <change_log title="nginx">
 
 
+<changes ver="1.10.2" date="18.10.2016">
+
+<change type="change">
+<para lang="ru">
+при попытке запросить виртуальный сервер,
+отличающийся от согласованного в процессе SSL handshake,
+теперь возвращается ответ "421 Misdirected Request";
+это улучшает совместимость с некоторыми HTTP/2-клиентами
+в случае использования клиентских сертификатов.
+</para>
+<para lang="en">
+the "421 Misdirected Request" response now used
+when rejecting requests to a virtual server
+different from one negotiated during an SSL handshake;
+this improves interoperability with some HTTP/2 clients
+when using client certificates.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+HTTP/2-клиенты теперь могут сразу присылать тело запроса;
+директива http2_body_preread_size позволяет указать размер буфера, который
+будет использоваться до того, как nginx начнёт читать тело.
+</para>
+<para lang="en">
+HTTP/2 clients can now start sending request body immediately;
+the "http2_body_preread_size" directive controls size of the buffer used
+before nginx will start reading client request body.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директивы proxy_request_buffering
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using HTTP/2 and the "proxy_request_buffering" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+к запросам, передаваемым на бэкенд,
+всегда добавлялась строка заголовка "Content-Length",
+даже если у запроса не было тела.
+</para>
+<para lang="en">
+the "Content-Length" request header line
+was always added to requests passed to backends,
+including requests without body,
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+в логах могли появляться сообщения "http request count is zero".
+</para>
+<para lang="en">
+"http request count is zero" alerts might appear in logs
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы sub_filter
+могло буферизироваться больше данных, чем это необходимо;
+проблема появилась в 1.9.4.
+</para>
+<para lang="en">
+unnecessary buffering might occur
+when using the "sub_filter" directive;
+the issue had appeared in 1.9.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов при использовании HTTP/2.
+</para>
+<para lang="en">
+socket leak when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директив "aio threads" и sendfile
+мог возвращаться некорректный ответ; ошибка появилась в 1.9.13.
+</para>
+<para lang="en">
+an incorrect response might be returned
+when using the "aio threads" and "sendfile" directives;
+the bug had appeared in 1.9.13.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+совместимость с OpenSSL 1.1.0.
+</para>
+<para lang="en">
+OpenSSL 1.1.0 compatibility.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.10.1" date="31.05.2016">
 
 <change type="security">
