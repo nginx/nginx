@@ -2137,7 +2137,9 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
             break;
         }
 
-        if (p >= last) {
+        /* ERR_error_string_n() requires at least one byte */
+
+        if (p >= last - 1) {
             goto next;
         }
 
