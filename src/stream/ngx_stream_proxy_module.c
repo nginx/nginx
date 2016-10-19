@@ -1183,7 +1183,8 @@ ngx_stream_proxy_ssl_name(ngx_stream_session_t *s)
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "upstream SSL server name: \"%s\"", name.data);
 
-    if (SSL_set_tlsext_host_name(u->peer.connection->ssl->connection, name.data)
+    if (SSL_set_tlsext_host_name(u->peer.connection->ssl->connection,
+                                 (char *) name.data)
         == 0)
     {
         ngx_ssl_error(NGX_LOG_ERR, s->connection->log, 0,
