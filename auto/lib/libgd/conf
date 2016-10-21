@@ -74,6 +74,11 @@ if [ $ngx_found = yes ]; then
 
     NGX_LIB_LIBGD=$ngx_feature_libs
 
+    ngx_feature="GD WebP support"
+    ngx_feature_name="NGX_HAVE_GD_WEBP"
+    ngx_feature_test="gdImagePtr img = gdImageCreateFromWebpPtr(1, NULL);"
+    . auto/feature
+
 else
 
 cat << END
