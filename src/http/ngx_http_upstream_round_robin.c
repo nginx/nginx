@@ -1008,6 +1008,21 @@ void
 ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
 {
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ngx_http_upstream_rr_peer_data_t  *rrp = data;
+
+    ngx_http_upstream_rr_peers_rlock(rrp->peers);
+    ngx_http_upstream_rr_peer_lock(rrp->peers, rrp->current);
+#endif
+
+    ngx_http_upstream_free_round_robin_peer_locked(pc, data, state);
+}
+
+
+void
+ngx_http_upstream_free_round_robin_peer_locked(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t state)
+{
     ngx_http_upstream_rr_peer_data_t  *rrp = data;
 
     time_t                       now;
@@ -1019,9 +1034,6 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
     /* TODO: NGX_PEER_KEEPALIVE */
 
     peer = rrp->current;
-
-    ngx_http_upstream_rr_peers_rlock(rrp->peers);
-    ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
 
     if (rrp->peers->single) {
 

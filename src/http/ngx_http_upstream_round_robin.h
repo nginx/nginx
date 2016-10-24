@@ -248,6 +248,8 @@ ngx_int_t ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 void ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t state);
+void ngx_http_upstream_free_round_robin_peer_locked(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t state);
 
 #if (NGX_HTTP_SSL)
 ngx_int_t
