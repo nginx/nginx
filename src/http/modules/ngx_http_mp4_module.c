@@ -216,6 +216,7 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_mp4_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_mp4_atofp(u_char *line, size_t n, size_t point);
 
 static ngx_int_t ngx_http_mp4_process(ngx_http_mp4_file_t *mp4);
 static ngx_int_t ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
@@ -537,26 +538,15 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
 
             /*
              * A Flash player may send start value with a lot of digits
-             * after dot so strtod() is used instead of atofp().  NaNs and
-             * infinities become negative numbers after (int) conversion.
+             * after dot so a custom function is used instead of ngx_atofp().
              */
 
-            ngx_set_errno(0);
-            start = (int) (strtod((char *) value.data, NULL) * 1000);
-
-            if (ngx_errno != 0) {
-                start = -1;
-            }
+            start = ngx_http_mp4_atofp(value.data, value.len, 3);
         }
 
         if (ngx_http_arg(r, (u_char *) "end", 3, &value) == NGX_OK) {
 
-            ngx_set_errno(0);
-            end = (int) (strtod((char *) value.data, NULL) * 1000);
-
-            if (ngx_errno != 0) {
-                end = -1;
-            }
+            end = ngx_http_mp4_atofp(value.data, value.len, 3);
 
             if (end > 0) {
                 if (start < 0) {
@@ -683,6 +673,62 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
     out.next = NULL;
 
     return ngx_http_output_filter(r, &out);
+}
+
+
+static ngx_int_t
+ngx_http_mp4_atofp(u_char *line, size_t n, size_t point)
+{
+    ngx_int_t   value, cutoff, cutlim;
+    ngx_uint_t  dot;
+
+    /* same as ngx_atofp(), but allows additional digits */
+
+    if (n == 0) {
+        return NGX_ERROR;
+    }
+
+    cutoff = NGX_MAX_INT_T_VALUE / 10;
+    cutlim = NGX_MAX_INT_T_VALUE % 10;
+
+    dot = 0;
+
+    for (value = 0; n--; line++) {
+
+        if (*line == '.') {
+            if (dot) {
+                return NGX_ERROR;
+            }
+
+            dot = 1;
+            continue;
+        }
+
+        if (*line < '0' || *line > '9') {
+            return NGX_ERROR;
+        }
+
+        if (point == 0) {
+            continue;
+        }
+
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
+        value = value * 10 + (*line - '0');
+        point -= dot;
+    }
+
+    while (point--) {
+        if (value > cutoff) {
+            return NGX_ERROR;
+        }
+
+        value = value * 10;
+    }
+
+    return value;
 }
 
 
