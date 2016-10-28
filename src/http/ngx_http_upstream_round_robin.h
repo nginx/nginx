@@ -91,7 +91,16 @@ struct ngx_http_upstream_rr_peer_s {
 
     ngx_http_upstream_rr_peer_t    *next;
 
-    NGX_COMPAT_BEGIN(13)
+#if (NGX_HTTP_UPSTREAM_LEAST_TIME || NGX_COMPAT)
+    ngx_msec_t                      header_time;
+    ngx_msec_t                      response_time;
+    ngx_msec_t                      inflight_time;
+    ngx_msec_t                      inflight_last;
+    ngx_msec_t                      inflight_reqs_changed;
+    ngx_uint_t                      inflight_reqs;
+#endif
+
+    NGX_COMPAT_BEGIN(7)
     NGX_COMPAT_END
 };
 
@@ -236,6 +245,12 @@ typedef struct {
     uintptr_t                      *tried;
     uintptr_t                       data;
 } ngx_http_upstream_rr_peer_data_t;
+
+
+/* exponential moving average + rounding */
+#define ngx_http_upstream_response_time_avg(avg, v)                            \
+    *(avg) = (*(avg) ? (0.5 + ((double) (v) * 0.05 + (double) (*(avg)) * 0.95))\
+                     : (v))
 
 
 ngx_int_t ngx_http_upstream_init_round_robin(ngx_conf_t *cf,

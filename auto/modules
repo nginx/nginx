@@ -915,6 +915,19 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_HTTP_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_http_upstream_least_time_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_LEAST_TIME
+
+        . auto/module
+    fi
+
     if [ $HTTP_UPSTREAM_RANDOM = YES ]; then
         ngx_module_name=ngx_http_upstream_random_module
         ngx_module_incs=
