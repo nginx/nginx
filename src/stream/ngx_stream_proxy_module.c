@@ -2006,6 +2006,11 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     if (u->state->first_byte_time == (ngx_msec_t) -1) {
                         u->state->first_byte_time = ngx_current_msec
                                                     - u->start_time;
+
+                        if (u->peer.notify) {
+                            u->peer.notify(&u->peer, u->peer.data,
+                                       NGX_STREAM_UPSTREAM_NOTIFY_FIRST_BYTE);
+                        }
                     }
                 }
 

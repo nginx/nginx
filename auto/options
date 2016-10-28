@@ -133,6 +133,7 @@ STREAM_PASS=YES
 STREAM_SET=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
+STREAM_UPSTREAM_LEAST_TIME=YES
 STREAM_UPSTREAM_RANDOM=YES
 STREAM_UPSTREAM_ZONE=YES
 STREAM_SSL_PREREAD=NO
@@ -355,6 +356,8 @@ use the \"--with-mail_ssl_module\" option instead"
                                          STREAM_UPSTREAM_HASH=NO    ;;
         --without-stream_upstream_least_conn_module)
                                          STREAM_UPSTREAM_LEAST_CONN=NO ;;
+        --without-stream_upstream_least_time_module)
+                                         STREAM_UPSTREAM_LEAST_TIME=NO ;;
         --without-stream_upstream_random_module)
                                          STREAM_UPSTREAM_RANDOM=NO  ;;
         --without-stream_upstream_zone_module)
@@ -579,6 +582,8 @@ cat << END
                                      disable ngx_stream_upstream_hash_module
   --without-stream_upstream_least_conn_module
                                      disable ngx_stream_upstream_least_conn_module
+  --without-stream_upstream_least_time_module
+                                     disable ngx_stream_upstream_least_time_module
   --without-stream_upstream_random_module
                                      disable ngx_stream_upstream_random_module
   --without-stream_upstream_zone_module

@@ -1244,6 +1244,18 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_STREAM_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_stream_upstream_least_time_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_LEAST_TIME
+
+        . auto/module
+    fi
+
     if [ $STREAM_UPSTREAM_RANDOM = YES ]; then
         ngx_module_name=ngx_stream_upstream_random_module
         ngx_module_deps=
