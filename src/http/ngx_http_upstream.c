@@ -654,6 +654,23 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
         host = &u->resolved->host;
 
+        umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+        uscfp = umcf->upstreams.elts;
+
+        for (i = 0; i < umcf->upstreams.nelts; i++) {
+
+            uscf = uscfp[i];
+
+            if (uscf->host.len == host->len
+                && ((uscf->port == 0 && u->resolved->no_port)
+                     || uscf->port == u->resolved->port)
+                && ngx_strncasecmp(uscf->host.data, host->data, host->len) == 0)
+            {
+                goto found;
+            }
+        }
+
         if (u->resolved->sockaddr) {
 
             if (u->resolved->port == 0
@@ -677,23 +694,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             ngx_http_upstream_connect(r, u);
 
             return;
-        }
-
-        umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-
-        uscfp = umcf->upstreams.elts;
-
-        for (i = 0; i < umcf->upstreams.nelts; i++) {
-
-            uscf = uscfp[i];
-
-            if (uscf->host.len == host->len
-                && ((uscf->port == 0 && u->resolved->no_port)
-                     || uscf->port == u->resolved->port)
-                && ngx_strncasecmp(uscf->host.data, host->data, host->len) == 0)
-            {
-                goto found;
-            }
         }
 
         if (u->resolved->port == 0) {
