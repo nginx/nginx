@@ -578,7 +578,7 @@ ngx_stream_proxy_eval(ngx_stream_session_t *s,
         return NGX_ERROR;
     }
 
-    if (url.addrs && url.addrs[0].sockaddr) {
+    if (url.addrs) {
         u->resolved->sockaddr = url.addrs[0].sockaddr;
         u->resolved->socklen = url.addrs[0].socklen;
         u->resolved->naddrs = 1;
