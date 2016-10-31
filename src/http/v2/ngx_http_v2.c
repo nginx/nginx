@@ -2592,7 +2592,7 @@ ngx_http_v2_send_rst_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
     ngx_http_v2_out_frame_t  *frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 send RST_STREAM frame sid:%ui, status:%uz",
+                   "http2 send RST_STREAM frame sid:%ui, status:%ui",
                    sid, status);
 
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_RST_STREAM_SIZE,
@@ -2618,8 +2618,9 @@ ngx_http_v2_send_goaway(ngx_http_v2_connection_t *h2c, ngx_uint_t status)
     ngx_buf_t                *buf;
     ngx_http_v2_out_frame_t  *frame;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 send GOAWAY frame, status:%uz", status);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send GOAWAY frame: last sid %ui, error %ui",
+                   h2c->last_sid, status);
 
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_GOAWAY_SIZE,
                                   NGX_HTTP_V2_GOAWAY_FRAME,
