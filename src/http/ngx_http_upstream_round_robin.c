@@ -337,7 +337,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
     if (ur->sockaddr) {
         peer[0].sockaddr = ur->sockaddr;
         peer[0].socklen = ur->socklen;
-        peer[0].name = ur->host;
+        peer[0].name = ur->name.data ? ur->name : ur->host;
         peer[0].weight = 1;
         peer[0].effective_weight = 1;
         peer[0].current_weight = 0;

@@ -105,6 +105,7 @@ typedef struct {
 
     struct sockaddr                   *sockaddr;
     socklen_t                          socklen;
+    ngx_str_t                          name;
 
     ngx_resolver_ctx_t                *ctx;
 } ngx_stream_upstream_resolved_t;
