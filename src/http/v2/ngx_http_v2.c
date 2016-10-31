@@ -326,16 +326,21 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
 
     if (c->close) {
         c->close = 0;
-        h2c->goaway = 1;
 
-        if (ngx_http_v2_send_goaway(h2c, NGX_HTTP_V2_NO_ERROR) == NGX_ERROR) {
-            ngx_http_v2_finalize_connection(h2c, 0);
-            return;
-        }
+        if (!h2c->goaway) {
+            h2c->goaway = 1;
 
-        if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
-            ngx_http_v2_finalize_connection(h2c, 0);
-            return;
+            if (ngx_http_v2_send_goaway(h2c, NGX_HTTP_V2_NO_ERROR)
+                == NGX_ERROR)
+            {
+                ngx_http_v2_finalize_connection(h2c, 0);
+                return;
+            }
+
+            if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
+                ngx_http_v2_finalize_connection(h2c, 0);
+                return;
+            }
         }
 
         h2c->blocked = 0;
@@ -1175,6 +1180,15 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (priority || node->parent == NULL) {
         node->weight = weight;
         ngx_http_v2_set_dependency(h2c, node, depend, excl);
+    }
+
+    if (h2c->connection->requests >= h2scf->max_requests) {
+        h2c->goaway = 1;
+
+        if (ngx_http_v2_send_goaway(h2c, NGX_HTTP_V2_NO_ERROR) == NGX_ERROR) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
+        }
     }
 
     return ngx_http_v2_state_header_block(h2c, pos, end);
