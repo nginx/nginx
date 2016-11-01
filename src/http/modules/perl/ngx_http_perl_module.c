@@ -410,7 +410,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     args = &params[NGX_HTTP_PERL_SSI_ARG];
 
-    if (args) {
+    if (args[0]) {
 
         for (i = 0; args[i]; i++) { /* void */ }
 
