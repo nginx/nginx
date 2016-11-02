@@ -17,6 +17,8 @@ static ngx_int_t ngx_http_upstream_cache_get(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_http_file_cache_t **cache);
 static ngx_int_t ngx_http_upstream_cache_send(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_cache_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
@@ -922,6 +924,10 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return rc;
     }
 
+    if (ngx_http_upstream_cache_check_range(r, u) == NGX_DECLINED) {
+        u->cacheable = 0;
+    }
+
     r->cached = 0;
 
     return NGX_DECLINED;
@@ -1021,6 +1027,55 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
     /* TODO: delete file */
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    off_t             offset;
+    u_char           *p, *start;
+    ngx_table_elt_t  *h;
+
+    h = r->headers_in.range;
+
+    if (h == NULL
+        || !u->cacheable
+        || u->conf->cache_max_range_offset == NGX_MAX_OFF_T_VALUE)
+    {
+        return NGX_OK;
+    }
+
+    if (u->conf->cache_max_range_offset == 0) {
+        return NGX_DECLINED;
+    }
+
+    if (h->value.len < 7
+        || ngx_strncasecmp(h->value.data, (u_char *) "bytes=", 6) != 0)
+    {
+        return NGX_OK;
+    }
+
+    p = h->value.data + 6;
+
+    while (*p == ' ') { p++; }
+
+    if (*p == '-') {
+        return NGX_DECLINED;
+    }
+
+    start = p;
+
+    while (*p >= '0' && *p <= '9') { p++; }
+
+    offset = ngx_atoof(start, p - start);
+
+    if (offset >= u->conf->cache_max_range_offset) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 #endif

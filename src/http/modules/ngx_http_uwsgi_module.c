@@ -330,6 +330,13 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.cache_min_uses),
       NULL },
 
+    { ngx_string("uwsgi_cache_max_range_offset"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_off_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.cache_max_range_offset),
+      NULL },
+
     { ngx_string("uwsgi_cache_use_stale"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
@@ -1410,6 +1417,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 #if (NGX_HTTP_CACHE)
     conf->upstream.cache = NGX_CONF_UNSET;
     conf->upstream.cache_min_uses = NGX_CONF_UNSET_UINT;
+    conf->upstream.cache_max_range_offset = NGX_CONF_UNSET;
     conf->upstream.cache_bypass = NGX_CONF_UNSET_PTR;
     conf->upstream.no_cache = NGX_CONF_UNSET_PTR;
     conf->upstream.cache_valid = NGX_CONF_UNSET_PTR;
@@ -1657,6 +1665,10 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->upstream.cache_min_uses,
                               prev->upstream.cache_min_uses, 1);
+
+    ngx_conf_merge_off_value(conf->upstream.cache_max_range_offset,
+                              prev->upstream.cache_max_range_offset,
+                              NGX_MAX_OFF_T_VALUE);
 
     ngx_conf_merge_bitmask_value(conf->upstream.cache_use_stale,
                               prev->upstream.cache_use_stale,

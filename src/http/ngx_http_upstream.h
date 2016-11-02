@@ -198,6 +198,8 @@ typedef struct {
     ngx_uint_t                       cache_use_stale;
     ngx_uint_t                       cache_methods;
 
+    off_t                            cache_max_range_offset;
+
     ngx_flag_t                       cache_lock;
     ngx_msec_t                       cache_lock_timeout;
     ngx_msec_t                       cache_lock_age;
