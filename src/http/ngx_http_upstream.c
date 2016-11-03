@@ -2760,6 +2760,15 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->header_sent = 1;
 
     if (u->upgrade) {
+
+#if (NGX_HTTP_CACHE)
+
+        if (r->cache) {
+            ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
+        }
+
+#endif
+
         ngx_http_upstream_upgrade(r, u);
         return;
     }
@@ -2789,6 +2798,14 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (!u->buffering) {
+
+#if (NGX_HTTP_CACHE)
+
+        if (r->cache) {
+            ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
+        }
+
+#endif
 
         if (u->input_filter == NULL) {
             u->input_filter_init = ngx_http_upstream_non_buffered_filter_init;
