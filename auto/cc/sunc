@@ -20,7 +20,10 @@ have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
 
 cat << END > $NGX_AUTOTEST.c
 
-int main() { printf("%d", __SUNPRO_C); }
+int main(void) {
+    printf("%d", __SUNPRO_C);
+    return 0;
+}
 
 END
 
@@ -143,10 +146,6 @@ CFLAGS="$CFLAGS $CPU_OPT"
 
 if [ ".$PCRE_OPT" = "." ]; then
     PCRE_OPT="$ngx_fast $IPO $CPU_OPT"
-fi
-
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="$ngx_fast $IPO $CPU_OPT"
 fi
 
 if [ ".$ZLIB_OPT" = "." ]; then

@@ -15,7 +15,7 @@ END
 
 cat << END > $NGX_AUTOTEST.c
 
-int main() {
+int main(void) {
     int i = 0x11223344;
     char *p;
 

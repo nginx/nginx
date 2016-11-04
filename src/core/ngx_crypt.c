@@ -8,9 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_crypt.h>
 #include <ngx_md5.h>
-#if (NGX_HAVE_SHA1)
 #include <ngx_sha1.h>
-#endif
 
 
 #if (NGX_CRYPT)
@@ -19,15 +17,10 @@ static ngx_int_t ngx_crypt_apr1(ngx_pool_t *pool, u_char *key, u_char *salt,
     u_char **encrypted);
 static ngx_int_t ngx_crypt_plain(ngx_pool_t *pool, u_char *key, u_char *salt,
     u_char **encrypted);
-
-#if (NGX_HAVE_SHA1)
-
 static ngx_int_t ngx_crypt_ssha(ngx_pool_t *pool, u_char *key, u_char *salt,
     u_char **encrypted);
 static ngx_int_t ngx_crypt_sha(ngx_pool_t *pool, u_char *key, u_char *salt,
     u_char **encrypted);
-
-#endif
 
 
 static u_char *ngx_crypt_to64(u_char *p, uint32_t v, size_t n);
@@ -42,13 +35,11 @@ ngx_crypt(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
     } else if (ngx_strncmp(salt, "{PLAIN}", sizeof("{PLAIN}") - 1) == 0) {
         return ngx_crypt_plain(pool, key, salt, encrypted);
 
-#if (NGX_HAVE_SHA1)
     } else if (ngx_strncmp(salt, "{SSHA}", sizeof("{SSHA}") - 1) == 0) {
         return ngx_crypt_ssha(pool, key, salt, encrypted);
 
     } else if (ngx_strncmp(salt, "{SHA}", sizeof("{SHA}") - 1) == 0) {
         return ngx_crypt_sha(pool, key, salt, encrypted);
-#endif
     }
 
     /* fallback to libc crypt() */
@@ -193,8 +184,6 @@ ngx_crypt_plain(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 }
 
 
-#if (NGX_HAVE_SHA1)
-
 static ngx_int_t
 ngx_crypt_ssha(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 {
@@ -277,7 +266,5 @@ ngx_crypt_sha(ngx_pool_t *pool, u_char *key, u_char *salt, u_char **encrypted)
 
     return NGX_OK;
 }
-
-#endif /* NGX_HAVE_SHA1 */
 
 #endif /* NGX_CRYPT */

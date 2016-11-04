@@ -66,12 +66,6 @@ else
     PCRE_OPT="$PCRE_OPT -pipe"
 fi
 
-if [ ".$MD5_OPT" = "." ]; then
-    MD5_OPT="-O2 -pipe $CPU_OPT"
-else
-    MD5_OPT="$MD5_OPT -pipe"
-fi
-
 if [ ".$ZLIB_OPT" = "." ]; then
     ZLIB_OPT="-O2 -pipe $CPU_OPT"
 else

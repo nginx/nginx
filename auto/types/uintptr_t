@@ -17,9 +17,9 @@ found=no
 cat << END > $NGX_AUTOTEST.c
 
 #include <sys/types.h>
-$NGX_INTTYPES_H
+$NGX_INCLUDE_INTTYPES_H
 
-int main() {
+int main(void) {
     uintptr_t i = 0;
     return (int) i;
 }

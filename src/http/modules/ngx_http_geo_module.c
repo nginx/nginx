@@ -469,7 +469,12 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             for (i = 0; i < 0x10000; i++) {
                 a = (ngx_array_t *) ctx.high.low[i];
 
-                if (a == NULL || a->nelts == 0) {
+                if (a == NULL) {
+                    continue;
+                }
+
+                if (a->nelts == 0) {
+                    ctx.high.low[i] = NULL;
                     continue;
                 }
 
@@ -814,7 +819,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 2], &range[i + 1],
-                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) s;
                 range[i + 1].end = (u_short) e;
@@ -853,7 +858,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 3], &range[i + 1],
-                           (a->nelts - 3 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 3 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 2].start = (u_short) (e + 1);
                 range[i + 2].end = range[i].end;
@@ -881,7 +886,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 1], &range[i],
-                           (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) (e + 1);
 
@@ -905,7 +910,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 range = a->elts;
 
                 ngx_memmove(&range[i + 2], &range[i + 1],
-                           (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 2 - i) * sizeof(ngx_http_geo_range_t));
 
                 range[i + 1].start = (u_short) s;
                 range[i + 1].end = (u_short) e;
@@ -935,13 +940,20 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             return NGX_CONF_ERROR;
         }
 
-        range->start = (u_short) s;
-        range->end = (u_short) e;
-        range->value = ctx->value;
+        range = a->elts;
+
+        ngx_memmove(&range[1], &range[0],
+                    (a->nelts - 1) * sizeof(ngx_http_geo_range_t));
+
+        range[0].start = (u_short) s;
+        range[0].end = (u_short) e;
+        range[0].value = ctx->value;
 
     next:
 
-        continue;
+        if (h == 0xffff) {
+            break;
+        }
     }
 
     return NGX_CONF_OK;
@@ -959,7 +971,7 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     warn = 0;
 
-    for (n = start; n <= end; n += 0x10000) {
+    for (n = start; n <= end; n = (n + 0x10000) & 0xffff0000) {
 
         h = n >> 16;
 
@@ -978,9 +990,9 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
         a = (ngx_array_t *) ctx->high.low[h];
 
-        if (a == NULL) {
+        if (a == NULL || a->nelts == 0) {
             warn = 1;
-            continue;
+            goto next;
         }
 
         range = a->elts;
@@ -990,20 +1002,22 @@ ngx_http_geo_delete_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
                 && e == (ngx_uint_t) range[i].end)
             {
                 ngx_memmove(&range[i], &range[i + 1],
-                           (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
+                            (a->nelts - 1 - i) * sizeof(ngx_http_geo_range_t));
 
                 a->nelts--;
 
                 break;
             }
 
-            if (s != (ngx_uint_t) range[i].start
-                && e != (ngx_uint_t) range[i].end)
-            {
-                continue;
+            if (i == a->nelts - 1) {
+                warn = 1;
             }
+        }
 
-            warn = 1;
+    next:
+
+        if (h == 0xffff) {
+            break;
         }
     }
 

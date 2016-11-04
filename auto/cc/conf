@@ -231,7 +231,7 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     ngx_feature_incs=
     ngx_feature_path=
     ngx_feature_libs=
-    ngx_feature_test="__builtin_bswap64(0)"
+    ngx_feature_test="if (__builtin_bswap64(0)) return 1"
     . auto/feature
 
 

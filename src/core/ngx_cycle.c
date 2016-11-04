@@ -132,6 +132,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
+    ngx_rbtree_init(&cycle->config_dump_rbtree, &cycle->config_dump_sentinel,
+                    ngx_str_rbtree_insert_value);
+
     if (old_cycle->open_files.part.nelts) {
         n = old_cycle->open_files.part.nelts;
         for (part = old_cycle->open_files.part.next; part; part = part->next) {

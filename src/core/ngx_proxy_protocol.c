@@ -12,8 +12,9 @@
 u_char *
 ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
-    size_t  len;
-    u_char  ch, *p, *addr;
+    size_t     len;
+    u_char     ch, *p, *addr, *port;
+    ngx_int_t  n;
 
     p = buf;
     len = last - buf;
@@ -71,8 +72,40 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
     ngx_memcpy(c->proxy_protocol_addr.data, addr, len);
     c->proxy_protocol_addr.len = len;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol address: \"%V\"", &c->proxy_protocol_addr);
+    for ( ;; ) {
+        if (p == last) {
+            goto invalid;
+        }
+
+        if (*p++ == ' ') {
+            break;
+        }
+    }
+
+    port = p;
+
+    for ( ;; ) {
+        if (p == last) {
+            goto invalid;
+        }
+
+        if (*p++ == ' ') {
+            break;
+        }
+    }
+
+    len = p - port - 1;
+
+    n = ngx_atoi(port, len);
+
+    if (n < 0 || n > 65535) {
+        goto invalid;
+    }
+
+    c->proxy_protocol_port = (in_port_t) n;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
+                   "PROXY protocol address: %V %i", &c->proxy_protocol_addr, n);
 
 skip:
 
@@ -108,19 +141,11 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET:
         buf = ngx_cpymem(buf, "PROXY TCP4 ", sizeof("PROXY TCP4 ") - 1);
-
-        port = ntohs(((struct sockaddr_in *) c->sockaddr)->sin_port);
-        lport = ntohs(((struct sockaddr_in *) c->local_sockaddr)->sin_port);
-
         break;
 
 #if (NGX_HAVE_INET6)
     case AF_INET6:
         buf = ngx_cpymem(buf, "PROXY TCP6 ", sizeof("PROXY TCP6 ") - 1);
-
-        port = ntohs(((struct sockaddr_in6 *) c->sockaddr)->sin6_port);
-        lport = ntohs(((struct sockaddr_in6 *) c->local_sockaddr)->sin6_port);
-
         break;
 #endif
 
@@ -135,6 +160,9 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     buf += ngx_sock_ntop(c->local_sockaddr, c->local_socklen, buf, last - buf,
                          0);
+
+    port = ngx_inet_get_port(c->sockaddr);
+    lport = ngx_inet_get_port(c->local_sockaddr);
 
     return ngx_slprintf(buf, last, " %ui %ui" CRLF, port, lport);
 }

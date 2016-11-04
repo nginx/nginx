@@ -612,6 +612,40 @@ ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c)
 }
 
 
+ngx_int_t
+ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n)
+{
+    ngx_str_t  *arg, external;
+
+    arg = s->args.elts;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth external: \"%V\"", &arg[n]);
+
+    external.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[n].len));
+    if (external.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&external, &arg[n]) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+            "client sent invalid base64 encoding in AUTH EXTERNAL command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->login.len = external.len;
+    s->login.data = external.data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth external: \"%V\"", &s->login);
+
+    s->auth_method = NGX_MAIL_AUTH_EXTERNAL;
+
+    return NGX_DONE;
+}
+
+
 void
 ngx_mail_send(ngx_event_t *wev)
 {

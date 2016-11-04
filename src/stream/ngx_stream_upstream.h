@@ -21,6 +21,7 @@
 #define NGX_STREAM_UPSTREAM_FAIL_TIMEOUT  0x0008
 #define NGX_STREAM_UPSTREAM_DOWN          0x0010
 #define NGX_STREAM_UPSTREAM_BACKUP        0x0020
+#define NGX_STREAM_UPSTREAM_MAX_CONNS     0x0100
 
 
 typedef struct {
@@ -50,11 +51,16 @@ typedef struct {
     ngx_addr_t                        *addrs;
     ngx_uint_t                         naddrs;
     ngx_uint_t                         weight;
+    ngx_uint_t                         max_conns;
     ngx_uint_t                         max_fails;
     time_t                             fail_timeout;
+    ngx_msec_t                         slow_start;
 
     unsigned                           down:1;
     unsigned                           backup:1;
+
+    NGX_COMPAT_BEGIN(4)
+    NGX_COMPAT_END
 } ngx_stream_upstream_server_t;
 
 
@@ -79,15 +85,53 @@ struct ngx_stream_upstream_srv_conf_s {
 
 
 typedef struct {
+    ngx_msec_t                         response_time;
+    ngx_msec_t                         connect_time;
+    ngx_msec_t                         first_byte_time;
+    off_t                              bytes_sent;
+    off_t                              bytes_received;
+
+    ngx_str_t                         *peer;
+} ngx_stream_upstream_state_t;
+
+
+typedef struct {
+    ngx_str_t                          host;
+    in_port_t                          port;
+    ngx_uint_t                         no_port; /* unsigned no_port:1 */
+
+    ngx_uint_t                         naddrs;
+    ngx_resolver_addr_t               *addrs;
+
+    struct sockaddr                   *sockaddr;
+    socklen_t                          socklen;
+    ngx_str_t                          name;
+
+    ngx_resolver_ctx_t                *ctx;
+} ngx_stream_upstream_resolved_t;
+
+
+typedef struct {
     ngx_peer_connection_t              peer;
+
     ngx_buf_t                          downstream_buf;
     ngx_buf_t                          upstream_buf;
+
+    ngx_chain_t                       *free;
+    ngx_chain_t                       *upstream_out;
+    ngx_chain_t                       *upstream_busy;
+    ngx_chain_t                       *downstream_out;
+    ngx_chain_t                       *downstream_busy;
+
     off_t                              received;
     time_t                             start_sec;
     ngx_uint_t                         responses;
-#if (NGX_STREAM_SSL)
+
     ngx_str_t                          ssl_name;
-#endif
+
+    ngx_stream_upstream_srv_conf_t    *upstream;
+    ngx_stream_upstream_resolved_t    *resolved;
+    ngx_stream_upstream_state_t       *state;
     unsigned                           connected:1;
     unsigned                           proxy_protocol:1;
 } ngx_stream_upstream_t;

@@ -137,10 +137,6 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     ngx_http_v2_out_frame_t   *frame;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
-    struct sockaddr_in        *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6       *sin6;
-#endif
     u_char                     addr[NGX_SOCKADDR_STRLEN];
 
     static const u_char nginx[5] = "\x84\xaa\x63\x55\xe7";
@@ -167,6 +163,12 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     if (r != r->main) {
         return NGX_OK;
+    }
+
+    fc = r->connection;
+
+    if (fc->error) {
+        return NGX_ERROR;
     }
 
     if (r->method == NGX_HTTP_HEAD) {
@@ -259,8 +261,6 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         len += 1 + ngx_http_v2_literal_size("Wed, 31 Dec 1986 18:00:00 GMT");
     }
 
-    fc = r->connection;
-
     if (r->headers_out.location && r->headers_out.location->value.len) {
 
         if (r->headers_out.location->value.data[0] == '/') {
@@ -280,24 +280,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                 }
             }
 
-            switch (fc->local_sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                sin6 = (struct sockaddr_in6 *) fc->local_sockaddr;
-                port = ntohs(sin6->sin6_port);
-                break;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-            case AF_UNIX:
-                port = 0;
-                break;
-#endif
-            default: /* AF_INET */
-                sin = (struct sockaddr_in *) fc->local_sockaddr;
-                port = ntohs(sin->sin_port);
-                break;
-            }
+            port = ngx_inet_get_port(fc->local_sockaddr);
 
             location.len = sizeof("https://") - 1 + host.len
                            + r->headers_out.location->value.len;
@@ -995,11 +978,10 @@ static ngx_http_v2_out_frame_t *
 ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
     size_t len, ngx_chain_t *first, ngx_chain_t *last)
 {
-    u_char                      flags;
-    ngx_buf_t                  *buf;
-    ngx_chain_t                *cl;
+    u_char                    flags;
+    ngx_buf_t                *buf;
+    ngx_chain_t              *cl;
     ngx_http_v2_out_frame_t  *frame;
-
 
     frame = stream->free_frames;
 
@@ -1028,7 +1010,7 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
 
     buf = cl->buf;
 
-    if (!buf->start) {
+    if (buf->start == NULL) {
         buf->start = ngx_palloc(stream->request->pool,
                                 NGX_HTTP_V2_FRAME_HEADER_SIZE);
         if (buf->start == NULL) {
@@ -1097,6 +1079,10 @@ static ngx_inline ngx_int_t
 ngx_http_v2_flow_control(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2:%ui available windows: conn:%uz stream:%z",
+                   stream->node->id, h2c->send_window, stream->send_window);
+
     if (stream->send_window <= 0) {
         stream->exhausted = 1;
         return NGX_DECLINED;
@@ -1203,7 +1189,6 @@ ngx_http_v2_data_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t  *stream;
 
     stream = frame->stream;
-
     cl = frame->first;
 
     if (cl->buf->tag == (ngx_buf_tag_t) &ngx_http_v2_module) {
@@ -1313,18 +1298,20 @@ static ngx_inline void
 ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
-    ngx_event_t  *wev;
+    ngx_connection_t  *fc;
 
-    if (stream->handled || stream->blocked || stream->exhausted) {
+    if (stream->handled || stream->blocked) {
         return;
     }
 
-    wev = stream->request->connection->write;
+    fc = stream->request->connection;
 
-    if (!wev->delayed) {
-        stream->handled = 1;
-        ngx_queue_insert_tail(&h2c->posted, &stream->queue);
+    if (!fc->error && (stream->exhausted || fc->write->delayed)) {
+        return;
     }
+
+    stream->handled = 1;
+    ngx_queue_insert_tail(&h2c->posted, &stream->queue);
 }
 
 

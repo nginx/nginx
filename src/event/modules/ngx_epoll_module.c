@@ -17,18 +17,19 @@
 #define EPOLLIN        0x001
 #define EPOLLPRI       0x002
 #define EPOLLOUT       0x004
+#define EPOLLERR       0x008
+#define EPOLLHUP       0x010
 #define EPOLLRDNORM    0x040
 #define EPOLLRDBAND    0x080
 #define EPOLLWRNORM    0x100
 #define EPOLLWRBAND    0x200
 #define EPOLLMSG       0x400
-#define EPOLLERR       0x008
-#define EPOLLHUP       0x010
 
 #define EPOLLRDHUP     0x2000
 
-#define EPOLLET        0x80000000
+#define EPOLLEXCLUSIVE 0x10000000
 #define EPOLLONESHOT   0x40000000
+#define EPOLLET        0x80000000
 
 #define EPOLL_CTL_ADD  1
 #define EPOLL_CTL_DEL  2
@@ -105,6 +106,9 @@ static ngx_int_t ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer);
 static ngx_int_t ngx_epoll_notify_init(ngx_log_t *log);
 static void ngx_epoll_notify_handler(ngx_event_t *ev);
 #endif
+#if (NGX_HAVE_EPOLLRDHUP)
+static void ngx_epoll_test_rdhup(ngx_cycle_t *cycle);
+#endif
 static void ngx_epoll_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event,
     ngx_uint_t flags);
@@ -123,7 +127,6 @@ static ngx_int_t ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 static void ngx_epoll_eventfd_handler(ngx_event_t *ev);
 #endif
 
-static ngx_int_t ngx_epoll_module_init(ngx_cycle_t *cycle);
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
@@ -202,7 +205,7 @@ ngx_module_t  ngx_epoll_module = {
     ngx_epoll_commands,                  /* module directives */
     NGX_EVENT_MODULE,                    /* module type */
     NULL,                                /* init master */
-    ngx_epoll_module_init,               /* init module */
+    NULL,                                /* init module */
     NULL,                                /* init process */
     NULL,                                /* init thread */
     NULL,                                /* exit thread */
@@ -339,9 +342,11 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 #endif
 
 #if (NGX_HAVE_FILE_AIO)
-
         ngx_epoll_aio_init(cycle, epcf);
+#endif
 
+#if (NGX_HAVE_EPOLLRDHUP)
+        ngx_epoll_test_rdhup(cycle);
 #endif
     }
 
@@ -454,6 +459,73 @@ ngx_epoll_notify_handler(ngx_event_t *ev)
 #endif
 
 
+#if (NGX_HAVE_EPOLLRDHUP)
+
+static void
+ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
+{
+    int                 s[2], events;
+    struct epoll_event  ee;
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, s) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "socketpair() failed");
+        return;
+    }
+
+    ee.events = EPOLLET|EPOLLIN|EPOLLRDHUP;
+
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, s[0], &ee) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "epoll_ctl() failed");
+        goto failed;
+    }
+
+    if (close(s[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+        s[1] = -1;
+        goto failed;
+    }
+
+    s[1] = -1;
+
+    events = epoll_wait(ep, &ee, 1, 5000);
+
+    if (events == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "epoll_wait() failed");
+        goto failed;
+    }
+
+    if (events) {
+        ngx_use_epoll_rdhup = ee.events & EPOLLRDHUP;
+
+    } else {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, NGX_ETIMEDOUT,
+                      "epoll_wait() timed out");
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "testing the EPOLLRDHUP flag: %s",
+                   ngx_use_epoll_rdhup ? "success" : "fail");
+
+failed:
+
+    if (s[1] != -1 && close(s[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+    }
+
+    if (close(s[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "close() failed");
+    }
+}
+
+#endif
+
+
 static void
 ngx_epoll_done(ngx_cycle_t *cycle)
 {
@@ -538,6 +610,12 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     } else {
         op = EPOLL_CTL_ADD;
     }
+
+#if (NGX_HAVE_EPOLLEXCLUSIVE && NGX_HAVE_EPOLLRDHUP)
+    if (flags & NGX_EXCLUSIVE_EVENT) {
+        events &= ~EPOLLRDHUP;
+    }
+#endif
 
     ee.events = events | (uint32_t) flags;
     ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
@@ -948,69 +1026,6 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
 }
 
 #endif
-
-
-static ngx_int_t
-ngx_epoll_module_init(ngx_cycle_t *cycle)
-{
-#if (NGX_HAVE_EPOLLRDHUP)
-    int                 epfd, s[2], events;
-    struct epoll_event  ee;
-
-    epfd = epoll_create(1);
-
-    if (epfd == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_create() failed");
-        return NGX_ERROR;
-    }
-
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, s) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "socketpair() failed");
-        return NGX_ERROR;
-    }
-
-    ee.events = EPOLLET|EPOLLIN|EPOLLRDHUP;
-
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, s[0], &ee) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_ctl() failed");
-        return NGX_ERROR;
-    }
-
-    if (close(s[1]) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "close() failed");
-        return NGX_ERROR;
-    }
-
-    events = epoll_wait(epfd, &ee, 1, 5000);
-
-    if (events == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_wait() failed");
-        return NGX_ERROR;
-    }
-
-    (void) close(s[0]);
-    (void) close(epfd);
-
-    if (events) {
-        ngx_use_epoll_rdhup = ee.events & EPOLLRDHUP;
-
-    } else {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "epoll_wait() timedout");
-    }
-
-    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
-                  "testing the EPOLLRDHUP flag: %s",
-                  ngx_use_epoll_rdhup ? "success" : "fail");
-#endif
-
-    return NGX_OK;
-}
 
 
 static void *

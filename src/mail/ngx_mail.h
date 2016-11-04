@@ -27,18 +27,7 @@ typedef struct {
 
 
 typedef struct {
-    union {
-        struct sockaddr     sockaddr;
-        struct sockaddr_in  sockaddr_in;
-#if (NGX_HAVE_INET6)
-        struct sockaddr_in6 sockaddr_in6;
-#endif
-#if (NGX_HAVE_UNIX_DOMAIN)
-        struct sockaddr_un  sockaddr_un;
-#endif
-        u_char              sockaddr_data[NGX_SOCKADDRLEN];
-    } u;
-
+    ngx_sockaddr_t          sockaddr;
     socklen_t               socklen;
 
     /* server ctx */
@@ -46,10 +35,8 @@ typedef struct {
 
     unsigned                bind:1;
     unsigned                wildcard:1;
-#if (NGX_MAIL_SSL)
     unsigned                ssl:1;
-#endif
-#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+#if (NGX_HAVE_INET6)
     unsigned                ipv6only:1;
 #endif
     unsigned                so_keepalive:2;
@@ -65,9 +52,7 @@ typedef struct {
 typedef struct {
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
-#if (NGX_MAIL_SSL)
     ngx_uint_t              ssl;    /* unsigned   ssl:1; */
-#endif
 } ngx_mail_addr_conf_t;
 
 typedef struct {
@@ -128,13 +113,15 @@ typedef struct {
     ngx_str_t               server_name;
 
     u_char                 *file_name;
-    ngx_int_t               line;
+    ngx_uint_t              line;
 
     ngx_resolver_t         *resolver;
     ngx_log_t              *error_log;
 
     /* server ctx */
     ngx_mail_conf_ctx_t    *ctx;
+
+    ngx_uint_t              listen;  /* unsigned  listen:1; */
 } ngx_mail_core_srv_conf_t;
 
 
@@ -145,7 +132,8 @@ typedef enum {
     ngx_pop3_auth_login_username,
     ngx_pop3_auth_login_password,
     ngx_pop3_auth_plain,
-    ngx_pop3_auth_cram_md5
+    ngx_pop3_auth_cram_md5,
+    ngx_pop3_auth_external
 } ngx_pop3_state_e;
 
 
@@ -155,6 +143,7 @@ typedef enum {
     ngx_imap_auth_login_password,
     ngx_imap_auth_plain,
     ngx_imap_auth_cram_md5,
+    ngx_imap_auth_external,
     ngx_imap_login,
     ngx_imap_user,
     ngx_imap_passwd
@@ -167,6 +156,7 @@ typedef enum {
     ngx_smtp_auth_login_password,
     ngx_smtp_auth_plain,
     ngx_smtp_auth_cram_md5,
+    ngx_smtp_auth_external,
     ngx_smtp_helo,
     ngx_smtp_helo_xclient,
     ngx_smtp_helo_from,
@@ -298,14 +288,16 @@ typedef struct {
 #define NGX_MAIL_AUTH_LOGIN_USERNAME    2
 #define NGX_MAIL_AUTH_APOP              3
 #define NGX_MAIL_AUTH_CRAM_MD5          4
-#define NGX_MAIL_AUTH_NONE              5
+#define NGX_MAIL_AUTH_EXTERNAL          5
+#define NGX_MAIL_AUTH_NONE              6
 
 
 #define NGX_MAIL_AUTH_PLAIN_ENABLED     0x0002
 #define NGX_MAIL_AUTH_LOGIN_ENABLED     0x0004
 #define NGX_MAIL_AUTH_APOP_ENABLED      0x0008
 #define NGX_MAIL_AUTH_CRAM_MD5_ENABLED  0x0010
-#define NGX_MAIL_AUTH_NONE_ENABLED      0x0020
+#define NGX_MAIL_AUTH_EXTERNAL_ENABLED  0x0020
+#define NGX_MAIL_AUTH_NONE_ENABLED      0x0040
 
 
 #define NGX_MAIL_PARSE_INVALID_COMMAND  20
@@ -390,6 +382,8 @@ ngx_int_t ngx_mail_auth_login_password(ngx_mail_session_t *s,
 ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
     ngx_connection_t *c, char *prefix, size_t len);
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
+ngx_int_t ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n);
 ngx_int_t ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c);
 
 void ngx_mail_send(ngx_event_t *wev);

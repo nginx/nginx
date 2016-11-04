@@ -28,8 +28,10 @@ if test -n "$NGX_PERL_VER"; then
         exit 1;
     fi
 
-    NGX_PERL_CFLAGS="$CFLAGS `$NGX_PERL -MExtUtils::Embed -e ccopts`"
     NGX_PM_CFLAGS=`$NGX_PERL -MExtUtils::Embed -e ccopts`
+    NGX_PM_LDFLAGS=`$NGX_PERL -MConfig -e 'print $Config{lddlflags}'`
+
+    NGX_PERL_CFLAGS="$CFLAGS `$NGX_PERL -MExtUtils::Embed -e ccopts`"
 
     # gcc 4.1/4.2 warn about unused values in pTHX_
     NGX_PERL_CFLAGS=`echo $NGX_PERL_CFLAGS \

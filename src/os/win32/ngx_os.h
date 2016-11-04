@@ -28,6 +28,8 @@ typedef struct {
     ngx_recv_chain_pt  recv_chain;
     ngx_recv_pt        udp_recv;
     ngx_send_pt        send;
+    ngx_send_pt        udp_send;
+    ngx_send_chain_pt  udp_send_chain;
     ngx_send_chain_pt  send_chain;
     ngx_uint_t         flags;
 } ngx_os_io_t;

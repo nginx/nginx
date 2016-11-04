@@ -23,6 +23,7 @@ typedef struct {
 
 
 typedef struct {
+    ngx_stream_complex_value_t            key;
     ngx_stream_upstream_chash_points_t   *points;
 } ngx_stream_upstream_hash_srv_conf_t;
 
@@ -76,13 +77,14 @@ static ngx_command_t  ngx_stream_upstream_hash_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_upstream_hash_module_ctx = {
+    NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
     ngx_stream_upstream_hash_create_conf,  /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL                                   /* merge server configuration */
 };
 
 
@@ -140,7 +142,9 @@ ngx_stream_upstream_init_hash_peer(ngx_stream_session_t *s,
     hcf = ngx_stream_conf_upstream_srv_conf(us,
                                             ngx_stream_upstream_hash_module);
 
-    hp->key = s->connection->addr_text;
+    if (ngx_stream_complex_value(s, &hcf->key, &hp->key) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "upstream hash key:\"%V\"", &hp->key);
@@ -234,6 +238,10 @@ ngx_stream_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
         {
+            goto next;
+        }
+
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
             goto next;
         }
 
@@ -520,7 +528,6 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
              peer;
              peer = peer->next, i++)
         {
-
             n = i / (8 * sizeof(uintptr_t));
             m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 
@@ -546,6 +553,10 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
                 continue;
             }
 
+            if (peer->max_conns && peer->conns >= peer->max_conns) {
+                continue;
+            }
+
             peer->current_weight += peer->effective_weight;
             total += peer->effective_weight;
 
@@ -568,6 +579,7 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->tries++;
 
         if (hp->tries >= points->number) {
+            pc->name = hp->rrp.peers->name;
             ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);
             return NGX_BUSY;
         }
@@ -615,15 +627,21 @@ ngx_stream_upstream_hash_create_conf(ngx_conf_t *cf)
 static char *
 ngx_stream_upstream_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t                       *value;
-    ngx_stream_upstream_srv_conf_t  *uscf;
+    ngx_stream_upstream_hash_srv_conf_t  *hcf = conf;
+
+    ngx_str_t                           *value;
+    ngx_stream_upstream_srv_conf_t      *uscf;
+    ngx_stream_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
 
-    if (ngx_strcmp(value[1].data, "$remote_addr")) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "unsupported hash key \"%V\", use $remote_addr",
-                           &value[1]);
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &hcf->key;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -636,6 +654,7 @@ ngx_stream_upstream_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     uscf->flags = NGX_STREAM_UPSTREAM_CREATE
                   |NGX_STREAM_UPSTREAM_WEIGHT
+                  |NGX_STREAM_UPSTREAM_MAX_CONNS
                   |NGX_STREAM_UPSTREAM_MAX_FAILS
                   |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
                   |NGX_STREAM_UPSTREAM_DOWN;

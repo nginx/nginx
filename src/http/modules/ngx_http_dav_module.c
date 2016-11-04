@@ -161,6 +161,12 @@ ngx_http_dav_handler(ngx_http_request_t *r)
             return NGX_HTTP_CONFLICT;
         }
 
+        if (r->headers_in.content_range) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "PUT with range is unsupported");
+            return NGX_HTTP_NOT_IMPLEMENTED;
+        }
+
         r->request_body_in_file_only = 1;
         r->request_body_in_persistent_file = 1;
         r->request_body_in_clean_file = 1;

@@ -10,6 +10,14 @@
 #include <ngx_stream.h>
 
 
+static ngx_int_t ngx_stream_upstream_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_upstream_response_time_variable(
+    ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_upstream_bytes_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+
 static char *ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd,
     void *dummy);
 static char *ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -39,13 +47,14 @@ static ngx_command_t  ngx_stream_upstream_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_upstream_module_ctx = {
+    ngx_stream_upstream_add_variables,     /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     ngx_stream_upstream_create_main_conf,  /* create main configuration */
     ngx_stream_upstream_init_main_conf,    /* init main configuration */
 
     NULL,                                  /* create server configuration */
-    NULL,                                  /* merge server configuration */
+    NULL                                   /* merge server configuration */
 };
 
 
@@ -63,6 +72,232 @@ ngx_module_t  ngx_stream_upstream_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+
+static ngx_stream_variable_t  ngx_stream_upstream_vars[] = {
+
+    { ngx_string("upstream_addr"), NULL,
+      ngx_stream_upstream_addr_variable, 0,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_bytes_sent"), NULL,
+      ngx_stream_upstream_bytes_variable, 0,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_connect_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 2,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_first_byte_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 1,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_session_time"), NULL,
+      ngx_stream_upstream_response_time_variable, 0,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("upstream_bytes_received"), NULL,
+      ngx_stream_upstream_bytes_variable, 1,
+      NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+};
+
+
+static ngx_int_t
+ngx_stream_upstream_add_variables(ngx_conf_t *cf)
+{
+    ngx_stream_variable_t  *var, *v;
+
+    for (v = ngx_stream_upstream_vars; v->name.len; v++) {
+        var = ngx_stream_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char                       *p;
+    size_t                        len;
+    ngx_uint_t                    i;
+    ngx_stream_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (s->upstream_states == NULL || s->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = 0;
+    state = s->upstream_states->elts;
+
+    for (i = 0; i < s->upstream_states->nelts; i++) {
+        if (state[i].peer) {
+            len += state[i].peer->len;
+        }
+
+        len += 2;
+    }
+
+    p = ngx_pnalloc(s->connection->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+
+    for ( ;; ) {
+        if (state[i].peer) {
+            p = ngx_cpymem(p, state[i].peer->data, state[i].peer->len);
+        }
+
+        if (++i == s->upstream_states->nelts) {
+            break;
+        }
+
+        *p++ = ',';
+        *p++ = ' ';
+    }
+
+    v->len = p - v->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_bytes_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char                       *p;
+    size_t                        len;
+    ngx_uint_t                    i;
+    ngx_stream_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (s->upstream_states == NULL || s->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = s->upstream_states->nelts * (NGX_OFF_T_LEN + 2);
+
+    p = ngx_pnalloc(s->connection->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+    state = s->upstream_states->elts;
+
+    for ( ;; ) {
+
+        if (data == 1) {
+            p = ngx_sprintf(p, "%O", state[i].bytes_received);
+
+        } else {
+            p = ngx_sprintf(p, "%O", state[i].bytes_sent);
+        }
+
+        if (++i == s->upstream_states->nelts) {
+            break;
+        }
+
+        *p++ = ',';
+        *p++ = ' ';
+    }
+
+    v->len = p - v->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_response_time_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char                       *p;
+    size_t                        len;
+    ngx_uint_t                    i;
+    ngx_msec_int_t                ms;
+    ngx_stream_upstream_state_t  *state;
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    if (s->upstream_states == NULL || s->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len = s->upstream_states->nelts * (NGX_TIME_T_LEN + 4 + 2);
+
+    p = ngx_pnalloc(s->connection->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = p;
+
+    i = 0;
+    state = s->upstream_states->elts;
+
+    for ( ;; ) {
+
+        if (data == 1) {
+            if (state[i].first_byte_time == (ngx_msec_t) -1) {
+                *p++ = '-';
+                goto next;
+            }
+
+            ms = state[i].first_byte_time;
+
+        } else if (data == 2 && state[i].connect_time != (ngx_msec_t) -1) {
+            ms = state[i].connect_time;
+
+        } else {
+            ms = state[i].response_time;
+        }
+
+        ms = ngx_max(ms, 0);
+        p = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000);
+
+    next:
+
+        if (++i == s->upstream_states->nelts) {
+            break;
+        }
+
+        *p++ = ',';
+        *p++ = ' ';
+    }
+
+    v->len = p - v->data;
+
+    return NGX_OK;
+}
 
 
 static char *
@@ -87,6 +322,7 @@ ngx_stream_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
     uscf = ngx_stream_upstream_add(cf, &u, NGX_STREAM_UPSTREAM_CREATE
                                            |NGX_STREAM_UPSTREAM_WEIGHT
+                                           |NGX_STREAM_UPSTREAM_MAX_CONNS
                                            |NGX_STREAM_UPSTREAM_MAX_FAILS
                                            |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
                                            |NGX_STREAM_UPSTREAM_DOWN
@@ -172,7 +408,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                         fail_timeout;
     ngx_str_t                     *value, s;
     ngx_url_t                      u;
-    ngx_int_t                      weight, max_fails;
+    ngx_int_t                      weight, max_conns, max_fails;
     ngx_uint_t                     i;
     ngx_stream_upstream_server_t  *us;
 
@@ -186,6 +422,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     weight = 1;
+    max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
 
@@ -200,6 +437,21 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             weight = ngx_atoi(&value[i].data[7], value[i].len - 7);
 
             if (weight == NGX_ERROR || weight == 0) {
+                goto invalid;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "max_conns=", 10) == 0) {
+
+            if (!(uscf->flags & NGX_STREAM_UPSTREAM_MAX_CONNS)) {
+                goto not_supported;
+            }
+
+            max_conns = ngx_atoi(&value[i].data[10], value[i].len - 10);
+
+            if (max_conns == NGX_ERROR) {
                 goto invalid;
             }
 
@@ -287,6 +539,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     us->addrs = u.addrs;
     us->naddrs = u.naddrs;
     us->weight = weight;
+    us->max_conns = max_conns;
     us->max_fails = max_fails;
     us->fail_timeout = fail_timeout;
 
@@ -351,14 +604,14 @@ ngx_stream_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
         }
 
         if ((uscfp[i]->flags & NGX_STREAM_UPSTREAM_CREATE) && !u->no_port) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "upstream \"%V\" may not have port %d",
                                &u->host, u->port);
             return NULL;
         }
 
         if ((flags & NGX_STREAM_UPSTREAM_CREATE) && !uscfp[i]->no_port) {
-            ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "upstream \"%V\" may not have port %d in %s:%ui",
                           &u->host, uscfp[i]->port,
                           uscfp[i]->file_name, uscfp[i]->line);

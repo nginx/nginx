@@ -242,6 +242,10 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
             goto next;
         }
 
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
+            goto next;
+        }
+
         break;
 
     next:
@@ -523,7 +527,6 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
              peer;
              peer = peer->next, i++)
         {
-
             n = i / (8 * sizeof(uintptr_t));
             m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 
@@ -549,6 +552,10 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
                 continue;
             }
 
+            if (peer->max_conns && peer->conns >= peer->max_conns) {
+                continue;
+            }
+
             peer->current_weight += peer->effective_weight;
             total += peer->effective_weight;
 
@@ -571,6 +578,7 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->tries++;
 
         if (hp->tries >= points->number) {
+            pc->name = hp->rrp.peers->name;
             ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
             return NGX_BUSY;
         }
@@ -647,6 +655,7 @@ ngx_http_upstream_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     uscf->flags = NGX_HTTP_UPSTREAM_CREATE
                   |NGX_HTTP_UPSTREAM_WEIGHT
+                  |NGX_HTTP_UPSTREAM_MAX_CONNS
                   |NGX_HTTP_UPSTREAM_MAX_FAILS
                   |NGX_HTTP_UPSTREAM_FAIL_TIMEOUT
                   |NGX_HTTP_UPSTREAM_DOWN;

@@ -82,6 +82,7 @@ typedef struct {
     u_short                   port;
 
     ngx_resolver_ctx_t       *ctx;
+    ngx_int_t                 state;
 
     ngx_uint_t                naddrs;
     ngx_addr_t               *addrs;

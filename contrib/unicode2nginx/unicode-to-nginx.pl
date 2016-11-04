@@ -10,7 +10,7 @@
 
 # Needs perl 5.6 or later.
 
-# Written by Maxim Dounin, mdounin@rambler-co.ru
+# Written by Maxim Dounin, mdounin@mdounin.ru
 
 ###############################################################################
 
@@ -33,7 +33,10 @@ while (<>) {
 
 		# Produce UTF-8 sequence from character code;
 
-		my $un_utf8 = join('', map { sprintf("%02X", $_) } unpack("C*", pack("U", hex($un_code))));
+		my $un_utf8 = join('',
+			map { sprintf("%02X", $_) }
+			unpack("U0C*", pack("U", hex($un_code)))
+		);
 
 		print "    $cs_code  $un_utf8 ; $un_name\n";
 

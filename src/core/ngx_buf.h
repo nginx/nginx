@@ -72,10 +72,8 @@ typedef struct ngx_output_chain_ctx_s  ngx_output_chain_ctx_t;
 
 typedef ngx_int_t (*ngx_output_chain_filter_pt)(void *ctx, ngx_chain_t *in);
 
-#if (NGX_HAVE_FILE_AIO)
 typedef void (*ngx_output_chain_aio_pt)(ngx_output_chain_ctx_t *ctx,
     ngx_file_t *file);
-#endif
 
 struct ngx_output_chain_ctx_s {
     ngx_buf_t                   *buf;
@@ -85,23 +83,19 @@ struct ngx_output_chain_ctx_s {
 
     unsigned                     sendfile:1;
     unsigned                     directio:1;
-#if (NGX_HAVE_ALIGNED_DIRECTIO)
     unsigned                     unaligned:1;
-#endif
     unsigned                     need_in_memory:1;
     unsigned                     need_in_temp:1;
-#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     unsigned                     aio:1;
-#endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_FILE_AIO || NGX_COMPAT)
     ngx_output_chain_aio_pt      aio_handler;
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
     ssize_t                    (*aio_preload)(ngx_buf_t *file);
 #endif
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_THREADS || NGX_COMPAT)
     ngx_int_t                  (*thread_handler)(ngx_thread_task_t *task,
                                                  ngx_file_t *file);
     ngx_thread_task_t           *thread_task;

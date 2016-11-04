@@ -27,6 +27,7 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_int_t                        weight;
 
     ngx_uint_t                       conns;
+    ngx_uint_t                       max_conns;
 
     ngx_uint_t                       fails;
     time_t                           accessed;
@@ -34,19 +35,22 @@ struct ngx_stream_upstream_rr_peer_s {
 
     ngx_uint_t                       max_fails;
     time_t                           fail_timeout;
+    ngx_msec_t                       slow_start;
+    ngx_msec_t                       start_time;
 
-    ngx_uint_t                       down;         /* unsigned  down:1; */
+    ngx_uint_t                       down;
 
-#if (NGX_STREAM_SSL)
     void                            *ssl_session;
     int                              ssl_session_len;
-#endif
-
-    ngx_stream_upstream_rr_peer_t   *next;
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_atomic_t                     lock;
 #endif
+
+    ngx_stream_upstream_rr_peer_t   *next;
+
+    NGX_COMPAT_BEGIN(25)
+    NGX_COMPAT_END
 };
 
 
@@ -119,6 +123,7 @@ struct ngx_stream_upstream_rr_peers_s {
 
 
 typedef struct {
+    ngx_uint_t                       config;
     ngx_stream_upstream_rr_peers_t  *peers;
     ngx_stream_upstream_rr_peer_t   *current;
     uintptr_t                       *tried;
@@ -130,6 +135,8 @@ ngx_int_t ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_stream_upstream_srv_conf_t *us);
 ngx_int_t ngx_stream_upstream_init_round_robin_peer(ngx_stream_session_t *s,
     ngx_stream_upstream_srv_conf_t *us);
+ngx_int_t ngx_stream_upstream_create_round_robin_peer(ngx_stream_session_t *s,
+    ngx_stream_upstream_resolved_t *ur);
 ngx_int_t ngx_stream_upstream_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 void ngx_stream_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,

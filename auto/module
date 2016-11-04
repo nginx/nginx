@@ -48,8 +48,12 @@ if [ "$ngx_module_link" = DYNAMIC ]; then
                 fi
             ;;
 
-            PCRE | OPENSSL | MD5 | SHA1 | ZLIB)
+            PCRE | OPENSSL | ZLIB)
                 eval USE_${lib}=YES
+            ;;
+
+            MD5 | SHA1)
+                # obsolete
             ;;
 
             *)
@@ -79,8 +83,12 @@ elif [ "$ngx_module_link" = YES ]; then
     do
         case $lib in
 
-            PCRE | OPENSSL | MD5 | SHA1 | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
                 eval USE_${lib}=YES
+            ;;
+
+            MD5 | SHA1)
+                # obsolete
             ;;
 
             *)
@@ -109,8 +117,12 @@ elif [ "$ngx_module_link" = ADDON ]; then
     do
         case $lib in
 
-            PCRE | OPENSSL | MD5 | SHA1 | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
                 eval USE_${lib}=YES
+            ;;
+
+            MD5 | SHA1)
+                # obsolete
             ;;
 
             *)

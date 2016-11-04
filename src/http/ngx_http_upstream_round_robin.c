@@ -92,6 +92,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
                 peer[n].current_weight = 0;
+                peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
@@ -155,6 +156,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].weight = server[i].weight;
                 peer[n].effective_weight = server[i].weight;
                 peer[n].current_weight = 0;
+                peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
@@ -223,6 +225,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         peer[i].weight = 1;
         peer[i].effective_weight = 1;
         peer[i].current_weight = 0;
+        peer[i].max_conns = 0;
         peer[i].max_fails = 1;
         peer[i].fail_timeout = 10;
         *peerp = &peer[i];
@@ -257,6 +260,7 @@ ngx_http_upstream_init_round_robin_peer(ngx_http_request_t *r,
 
     rrp->peers = us->peer.data;
     rrp->current = NULL;
+    rrp->config = 0;
 
     n = rrp->peers->number;
 
@@ -333,10 +337,11 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
     if (ur->sockaddr) {
         peer[0].sockaddr = ur->sockaddr;
         peer[0].socklen = ur->socklen;
-        peer[0].name = ur->host;
+        peer[0].name = ur->name.data ? ur->name : ur->host;
         peer[0].weight = 1;
         peer[0].effective_weight = 1;
         peer[0].current_weight = 0;
+        peer[0].max_conns = 0;
         peer[0].max_fails = 1;
         peer[0].fail_timeout = 10;
         peers->peer = peer;
@@ -354,16 +359,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
             }
 
             ngx_memcpy(sockaddr, ur->addrs[i].sockaddr, socklen);
-
-            switch (sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                ((struct sockaddr_in6 *) sockaddr)->sin6_port = htons(ur->port);
-                break;
-#endif
-            default: /* AF_INET */
-                ((struct sockaddr_in *) sockaddr)->sin_port = htons(ur->port);
-            }
+            ngx_inet_set_port(sockaddr, ur->port);
 
             p = ngx_pnalloc(r->pool, NGX_SOCKADDR_STRLEN);
             if (p == NULL) {
@@ -379,6 +375,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
             peer[i].weight = 1;
             peer[i].effective_weight = 1;
             peer[i].current_weight = 0;
+            peer[i].max_conns = 0;
             peer[i].max_fails = 1;
             peer[i].fail_timeout = 10;
             *peerp = &peer[i];
@@ -388,6 +385,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
 
     rrp->peers = peers;
     rrp->current = NULL;
+    rrp->config = 0;
 
     if (rrp->peers->number <= 8 * sizeof(uintptr_t)) {
         rrp->tried = &rrp->data;
@@ -438,6 +436,10 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
         peer = peers->peer;
 
         if (peer->down) {
+            goto failed;
+        }
+
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
             goto failed;
         }
 
@@ -494,12 +496,6 @@ failed:
         ngx_http_upstream_rr_peers_wlock(peers);
     }
 
-    /* all peers failed, mark them as live for quick recovery */
-
-    for (peer = peers->peer; peer; peer = peer->next) {
-        peer->fails = 0;
-    }
-
     ngx_http_upstream_rr_peers_unlock(peers);
 
     pc->name = peers->name;
@@ -530,7 +526,6 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
          peer;
          peer = peer->next, i++)
     {
-
         n = i / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
 
@@ -546,6 +541,10 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
         {
+            continue;
+        }
+
+        if (peer->max_conns && peer->conns >= peer->max_conns) {
             continue;
         }
 

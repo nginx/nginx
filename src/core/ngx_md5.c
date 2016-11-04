@@ -3,8 +3,6 @@
  * An internal implementation, based on Alexander Peslyak's
  * public domain implementation:
  * http://openwall.info/wiki/people/solar/software/public-domain-source-code/md5
- * It is not expected to be optimal and is used only
- * if no MD5 implementation was found in system.
  */
 
 
@@ -12,8 +10,6 @@
 #include <ngx_core.h>
 #include <ngx_md5.h>
 
-
-#if !(NGX_HAVE_MD5)
 
 static const u_char *ngx_md5_body(ngx_md5_t *ctx, const u_char *data,
     size_t size);
@@ -285,5 +281,3 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
 
     return p;
 }
-
-#endif

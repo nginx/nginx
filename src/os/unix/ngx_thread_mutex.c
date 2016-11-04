@@ -49,7 +49,7 @@
  *             for each mutex from 10 to 100 based on spin count taken
  *             previously.
  *   FreeBSD:  Deadlock detection.  The default spin count is 2000.
- *             It can be overriden using LIBPTHREAD_SPINLOOPS environment
+ *             It can be overridden using LIBPTHREAD_SPINLOOPS environment
  *             variable or by pthread_mutex_setspinloops_np().  If a lock
  *             is still busy, sched_yield() can be called on both UP and
  *             SMP systems.  The default yield loop count is zero, but

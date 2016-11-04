@@ -2992,16 +2992,12 @@ failed:
 static void
 ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
 {
-    ngx_uint_t                 i;
-    u_char                   (*sockaddr)[NGX_SOCKADDRLEN];
-    ngx_addr_t                *addrs;
-    ngx_resolver_t            *r;
-    struct sockaddr_in        *sin;
-    ngx_resolver_ctx_t        *ctx;
-    ngx_resolver_srv_name_t   *srv;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6       *sin6;
-#endif
+    ngx_uint_t                i;
+    ngx_addr_t               *addrs;
+    ngx_resolver_t           *r;
+    ngx_sockaddr_t           *sockaddr;
+    ngx_resolver_ctx_t       *ctx;
+    ngx_resolver_srv_name_t  *srv;
 
     r = cctx->resolver;
     ctx = cctx->data;
@@ -3010,6 +3006,7 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
     ctx->count--;
 
     srv->ctx = NULL;
+    srv->state = cctx->state;
 
     if (cctx->naddrs) {
 
@@ -3026,7 +3023,7 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
             return;
         }
 
-        sockaddr = ngx_resolver_alloc(r, cctx->naddrs * NGX_SOCKADDRLEN);
+        sockaddr = ngx_resolver_alloc(r, cctx->naddrs * sizeof(ngx_sockaddr_t));
         if (sockaddr == NULL) {
             ngx_resolver_free(r, addrs);
             ngx_resolve_name_done(cctx);
@@ -3039,23 +3036,13 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
         }
 
         for (i = 0; i < cctx->naddrs; i++) {
-            addrs[i].sockaddr = (struct sockaddr *) sockaddr[i];
+            addrs[i].sockaddr = &sockaddr[i].sockaddr;
             addrs[i].socklen = cctx->addrs[i].socklen;
 
-            ngx_memcpy(sockaddr[i], cctx->addrs[i].sockaddr,
+            ngx_memcpy(&sockaddr[i], cctx->addrs[i].sockaddr,
                        addrs[i].socklen);
 
-            switch (addrs[i].sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                sin6 = (struct sockaddr_in6 *) addrs[i].sockaddr;
-                sin6->sin6_port = htons(srv->port);
-                break;
-#endif
-            default: /* AF_INET */
-                sin = (struct sockaddr_in *) addrs[i].sockaddr;
-                sin->sin_port = htons(srv->port);
-            }
+            ngx_inet_set_port(addrs[i].sockaddr, srv->port);
         }
 
         srv->addrs = addrs;
@@ -4161,14 +4148,14 @@ static ngx_resolver_addr_t *
 ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     ngx_uint_t rotate)
 {
-    ngx_uint_t             d, i, j, n;
-    u_char               (*sockaddr)[NGX_SOCKADDRLEN];
-    in_addr_t             *addr;
-    struct sockaddr_in    *sin;
-    ngx_resolver_addr_t   *dst;
+    ngx_uint_t            d, i, j, n;
+    in_addr_t            *addr;
+    ngx_sockaddr_t       *sockaddr;
+    struct sockaddr_in   *sin;
+    ngx_resolver_addr_t  *dst;
 #if (NGX_HAVE_INET6)
-    struct in6_addr       *addr6;
-    struct sockaddr_in6   *sin6;
+    struct in6_addr      *addr6;
+    struct sockaddr_in6  *sin6;
 #endif
 
     n = rn->naddrs;
@@ -4181,7 +4168,7 @@ ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         return NULL;
     }
 
-    sockaddr = ngx_resolver_calloc(r, n * NGX_SOCKADDRLEN);
+    sockaddr = ngx_resolver_calloc(r, n * sizeof(ngx_sockaddr_t));
     if (sockaddr == NULL) {
         ngx_resolver_free(r, dst);
         return NULL;
@@ -4196,7 +4183,7 @@ ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         addr = (rn->naddrs == 1) ? &rn->u.addr : rn->u.addrs;
 
         do {
-            sin = (struct sockaddr_in *) sockaddr[d];
+            sin = &sockaddr[d].sockaddr_in;
             sin->sin_family = AF_INET;
             sin->sin_addr.s_addr = addr[j++];
             dst[d].sockaddr = (struct sockaddr *) sin;
@@ -4219,7 +4206,7 @@ ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         addr6 = (rn->naddrs6 == 1) ? &rn->u6.addr6 : rn->u6.addrs6;
 
         do {
-            sin6 = (struct sockaddr_in6 *) sockaddr[d];
+            sin6 = &sockaddr[d].sockaddr_in6;
             sin6->sin6_family = AF_INET6;
             ngx_memcpy(sin6->sin6_addr.s6_addr, addr6[j++].s6_addr, 16);
             dst[d].sockaddr = (struct sockaddr *) sin6;

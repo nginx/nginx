@@ -25,13 +25,12 @@ typedef ngx_int_t (*ngx_event_get_peer_pt)(ngx_peer_connection_t *pc,
     void *data);
 typedef void (*ngx_event_free_peer_pt)(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state);
-#if (NGX_SSL)
-
+typedef void (*ngx_event_notify_peer_pt)(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t type);
 typedef ngx_int_t (*ngx_event_set_peer_session_pt)(ngx_peer_connection_t *pc,
     void *data);
 typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
     void *data);
-#endif
 
 
 struct ngx_peer_connection_s {
@@ -46,9 +45,10 @@ struct ngx_peer_connection_s {
 
     ngx_event_get_peer_pt            get;
     ngx_event_free_peer_pt           free;
+    ngx_event_notify_peer_pt         notify;
     void                            *data;
 
-#if (NGX_SSL)
+#if (NGX_SSL || NGX_COMPAT)
     ngx_event_set_peer_session_pt    set_session;
     ngx_event_save_peer_session_pt   save_session;
 #endif
@@ -61,12 +61,13 @@ struct ngx_peer_connection_s {
     ngx_log_t                       *log;
 
     unsigned                         cached:1;
-#if (NGX_HAVE_TRANSPARENT_PROXY)
     unsigned                         transparent:1;
-#endif
 
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;
+
+    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_END
 };
 
 
