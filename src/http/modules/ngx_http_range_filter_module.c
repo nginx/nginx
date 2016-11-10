@@ -224,12 +224,6 @@ parse:
 
     ctx->offset = r->headers_out.content_offset;
 
-    if (ngx_array_init(&ctx->ranges, r->pool, 1, sizeof(ngx_http_range_t))
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
     ranges = r->single_range ? 1 : clcf->max_ranges;
 
     switch (ngx_http_range_parse(r, ctx, ranges)) {
@@ -289,6 +283,12 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
             ctx->ranges = mctx->ranges;
             return NGX_OK;
         }
+    }
+
+    if (ngx_array_init(&ctx->ranges, r->pool, 1, sizeof(ngx_http_range_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
     }
 
     p = r->headers_in.range->value.data + 6;
