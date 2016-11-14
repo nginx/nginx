@@ -1666,6 +1666,13 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
         return;
     }
 
+    if (c->write->timedout) {
+        c = r->connection;
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+        ngx_http_run_posted_requests(c);
+        return;
+    }
+
 failed:
 
     c = r->connection;
