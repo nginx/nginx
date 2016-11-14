@@ -790,7 +790,6 @@ and tries to avoid cache keys zone overflows.
 в логах могли появляться сообщения "task already active" и "second aio post".
 </para>
 <para lang="en">
-
 "task already active" and "second aio post" alerts might appear in logs
 when using the "sendfile" and "aio" directives with subrequests.
 </para>
@@ -18140,7 +18139,7 @@ nginx did not omit the "#fragment" part in URI.
 
 <change type="feature">
 <para lang="ru">
-POP3 прокси поддерживает AUTH LOIGN PLAIN и CRAM-MD5.
+POP3 прокси поддерживает AUTH LOGIN PLAIN и CRAM-MD5.
 </para>
 <para lang="en">
 the POP3 proxy supports the AUTH LOGIN PLAIN and CRAM-MD5.
