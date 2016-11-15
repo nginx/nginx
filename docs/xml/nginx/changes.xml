@@ -5,6 +5,136 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.6" date="15.11.2016">
+
+<change type="change">
+<para lang="ru">
+формат переменных $ssl_client_s_dn и $ssl_client_i_dn
+изменён на соответствующий RFC 2253 (RFC 4514);
+значения в старом формате доступны через переменные
+$ssl_client_s_dn_legacy и $ssl_client_i_dn_legacy.
+</para>
+<para lang="en">
+format of the $ssl_client_s_dn and $ssl_client_i_dn variables
+has been changed to follow RFC 2253 (RFC 4514);
+values in the old format are available in
+the $ssl_client_s_dn_legacy and $ssl_client_i_dn_legacy variables.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+при сохранении временных файлов в каталоге кэша
+они теперь располагаются не в отдельном подкаталоге для временных файлов,
+а в том же подкаталоге, что и соответствующие файлы в кэше.
+</para>
+<para lang="en">
+when storing temporary files in a cache directory
+they will be stored in the same subdirectories as corresponding cache files
+instead of a separate subdirectory for temporary files.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка метода аутентификации EXTERNAL
+в почтовом прокси-сервере.<br/>
+Спасибо Robert Norris.
+</para>
+<para lang="en">
+EXTERNAL authentication mechanism support
+in mail proxy.<br/>
+Thanks to Robert Norris.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка WebP в модуле ngx_http_image_filter_module.
+</para>
+<para lang="en">
+WebP support in the ngx_http_image_filter_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_method поддерживает переменные.<br/>
+Спасибо Дмитрию Лазуркину.
+</para>
+<para lang="en">
+variables support in the "proxy_method" directive.<br/>
+Thanks to Dmitry Lazurkin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива http2_max_requests в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+the "http2_max_requests" directive in the ngx_http_v2_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache_max_range_offset, fastcgi_cache_max_range_offset,
+scgi_cache_max_range_offset и uwsgi_cache_max_range_offset.
+</para>
+<para lang="en">
+the "proxy_cache_max_range_offset", "fastcgi_cache_max_range_offset",
+"scgi_cache_max_range_offset", and "uwsgi_cache_max_range_offset" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+плавное завершение старых рабочих процессов могло занимать бесконечное время
+при использовании HTTP/2.
+</para>
+<para lang="en">
+graceful shutdown of old worker processes might require infinite time
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при проксировании WebSocket-соединений и включённом кэшировании
+в логах могли появляться сообщения "ignore long locked inactive cache entry".
+</para>
+<para lang="en">
+"ignore long locked inactive cache entry" alerts might appear in logs
+when proxying WebSocket connections with caching enabled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если во время SSL handshake с бэкендом происходил таймаут,
+nginx ничего не писал в лог
+и возвращал ответ с кодом 502 вместо 504.
+</para>
+<para lang="en">
+nginx did not write anything to log
+and returned a response with code 502 instead of 504
+when a timeout occurred during an SSL handshake to a backend.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.5" date="11.10.2016">
 
 <change type="change">
