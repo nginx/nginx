@@ -481,13 +481,11 @@ ngx_devpoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                           fd, event_list[i].events, revents);
         }
 
-        if ((revents & (POLLERR|POLLHUP|POLLNVAL))
-             && (revents & (POLLIN|POLLOUT)) == 0)
-        {
+        if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
+
             /*
-             * if the error events were returned without POLLIN or POLLOUT,
-             * then add these flags to handle the events at least in one
-             * active handler
+             * if the error events were returned, add POLLIN and POLLOUT
+             * to handle the events at least in one active handler
              */
 
             revents |= POLLIN|POLLOUT;

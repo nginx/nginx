@@ -863,6 +863,13 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "epoll_wait() error on fd:%d ev:%04XD",
                            c->fd, revents);
+
+            /*
+             * if the error events were returned, add EPOLLIN and EPOLLOUT
+             * to handle the events at least in one active handler
+             */
+
+            revents |= EPOLLIN|EPOLLOUT;
         }
 
 #if 0
@@ -872,18 +879,6 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                           c->fd, revents);
         }
 #endif
-
-        if ((revents & (EPOLLERR|EPOLLHUP))
-             && (revents & (EPOLLIN|EPOLLOUT)) == 0)
-        {
-            /*
-             * if the error events were returned without EPOLLIN or EPOLLOUT,
-             * then add these flags to handle the events at least in one
-             * active handler
-             */
-
-            revents |= EPOLLIN|EPOLLOUT;
-        }
 
         if ((revents & EPOLLIN) && rev->active) {
 
