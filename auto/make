@@ -156,7 +156,7 @@ fi
 ngx_all_srcs="$ngx_all_srcs $MISC_SRCS"
 
 
-if test -n "$NGX_ADDON_SRCS"; then
+if test -n "$NGX_ADDON_SRCS$DYNAMIC_MODULES"; then
 
 cat << END                                                >> $NGX_MAKEFILE
 
@@ -499,17 +499,6 @@ else
     ngx_perl_cc="$ngx_perl_cc \$(ALL_INCS)"
 fi
 
-ngx_obj_deps="\$(CORE_DEPS)"
-if [ $HTTP != NO ]; then
-    ngx_obj_deps="$ngx_obj_deps \$(HTTP_DEPS)"
-fi
-if [ $MAIL != NO ]; then
-    ngx_obj_deps="$ngx_obj_deps \$(MAIL_DEPS)"
-fi
-if [ $STREAM != NO ]; then
-    ngx_obj_deps="$ngx_obj_deps \$(STREAM_DEPS)"
-fi
-
 for ngx_module in $DYNAMIC_MODULES
 do
     eval ngx_module_srcs="\$${ngx_module}_SRCS"
@@ -665,7 +654,7 @@ END
 
             cat << END                                        >> $NGX_MAKEFILE
 
-$ngx_obj:	$ngx_obj_deps$ngx_cont$ngx_src
+$ngx_obj:	\$(ADDON_DEPS)$ngx_cont$ngx_src
 	$ngx_perl_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
@@ -673,7 +662,7 @@ END
 
             cat << END                                        >> $NGX_MAKEFILE
 
-$ngx_obj:	$ngx_obj_deps$ngx_cont$ngx_src
+$ngx_obj:	\$(ADDON_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END

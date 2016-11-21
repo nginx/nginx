@@ -35,6 +35,10 @@ if [ "$ngx_module_link" = DYNAMIC ]; then
         CORE_INCS="$CORE_INCS $ngx_module_incs"
     fi
 
+    if test -n "$ngx_module_deps"; then
+        NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ngx_module_deps"
+    fi
+
     libs=
     for lib in $ngx_module_libs
     do
