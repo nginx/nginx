@@ -1122,11 +1122,11 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     ngx_queue_t           *q;
     ngx_http_v2_stream_t  *s;
 
-    if (stream->handled) {
+    if (stream->waiting) {
         return;
     }
 
-    stream->handled = 1;
+    stream->waiting = 1;
 
     for (q = ngx_queue_last(&h2c->waiting);
          q != ngx_queue_sentinel(&h2c->waiting);
@@ -1317,20 +1317,29 @@ static ngx_inline void
 ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
+    ngx_event_t       *wev;
     ngx_connection_t  *fc;
 
-    if (stream->handled || stream->blocked) {
+    if (stream->waiting || stream->blocked) {
         return;
     }
 
     fc = stream->request->connection;
 
-    if (!fc->error && (stream->exhausted || fc->write->delayed)) {
+    if (!fc->error && stream->exhausted) {
         return;
     }
 
-    stream->handled = 1;
-    ngx_queue_insert_tail(&h2c->posted, &stream->queue);
+    wev = fc->write;
+
+    wev->active = 0;
+    wev->ready = 1;
+
+    if (!fc->error && wev->delayed) {
+        return;
+    }
+
+    ngx_post_event(wev, &ngx_posted_events);
 }
 
 
@@ -1340,11 +1349,13 @@ ngx_http_v2_filter_cleanup(void *data)
     ngx_http_v2_stream_t *stream = data;
 
     size_t                     window;
+    ngx_event_t               *wev;
+    ngx_queue_t               *q;
     ngx_http_v2_out_frame_t   *frame, **fn;
     ngx_http_v2_connection_t  *h2c;
 
-    if (stream->handled) {
-        stream->handled = 0;
+    if (stream->waiting) {
+        stream->waiting = 0;
         ngx_queue_remove(&stream->queue);
     }
 
@@ -1378,9 +1389,26 @@ ngx_http_v2_filter_cleanup(void *data)
         fn = &frame->next;
     }
 
-    if (h2c->send_window == 0 && window && !ngx_queue_empty(&h2c->waiting)) {
-        ngx_queue_add(&h2c->posted, &h2c->waiting);
-        ngx_queue_init(&h2c->waiting);
+    if (h2c->send_window == 0 && window) {
+
+        while (!ngx_queue_empty(&h2c->waiting)) {
+            q = ngx_queue_head(&h2c->waiting);
+
+            ngx_queue_remove(q);
+
+            stream = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
+
+            stream->waiting = 0;
+
+            wev = stream->request->connection->write;
+
+            wev->active = 0;
+            wev->ready = 1;
+
+            if (!wev->delayed) {
+                ngx_post_event(wev, &ngx_posted_events);
+            }
+        }
     }
 
     h2c->send_window += window;
