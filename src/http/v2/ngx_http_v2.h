@@ -137,7 +137,6 @@ struct ngx_http_v2_connection_s {
 
     ngx_http_v2_out_frame_t         *last_out;
 
-    ngx_queue_t                      posted;
     ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
@@ -192,7 +191,7 @@ struct ngx_http_v2_stream_s {
 
     ngx_pool_t                      *pool;
 
-    unsigned                         handled:1;
+    unsigned                         waiting:1;
     unsigned                         blocked:1;
     unsigned                         exhausted:1;
     unsigned                         in_closed:1;

@@ -286,7 +286,6 @@ ngx_http_v2_init(ngx_event_t *rev)
                                             : ngx_http_v2_state_preface;
 
     ngx_queue_init(&h2c->waiting);
-    ngx_queue_init(&h2c->posted);
     ngx_queue_init(&h2c->dependencies);
     ngx_queue_init(&h2c->closed);
 
@@ -420,9 +419,7 @@ static void
 ngx_http_v2_write_handler(ngx_event_t *wev)
 {
     ngx_int_t                  rc;
-    ngx_queue_t               *q;
     ngx_connection_t          *c;
-    ngx_http_v2_stream_t      *stream;
     ngx_http_v2_connection_t  *h2c;
 
     c = wev->data;
@@ -455,26 +452,6 @@ ngx_http_v2_write_handler(ngx_event_t *wev)
     if (rc == NGX_ERROR) {
         ngx_http_v2_finalize_connection(h2c, 0);
         return;
-    }
-
-    while (!ngx_queue_empty(&h2c->posted)) {
-        q = ngx_queue_head(&h2c->posted);
-
-        ngx_queue_remove(q);
-
-        stream = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
-
-        stream->handled = 0;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "run http2 stream %ui", stream->node->id);
-
-        wev = stream->request->connection->write;
-
-        wev->active = 0;
-        wev->ready = 1;
-
-        wev->handler(wev);
     }
 
     h2c->blocked = 0;
@@ -2254,7 +2231,7 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         stream = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
 
-        stream->handled = 0;
+        stream->waiting = 0;
 
         wev = stream->request->connection->write;
 
@@ -4274,7 +4251,7 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
                 continue;
             }
 
-            stream->handled = 0;
+            stream->waiting = 0;
 
             r = stream->request;
             fc = r->connection;
