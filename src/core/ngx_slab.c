@@ -211,7 +211,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
                     if (bitmap[n] != NGX_SLAB_BUSY) {
 
                         for (m = 1, i = 0; m; m <<= 1, i++) {
-                            if ((bitmap[n] & m)) {
+                            if (bitmap[n] & m) {
                                 continue;
                             }
 
@@ -255,7 +255,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
                 if (page->slab != NGX_SLAB_BUSY) {
 
                     for (m = 1, i = 0; m; m <<= 1, i++) {
-                        if ((page->slab & m)) {
+                        if (page->slab & m) {
                             continue;
                         }
 
@@ -297,7 +297,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
                          m & mask;
                          m <<= 1, i++)
                     {
-                        if ((page->slab & m)) {
+                        if (page->slab & m) {
                             continue;
                         }
 
