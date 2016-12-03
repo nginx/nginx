@@ -184,7 +184,6 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
         slot = shift - pool->min_shift;
 
     } else {
-        size = pool->min_size;
         shift = pool->min_shift;
         slot = 0;
     }
