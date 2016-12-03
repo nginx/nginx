@@ -597,7 +597,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
             goto wrong_chunk;
         }
 
-        if (slab == NGX_SLAB_PAGE_FREE) {
+        if (!(slab & NGX_SLAB_PAGE_START)) {
             ngx_slab_error(pool, NGX_LOG_ALERT,
                            "ngx_slab_free(): page is already free");
             goto fail;
