@@ -1310,12 +1310,11 @@ ngx_ssl_ocsp_process_status_line(ngx_ssl_ocsp_ctx_t *ctx)
     rc = ngx_ssl_ocsp_parse_status_line(ctx);
 
     if (rc == NGX_OK) {
-#if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
-                       "ssl ocsp status line \"%*s\"",
-                       ctx->response->pos - ctx->response->start,
-                       ctx->response->start);
-#endif
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                       "ssl ocsp status %ui \"%*s\"",
+                       ctx->code,
+                       ctx->header_end - ctx->header_start,
+                       ctx->header_start);
 
         ctx->process = ngx_ssl_ocsp_process_headers;
         return ctx->process(ctx);
@@ -1476,6 +1475,7 @@ ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx)
 
             if (++ctx->count == 3) {
                 state = sw_space_after_status;
+                ctx->header_start = p - 2;
             }
 
             break;
@@ -1493,6 +1493,7 @@ ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx)
                 state = sw_almost_done;
                 break;
             case LF:
+                ctx->header_end = p;
                 goto done;
             default:
                 return NGX_ERROR;
@@ -1506,6 +1507,7 @@ ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx)
                 state = sw_almost_done;
                 break;
             case LF:
+                ctx->header_end = p;
                 goto done;
             }
             break;
@@ -1514,6 +1516,7 @@ ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx)
         case sw_almost_done:
             switch (ch) {
             case LF:
+                ctx->header_end = p - 1;
                 goto done;
             default:
                 return NGX_ERROR;
