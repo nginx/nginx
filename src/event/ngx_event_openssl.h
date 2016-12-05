@@ -236,6 +236,7 @@ extern int  ngx_ssl_session_cache_index;
 extern int  ngx_ssl_session_ticket_keys_index;
 extern int  ngx_ssl_certificate_index;
 extern int  ngx_ssl_next_certificate_index;
+extern int  ngx_ssl_certificate_name_index;
 extern int  ngx_ssl_stapling_index;
 
 

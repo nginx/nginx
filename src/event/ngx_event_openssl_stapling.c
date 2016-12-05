@@ -31,6 +31,8 @@ typedef struct {
     X509                        *cert;
     X509                        *issuer;
 
+    u_char                      *name;
+
     time_t                       valid;
     time_t                       refresh;
 
@@ -173,6 +175,8 @@ ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
     staple->timeout = 60000;
     staple->verify = verify;
     staple->cert = cert;
+    staple->name = X509_get_ex_data(staple->cert,
+                                    ngx_ssl_certificate_name_index);
 
     if (file->len) {
         /* use OCSP response from the file */
@@ -354,7 +358,9 @@ ngx_ssl_stapling_issuer(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     if (rc == 0) {
         ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
-                      "\"ssl_stapling\" ignored, issuer certificate not found");
+                      "\"ssl_stapling\" ignored, "
+                      "issuer certificate not found for certificate \"%s\"",
+                      staple->name);
         X509_STORE_CTX_free(store_ctx);
         return NGX_DECLINED;
     }
@@ -387,7 +393,8 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
         if (aia == NULL) {
             ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                           "\"ssl_stapling\" ignored, "
-                          "no OCSP responder URL in the certificate");
+                          "no OCSP responder URL in the certificate \"%s\"",
+                          staple->name);
             return NGX_DECLINED;
         }
 
@@ -399,7 +406,8 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
         if (s == NULL) {
             ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                           "\"ssl_stapling\" ignored, "
-                          "no OCSP responder URL in the certificate");
+                          "no OCSP responder URL in the certificate \"%s\"",
+                          staple->name);
             X509_email_free(aia);
             return NGX_DECLINED;
         }
@@ -432,7 +440,9 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
     } else {
         ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                       "\"ssl_stapling\" ignored, "
-                      "invalid URL prefix in OCSP responder \"%V\"", &u.url);
+                      "invalid URL prefix in OCSP responder \"%V\" "
+                      "in the certificate \"%s\"",
+                      &u.url, staple->name);
         return NGX_DECLINED;
     }
 
@@ -440,7 +450,9 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
         if (u.err) {
             ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                           "\"ssl_stapling\" ignored, "
-                          "%s in OCSP responder \"%V\"", u.err, &u.url);
+                          "%s in OCSP responder \"%V\" "
+                          "in the certificate \"%s\"",
+                          u.err, &u.url, staple->name);
             return NGX_DECLINED;
         }
 

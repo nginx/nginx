@@ -106,6 +106,7 @@ int  ngx_ssl_session_cache_index;
 int  ngx_ssl_session_ticket_keys_index;
 int  ngx_ssl_certificate_index;
 int  ngx_ssl_next_certificate_index;
+int  ngx_ssl_certificate_name_index;
 int  ngx_ssl_stapling_index;
 
 
@@ -189,6 +190,14 @@ ngx_ssl_init(ngx_log_t *log)
     ngx_ssl_next_certificate_index = X509_get_ex_new_index(0, NULL, NULL, NULL,
                                                            NULL);
     if (ngx_ssl_next_certificate_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_certificate_name_index = X509_get_ex_new_index(0, NULL, NULL, NULL,
+                                                           NULL);
+
+    if (ngx_ssl_certificate_name_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
         return NGX_ERROR;
     }
@@ -380,6 +389,15 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     if (SSL_CTX_use_certificate(ssl->ctx, x509) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_use_certificate(\"%s\") failed", cert->data);
+        X509_free(x509);
+        BIO_free(bio);
+        return NGX_ERROR;
+    }
+
+    if (X509_set_ex_data(x509, ngx_ssl_certificate_name_index, cert->data)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
         X509_free(x509);
         BIO_free(bio);
         return NGX_ERROR;
