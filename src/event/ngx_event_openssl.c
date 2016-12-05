@@ -3378,6 +3378,74 @@ ngx_ssl_get_ciphers(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#ifdef SSL_CTRL_GET_CURVES
+
+    int         *curves, n, i, nid;
+    u_char      *p;
+    size_t       len;
+
+    n = SSL_get1_curves(c->ssl->connection, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    curves = ngx_palloc(pool, n * sizeof(int));
+
+    n = SSL_get1_curves(c->ssl->connection, curves);
+    len = 0;
+
+    for (i = 0; i < n; i++) {
+        nid = curves[i];
+
+        if (nid & TLSEXT_nid_unknown) {
+            len += sizeof("0x0000") - 1;
+
+        } else {
+            len += ngx_strlen(OBJ_nid2sn(nid));
+        }
+
+        len += sizeof(":") - 1;
+    }
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        nid = curves[i];
+
+        if (nid & TLSEXT_nid_unknown) {
+            p = ngx_sprintf(p, "0x%04xd", nid & 0xffff);
+
+        } else {
+            p = ngx_sprintf(p, "%s", OBJ_nid2sn(nid));
+        }
+
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#else
+
+    s->len = 0;
+
+#endif
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     u_char        *buf;
