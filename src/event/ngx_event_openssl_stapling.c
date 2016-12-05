@@ -47,6 +47,8 @@ struct ngx_ssl_ocsp_ctx_s {
     X509                        *cert;
     X509                        *issuer;
 
+    u_char                      *name;
+
     ngx_uint_t                   naddrs;
 
     ngx_addr_t                  *addrs;
@@ -559,6 +561,7 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
 
     ctx->cert = staple->cert;
     ctx->issuer = staple->issuer;
+    ctx->name = staple->name;
 
     ctx->addrs = staple->addrs;
     ctx->host = staple->host;
@@ -1837,12 +1840,27 @@ ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len)
     if (log->action) {
         p = ngx_snprintf(buf, len, " while %s", log->action);
         len -= p - buf;
+        buf = p;
     }
 
     ctx = log->data;
 
     if (ctx) {
-        p = ngx_snprintf(p, len, ", responder: %V", &ctx->host);
+        p = ngx_snprintf(buf, len, ", responder: %V", &ctx->host);
+        len -= p - buf;
+        buf = p;
+    }
+
+    if (ctx && ctx->peer.name) {
+        p = ngx_snprintf(buf, len, ", peer: %V", ctx->peer.name);
+        len -= p - buf;
+        buf = p;
+    }
+
+    if (ctx && ctx->name) {
+        p = ngx_snprintf(buf, len, ", certificate: \"%s\"", ctx->name);
+        len -= p - buf;
+        buf = p;
     }
 
     return p;
