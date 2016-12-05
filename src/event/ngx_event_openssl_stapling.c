@@ -57,14 +57,14 @@ struct ngx_ssl_ocsp_ctx_s {
 
     ngx_msec_t                   timeout;
 
-    void                       (*handler)(ngx_ssl_ocsp_ctx_t *r);
+    void                       (*handler)(ngx_ssl_ocsp_ctx_t *ctx);
     void                        *data;
 
     ngx_buf_t                   *request;
     ngx_buf_t                   *response;
     ngx_peer_connection_t        peer;
 
-    ngx_int_t                  (*process)(ngx_ssl_ocsp_ctx_t *r);
+    ngx_int_t                  (*process)(ngx_ssl_ocsp_ctx_t *ctx);
 
     ngx_uint_t                   state;
 
@@ -374,9 +374,9 @@ static ngx_int_t
 ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_ssl_stapling_t *staple, ngx_str_t *responder)
 {
-    ngx_url_t                  u;
     char                      *s;
     ngx_str_t                  rsp;
+    ngx_url_t                  u;
     STACK_OF(OPENSSL_STRING)  *aia;
 
     if (responder->len == 0) {
@@ -757,10 +757,10 @@ error:
 static time_t
 ngx_ssl_stapling_time(ASN1_GENERALIZEDTIME *asn1time)
 {
+    BIO     *bio;
     u_char  *value;
     size_t   len;
     time_t   time;
-    BIO     *bio;
 
     /*
      * OpenSSL doesn't provide a way to convert ASN1_GENERALIZEDTIME
@@ -1005,7 +1005,7 @@ failed:
 static void
 ngx_ssl_ocsp_connect(ngx_ssl_ocsp_ctx_t *ctx)
 {
-    ngx_int_t    rc;
+    ngx_int_t  rc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp connect");
@@ -1103,10 +1103,10 @@ ngx_ssl_ocsp_write_handler(ngx_event_t *wev)
 static void
 ngx_ssl_ocsp_read_handler(ngx_event_t *rev)
 {
-    ssize_t            n, size;
-    ngx_int_t          rc;
-    ngx_ssl_ocsp_ctx_t    *ctx;
-    ngx_connection_t  *c;
+    ssize_t              n, size;
+    ngx_int_t            rc;
+    ngx_connection_t    *c;
+    ngx_ssl_ocsp_ctx_t  *ctx;
 
     c = rev->data;
     ctx = c->data;
@@ -1608,10 +1608,11 @@ ngx_ssl_ocsp_process_headers(ngx_ssl_ocsp_ctx_t *ctx)
     return ctx->process(ctx);
 }
 
+
 static ngx_int_t
 ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx)
 {
-    u_char      c, ch, *p;
+    u_char  c, ch, *p;
     enum {
         sw_start = 0,
         sw_name,
@@ -1845,6 +1846,7 @@ ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
 
     return NGX_OK;
 }
+
 
 ngx_int_t
 ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
