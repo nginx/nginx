@@ -3717,23 +3717,33 @@ ngx_ssl_get_fingerprint(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 ngx_int_t
 ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    X509  *cert;
+    X509        *cert;
+    long         rc;
+    const char  *str;
 
-    if (SSL_get_verify_result(c->ssl->connection) != X509_V_OK) {
-        ngx_str_set(s, "FAILED");
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        ngx_str_set(s, "NONE");
         return NGX_OK;
     }
 
-    cert = SSL_get_peer_certificate(c->ssl->connection);
+    X509_free(cert);
 
-    if (cert) {
+    rc = SSL_get_verify_result(c->ssl->connection);
+
+    if (rc == X509_V_OK) {
         ngx_str_set(s, "SUCCESS");
-
-    } else {
-        ngx_str_set(s, "NONE");
+        return NGX_OK;
     }
 
-    X509_free(cert);
+    str = X509_verify_cert_error_string(rc);
+
+    s->data = ngx_pnalloc(pool, sizeof("FAILED:") - 1 + ngx_strlen(str));
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    s->len = ngx_sprintf(s->data, "FAILED:%s", str) - s->data;
 
     return NGX_OK;
 }
