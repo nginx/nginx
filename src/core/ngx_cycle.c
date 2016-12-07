@@ -37,7 +37,7 @@ ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void                *rv;
-    char               **senv, **env;
+    char               **senv;
     ngx_uint_t           i, n;
     ngx_log_t           *log;
     ngx_time_t          *tp;
@@ -750,19 +750,8 @@ old_shm_zone_done:
 
     if (ngx_process == NGX_PROCESS_MASTER || ngx_is_init_cycle(old_cycle)) {
 
-        /*
-         * perl_destruct() frees environ, if it is not the same as it was at
-         * perl_construct() time, therefore we save the previous cycle
-         * environment before ngx_conf_parse() where it will be changed.
-         */
-
-        env = environ;
-        environ = senv;
-
         ngx_destroy_pool(old_cycle->pool);
         cycle->old_cycle = NULL;
-
-        environ = env;
 
         return cycle;
     }
