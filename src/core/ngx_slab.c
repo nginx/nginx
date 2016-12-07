@@ -113,6 +113,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     n = ngx_pagesize_shift - pool->min_shift;
 
     for (i = 0; i < n; i++) {
+        /* only "next" is used in list head */
         slots[i].slab = 0;
         slots[i].next = &slots[i];
         slots[i].prev = 0;
@@ -127,8 +128,10 @@ ngx_slab_init(ngx_slab_pool_t *pool)
 
     page = pool->pages;
 
-    pool->free.prev = 0;
+    /* only "next" is used in list head */
+    pool->free.slab = 0;
     pool->free.next = page;
+    pool->free.prev = 0;
 
     page->slab = pages;
     page->next = &pool->free;
