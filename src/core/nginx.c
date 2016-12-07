@@ -12,6 +12,7 @@
 
 static void ngx_show_version_info(void);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
+static void ngx_cleanup_environment(void *data);
 static ngx_int_t ngx_get_options(int argc, char *const *argv);
 static ngx_int_t ngx_process_options(ngx_cycle_t *cycle);
 static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv);
@@ -495,10 +496,11 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 char **
 ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 {
-    char             **p, **env;
-    ngx_str_t         *var;
-    ngx_uint_t         i, n;
-    ngx_core_conf_t   *ccf;
+    char                **p, **env;
+    ngx_str_t            *var;
+    ngx_uint_t            i, n;
+    ngx_core_conf_t      *ccf;
+    ngx_pool_cleanup_t   *cln;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -550,14 +552,25 @@ tz_found:
 
     if (last) {
         env = ngx_alloc((*last + n + 1) * sizeof(char *), cycle->log);
+        if (env == NULL) {
+            return NULL;
+        }
+
         *last = n;
 
     } else {
-        env = ngx_palloc(cycle->pool, (n + 1) * sizeof(char *));
-    }
+        cln = ngx_pool_cleanup_add(cycle->pool, 0);
+        if (cln == NULL) {
+            return NULL;
+        }
 
-    if (env == NULL) {
-        return NULL;
+        env = ngx_alloc((n + 1) * sizeof(char *), cycle->log);
+        if (env == NULL) {
+            return NULL;
+        }
+
+        cln->handler = ngx_cleanup_environment;
+        cln->data = env;
     }
 
     n = 0;
@@ -588,6 +601,25 @@ tz_found:
     }
 
     return env;
+}
+
+
+static void
+ngx_cleanup_environment(void *data)
+{
+    char  **env = data;
+
+    if (environ == env) {
+
+        /*
+         * if the environment is still used, as it happens on exit,
+         * the only option is to leak it
+         */
+
+        return;
+    }
+
+    ngx_free(env);
 }
 
 
