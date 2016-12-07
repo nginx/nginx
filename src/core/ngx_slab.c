@@ -120,6 +120,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     }
 
     p += n * sizeof(ngx_slab_page_t);
+    size -= n * sizeof(ngx_slab_page_t);
 
     pages = (ngx_uint_t) (size / (ngx_pagesize + sizeof(ngx_slab_page_t)));
 
