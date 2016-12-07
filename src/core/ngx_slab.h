@@ -23,6 +23,15 @@ struct ngx_slab_page_s {
 
 
 typedef struct {
+    ngx_uint_t        total;
+    ngx_uint_t        used;
+
+    ngx_uint_t        reqs;
+    ngx_uint_t        fails;
+} ngx_slab_stat_t;
+
+
+typedef struct {
     ngx_shmtx_sh_t    lock;
 
     size_t            min_size;
@@ -31,6 +40,8 @@ typedef struct {
     ngx_slab_page_t  *pages;
     ngx_slab_page_t  *last;
     ngx_slab_page_t   free;
+
+    ngx_slab_stat_t  *stats;
 
     u_char           *start;
     u_char           *end;
