@@ -42,6 +42,7 @@ typedef struct {
     ngx_slab_page_t   free;
 
     ngx_slab_stat_t  *stats;
+    ngx_uint_t        pfree;
 
     u_char           *start;
     u_char           *end;

@@ -154,6 +154,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     }
 
     pool->last = pool->pages + pages;
+    pool->pfree = pages;
 
     pool->log_nomem = 1;
     pool->log_ctx = &pool->zero;
@@ -691,6 +692,8 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
             page->next = NULL;
             page->prev = NGX_SLAB_PAGE;
 
+            pool->pfree -= pages;
+
             if (--pages == 0) {
                 return page;
             }
@@ -720,6 +723,8 @@ ngx_slab_free_pages(ngx_slab_pool_t *pool, ngx_slab_page_t *page,
     ngx_uint_t pages)
 {
     ngx_slab_page_t  *prev, *join;
+
+    pool->pfree += pages;
 
     page->slab = pages--;
 
