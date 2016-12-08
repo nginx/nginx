@@ -338,6 +338,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
                 n = 1;
             }
 
+            /* "n" elements for bitmap, plus one requested */
             bitmap[0] = ((uintptr_t) 2 << n) - 1;
 
             map = (ngx_pagesize >> shift) / (sizeof(uintptr_t) * 8);
