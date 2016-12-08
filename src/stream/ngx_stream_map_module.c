@@ -392,8 +392,9 @@ ngx_stream_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     {
         ctx->hostnames = 1;
         return NGX_CONF_OK;
+    }
 
-    } else if (cf->args->nelts != 2) {
+    if (cf->args->nelts != 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid number of the map parameters");
         return NGX_CONF_ERROR;
