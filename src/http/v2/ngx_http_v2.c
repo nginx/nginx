@@ -3552,8 +3552,10 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
         rb->buf = ngx_create_temp_buf(r->pool, (size_t) len);
 
     } else {
-        /* enforce writing body to file */
-        r->request_body_in_file_only = 1;
+        if (stream->preread) {
+            /* enforce writing preread buffer to file */
+            r->request_body_in_file_only = 1;
+        }
 
         rb->buf = ngx_calloc_buf(r->pool);
 
