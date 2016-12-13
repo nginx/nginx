@@ -5,6 +5,100 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.7" date="13.12.2016">
+
+<change type="change">
+<para lang="ru">
+переменная $ssl_client_verify теперь
+в случае ошибки проверки клиентского сертификата
+содержит строку с описанием ошибки,
+например, "FAILED:certificate has expired".
+</para>
+<para lang="en">
+now in case of a client certificate verification error
+the $ssl_client_verify variable contains a string with the failure reason,
+for example, "FAILED:certificate has expired".
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $ssl_ciphers, $ssl_curves,
+$ssl_client_v_start, $ssl_client_v_end и $ssl_client_v_remain.
+</para>
+<para lang="en">
+the $ssl_ciphers, $ssl_curves,
+$ssl_client_v_start, $ssl_client_v_end, and $ssl_client_v_remain variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр volatile директивы map.
+</para>
+<para lang="en">
+the "volatile" parameter of the "map" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при сборке динамических модулей
+не учитывались заданные для модуля зависимости.
+</para>
+<para lang="en">
+dependencies specified for a module
+were ignored while building dynamic modules.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директив limit_req или auth_request
+тело запроса могло быть повреждено;
+ошибка появилась в 1.11.0.
+</para>
+<para lang="en">
+when using HTTP/2 and the "limit_req" or "auth_request" directives
+client request body might be corrupted;
+the bug had appeared in 1.11.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.11.3.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process when using HTTP/2;
+the bug had appeared in 1.11.3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Congcong Hu.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Congcong Hu.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_perl_module.
+</para>
+<para lang="en">
+in the ngx_http_perl_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.6" date="15.11.2016">
 
 <change type="change">
