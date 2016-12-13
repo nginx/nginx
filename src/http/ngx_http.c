@@ -457,7 +457,10 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
     use_rewrite = cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers.nelts ? 1 : 0;
     use_access = cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers.nelts ? 1 : 0;
 
-    n = use_rewrite + use_access + cmcf->try_files + 1 /* find config phase */;
+    n = 1                  /* find config phase */
+        + use_rewrite      /* post rewrite phase */
+        + use_access       /* post access phase */
+        + cmcf->try_files;
 
     for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
         n += cmcf->phases[i].handlers.nelts;
