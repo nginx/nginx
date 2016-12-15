@@ -300,6 +300,10 @@ ngx_resolver_cleanup(void *data)
 #endif
 
         if (r->event) {
+            if (r->event->timer_set) {
+                ngx_del_timer(r->event);
+            }
+
             ngx_free(r->event);
         }
 
