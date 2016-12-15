@@ -773,7 +773,7 @@ static time_t
 ngx_ssl_stapling_time(ASN1_GENERALIZEDTIME *asn1time)
 {
     BIO     *bio;
-    u_char  *value;
+    char    *value;
     size_t   len;
     time_t   time;
 
@@ -793,9 +793,9 @@ ngx_ssl_stapling_time(ASN1_GENERALIZEDTIME *asn1time)
 
     BIO_write(bio, "Tue ", sizeof("Tue ") - 1);
     ASN1_GENERALIZEDTIME_print(bio, asn1time);
-    len = BIO_get_mem_data(bio, (char **) &value);
+    len = BIO_get_mem_data(bio, &value);
 
-    time = ngx_parse_http_time(value, len);
+    time = ngx_parse_http_time((u_char *) value, len);
 
     BIO_free(bio);
 

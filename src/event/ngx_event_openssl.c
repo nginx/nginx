@@ -4049,7 +4049,7 @@ ngx_ssl_parse_time(
     ASN1_TIME *asn1time)
 {
     BIO     *bio;
-    u_char  *value;
+    char    *value;
     size_t   len;
     time_t   time;
 
@@ -4069,9 +4069,9 @@ ngx_ssl_parse_time(
 
     BIO_write(bio, "Tue ", sizeof("Tue ") - 1);
     ASN1_TIME_print(bio, asn1time);
-    len = BIO_get_mem_data(bio, (char **) &value);
+    len = BIO_get_mem_data(bio, &value);
 
-    time = ngx_parse_http_time(value, len);
+    time = ngx_parse_http_time((u_char *) value, len);
 
     BIO_free(bio);
 
