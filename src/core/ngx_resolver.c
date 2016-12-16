@@ -875,7 +875,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         ngx_add_timer(ctx->event, ctx->timeout);
     }
 
-    if (ngx_queue_empty(resend_queue)) {
+    if (ngx_resolver_resend_empty(r)) {
         ngx_add_timer(r->event, (ngx_msec_t) (r->resend_timeout * 1000));
     }
 
@@ -1098,7 +1098,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         ngx_add_timer(ctx->event, ctx->timeout);
     }
 
-    if (ngx_queue_empty(resend_queue)) {
+    if (ngx_resolver_resend_empty(r)) {
         ngx_add_timer(r->event, (ngx_msec_t) (r->resend_timeout * 1000));
     }
 
