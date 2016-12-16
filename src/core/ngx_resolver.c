@@ -351,6 +351,10 @@ ngx_resolver_cleanup_tree(ngx_resolver_t *r, ngx_rbtree_t *tree)
             next = ctx->next;
 
             if (ctx->event) {
+                if (ctx->event->timer_set) {
+                    ngx_del_timer(ctx->event);
+                }
+
                 ngx_resolver_free(r, ctx->event);
             }
 
