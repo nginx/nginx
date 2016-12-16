@@ -1556,6 +1556,7 @@ static ngx_uint_t
 ngx_resolver_resend_empty(ngx_resolver_t *r)
 {
     return ngx_queue_empty(&r->name_resend_queue)
+           && ngx_queue_empty(&r->srv_resend_queue)
 #if (NGX_HAVE_INET6)
            && ngx_queue_empty(&r->addr6_resend_queue)
 #endif
