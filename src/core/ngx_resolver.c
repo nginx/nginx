@@ -2955,6 +2955,10 @@ ngx_resolver_resolve_srv_names(ngx_resolver_ctx_t *ctx, ngx_resolver_node_t *rn)
     ctx->srvs = srvs;
     ctx->nsrvs = rn->nsrvs;
 
+    if (ctx->event && ctx->event->timer_set) {
+        ngx_del_timer(ctx->event);
+    }
+
     for (i = 0; i < rn->nsrvs; i++) {
         srvs[i].name.data = ngx_resolver_alloc(r, rn->u.srvs[i].name.len);
         if (srvs[i].name.data == NULL) {
@@ -2974,7 +2978,7 @@ ngx_resolver_resolve_srv_names(ngx_resolver_ctx_t *ctx, ngx_resolver_node_t *rn)
         cctx->handler = ngx_resolver_srv_names_handler;
         cctx->data = ctx;
         cctx->srvs = &srvs[i];
-        cctx->timeout = 0;
+        cctx->timeout = ctx->timeout;
 
         srvs[i].priority = rn->u.srvs[i].priority;
         srvs[i].weight = rn->u.srvs[i].weight;
