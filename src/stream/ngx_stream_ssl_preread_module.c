@@ -142,7 +142,7 @@ ngx_stream_ssl_preread_handler(ngx_stream_session_t *s)
             return NGX_DECLINED;
         }
 
-        if (p[1] != 3 || p[2] == 0) {
+        if (p[1] != 3) {
             ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: unsupported SSL version");
             return NGX_DECLINED;
