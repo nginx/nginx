@@ -542,6 +542,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, reset_timedout_connection),
       NULL },
 
+    { ngx_string("absolute_redirect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, absolute_redirect),
+      NULL },
+
     { ngx_string("server_name_in_redirect"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -3563,6 +3570,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     clcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     clcf->reset_timedout_connection = NGX_CONF_UNSET;
+    clcf->absolute_redirect = NGX_CONF_UNSET;
     clcf->server_name_in_redirect = NGX_CONF_UNSET;
     clcf->port_in_redirect = NGX_CONF_UNSET;
     clcf->msie_padding = NGX_CONF_UNSET;
@@ -3825,6 +3833,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
+    ngx_conf_merge_value(conf->absolute_redirect,
+                              prev->absolute_redirect, 1);
     ngx_conf_merge_value(conf->server_name_in_redirect,
                               prev->server_name_in_redirect, 0);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);

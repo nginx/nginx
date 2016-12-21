@@ -263,7 +263,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
 
-        if (r->headers_out.location->value.data[0] == '/') {
+        if (r->headers_out.location->value.data[0] == '/'
+            && clcf->absolute_redirect)
+        {
             if (clcf->server_name_in_redirect) {
                 cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
                 host = cscf->server_name;
