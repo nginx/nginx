@@ -366,6 +366,9 @@ ngx_http_variable_value_t  ngx_http_variable_true_value =
     ngx_http_variable("1");
 
 
+static ngx_uint_t  ngx_http_variable_depth = 100;
+
+
 ngx_http_variable_t *
 ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
 {
@@ -517,15 +520,28 @@ ngx_http_get_indexed_variable(ngx_http_request_t *r, ngx_uint_t index)
 
     v = cmcf->variables.elts;
 
+    if (ngx_http_variable_depth == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "cycle while evaluating variable \"%V\"",
+                      &v[index].name);
+        return NULL;
+    }
+
+    ngx_http_variable_depth--;
+
     if (v[index].get_handler(r, &r->variables[index], v[index].data)
         == NGX_OK)
     {
+        ngx_http_variable_depth++;
+
         if (v[index].flags & NGX_HTTP_VAR_NOCACHEABLE) {
             r->variables[index].no_cacheable = 1;
         }
 
         return &r->variables[index];
     }
+
+    ngx_http_variable_depth++;
 
     r->variables[index].valid = 0;
     r->variables[index].not_found = 1;
@@ -568,17 +584,25 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
     if (v) {
         if (v->flags & NGX_HTTP_VAR_INDEXED) {
             return ngx_http_get_flushed_variable(r, v->index);
+        }
 
-        } else {
-
-            vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
-
-            if (vv && v->get_handler(r, vv, v->data) == NGX_OK) {
-                return vv;
-            }
-
+        if (ngx_http_variable_depth == 0) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "cycle while evaluating variable \"%V\"", name);
             return NULL;
         }
+
+        ngx_http_variable_depth--;
+
+        vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));
+
+        if (vv && v->get_handler(r, vv, v->data) == NGX_OK) {
+            ngx_http_variable_depth++;
+            return vv;
+        }
+
+        ngx_http_variable_depth++;
+        return NULL;
     }
 
     vv = ngx_palloc(r->pool, sizeof(ngx_http_variable_value_t));

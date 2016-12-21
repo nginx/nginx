@@ -119,6 +119,9 @@ ngx_stream_variable_value_t  ngx_stream_variable_true_value =
     ngx_stream_variable("1");
 
 
+static ngx_uint_t  ngx_stream_variable_depth = 100;
+
+
 ngx_stream_variable_t *
 ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
 {
@@ -270,15 +273,28 @@ ngx_stream_get_indexed_variable(ngx_stream_session_t *s, ngx_uint_t index)
 
     v = cmcf->variables.elts;
 
+    if (ngx_stream_variable_depth == 0) {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "cycle while evaluating variable \"%V\"",
+                      &v[index].name);
+        return NULL;
+    }
+
+    ngx_stream_variable_depth--;
+
     if (v[index].get_handler(s, &s->variables[index], v[index].data)
         == NGX_OK)
     {
+        ngx_stream_variable_depth++;
+
         if (v[index].flags & NGX_STREAM_VAR_NOCACHEABLE) {
             s->variables[index].no_cacheable = 1;
         }
 
         return &s->variables[index];
     }
+
+    ngx_stream_variable_depth++;
 
     s->variables[index].valid = 0;
     s->variables[index].not_found = 1;
@@ -322,18 +338,26 @@ ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
     if (v) {
         if (v->flags & NGX_STREAM_VAR_INDEXED) {
             return ngx_stream_get_flushed_variable(s, v->index);
+        }
 
-        } else {
-
-            vv = ngx_palloc(s->connection->pool,
-                            sizeof(ngx_stream_variable_value_t));
-
-            if (vv && v->get_handler(s, vv, v->data) == NGX_OK) {
-                return vv;
-            }
-
+        if (ngx_stream_variable_depth == 0) {
+            ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                          "cycle while evaluating variable \"%V\"", name);
             return NULL;
         }
+
+        ngx_stream_variable_depth--;
+
+        vv = ngx_palloc(s->connection->pool,
+                        sizeof(ngx_stream_variable_value_t));
+
+        if (vv && v->get_handler(s, vv, v->data) == NGX_OK) {
+            ngx_stream_variable_depth++;
+            return vv;
+        }
+
+        ngx_stream_variable_depth++;
+        return NULL;
     }
 
     vv = ngx_palloc(s->connection->pool, sizeof(ngx_stream_variable_value_t));
