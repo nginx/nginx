@@ -983,10 +983,8 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
             return NGX_OK;
         }
 
-        /*
-         * we do not need to set the r->headers_out.location->hash and
-         * r->headers_out.location->key fields
-         */
+        r->headers_out.location->hash = 1;
+        ngx_str_set(&r->headers_out.location->key, "Location");
 
         if (r->args.len == 0) {
             r->headers_out.location->value = clcf->name;

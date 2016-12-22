@@ -150,7 +150,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
         ngx_http_clear_location(r);
 
-        r->headers_out.location = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
+        r->headers_out.location = ngx_list_push(&r->headers_out.headers);
         if (r->headers_out.location == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -182,11 +182,8 @@ ngx_http_static_handler(ngx_http_request_t *r)
             }
         }
 
-        /*
-         * we do not need to set the r->headers_out.location->hash and
-         * r->headers_out.location->key fields
-         */
-
+        r->headers_out.location->hash = 1;
+        ngx_str_set(&r->headers_out.location->key, "Location");
         r->headers_out.location->value.len = len;
         r->headers_out.location->value.data = location;
 

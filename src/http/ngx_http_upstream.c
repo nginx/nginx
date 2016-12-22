@@ -4927,8 +4927,8 @@ ngx_http_upstream_rewrite_location(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     /*
-     * we do not set r->headers_out.location here to avoid the handling
-     * the local redirects without a host name by ngx_http_header_filter()
+     * we do not set r->headers_out.location here to avoid handling
+     * relative redirects in ngx_http_header_filter()
      */
 
     return NGX_OK;

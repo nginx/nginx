@@ -1067,7 +1067,7 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
     u_char                    *location;
     ngx_http_core_loc_conf_t  *clcf;
 
-    r->headers_out.location = ngx_palloc(r->pool, sizeof(ngx_table_elt_t));
+    r->headers_out.location = ngx_list_push(&r->headers_out.headers);
     if (r->headers_out.location == NULL) {
         return NGX_ERROR;
     }
@@ -1086,11 +1086,8 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
         ngx_memcpy(location, r->uri.data, r->uri.len);
     }
 
-    /*
-     * we do not need to set the r->headers_out.location->hash and
-     * r->headers_out.location->key fields
-     */
-
+    r->headers_out.location->hash = 1;
+    ngx_str_set(&r->headers_out.location->key, "Location");
     r->headers_out.location->value.len = r->uri.len;
     r->headers_out.location->value.data = location;
 
