@@ -117,9 +117,10 @@ typedef struct {
 #ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
 
 typedef struct {
+    size_t                      size;
     u_char                      name[16];
-    u_char                      aes_key[16];
-    u_char                      hmac_key[16];
+    u_char                      hmac_key[32];
+    u_char                      aes_key[32];
 } ngx_ssl_session_ticket_key_t;
 
 #endif
