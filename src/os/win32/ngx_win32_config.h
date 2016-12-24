@@ -152,7 +152,7 @@ typedef unsigned short int  uint16_t;
 typedef __int64             int64_t;
 typedef unsigned __int64    uint64_t;
 
-#if !defined(__WATCOMC__) && !defined(__MINGW64_VERSION_MAJOR)
+#if __BORLANDC__
 typedef int                 intptr_t;
 typedef u_int               uintptr_t;
 #endif
