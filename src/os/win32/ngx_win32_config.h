@@ -51,6 +51,7 @@
 
 /* GCC MinGW's stdio.h includes sys/types.h */
 #define _OFF_T_
+#define __have_typedef_off_t
 
 #endif
 
