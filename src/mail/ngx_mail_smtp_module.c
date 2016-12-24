@@ -280,7 +280,7 @@ ngx_mail_smtp_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     p = ngx_cpymem(p, conf->capability.data, conf->capability.len);
 
-    p = ngx_cpymem(p, "250 STARTTLS" CRLF, sizeof("250 STARTTLS" CRLF) - 1);
+    ngx_memcpy(p, "250 STARTTLS" CRLF, sizeof("250 STARTTLS" CRLF) - 1);
 
     p = conf->starttls_capability.data
         + (last - conf->capability.data) + 3;

@@ -119,6 +119,9 @@ typedef long  time_t;
 /* unreferenced formal parameter */
 #pragma warn -8057
 
+/* suspicious pointer arithmetic */
+#pragma warn -8072
+
 #endif
 
 

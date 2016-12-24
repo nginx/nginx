@@ -780,7 +780,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
 #endif
 
         if (rn->nsrvs) {
-            for (i = 0; i < rn->nsrvs; i++) {
+            for (i = 0; i < (ngx_uint_t) rn->nsrvs; i++) {
                 if (rn->u.srvs[i].name.data) {
                     ngx_resolver_free_locked(r, rn->u.srvs[i].name.data);
                 }
@@ -2959,7 +2959,7 @@ ngx_resolver_resolve_srv_names(ngx_resolver_ctx_t *ctx, ngx_resolver_node_t *rn)
         ngx_del_timer(ctx->event);
     }
 
-    for (i = 0; i < rn->nsrvs; i++) {
+    for (i = 0; i < (ngx_uint_t) rn->nsrvs; i++) {
         srvs[i].name.data = ngx_resolver_alloc(r, rn->u.srvs[i].name.len);
         if (srvs[i].name.data == NULL) {
             goto failed;
@@ -4077,7 +4077,7 @@ ngx_resolver_free_node(ngx_resolver_t *r, ngx_resolver_node_t *rn)
 #endif
 
     if (rn->nsrvs) {
-        for (i = 0; i < rn->nsrvs; i++) {
+        for (i = 0; i < (ngx_uint_t) rn->nsrvs; i++) {
             if (rn->u.srvs[i].name.data) {
                 ngx_resolver_free_locked(r, rn->u.srvs[i].name.data);
             }
@@ -4206,10 +4206,10 @@ ngx_resolver_export(ngx_resolver_t *r, ngx_resolver_node_t *rn,
                 d = 0;
             }
 
-            if (j == rn->naddrs) {
+            if (j == (ngx_uint_t) rn->naddrs) {
                 j = 0;
             }
-        } while (++i < rn->naddrs);
+        } while (++i < (ngx_uint_t) rn->naddrs);
     }
 
 #if (NGX_HAVE_INET6)
