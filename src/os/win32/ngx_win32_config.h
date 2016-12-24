@@ -185,7 +185,7 @@ typedef unsigned int        ino_t;
 #endif
 
 
-#ifndef __MINGW64_VERSION_MAJOR
+#ifndef __GNUC__
 typedef int                 ssize_t;
 #endif
 
