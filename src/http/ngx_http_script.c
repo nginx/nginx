@@ -356,11 +356,11 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
 
                 n = sc->source->data[i] - '0';
 
-                if (sc->captures_mask & (1 << n)) {
+                if (sc->captures_mask & ((ngx_uint_t) 1 << n)) {
                     sc->dup_capture = 1;
                 }
 
-                sc->captures_mask |= 1 << n;
+                sc->captures_mask |= (ngx_uint_t) 1 << n;
 
                 if (ngx_http_script_add_capture_code(sc, n) != NGX_OK) {
                     return NGX_ERROR;

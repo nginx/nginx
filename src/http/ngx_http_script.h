@@ -121,16 +121,16 @@ typedef struct {
     uintptr_t                   status;
     uintptr_t                   next;
 
-    uintptr_t                   test:1;
-    uintptr_t                   negative_test:1;
-    uintptr_t                   uri:1;
-    uintptr_t                   args:1;
+    unsigned                    test:1;
+    unsigned                    negative_test:1;
+    unsigned                    uri:1;
+    unsigned                    args:1;
 
     /* add the r->args to the new arguments */
-    uintptr_t                   add_args:1;
+    unsigned                    add_args:1;
 
-    uintptr_t                   redirect:1;
-    uintptr_t                   break_cycle:1;
+    unsigned                    redirect:1;
+    unsigned                    break_cycle:1;
 
     ngx_str_t                   name;
 } ngx_http_script_regex_code_t;
@@ -139,13 +139,13 @@ typedef struct {
 typedef struct {
     ngx_http_script_code_pt     code;
 
-    uintptr_t                   uri:1;
-    uintptr_t                   args:1;
+    unsigned                    uri:1;
+    unsigned                    args:1;
 
     /* add the r->args to the new arguments */
-    uintptr_t                   add_args:1;
+    unsigned                    add_args:1;
 
-    uintptr_t                   redirect:1;
+    unsigned                    redirect:1;
 } ngx_http_script_regex_end_code_t;
 
 #endif

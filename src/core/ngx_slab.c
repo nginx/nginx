@@ -101,7 +101,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     }
     /**/
 
-    pool->min_size = 1 << pool->min_shift;
+    pool->min_size = (size_t) 1 << pool->min_shift;
 
     slots = ngx_slab_slots(pool);
 
@@ -473,7 +473,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
     case NGX_SLAB_SMALL:
 
         shift = slab & NGX_SLAB_SHIFT_MASK;
-        size = 1 << shift;
+        size = (size_t) 1 << shift;
 
         if ((uintptr_t) p & (size - 1)) {
             goto wrong_chunk;
@@ -568,7 +568,7 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
     case NGX_SLAB_BIG:
 
         shift = slab & NGX_SLAB_SHIFT_MASK;
-        size = 1 << shift;
+        size = (size_t) 1 << shift;
 
         if ((uintptr_t) p & (size - 1)) {
             goto wrong_chunk;

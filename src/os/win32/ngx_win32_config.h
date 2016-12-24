@@ -94,6 +94,12 @@ typedef long  time_t;
 /* FD_SET() and FD_CLR(): conditional expression is constant */
 #pragma warning(disable:4127)
 
+/* conversion from 'type1' to 'type2', possible loss of data */
+#pragma warning(disable:4244)
+
+/* conversion from 'size_t' to 'type', possible loss of data */
+#pragma warning(disable:4267)
+
 /* array is too small to include a terminating null character */
 #pragma warning(disable:4295)
 
@@ -189,7 +195,11 @@ typedef unsigned int        ino_t;
 
 
 #ifndef __GNUC__
+#ifdef _WIN64
+typedef __int64             ssize_t;
+#else
 typedef int                 ssize_t;
+#endif
 #endif
 
 
