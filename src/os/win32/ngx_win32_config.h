@@ -88,6 +88,9 @@ typedef long  time_t;
 /* 'type cast': from data pointer to function pointer */
 #pragma warning(disable:4055)
 
+/* 'function' : different 'const' qualifiers */
+#pragma warning(disable:4090)
+
 /* unreferenced formal parameter */
 #pragma warning(disable:4100)
 

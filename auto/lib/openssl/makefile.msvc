@@ -6,9 +6,16 @@
 all:
 	cd $(OPENSSL)
 
-	perl Configure VC-WIN32 no-shared --prefix=openssl $(OPENSSL_OPT)
+	perl Configure VC-WIN32 no-shared				\
+		--prefix="%cd%/openssl" 				\
+		--openssldir="%cd%/openssl/ssl" 			\
+		$(OPENSSL_OPT)
 
-	ms\do_ms
-
-	$(MAKE) -f ms\nt.mak
-	$(MAKE) -f ms\nt.mak install
+	if exist ms\do_ms.bat (						\
+		ms\do_ms						\
+		&& $(MAKE) -f ms\nt.mak					\
+		&& $(MAKE) -f ms\nt.mak install				\
+	) else (							\
+		$(MAKE)							\
+		&& $(MAKE) install_sw					\
+	)
