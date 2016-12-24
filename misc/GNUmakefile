@@ -4,6 +4,7 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 NGINX =		nginx-$(VER)
 TEMP =		tmp
 
+CC =		cl
 OBJS =		objs.msvc8
 OPENSSL =	openssl-1.0.2j
 ZLIB =		zlib-1.2.8
@@ -47,7 +48,7 @@ RELEASE:
 
 win32:
 	./auto/configure						\
-		--with-cc=cl						\
+		--with-cc=$(CC)						\
 		--builddir=$(OBJS)					\
 		--with-debug						\
 		--prefix= 						\
