@@ -58,7 +58,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#ifdef __MINGW64_VERSION_MAJOR
+#ifdef __GNUC__
 #include <stdint.h>
 #endif
 #include <ctype.h>
