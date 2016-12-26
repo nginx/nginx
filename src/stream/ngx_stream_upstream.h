@@ -24,6 +24,9 @@
 #define NGX_STREAM_UPSTREAM_MAX_CONNS     0x0100
 
 
+#define NGX_STREAM_UPSTREAM_NOTIFY_CONNECT     0x1
+
+
 typedef struct {
     ngx_array_t                        upstreams;
                                            /* ngx_stream_upstream_srv_conf_t */
