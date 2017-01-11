@@ -1534,8 +1534,9 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
         size = b->end - b->last;
 
-        if (size && src->read->ready && !src->read->delayed) {
-
+        if (size && src->read->ready && !src->read->delayed
+            && !src->read->error)
+        {
             if (limit_rate) {
                 limit = (off_t) limit_rate * (ngx_time() - u->start_sec + 1)
                         - *received;
