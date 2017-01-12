@@ -609,6 +609,8 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_OK;
     }
 
+    sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
+
     rc = ngx_mail_auth_parse(s, c);
 
     switch (rc) {
@@ -636,8 +638,6 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_CRAM_MD5:
 
-        sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
-
         if (!(sscf->auth_methods & NGX_MAIL_AUTH_CRAM_MD5_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
@@ -658,6 +658,10 @@ ngx_mail_smtp_auth(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_ERROR;
 
     case NGX_MAIL_AUTH_EXTERNAL:
+
+        if (!(sscf->auth_methods & NGX_MAIL_AUTH_EXTERNAL_ENABLED)) {
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
 
         ngx_str_set(&s->out, smtp_username);
         s->mail_state = ngx_smtp_auth_external;
