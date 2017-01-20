@@ -1204,6 +1204,7 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
     if (c->reusable) {
         ngx_queue_remove(&c->queue);
+        ngx_cycle->reusable_connections_n--;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, -1);
@@ -1217,6 +1218,7 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
         ngx_queue_insert_head(
             (ngx_queue_t *) &ngx_cycle->reusable_connections_queue, &c->queue);
+        ngx_cycle->reusable_connections_n++;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, 1);
@@ -1228,11 +1230,13 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 static void
 ngx_drain_connections(ngx_cycle_t *cycle)
 {
-    ngx_int_t          i;
+    ngx_uint_t         i, n;
     ngx_queue_t       *q;
     ngx_connection_t  *c;
 
-    for (i = 0; i < 32; i++) {
+    n = ngx_max(ngx_min(32, cycle->reusable_connections_n / 8), 1);
+
+    for (i = 0; i < n; i++) {
         if (ngx_queue_empty(&cycle->reusable_connections_queue)) {
             break;
         }
