@@ -3848,9 +3848,24 @@ ngx_http_upstream_process_request(ngx_http_request_t *r,
     p = u->pipe;
 
 #if (NGX_THREADS)
+
+    if (p->writing && !p->aio) {
+
+        /*
+         * make sure to call ngx_event_pipe()
+         * if there is an incomplete aio write
+         */
+
+        if (ngx_event_pipe(p, 1) == NGX_ABORT) {
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+            return;
+        }
+    }
+
     if (p->writing) {
         return;
     }
+
 #endif
 
     if (u->peer.connection) {
