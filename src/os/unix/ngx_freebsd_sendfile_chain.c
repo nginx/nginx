@@ -114,15 +114,23 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             send += file_size;
 
-            /* create the trailer iovec and coalesce the neighbouring bufs */
+            if (send < limit) {
 
-            cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send, c->log);
+                /*
+                 * create the trailer iovec and coalesce the neighbouring bufs
+                 */
 
-            if (cl == NGX_CHAIN_ERROR) {
-                return NGX_CHAIN_ERROR;
+                cl = ngx_output_chain_to_iovec(&trailer, cl, limit - send,
+                                               c->log);
+                if (cl == NGX_CHAIN_ERROR) {
+                    return NGX_CHAIN_ERROR;
+                }
+
+                send += trailer.size;
+
+            } else {
+                trailer.count = 0;
             }
-
-            send += trailer.size;
 
             if (ngx_freebsd_use_tcp_nopush
                 && c->tcp_nopush == NGX_TCP_NOPUSH_UNSET)

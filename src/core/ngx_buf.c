@@ -244,6 +244,9 @@ ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
             if (aligned <= cl->buf->file_last) {
                 size = aligned - cl->buf->file_pos;
             }
+
+            total += size;
+            break;
         }
 
         total += size;
