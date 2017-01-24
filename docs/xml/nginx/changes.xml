@@ -5,6 +5,101 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.9" date="24.01.2017">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании модуля stream nginx мог нагружать процессор;
+ошибка появилась в 1.11.5.
+</para>
+<para lang="en">
+nginx might hog CPU when using the stream module;
+the bug had appeared in 1.11.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+метод аутентификации EXTERNAL в почтовом прокси-сервере
+можно было использовать, даже если он не был разрешён в конфигурации.
+</para>
+<para lang="en">
+EXTERNAL authentication mechanism in mail proxy
+was accepted even if it was not enabled in the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ssl_verify_client модуля stream
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "ssl_verify_client" directive of the stream module was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_verify_client модуля stream могла не работать.
+</para>
+<para lang="en">
+the "ssl_verify_client" directive of the stream module might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при исчерпании рабочим процессом свободных соединений
+keepalive-соединения могли закрываться излишне агрессивно.<br/>
+Спасибо Joel Cunningham.
+</para>
+<para lang="en">
+closing keepalive connections due to no free worker connections
+might be too aggressive.<br/>
+Thanks to Joel Cunningham.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы sendfile на FreeBSD и macOS
+мог возвращаться некорректный ответ;
+ошибка появилась в 1.7.8.
+</para>
+<para lang="en">
+an incorrect response might be returned
+when using the "sendfile" directive on FreeBSD and macOS;
+the bug had appeared in 1.7.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы aio_write
+ответ мог сохраняться в кэш не полностью.
+</para>
+<para lang="en">
+a truncated response might be stored in cache
+when using the "aio_write" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы aio_write
+могла происходить утечка сокетов.
+</para>
+<para lang="en">
+a socket leak might occur
+when using the "aio_write" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.8" date="27.12.2016">
 
 <change type="feature">
