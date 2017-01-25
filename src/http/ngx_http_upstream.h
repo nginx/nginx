@@ -390,9 +390,6 @@ struct ngx_http_upstream_s {
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         header_sent:1;
-
-    NGX_COMPAT_BEGIN(1)
-    NGX_COMPAT_END
 };
 
 
