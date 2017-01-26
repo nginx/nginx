@@ -55,9 +55,6 @@
 
 
 typedef struct {
-    ngx_msec_t                       bl_time;
-    ngx_uint_t                       bl_state;
-
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;
     ngx_msec_t                       connect_time;
