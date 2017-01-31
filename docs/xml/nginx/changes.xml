@@ -5,6 +5,101 @@
 <change_log title="nginx">
 
 
+<changes ver="1.10.3" date="31.01.2017">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве add_after_body при использовании совместно с директивой sub_filter.
+</para>
+<para lang="en">
+in the "add_after_body" directive when used with the "sub_filter" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+unix domain listen-сокеты могли не наследоваться
+при обновлении исполняемого файла на Linux.
+</para>
+<para lang="en">
+unix domain listen sockets might not be inherited
+during binary upgrade on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+плавное завершение старых рабочих процессов могло занимать бесконечное время
+при использовании HTTP/2.
+</para>
+<para lang="en">
+graceful shutdown of old worker processes might require infinite time
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директив limit_req или auth_request
+тело запроса могло быть повреждено;
+ошибка появилась в 1.10.2.
+</para>
+<para lang="en">
+when using HTTP/2 and the "limit_req" or "auth_request" directives
+client request body might be corrupted;
+the bug had appeared in 1.10.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.10.2.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process when using HTTP/2;
+the bug had appeared in 1.10.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы sendfile на FreeBSD и macOS
+мог возвращаться некорректный ответ;
+ошибка появилась в 1.7.8.
+</para>
+<para lang="en">
+an incorrect response might be returned
+when using the "sendfile" directive on FreeBSD and macOS;
+the bug had appeared in 1.7.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы aio_write
+ответ мог сохраняться в кэш не полностью.
+</para>
+<para lang="en">
+a truncated response might be stored in cache
+when using the "aio_write" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы aio_write
+могла происходить утечка сокетов.
+</para>
+<para lang="en">
+a socket leak might occur
+when using the "aio_write" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.10.2" date="18.10.2016">
 
 <change type="change">
