@@ -30,6 +30,8 @@ typedef ngx_int_t (*ngx_stream_get_variable_pt) (ngx_stream_session_t *s,
 #define NGX_STREAM_VAR_NOCACHEABLE  2
 #define NGX_STREAM_VAR_INDEXED      4
 #define NGX_STREAM_VAR_NOHASH       8
+#define NGX_STREAM_VAR_WEAK         16
+#define NGX_STREAM_VAR_PREFIX       32
 
 
 struct ngx_stream_variable_s {

@@ -153,7 +153,8 @@ typedef struct {
 
     ngx_hash_t                     variables_hash;
 
-    ngx_array_t                    variables;   /* ngx_stream_variable_t */
+    ngx_array_t                    variables;        /* ngx_stream_variable_t */
+    ngx_array_t                    prefix_variables; /* ngx_stream_variable_t */
     ngx_uint_t                     ncaptures;
 
     ngx_uint_t                     variables_hash_max_size;

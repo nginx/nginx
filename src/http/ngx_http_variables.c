@@ -11,6 +11,9 @@
 #include <nginx.h>
 
 
+static ngx_http_variable_t *ngx_http_add_prefix_variable(ngx_conf_t *cf,
+    ngx_str_t *name, ngx_uint_t flags);
+
 static ngx_int_t ngx_http_variable_request(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 #if 0
@@ -356,6 +359,18 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       3, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 #endif
 
+    { ngx_string("http_"), NULL, ngx_http_variable_unknown_header_in,
+      0, NGX_HTTP_VAR_PREFIX, 0 },
+
+    { ngx_string("sent_http_"), NULL, ngx_http_variable_unknown_header_out,
+      0, NGX_HTTP_VAR_PREFIX, 0 },
+
+    { ngx_string("cookie_"), NULL, ngx_http_variable_cookie,
+      0, NGX_HTTP_VAR_PREFIX, 0 },
+
+    { ngx_string("arg_"), NULL, ngx_http_variable_argument,
+      0, NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_PREFIX, 0 },
+
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
@@ -384,6 +399,10 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
         return NULL;
     }
 
+    if (flags & NGX_HTTP_VAR_PREFIX) {
+        return ngx_http_add_prefix_variable(cf, name, flags);
+    }
+
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     key = cmcf->variables_keys->keys.elts;
@@ -401,6 +420,8 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
                                "the duplicate \"%V\" variable", name);
             return NULL;
         }
+
+        v->flags &= flags | ~NGX_HTTP_VAR_WEAK;
 
         return v;
     }
@@ -435,6 +456,59 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
                            "conflicting variable name \"%V\"", name);
         return NULL;
     }
+
+    return v;
+}
+
+
+static ngx_http_variable_t *
+ngx_http_add_prefix_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
+{
+    ngx_uint_t                  i;
+    ngx_http_variable_t        *v;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    v = cmcf->prefix_variables.elts;
+    for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
+        if (name->len != v[i].name.len
+            || ngx_strncasecmp(name->data, v[i].name.data, name->len) != 0)
+        {
+            continue;
+        }
+
+        v = &v[i];
+
+        if (!(v->flags & NGX_HTTP_VAR_CHANGEABLE)) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the duplicate \"%V\" variable", name);
+            return NULL;
+        }
+
+        v->flags &= flags | ~NGX_HTTP_VAR_WEAK;
+
+        return v;
+    }
+
+    v = ngx_array_push(&cmcf->prefix_variables);
+    if (v == NULL) {
+        return NULL;
+    }
+
+    v->name.len = name->len;
+    v->name.data = ngx_pnalloc(cf->pool, name->len);
+    if (v->name.data == NULL) {
+        return NULL;
+    }
+
+    ngx_strlow(v->name.data, name->data, name->len);
+
+    v->set_handler = NULL;
+    v->get_handler = NULL;
+    v->data = 0;
+    v->flags = flags;
+    v->index = 0;
 
     return v;
 }
@@ -573,6 +647,8 @@ ngx_http_get_flushed_variable(ngx_http_request_t *r, ngx_uint_t index)
 ngx_http_variable_value_t *
 ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
 {
+    size_t                      len;
+    ngx_uint_t                  i, n;
     ngx_http_variable_t        *v;
     ngx_http_variable_value_t  *vv;
     ngx_http_core_main_conf_t  *cmcf;
@@ -610,64 +686,22 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
         return NULL;
     }
 
-    if (name->len >= 5 && ngx_strncmp(name->data, "http_", 5) == 0) {
+    len = 0;
 
-        if (ngx_http_variable_unknown_header_in(r, vv, (uintptr_t) name)
-            == NGX_OK)
+    v = cmcf->prefix_variables.elts;
+    n = cmcf->prefix_variables.nelts;
+
+    for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
+        if (name->len >= v[i].name.len && name->len > len
+            && ngx_strncmp(name->data, v[i].name.data, v[i].name.len) == 0)
         {
-            return vv;
+            len = v[i].name.len;
+            n = i;
         }
-
-        return NULL;
     }
 
-    if (name->len >= 10 && ngx_strncmp(name->data, "sent_http_", 10) == 0) {
-
-        if (ngx_http_variable_unknown_header_out(r, vv, (uintptr_t) name)
-            == NGX_OK)
-        {
-            return vv;
-        }
-
-        return NULL;
-    }
-
-    if (name->len >= 14 && ngx_strncmp(name->data, "upstream_http_", 14) == 0) {
-
-        if (ngx_http_upstream_header_variable(r, vv, (uintptr_t) name)
-            == NGX_OK)
-        {
-            return vv;
-        }
-
-        return NULL;
-    }
-
-    if (name->len >= 7 && ngx_strncmp(name->data, "cookie_", 7) == 0) {
-
-        if (ngx_http_variable_cookie(r, vv, (uintptr_t) name) == NGX_OK) {
-            return vv;
-        }
-
-        return NULL;
-    }
-
-    if (name->len >= 16
-        && ngx_strncmp(name->data, "upstream_cookie_", 16) == 0)
-    {
-
-        if (ngx_http_upstream_cookie_variable(r, vv, (uintptr_t) name)
-            == NGX_OK)
-        {
-            return vv;
-        }
-
-        return NULL;
-    }
-
-    if (name->len >= 4 && ngx_strncmp(name->data, "arg_", 4) == 0) {
-
-        if (ngx_http_variable_argument(r, vv, (uintptr_t) name) == NGX_OK) {
+    if (n != cmcf->prefix_variables.nelts) {
+        if (v[n].get_handler(r, vv, (uintptr_t) name) == NGX_OK) {
             return vv;
         }
 
@@ -2502,7 +2536,6 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
 ngx_int_t
 ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 {
-    ngx_int_t                   rc;
     ngx_http_variable_t        *cv, *v;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -2523,27 +2556,20 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
+    if (ngx_array_init(&cmcf->prefix_variables, cf->pool, 8,
+                       sizeof(ngx_http_variable_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     for (cv = ngx_http_core_variables; cv->name.len; cv++) {
-        v = ngx_palloc(cf->pool, sizeof(ngx_http_variable_t));
+        v = ngx_http_add_variable(cf, &cv->name, cv->flags);
         if (v == NULL) {
             return NGX_ERROR;
         }
 
         *v = *cv;
-
-        rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v,
-                              NGX_HASH_READONLY_KEY);
-
-        if (rc == NGX_OK) {
-            continue;
-        }
-
-        if (rc == NGX_BUSY) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "conflicting variable name \"%V\"", &v->name);
-        }
-
-        return NGX_ERROR;
     }
 
     return NGX_OK;
@@ -2553,10 +2579,11 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 ngx_int_t
 ngx_http_variables_init_vars(ngx_conf_t *cf)
 {
+    size_t                      len;
     ngx_uint_t                  i, n;
     ngx_hash_key_t             *key;
     ngx_hash_init_t             hash;
-    ngx_http_variable_t        *v, *av;
+    ngx_http_variable_t        *v, *av, *pv;
     ngx_http_core_main_conf_t  *cmcf;
 
     /* set the handlers for the indexed http variables */
@@ -2564,6 +2591,7 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
     v = cmcf->variables.elts;
+    pv = cmcf->prefix_variables.elts;
     key = cmcf->variables_keys->keys.elts;
 
     for (i = 0; i < cmcf->variables.nelts; i++) {
@@ -2584,7 +2612,9 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
 
                 av->index = i;
 
-                if (av->get_handler == NULL) {
+                if (av->get_handler == NULL
+                    || (av->flags & NGX_HTTP_VAR_WEAK))
+                {
                     break;
                 }
 
@@ -2592,67 +2622,33 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
             }
         }
 
-        if (v[i].name.len >= 5
-            && ngx_strncmp(v[i].name.data, "http_", 5) == 0)
-        {
-            v[i].get_handler = ngx_http_variable_unknown_header_in;
-            v[i].data = (uintptr_t) &v[i].name;
+        len = 0;
+        av = NULL;
 
-            continue;
+        for (n = 0; n < cmcf->prefix_variables.nelts; n++) {
+            if (v[i].name.len >= pv[n].name.len && v[i].name.len > len
+                && ngx_strncmp(v[i].name.data, pv[n].name.data, pv[n].name.len)
+                   == 0)
+            {
+                av = &pv[n];
+                len = pv[n].name.len;
+            }
         }
 
-        if (v[i].name.len >= 10
-            && ngx_strncmp(v[i].name.data, "sent_http_", 10) == 0)
-        {
-            v[i].get_handler = ngx_http_variable_unknown_header_out;
+        if (av) {
+            v[i].get_handler = av->get_handler;
             v[i].data = (uintptr_t) &v[i].name;
+            v[i].flags = av->flags;
 
-            continue;
+            goto next;
         }
 
-        if (v[i].name.len >= 14
-            && ngx_strncmp(v[i].name.data, "upstream_http_", 14) == 0)
-        {
-            v[i].get_handler = ngx_http_upstream_header_variable;
-            v[i].data = (uintptr_t) &v[i].name;
-            v[i].flags = NGX_HTTP_VAR_NOCACHEABLE;
+        if (v[i].get_handler == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "unknown \"%V\" variable", &v[i].name);
 
-            continue;
+            return NGX_ERROR;
         }
-
-        if (v[i].name.len >= 7
-            && ngx_strncmp(v[i].name.data, "cookie_", 7) == 0)
-        {
-            v[i].get_handler = ngx_http_variable_cookie;
-            v[i].data = (uintptr_t) &v[i].name;
-
-            continue;
-        }
-
-        if (v[i].name.len >= 16
-            && ngx_strncmp(v[i].name.data, "upstream_cookie_", 16) == 0)
-        {
-            v[i].get_handler = ngx_http_upstream_cookie_variable;
-            v[i].data = (uintptr_t) &v[i].name;
-            v[i].flags = NGX_HTTP_VAR_NOCACHEABLE;
-
-            continue;
-        }
-
-        if (v[i].name.len >= 4
-            && ngx_strncmp(v[i].name.data, "arg_", 4) == 0)
-        {
-            v[i].get_handler = ngx_http_variable_argument;
-            v[i].data = (uintptr_t) &v[i].name;
-            v[i].flags = NGX_HTTP_VAR_NOCACHEABLE;
-
-            continue;
-        }
-
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "unknown \"%V\" variable", &v[i].name);
-
-        return NGX_ERROR;
 
     next:
         continue;
