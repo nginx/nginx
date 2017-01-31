@@ -55,6 +55,11 @@ typedef struct ngx_thread_pool_s  ngx_thread_pool_t;
 #define NGX_HTTP_KEEPALIVE_DISABLE_SAFARI  0x0008
 
 
+#define NGX_HTTP_SERVER_TOKENS_OFF      0
+#define NGX_HTTP_SERVER_TOKENS_ON       1
+#define NGX_HTTP_SERVER_TOKENS_BUILD    2
+
+
 typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
@@ -393,7 +398,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    log_not_found;           /* log_not_found */
     ngx_flag_t    log_subrequest;          /* log_subrequest */
     ngx_flag_t    recursive_error_pages;   /* recursive_error_pages */
-    ngx_flag_t    server_tokens;           /* server_tokens */
+    ngx_uint_t    server_tokens;           /* server_tokens */
     ngx_flag_t    chunked_transfer_encoding; /* chunked_transfer_encoding */
     ngx_flag_t    etag;                    /* etag */
 
