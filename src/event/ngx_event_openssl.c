@@ -121,7 +121,17 @@ ngx_ssl_init(ngx_log_t *log)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100003L
 
-    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
+        return NGX_ERROR;
+    }
+
+    /*
+     * OPENSSL_init_ssl() may leave errors in the error queue
+     * while returning success
+     */
+
+    ERR_clear_error();
 
 #else
 
