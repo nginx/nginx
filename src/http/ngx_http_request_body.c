@@ -835,6 +835,8 @@ ngx_http_test_expect(ngx_http_request_t *r)
 
     /* we assume that such small packet should be send successfully */
 
+    r->connection->error = 1;
+
     return NGX_ERROR;
 }
 
