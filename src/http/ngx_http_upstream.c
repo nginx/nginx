@@ -4366,6 +4366,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         u->buffer.last = u->buffer.pos;
     }
 
+    r->read_event_handler = ngx_http_block_reading;
+
     if (rc == NGX_DECLINED) {
         return;
     }
