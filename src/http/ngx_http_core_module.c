@@ -2566,6 +2566,17 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     *psr = sr;
 
+    if (flags & NGX_HTTP_SUBREQUEST_CLONE) {
+        sr->method = r->method;
+        sr->method_name = r->method_name;
+        sr->loc_conf = r->loc_conf;
+        sr->valid_location = r->valid_location;
+        sr->phase_handler = r->phase_handler;
+        sr->write_event_handler = ngx_http_core_run_phases;
+
+        ngx_http_update_location_config(sr);
+    }
+
     return ngx_http_post_request(sr, NULL);
 }
 

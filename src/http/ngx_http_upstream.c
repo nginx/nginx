@@ -17,6 +17,8 @@ static ngx_int_t ngx_http_upstream_cache_get(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_http_file_cache_t **cache);
 static ngx_int_t ngx_http_upstream_cache_send(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_cache_background_update(
+    ngx_http_request_t *r, ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_cache_status(ngx_http_request_t *r,
@@ -578,6 +580,10 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
                 rc = NGX_DECLINED;
                 r->cached = 0;
             }
+
+            if (ngx_http_upstream_cache_background_update(r, u) != NGX_OK) {
+                rc = NGX_ERROR;
+            }
         }
 
         if (rc != NGX_DECLINED) {
@@ -869,10 +875,23 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     switch (rc) {
 
+    case NGX_HTTP_CACHE_STALE:
+
+        if (((u->conf->cache_use_stale & NGX_HTTP_UPSTREAM_FT_UPDATING)
+             || c->stale_updating) && !r->cache_updater
+            && u->conf->cache_background_update)
+        {
+            r->cache->background = 1;
+            u->cache_status = rc;
+            rc = NGX_OK;
+        }
+
+        break;
+
     case NGX_HTTP_CACHE_UPDATING:
 
-        if ((u->conf->cache_use_stale & NGX_HTTP_UPSTREAM_FT_UPDATING)
-            || c->stale_updating)
+        if (((u->conf->cache_use_stale & NGX_HTTP_UPSTREAM_FT_UPDATING)
+             || c->stale_updating) && !r->cache_updater)
         {
             u->cache_status = rc;
             rc = NGX_OK;
@@ -1042,6 +1061,30 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
     /* TODO: delete file */
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_cache_background_update(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    ngx_http_request_t  *sr;
+
+    if (!r->cached || !r->cache->background) {
+        return NGX_OK;
+    }
+
+    if (ngx_http_subrequest(r, &r->uri, &r->args, &sr, NULL,
+                            NGX_HTTP_SUBREQUEST_CLONE)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    sr->header_only = 1;
+    sr->cache_updater = 1;
+
+    return NGX_OK;
 }
 
 

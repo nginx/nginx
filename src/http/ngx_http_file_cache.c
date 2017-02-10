@@ -1688,7 +1688,7 @@ ngx_http_file_cache_cleanup(void *data)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->file.log, 0,
                    "http file cache cleanup");
 
-    if (c->updating) {
+    if (c->updating && !c->background) {
         ngx_log_error(NGX_LOG_ALERT, c->file.log, 0,
                       "stalled cache updating, error:%ui", c->error);
     }

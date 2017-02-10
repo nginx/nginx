@@ -62,7 +62,9 @@
 /* unused                                  1 */
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
 #define NGX_HTTP_SUBREQUEST_WAITED         4
-#define NGX_HTTP_LOG_UNSAFE                8
+#define NGX_HTTP_SUBREQUEST_CLONE          8
+
+#define NGX_HTTP_LOG_UNSAFE                1
 
 
 #define NGX_HTTP_CONTINUE                  100
@@ -481,6 +483,7 @@ struct ngx_http_request_s {
 
 #if (NGX_HTTP_CACHE)
     unsigned                          cached:1;
+    unsigned                          cache_updater:1;
 #endif
 
 #if (NGX_HTTP_GZIP)
