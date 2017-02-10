@@ -24,10 +24,10 @@
 #define NGX_HTTP_CACHE_SCARCE        8
 
 #define NGX_HTTP_CACHE_KEY_LEN       16
-#define NGX_HTTP_CACHE_ETAG_LEN      42
-#define NGX_HTTP_CACHE_VARY_LEN      42
+#define NGX_HTTP_CACHE_ETAG_LEN      128
+#define NGX_HTTP_CACHE_VARY_LEN      128
 
-#define NGX_HTTP_CACHE_VERSION       4
+#define NGX_HTTP_CACHE_VERSION       5
 
 
 typedef struct {
