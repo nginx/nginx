@@ -671,6 +671,8 @@ ngx_http_gzip_filter_gzheader(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 static ngx_int_t
 ngx_http_gzip_filter_add_data(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 {
+    ngx_chain_t  *cl;
+
     if (ctx->zstream.avail_in || ctx->flush != Z_NO_FLUSH || ctx->redo) {
         return NGX_OK;
     }
@@ -694,13 +696,16 @@ ngx_http_gzip_filter_add_data(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
         ctx->copy_buf = NULL;
     }
 
-    ctx->in_buf = ctx->in->buf;
+    cl = ctx->in;
+    ctx->in_buf = cl->buf;
+    ctx->in = cl->next;
 
     if (ctx->in_buf->tag == (ngx_buf_tag_t) &ngx_http_gzip_filter_module) {
-        ctx->copy_buf = ctx->in;
-    }
+        ctx->copy_buf = cl;
 
-    ctx->in = ctx->in->next;
+    } else {
+        ngx_free_chain(r->pool, cl);
+    }
 
     ctx->zstream.next_in = ctx->in_buf->pos;
     ctx->zstream.avail_in = ctx->in_buf->last - ctx->in_buf->pos;
@@ -733,6 +738,7 @@ ngx_http_gzip_filter_add_data(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 static ngx_int_t
 ngx_http_gzip_filter_get_buf(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 {
+    ngx_chain_t           *cl;
     ngx_http_gzip_conf_t  *conf;
 
     if (ctx->zstream.avail_out) {
@@ -742,8 +748,12 @@ ngx_http_gzip_filter_get_buf(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
     conf = ngx_http_get_module_loc_conf(r, ngx_http_gzip_filter_module);
 
     if (ctx->free) {
-        ctx->out_buf = ctx->free->buf;
-        ctx->free = ctx->free->next;
+
+        cl = ctx->free;
+        ctx->out_buf = cl->buf;
+        ctx->free = cl->next;
+
+        ngx_free_chain(r->pool, cl);
 
     } else if (ctx->bufs < conf->bufs.num) {
 
