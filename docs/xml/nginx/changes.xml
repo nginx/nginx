@@ -5,6 +5,108 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.10" date="14.02.2017">
+
+<change type="change">
+<para lang="ru">
+формат заголовка кэша был изменен,
+ранее закэшированные ответы будут загружены заново.
+</para>
+<para lang="en">
+cache header format has been changed,
+previously cached responses will be invalidated.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка расширений stale-while-revalidate и stale-if-error
+в строке "Cache-Control" в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+support of "stale-while-revalidate" and "stale-if-error" extensions
+in the "Cache-Control" backend response header line.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_cache_background_update, fastcgi_cache_background_update,
+scgi_cache_background_update и uwsgi_cache_background_update.
+</para>
+<para lang="en">
+the "proxy_cache_background_update", "fastcgi_cache_background_update",
+"scgi_cache_background_update", and "uwsgi_cache_background_update" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx может кэшировать ответы
+со строкой Vary заголовка длиной до 128 символов
+(вместо 42 символов в предыдущих версиях).
+</para>
+<para lang="en">
+nginx is now able to cache responses
+with the "Vary" header line up to 128 characters long
+(instead of 42 characters in previous versions).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр build директивы server_tokens.<br/>
+Спасибо Tom Thorogood.
+</para>
+<para lang="en">
+the "build" parameter of the "server_tokens" directive.<br/>
+Thanks to Tom Thorogood.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при обработке запросов со строкой "Expect: 100-continue" в заголовке запроса 
+в логах могли появляться сообщения "[crit] SSL_write() failed".
+</para>
+<para lang="en">
+"[crit] SSL_write() failed" messages might appear in logs
+when handling requests with the "Expect: 100-continue" request header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_slice_module не работал в именованных location'ах.
+</para>
+<para lang="en">
+the ngx_http_slice_module did not work in named locations.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании AIO после перенаправления запроса с помощью X-Accel-Redirect
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using AIO after an "X-Accel-Redirect" redirection.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уменьшено потребление памяти для долгоживущих запросов, использующих сжатие.
+</para>
+<para lang="en">
+reduced memory consumption for long-lived requests using gzipping.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.9" date="24.01.2017">
 
 <change type="bugfix">
