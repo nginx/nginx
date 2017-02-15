@@ -220,8 +220,8 @@
 
 
 struct ngx_module_s {
-    ngx_uint_t            ctx_index;
-    ngx_uint_t            index;
+    ngx_uint_t            ctx_index; //在具体类型模块（http、event等）的全局配置结构数组的下标
+    ngx_uint_t            index; //该模块在ngx_modules数组中的下标
 
     char                 *name;
 
@@ -231,8 +231,8 @@ struct ngx_module_s {
     ngx_uint_t            version;
     const char           *signature;
 
-    void                 *ctx;
-    ngx_command_t        *commands;
+    void                 *ctx; //模块的上下文属性，同一类型的模块的属性是相同的
+    ngx_command_t        *commands; //该模块支持的指令的数组，最后以一个空指令结尾
     ngx_uint_t            type;
 
     ngx_int_t           (*init_master)(ngx_log_t *log);

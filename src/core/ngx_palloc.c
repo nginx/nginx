@@ -19,7 +19,7 @@ ngx_pool_t *
 ngx_create_pool(size_t size, ngx_log_t *log)
 {
     ngx_pool_t  *p;
-
+    //以16（NGX_POOL_ALIGNMENT）字节对齐分配size内存
     p = ngx_memalign(NGX_POOL_ALIGNMENT, size, log);
     if (p == NULL) {
         return NULL;
@@ -31,7 +31,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     p->d.failed = 0;
 
     size = size - sizeof(ngx_pool_t);
-    p->max = (size < NGX_MAX_ALLOC_FROM_POOL) ? size : NGX_MAX_ALLOC_FROM_POOL;
+    p->max = (size < NGX_MAX_ALLOC_FROM_POOL) ? size : NGX_MAX_ALLOC_FROM_POOL; //内存池最大不超过4095，x86中页的大小为4K
 
     p->current = p;
     p->chain = NULL;
@@ -49,7 +49,7 @@ ngx_destroy_pool(ngx_pool_t *pool)
     ngx_pool_t          *p, *n;
     ngx_pool_large_t    *l;
     ngx_pool_cleanup_t  *c;
-
+    //依次调用外部析构回调函数
     for (c = pool->cleanup; c; c = c->next) {
         if (c->handler) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
@@ -79,13 +79,13 @@ ngx_destroy_pool(ngx_pool_t *pool)
     }
 
 #endif
-
+    //释放大块内存
     for (l = pool->large; l; l = l->next) {
         if (l->alloc) {
             ngx_free(l->alloc);
         }
     }
-
+    //释放小块内存
     for (p = pool, n = pool->d.next; /* void */; p = n, n = n->d.next) {
         ngx_free(p);
 
@@ -101,13 +101,13 @@ ngx_reset_pool(ngx_pool_t *pool)
 {
     ngx_pool_t        *p;
     ngx_pool_large_t  *l;
-
+    //释放大块内存
     for (l = pool->large; l; l = l->next) {
         if (l->alloc) {
             ngx_free(l->alloc);
         }
     }
-
+    // 重置所有小块内存区
     for (p = pool; p; p = p->d.next) {
         p->d.last = (u_char *) p + sizeof(ngx_pool_t);
         p->d.failed = 0;
@@ -157,19 +157,19 @@ ngx_palloc_small(ngx_pool_t *pool, size_t size, ngx_uint_t align)
         m = p->d.last;
 
         if (align) {
-            m = ngx_align_ptr(m, NGX_ALIGNMENT);
+            m = ngx_align_ptr(m, NGX_ALIGNMENT);//对内存地址进行对齐处理
         }
-
+        //如果当前内存块够分配内存，则直接分配
         if ((size_t) (p->d.end - m) >= size) {
             p->d.last = m + size;
 
             return m;
         }
-
+        //如果当前内存块有效容量不够分配，则移动到下一个内存块进行分配
         p = p->d.next;
 
     } while (p);
-
+     //当前所有内存块都没有空闲了，开辟一块新的内存
     return ngx_palloc_block(pool, size);
 }
 
@@ -180,9 +180,9 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     u_char      *m;
     size_t       psize;
     ngx_pool_t  *p, *new;
-
+    //计算内存池第一个内存块的大小
     psize = (size_t) (pool->d.end - (u_char *) pool);
-
+    //分配和第一个内存块同样大小的内存块
     m = ngx_memalign(NGX_POOL_ALIGNMENT, psize, pool->log);
     if (m == NULL) {
         return NULL;
@@ -194,10 +194,10 @@ ngx_palloc_block(ngx_pool_t *pool, size_t size)
     new->d.next = NULL;
     new->d.failed = 0;
 
-    m += sizeof(ngx_pool_data_t);
-    m = ngx_align_ptr(m, NGX_ALIGNMENT);
-    new->d.last = m + size;
-
+    m += sizeof(ngx_pool_data_t);//将指针m移动到d后面的一个位置，作为起始位置
+    m = ngx_align_ptr(m, NGX_ALIGNMENT);//对m指针按4字节对齐处理
+    new->d.last = m + size;//设置新内存块的last，即申请使用size大小的内存
+    //这里的循环用来找最后一个链表节点，这里failed用来控制循环的长度，如果分配失败次数达到5次，就忽略，不需要每次都从头找起
     for (p = pool->current; p->d.next; p = p->d.next) {
         if (p->d.failed++ > 4) {
             pool->current = p->d.next;
@@ -216,20 +216,20 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
     void              *p;
     ngx_uint_t         n;
     ngx_pool_large_t  *large;
-
+    // 直接在系统堆中分配一块大小为size的空间
     p = ngx_alloc(size, pool->log);
     if (p == NULL) {
         return NULL;
     }
 
     n = 0;
-
+    // 查找到一个空的large区，如果有，则将刚才分配的空间交由它管理
     for (large = pool->large; large; large = large->next) {
         if (large->alloc == NULL) {
             large->alloc = p;
             return p;
         }
-
+        //为了提高效率， 如果在三次内没有找到空的large结构体，则创建一个
         if (n++ > 3) {
             break;
         }
@@ -240,7 +240,7 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
         ngx_free(p);
         return NULL;
     }
-
+    //将large链接到内存池
     large->alloc = p;
     large->next = pool->large;
     pool->large = large;
@@ -278,7 +278,7 @@ ngx_int_t
 ngx_pfree(ngx_pool_t *pool, void *p)
 {
     ngx_pool_large_t  *l;
-
+    //只检查是否是大内存块，如果是大内存块则释放
     for (l = pool->large; l; l = l->next) {
         if (p == l->alloc) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
@@ -317,7 +317,7 @@ ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
     if (c == NULL) {
         return NULL;
     }
-
+    //给data分配内存
     if (size) {
         c->data = ngx_palloc(p, size);
         if (c->data == NULL) {
@@ -327,7 +327,7 @@ ngx_pool_cleanup_add(ngx_pool_t *p, size_t size)
     } else {
         c->data = NULL;
     }
-
+    //将回掉函数链入内存池
     c->handler = NULL;
     c->next = p->cleanup;
 

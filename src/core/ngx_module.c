@@ -22,6 +22,7 @@ ngx_uint_t         ngx_max_module;
 static ngx_uint_t  ngx_modules_n;
 
 
+//这里清点所有模块
 ngx_int_t
 ngx_preinit_modules(void)
 {

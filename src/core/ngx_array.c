@@ -13,7 +13,7 @@ ngx_array_t *
 ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
 {
     ngx_array_t *a;
-
+    //使用ngx_pool_t内存池来管理内存
     a = ngx_palloc(p, sizeof(ngx_array_t));
     if (a == NULL) {
         return NULL;
@@ -26,7 +26,7 @@ ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
     return a;
 }
 
-
+//销毁
 void
 ngx_array_destroy(ngx_array_t *a)
 {
@@ -43,14 +43,14 @@ ngx_array_destroy(ngx_array_t *a)
     }
 }
 
-
+//添加元素
 void *
 ngx_array_push(ngx_array_t *a)
 {
     void        *elt, *new;
     size_t       size;
     ngx_pool_t  *p;
-
+    // 数组元素超过预设值时发生内存重新分配
     if (a->nelts == a->nalloc) {
 
         /* the array is full */
@@ -77,7 +77,7 @@ ngx_array_push(ngx_array_t *a)
             if (new == NULL) {
                 return NULL;
             }
-
+            // 直接将原来的内容拷贝到新内存块中，原来的内存没有重新利用
             ngx_memcpy(new, a->elts, size);
             a->elts = new;
             a->nalloc *= 2;
