@@ -5,7 +5,7 @@
 <change_log title="nginx">
 
 
-<changes ver="1.11.10" date="14.02.2017">
+<changes ver="1.11.10" date="2017-02-14">
 
 <change type="change">
 <para lang="ru">
@@ -107,7 +107,7 @@ reduced memory consumption for long-lived requests using gzipping.
 </changes>
 
 
-<changes ver="1.11.9" date="24.01.2017">
+<changes ver="1.11.9" date="2017-01-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -202,7 +202,7 @@ when using the "aio_write" directive.
 </changes>
 
 
-<changes ver="1.11.8" date="27.12.2016">
+<changes ver="1.11.8" date="2016-12-27">
 
 <change type="feature">
 <para lang="ru">
@@ -309,7 +309,7 @@ nginx/Windows could not be built with OpenSSL 1.1.0.
 </changes>
 
 
-<changes ver="1.11.7" date="13.12.2016">
+<changes ver="1.11.7" date="2016-12-13">
 
 <change type="change">
 <para lang="ru">
@@ -403,7 +403,7 @@ in the ngx_http_perl_module.
 </changes>
 
 
-<changes ver="1.11.6" date="15.11.2016">
+<changes ver="1.11.6" date="2016-11-15">
 
 <change type="change">
 <para lang="ru">
@@ -533,7 +533,7 @@ when a timeout occurred during an SSL handshake to a backend.
 </changes>
 
 
-<changes ver="1.11.5" date="11.10.2016">
+<changes ver="1.11.5" date="2016-10-11">
 
 <change type="change">
 <para lang="ru">
@@ -667,7 +667,7 @@ with the "-" character in the HTTP method.
 </changes>
 
 
-<changes ver="1.11.4" date="13.09.2016">
+<changes ver="1.11.4" date="2016-09-13">
 
 <change type="feature">
 <para lang="ru">
@@ -772,7 +772,7 @@ the bug had appeared in 1.9.13.
 </changes>
 
 
-<changes ver="1.11.3" date="26.07.2016">
+<changes ver="1.11.3" date="2016-07-26">
 
 <change type="change">
 <para lang="ru">
@@ -853,7 +853,7 @@ Thanks to Piotr Sikora.
 </changes>
 
 
-<changes ver="1.11.2" date="05.07.2016">
+<changes ver="1.11.2" date="2016-07-05">
 
 <change type="change">
 <para lang="ru">
@@ -966,7 +966,7 @@ the issue had appeared in 1.9.4.
 </changes>
 
 
-<changes ver="1.11.1" date="31.05.2016">
+<changes ver="1.11.1" date="2016-05-31">
 
 <change type="security">
 <para lang="ru">
@@ -986,7 +986,7 @@ the bug had appeared in 1.3.9.
 </changes>
 
 
-<changes ver="1.11.0" date="24.05.2016">
+<changes ver="1.11.0" date="2016-05-24">
 
 <change type="feature">
 <para lang="ru">
@@ -1142,7 +1142,7 @@ when using the "proxy_cache_bypass" directive.
 </changes>
 
 
-<changes ver="1.9.15" date="19.04.2016">
+<changes ver="1.9.15" date="2016-04-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -1197,7 +1197,7 @@ Thanks to Mindaugas Rasiukevicius.
 </changes>
 
 
-<changes ver="1.9.14" date="05.04.2016">
+<changes ver="1.9.14" date="2016-04-05">
 
 <change type="feature">
 <para lang="ru">
@@ -1255,7 +1255,7 @@ of minor bugs in logging.
 </changes>
 
 
-<changes ver="1.9.13" date="29.03.2016">
+<changes ver="1.9.13" date="2016-03-29">
 
 <change type="change">
 <para lang="ru">
@@ -1420,7 +1420,7 @@ regardless of the proxy_next_upstream directive.
 </changes>
 
 
-<changes ver="1.9.12" date="24.02.2016">
+<changes ver="1.9.12" date="2016-02-24">
 
 <change type="feature">
 <para lang="ru">
@@ -1522,7 +1522,7 @@ in the ngx_http_v2_module.
 </changes>
 
 
-<changes ver="1.9.11" date="09.02.2016">
+<changes ver="1.9.11" date="2016-02-09">
 
 <change type="feature">
 <para lang="ru">
@@ -1565,7 +1565,7 @@ in the ngx_http_v2_module.
 </changes>
 
 
-<changes ver="1.9.10" date="26.01.2016">
+<changes ver="1.9.10" date="2016-01-26">
 
 <change type="security">
 <para lang="ru">
@@ -1668,7 +1668,7 @@ after an "X-Accel-Redirect" redirection.
 </changes>
 
 
-<changes ver="1.9.9" date="09.12.2015">
+<changes ver="1.9.9" date="2015-12-09">
 
 <change type="bugfix">
 <para lang="ru">
@@ -1684,7 +1684,7 @@ the bug had appeared in 1.9.8.
 </changes>
 
 
-<changes ver="1.9.8" date="08.12.2015">
+<changes ver="1.9.8" date="2015-12-08">
 
 <change type="feature">
 <para lang="ru">
@@ -1738,7 +1738,7 @@ nginx could not be built on OS X in some cases.
 </changes>
 
 
-<changes ver="1.9.7" date="17.11.2015">
+<changes ver="1.9.7" date="2015-11-17">
 
 <change type="feature">
 <para lang="ru">
@@ -1814,7 +1814,7 @@ in the ngx_http_v2_module.
 </changes>
 
 
-<changes ver="1.9.6" date="27.10.2015">
+<changes ver="1.9.6" date="2015-10-27">
 
 <change type="bugfix">
 <para lang="ru">
@@ -1898,7 +1898,7 @@ Thanks to Markus Linnala, Kurtis Nusbaum and Piotr Sikora.
 </changes>
 
 
-<changes ver="1.9.5" date="22.09.2015">
+<changes ver="1.9.5" date="2015-09-22">
 
 <change type="feature">
 <para lang="ru">
@@ -1995,7 +1995,7 @@ the bug had appeared in 1.9.4.
 </changes>
 
 
-<changes ver="1.9.4" date="18.08.2015">
+<changes ver="1.9.4" date="2015-08-18">
 
 <change type="change">
 <para lang="ru">
@@ -2106,7 +2106,7 @@ nginx could not be built with Visual Studio 2015.
 </changes>
 
 
-<changes ver="1.9.3" date="14.07.2015">
+<changes ver="1.9.3" date="2015-07-14">
 
 <change type="change">
 <para lang="ru">
@@ -2197,7 +2197,7 @@ Thanks to Matthew Baldwin.
 </changes>
 
 
-<changes ver="1.9.2" date="16.06.2015">
+<changes ver="1.9.2" date="2015-06-16">
 
 <change type="feature">
 <para lang="ru">
@@ -2280,7 +2280,7 @@ OCSP stapling might return an expired OCSP response in some cases.
 </changes>
 
 
-<changes ver="1.9.1" date="26.05.2015">
+<changes ver="1.9.1" date="2015-05-26">
 
 <change type="change">
 <para lang="ru">
@@ -2354,7 +2354,7 @@ Thanks to Sergey Polovko.
 </changes>
 
 
-<changes ver="1.9.0" date="28.04.2015">
+<changes ver="1.9.0" date="2015-04-28">
 
 <change type="change">
 <para lang="ru">
@@ -2432,7 +2432,7 @@ if not specified in the first "listen" directive for a listen socket.
 </changes>
 
 
-<changes ver="1.7.12" date="07.04.2015">
+<changes ver="1.7.12" date="2015-04-07">
 
 <change type="feature">
 <para lang="ru">
@@ -2495,7 +2495,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.7.11" date="24.03.2015">
+<changes ver="1.7.11" date="2015-03-24">
 
 <change type="change">
 <para lang="ru">
@@ -2663,7 +2663,7 @@ to automatically construct certificate chains.
 </changes>
 
 
-<changes ver="1.7.10" date="10.02.2015">
+<changes ver="1.7.10" date="2015-02-10">
 
 <change type="feature">
 <para lang="ru">
@@ -2755,7 +2755,7 @@ Thanks to Goetz T. Fischer.
 </changes>
 
 
-<changes ver="1.7.9" date="23.12.2014">
+<changes ver="1.7.9" date="2014-12-23">
 
 <change type="feature">
 <para lang="ru">
@@ -2859,7 +2859,7 @@ Thanks to Lukas Tribus.
 </changes>
 
 
-<changes ver="1.7.8" date="02.12.2014">
+<changes ver="1.7.8" date="2014-12-02">
 
 <change type="change">
 <para lang="ru">
@@ -3025,7 +3025,7 @@ Thanks to Yichun Zhang.
 </changes>
 
 
-<changes ver="1.7.7" date="28.10.2014">
+<changes ver="1.7.7" date="2014-10-28">
 
 <change type="change">
 <para lang="ru">
@@ -3135,7 +3135,7 @@ Thanks to Kouhei Sutou.
 </changes>
 
 
-<changes ver="1.7.6" date="30.09.2014">
+<changes ver="1.7.6" date="2014-09-30">
 
 <change type="change">
 <para lang="ru">
@@ -3180,7 +3180,7 @@ in logging to syslog.
 </changes>
 
 
-<changes ver="1.7.5" date="16.09.2014">
+<changes ver="1.7.5" date="2014-09-16">
 
 <change type="security">
 <para lang="ru">
@@ -3325,7 +3325,7 @@ Thanks to Markus Linnala and Feng Gu.
 </changes>
 
 
-<changes ver="1.7.4" date="05.08.2014">
+<changes ver="1.7.4" date="2014-08-05">
 
 <change type="security">
 <para lang="ru">
@@ -3454,7 +3454,7 @@ Thanks to Tatsuhiko Kubo and Piotr Sikora.
 </changes>
 
 
-<changes ver="1.7.3" date="08.07.2014">
+<changes ver="1.7.3" date="2014-07-08">
 
 <change type="feature">
 <para lang="ru">
@@ -3534,7 +3534,7 @@ if caching was used.
 </changes>
 
 
-<changes ver="1.7.2" date="17.06.2014">
+<changes ver="1.7.2" date="2014-06-17">
 
 <change type="feature">
 <para lang="ru">
@@ -3603,7 +3603,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.7.1" date="27.05.2014">
+<changes ver="1.7.1" date="2014-05-27">
 
 <change type="feature">
 <para lang="ru">
@@ -3721,7 +3721,7 @@ nginx could not be built with the --with-file-aio option on Linux/aarch64.
 </changes>
 
 
-<changes ver="1.7.0" date="24.04.2014">
+<changes ver="1.7.0" date="2014-04-24">
 
 <change type="feature">
 <para lang="ru">
@@ -3762,7 +3762,7 @@ the "if" parameter of the "access_log" directive.
 </changes>
 
 
-<changes ver="1.5.13" date="08.04.2014">
+<changes ver="1.5.13" date="2014-04-08">
 
 <change type="change">
 <para lang="ru">
@@ -3855,7 +3855,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.5.12" date="18.03.2014">
+<changes ver="1.5.12" date="2014-03-18">
 
 <change type="security">
 <para lang="ru">
@@ -3901,7 +3901,7 @@ Thanks to Lucas Molas.
 </changes>
 
 
-<changes ver="1.5.11" date="04.03.2014">
+<changes ver="1.5.11" date="2014-03-04">
 
 <change type="security">
 <para lang="ru">
@@ -4011,7 +4011,7 @@ nginx/Windows could not be built with Visual Studio 2013.
 </changes>
 
 
-<changes ver="1.5.10" date="04.02.2014">
+<changes ver="1.5.10" date="2014-02-04">
 
 <change type="feature">
 <para lang="ru">
@@ -4090,7 +4090,7 @@ Thanks to Piotr Sikora.
 </changes>
 
 
-<changes ver="1.5.9" date="22.01.2014">
+<changes ver="1.5.9" date="2014-01-22">
 
 <change type="change">
 <para lang="ru">
@@ -4232,7 +4232,7 @@ incorrectly handled IPv6 client addresses.
 </changes>
 
 
-<changes ver="1.5.8" date="17.12.2013">
+<changes ver="1.5.8" date="2013-12-17">
 
 <change type="feature">
 <para lang="ru">
@@ -4317,7 +4317,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.5.7" date="19.11.2013">
+<changes ver="1.5.7" date="2013-11-19">
 
 <change type="security">
 <para lang="ru">
@@ -4453,7 +4453,7 @@ memory leak in nginx/Windows.
 </changes>
 
 
-<changes ver="1.5.6" date="01.10.2013">
+<changes ver="1.5.6" date="2013-10-01">
 
 <change type="feature">
 <para lang="ru">
@@ -4551,7 +4551,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.5.5" date="17.09.2013">
+<changes ver="1.5.5" date="2013-09-17">
 
 <change type="change">
 <para lang="ru">
@@ -4630,7 +4630,7 @@ Thanks to Piotr Sikora.
 </changes>
 
 
-<changes ver="1.5.4" date="27.08.2013">
+<changes ver="1.5.4" date="2013-08-27">
 
 <change type="change">
 <para lang="ru">
@@ -4732,7 +4732,7 @@ in the ngx_http_spdy_module.
 </changes>
 
 
-<changes ver="1.5.3" date="30.07.2013">
+<changes ver="1.5.3" date="2013-07-30">
 
 <change>
 <para lang="ru">
@@ -4807,7 +4807,7 @@ in the ngx_http_sub_filter_module.
 </changes>
 
 
-<changes ver="1.5.2" date="02.07.2013">
+<changes ver="1.5.2" date="2013-07-02">
 
 <change type="feature">
 <para lang="ru">
@@ -4856,7 +4856,7 @@ Thanks to Serguei Ivantsov.
 </changes>
 
 
-<changes ver="1.5.1" date="04.06.2013">
+<changes ver="1.5.1" date="2013-06-04">
 
 <change type="feature">
 <para lang="ru">
@@ -4979,7 +4979,7 @@ if several worker processes were used.
 </changes>
 
 
-<changes ver="1.5.0" date="07.05.2013">
+<changes ver="1.5.0" date="2013-05-07">
 
 <change type="security">
 <para lang="ru">
@@ -5001,7 +5001,7 @@ Thanks to Greg MacManus, iSIGHT Partners Labs.
 </changes>
 
 
-<changes ver="1.4.0" date="24.04.2013">
+<changes ver="1.4.0" date="2013-04-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -5030,7 +5030,7 @@ the bug had appeared in 1.3.9.
 </changes>
 
 
-<changes ver="1.3.16" date="16.04.2013">
+<changes ver="1.3.16" date="2013-04-16">
 
 <change type="bugfix">
 <para lang="ru">
@@ -5081,7 +5081,7 @@ in the eventport and /dev/poll methods.
 </changes>
 
 
-<changes ver="1.3.15" date="26.03.2013">
+<changes ver="1.3.15" date="2013-03-26">
 
 <change type="change">
 <para lang="ru">
@@ -5198,7 +5198,7 @@ in backend usage accounting.
 </changes>
 
 
-<changes ver="1.3.14" date="05.03.2013">
+<changes ver="1.3.14" date="2013-03-05">
 
 <change type="feature">
 <para lang="ru">
@@ -5271,7 +5271,7 @@ Thanks to Gernot Vormayr.
 </changes>
 
 
-<changes ver="1.3.13" date="19.02.2013">
+<changes ver="1.3.13" date="2013-02-19">
 
 <change type="change">
 <para lang="ru">
@@ -5309,7 +5309,7 @@ Thanks to Louis Opter.
 </changes>
 
 
-<changes ver="1.3.12" date="05.02.2013">
+<changes ver="1.3.12" date="2013-02-05">
 
 <change type="feature">
 <para lang="ru">
@@ -5409,7 +5409,7 @@ in the "fastcgi_keep_conn" directive.
 </changes>
 
 
-<changes ver="1.3.11" date="10.01.2013">
+<changes ver="1.3.11" date="2013-01-10">
 
 <change type="bugfix">
 <para lang="ru">
@@ -5462,7 +5462,7 @@ for IPv6 addresses.
 </changes>
 
 
-<changes ver="1.3.10" date="25.12.2012">
+<changes ver="1.3.10" date="2012-12-25">
 
 <change type="change">
 <para lang="ru">
@@ -5640,7 +5640,7 @@ if the "gzip" directive was used.
 </changes>
 
 
-<changes ver="1.3.9" date="27.11.2012">
+<changes ver="1.3.9" date="2012-11-27">
 
 <change type="feature">
 <para lang="ru">
@@ -5685,7 +5685,7 @@ in the ngx_http_dav_module.
 </changes>
 
 
-<changes ver="1.3.8" date="30.10.2012">
+<changes ver="1.3.8" date="2012-10-30">
 
 <change type="feature">
 <para lang="ru">
@@ -5750,7 +5750,7 @@ in the "ssl_stapling" directive.
 </changes>
 
 
-<changes ver="1.3.7" date="02.10.2012">
+<changes ver="1.3.7" date="2012-10-02">
 
 <change type="feature">
 <para lang="ru">
@@ -5797,7 +5797,7 @@ OpenSSL 0.9.7 compatibility.
 </changes>
 
 
-<changes ver="1.3.6" date="12.09.2012">
+<changes ver="1.3.6" date="2012-09-12">
 
 <change type="feature">
 <para lang="ru">
@@ -5853,7 +5853,7 @@ if the --with-ipv6 option was used.
 </changes>
 
 
-<changes ver="1.3.5" date="21.08.2012">
+<changes ver="1.3.5" date="2012-08-21">
 
 <change type="change">
 <para lang="ru">
@@ -5935,7 +5935,7 @@ Thanks to HAYASHI Kentaro.
 </changes>
 
 
-<changes ver="1.3.4" date="31.07.2012">
+<changes ver="1.3.4" date="2012-07-31">
 
 <change type="change">
 <para lang="ru">
@@ -5998,7 +5998,7 @@ might be inherited incorrectly.
 </changes>
 
 
-<changes ver="1.3.3" date="10.07.2012">
+<changes ver="1.3.3" date="2012-07-10">
 
 <change type="feature">
 <para lang="ru">
@@ -6036,7 +6036,7 @@ before an internal redirect to a named location.
 </changes>
 
 
-<changes ver="1.3.2" date="26.06.2012">
+<changes ver="1.3.2" date="2012-06-26">
 
 <change type="change">
 <para lang="ru">
@@ -6141,7 +6141,7 @@ while reconfiguration.
 </changes>
 
 
-<changes ver="1.3.1" date="05.06.2012">
+<changes ver="1.3.1" date="2012-06-05">
 
 <change type="security">
 <para lang="ru">
@@ -6271,7 +6271,7 @@ in the "proxy_cookie_domain" and "proxy_cookie_path" directives.
 </changes>
 
 
-<changes ver="1.3.0" date="15.05.2012">
+<changes ver="1.3.0" date="2012-05-15">
 
 <change type="feature">
 <para lang="ru">
@@ -6410,7 +6410,7 @@ in the ngx_http_fastcgi_module.
 </changes>
 
 
-<changes ver="1.2.0" date="23.04.2012">
+<changes ver="1.2.0" date="2012-04-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -6450,7 +6450,7 @@ Thanks to Maxim Bublis.
 </changes>
 
 
-<changes ver="1.1.19" date="12.04.2012">
+<changes ver="1.1.19" date="2012-04-12">
 
 <change type="security">
 <para lang="ru">
@@ -6532,7 +6532,7 @@ in the ngx_http_mp4_module.
 </changes>
 
 
-<changes ver="1.1.18" date="28.03.2012">
+<changes ver="1.1.18" date="2012-03-28">
 
 <change type="change">
 <para lang="ru">
@@ -6615,7 +6615,7 @@ nginx could not be built on Debian GNU/Hurd.
 </changes>
 
 
-<changes ver="1.1.17" date="15.03.2012">
+<changes ver="1.1.17" date="2012-03-15">
 
 <change type="security">
 <para lang="ru">
@@ -6653,7 +6653,7 @@ in the ngx_http_uwsgi_module.
 </changes>
 
 
-<changes ver="1.1.16" date="29.02.2012">
+<changes ver="1.1.16" date="2012-02-29">
 
 <change type="change">
 <para lang="ru">
@@ -6766,7 +6766,7 @@ the bug had appeared in 1.1.15.
 </changes>
 
 
-<changes ver="1.1.15" date="15.02.2012">
+<changes ver="1.1.15" date="2012-02-15">
 
 <change type="feature">
 <para lang="ru">
@@ -6869,7 +6869,7 @@ the bug had appeared in 0.7.25.
 </changes>
 
 
-<changes ver="1.1.14" date="30.01.2012">
+<changes ver="1.1.14" date="2012-01-30">
 
 <change type="feature">
 <para lang="ru">
@@ -6930,7 +6930,7 @@ memory leak during reconfiguration if the "pcre_jit" directive was used.
 </changes>
 
 
-<changes ver="1.1.13" date="16.01.2012">
+<changes ver="1.1.13" date="2012-01-16">
 
 <change type="feature">
 <para lang="ru">
@@ -7006,7 +7006,7 @@ in the ngx_http_mp4_module.
 </changes>
 
 
-<changes ver="1.1.12" date="26.12.2011">
+<changes ver="1.1.12" date="2011-12-26">
 
 <change type="change">
 <para lang="ru">
@@ -7146,7 +7146,7 @@ the bug had appeared in 1.1.9.
 </changes>
 
 
-<changes ver="1.1.11" date="12.12.2011">
+<changes ver="1.1.11" date="2011-12-12">
 
 <change type="feature">
 <para lang="ru">
@@ -7244,7 +7244,7 @@ responses from cache might hang.
 </changes>
 
 
-<changes ver="1.1.10" date="30.11.2011">
+<changes ver="1.1.10" date="2011-11-30">
 
 <change type="bugfix">
 <para lang="ru">
@@ -7260,7 +7260,7 @@ the bug had appeared in 1.1.9.
 </changes>
 
 
-<changes ver="1.1.9" date="28.11.2011">
+<changes ver="1.1.9" date="2011-11-28">
 
 <change type="change">
 <para lang="ru">
@@ -7426,7 +7426,7 @@ nginx could not be built on AIX.
 </changes>
 
 
-<changes ver="1.1.8" date="14.11.2011">
+<changes ver="1.1.8" date="2011-11-14">
 
 <change type="change">
 <para lang="ru">
@@ -7521,7 +7521,7 @@ Thanks to Piotr Sikora.
 </changes>
 
 
-<changes ver="1.1.7" date="31.10.2011">
+<changes ver="1.1.7" date="2011-10-31">
 
 <change type="feature">
 <para lang="ru">
@@ -7581,7 +7581,7 @@ in the "expires @time" directive.
 </changes>
 
 
-<changes ver="1.1.6" date="17.10.2011">
+<changes ver="1.1.6" date="2011-10-17">
 
 <change>
 <para lang="ru">
@@ -7701,7 +7701,7 @@ the module ngx_http_mp4_module did not support seeking on 32-bit platforms.
 </changes>
 
 
-<changes ver="1.1.5" date="05.10.2011">
+<changes ver="1.1.5" date="2011-10-05">
 
 <change type="feature">
 <para lang="ru">
@@ -7782,7 +7782,7 @@ the bug had appeared in 1.1.1.
 </changes>
 
 
-<changes ver="1.1.4" date="20.09.2011">
+<changes ver="1.1.4" date="2011-09-20">
 
 <change type="feature">
 <para lang="ru">
@@ -7865,7 +7865,7 @@ the module ngx_http_mp4_module did not support 64-bit MP4 "co64" atom.
 </changes>
 
 
-<changes ver="1.1.3" date="14.09.2011">
+<changes ver="1.1.3" date="2011-09-14">
 
 <change type="feature">
 <para lang="ru">
@@ -7908,7 +7908,7 @@ nginx could not be built on MacOSX 10.7.
 </changes>
 
 
-<changes ver="1.1.2" date="05.09.2011">
+<changes ver="1.1.2" date="2011-09-05">
 
 <change type="change">
 <para lang="ru">
@@ -7953,7 +7953,7 @@ in the "proxy/fastcgi/scgi/uwsgi_ignore_client_abort" directives.
 </changes>
 
 
-<changes ver="1.1.1" date="22.08.2011">
+<changes ver="1.1.1" date="2011-08-22">
 
 <change type="change">
 <para lang="ru">
@@ -8097,7 +8097,7 @@ the bug had appeared in 0.8.40.
 </changes>
 
 
-<changes ver="1.1.0" date="01.08.2011">
+<changes ver="1.1.0" date="2011-08-01">
 
 <change type="feature">
 <para lang="ru">
@@ -8230,7 +8230,7 @@ SSL modules could not be built by gcc 4.6 without --with-debug option.
 </changes>
 
 
-<changes ver="1.0.5" date="19.07.2011">
+<changes ver="1.0.5" date="2011-07-19">
 
 <change type="change">
 <para lang="ru">
@@ -8306,7 +8306,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="1.0.4" date="01.06.2011">
+<changes ver="1.0.4" date="2011-06-01">
 
 <change type="change">
 <para lang="ru">
@@ -8353,7 +8353,7 @@ the bug had appeared in 1.0.3.
 </changes>
 
 
-<changes ver="1.0.3" date="25.05.2011">
+<changes ver="1.0.3" date="2011-05-25">
 
 <change type="feature">
 <para lang="ru">
@@ -8422,7 +8422,7 @@ the bug had appeared in 0.8.46.
 </changes>
 
 
-<changes ver="1.0.2" date="10.05.2011">
+<changes ver="1.0.2" date="2011-05-10">
 
 <change type="feature">
 <para lang="ru">
@@ -8458,7 +8458,7 @@ the bug had appeared in 1.0.1.
 </changes>
 
 
-<changes ver="1.0.1" date="03.05.2011">
+<changes ver="1.0.1" date="2011-05-03">
 
 <change type="change">
 <para lang="ru">
@@ -8566,7 +8566,7 @@ Thanks to Igor A. Valcov.
 </changes>
 
 
-<changes ver="1.0.0" date="12.04.2011">
+<changes ver="1.0.0" date="2011-04-12">
 
 <change type="bugfix">
 <para lang="ru">
@@ -8603,7 +8603,7 @@ a "satisfy any" directive disabled custom 401 error page.
 </changes>
 
 
-<changes ver="0.9.7" date="04.04.2011">
+<changes ver="0.9.7" date="2011-04-04">
 
 <change type="feature">
 <para lang="ru">
@@ -8643,7 +8643,7 @@ directives is given by expression and refers to a defined upstream.
 </changes>
 
 
-<changes ver="0.9.6" date="21.03.2011">
+<changes ver="0.9.6" date="2011-03-21">
 
 <change type="feature">
 <para lang="ru">
@@ -8670,7 +8670,7 @@ Thanks to Michael Lustfield.
 </changes>
 
 
-<changes ver="0.9.5" date="21.02.2011">
+<changes ver="0.9.5" date="2011-02-21">
 
 <change type="change">
 <para lang="ru">
@@ -8724,7 +8724,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.9.4" date="21.01.2011">
+<changes ver="0.9.4" date="2011-01-21">
 
 <change type="feature">
 <para lang="ru">
@@ -8747,7 +8747,7 @@ the "server_name" directive supports the $hostname variable.
 </changes>
 
 
-<changes ver="0.9.3" date="13.12.2010">
+<changes ver="0.9.3" date="2010-12-13">
 
 <change type="bugfix">
 <para lang="ru">
@@ -8774,7 +8774,7 @@ the bug had appeared in 0.9.0.
 </changes>
 
 
-<changes ver="0.9.2" date="06.12.2010">
+<changes ver="0.9.2" date="2010-12-06">
 
 <change type="feature">
 <para lang="ru">
@@ -8821,7 +8821,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.9.1" date="30.11.2010">
+<changes ver="0.9.1" date="2010-11-30">
 
 <change type="bugfix">
 <para lang="ru">
@@ -8837,7 +8837,7 @@ the bug had appeared in 0.9.0.
 </changes>
 
 
-<changes ver="0.9.0" date="29.11.2010">
+<changes ver="0.9.0" date="2010-11-29">
 
 <change type="feature">
 <para lang="ru">
@@ -8936,7 +8936,7 @@ the bug had appeared in 0.8.42.
 </changes>
 
 
-<changes ver="0.8.53" date="18.10.2010">
+<changes ver="0.8.53" date="2010-10-18">
 
 <change type="feature">
 <para lang="ru">
@@ -8985,7 +8985,7 @@ the bug had appeared in 0.8.21.
 </changes>
 
 
-<changes ver="0.8.52" date="28.09.2010">
+<changes ver="0.8.52" date="2010-09-28">
 
 <change type="bugfix">
 <para lang="ru">
@@ -9002,7 +9002,7 @@ the bug had appeared in 0.8.51.
 </changes>
 
 
-<changes ver="0.8.51" date="27.09.2010">
+<changes ver="0.8.51" date="2010-09-27">
 
 <change type="change">
 <para lang="ru">
@@ -9034,7 +9034,7 @@ now a listen socket "ssl" parameter may be set several times.
 </changes>
 
 
-<changes ver="0.8.50" date="02.09.2010">
+<changes ver="0.8.50" date="2010-09-02">
 
 <change type="feature">
 <para lang="ru">
@@ -9096,7 +9096,7 @@ to a process run in other session.
 </changes>
 
 
-<changes ver="0.8.49" date="09.08.2010">
+<changes ver="0.8.49" date="2010-08-09">
 
 <change type="feature">
 <para lang="ru">
@@ -9134,7 +9134,7 @@ the bug had appeared in 0.8.48.
 </changes>
 
 
-<changes ver="0.8.48" date="03.08.2010">
+<changes ver="0.8.48" date="2010-08-03">
 
 <change type="change">
 <para lang="ru">
@@ -9231,7 +9231,7 @@ if an image was larger than "image_filter_buffer" size.
 </changes>
 
 
-<changes ver="0.8.47" date="28.07.2010">
+<changes ver="0.8.47" date="2010-07-28">
 
 <change type="bugfix">
 <para lang="ru">
@@ -9266,7 +9266,7 @@ the bug had appeared in 0.8.46.
 </changes>
 
 
-<changes ver="0.8.46" date="19.07.2010">
+<changes ver="0.8.46" date="2010-07-19">
 
 <change type="change">
 <para lang="ru">
@@ -9306,7 +9306,7 @@ time or on memory low condition.
 </changes>
 
 
-<changes ver="0.8.45" date="13.07.2010">
+<changes ver="0.8.45" date="2010-07-13">
 
 <change type="feature">
 <para lang="ru">
@@ -9345,7 +9345,7 @@ the "listen" directive did not support the "setfib=0" parameter.
 </changes>
 
 
-<changes ver="0.8.44" date="05.07.2010">
+<changes ver="0.8.44" date="2010-07-05">
 
 <change type="change">
 <para lang="ru">
@@ -9410,7 +9410,7 @@ Thanks to Miroslaw Jaworski.
 </changes>
 
 
-<changes ver="0.8.43" date="30.06.2010">
+<changes ver="0.8.43" date="2010-06-30">
 
 <change type="feature">
 <para lang="ru">
@@ -9457,7 +9457,7 @@ the $uid_set variable may be used at any request processing stage.
 </changes>
 
 
-<changes ver="0.8.42" date="21.06.2010">
+<changes ver="0.8.42" date="2010-06-21">
 
 <change type="change">
 <para lang="ru">
@@ -9495,7 +9495,7 @@ a text answer may be added to a "return" directive.
 </changes>
 
 
-<changes ver="0.8.41" date="15.06.2010">
+<changes ver="0.8.41" date="2010-06-15">
 
 <change type="security">
 <para lang="ru">
@@ -9544,7 +9544,7 @@ in "Destination" request header line.
 </changes>
 
 
-<changes ver="0.8.40" date="07.06.2010">
+<changes ver="0.8.40" date="2010-06-07">
 
 <change type="security">
 <para lang="ru">
@@ -9604,7 +9604,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.39" date="31.05.2010">
+<changes ver="0.8.39" date="2010-05-31">
 
 <change type="bugfix">
 <para lang="ru">
@@ -9639,7 +9639,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.38" date="24.05.2010">
+<changes ver="0.8.38" date="2010-05-24">
 
 <change type="feature">
 <para lang="ru">
@@ -9686,7 +9686,7 @@ the $uid_got variable might not be used in the SSI and perl modules.
 </changes>
 
 
-<changes ver="0.8.37" date="17.05.2010">
+<changes ver="0.8.37" date="2010-05-17">
 
 <change type="feature">
 <para lang="ru">
@@ -9760,7 +9760,7 @@ Thanks to Alan Batie.
 </changes>
 
 
-<changes ver="0.8.36" date="22.04.2010">
+<changes ver="0.8.36" date="2010-04-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -9833,7 +9833,7 @@ the bug had appeared in 0.8.35.
 </changes>
 
 
-<changes ver="0.8.35" date="01.04.2010">
+<changes ver="0.8.35" date="2010-04-01">
 
 <change type="change">
 <para lang="ru">
@@ -9933,7 +9933,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.34" date="03.03.2010">
+<changes ver="0.8.34" date="2010-03-03">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10044,7 +10044,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.33" date="01.02.2010">
+<changes ver="0.8.33" date="2010-02-01">
 
 <change type="security">
 <para lang="ru">
@@ -10123,7 +10123,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.32" date="11.01.2010">
+<changes ver="0.8.32" date="2010-01-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10188,7 +10188,7 @@ Thanks to Alex Kapranoff.
 </changes>
 
 
-<changes ver="0.8.31" date="23.12.2009">
+<changes ver="0.8.31" date="2009-12-23">
 
 <change type="feature">
 <para lang="ru">
@@ -10284,7 +10284,7 @@ if the file should replace an already existent file.
 </changes>
 
 
-<changes ver="0.8.30" date="15.12.2009">
+<changes ver="0.8.30" date="2009-12-15">
 
 <change type="change">
 <para lang="ru">
@@ -10346,7 +10346,7 @@ Thanks to W-Mark Kubacki.
 </changes>
 
 
-<changes ver="0.8.29" date="30.11.2009">
+<changes ver="0.8.29" date="2009-11-30">
 
 <change type="change">
 <para lang="ru">
@@ -10425,7 +10425,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.28" date="23.11.2009">
+<changes ver="0.8.28" date="2009-11-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10441,7 +10441,7 @@ the bug had appeared in 0.8.25.
 </changes>
 
 
-<changes ver="0.8.27" date="17.11.2009">
+<changes ver="0.8.27" date="2009-11-17">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10457,7 +10457,7 @@ the bug had appeared in 0.8.25.
 </changes>
 
 
-<changes ver="0.8.26" date="16.11.2009">
+<changes ver="0.8.26" date="2009-11-16">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10484,7 +10484,7 @@ the bug had appeared in 0.8.25.
 </changes>
 
 
-<changes ver="0.8.25" date="16.11.2009">
+<changes ver="0.8.25" date="2009-11-16">
 
 <change type="change">
 <para lang="ru">
@@ -10561,7 +10561,7 @@ the bug had appeared in 0.8.16.
 </changes>
 
 
-<changes ver="0.8.24" date="11.11.2009">
+<changes ver="0.8.24" date="2009-11-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -10608,7 +10608,7 @@ in resolving empty name.
 </changes>
 
 
-<changes ver="0.8.23" date="11.11.2009">
+<changes ver="0.8.23" date="2009-11-11">
 
 <change type="security">
 <para lang="ru">
@@ -10664,7 +10664,7 @@ Thanks to Artem Bokhan.
 </changes>
 
 
-<changes ver="0.8.22" date="03.11.2009">
+<changes ver="0.8.22" date="2009-11-03">
 
 <change type="feature">
 <para lang="ru">
@@ -10773,7 +10773,7 @@ the bug had appeared in 0.8.21.
 </changes>
 
 
-<changes ver="0.8.21" date="26.10.2009">
+<changes ver="0.8.21" date="2009-10-26">
 
 <change type="feature">
 <para lang="ru">
@@ -10836,7 +10836,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.20" date="14.10.2009">
+<changes ver="0.8.20" date="2009-10-14">
 
 <change type="change">
 <para lang="ru">
@@ -10920,7 +10920,7 @@ nginx counted incorrectly disk cache size.
 </changes>
 
 
-<changes ver="0.8.19" date="06.10.2009">
+<changes ver="0.8.19" date="2009-10-06">
 
 <change type="change">
 <para lang="ru">
@@ -10955,7 +10955,7 @@ the bug had appeared in 0.8.18.
 </changes>
 
 
-<changes ver="0.8.18" date="06.10.2009">
+<changes ver="0.8.18" date="2009-10-06">
 
 <change type="feature">
 <para lang="ru">
@@ -11043,7 +11043,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.17" date="28.09.2009">
+<changes ver="0.8.17" date="2009-09-28">
 
 <change type="security">
 <para lang="ru">
@@ -11086,7 +11086,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.16" date="22.09.2009">
+<changes ver="0.8.16" date="2009-09-22">
 
 <change type="feature">
 <para lang="ru">
@@ -11184,7 +11184,7 @@ Thanks to Igor Artemiev.
 </changes>
 
 
-<changes ver="0.8.15" date="14.09.2009">
+<changes ver="0.8.15" date="2009-09-14">
 
 <change type="security">
 <para lang="ru">
@@ -11253,7 +11253,7 @@ the bug had appeared in 0.8.11.
 </changes>
 
 
-<changes ver="0.8.14" date="07.09.2009">
+<changes ver="0.8.14" date="2009-09-07">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11302,7 +11302,7 @@ the bug had appeared in 0.6.10.
 </changes>
 
 
-<changes ver="0.8.13" date="31.08.2009">
+<changes ver="0.8.13" date="2009-08-31">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11329,7 +11329,7 @@ the bug had appeared in 0.8.12.
 </changes>
 
 
-<changes ver="0.8.12" date="31.08.2009">
+<changes ver="0.8.12" date="2009-08-31">
 
 <change type="feature">
 <para lang="ru">
@@ -11364,7 +11364,7 @@ the bug had appeared in 0.8.11.
 
 </changes>
 
-<changes ver="0.8.11" date="28.08.2009">
+<changes ver="0.8.11" date="2009-08-28">
 
 <change type="change">
 <para lang="ru">
@@ -11398,7 +11398,7 @@ the "directio_alignment" directive.
 </changes>
 
 
-<changes ver="0.8.10" date="24.08.2009">
+<changes ver="0.8.10" date="2009-08-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11423,7 +11423,7 @@ the bug had appeared in 0.8.9.
 </changes>
 
 
-<changes ver="0.8.9" date="17.08.2009">
+<changes ver="0.8.9" date="2009-08-17">
 
 <change type="feature">
 <para lang="ru">
@@ -11450,7 +11450,7 @@ different file systems.
 </changes>
 
 
-<changes ver="0.8.8" date="10.08.2009">
+<changes ver="0.8.8" date="2009-08-10">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11479,7 +11479,7 @@ the bug had appeared in 0.8.7.
 </changes>
 
 
-<changes ver="0.8.7" date="27.07.2009">
+<changes ver="0.8.7" date="2009-07-27">
 
 <change type="change">
 <para lang="ru">
@@ -11599,7 +11599,7 @@ the bug had appeared in 0.8.5.
 </changes>
 
 
-<changes ver="0.8.6" date="20.07.2009">
+<changes ver="0.8.6" date="2009-07-20">
 
 <change type="feature">
 <para lang="ru">
@@ -11662,7 +11662,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.5" date="13.07.2009">
+<changes ver="0.8.5" date="2009-07-13">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11707,7 +11707,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.8.4" date="22.06.2009">
+<changes ver="0.8.4" date="2009-06-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11723,7 +11723,7 @@ the bug had appeared in 0.8.3.
 </changes>
 
 
-<changes ver="0.8.3" date="19.06.2009">
+<changes ver="0.8.3" date="2009-06-19">
 
 <change type="feature">
 <para lang="ru">
@@ -11772,7 +11772,7 @@ Thanks to Eugene Mychlo.
 </changes>
 
 
-<changes ver="0.8.2" date="15.06.2009">
+<changes ver="0.8.2" date="2009-06-15">
 
 <change type="bugfix">
 <para lang="ru">
@@ -11797,7 +11797,7 @@ the bug had appeared in 0.7.4.
 </changes>
 
 
-<changes ver="0.8.1" date="08.06.2009">
+<changes ver="0.8.1" date="2009-06-08">
 
 <change type="feature">
 <para lang="ru">
@@ -11860,7 +11860,7 @@ the bug had appeared in 0.7.56.
 </changes>
 
 
-<changes ver="0.8.0" date="02.06.2009">
+<changes ver="0.8.0" date="2009-06-02">
 
 <change type="feature">
 <para lang="ru">
@@ -11923,7 +11923,7 @@ Thanks to Maxim Dounin and Kirill A. Korinskiy.
 </changes>
 
 
-<changes ver="0.7.59" date="25.05.2009">
+<changes ver="0.7.59" date="2009-05-25">
 
 <change type="feature">
 <para lang="ru">
@@ -11998,7 +11998,7 @@ responses.
 </changes>
 
 
-<changes ver="0.7.58" date="18.05.2009">
+<changes ver="0.7.58" date="2009-05-18">
 
 <change type="feature">
 <para lang="ru">
@@ -12063,7 +12063,7 @@ Thanks to Denis F. Latypoff.
 </changes>
 
 
-<changes ver="0.7.57" date="12.05.2009">
+<changes ver="0.7.57" date="2009-05-12">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12081,7 +12081,7 @@ the bug had appeared in 0.7.56.
 </changes>
 
 
-<changes ver="0.7.56" date="11.05.2009">
+<changes ver="0.7.56" date="2009-05-11">
 
 <change type="feature">
 <para lang="ru">
@@ -12104,7 +12104,7 @@ in ngx_http_image_filter_module.
 </changes>
 
 
-<changes ver="0.7.55" date="06.05.2009">
+<changes ver="0.7.55" date="2009-05-06">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12173,7 +12173,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.7.54" date="01.05.2009">
+<changes ver="0.7.54" date="2009-05-01">
 
 <change type="feature">
 <para lang="ru">
@@ -12249,7 +12249,7 @@ the bug had appeared in 0.7.53.
 </changes>
 
 
-<changes ver="0.7.53" date="27.04.2009">
+<changes ver="0.7.53" date="2009-04-27">
 
 <change type="change">
 <para lang="ru">
@@ -12382,7 +12382,7 @@ Thanks to Andrew Vorobyoff.
 </changes>
 
 
-<changes ver="0.7.52" date="20.04.2009">
+<changes ver="0.7.52" date="2009-04-20">
 
 <change type="feature">
 <para lang="ru">
@@ -12462,7 +12462,7 @@ the bug had appeared in 0.7.42.
 </changes>
 
 
-<changes ver="0.7.51" date="12.04.2009">
+<changes ver="0.7.51" date="2009-04-12">
 
 <change type="feature">
 <para lang="ru">
@@ -12509,7 +12509,7 @@ the bug had appeared in 0.7.39.
 </changes>
 
 
-<changes ver="0.7.50" date="06.04.2009">
+<changes ver="0.7.50" date="2009-04-06">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12525,7 +12525,7 @@ the bug had appeared in 0.7.49.
 </changes>
 
 
-<changes ver="0.7.49" date="06.04.2009">
+<changes ver="0.7.49" date="2009-04-06">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12543,7 +12543,7 @@ the bug had appeared in 0.7.48.
 </changes>
 
 
-<changes ver="0.7.48" date="06.04.2009">
+<changes ver="0.7.48" date="2009-04-06">
 
 <change type="feature">
 <para lang="ru">
@@ -12619,7 +12619,7 @@ the bug had <nobr>appeared in 0.7.46.</nobr>
 </changes>
 
 
-<changes ver="0.7.47" date="01.04.2009">
+<changes ver="0.7.47" date="2009-04-01">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12688,7 +12688,7 @@ the bug had appeared in 0.7.44.
 </changes>
 
 
-<changes ver="0.7.46" date="30.03.2009">
+<changes ver="0.7.46" date="2009-03-30">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12702,7 +12702,7 @@ the previous release tarball was incorrect.
 </changes>
 
 
-<changes ver="0.7.45" date="30.03.2009">
+<changes ver="0.7.45" date="2009-03-30">
 
 <change type="change">
 <para lang="ru">
@@ -12796,7 +12796,7 @@ the bug had appeared in 0.7.42.
 </changes>
 
 
-<changes ver="0.7.44" date="23.03.2009">
+<changes ver="0.7.44" date="2009-03-23">
 
 <change type="feature">
 <para lang="ru">
@@ -12859,7 +12859,7 @@ then captures in regular expressions in a "server_name" directive did not work.
 </changes>
 
 
-<changes ver="0.7.43" date="18.03.2009">
+<changes ver="0.7.43" date="2009-03-18">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12888,7 +12888,7 @@ the bug had appeared in 0.7.36.
 </changes>
 
 
-<changes ver="0.7.42" date="16.03.2009">
+<changes ver="0.7.42" date="2009-03-16">
 
 <change type="change">
 <para lang="ru">
@@ -12972,7 +12972,7 @@ the bug had appeared in 0.7.41.
 </changes>
 
 
-<changes ver="0.7.41" date="11.03.2009">
+<changes ver="0.7.41" date="2009-03-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -12993,7 +12993,7 @@ Thanks to Vladimir Sopot.
 </changes>
 
 
-<changes ver="0.7.40" date="09.03.2009">
+<changes ver="0.7.40" date="2009-03-09">
 
 <change type="feature">
 <para lang="ru">
@@ -13043,7 +13043,7 @@ Thanks to Dmitry Kuzmenko.
 </changes>
 
 
-<changes ver="0.7.39" date="02.03.2009">
+<changes ver="0.7.39" date="2009-03-02">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13072,7 +13072,7 @@ if short static variants are used in a "try_files" directive.
 </changes>
 
 
-<changes ver="0.7.38" date="23.02.2009">
+<changes ver="0.7.38" date="2009-02-23">
 
 <change type="feature">
 <para lang="ru">
@@ -13112,7 +13112,7 @@ the bug had appeared in 0.7.36.
 </changes>
 
 
-<changes ver="0.7.37" date="21.02.2009">
+<changes ver="0.7.37" date="2009-02-21">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13128,7 +13128,7 @@ the bug had appeared in 0.7.36.
 </changes>
 
 
-<changes ver="0.7.36" date="21.02.2009">
+<changes ver="0.7.36" date="2009-02-21">
 
 <change type="feature">
 <para lang="ru">
@@ -13155,7 +13155,7 @@ preset by a "modern_browser" directives.
 </changes>
 
 
-<changes ver="0.7.35" date="16.02.2009">
+<changes ver="0.7.35" date="2009-02-16">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13199,7 +13199,7 @@ if ".domain.tld" and ".subdomain.domain.tld" wildcards were used;
 </changes>
 
 
-<changes ver="0.7.34" date="10.02.2009">
+<changes ver="0.7.34" date="2009-02-10">
 
 <change type="feature">
 <para lang="ru">
@@ -13262,7 +13262,7 @@ nginx could not be built on AIX.
 </changes>
 
 
-<changes ver="0.7.33" date="02.02.2009">
+<changes ver="0.7.33" date="2009-02-02">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13301,7 +13301,7 @@ if "resolver" directive was used in SMTP proxy.
 </changes>
 
 
-<changes ver="0.7.32" date="26.01.2009">
+<changes ver="0.7.32" date="2009-01-26">
 
 <change type="feature">
 <para lang="ru">
@@ -13346,7 +13346,7 @@ Thanks to Andrey Kvasov.
 </changes>
 
 
-<changes ver="0.7.31" date="19.01.2009">
+<changes ver="0.7.31" date="2009-01-19">
 
 <change type="change">
 <para lang="ru">
@@ -13418,7 +13418,7 @@ Thanks to Maxim Dounin.
 
 
 
-<changes ver="0.7.30" date="24.12.2008">
+<changes ver="0.7.30" date="2008-12-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13438,7 +13438,7 @@ the bug had appeared in 0.7.29.
 </changes>
 
 
-<changes ver="0.7.29" date="24.12.2008">
+<changes ver="0.7.29" date="2008-12-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13485,7 +13485,7 @@ in memory allocation in the ngx_http_gzip_filter_module on Cygwin.
 </changes>
 
 
-<changes ver="0.7.28" date="22.12.2008">
+<changes ver="0.7.28" date="2008-12-22">
 
 <change type="change">
 <para lang="ru">
@@ -13510,7 +13510,7 @@ to 32 4k or 16 8k from 4 4k/8k.
 </changes>
 
 
-<changes ver="0.7.27" date="15.12.2008">
+<changes ver="0.7.27" date="2008-12-15">
 
 <change type="feature">
 <para lang="ru">
@@ -13606,7 +13606,7 @@ Thanks to Sergey Bochenkov.
 </changes>
 
 
-<changes ver="0.7.26" date="08.12.2008">
+<changes ver="0.7.26" date="2008-12-08">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13622,7 +13622,7 @@ the bug had appeared in 0.7.25.
 </changes>
 
 
-<changes ver="0.7.25" date="08.12.2008">
+<changes ver="0.7.25" date="2008-12-08">
 
 <change type="change">
 <para lang="ru">
@@ -13663,7 +13663,7 @@ in the "delete" parameter of the "geo" directive.
 </changes>
 
 
-<changes ver="0.7.24" date="01.12.2008">
+<changes ver="0.7.24" date="2008-12-01">
 
 <change type="feature">
 <para lang="ru">
@@ -13697,7 +13697,7 @@ the "$cookie_..." variables did not work in the SSI and the perl module.
 </changes>
 
 
-<changes ver="0.7.23" date="27.11.2008">
+<changes ver="0.7.23" date="2008-11-27">
 
 <change type="feature">
 <para lang="ru">
@@ -13729,7 +13729,7 @@ decrease of memory required for geo base load.
 </changes>
 
 
-<changes ver="0.7.22" date="20.11.2008">
+<changes ver="0.7.22" date="2008-11-20">
 
 <change type="feature">
 <para lang="ru">
@@ -13774,7 +13774,7 @@ Thanks to Zyb.
 </changes>
 
 
-<changes ver="0.7.21" date="11.11.2008">
+<changes ver="0.7.21" date="2008-11-11">
 
 <change>
 <para lang="ru">
@@ -13821,7 +13821,7 @@ the bug had appeared in 0.7.6.
 </changes>
 
 
-<changes ver="0.7.20" date="10.11.2008">
+<changes ver="0.7.20" date="2008-11-10">
 
 <change>
 <para lang="ru">
@@ -13897,7 +13897,7 @@ $server_addr variable might have no value.
 </changes>
 
 
-<changes ver="0.7.19" date="13.10.2008">
+<changes ver="0.7.19" date="2008-10-13">
 
 <change type="bugfix">
 <para lang="ru">
@@ -13911,7 +13911,7 @@ version number update.
 </changes>
 
 
-<changes ver="0.7.18" date="13.10.2008">
+<changes ver="0.7.18" date="2008-10-13">
 
 <change type="change">
 <para lang="ru">
@@ -14002,7 +14002,7 @@ now accept threshold depends on worker_connections.
 </changes>
 
 
-<changes ver="0.7.17" date="15.09.2008">
+<changes ver="0.7.17" date="2008-09-15">
 
 <change type="feature">
 <para lang="ru">
@@ -14058,7 +14058,7 @@ received from backend.
 </changes>
 
 
-<changes ver="0.7.16" date="08.09.2008">
+<changes ver="0.7.16" date="2008-09-08">
 
 <change type="bugfix">
 <para lang="ru">
@@ -14074,7 +14074,7 @@ the bug had appeared in 0.7.15.
 </changes>
 
 
-<changes ver="0.7.15" date="08.09.2008">
+<changes ver="0.7.15" date="2008-09-08">
 
 <change type="feature">
 <para lang="ru">
@@ -14117,7 +14117,7 @@ now nginx allows underscores in a client request header line names.
 </changes>
 
 
-<changes ver="0.7.14" date="01.09.2008">
+<changes ver="0.7.14" date="2008-09-01">
 
 <change type="change">
 <para lang="ru">
@@ -14185,7 +14185,7 @@ configuration file validity test improvements.
 </changes>
 
 
-<changes ver="0.7.13" date="26.08.2008">
+<changes ver="0.7.13" date="2008-08-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -14201,7 +14201,7 @@ the bug had appeared in 0.7.12.
 </changes>
 
 
-<changes ver="0.7.12" date="26.08.2008">
+<changes ver="0.7.12" date="2008-08-26">
 
 <change type="feature">
 <para lang="ru">
@@ -14271,7 +14271,7 @@ the bug had appeared in 0.7.0.
 </changes>
 
 
-<changes ver="0.7.11" date="18.08.2008">
+<changes ver="0.7.11" date="2008-08-18">
 
 <change type="change">
 <para lang="ru">
@@ -14338,7 +14338,7 @@ the bugs had appeared in 0.7.1.
 </changes>
 
 
-<changes ver="0.7.10" date="13.08.2008">
+<changes ver="0.7.10" date="2008-08-13">
 
 <change type="bugfix">
 <para lang="ru">
@@ -14376,7 +14376,7 @@ but for each request passed via the connection.
 </changes>
 
 
-<changes ver="0.7.9" date="12.08.2008">
+<changes ver="0.7.9" date="2008-08-12">
 
 <change type="change">
 <para lang="ru">
@@ -14478,7 +14478,7 @@ the bug had appeared in 0.3.18.
 </changes>
 
 
-<changes ver="0.7.8" date="04.08.2008">
+<changes ver="0.7.8" date="2008-08-04">
 
 <change type="feature">
 <para lang="ru">
@@ -14525,7 +14525,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.7.7" date="30.07.2008">
+<changes ver="0.7.7" date="2008-07-30">
 
 <change type="change">
 <para lang="ru">
@@ -14624,7 +14624,7 @@ UTF-8 encoding usage in the ngx_http_autoindex_module.
 </changes>
 
 
-<changes ver="0.7.6" date="07.07.2008">
+<changes ver="0.7.6" date="2008-07-07">
 
 <change type="bugfix">
 <para lang="ru">
@@ -14650,7 +14650,7 @@ the ngx_http_flv_module did not support several values in a query string.
 </changes>
 
 
-<changes ver="0.7.5" date="01.07.2008">
+<changes ver="0.7.5" date="2008-07-01">
 
 <change>
 <para lang="ru">
@@ -14690,7 +14690,7 @@ were transferred incorrectly.
 </changes>
 
 
-<changes ver="0.7.4" date="30.06.2008">
+<changes ver="0.7.4" date="2008-06-30">
 
 <change type="feature">
 <para lang="ru">
@@ -14740,7 +14740,7 @@ large SSI inclusions might be truncated.
 </changes>
 
 
-<changes ver="0.7.3" date="23.06.2008">
+<changes ver="0.7.3" date="2008-06-23">
 
 <change type="change">
 <para lang="ru">
@@ -14789,7 +14789,7 @@ the bug had appeared in 0.6.9.
 </changes>
 
 
-<changes ver="0.7.2" date="16.06.2008">
+<changes ver="0.7.2" date="2008-06-16">
 
 <change type="feature">
 <para lang="ru">
@@ -14859,7 +14859,7 @@ nginx dropped a query string from the original request.
 </changes>
 
 
-<changes ver="0.7.1" date="26.05.2008">
+<changes ver="0.7.1" date="2008-05-26">
 
 <change type="change">
 <para lang="ru">
@@ -14927,7 +14927,7 @@ Thanks to Roxis.
 </changes>
 
 
-<changes ver="0.7.0" date="19.05.2008">
+<changes ver="0.7.0" date="2008-05-19">
 
 <change type="change">
 <para lang="ru">
@@ -15005,7 +15005,7 @@ if keepalive was enabled.
 </changes>
 
 
-<changes ver="0.6.31" date="12.05.2008">
+<changes ver="0.6.31" date="2008-05-12">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15036,7 +15036,7 @@ and the "open_file_cache_errors" directive was off.
 </changes>
 
 
-<changes ver="0.6.30" date="29.04.2008">
+<changes ver="0.6.30" date="2008-04-29">
 
 <change type="change">
 <para lang="ru">
@@ -15112,7 +15112,7 @@ the bug had appeared in 0.6.15.
 </changes>
 
 
-<changes ver="0.6.29" date="18.03.2008">
+<changes ver="0.6.29" date="2008-03-18">
 
 <change type="feature">
 <para lang="ru">
@@ -15137,7 +15137,7 @@ the bug had appeared in 0.6.27.
 </changes>
 
 
-<changes ver="0.6.28" date="13.03.2008">
+<changes ver="0.6.28" date="2008-03-13">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15153,7 +15153,7 @@ the bug had appeared in 0.6.27.
 </changes>
 
 
-<changes ver="0.6.27" date="12.03.2008">
+<changes ver="0.6.27" date="2008-03-12">
 
 <change type="change">
 <para lang="ru">
@@ -15323,7 +15323,7 @@ in copying URI part contained escaped symbols into arguments.
 </changes>
 
 
-<changes ver="0.6.26" date="11.02.2008">
+<changes ver="0.6.26" date="2008-02-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15406,7 +15406,7 @@ the bug had appeared in 0.6.23.
 </changes>
 
 
-<changes ver="0.6.25" date="08.01.2008">
+<changes ver="0.6.25" date="2008-01-08">
 
 <change type="change">
 <para lang="ru">
@@ -15504,7 +15504,7 @@ the bug had appeared in 0.6.23.
 
 </changes>
 
-<changes ver="0.6.24" date="27.12.2007">
+<changes ver="0.6.24" date="2007-12-27">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15520,7 +15520,7 @@ the bug had appeared in 0.6.23.
 </changes>
 
 
-<changes ver="0.6.23" date="27.12.2007">
+<changes ver="0.6.23" date="2007-12-27">
 
 <change type="change">
 <para lang="ru">
@@ -15659,7 +15659,7 @@ the bug had appeared in 0.5.13.
 </changes>
 
 
-<changes ver="0.6.22" date="19.12.2007">
+<changes ver="0.6.22" date="2007-12-19">
 
 <change type="change">
 <para lang="ru">
@@ -15766,7 +15766,7 @@ Thanks to Manlio Perillo.
 </changes>
 
 
-<changes ver="0.6.21" date="03.12.2007">
+<changes ver="0.6.21" date="2007-12-03">
 
 <change type="change">
 <para lang="ru">
@@ -15834,7 +15834,7 @@ then nginx returned usual response.
 </changes>
 
 
-<changes ver="0.6.20" date="28.11.2007">
+<changes ver="0.6.20" date="2007-11-28">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15852,7 +15852,7 @@ the bug had appeared in 0.6.19.
 </changes>
 
 
-<changes ver="0.6.19" date="27.11.2007">
+<changes ver="0.6.19" date="2007-11-27">
 
 <change type="bugfix">
 <para lang="ru">
@@ -15865,7 +15865,7 @@ the 0.6.18 version could not be built.
 
 </changes>
 
-<changes ver="0.6.18" date="27.11.2007">
+<changes ver="0.6.18" date="2007-11-27">
 
 <change type="change">
 <para lang="ru">
@@ -15930,7 +15930,7 @@ even if limit value was very high.
 </changes>
 
 
-<changes ver="0.6.17" date="15.11.2007">
+<changes ver="0.6.17" date="2007-11-15">
 
 <change type="feature">
 <para lang="ru">
@@ -15997,7 +15997,7 @@ in HTTP/0.9 version.
 </changes>
 
 
-<changes ver="0.6.16" date="29.10.2007">
+<changes ver="0.6.16" date="2007-10-29">
 
 <change type="change">
 <para lang="ru">
@@ -16035,7 +16035,7 @@ compatibility with mget.
 </changes>
 
 
-<changes ver="0.6.15" date="22.10.2007">
+<changes ver="0.6.15" date="2007-10-22">
 
 <change type="feature">
 <para lang="ru">
@@ -16137,7 +16137,7 @@ the bug had appeared in 0.6.7.
 </changes>
 
 
-<changes ver="0.6.14" date="15.10.2007">
+<changes ver="0.6.14" date="2007-10-15">
 
 <change type="change">
 <para lang="ru">
@@ -16258,7 +16258,7 @@ in sub_filter parsing.
 </changes>
 
 
-<changes ver="0.6.13" date="24.09.2007">
+<changes ver="0.6.13" date="2007-09-24">
 
 <change type="bugfix">
 <para lang="ru">
@@ -16275,7 +16275,7 @@ Thanks to Arkadiusz Patyk.
 </changes>
 
 
-<changes ver="0.6.12" date="21.09.2007">
+<changes ver="0.6.12" date="2007-09-21">
 
 <change type="change">
 <para lang="ru">
@@ -16345,7 +16345,7 @@ Thanks to Manlio Perillo.
 </changes>
 
 
-<changes ver="0.6.11" date="11.09.2007">
+<changes ver="0.6.11" date="2007-09-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -16393,7 +16393,7 @@ the bug had appeared in 0.6.6.
 </changes>
 
 
-<changes ver="0.6.10" date="03.09.2007">
+<changes ver="0.6.10" date="2007-09-03">
 
 <change type="feature">
 <para lang="ru">
@@ -16441,7 +16441,7 @@ if /dev/poll method was used.
 </changes>
 
 
-<changes ver="0.6.9" date="28.08.2007">
+<changes ver="0.6.9" date="2007-08-28">
 
 <change type="bugfix">
 <para lang="ru">
@@ -16489,7 +16489,7 @@ the bug had appeared in 0.6.8.
 </changes>
 
 
-<changes ver="0.6.8" date="20.08.2007">
+<changes ver="0.6.8" date="2007-08-20">
 
 <change type="change">
 <para lang="ru">
@@ -16549,7 +16549,7 @@ nginx did not work on FreeBSD/sparc64.
 </changes>
 
 
-<changes ver="0.6.7" date="15.08.2007">
+<changes ver="0.6.7" date="2007-08-15">
 
 <change type="change">
 <para lang="ru">
@@ -16689,7 +16689,7 @@ to FastCGI-server via the unix domain socket.
 </changes>
 
 
-<changes ver="0.6.6" date="30.07.2007">
+<changes ver="0.6.6" date="2007-07-30">
 
 <change type="feature">
 <para lang="ru">
@@ -16772,7 +16772,7 @@ the bug had appeared in 0.6.4.
 </changes>
 
 
-<changes ver="0.6.5" date="23.07.2007">
+<changes ver="0.6.5" date="2007-07-23">
 
 <change type="feature">
 <para lang="ru">
@@ -16841,7 +16841,7 @@ Thanks to Coverity's Scan.
 </changes>
 
 
-<changes ver="0.6.4" date="17.07.2007">
+<changes ver="0.6.4" date="2007-07-17">
 
 <change type="security">
 <para lang="ru">
@@ -16897,7 +16897,7 @@ Thanks to Jiang Hong.
 </changes>
 
 
-<changes ver="0.6.3" date="12.07.2007">
+<changes ver="0.6.3" date="2007-07-12">
 
 <change type="feature">
 <para lang="ru">
@@ -16969,7 +16969,7 @@ the bug had appeared in 0.5.13.
 </changes>
 
 
-<changes ver="0.6.2" date="09.07.2007">
+<changes ver="0.6.2" date="2007-07-09">
 
 <change type="bugfix">
 <para lang="ru">
@@ -16985,7 +16985,7 @@ then nginx passed garbage in the header to a client.
 </changes>
 
 
-<changes ver="0.6.1" date="17.06.2007">
+<changes ver="0.6.1" date="2007-06-17">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17031,7 +17031,7 @@ process identification number.
 </changes>
 
 
-<changes ver="0.6.0" date="14.06.2007">
+<changes ver="0.6.0" date="2007-06-14">
 
 <change type="feature">
 <para lang="ru">
@@ -17047,7 +17047,7 @@ the "www.example.*" wildcards.
 </changes>
 
 
-<changes ver="0.5.25" date="11.06.2007">
+<changes ver="0.5.25" date="2007-06-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17063,7 +17063,7 @@ the bug had appeared in 0.5.24.
 </changes>
 
 
-<changes ver="0.5.24" date="06.06.2007">
+<changes ver="0.5.24" date="2007-06-06">
 
 <change type="security">
 <para lang="ru">
@@ -17090,7 +17090,7 @@ the bug had appeared in 0.5.23.
 </changes>
 
 
-<changes ver="0.5.23" date="04.06.2007">
+<changes ver="0.5.23" date="2007-06-04">
 
 <change type="feature">
 <para lang="ru">
@@ -17148,7 +17148,7 @@ in the HTTPS protocol in the "proxy_pass" directive.
 </changes>
 
 
-<changes ver="0.5.22" date="29.05.2007">
+<changes ver="0.5.22" date="2007-05-29">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17164,7 +17164,7 @@ the bug had appeared in 0.5.21.
 </changes>
 
 
-<changes ver="0.5.21" date="28.05.2007">
+<changes ver="0.5.21" date="2007-05-28">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17215,7 +17215,7 @@ in the HTTPS protocol in the "proxy_pass" directive.
 </changes>
 
 
-<changes ver="0.5.20" date="07.05.2007">
+<changes ver="0.5.20" date="2007-05-07">
 
 <change type="feature">
 <para lang="ru">
@@ -17284,7 +17284,7 @@ Thanks to Andrei Nigmatulin.
 </changes>
 
 
-<changes ver="0.5.19" date="24.04.2007">
+<changes ver="0.5.19" date="2007-04-24">
 
 <change type="change">
 <para lang="ru">
@@ -17350,7 +17350,7 @@ the files more than 2G could not be transferred using sendfile on 64-bit Linux.
 </changes>
 
 
-<changes ver="0.5.18" date="19.04.2007">
+<changes ver="0.5.18" date="2007-04-19">
 
 <change type="feature">
 <para lang="ru">
@@ -17414,7 +17414,7 @@ the bug had appeared in 0.3.38.
 </changes>
 
 
-<changes ver="0.5.17" date="02.04.2007">
+<changes ver="0.5.17" date="2007-04-02">
 
 <change type="change">
 <para lang="ru">
@@ -17468,7 +17468,7 @@ returned old cached value.
 </changes>
 
 
-<changes ver="0.5.16" date="26.03.2007">
+<changes ver="0.5.16" date="2007-03-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17522,7 +17522,7 @@ the bug had appeared in 0.5.15.
 </changes>
 
 
-<changes ver="0.5.15" date="19.03.2007">
+<changes ver="0.5.15" date="2007-03-19">
 
 <change type="feature">
 <para lang="ru">
@@ -17615,7 +17615,7 @@ now nginx does not log some alerts if eventport or /dev/poll methods are used.
 </changes>
 
 
-<changes ver="0.5.14" date="23.02.2007">
+<changes ver="0.5.14" date="2007-02-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17630,7 +17630,7 @@ nginx ignored superfluous closing "}" in the end of configuration file.
 </changes>
 
 
-<changes ver="0.5.13" date="19.02.2007">
+<changes ver="0.5.13" date="2007-02-19">
 
 <change type="feature">
 <para lang="ru">
@@ -17701,7 +17701,7 @@ the bug had appeared in 0.5.8.
 </changes>
 
 
-<changes ver="0.5.12" date="12.02.2007">
+<changes ver="0.5.12" date="2007-02-12">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17751,7 +17751,7 @@ ngx_http_perl_module could not be built on Solaris.
 </changes>
 
 
-<changes ver="0.5.11" date="05.02.2007">
+<changes ver="0.5.11" date="2007-02-05">
 
 <change type="feature">
 <para lang="ru">
@@ -17812,7 +17812,7 @@ if nginx was built with -O2 optimization.
 </changes>
 
 
-<changes ver="0.5.10" date="26.01.2007">
+<changes ver="0.5.10" date="2007-01-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17843,7 +17843,7 @@ the bug had appeared in 0.5.1.
 </changes>
 
 
-<changes ver="0.5.9" date="25.01.2007">
+<changes ver="0.5.9" date="2007-01-25">
 
 <change type="change">
 <para lang="ru">
@@ -17915,7 +17915,7 @@ the "access_log off" directive did not always turn off the logging.
 </changes>
 
 
-<changes ver="0.5.8" date="19.01.2007">
+<changes ver="0.5.8" date="2007-01-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -17992,7 +17992,7 @@ Bugfixes in the "limit_zone" directive.
 </changes>
 
 
-<changes ver="0.5.7" date="15.01.2007">
+<changes ver="0.5.7" date="2007-01-15">
 
 <change type="feature">
 <para lang="ru">
@@ -18059,7 +18059,7 @@ the PCRE-6.5+ library and the icc compiler compatibility.
 </changes>
 
 
-<changes ver="0.5.6" date="09.01.2007">
+<changes ver="0.5.6" date="2007-01-09">
 
 <change type="change">
 <para lang="ru">
@@ -18121,7 +18121,7 @@ the byte-ranges were transferred incorrectly if the $r->sendfile() was used.
 </changes>
 
 
-<changes ver="0.5.5" date="24.12.2006">
+<changes ver="0.5.5" date="2006-12-24">
 
 <change type="change">
 <para lang="ru">
@@ -18182,7 +18182,7 @@ the ppc platform specific bugs.
 </changes>
 
 
-<changes ver="0.5.4" date="15.12.2006">
+<changes ver="0.5.4" date="2006-12-15">
 
 <change type="feature">
 <para lang="ru">
@@ -18229,7 +18229,7 @@ the bug had appeared in 0.4.14.
 </changes>
 
 
-<changes ver="0.5.3" date="13.12.2006">
+<changes ver="0.5.3" date="2006-12-13">
 
 <change type="feature">
 <para lang="ru">
@@ -18264,7 +18264,7 @@ the $r->has_request_body method did not work.
 </changes>
 
 
-<changes ver="0.5.2" date="11.12.2006">
+<changes ver="0.5.2" date="2006-12-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -18282,7 +18282,7 @@ the bug had appeared in 0.5.1.
 </changes>
 
 
-<changes ver="0.5.1" date="11.12.2006">
+<changes ver="0.5.1" date="2006-12-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -18374,7 +18374,7 @@ response time was more than 1 millisecond.
 </changes>
 
 
-<changes ver="0.5.0" date="04.12.2006">
+<changes ver="0.5.0" date="2006-12-04">
 
 <change type="change">
 <para lang="ru">
@@ -18446,7 +18446,7 @@ the bug had appeared in 0.4.14.
 </changes>
 
 
-<changes ver="0.4.14" date="27.11.2006">
+<changes ver="0.4.14" date="2006-11-27">
 
 <change type="feature">
 <para lang="ru">
@@ -18542,7 +18542,7 @@ authentication server failed.
 </changes>
 
 
-<changes ver="0.4.13" date="15.11.2006">
+<changes ver="0.4.13" date="2006-11-15">
 
 <change type="feature">
 <para lang="ru">
@@ -18629,7 +18629,7 @@ the bug had appeared in 0.3.50.
 </changes>
 
 
-<changes ver="0.4.12" date="31.10.2006">
+<changes ver="0.4.12" date="2006-10-31">
 
 <change type="feature">
 <para lang="ru">
@@ -18663,7 +18663,7 @@ nginx did not omit the "#fragment" part in URI.
 </changes>
 
 
-<changes ver="0.4.11" date="25.10.2006">
+<changes ver="0.4.11" date="2006-10-25">
 
 <change type="feature">
 <para lang="ru">
@@ -18699,7 +18699,7 @@ the bug had appeared in 0.4.10.
 </changes>
 
 
-<changes ver="0.4.10" date="23.10.2006">
+<changes ver="0.4.10" date="2006-10-23">
 
 <change type="feature">
 <para lang="ru">
@@ -18757,7 +18757,7 @@ the bug had appeared in 0.4.9.
 </changes>
 
 
-<changes ver="0.4.9" date="13.10.2006">
+<changes ver="0.4.9" date="2006-10-13">
 
 <change type="feature">
 <para lang="ru">
@@ -18780,7 +18780,7 @@ the ngx_http_perl_module now tests the nginx.pm module version.
 </changes>
 
 
-<changes ver="0.4.8" date="11.10.2006">
+<changes ver="0.4.8" date="2006-10-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -18807,7 +18807,7 @@ Thanks to Alexey Kovyrin.
 </changes>
 
 
-<changes ver="0.4.7" date="10.10.2006">
+<changes ver="0.4.7" date="2006-10-10">
 
 <change type="feature">
 <para lang="ru">
@@ -18870,7 +18870,7 @@ nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
 </changes>
 
 
-<changes ver="0.4.6" date="06.10.2006">
+<changes ver="0.4.6" date="2006-10-06">
 
 <change type="bugfix">
 <para lang="ru">
@@ -18910,7 +18910,7 @@ the bug had appeared in 0.4.4.
 </changes>
 
 
-<changes ver="0.4.5" date="02.10.2006">
+<changes ver="0.4.5" date="2006-10-02">
 
 <change type="bugfix">
 <para lang="ru">
@@ -18926,7 +18926,7 @@ the bug had appeared in 0.4.4.
 </changes>
 
 
-<changes ver="0.4.4" date="02.10.2006">
+<changes ver="0.4.4" date="2006-10-02">
 
 <change type="feature">
 <para lang="ru">
@@ -18992,7 +18992,7 @@ in the "proxy_redirect" directive.
 </changes>
 
 
-<changes ver="0.4.3" date="26.09.2006">
+<changes ver="0.4.3" date="2006-09-26">
 
 <change type="change">
 <para lang="ru">
@@ -19067,7 +19067,7 @@ of the Sun Studio PAUSE hardware capability bug.
 </changes>
 
 
-<changes ver="0.4.2" date="14.09.2006">
+<changes ver="0.4.2" date="2006-09-14">
 
 <change type="bugfix">
 <para lang="ru">
@@ -19083,7 +19083,7 @@ the bug had appeared in 0.4.1.
 </changes>
 
 
-<changes ver="0.4.1" date="14.09.2006">
+<changes ver="0.4.1" date="2006-09-14">
 
 <change type="bugfix">
 <para lang="ru">
@@ -19119,7 +19119,7 @@ Thanks to Yusuf Goolamabbas.
 </changes>
 
 
-<changes ver="0.4.0" date="30.08.2006">
+<changes ver="0.4.0" date="2006-08-30">
 
 <change>
 <para lang="ru">
@@ -19188,7 +19188,7 @@ the bug had appeared in 0.1.29.
 </changes>
 
 
-<changes ver="0.3.61" date="28.08.2006">
+<changes ver="0.3.61" date="2006-08-28">
 
 <change type="change">
 <para lang="ru">
@@ -19231,7 +19231,7 @@ had the captured escaped symbols from original URI.
 </changes>
 
 
-<changes ver="0.3.60" date="18.08.2006">
+<changes ver="0.3.60" date="2006-08-18">
 
 <change type="bugfix">
 <para lang="ru">
@@ -19248,7 +19248,7 @@ the bug had appeared in 0.3.59.
 </changes>
 
 
-<changes ver="0.3.59" date="16.08.2006">
+<changes ver="0.3.59" date="2006-08-16">
 
 <change type="feature">
 <para lang="ru">
@@ -19284,7 +19284,7 @@ the bug had appeared in 0.3.58.
 </changes>
 
 
-<changes ver="0.3.58" date="14.08.2006">
+<changes ver="0.3.58" date="2006-08-14">
 
 <change type="feature">
 <para lang="ru">
@@ -19347,7 +19347,7 @@ nginx could not run on 64-bit FreeBSD 7.0-CURRENT.
 </changes>
 
 
-<changes ver="0.3.57" date="09.08.2006">
+<changes ver="0.3.57" date="2006-08-09">
 
 <change type="feature">
 <para lang="ru">
@@ -19393,7 +19393,7 @@ directive.
 </changes>
 
 
-<changes ver="0.3.56" date="04.08.2006">
+<changes ver="0.3.56" date="2006-08-04">
 
 <change type="feature">
 <para lang="ru">
@@ -19428,7 +19428,7 @@ some sent to client header lines were logged in the access log.
 </changes>
 
 
-<changes ver="0.3.55" date="28.07.2006">
+<changes ver="0.3.55" date="2006-07-28">
 
 <change type="feature">
 <para lang="ru">
@@ -19518,7 +19518,7 @@ the bug had appeared in 0.3.50.
 </changes>
 
 
-<changes ver="0.3.54" date="11.07.2006">
+<changes ver="0.3.54" date="2006-07-11">
 
 <change type="feature">
 <para lang="ru">
@@ -19585,7 +19585,7 @@ the bug had appeared in 0.3.53.
 </changes>
 
 
-<changes ver="0.3.53" date="07.07.2006">
+<changes ver="0.3.53" date="2006-07-07">
 
 <change type="change">
 <para lang="ru">
@@ -19658,7 +19658,7 @@ anyway.
 </changes>
 
 
-<changes ver="0.3.52" date="03.07.2006">
+<changes ver="0.3.52" date="2006-07-03">
 
 <change type="change">
 <para lang="ru">
@@ -19709,7 +19709,7 @@ was not removed.
 </changes>
 
 
-<changes ver="0.3.51" date="30.06.2006">
+<changes ver="0.3.51" date="2006-06-30">
 
 <change type="bugfix">
 <para lang="ru">
@@ -19725,7 +19725,7 @@ the bug had appeared in 0.3.50.
 </changes>
 
 
-<changes ver="0.3.50" date="28.06.2006">
+<changes ver="0.3.50" date="2006-06-28">
 
 <change type="change">
 <para lang="ru">
@@ -19799,7 +19799,7 @@ in nonbuffered proxying mode the client connection was not closed.
 </changes>
 
 
-<changes ver="0.3.49" date="31.05.2006">
+<changes ver="0.3.49" date="2006-05-31">
 
 <change type="bugfix">
 <para lang="ru">
@@ -19825,7 +19825,7 @@ was included instead of second and following subrequests.
 </changes>
 
 
-<changes ver="0.3.48" date="29.05.2006">
+<changes ver="0.3.48" date="2006-05-29">
 
 <change type="change">
 <para lang="ru">
@@ -19881,7 +19881,7 @@ the bug had appeared in 0.3.46.
 </changes>
 
 
-<changes ver="0.3.47" date="23.05.2006">
+<changes ver="0.3.47" date="2006-05-23">
 
 <change type="feature">
 <para lang="ru">
@@ -19905,7 +19905,7 @@ is always removed.
 </changes>
 
 
-<changes ver="0.3.46" date="11.05.2006">
+<changes ver="0.3.46" date="2006-05-11">
 
 <change type="feature">
 <para lang="ru">
@@ -19951,7 +19951,7 @@ the reconfiguration bug and memory leaks in the ngx_http_perl_module.
 </changes>
 
 
-<changes ver="0.3.45" date="06.05.2006">
+<changes ver="0.3.45" date="2006-05-06">
 
 <change type="feature">
 <para lang="ru">
@@ -20006,7 +20006,7 @@ backend only instead of being distributed among the rest.
 </changes>
 
 
-<changes ver="0.3.44" date="04.05.2006">
+<changes ver="0.3.44" date="2006-05-04">
 
 <change type="feature">
 <para lang="ru">
@@ -20039,7 +20039,7 @@ in the SSI.
 </changes>
 
 
-<changes ver="0.3.43" date="26.04.2006">
+<changes ver="0.3.43" date="2006-04-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -20053,7 +20053,7 @@ in the SSI.
 </changes>
 
 
-<changes ver="0.3.42" date="26.04.2006">
+<changes ver="0.3.42" date="2006-04-26">
 
 <change type="feature">
 <para lang="ru">
@@ -20101,7 +20101,7 @@ response header line.
 </changes>
 
 
-<changes ver="0.3.41" date="21.04.2006">
+<changes ver="0.3.41" date="2006-04-21">
 
 <change type="feature">
 <para lang="ru">
@@ -20147,7 +20147,7 @@ the segmentation fault was occurred.
 </changes>
 
 
-<changes ver="0.3.40" date="19.04.2006">
+<changes ver="0.3.40" date="2006-04-19">
 
 <change type="feature">
 <para lang="ru">
@@ -20179,7 +20179,7 @@ the "$limit_rate" variable.
 </changes>
 
 
-<changes ver="0.3.39" date="17.04.2006">
+<changes ver="0.3.39" date="2006-04-17">
 
 <change type="feature">
 <para lang="ru">
@@ -20239,7 +20239,7 @@ the bug had appeared in 0.3.38.
 </changes>
 
 
-<changes ver="0.3.38" date="14.04.2006">
+<changes ver="0.3.38" date="2006-04-14">
 
 <change type="feature">
 <para lang="ru">
@@ -20320,7 +20320,7 @@ Thanks to Maxim Dounin.
 </changes>
 
 
-<changes ver="0.3.37" date="07.04.2006">
+<changes ver="0.3.37" date="2006-04-07">
 
 <change type="feature">
 <para lang="ru">
@@ -20361,7 +20361,7 @@ in the ngx_http_addition_filter_module.
 </changes>
 
 
-<changes ver="0.3.36" date="05.04.2006">
+<changes ver="0.3.36" date="2006-04-05">
 
 <change type="feature">
 <para lang="ru">
@@ -20457,7 +20457,7 @@ to a server prefix.
 </changes>
 
 
-<changes ver="0.3.35" date="22.03.2006">
+<changes ver="0.3.35" date="2006-03-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -20484,7 +20484,7 @@ in the "proxy_pass" directive without the URI part in a subrequest.
 </changes>
 
 
-<changes ver="0.3.34" date="21.03.2006">
+<changes ver="0.3.34" date="2006-03-21">
 
 <change type="feature">
 <para lang="ru">
@@ -20498,7 +20498,7 @@ the "add_header" directive supports the variables.
 </changes>
 
 
-<changes ver="0.3.33" date="15.03.2006">
+<changes ver="0.3.33" date="2006-03-15">
 
 <change type="feature">
 <para lang="ru">
@@ -20533,7 +20533,7 @@ in the "post_action" directive.
 </changes>
 
 
-<changes ver="0.3.32" date="11.03.2006">
+<changes ver="0.3.32" date="2006-03-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -20549,7 +20549,7 @@ the bug had appeared in 0.3.31.
 </changes>
 
 
-<changes ver="0.3.31" date="10.03.2006">
+<changes ver="0.3.31" date="2006-03-10">
 
 <change type="change">
 <para lang="ru">
@@ -20628,7 +20628,7 @@ perl 5.8.8 compatibility.
 </changes>
 
 
-<changes ver="0.3.30" date="22.02.2006">
+<changes ver="0.3.30" date="2006-02-22">
 
 <change type="change">
 <para lang="ru">
@@ -20663,7 +20663,7 @@ the bug had appeared in 0.3.27.
 </changes>
 
 
-<changes ver="0.3.29" date="20.02.2006">
+<changes ver="0.3.29" date="2006-02-20">
 
 <change type="feature">
 <para lang="ru">
@@ -20712,7 +20712,7 @@ only after a successful completion of a request.
 </changes>
 
 
-<changes ver="0.3.28" date="16.02.2006">
+<changes ver="0.3.28" date="2006-02-16">
 
 <change type="feature">
 <para lang="ru">
@@ -20779,7 +20779,7 @@ was transferred to a client.
 </changes>
 
 
-<changes ver="0.3.27" date="08.02.2006">
+<changes ver="0.3.27" date="2006-02-08">
 
 <change type="change">
 <para lang="ru">
@@ -20853,7 +20853,7 @@ the requests with the body was not transferred.
 </changes>
 
 
-<changes ver="0.3.26" date="03.02.2006">
+<changes ver="0.3.26" date="2006-02-03">
 
 <change type="change">
 <para lang="ru">
@@ -20878,7 +20878,7 @@ URI was transferred to a backend while proxying the SSI subrequest.
 </changes>
 
 
-<changes ver="0.3.25" date="01.02.2006">
+<changes ver="0.3.25" date="2006-02-01">
 
 <change type="bugfix">
 <para lang="ru">
@@ -20896,7 +20896,7 @@ the bug had appeared in 0.3.24.
 </changes>
 
 
-<changes ver="0.3.24" date="01.02.2006">
+<changes ver="0.3.24" date="2006-02-01">
 
 <change type="workaround">
 <para lang="ru">
@@ -20951,7 +20951,7 @@ the bug had appeared in 0.3.18.
 </changes>
 
 
-<changes ver="0.3.23" date="24.01.2006">
+<changes ver="0.3.23" date="2006-01-24">
 
 <change type="feature">
 <para lang="ru">
@@ -20983,7 +20983,7 @@ the ngx_http_perl_module was incorrectly built on Linux and Solaris.
 </changes>
 
 
-<changes ver="0.3.22" date="17.01.2006">
+<changes ver="0.3.22" date="2006-01-17">
 
 <change type="feature">
 <para lang="ru">
@@ -21019,7 +21019,7 @@ the bug had appeared in 0.3.18.
 </changes>
 
 
-<changes ver="0.3.21" date="16.01.2006">
+<changes ver="0.3.21" date="2006-01-16">
 
 <change type="feature">
 <para lang="ru">
@@ -21042,7 +21042,7 @@ the "valid_referers" directive allows the referrers without URI part.
 </changes>
 
 
-<changes ver="0.3.20" date="11.01.2006">
+<changes ver="0.3.20" date="2006-01-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -21064,7 +21064,7 @@ the ngx_http_memcached_module did not support the keys in the "/usr?args" form.
 
 </changes>
 
-<changes ver="0.3.19" date="28.12.2005">
+<changes ver="0.3.19" date="2005-12-28">
 
 <change type="feature">
 <para lang="ru">
@@ -21096,7 +21096,7 @@ in SSI handling.
 </changes>
 
 
-<changes ver="0.3.18" date="26.12.2005">
+<changes ver="0.3.18" date="2005-12-26">
 
 <change type="feature">
 <para lang="ru">
@@ -21191,7 +21191,7 @@ the bug had appeared in 0.3.16.
 </changes>
 
 
-<changes ver="0.3.17" date="18.12.2005">
+<changes ver="0.3.17" date="2005-12-18">
 
 <change type="change">
 <para lang="ru">
@@ -21245,7 +21245,7 @@ was used by default.
 </changes>
 
 
-<changes ver="0.3.16" date="16.12.2005">
+<changes ver="0.3.16" date="2005-12-16">
 
 <change type="feature">
 <para lang="ru">
@@ -21332,7 +21332,7 @@ the bug had appeared in 0.3.13.
 </changes>
 
 
-<changes ver="0.3.15" date="07.12.2005">
+<changes ver="0.3.15" date="2005-12-07">
 
 <change type="feature">
 <para lang="ru">
@@ -21366,7 +21366,7 @@ quit and active "debug_points" directive.
 </changes>
 
 
-<changes ver="0.3.14" date="05.12.2005">
+<changes ver="0.3.14" date="2005-12-05">
 
 <change type="bugfix">
 <para lang="ru">
@@ -21382,7 +21382,7 @@ the bug had appeared in 0.3.13.
 </changes>
 
 
-<changes ver="0.3.13" date="05.12.2005">
+<changes ver="0.3.13" date="2005-12-05">
 
 <change type="feature">
 <para lang="ru">
@@ -21436,7 +21436,7 @@ the bug had appeared in 0.3.11.
 </changes>
 
 
-<changes ver="0.3.12" date="26.11.2005">
+<changes ver="0.3.12" date="2005-11-26">
 
 <change type="security">
 <para lang="ru">
@@ -21559,7 +21559,7 @@ bracket in the "if" directive.
 </changes>
 
 
-<changes ver="0.3.11" date="15.11.2005">
+<changes ver="0.3.11" date="2005-11-15">
 
 <change type="bugfix">
 <para lang="ru">
@@ -21575,7 +21575,7 @@ the bug had appeared in 0.3.10.
 </changes>
 
 
-<changes ver="0.3.10" date="15.11.2005">
+<changes ver="0.3.10" date="2005-11-15">
 
 <change type="change">
 <para lang="ru">
@@ -21694,7 +21694,7 @@ response was encoded incorrectly.
 </changes>
 
 
-<changes ver="0.3.9" date="10.11.2005">
+<changes ver="0.3.9" date="2005-11-10">
 
 <change type="bugfix">
 <para lang="ru">
@@ -21711,7 +21711,7 @@ the bug had appeared in 0.3.8.
 </changes>
 
 
-<changes ver="0.3.8" date="09.11.2005">
+<changes ver="0.3.8" date="2005-11-09">
 
 <change type="security">
 <para lang="ru">
@@ -21885,7 +21885,7 @@ then the response did not transferred complete or did not transferred at all.
 </changes>
 
 
-<changes ver="0.3.7" date="27.10.2005">
+<changes ver="0.3.7" date="2005-10-27">
 
 <change type="feature">
 <para lang="ru">
@@ -21911,7 +21911,7 @@ the bug had appeared in 0.3.2.
 </changes>
 
 
-<changes ver="0.3.6" date="24.10.2005">
+<changes ver="0.3.6" date="2005-10-24">
 
 <change type="change">
 <para lang="ru">
@@ -21957,7 +21957,7 @@ always used.
 </changes>
 
 
-<changes ver="0.3.5" date="21.10.2005">
+<changes ver="0.3.5" date="2005-10-21">
 
 <change type="bugfix">
 <para lang="ru">
@@ -21997,7 +21997,7 @@ directive were used.
 </changes>
 
 
-<changes ver="0.3.4" date="19.10.2005">
+<changes ver="0.3.4" date="2005-10-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22013,7 +22013,7 @@ the bug had appeared in 0.3.3.
 </changes>
 
 
-<changes ver="0.3.3" date="19.10.2005">
+<changes ver="0.3.3" date="2005-10-19">
 
 <change type="change">
 <para lang="ru">
@@ -22148,7 +22148,7 @@ the "ssl_protocols" directive allowed to specify the single protocol only.
 </changes>
 
 
-<changes ver="0.3.2" date="12.10.2005">
+<changes ver="0.3.2" date="2005-10-12">
 
 <change type="feature">
 <para lang="ru">
@@ -22174,7 +22174,7 @@ directives.
 </changes>
 
 
-<changes ver="0.3.1" date="10.10.2005">
+<changes ver="0.3.1" date="2005-10-10">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22201,7 +22201,7 @@ correct handling of the "\\", "\"", "\'", and "\$" pairs in SSI.
 </changes>
 
 
-<changes ver="0.3.0" date="07.10.2005">
+<changes ver="0.3.0" date="2005-10-07">
 
 <change type="change">
 <para lang="ru">
@@ -22217,7 +22217,7 @@ The limit was introduced because of millisecond timers overflow.
 </changes>
 
 
-<changes ver="0.2.6" date="05.10.2005">
+<changes ver="0.2.6" date="2005-10-05">
 
 <change type="change">
 <para lang="ru">
@@ -22292,7 +22292,7 @@ the bug had appeared in 0.2.2.
 </changes>
 
 
-<changes ver="0.2.5" date="04.10.2005">
+<changes ver="0.2.5" date="2005-10-04">
 
 <change type="change">
 <para lang="ru">
@@ -22337,7 +22337,7 @@ expressions of the "if" command.
 </changes>
 
 
-<changes ver="0.2.4" date="03.10.2005">
+<changes ver="0.2.4" date="2005-10-03">
 
 <change type="feature">
 <para lang="ru">
@@ -22377,7 +22377,7 @@ the bug had appeared in 0.2.0.
 </changes>
 
 
-<changes ver="0.2.3" date="30.09.2005">
+<changes ver="0.2.3" date="2005-09-30">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22393,7 +22393,7 @@ the bug had appeared in 0.2.2.
 </changes>
 
 
-<changes ver="0.2.2" date="30.09.2005">
+<changes ver="0.2.2" date="2005-09-30">
 
 <change type="feature">
 <para lang="ru">
@@ -22467,7 +22467,7 @@ the export versions of MSIE 5.x could not connect via HTTPS.
 </changes>
 
 
-<changes ver="0.2.1" date="23.09.2005">
+<changes ver="0.2.1" date="2005-09-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22485,7 +22485,7 @@ the bug had appeared in 0.2.0.
 </changes>
 
 
-<changes ver="0.2.0" date="23.09.2005">
+<changes ver="0.2.0" date="2005-09-23">
 
 <change>
 <para lang="ru">
@@ -22619,7 +22619,7 @@ Thanks to Alexandr Kukushkin.
 </changes>
 
 
-<changes ver="0.1.45" date="08.09.2005">
+<changes ver="0.1.45" date="2005-09-08">
 
 <change type="change">
 <para lang="ru">
@@ -22654,7 +22654,7 @@ Various bug fixes in the IMAP/POP3 proxy.
 </changes>
 
 
-<changes ver="0.1.44" date="06.09.2005">
+<changes ver="0.1.44" date="2005-09-06">
 
 <change type="feature">
 <para lang="ru">
@@ -22697,7 +22697,7 @@ authorization use.
 </changes>
 
 
-<changes ver="0.1.43" date="30.08.2005">
+<changes ver="0.1.43" date="2005-08-30">
 
 <change type="feature">
 <para lang="ru">
@@ -22762,7 +22762,7 @@ in the proxied mode the bug had appeared in 0.1.29.
 </changes>
 
 
-<changes ver="0.1.42" date="23.08.2005">
+<changes ver="0.1.42" date="2005-08-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22791,7 +22791,7 @@ the bug had appeared in 0.1.38.
 </changes>
 
 
-<changes ver="0.1.41" date="25.07.2005">
+<changes ver="0.1.41" date="2005-07-25">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22807,7 +22807,7 @@ then it can not be used in SSI.
 </changes>
 
 
-<changes ver="0.1.40" date="22.07.2005">
+<changes ver="0.1.40" date="2005-07-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -22866,7 +22866,7 @@ became shorter in the "ps" command.
 </changes>
 
 
-<changes ver="0.1.39" date="14.07.2005">
+<changes ver="0.1.39" date="2005-07-14">
 
 <change>
 <para lang="ru">
@@ -22985,7 +22985,7 @@ Bugfixes in IMAP/POP3 proxy in interaction with a backend at the login state.
 </changes>
 
 
-<changes ver="0.1.38" date="08.07.2005">
+<changes ver="0.1.38" date="2005-07-08">
 
 <change type="feature">
 <para lang="ru">
@@ -23108,7 +23108,7 @@ the IMAP/POP3 proxy.
 </changes>
 
 
-<changes ver="0.1.37" date="23.06.2005">
+<changes ver="0.1.37" date="2005-06-23">
 
 <change type="change">
 <para lang="ru">
@@ -23146,7 +23146,7 @@ then nginx started to request all backends again.
 </changes>
 
 
-<changes ver="0.1.36" date="15.06.2005">
+<changes ver="0.1.36" date="2005-06-15">
 
 <change type="change">
 <para lang="ru">
@@ -23219,7 +23219,7 @@ the reconfiguration by the -HUP signal was made twice.
 </changes>
 
 
-<changes ver="0.1.35" date="07.06.2005">
+<changes ver="0.1.35" date="2005-06-07">
 
 <change type="feature">
 <para lang="ru">
@@ -23291,7 +23291,7 @@ the bug had appeared in 0.1.28.
 </changes>
 
 
-<changes ver="0.1.34" date="26.05.2005">
+<changes ver="0.1.34" date="2005-05-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23334,7 +23334,7 @@ request header line passing.
 </changes>
 
 
-<changes ver="0.1.33" date="23.05.2005">
+<changes ver="0.1.33" date="2005-05-23">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23381,7 +23381,7 @@ the 500 error code was returned.
 </changes>
 
 
-<changes ver="0.1.32" date="19.05.2005">
+<changes ver="0.1.32" date="2005-05-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23427,7 +23427,7 @@ mode.
 </changes>
 
 
-<changes ver="0.1.31" date="16.05.2005">
+<changes ver="0.1.31" date="2005-05-16">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23470,7 +23470,7 @@ the bug had appeared in 0.1.30.
 </changes>
 
 
-<changes ver="0.1.30" date="14.05.2005">
+<changes ver="0.1.30" date="2005-05-14">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23533,7 +23533,7 @@ the "ignore_invalid_headers" directive.
 </changes>
 
 
-<changes ver="0.1.29" date="12.05.2005">
+<changes ver="0.1.29" date="2005-05-12">
 
 <change type="feature">
 <para lang="ru">
@@ -23846,7 +23846,7 @@ nginx could not be built on MacOS X.
 </changes>
 
 
-<changes ver="0.1.28" date="08.04.2005">
+<changes ver="0.1.28" date="2005-04-08">
 
 <change type="bugfix">
 <para lang="ru">
@@ -23869,7 +23869,7 @@ nginx could not be built by gcc 4.0 on Linux.
 </changes>
 
 
-<changes ver="0.1.27" date="28.03.2005">
+<changes ver="0.1.27" date="2005-03-28">
 
 <change type="feature">
 <para lang="ru">
@@ -23928,7 +23928,7 @@ nginx could not be built on FreeBSD and Linux, if the
 </changes>
 
 
-<changes ver="0.1.26" date="22.03.2005">
+<changes ver="0.1.26" date="2005-03-22">
 
 <change type="change">
 <para lang="ru">
@@ -23964,7 +23964,7 @@ auth_basic_user_file directives.
 </changes>
 
 
-<changes ver="0.1.25" date="19.03.2005">
+<changes ver="0.1.25" date="2005-03-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24081,7 +24081,7 @@ the --with-openssl-opt=OPTIONS autoconfiguration directive.
 </changes>
 
 
-<changes ver="0.1.24" date="04.03.2005">
+<changes ver="0.1.24" date="2005-03-04">
 
 <change type="feature">
 <para lang="ru">
@@ -24127,7 +24127,7 @@ the lack of the "Referer" header line was always accounted as valid referrer.
 </changes>
 
 
-<changes ver="0.1.23" date="01.03.2005">
+<changes ver="0.1.23" date="2005-03-01">
 
 <change type="feature">
 <para lang="ru">
@@ -24203,7 +24203,7 @@ of the response header if the no response was transferred to a client.
 </changes>
 
 
-<changes ver="0.1.22" date="22.02.2005">
+<changes ver="0.1.22" date="2005-02-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24231,7 +24231,7 @@ the bug had appeared in 0.1.21.
 </changes>
 
 
-<changes ver="0.1.21" date="22.02.2005">
+<changes ver="0.1.21" date="2005-02-22">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24268,7 +24268,7 @@ nginx could not be built on NetBSD 2.0.
 </changes>
 
 
-<changes ver="0.1.20" date="17.02.2005">
+<changes ver="0.1.20" date="2005-02-17">
 
 <change type="feature">
 <para lang="ru">
@@ -24292,7 +24292,7 @@ the FastCGI stderr stream was handled incorrectly.
 </changes>
 
 
-<changes ver="0.1.19" date="16.02.2005">
+<changes ver="0.1.19" date="2005-02-16">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24327,7 +24327,7 @@ via SSL connections.
 </changes>
 
 
-<changes ver="0.1.18" date="09.02.2005">
+<changes ver="0.1.18" date="2005-02-09">
 
 <change type="workaround">
 <para lang="ru">
@@ -24422,7 +24422,7 @@ the rewrite/location cycle and sets the current configuration to the request.
 </changes>
 
 
-<changes ver="0.1.17" date="03.02.2005">
+<changes ver="0.1.17" date="2005-02-03">
 
 <change type="change">
 <para lang="ru">
@@ -24519,7 +24519,7 @@ the system error message was not logged on Linux.
 </changes>
 
 
-<changes ver="0.1.16" date="25.01.2005">
+<changes ver="0.1.16" date="2005-01-25">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24596,7 +24596,7 @@ the bug had appeared in 0.1.14.
 </changes>
 
 
-<changes ver="0.1.15" date="19.01.2005">
+<changes ver="0.1.15" date="2005-01-19">
 
 <change type="bugfix">
 <para lang="ru">
@@ -24684,7 +24684,7 @@ caused segmentation fault.
 </changes>
 
 
-<changes ver="0.1.14" date="18.01.2005">
+<changes ver="0.1.14" date="2005-01-18">
 
 <change type="feature">
 <para lang="ru">
@@ -24808,7 +24808,7 @@ Thanks to Sergey Skvortsov for SSL-accelerator.
 </changes>
 
 
-<changes ver="0.1.13" date="21.12.2004">
+<changes ver="0.1.13" date="2004-12-21">
 
 <change type="feature">
 <para lang="ru">
@@ -24840,7 +24840,7 @@ the %request_length log parameter logged the incorrect length.
 </changes>
 
 
-<changes ver="0.1.12" date="06.12.2004">
+<changes ver="0.1.12" date="2004-12-06">
 
 <change type="feature">
 <para lang="ru">
@@ -24880,7 +24880,7 @@ the SO_SNDLOWAT option.
 </changes>
 
 
-<changes ver="0.1.11" date="02.12.2004">
+<changes ver="0.1.11" date="2004-12-02">
 
 <change type="feature">
 <para lang="ru">
@@ -25021,7 +25021,7 @@ the double slashes in "://" in the URI were converted to ":/".
 </changes>
 
 
-<changes ver="0.1.10" date="26.11.2004">
+<changes ver="0.1.10" date="2004-11-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25048,7 +25048,7 @@ the fix in 0.1.9 for the files bigger than 2G on Linux did not work.
 </changes>
 
 
-<changes ver="0.1.9" date="25.11.2004">
+<changes ver="0.1.9" date="2004-11-25">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25096,7 +25096,7 @@ the bug had appeared in 0.1.8.
 </changes>
 
 
-<changes ver="0.1.8" date="20.11.2004">
+<changes ver="0.1.8" date="2004-11-20">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25128,7 +25128,7 @@ the proxy_max_temp_file_size directive.
 </changes>
 
 
-<changes ver="0.1.7" date="12.11.2004">
+<changes ver="0.1.7" date="2004-11-12">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25146,7 +25146,7 @@ the bug had appeared in 0.1.5.
 </changes>
 
 
-<changes ver="0.1.6" date="11.11.2004">
+<changes ver="0.1.6" date="2004-11-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25162,7 +25162,7 @@ the wrong configuration choose.
 </changes>
 
 
-<changes ver="0.1.5" date="11.11.2004">
+<changes ver="0.1.5" date="2004-11-11">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25248,7 +25248,7 @@ the userid_p3p directive.
 </changes>
 
 
-<changes ver="0.1.4" date="26.10.2004">
+<changes ver="0.1.4" date="2004-10-26">
 
 <change type="bugfix">
 <para lang="ru">
@@ -25262,7 +25262,7 @@ in the ngx_http_autoindex_module.
 </changes>
 
 
-<changes ver="0.1.3" date="25.10.2004">
+<changes ver="0.1.3" date="2004-10-25">
 
 <change type="feature">
 <para lang="ru">
@@ -25295,7 +25295,7 @@ proxy module may get caught in an endless loop when sendfile is not used.
 </changes>
 
 
-<changes ver="0.1.2" date="21.10.2004">
+<changes ver="0.1.2" date="2004-10-21">
 
 <change type="feature">
 <para lang="ru">
@@ -25381,7 +25381,7 @@ the gzip module compressed the proxied responses that was already compressed.
 </changes>
 
 
-<changes ver="0.1.1" date="11.10.2004">
+<changes ver="0.1.1" date="2004-10-11">
 
 <change type="feature">
 <para lang="ru">
@@ -25481,7 +25481,7 @@ was required.
 </changes>
 
 
-<changes ver="0.1.0" date="04.10.2004">
+<changes ver="0.1.0" date="2004-10-04">
 
 <change>
 <para lang="ru">

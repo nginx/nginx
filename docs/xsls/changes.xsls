@@ -25,13 +25,19 @@ X:template = "changes" {
                        '                                                    '),
                 1, $conf/changes[@lang=$lang]/length)}
 
-    X:if "$lang='ru'" { !{@date} }
+    X:if "$lang='ru'" {
+        !{substring(@date, 9, 2)}
+        X:text {.}
+        !{substring(@date, 6, 2)}
+        X:text {.}
+        !{substring(@date, 1, 4)}
+    }
 
     X:if "$lang='en'" {
-        !{substring(@date, 1, 2)}
+        !{substring(@date, 9, 2)}
         !{$conf/changes[@lang=$lang]/month[number(substring(current()/@date,
-                                                            4, 2))]}
-        !{substring(@date, 7, 4)}
+                                                            6, 2))]}
+        !{substring(@date, 1, 4)}
     }
 
     X:text {&#10;}
