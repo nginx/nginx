@@ -66,7 +66,7 @@ Thanks to Tom Thorogood.
 
 <change type="bugfix">
 <para lang="ru">
-при обработке запросов со строкой "Expect: 100-continue" в заголовке запроса 
+при обработке запросов со строкой "Expect: 100-continue" в заголовке запроса
 в логах могли появляться сообщения "[crit] SSL_write() failed".
 </para>
 <para lang="en">
