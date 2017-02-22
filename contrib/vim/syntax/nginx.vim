@@ -13,7 +13,7 @@ syn match ngxVariable '\$\(\w\+\|{\w\+}\)'
 syn match ngxVariableBlock '\$\(\w\+\|{\w\+}\)' contained
 syn match ngxVariableString '\$\(\w\+\|{\w\+}\)' contained
 syn region ngxBlock start=+^+ end=+{+ skip=+\${+ contains=ngxComment,ngxDirectiveBlock,ngxVariableBlock,ngxString oneline
-syn region ngxString start=+\z(["']\)+ end=+\z1+ skip=+\\\\\|\\\z1+ contains=ngxVariableString
+syn region ngxString start=+[^:a-zA-Z>!\\@]\z(["']\)+lc=1 end=+\z1+ skip=+\\\\\|\\\z1+ contains=ngxVariableString
 syn match ngxComment ' *#.*$'
 
 syn keyword ngxBoolean on
@@ -37,7 +37,8 @@ syn keyword ngxDirectiveImportant include
 syn keyword ngxDirectiveImportant root
 syn keyword ngxDirectiveImportant server
 syn keyword ngxDirectiveImportant server_name
-syn keyword ngxDirectiveImportant listen
+syn keyword ngxDirectiveImportant listen contained
+syn region  ngxDirectiveImportantListen matchgroup=ngxDirectiveImportant start=+listen+ skip=+\\\\\|\\\;+ end=+;+he=e-1 contains=ngxListenOptions,ngxString
 syn keyword ngxDirectiveImportant internal
 syn keyword ngxDirectiveImportant proxy_pass
 syn keyword ngxDirectiveImportant memcached_pass
@@ -45,6 +46,24 @@ syn keyword ngxDirectiveImportant fastcgi_pass
 syn keyword ngxDirectiveImportant scgi_pass
 syn keyword ngxDirectiveImportant uwsgi_pass
 syn keyword ngxDirectiveImportant try_files
+
+syn keyword ngxListenOptions default_server contained
+syn keyword ngxListenOptions ssl            contained
+syn keyword ngxListenOptions http2          contained
+syn keyword ngxListenOptions spdy           contained
+syn keyword ngxListenOptions proxy_protocol contained
+syn keyword ngxListenOptions setfib         contained
+syn keyword ngxListenOptions fastopen       contained
+syn keyword ngxListenOptions backlog        contained
+syn keyword ngxListenOptions rcvbuf         contained
+syn keyword ngxListenOptions sndbuf         contained
+syn keyword ngxListenOptions accept_filter  contained
+syn keyword ngxListenOptions deferred       contained
+syn keyword ngxListenOptions bind           contained
+syn keyword ngxListenOptions ipv6only       contained
+syn keyword ngxListenOptions reuseport      contained
+syn keyword ngxListenOptions so_keepalive   contained
+syn keyword ngxListenOptions keepidle       contained
 
 syn keyword ngxDirectiveControl break
 syn keyword ngxDirectiveControl return
@@ -267,7 +286,8 @@ syn keyword ngxDirective port_in_redirect
 syn keyword ngxDirective post_acceptex
 syn keyword ngxDirective postpone_gzipping
 syn keyword ngxDirective postpone_output
-syn keyword ngxDirective protocol
+syn keyword ngxDirective protocol nextgroup=ngxMailProtocol skipwhite
+syn keyword ngxMailProtocol imap pop3 smtp contained
 syn keyword ngxDirective proxy
 syn keyword ngxDirective proxy_bind
 syn keyword ngxDirective proxy_buffer
@@ -316,7 +336,7 @@ syn keyword ngxDirective proxy_set_header
 syn keyword ngxDirective proxy_ssl_ciphers
 syn keyword ngxDirective proxy_ssl_crl
 syn keyword ngxDirective proxy_ssl_name
-syn keyword ngxDirective proxy_ssl_protocols
+syn keyword ngxDirective proxy_ssl_protocols nextgroup=ngxSSLProtocol skipwhite
 syn keyword ngxDirective proxy_ssl_server_name
 syn keyword ngxDirective proxy_ssl_session_reuse
 syn keyword ngxDirective proxy_ssl_trusted_certificate
@@ -425,7 +445,8 @@ syn keyword ngxDirective ssl_ecdh_curve
 syn keyword ngxDirective ssl_engine
 syn keyword ngxDirective ssl_password_file
 syn keyword ngxDirective ssl_prefer_server_ciphers
-syn keyword ngxDirective ssl_protocols
+syn keyword ngxDirective ssl_protocols nextgroup=ngxSSLProtocol skipwhite
+syn keyword ngxSSLProtocol SSLv2 SSLv3 TLSv1 TLSv1.1 TLSv1.2 contained nextgroup=ngxSSLProtocol skipwhite
 syn keyword ngxDirective ssl_session_cache
 syn keyword ngxDirective ssl_session_ticket_key
 syn keyword ngxDirective ssl_session_tickets
@@ -500,7 +521,7 @@ syn keyword ngxDirective uwsgi_send_timeout
 syn keyword ngxDirective uwsgi_ssl_ciphers
 syn keyword ngxDirective uwsgi_ssl_crl
 syn keyword ngxDirective uwsgi_ssl_name
-syn keyword ngxDirective uwsgi_ssl_protocols
+syn keyword ngxDirective uwsgi_ssl_protocols nextgroup=ngxSSLProtocol skipwhite
 syn keyword ngxDirective uwsgi_ssl_server_name
 syn keyword ngxDirective uwsgi_ssl_session_reuse
 syn keyword ngxDirective uwsgi_ssl_trusted_certificate
@@ -832,5 +853,9 @@ hi link ngxDirectiveError Constant
 hi link ngxDirectiveDeprecated Error
 hi link ngxDirective Identifier
 hi link ngxDirectiveThirdParty Special
+
+hi link ngxListenOptions Keyword
+hi link ngxMailProtocol Keyword
+hi link ngxSSLProtocol Keyword
 
 let b:current_syntax = "nginx"
