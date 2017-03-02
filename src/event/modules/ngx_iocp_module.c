@@ -52,7 +52,7 @@ static ngx_command_t  ngx_iocp_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_iocp_module_ctx = {
+static ngx_event_module_t  ngx_iocp_module_ctx = {
     &iocp_name,
     ngx_iocp_create_conf,                  /* create configuration */
     ngx_iocp_init_conf,                    /* init configuration */

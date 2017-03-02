@@ -25,9 +25,9 @@ static struct pollfd  *event_list;
 static ngx_uint_t      nevents;
 
 
-static ngx_str_t    poll_name = ngx_string("poll");
+static ngx_str_t           poll_name = ngx_string("poll");
 
-ngx_event_module_t  ngx_poll_module_ctx = {
+static ngx_event_module_t  ngx_poll_module_ctx = {
     &poll_name,
     NULL,                                  /* create configuration */
     ngx_poll_init_conf,                    /* init configuration */

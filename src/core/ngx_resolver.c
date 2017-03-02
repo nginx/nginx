@@ -56,8 +56,8 @@ typedef struct {
         ((u_char *) (n) - offsetof(ngx_resolver_node_t, node))
 
 
-ngx_int_t ngx_udp_connect(ngx_resolver_connection_t *rec);
-ngx_int_t ngx_tcp_connect(ngx_resolver_connection_t *rec);
+static ngx_int_t ngx_udp_connect(ngx_resolver_connection_t *rec);
+static ngx_int_t ngx_tcp_connect(ngx_resolver_connection_t *rec);
 
 
 static void ngx_resolver_cleanup(void *data);
@@ -4379,7 +4379,7 @@ ngx_resolver_log_error(ngx_log_t *log, u_char *buf, size_t len)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_udp_connect(ngx_resolver_connection_t *rec)
 {
     int                rc;
@@ -4463,7 +4463,7 @@ failed:
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_tcp_connect(ngx_resolver_connection_t *rec)
 {
     int                rc;

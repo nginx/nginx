@@ -176,7 +176,7 @@ static ngx_command_t  ngx_epoll_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_epoll_module_ctx = {
+static ngx_event_module_t  ngx_epoll_module_ctx = {
     &epoll_name,
     ngx_epoll_create_conf,               /* create configuration */
     ngx_epoll_init_conf,                 /* init configuration */

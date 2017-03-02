@@ -109,7 +109,7 @@ static ngx_int_t ngx_http_xslt_filter_init(ngx_conf_t *cf);
 static void ngx_http_xslt_filter_exit(ngx_cycle_t *cycle);
 
 
-ngx_str_t  ngx_http_xslt_default_types[] = {
+static ngx_str_t  ngx_http_xslt_default_types[] = {
     ngx_string("text/xml"),
     ngx_null_string
 };

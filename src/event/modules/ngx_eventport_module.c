@@ -169,7 +169,7 @@ static ngx_command_t  ngx_eventport_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_eventport_module_ctx = {
+static ngx_event_module_t  ngx_eventport_module_ctx = {
     &eventport_name,
     ngx_eventport_create_conf,             /* create configuration */
     ngx_eventport_init_conf,               /* init configuration */

@@ -78,7 +78,7 @@ static ngx_command_t  ngx_devpoll_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_devpoll_module_ctx = {
+static ngx_event_module_t  ngx_devpoll_module_ctx = {
     &devpoll_name,
     ngx_devpoll_create_conf,               /* create configuration */
     ngx_devpoll_init_conf,                 /* init configuration */
