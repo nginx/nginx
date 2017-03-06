@@ -432,7 +432,7 @@ ngx_eventport_notify(ngx_event_handler_pt handler)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags)
 {

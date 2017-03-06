@@ -5554,7 +5554,7 @@ ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
 
 #if (NGX_HTTP_CACHE)
 
-ngx_int_t
+static ngx_int_t
 ngx_http_upstream_cache_status(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
