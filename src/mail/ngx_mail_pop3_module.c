@@ -185,6 +185,10 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
          m <<= 1, i++)
     {
+        if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
+            continue;
+        }
+
         if (m & conf->auth_methods) {
             size += 1 + ngx_mail_pop3_auth_methods_names[i].len;
         }
@@ -212,6 +216,10 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
          m <<= 1, i++)
     {
+        if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
+            continue;
+        }
+
         if (m & conf->auth_methods) {
             *p++ = ' ';
             p = ngx_cpymem(p, ngx_mail_pop3_auth_methods_names[i].data,
@@ -248,6 +256,10 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
          m <<= 1, i++)
     {
+        if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
+            continue;
+        }
+
         if (m & conf->auth_methods) {
             size += ngx_mail_pop3_auth_methods_names[i].len
                     + sizeof(CRLF) - 1;
@@ -269,6 +281,10 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
          m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
          m <<= 1, i++)
     {
+        if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
+            continue;
+        }
+
         if (m & conf->auth_methods) {
             p = ngx_cpymem(p, ngx_mail_pop3_auth_methods_names[i].data,
                            ngx_mail_pop3_auth_methods_names[i].len);
