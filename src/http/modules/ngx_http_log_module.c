@@ -748,23 +748,10 @@ ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
 static void
 ngx_http_log_flush_handler(ngx_event_t *ev)
 {
-    ngx_open_file_t     *file;
-    ngx_http_log_buf_t  *buffer;
-
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "http log buffer flush handler");
 
-    if (ev->timedout) {
-        ngx_http_log_flush(ev->data, ev->log);
-        return;
-    }
-
-    /* cancel the flush timer for graceful shutdown */
-
-    file = ev->data;
-    buffer = file->data;
-
-    buffer->event = NULL;
+    ngx_http_log_flush(ev->data, ev->log);
 }
 
 
