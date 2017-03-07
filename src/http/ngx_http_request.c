@@ -549,7 +549,7 @@ ngx_http_create_request(ngx_connection_t *c)
 
     ngx_set_connection_log(r->connection, clcf->error_log);
 
-    r->header_in = hc->nbusy ? hc->busy[0] : c->buffer;
+    r->header_in = hc->busy ? hc->busy->buf : c->buffer;
 
     if (ngx_list_init(&r->headers_out.headers, r->pool, 20,
                       sizeof(ngx_table_elt_t))
@@ -1431,6 +1431,7 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 {
     u_char                    *old, *new;
     ngx_buf_t                 *b;
+    ngx_chain_t               *cl;
     ngx_http_connection_t     *hc;
     ngx_http_core_srv_conf_t  *cscf;
 
@@ -1460,8 +1461,11 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     hc = r->http_connection;
 
-    if (hc->nfree) {
-        b = hc->free[--hc->nfree];
+    if (hc->free) {
+        cl = hc->free;
+        hc->free = cl->next;
+
+        b = cl->buf;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http large header free: %p %uz",
@@ -1469,19 +1473,18 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     } else if (hc->nbusy < cscf->large_client_header_buffers.num) {
 
-        if (hc->busy == NULL) {
-            hc->busy = ngx_palloc(r->connection->pool,
-                  cscf->large_client_header_buffers.num * sizeof(ngx_buf_t *));
-            if (hc->busy == NULL) {
-                return NGX_ERROR;
-            }
-        }
-
         b = ngx_create_temp_buf(r->connection->pool,
                                 cscf->large_client_header_buffers.size);
         if (b == NULL) {
             return NGX_ERROR;
         }
+
+        cl = ngx_alloc_chain_link(r->connection->pool);
+        if (cl == NULL) {
+            return NGX_ERROR;
+        }
+
+        cl->buf = b;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http large header alloc: %p %uz",
@@ -1491,7 +1494,9 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         return NGX_DECLINED;
     }
 
-    hc->busy[hc->nbusy++] = b;
+    cl->next = hc->busy;
+    hc->busy = cl;
+    hc->nbusy++;
 
     if (r->state == 0) {
         /*
@@ -2835,12 +2840,11 @@ static void
 ngx_http_set_keepalive(ngx_http_request_t *r)
 {
     int                        tcp_nodelay;
-    ngx_int_t                  i;
     ngx_buf_t                 *b, *f;
+    ngx_chain_t               *cl, *ln;
     ngx_event_t               *rev, *wev;
     ngx_connection_t          *c;
     ngx_http_connection_t     *hc;
-    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
 
     c = r->connection;
@@ -2876,26 +2880,32 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
              * Now we would move the large header buffers to the free list.
              */
 
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+            for (cl = hc->busy; cl; /* void */) {
+                ln = cl;
+                cl = cl->next;
 
-            if (hc->free == NULL) {
-                hc->free = ngx_palloc(c->pool,
-                  cscf->large_client_header_buffers.num * sizeof(ngx_buf_t *));
-
-                if (hc->free == NULL) {
-                    ngx_http_close_request(r, 0);
-                    return;
+                if (ln->buf == b) {
+                    ngx_free_chain(c->pool, ln);
+                    continue;
                 }
-            }
 
-            for (i = 0; i < hc->nbusy - 1; i++) {
-                f = hc->busy[i];
-                hc->free[hc->nfree++] = f;
+                f = ln->buf;
                 f->pos = f->start;
                 f->last = f->start;
+
+                ln->next = hc->free;
+                hc->free = ln;
             }
 
-            hc->busy[0] = b;
+            cl = ngx_alloc_chain_link(c->pool);
+            if (cl == NULL) {
+                ngx_http_close_request(r, 0);
+                return;
+            }
+
+            cl->buf = b;
+
+            hc->busy = cl;
             hc->nbusy = 1;
         }
     }
@@ -2966,27 +2976,32 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
         b->last = b->start;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "hc free: %p %i",
-                   hc->free, hc->nfree);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "hc free: %p",
+                   hc->free);
 
     if (hc->free) {
-        for (i = 0; i < hc->nfree; i++) {
-            ngx_pfree(c->pool, hc->free[i]->start);
-            hc->free[i] = NULL;
+        for (cl = hc->free; cl; /* void */) {
+            ln = cl;
+            cl = cl->next;
+            ngx_pfree(c->pool, ln->buf->start);
+            ngx_free_chain(c->pool, ln);
         }
 
-        hc->nfree = 0;
+        hc->free = NULL;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "hc busy: %p %i",
                    hc->busy, hc->nbusy);
 
     if (hc->busy) {
-        for (i = 0; i < hc->nbusy; i++) {
-            ngx_pfree(c->pool, hc->busy[i]->start);
-            hc->busy[i] = NULL;
+        for (cl = hc->busy; cl; /* void */) {
+            ln = cl;
+            cl = cl->next;
+            ngx_pfree(c->pool, ln->buf->start);
+            ngx_free_chain(c->pool, ln);
         }
 
+        hc->busy = NULL;
         hc->nbusy = 0;
     }
 

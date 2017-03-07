@@ -309,11 +309,10 @@ typedef struct {
 #endif
 #endif
 
-    ngx_buf_t                       **busy;
+    ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 
-    ngx_buf_t                       **free;
-    ngx_int_t                         nfree;
+    ngx_chain_t                      *free;
 
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
