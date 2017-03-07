@@ -28,7 +28,7 @@ ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 
     /* a binary tree insert */
 
-    root = (ngx_rbtree_node_t **) &tree->root;
+    root = &tree->root;
     sentinel = tree->sentinel;
 
     if (*root == sentinel) {
@@ -161,7 +161,7 @@ ngx_rbtree_delete(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 
     /* a binary tree delete */
 
-    root = (ngx_rbtree_node_t **) &tree->root;
+    root = &tree->root;
     sentinel = tree->sentinel;
 
     if (node->left == sentinel) {
