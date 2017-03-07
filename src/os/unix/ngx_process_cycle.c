@@ -740,7 +740,6 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         if (ngx_exiting) {
             if (ngx_event_no_timers_left() == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
-
                 ngx_worker_process_exit(cycle);
             }
         }
@@ -751,7 +750,6 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
-
             ngx_worker_process_exit(cycle);
         }
 
