@@ -574,19 +574,6 @@ END
 fi
 
 
-if [ $HTTP = NO ]; then
-    HTTP_CHARSET=NO
-    HTTP_GZIP=NO
-    HTTP_SSI=NO
-    HTTP_USERID=NO
-    HTTP_ACCESS=NO
-    HTTP_STATUS=NO
-    HTTP_REWRITE=NO
-    HTTP_PROXY=NO
-    HTTP_FASTCGI=NO
-fi
-
-
 if [ ".$NGX_PLATFORM" = ".win32" ]; then
     NGX_WINE=$WINE
 fi
