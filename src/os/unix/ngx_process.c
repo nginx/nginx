@@ -306,7 +306,7 @@ ngx_init_signals(ngx_log_t *log)
 }
 
 
-void
+static void
 ngx_signal_handler(int signo)
 {
     char            *action;
