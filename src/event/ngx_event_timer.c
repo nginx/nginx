@@ -67,7 +67,7 @@ ngx_event_expire_timers(void)
 
         node = ngx_rbtree_min(root, sentinel);
 
-        /* node->key > ngx_current_time */
+        /* node->key > ngx_current_msec */
 
         if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {
             return;
