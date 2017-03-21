@@ -5,6 +5,77 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.11" date="2017-03-21">
+
+<change type="feature">
+<para lang="ru">
+директива worker_shutdown_timeout.
+</para>
+<para lang="en">
+the "worker_shutdown_timeout" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Wei-Ko Kao.
+</para>
+<para lang="en">
+vim syntax highlighting scripts improvements.<br/>
+Thanks to Wei-Ko Kao.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при попытке установить переменную $limit_rate в пустую строку
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the $limit_rate variable was set to an empty string.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_cache_background_update, fastcgi_cache_background_update,
+scgi_cache_background_update и uwsgi_cache_background_update
+могли работать некорректно, если использовалась директива if.
+</para>
+<para lang="en">
+the "proxy_cache_background_update", "fastcgi_cache_background_update",
+"scgi_cache_background_update", and "uwsgi_cache_background_update" directives
+might work incorrectly if the "if" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если количество large_client_header_buffers в виртуальном сервере
+отличалось от такового в сервере по умолчанию.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if number of large_client_header_buffers in a virtual server
+was different from the one in the default server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+in the mail proxy server.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.10" date="2017-02-14">
 
 <change type="change">
