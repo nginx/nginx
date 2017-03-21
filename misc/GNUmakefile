@@ -66,6 +66,7 @@ win32:
 		--with-pcre=$(OBJS)/lib/$(PCRE)				\
 		--with-zlib=$(OBJS)/lib/$(ZLIB)				\
 		--with-select_module					\
+		--with-http_v2_module					\
 		--with-http_realip_module				\
 		--with-http_addition_module				\
 		--with-http_sub_module					\
