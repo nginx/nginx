@@ -4529,7 +4529,7 @@ ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t  *clcf;
 
     if (pclcf->limit_except) {
-        return "duplicate";
+        return "is duplicate";
     }
 
     pclcf->limit_except = 0xffffffff;
