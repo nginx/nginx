@@ -5,6 +5,22 @@
 <change_log title="nginx">
 
 
+<changes ver="1.11.12" date="2017-03-24">
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог нагружать процессор;
+ошибка появилась в 1.11.11.
+</para>
+<para lang="en">
+nginx might hog CPU;
+the bug had appeared in 1.11.11.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.11" date="2017-03-21">
 
 <change type="feature">
