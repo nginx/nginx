@@ -436,6 +436,7 @@ static ngx_http_upstream_next_t  ngx_http_upstream_next_errors[] = {
     { 504, NGX_HTTP_UPSTREAM_FT_HTTP_504 },
     { 403, NGX_HTTP_UPSTREAM_FT_HTTP_403 },
     { 404, NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    { 429, NGX_HTTP_UPSTREAM_FT_HTTP_429 },
     { 0, 0 }
 };
 
@@ -4124,6 +4125,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     case NGX_HTTP_UPSTREAM_FT_HTTP_404:
         status = NGX_HTTP_NOT_FOUND;
+        break;
+
+    case NGX_HTTP_UPSTREAM_FT_HTTP_429:
+        status = NGX_HTTP_TOO_MANY_REQUESTS;
         break;
 
     /*
