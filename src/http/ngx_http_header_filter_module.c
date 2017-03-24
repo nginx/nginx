@@ -101,12 +101,16 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_null_string,  /* "419 unused" */
     ngx_null_string,  /* "420 unused" */
     ngx_string("421 Misdirected Request"),
+    ngx_null_string,  /* "422 Unprocessable Entity" */
+    ngx_null_string,  /* "423 Locked" */
+    ngx_null_string,  /* "424 Failed Dependency" */
+    ngx_null_string,  /* "425 unused" */
+    ngx_null_string,  /* "426 Upgrade Required" */
+    ngx_null_string,  /* "427 unused" */
+    ngx_null_string,  /* "428 Precondition Required" */
+    ngx_string("429 Too Many Requests"),
 
-    /* ngx_null_string, */  /* "422 Unprocessable Entity" */
-    /* ngx_null_string, */  /* "423 Locked" */
-    /* ngx_null_string, */  /* "424 Failed Dependency" */
-
-#define NGX_HTTP_LAST_4XX  422
+#define NGX_HTTP_LAST_4XX  430
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string("500 Internal Server Error"),

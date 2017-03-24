@@ -225,6 +225,14 @@ static char ngx_http_error_421_page[] =
 ;
 
 
+static char ngx_http_error_429_page[] =
+"<html>" CRLF
+"<head><title>429 Too Many Requests</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>429 Too Many Requests</h1></center>" CRLF
+;
+
+
 static char ngx_http_error_494_page[] =
 "<html>" CRLF
 "<head><title>400 Request Header Or Cookie Too Large</title></head>"
@@ -354,8 +362,16 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_null_string,                     /* 419 */
     ngx_null_string,                     /* 420 */
     ngx_string(ngx_http_error_421_page),
+    ngx_null_string,                     /* 422 */
+    ngx_null_string,                     /* 423 */
+    ngx_null_string,                     /* 424 */
+    ngx_null_string,                     /* 425 */
+    ngx_null_string,                     /* 426 */
+    ngx_null_string,                     /* 427 */
+    ngx_null_string,                     /* 428 */
+    ngx_string(ngx_http_error_429_page),
 
-#define NGX_HTTP_LAST_4XX  422
+#define NGX_HTTP_LAST_4XX  430
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string(ngx_http_error_494_page), /* 494, request header too large */
