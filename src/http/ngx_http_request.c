@@ -562,6 +562,14 @@ ngx_http_create_request(ngx_connection_t *c)
         return NULL;
     }
 
+    if (ngx_list_init(&r->headers_out.trailers, r->pool, 4,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        ngx_destroy_pool(r->pool);
+        return NULL;
+    }
+
     r->ctx = ngx_pcalloc(r->pool, sizeof(void *) * ngx_http_max_module);
     if (r->ctx == NULL) {
         ngx_destroy_pool(r->pool);

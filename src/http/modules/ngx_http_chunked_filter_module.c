@@ -17,6 +17,8 @@ typedef struct {
 
 
 static ngx_int_t ngx_http_chunked_filter_init(ngx_conf_t *cf);
+static ngx_chain_t *ngx_http_chunked_create_trailers(ngx_http_request_t *r,
+    ngx_http_chunked_filter_ctx_t *ctx);
 
 
 static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
@@ -69,27 +71,29 @@ ngx_http_chunked_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    if (r->headers_out.content_length_n == -1) {
-        if (r->http_version < NGX_HTTP_VERSION_11) {
-            r->keepalive = 0;
+    if (r->headers_out.content_length_n == -1
+        || r->expect_trailers)
+    {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-        } else {
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-            if (clcf->chunked_transfer_encoding) {
-                r->chunked = 1;
-
-                ctx = ngx_pcalloc(r->pool,
-                                  sizeof(ngx_http_chunked_filter_ctx_t));
-                if (ctx == NULL) {
-                    return NGX_ERROR;
-                }
-
-                ngx_http_set_ctx(r, ctx, ngx_http_chunked_filter_module);
-
-            } else {
-                r->keepalive = 0;
+        if (r->http_version >= NGX_HTTP_VERSION_11
+            && clcf->chunked_transfer_encoding)
+        {
+            if (r->expect_trailers) {
+                ngx_http_clear_content_length(r);
             }
+
+            r->chunked = 1;
+
+            ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_chunked_filter_ctx_t));
+            if (ctx == NULL) {
+                return NGX_ERROR;
+            }
+
+            ngx_http_set_ctx(r, ctx, ngx_http_chunked_filter_module);
+
+        } else if (r->headers_out.content_length_n == -1) {
+            r->keepalive = 0;
         }
     }
 
@@ -179,26 +183,17 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (cl->buf->last_buf) {
-        tl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+        tl = ngx_http_chunked_create_trailers(r, ctx);
         if (tl == NULL) {
             return NGX_ERROR;
         }
-
-        b = tl->buf;
-
-        b->tag = (ngx_buf_tag_t) &ngx_http_chunked_filter_module;
-        b->temporary = 0;
-        b->memory = 1;
-        b->last_buf = 1;
-        b->pos = (u_char *) CRLF "0" CRLF CRLF;
-        b->last = b->pos + 7;
 
         cl->buf->last_buf = 0;
 
         *ll = tl;
 
         if (size == 0) {
-            b->pos += 2;
+            tl->buf->pos += 2;
         }
 
     } else if (size > 0) {
@@ -227,6 +222,109 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                             (ngx_buf_tag_t) &ngx_http_chunked_filter_module);
 
     return rc;
+}
+
+
+static ngx_chain_t *
+ngx_http_chunked_create_trailers(ngx_http_request_t *r,
+    ngx_http_chunked_filter_ctx_t *ctx)
+{
+    size_t            len;
+    ngx_buf_t        *b;
+    ngx_uint_t        i;
+    ngx_chain_t      *cl;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header;
+
+    len = 0;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        len += header[i].key.len + sizeof(": ") - 1
+               + header[i].value.len + sizeof(CRLF) - 1;
+    }
+
+    cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
+    if (cl == NULL) {
+        return NULL;
+    }
+
+    b = cl->buf;
+
+    b->tag = (ngx_buf_tag_t) &ngx_http_chunked_filter_module;
+    b->temporary = 0;
+    b->memory = 1;
+    b->last_buf = 1;
+
+    if (len == 0) {
+        b->pos = (u_char *) CRLF "0" CRLF CRLF;
+        b->last = b->pos + sizeof(CRLF "0" CRLF CRLF) - 1;
+        return cl;
+    }
+
+    len += sizeof(CRLF "0" CRLF CRLF) - 1;
+
+    b->pos = ngx_palloc(r->pool, len);
+    if (b->pos == NULL) {
+        return NULL;
+    }
+
+    b->last = b->pos;
+
+    *b->last++ = CR; *b->last++ = LF;
+    *b->last++ = '0';
+    *b->last++ = CR; *b->last++ = LF;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http trailer: \"%V: %V\"",
+                       &header[i].key, &header[i].value);
+
+        b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
+        *b->last++ = ':'; *b->last++ = ' ';
+
+        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+        *b->last++ = CR; *b->last++ = LF;
+    }
+
+    *b->last++ = CR; *b->last++ = LF;
+
+    return cl;
 }
 
 

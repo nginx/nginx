@@ -252,6 +252,7 @@ typedef struct {
 
 typedef struct {
     ngx_list_t                        headers;
+    ngx_list_t                        trailers;
 
     ngx_uint_t                        status;
     ngx_str_t                         status_line;
@@ -514,6 +515,7 @@ struct ngx_http_request_s {
     unsigned                          pipeline:1;
     unsigned                          chunked:1;
     unsigned                          header_only:1;
+    unsigned                          expect_trailers:1;
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;

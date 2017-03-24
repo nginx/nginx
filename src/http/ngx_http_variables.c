@@ -38,6 +38,8 @@ static ngx_int_t ngx_http_variable_unknown_header_in(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_unknown_trailer_out(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_line(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_cookie(ngx_http_request_t *r,
@@ -363,6 +365,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       0, NGX_HTTP_VAR_PREFIX, 0 },
 
     { ngx_string("sent_http_"), NULL, ngx_http_variable_unknown_header_out,
+      0, NGX_HTTP_VAR_PREFIX, 0 },
+
+    { ngx_string("sent_trailer_"), NULL, ngx_http_variable_unknown_trailer_out,
       0, NGX_HTTP_VAR_PREFIX, 0 },
 
     { ngx_string("cookie_"), NULL, ngx_http_variable_cookie,
@@ -931,6 +936,16 @@ ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
     return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
                                             &r->headers_out.headers.part,
                                             sizeof("sent_http_") - 1);
+}
+
+
+static ngx_int_t
+ngx_http_variable_unknown_trailer_out(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+                                            &r->headers_out.trailers.part,
+                                            sizeof("sent_trailer_") - 1);
 }
 
 
