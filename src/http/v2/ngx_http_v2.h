@@ -249,8 +249,8 @@ ngx_http_v2_queue_blocked_frame(ngx_http_v2_connection_t *h2c,
 {
     ngx_http_v2_out_frame_t  **out;
 
-    for (out = &h2c->last_out; *out; out = &(*out)->next)
-    {
+    for (out = &h2c->last_out; *out; out = &(*out)->next) {
+
         if ((*out)->blocked || (*out)->stream == NULL) {
             break;
         }
