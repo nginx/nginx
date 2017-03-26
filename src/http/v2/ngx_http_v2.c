@@ -783,8 +783,11 @@ ngx_http_v2_state_head(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
 static u_char *
 ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
 {
+    size_t                 size;
     ngx_http_v2_node_t    *node;
     ngx_http_v2_stream_t  *stream;
+
+    size = h2c->state.length;
 
     if (h2c->state.flags & NGX_HTTP_V2_PADDED_FLAG) {
 
@@ -802,33 +805,32 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
         }
 
         h2c->state.padding = *pos++;
-        h2c->state.length--;
 
-        if (h2c->state.padding > h2c->state.length) {
+        if (h2c->state.padding >= size) {
             ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                           "client sent padded DATA frame "
                           "with incorrect length: %uz, padding: %uz",
-                          h2c->state.length, h2c->state.padding);
+                          size, h2c->state.padding);
 
             return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
         }
 
-        h2c->state.length -= h2c->state.padding;
+        h2c->state.length -= 1 + h2c->state.padding;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 DATA frame");
 
-    if (h2c->state.length > h2c->recv_window) {
+    if (size > h2c->recv_window) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client violated connection flow control: "
                       "received DATA frame length %uz, available window %uz",
-                      h2c->state.length, h2c->recv_window);
+                      size, h2c->recv_window);
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_FLOW_CTRL_ERROR);
     }
 
-    h2c->recv_window -= h2c->state.length;
+    h2c->recv_window -= size;
 
     if (h2c->recv_window < NGX_HTTP_V2_MAX_WINDOW / 4) {
 
@@ -854,11 +856,11 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
 
     stream = node->stream;
 
-    if (h2c->state.length > stream->recv_window) {
+    if (size > stream->recv_window) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client violated flow control for stream %ui: "
                       "received DATA frame length %uz, available window %uz",
-                      node->id, h2c->state.length, stream->recv_window);
+                      node->id, size, stream->recv_window);
 
         if (ngx_http_v2_terminate_stream(h2c, stream,
                                          NGX_HTTP_V2_FLOW_CTRL_ERROR)
@@ -871,7 +873,7 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
-    stream->recv_window -= h2c->state.length;
+    stream->recv_window -= size;
 
     if (stream->no_flow_control
         && stream->recv_window < NGX_HTTP_V2_MAX_WINDOW / 4)
