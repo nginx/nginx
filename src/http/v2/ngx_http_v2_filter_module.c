@@ -1211,6 +1211,9 @@ ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
                    "http2:%ui HEADERS frame %p was sent",
                    stream->node->id, frame);
 
+    stream->request->header_size += NGX_HTTP_V2_FRAME_HEADER_SIZE
+                                    + frame->length;
+
     ngx_http_v2_handle_frame(stream, frame);
 
     ngx_http_v2_handle_stream(h2c, stream);
