@@ -812,7 +812,8 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
                           "with incorrect length: %uz, padding: %uz",
                           size, h2c->state.padding);
 
-            return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_PROTOCOL_ERROR);
         }
 
         h2c->state.length -= 1 + h2c->state.padding;
@@ -1055,7 +1056,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                           "with incorrect length: %uz, padding: %uz",
                           h2c->state.length, h2c->state.padding);
 
-            return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_PROTOCOL_ERROR);
         }
 
         h2c->state.length -= h2c->state.padding;
