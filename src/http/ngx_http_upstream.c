@@ -3736,9 +3736,19 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
     r->main->blocked--;
     r->aio = 0;
 
-    r->write_event_handler(r);
+    if (r->done) {
+        /*
+         * trigger connection event handler if the subrequest was
+         * already finalized; this can happen if the handler is used
+         * for sendfile() in threads
+         */
 
-    ngx_http_run_posted_requests(c);
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
+        ngx_http_run_posted_requests(c);
+    }
 }
 
 #endif
