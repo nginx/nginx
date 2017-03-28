@@ -115,16 +115,14 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     n = old_cycle->paths.nelts ? old_cycle->paths.nelts : 10;
 
-    cycle->paths.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *));
-    if (cycle->paths.elts == NULL) {
+    if (ngx_array_init(&cycle->paths, pool, n, sizeof(ngx_path_t *))
+        != NGX_OK)
+    {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    cycle->paths.nelts = 0;
-    cycle->paths.size = sizeof(ngx_path_t *);
-    cycle->paths.nalloc = n;
-    cycle->paths.pool = pool;
+    ngx_memzero(cycle->paths.elts, n * sizeof(ngx_path_t *));
 
 
     if (ngx_array_init(&cycle->config_dump, pool, 1, sizeof(ngx_conf_dump_t))
@@ -175,16 +173,14 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
 
-    cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
-    if (cycle->listening.elts == NULL) {
+    if (ngx_array_init(&cycle->listening, pool, n, sizeof(ngx_listening_t))
+        != NGX_OK)
+    {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    cycle->listening.nelts = 0;
-    cycle->listening.size = sizeof(ngx_listening_t);
-    cycle->listening.nalloc = n;
-    cycle->listening.pool = pool;
+    ngx_memzero(cycle->listening.elts, n * sizeof(ngx_listening_t));
 
 
     ngx_queue_init(&cycle->reusable_connections_queue);
@@ -768,15 +764,15 @@ old_shm_zone_done:
         }
 
         n = 10;
-        ngx_old_cycles.elts = ngx_pcalloc(ngx_temp_pool,
-                                          n * sizeof(ngx_cycle_t *));
-        if (ngx_old_cycles.elts == NULL) {
+
+        if (ngx_array_init(&ngx_old_cycles, ngx_temp_pool, n,
+                           sizeof(ngx_cycle_t *))
+            != NGX_OK)
+        {
             exit(1);
         }
-        ngx_old_cycles.nelts = 0;
-        ngx_old_cycles.size = sizeof(ngx_cycle_t *);
-        ngx_old_cycles.nalloc = n;
-        ngx_old_cycles.pool = ngx_temp_pool;
+
+        ngx_memzero(ngx_old_cycles.elts, n * sizeof(ngx_cycle_t *));
 
         ngx_cleaner_event.handler = ngx_clean_old_cycles;
         ngx_cleaner_event.log = cycle->log;
