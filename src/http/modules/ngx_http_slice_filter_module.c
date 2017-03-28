@@ -11,23 +11,24 @@
 
 
 typedef struct {
-    size_t      size;
+    size_t               size;
 } ngx_http_slice_loc_conf_t;
 
 
 typedef struct {
-    off_t       start;
-    off_t       end;
-    ngx_str_t   range;
-    ngx_str_t   etag;
-    ngx_uint_t  last;  /* unsigned  last:1; */
+    off_t                start;
+    off_t                end;
+    ngx_str_t            range;
+    ngx_str_t            etag;
+    ngx_uint_t           last;  /* unsigned  last:1; */
+    ngx_http_request_t  *sr;
 } ngx_http_slice_ctx_t;
 
 
 typedef struct {
-    off_t       start;
-    off_t       end;
-    off_t       complete_length;
+    off_t                start;
+    off_t                end;
+    off_t                complete_length;
 } ngx_http_slice_content_range_t;
 
 
@@ -209,7 +210,6 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     ngx_int_t                   rc;
     ngx_chain_t                *cl;
-    ngx_http_request_t         *sr;
     ngx_http_slice_ctx_t       *ctx;
     ngx_http_slice_loc_conf_t  *slcf;
 
@@ -234,6 +234,10 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return rc;
     }
 
+    if (ctx->sr && !ctx->sr->done) {
+        return rc;
+    }
+
     if (ctx->start >= ctx->end) {
         ngx_http_set_ctx(r, NULL, ngx_http_slice_filter_module);
         ngx_http_send_special(r, NGX_HTTP_LAST);
@@ -244,14 +248,14 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return rc;
     }
 
-    if (ngx_http_subrequest(r, &r->uri, &r->args, &sr, NULL,
+    if (ngx_http_subrequest(r, &r->uri, &r->args, &ctx->sr, NULL,
                             NGX_HTTP_SUBREQUEST_CLONE)
         != NGX_OK)
     {
         return NGX_ERROR;
     }
 
-    ngx_http_set_ctx(sr, ctx, ngx_http_slice_filter_module);
+    ngx_http_set_ctx(ctx->sr, ctx, ngx_http_slice_filter_module);
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_slice_filter_module);
 
