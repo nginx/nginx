@@ -187,15 +187,24 @@ static void
 ngx_http_copy_aio_event_handler(ngx_event_t *ev)
 {
     ngx_event_aio_t     *aio;
+    ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
     aio = ev->data;
     r = aio->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http aio: \"%V?%V\"", &r->uri, &r->args);
 
     r->main->blocked--;
     r->aio = 0;
 
-    r->connection->write->handler(r->connection->write);
+    r->write_event_handler(r);
+
+    ngx_http_run_posted_requests(c);
 }
 
 
@@ -300,14 +309,33 @@ ngx_http_copy_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
 static void
 ngx_http_copy_thread_event_handler(ngx_event_t *ev)
 {
+    ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
     r = ev->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http thread: \"%V?%V\"", &r->uri, &r->args);
 
     r->main->blocked--;
     r->aio = 0;
 
-    r->connection->write->handler(r->connection->write);
+    if (r->done) {
+        /*
+         * trigger connection event handler if the subrequest was
+         * already finalized; this can happen if the handler is used
+         * for sendfile() in threads
+         */
+
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
+        ngx_http_run_posted_requests(c);
+    }
 }
 
 #endif
