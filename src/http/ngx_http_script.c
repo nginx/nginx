@@ -1513,6 +1513,12 @@ ngx_http_script_file_code(ngx_http_script_engine_t *e)
     if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
         != NGX_OK)
     {
+        if (of.err == 0) {
+            e->ip = ngx_http_script_exit;
+            e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+            return;
+        }
+
         if (of.err != NGX_ENOENT
             && of.err != NGX_ENOTDIR
             && of.err != NGX_ENAMETOOLONG)

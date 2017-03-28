@@ -217,12 +217,12 @@ ngx_http_index_handler(ngx_http_request_t *r)
         if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
             != NGX_OK)
         {
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, of.err,
-                           "%s \"%s\" failed", of.failed, path.data);
-
             if (of.err == 0) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, of.err,
+                           "%s \"%s\" failed", of.failed, path.data);
 
 #if (NGX_HAVE_OPENAT)
             if (of.err == NGX_EMLINK

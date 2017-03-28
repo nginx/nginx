@@ -443,6 +443,11 @@ ngx_stream_log_script_write(ngx_stream_session_t *s,
                              s->connection->pool)
         != NGX_OK)
     {
+        if (of.err == 0) {
+            /* simulate successful logging */
+            return len;
+        }
+
         ngx_log_error(NGX_LOG_CRIT, s->connection->log, ngx_errno,
                       "%s \"%s\" failed", of.failed, log.data);
         /* simulate successful logging */
