@@ -4134,15 +4134,20 @@ ngx_http_v2_handle_connection_handler(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "http2 handle connection handler");
 
+    c = rev->data;
+    h2c = c->data;
+
+    if (c->error) {
+        ngx_http_v2_finalize_connection(h2c, 0);
+        return;
+    }
+
     rev->handler = ngx_http_v2_read_handler;
 
     if (rev->ready) {
         ngx_http_v2_read_handler(rev);
         return;
     }
-
-    c = rev->data;
-    h2c = c->data;
 
     if (h2c->last_out && ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
         ngx_http_v2_finalize_connection(h2c, 0);
