@@ -4266,7 +4266,10 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
             if (stream->queued) {
                 stream->queued = 0;
+
                 ev = fc->write;
+                ev->active = 0;
+                ev->ready = 1;
 
             } else {
                 ev = fc->read;
