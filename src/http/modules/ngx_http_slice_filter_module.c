@@ -20,7 +20,8 @@ typedef struct {
     off_t                end;
     ngx_str_t            range;
     ngx_str_t            etag;
-    ngx_uint_t           last;  /* unsigned  last:1; */
+    unsigned             last:1;
+    unsigned             active:1;
     ngx_http_request_t  *sr;
 } ngx_http_slice_ctx_t;
 
@@ -170,6 +171,7 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
     }
 
     ctx->start = end;
+    ctx->active = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
     r->headers_out.status_line.len = 0;
@@ -238,6 +240,12 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return rc;
     }
 
+    if (!ctx->active) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "missing slice response");
+        return NGX_ERROR;
+    }
+
     if (ctx->start >= ctx->end) {
         ngx_http_set_ctx(r, NULL, ngx_http_slice_filter_module);
         ngx_http_send_special(r, NGX_HTTP_LAST);
@@ -262,6 +270,8 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx->range.len = ngx_sprintf(ctx->range.data, "bytes=%O-%O", ctx->start,
                                  ctx->start + (off_t) slcf->size - 1)
                      - ctx->range.data;
+
+    ctx->active = 0;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http slice subrequest: \"%V\"", &ctx->range);
