@@ -1232,6 +1232,11 @@ ngx_http_upstream_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream request: \"%V?%V\"", &r->uri, &r->args);
 
+    if (ev->delayed && ev->timedout) {
+        ev->delayed = 0;
+        ev->timedout = 0;
+    }
+
     if (ev->write) {
         u->write_event_handler(r, u);
 
@@ -3796,31 +3801,9 @@ ngx_http_upstream_process_downstream(ngx_http_request_t *r)
 
     if (wev->timedout) {
 
-        if (wev->delayed) {
-
-            wev->timedout = 0;
-            wev->delayed = 0;
-
-            if (!wev->ready) {
-                ngx_add_timer(wev, p->send_timeout);
-
-                if (ngx_handle_write_event(wev, p->send_lowat) != NGX_OK) {
-                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
-                }
-
-                return;
-            }
-
-            if (ngx_event_pipe(p, wev->write) == NGX_ABORT) {
-                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
-                return;
-            }
-
-        } else {
-            p->downstream_error = 1;
-            c->timedout = 1;
-            ngx_connection_error(c, NGX_ETIMEDOUT, "client timed out");
-        }
+        p->downstream_error = 1;
+        c->timedout = 1;
+        ngx_connection_error(c, NGX_ETIMEDOUT, "client timed out");
 
     } else {
 
@@ -3865,30 +3848,8 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 
     if (rev->timedout) {
 
-        if (rev->delayed) {
-
-            rev->timedout = 0;
-            rev->delayed = 0;
-
-            if (!rev->ready) {
-                ngx_add_timer(rev, p->read_timeout);
-
-                if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-                    ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
-                }
-
-                return;
-            }
-
-            if (ngx_event_pipe(p, 0) == NGX_ABORT) {
-                ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
-                return;
-            }
-
-        } else {
-            p->upstream_error = 1;
-            ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
-        }
+        p->upstream_error = 1;
+        ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
 
     } else {
 
