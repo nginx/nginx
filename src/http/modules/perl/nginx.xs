@@ -1001,6 +1001,7 @@ sleep(r, sleep, next)
 
     ctx->next = SvRV(ST(2));
 
+    r->connection->write->delayed = 1;
     ngx_add_timer(r->connection->write, sleep);
 
     r->write_event_handler = ngx_http_perl_sleep_handler;
