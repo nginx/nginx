@@ -2612,7 +2612,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 static void
 ngx_http_writer(ngx_http_request_t *r)
 {
-    int                        rc;
+    ngx_int_t                  rc;
     ngx_event_t               *wev;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
@@ -2652,7 +2652,7 @@ ngx_http_writer(ngx_http_request_t *r)
     rc = ngx_http_output_filter(r, NULL);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http writer output filter: %d, \"%V?%V\"",
+                   "http writer output filter: %i, \"%V?%V\"",
                    rc, &r->uri, &r->args);
 
     if (rc == NGX_ERROR) {
