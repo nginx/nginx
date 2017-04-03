@@ -333,6 +333,8 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->log.handler = ngx_accept_log_error;
 
             ls->backlog = addr[i].opt.backlog;
+            ls->rcvbuf = addr[i].opt.rcvbuf;
+            ls->sndbuf = addr[i].opt.sndbuf;
 
             ls->keepalive = addr[i].opt.so_keepalive;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)

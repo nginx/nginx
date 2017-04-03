@@ -295,7 +295,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_mail_core_srv_conf_t  *cscf = conf;
 
-    ngx_str_t                  *value;
+    ngx_str_t                  *value, size;
     ngx_url_t                   u;
     ngx_uint_t                  i, m;
     ngx_mail_listen_t          *ls;
@@ -350,6 +350,8 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;
+    ls->rcvbuf = -1;
+    ls->sndbuf = -1;
     ls->wildcard = u.wildcard;
     ls->ctx = cf->ctx;
 
@@ -392,6 +394,38 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (ls->backlog == NGX_ERROR || ls->backlog == 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid backlog \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "rcvbuf=", 7) == 0) {
+            size.len = value[i].len - 7;
+            size.data = value[i].data + 7;
+
+            ls->rcvbuf = ngx_parse_size(&size);
+            ls->bind = 1;
+
+            if (ls->rcvbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid rcvbuf \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "sndbuf=", 7) == 0) {
+            size.len = value[i].len - 7;
+            size.data = value[i].data + 7;
+
+            ls->sndbuf = ngx_parse_size(&size);
+            ls->bind = 1;
+
+            if (ls->sndbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid sndbuf \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
             }
 
