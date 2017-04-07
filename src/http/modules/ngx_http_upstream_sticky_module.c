@@ -149,7 +149,8 @@ static char *ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us);
 
 
-static u_char expires[] = "; expires=Thu, 31-Dec-37 23:55:55 GMT";
+static u_char expires[] =
+    "; expires=Thu, 31-Dec-37 23:55:55 GMT; max-age=315360000";
 static u_char httponly[] = "; httponly";
 static u_char secure[] = "; secure";
 
@@ -566,7 +567,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
     }
 
     if (stcf->cookie_expires != (time_t) NGX_CONF_UNSET) {
-        len += sizeof(expires) - 1;
+        len += sizeof(expires) - 1 + NGX_TIME_T_LEN;
     }
 
     if (stcf->cookie_httponly) {
@@ -594,6 +595,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         } else {
             p = ngx_cpymem(p, "; expires=", 10);
             p = ngx_http_cookie_time(p, ngx_time() + stcf->cookie_expires);
+            p = ngx_sprintf(p, "; max-age=%T", stcf->cookie_expires);
         }
     }
 
@@ -610,7 +612,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         p = ngx_copy(p, secure, sizeof(secure) - 1);
     }
 
-    ngx_memcpy(p, stcf->cookie_path.data, stcf->cookie_path.len);
+    p = ngx_cpymem(p, stcf->cookie_path.data, stcf->cookie_path.len);
 
     cookie = stp->cookie;
 
@@ -628,7 +630,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         stp->cookie = cookie;
     }
 
-    cookie->value.len = len;
+    cookie->value.len = p - data;
     cookie->value.data = data;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
