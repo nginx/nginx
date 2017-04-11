@@ -394,6 +394,19 @@ ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_RECVDSTADDR, NULL, 0)"
 . auto/feature
 
 
+# BSD way to set IPv4 datagram source address
+
+ngx_feature="IP_SENDSRCADDR"
+ngx_feature_name="NGX_HAVE_IP_SENDSRCADDR"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_SENDSRCADDR, NULL, 0)"
+. auto/feature
+
+
 # Linux way to get IPv4 datagram destination address
 
 ngx_feature="IP_PKTINFO"

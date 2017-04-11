@@ -203,6 +203,20 @@ ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec)
     ngx_err_t      err;
     struct msghdr  msg;
 
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
+
+#if (NGX_HAVE_IP_SENDSRCADDR)
+    u_char             msg_control[CMSG_SPACE(sizeof(struct in_addr))];
+#elif (NGX_HAVE_IP_PKTINFO)
+    u_char             msg_control[CMSG_SPACE(sizeof(struct in_pktinfo))];
+#endif
+
+#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+    u_char             msg_control6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+#endif
+
+#endif
+
     ngx_memzero(&msg, sizeof(struct msghdr));
 
     if (c->socklen) {
@@ -212,6 +226,82 @@ ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec)
 
     msg.msg_iov = vec->iovs;
     msg.msg_iovlen = vec->count;
+
+#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
+
+    if (c->listening && c->listening->wildcard && c->local_sockaddr) {
+
+#if (NGX_HAVE_IP_SENDSRCADDR)
+
+        if (c->local_sockaddr->sa_family == AF_INET) {
+            struct cmsghdr      *cmsg;
+            struct in_addr      *addr;
+            struct sockaddr_in  *sin;
+
+            msg.msg_control = &msg_control;
+            msg.msg_controllen = sizeof(msg_control);
+
+            cmsg = CMSG_FIRSTHDR(&msg);
+            cmsg->cmsg_level = IPPROTO_IP;
+            cmsg->cmsg_type = IP_SENDSRCADDR;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
+
+            sin = (struct sockaddr_in *) c->local_sockaddr;
+
+            addr = (struct in_addr *) CMSG_DATA(cmsg);
+            *addr = sin->sin_addr;
+        }
+
+#elif (NGX_HAVE_IP_PKTINFO)
+
+        if (c->local_sockaddr->sa_family == AF_INET) {
+            struct cmsghdr      *cmsg;
+            struct in_pktinfo   *pkt;
+            struct sockaddr_in  *sin;
+
+            msg.msg_control = &msg_control;
+            msg.msg_controllen = sizeof(msg_control);
+
+            cmsg = CMSG_FIRSTHDR(&msg);
+            cmsg->cmsg_level = IPPROTO_IP;
+            cmsg->cmsg_type = IP_PKTINFO;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+
+            sin = (struct sockaddr_in *) c->local_sockaddr;
+
+            pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
+            ngx_memzero(pkt, sizeof(struct in_pktinfo));
+            pkt->ipi_spec_dst = sin->sin_addr;
+        }
+
+#endif
+
+#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+
+        if (c->local_sockaddr->sa_family == AF_INET6) {
+            struct cmsghdr       *cmsg;
+            struct in6_pktinfo   *pkt6;
+            struct sockaddr_in6  *sin6;
+
+            msg.msg_control = &msg_control6;
+            msg.msg_controllen = sizeof(msg_control6);
+
+            cmsg = CMSG_FIRSTHDR(&msg);
+            cmsg->cmsg_level = IPPROTO_IPV6;
+            cmsg->cmsg_type = IPV6_PKTINFO;
+            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+
+            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+            pkt6 = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+            ngx_memzero(pkt6, sizeof(struct in6_pktinfo));
+            pkt6->ipi6_addr = sin6->sin6_addr;
+        }
+
+#endif
+    }
+
+#endif
 
 eintr:
 
