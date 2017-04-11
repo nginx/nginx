@@ -89,6 +89,14 @@ static char ngx_http_error_307_page[] =
 ;
 
 
+static char ngx_http_error_308_page[] =
+"<html>" CRLF
+"<head><title>308 Permanent Redirect</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>308 Permanent Redirect</h1></center>" CRLF
+;
+
+
 static char ngx_http_error_400_page[] =
 "<html>" CRLF
 "<head><title>400 Bad Request</title></head>" CRLF
@@ -336,8 +344,9 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_null_string,                     /* 305 */
     ngx_null_string,                     /* 306 */
     ngx_string(ngx_http_error_307_page),
+    ngx_string(ngx_http_error_308_page),
 
-#define NGX_HTTP_LAST_3XX  308
+#define NGX_HTTP_LAST_3XX  309
 #define NGX_HTTP_OFF_4XX   (NGX_HTTP_LAST_3XX - 301 + NGX_HTTP_OFF_3XX)
 
     ngx_string(ngx_http_error_400_page),
@@ -615,7 +624,8 @@ ngx_http_send_error_page(ngx_http_request_t *r, ngx_http_err_page_t *err_page)
     if (overwrite != NGX_HTTP_MOVED_PERMANENTLY
         && overwrite != NGX_HTTP_MOVED_TEMPORARILY
         && overwrite != NGX_HTTP_SEE_OTHER
-        && overwrite != NGX_HTTP_TEMPORARY_REDIRECT)
+        && overwrite != NGX_HTTP_TEMPORARY_REDIRECT
+        && overwrite != NGX_HTTP_PERMANENT_REDIRECT)
     {
         r->err_status = NGX_HTTP_MOVED_TEMPORARILY;
     }

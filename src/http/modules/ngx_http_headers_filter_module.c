@@ -173,6 +173,7 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     case NGX_HTTP_SEE_OTHER:
     case NGX_HTTP_NOT_MODIFIED:
     case NGX_HTTP_TEMPORARY_REDIRECT:
+    case NGX_HTTP_PERMANENT_REDIRECT:
         safe_status = 1;
         break;
 
