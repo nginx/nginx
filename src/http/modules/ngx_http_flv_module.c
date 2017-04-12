@@ -203,7 +203,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     }
 
     if (i == 0) {
-        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+        b = ngx_calloc_buf(r->pool);
         if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -217,7 +217,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     }
 
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

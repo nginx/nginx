@@ -233,7 +233,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
     /* we need to allocate all before the header would be sent */
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

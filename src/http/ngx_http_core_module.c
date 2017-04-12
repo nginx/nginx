@@ -1926,7 +1926,7 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         return ngx_http_send_header(r);
     }
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

@@ -584,7 +584,7 @@ ngx_http_xslt_apply_stylesheet(ngx_http_request_t *r,
         return NULL;
     }
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         ngx_free(buf);
         return NULL;

@@ -644,7 +644,7 @@ ngx_http_gzip_filter_gzheader(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
     static u_char  gzheader[10] =
                                { 0x1f, 0x8b, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3 };
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NGX_ERROR;
     }

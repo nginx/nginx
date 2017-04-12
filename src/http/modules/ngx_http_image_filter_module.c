@@ -581,7 +581,7 @@ ngx_http_image_json(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     size_t      len;
     ngx_buf_t  *b;
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NULL;
     }
@@ -633,7 +633,7 @@ ngx_http_image_asis(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 {
     ngx_buf_t  *b;
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         return NULL;
     }
@@ -1067,7 +1067,7 @@ transparent:
         return NULL;
     }
 
-    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         gdFree(out);
         return NULL;
