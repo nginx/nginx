@@ -17,6 +17,9 @@ ngx_spacer='
 MAIN_LINK=
 MODULE_LINK="-shared -Wl,-undefined,dynamic_lookup"
 
+CC_AUX_FLAGS="$CC_AUX_FLAGS -D__APPLE_USE_RFC_3542"
+
+
 # kqueue
 
 echo " + kqueue found"
@@ -86,7 +89,6 @@ ngx_feature_test="int  kq;
 
 # sendfile()
 
-CC_AUX_FLAGS="$CC_AUX_FLAGS"
 ngx_feature="sendfile()"
 ngx_feature_name="NGX_HAVE_SENDFILE"
 ngx_feature_run=yes
