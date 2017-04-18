@@ -1090,7 +1090,7 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
      * maximum interoperability.
      */
 
-#ifdef SSL_CTRL_SET_CURVES_LIST
+#if (defined SSL_CTX_set1_curves_list || defined SSL_CTRL_SET_CURVES_LIST)
 
     /*
      * OpenSSL 1.0.2+ allows configuring a curve list instead of a single
