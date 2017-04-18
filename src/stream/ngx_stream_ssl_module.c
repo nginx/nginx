@@ -45,6 +45,7 @@ static ngx_conf_bitmask_t  ngx_stream_ssl_protocols[] = {
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
     { ngx_string("TLSv1.1"), NGX_SSL_TLSv1_1 },
     { ngx_string("TLSv1.2"), NGX_SSL_TLSv1_2 },
+    { ngx_string("TLSv1.3"), NGX_SSL_TLSv1_3 },
     { ngx_null_string, 0 }
 };
 
