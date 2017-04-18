@@ -248,8 +248,6 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
                                  ctx->matches->nelts);
     }
 
-    ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
-
     ctx->saved.data = ngx_pnalloc(r->pool, ctx->tables->max_match_len - 1);
     if (ctx->saved.data == NULL) {
         return NGX_ERROR;
@@ -259,6 +257,8 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
     if (ctx->looked.data == NULL) {
         return NGX_ERROR;
     }
+
+    ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
 
     ctx->offset = ctx->tables->min_match_len - 1;
     ctx->last_out = &ctx->out;
