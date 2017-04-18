@@ -54,6 +54,11 @@
 #define ngx_ssl_conn_t          SSL
 
 
+#if (OPENSSL_VERSION_NUMBER < 0x10002000L)
+#define SSL_is_server(s)        (s)->server
+#endif
+
+
 struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;

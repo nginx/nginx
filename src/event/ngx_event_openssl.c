@@ -837,7 +837,9 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
     BIO               *rbio, *wbio;
     ngx_connection_t  *c;
 
-    if (where & SSL_CB_HANDSHAKE_START) {
+    if ((where & SSL_CB_HANDSHAKE_START)
+        && SSL_is_server((ngx_ssl_conn_t *) ssl_conn))
+    {
         c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
         if (c->ssl->handshaked) {
