@@ -361,6 +361,8 @@ ngx_http_auth_basic_set_realm(ngx_http_request_t *r, ngx_str_t *realm)
 
     basic = ngx_pnalloc(r->pool, len);
     if (basic == NULL) {
+        r->headers_out.www_authenticate->hash = 0;
+        r->headers_out.www_authenticate = NULL;
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 

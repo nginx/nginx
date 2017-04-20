@@ -169,6 +169,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
             location = ngx_pnalloc(r->pool, len);
             if (location == NULL) {
+                ngx_http_clear_location(r);
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 

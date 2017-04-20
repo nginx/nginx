@@ -4897,17 +4897,18 @@ ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
         }
     }
 
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
-
     ho = ngx_list_push(&r->headers_out.headers);
     if (ho == NULL) {
         return NGX_ERROR;
     }
 
     *ho = *h;
+
+    ph = ngx_array_push(pa);
+    if (ph == NULL) {
+        return NGX_ERROR;
+    }
+
     *ph = ho;
 
     return NGX_OK;

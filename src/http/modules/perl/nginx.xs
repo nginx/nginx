@@ -510,10 +510,12 @@ header_out(r, key, value)
     header->hash = 1;
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->key, key) != NGX_OK) {
+        header->hash = 0;
         XSRETURN_EMPTY;
     }
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->value, value) != NGX_OK) {
+        header->hash = 0;
         XSRETURN_EMPTY;
     }
 

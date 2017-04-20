@@ -1002,6 +1002,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
             p = ngx_pnalloc(r->pool, len);
 
             if (p == NULL) {
+                ngx_http_clear_location(r);
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return NGX_OK;
             }

@@ -425,6 +425,8 @@ ngx_http_range_singlepart_header(ngx_http_request_t *r,
     content_range->value.data = ngx_pnalloc(r->pool,
                                     sizeof("bytes -/") - 1 + 3 * NGX_OFF_T_LEN);
     if (content_range->value.data == NULL) {
+        content_range->hash = 0;
+        r->headers_out.content_range = NULL;
         return NGX_ERROR;
     }
 
@@ -594,6 +596,8 @@ ngx_http_range_not_satisfiable(ngx_http_request_t *r)
     content_range->value.data = ngx_pnalloc(r->pool,
                                        sizeof("bytes */") - 1 + NGX_OFF_T_LEN);
     if (content_range->value.data == NULL) {
+        content_range->hash = 0;
+        r->headers_out.content_range = NULL;
         return NGX_ERROR;
     }
 

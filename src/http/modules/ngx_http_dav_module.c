@@ -1080,6 +1080,7 @@ ngx_http_dav_location(ngx_http_request_t *r, u_char *path)
     } else {
         location = ngx_pnalloc(r->pool, r->uri.len);
         if (location == NULL) {
+            ngx_http_clear_location(r);
             return NGX_ERROR;
         }
 
