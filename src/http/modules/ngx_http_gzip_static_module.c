@@ -238,7 +238,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
 
     h = ngx_list_push(&r->headers_out.headers);
     if (h == NULL) {
-        return NGX_ERROR;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     h->hash = 1;
