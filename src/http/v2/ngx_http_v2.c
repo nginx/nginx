@@ -3522,8 +3522,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 
 
 ngx_int_t
-ngx_http_v2_read_request_body(ngx_http_request_t *r,
-    ngx_http_client_body_handler_pt post_handler)
+ngx_http_v2_read_request_body(ngx_http_request_t *r)
 {
     off_t                      len;
     size_t                     size;
@@ -3536,32 +3535,13 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
     ngx_http_v2_connection_t  *h2c;
 
     stream = r->stream;
+    rb = r->request_body;
 
     if (stream->skip_data) {
         r->request_body_no_buffering = 0;
-        post_handler(r);
+        rb->post_handler(r);
         return NGX_OK;
     }
-
-    rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
-    if (rb == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    /*
-     * set by ngx_pcalloc():
-     *
-     *     rb->bufs = NULL;
-     *     rb->buf = NULL;
-     *     rb->received = 0;
-     *     rb->free = NULL;
-     *     rb->busy = NULL;
-     */
-
-    rb->rest = 1;
-    rb->post_handler = post_handler;
-
-    r->request_body = rb;
 
     h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -3611,6 +3591,8 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r,
         stream->skip_data = 1;
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    rb->rest = 1;
 
     buf = stream->preread;
 
