@@ -723,6 +723,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             r->http_major = ch - '0';
+
+            if (r->http_major > 1) {
+                return NGX_HTTP_PARSE_INVALID_VERSION;
+            }
+
             state = sw_major_digit;
             break;
 
@@ -737,11 +742,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
-            if (r->http_major > 99) {
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            r->http_major = r->http_major * 10 + ch - '0';
+
+            if (r->http_major > 1) {
+                return NGX_HTTP_PARSE_INVALID_VERSION;
             }
 
-            r->http_major = r->http_major * 10 + ch - '0';
             break;
 
         /* first digit of minor HTTP version */

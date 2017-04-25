@@ -119,7 +119,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("502 Bad Gateway"),
     ngx_string("503 Service Temporarily Unavailable"),
     ngx_string("504 Gateway Time-out"),
-    ngx_null_string,        /* "505 HTTP Version Not Supported" */
+    ngx_string("505 HTTP Version Not Supported"),
     ngx_null_string,        /* "506 Variant Also Negotiates" */
     ngx_string("507 Insufficient Storage"),
 

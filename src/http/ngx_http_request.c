@@ -72,6 +72,9 @@ static char *ngx_http_client_errors[] = {
     /* NGX_HTTP_PARSE_INVALID_REQUEST */
     "client sent invalid request",
 
+    /* NGX_HTTP_PARSE_INVALID_VERSION */
+    "client sent invalid version",
+
     /* NGX_HTTP_PARSE_INVALID_09_METHOD */
     "client sent invalid method in HTTP/0.9 request"
 };
@@ -1036,7 +1039,14 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           ngx_http_client_errors[rc - NGX_HTTP_CLIENT_ERROR]);
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+
+            if (rc == NGX_HTTP_PARSE_INVALID_VERSION) {
+                ngx_http_finalize_request(r, NGX_HTTP_VERSION_NOT_SUPPORTED);
+
+            } else {
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            }
+
             return;
         }
 

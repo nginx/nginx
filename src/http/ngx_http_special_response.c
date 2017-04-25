@@ -321,6 +321,14 @@ static char ngx_http_error_504_page[] =
 ;
 
 
+static char ngx_http_error_505_page[] =
+"<html>" CRLF
+"<head><title>505 HTTP Version Not Supported</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<center><h1>505 HTTP Version Not Supported</h1></center>" CRLF
+;
+
+
 static char ngx_http_error_507_page[] =
 "<html>" CRLF
 "<head><title>507 Insufficient Storage</title></head>" CRLF
@@ -395,7 +403,7 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_502_page),
     ngx_string(ngx_http_error_503_page),
     ngx_string(ngx_http_error_504_page),
-    ngx_null_string,                     /* 505 */
+    ngx_string(ngx_http_error_505_page),
     ngx_null_string,                     /* 506 */
     ngx_string(ngx_http_error_507_page)
 
