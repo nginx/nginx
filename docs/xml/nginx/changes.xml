@@ -5,6 +5,84 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.0" date="2017-04-25">
+
+<change type="change">
+<para lang="ru">
+теперь SSL renegotiation допускается в соединениях к бэкендам.
+</para>
+<para lang="en">
+SSL renegotiation is now allowed on backend connections.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры rcvbuf и sndbuf директив listen
+в почтовом прокси-сервере и модуле stream.
+</para>
+<para lang="en">
+the "rcvbuf" and "sndbuf" parameters of the "listen" directives
+of the mail proxy and stream modules.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы return и error_page теперь могут использоваться для возврата
+перенаправлений с кодом 308.<br/>
+Спасибо Simon Leblanc.
+</para>
+<para lang="en">
+the "return" and "error_page" directives can now be used to return 308
+redirections.<br/>
+Thanks to Simon Leblanc.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр TLSv1.3 в директиве ssl_protocols.
+</para>
+<para lang="en">
+the "TLSv1.3" parameter of the "ssl_protocols" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при логгировании сигналов теперь указывается PID отправившего сигнал процесса.
+</para>
+<para lang="en">
+when logging signals nginx now logs PID of the process which sent the signal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.
+</para>
+<para lang="en">
+in memory allocation error handling.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если сервер в модуле stream слушал на wildcard-адресе,
+исходящий адрес ответного UDP-пакета
+мог отличаться от адреса назначения исходного пакета.
+</para>
+<para lang="en">
+if a server in the stream module listened on a wildcard address,
+the source address of a response UDP datagram could differ
+from the original datagram destination address.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.11.13" date="2017-04-04">
 
 <change type="feature">
