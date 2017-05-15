@@ -178,21 +178,25 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     fi
 
 
-    ngx_feature="gcc builtin atomic operations"
-    ngx_feature_name=NGX_HAVE_GCC_ATOMIC
-    ngx_feature_run=yes
-    ngx_feature_incs=
-    ngx_feature_path=
-    ngx_feature_libs=
-    ngx_feature_test="long  n = 0;
-                      if (!__sync_bool_compare_and_swap(&n, 0, 1))
-                          return 1;
-                      if (__sync_fetch_and_add(&n, 1) != 1)
-                          return 1;
-                      if (n != 2)
-                          return 1;
-                      __sync_synchronize();"
-    . auto/feature
+    if [ "$NGX_CC_NAME" = "sunc" ]; then
+        echo "checking for gcc builtin atomic operations ... disabled"
+    else
+        ngx_feature="gcc builtin atomic operations"
+        ngx_feature_name=NGX_HAVE_GCC_ATOMIC
+        ngx_feature_run=yes
+        ngx_feature_incs=
+        ngx_feature_path=
+        ngx_feature_libs=
+        ngx_feature_test="long  n = 0;
+                          if (!__sync_bool_compare_and_swap(&n, 0, 1))
+                              return 1;
+                          if (__sync_fetch_and_add(&n, 1) != 1)
+                              return 1;
+                          if (n != 2)
+                              return 1;
+                          __sync_synchronize();"
+        . auto/feature
+    fi
 
 
     if [ "$NGX_CC_NAME" = "ccc" ]; then
