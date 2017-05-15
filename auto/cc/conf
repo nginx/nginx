@@ -209,7 +209,7 @@ if [ "$NGX_PLATFORM" != win32 ]; then
                           var(0, buf, \"%d\", 1);
                           if (buf[0] != '1') return 1"
         . auto/feature
-     fi
+    fi
 
 
     ngx_feature="gcc variadic macros"
