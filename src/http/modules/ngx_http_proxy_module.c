@@ -1798,6 +1798,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             h->key.data = ngx_pnalloc(r->pool,
                                h->key.len + 1 + h->value.len + 1 + h->key.len);
             if (h->key.data == NULL) {
+                h->hash = 0;
                 return NGX_ERROR;
             }
 
