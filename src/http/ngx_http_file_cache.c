@@ -1700,13 +1700,14 @@ ngx_http_file_cache_cleanup(void *data)
 static time_t
 ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
 {
-    u_char                      *name;
+    u_char                      *name, *p;
     size_t                       len;
     time_t                       wait;
     ngx_uint_t                   tries;
     ngx_path_t                  *path;
-    ngx_queue_t                 *q;
+    ngx_queue_t                 *q, *sentinel;
     ngx_http_file_cache_node_t  *fcn;
+    u_char                       key[2 * NGX_HTTP_CACHE_KEY_LEN];
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "http file cache forced expire");
@@ -1723,13 +1724,21 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
 
     wait = 10;
     tries = 20;
+    sentinel = NULL;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
 
-    for (q = ngx_queue_last(&cache->sh->queue);
-         q != ngx_queue_sentinel(&cache->sh->queue);
-         q = ngx_queue_prev(q))
-    {
+    for ( ;; ) {
+        if (ngx_queue_empty(&cache->sh->queue)) {
+            break;
+        }
+
+        q = ngx_queue_last(&cache->sh->queue);
+
+        if (q == sentinel) {
+            break;
+        }
+
         fcn = ngx_queue_data(q, ngx_http_file_cache_node_t, queue);
 
         ngx_log_debug6(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
@@ -1740,15 +1749,37 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
         if (fcn->count == 0) {
             ngx_http_file_cache_delete(cache, q, name);
             wait = 0;
-
-        } else {
-            if (--tries) {
-                continue;
-            }
-
-            wait = 1;
+            break;
         }
 
+        p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
+                         sizeof(ngx_rbtree_key_t));
+        len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
+        (void) ngx_hex_dump(p, fcn->key, len);
+
+        /*
+         * abnormally exited workers may leave locked cache entries,
+         * and although it may be safe to remove them completely,
+         * we prefer to just move them to the top of the inactive queue
+         */
+
+        ngx_queue_remove(q);
+        fcn->expire = ngx_time() + cache->inactive;
+        ngx_queue_insert_head(&cache->sh->queue, &fcn->queue);
+
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      "ignore long locked inactive cache entry %*s, count:%d",
+                      (size_t) 2 * NGX_HTTP_CACHE_KEY_LEN, key, fcn->count);
+
+        if (sentinel == NULL) {
+            sentinel = q;
+        }
+
+        if (--tries) {
+            continue;
+        }
+
+        wait = 1;
         break;
     }
 
