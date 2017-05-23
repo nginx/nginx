@@ -619,6 +619,8 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     ngx_http_v2_queue_blocked_frame(r->stream->connection, frame);
 
+    r->stream->queued = 1;
+
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
         return NGX_ERROR;
@@ -626,8 +628,6 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     cln->handler = ngx_http_v2_filter_cleanup;
     cln->data = r->stream;
-
-    r->stream->queued = 1;
 
     fc->send_chain = ngx_http_v2_send_chain;
     fc->need_last_buf = 1;
