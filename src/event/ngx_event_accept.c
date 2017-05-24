@@ -238,7 +238,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         if (ev->deferred_accept) {
             rev->ready = 1;
-#if (NGX_HAVE_KQUEUE)
+#if (NGX_HAVE_KQUEUE || NGX_HAVE_EPOLLRDHUP)
             rev->available = 1;
 #endif
         }
