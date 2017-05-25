@@ -2357,6 +2357,26 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     if (r != r->main) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        if (r->background) {
+            if (!r->logged) {
+                if (clcf->log_subrequest) {
+                    ngx_http_log_request(r);
+                }
+
+                r->logged = 1;
+
+            } else {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "subrequest: \"%V?%V\" logged again",
+                              &r->uri, &r->args);
+            }
+
+            r->done = 1;
+            ngx_http_finalize_connection(r);
+            return;
+        }
 
         if (r->buffered || r->postponed) {
 
@@ -2374,9 +2394,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             r->main->count--;
 
             if (!r->logged) {
-
-                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
                 if (clcf->log_subrequest) {
                     ngx_http_log_request(r);
                 }
@@ -2440,6 +2457,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     r->done = 1;
+
+    r->read_event_handler = ngx_http_block_reading;
     r->write_event_handler = ngx_http_request_empty_handler;
 
     if (!r->post_action) {
@@ -2557,6 +2576,8 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
         ngx_http_close_request(r, 0);
         return;
     }
+
+    r = r->main;
 
     if (r->reading_body) {
         r->keepalive = 0;

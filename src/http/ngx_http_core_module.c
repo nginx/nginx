@@ -2518,6 +2518,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     sr->subrequest_in_memory = (flags & NGX_HTTP_SUBREQUEST_IN_MEMORY) != 0;
     sr->waited = (flags & NGX_HTTP_SUBREQUEST_WAITED) != 0;
+    sr->background = (flags & NGX_HTTP_SUBREQUEST_BACKGROUND) != 0;
 
     sr->unparsed_uri = r->unparsed_uri;
     sr->method_name = ngx_http_core_get_method;
@@ -2531,29 +2532,31 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_handler;
 
-    if (c->data == r && r->postponed == NULL) {
-        c->data = sr;
-    }
-
     sr->variables = r->variables;
 
     sr->log_handler = r->log_handler;
 
-    pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
-    if (pr == NULL) {
-        return NGX_ERROR;
-    }
+    if (!sr->background) {
+        if (c->data == r && r->postponed == NULL) {
+            c->data = sr;
+        }
 
-    pr->request = sr;
-    pr->out = NULL;
-    pr->next = NULL;
+        pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
+        if (pr == NULL) {
+            return NGX_ERROR;
+        }
 
-    if (r->postponed) {
-        for (p = r->postponed; p->next; p = p->next) { /* void */ }
-        p->next = pr;
+        pr->request = sr;
+        pr->out = NULL;
+        pr->next = NULL;
 
-    } else {
-        r->postponed = pr;
+        if (r->postponed) {
+            for (p = r->postponed; p->next; p = p->next) { /* void */ }
+            p->next = pr;
+
+        } else {
+            r->postponed = pr;
+        }
     }
 
     sr->internal = 1;
