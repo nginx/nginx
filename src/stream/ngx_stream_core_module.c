@@ -309,7 +309,6 @@ ngx_int_t
 ngx_stream_core_content_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph)
 {
-    int                          tcp_nodelay;
     ngx_connection_t            *c;
     ngx_stream_core_srv_conf_t  *cscf;
 
@@ -321,22 +320,10 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
 
     if (c->type == SOCK_STREAM
         && cscf->tcp_nodelay
-        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
+        && ngx_tcp_nodelay(c) != NGX_OK)
     {
-        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0, "tcp_nodelay");
-
-        tcp_nodelay = 1;
-
-        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                       (const void *) &tcp_nodelay, sizeof(int)) == -1)
-        {
-            ngx_connection_error(c, ngx_socket_errno,
-                                 "setsockopt(TCP_NODELAY) failed");
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return NGX_OK;
-        }
-
-        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return NGX_OK;
     }
 
     cscf->handler(s);

@@ -529,29 +529,8 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
         tcp_nodelay = 1;
     }
 
-    if (tcp_nodelay
-        && clcf->tcp_nodelay
-        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
-    {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "tcp_nodelay");
-
-        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                       (const void *) &tcp_nodelay, sizeof(int))
-            == -1)
-        {
-#if (NGX_SOLARIS)
-            /* Solaris returns EINVAL if a socket has been shut down */
-            c->log_error = NGX_ERROR_IGNORE_EINVAL;
-#endif
-
-            ngx_connection_error(c, ngx_socket_errno,
-                                 "setsockopt(TCP_NODELAY) failed");
-
-            c->log_error = NGX_ERROR_INFO;
-            goto error;
-        }
-
-        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+    if (tcp_nodelay && clcf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK) {
+        goto error;
     }
 
     for ( /* void */ ; out; out = fn) {

@@ -1346,6 +1346,49 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
 
 
 ngx_int_t
+ngx_tcp_nodelay(ngx_connection_t *c)
+{
+    int  tcp_nodelay;
+
+    if (c->tcp_nodelay != NGX_TCP_NODELAY_UNSET) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0, "tcp_nodelay");
+
+    tcp_nodelay = 1;
+
+    if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
+                   (const void *) &tcp_nodelay, sizeof(int))
+        == -1)
+    {
+#if (NGX_SOLARIS)
+        if (c->log_error == NGX_ERROR_INFO) {
+
+            /* Solaris returns EINVAL if a socket has been shut down */
+            c->log_error = NGX_ERROR_IGNORE_EINVAL;
+
+            ngx_connection_error(c, ngx_socket_errno,
+                                 "setsockopt(TCP_NODELAY) failed");
+
+            c->log_error = NGX_ERROR_INFO;
+
+            return NGX_ERROR;
+        }
+#endif
+
+        ngx_connection_error(c, ngx_socket_errno,
+                             "setsockopt(TCP_NODELAY) failed");
+        return NGX_ERROR;
+    }
+
+    c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
     ngx_uint_t  level;
