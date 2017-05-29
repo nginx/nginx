@@ -352,11 +352,18 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
 static ngx_int_t
 ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 {
-    ngx_int_t               rc;
-    ngx_stream_session_t   *s;
-    ngx_stream_ssl_conf_t  *sslcf;
+    ngx_int_t                    rc;
+    ngx_stream_session_t        *s;
+    ngx_stream_ssl_conf_t       *sslcf;
+    ngx_stream_core_srv_conf_t  *cscf;
 
     s = c->data;
+
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    if (cscf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
         return NGX_ERROR;
