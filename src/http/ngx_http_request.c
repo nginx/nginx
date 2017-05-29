@@ -2331,10 +2331,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             return;
         }
 
-        if (r->main->blocked) {
-            r->write_event_handler = ngx_http_request_finalizer;
-        }
-
         ngx_http_terminate_request(r, rc);
         return;
     }
@@ -2449,7 +2445,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r->buffered || c->buffered || r->postponed || r->blocked) {
+    if (r->buffered || c->buffered || r->postponed) {
 
         if (ngx_http_set_write_handler(r) != NGX_OK) {
             ngx_http_terminate_request(r, 0);
@@ -2530,6 +2526,8 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     if (mr->write_event_handler) {
 
         if (mr->blocked) {
+            r->connection->error = 1;
+            r->write_event_handler = ngx_http_request_finalizer;
             return;
         }
 
