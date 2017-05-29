@@ -300,6 +300,18 @@ if [ $ngx_found = no ]; then
 fi
 
 
+ngx_feature="sched_setaffinity()"
+ngx_feature_name="NGX_HAVE_SCHED_SETAFFINITY"
+ngx_feature_run=no
+ngx_feature_incs="#include <sched.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="cpu_set_t mask;
+                  CPU_ZERO(&mask);
+                  sched_setaffinity(0, sizeof(cpu_set_t), &mask)"
+. auto/feature
+
+
 ngx_feature="SO_SETFIB"
 ngx_feature_name="NGX_HAVE_SETFIB"
 ngx_feature_run=no
