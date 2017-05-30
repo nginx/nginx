@@ -5,6 +5,104 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.1" date="2017-05-30">
+
+<change type="feature">
+<para lang="ru">
+теперь в качестве параметра директивы set_real_ip_from
+можно указывать имя хоста.
+</para>
+<para lang="en">
+now a hostname can be used
+as the "set_real_ip_from" directive parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения в скриптах подсветки синтаксиса для vim.
+</para>
+<para lang="en">
+vim syntax highlighting scripts improvements.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива worker_cpu_affinity теперь работает на DragonFly BSD.<br/>
+Спасибо Sepherosa Ziehau.
+</para>
+<para lang="en">
+the "worker_cpu_affinity" directive now works on DragonFly BSD.<br/>
+Thanks to Sepherosa Ziehau.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL renegotiation в соединениях к бэкендам
+не работал при использовании OpenSSL до 1.1.0.
+</para>
+<para lang="en">
+SSL renegotiation on backend connections
+did not work when using OpenSSL before 1.1.0.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+nginx не собирался с Oracle Developer Studio 12.5.
+</para>
+<para lang="en">
+nginx could not be built with Oracle Developer Studio 12.5.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+теперь cache manager пропускает заблокированные записи
+при очистке кэша по max_size.
+</para>
+<para lang="en">
+now cache manager ignores long locked cache entries
+when cleaning cache based on the "max_size" parameter.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+клиентские SSL-соединения сразу закрывались, если использовался
+отложенный accept и параметр proxy_protocol директивы listen.
+</para>
+<para lang="en">
+client SSL connections were immediately closed if deferred accept
+and the "proxy_protocol" parameter of the "listen" directive were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+теперь директива tcp_nodelay
+устанавливает опцию TCP_NODELAY перед SSL handshake.
+</para>
+<para lang="en">
+now the "tcp_nodelay" directive
+sets the TCP_NODELAY option before an SSL handshake.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.0" date="2017-04-25">
 
 <change type="change">
