@@ -1568,6 +1568,10 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
         rc = ngx_http_v2_pseudo_header(r, header);
 
         if (rc == NGX_OK) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http2 pseudo-header: \":%V: %V\"",
+                           &header->name, &header->value);
+
             return ngx_http_v2_state_header_complete(h2c, pos, end);
         }
 
@@ -1609,36 +1613,40 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
                                                 NGX_HTTP_V2_INTERNAL_ERROR);
         }
 
-        return ngx_http_v2_state_header_complete(h2c, pos, end);
-    }
+    } else {
+        h = ngx_list_push(&r->headers_in.headers);
+        if (h == NULL) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
+        }
 
-    h = ngx_list_push(&r->headers_in.headers);
-    if (h == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
+        h->key.len = header->name.len;
+        h->key.data = header->name.data;
 
-    h->key.len = header->name.len;
-    h->key.data = header->name.data;
+        /*
+         * TODO Optimization: precalculate hash
+         * and handler for indexed headers.
+         */
+        h->hash = ngx_hash_key(h->key.data, h->key.len);
 
-    /* TODO Optimization: precalculate hash and handler for indexed headers. */
-    h->hash = ngx_hash_key(h->key.data, h->key.len);
+        h->value.len = header->value.len;
+        h->value.data = header->value.data;
 
-    h->value.len = header->value.len;
-    h->value.data = header->value.data;
+        h->lowcase_key = h->key.data;
 
-    h->lowcase_key = h->key.data;
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+        hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                           h->lowcase_key, h->key.len);
 
-    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
-                       h->lowcase_key, h->key.len);
-
-    if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-        goto error;
+        if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
+            goto error;
+        }
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http2 http header: \"%V: %V\"", &h->key, &h->value);
+                   "http2 http header: \"%V: %V\"",
+                   &header->name, &header->value);
 
     return ngx_http_v2_state_header_complete(h2c, pos, end);
 
