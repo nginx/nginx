@@ -2729,7 +2729,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
     rev = c->read;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http upstream process body on memory");
+                   "http upstream process body in memory");
 
     if (rev->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
