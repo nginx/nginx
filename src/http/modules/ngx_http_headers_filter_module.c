@@ -98,7 +98,7 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
       ngx_http_headers_expires,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("add_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
@@ -106,7 +106,7 @@ static ngx_command_t  ngx_http_headers_filter_commands[] = {
       ngx_http_headers_add,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
       ngx_null_command
 };
