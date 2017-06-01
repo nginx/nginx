@@ -428,7 +428,10 @@ ngx_feature_incs="#include <sys/socket.h>
                   #include <netinet/in.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_PKTINFO, NULL, 0)"
+ngx_feature_test="struct in_pktinfo  pkt;
+                  pkt.ipi_spec_dst.s_addr = INADDR_ANY;
+                  (void) pkt;
+                  setsockopt(0, IPPROTO_IP, IP_PKTINFO, NULL, 0)"
 . auto/feature
 
 
