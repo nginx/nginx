@@ -206,13 +206,13 @@ ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec)
 #if (NGX_HAVE_MSGHDR_MSG_CONTROL)
 
 #if (NGX_HAVE_IP_SENDSRCADDR)
-    u_char             msg_control[CMSG_SPACE(sizeof(struct in_addr))];
+    u_char         msg_control[CMSG_SPACE(sizeof(struct in_addr))];
 #elif (NGX_HAVE_IP_PKTINFO)
-    u_char             msg_control[CMSG_SPACE(sizeof(struct in_pktinfo))];
+    u_char         msg_control[CMSG_SPACE(sizeof(struct in_pktinfo))];
 #endif
 
 #if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
-    u_char             msg_control6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+    u_char         msg_control6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 #endif
 
 #endif
