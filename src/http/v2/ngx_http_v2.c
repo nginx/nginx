@@ -28,6 +28,7 @@
 #define NGX_HTTP_V2_HTTP_1_1_REQUIRED            0xd
 
 /* frame sizes */
+#define NGX_HTTP_V2_SETTINGS_ACK_SIZE            0
 #define NGX_HTTP_V2_RST_STREAM_SIZE              4
 #define NGX_HTTP_V2_PRIORITY_SIZE                5
 #define NGX_HTTP_V2_PING_SIZE                    8
@@ -128,8 +129,7 @@ static ngx_http_v2_node_t *ngx_http_v2_get_closed_node(
 #define ngx_http_v2_index_size(h2scf)  (h2scf->streams_index_mask + 1)
 #define ngx_http_v2_index(h2scf, sid)  ((sid >> 1) & h2scf->streams_index_mask)
 
-static ngx_int_t ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c,
-    ngx_uint_t ack);
+static ngx_int_t ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c);
 static ngx_int_t ngx_http_v2_settings_frame_handler(
     ngx_http_v2_connection_t *h2c, ngx_http_v2_out_frame_t *frame);
 static ngx_int_t ngx_http_v2_send_window_update(ngx_http_v2_connection_t *h2c,
@@ -269,7 +269,7 @@ ngx_http_v2_init(ngx_event_t *rev)
         return;
     }
 
-    if (ngx_http_v2_send_settings(h2c, 0) == NGX_ERROR) {
+    if (ngx_http_v2_send_settings(h2c) == NGX_ERROR) {
         ngx_http_close_connection(c);
         return;
     }
@@ -1967,8 +1967,9 @@ static u_char *
 ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    ssize_t     window_delta;
-    ngx_uint_t  id, value;
+    ssize_t                   window_delta;
+    ngx_uint_t                id, value;
+    ngx_http_v2_out_frame_t  *frame;
 
     window_delta = 0;
 
@@ -2024,7 +2025,14 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
         pos += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
     }
 
-    ngx_http_v2_send_settings(h2c, 1);
+    frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_SETTINGS_ACK_SIZE,
+                                  NGX_HTTP_V2_SETTINGS_FRAME,
+                                  NGX_HTTP_V2_ACK_FLAG, 0);
+    if (frame == NULL) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+    }
+
+    ngx_http_v2_queue_blocked_frame(h2c, frame);
 
     if (window_delta) {
         if (ngx_http_v2_adjust_windows(h2c, window_delta) != NGX_OK) {
@@ -2476,7 +2484,7 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
 
 
 static ngx_int_t
-ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c, ngx_uint_t ack)
+ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 {
     size_t                    len;
     ngx_buf_t                *buf;
@@ -2484,8 +2492,8 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c, ngx_uint_t ack)
     ngx_http_v2_srv_conf_t   *h2scf;
     ngx_http_v2_out_frame_t  *frame;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 send SETTINGS frame ack:%ui", ack);
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 send SETTINGS frame");
 
     frame = ngx_palloc(h2c->pool, sizeof(ngx_http_v2_out_frame_t));
     if (frame == NULL) {
@@ -2497,7 +2505,7 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c, ngx_uint_t ack)
         return NGX_ERROR;
     }
 
-    len = ack ? 0 : (sizeof(uint16_t) + sizeof(uint32_t)) * 3;
+    len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 3;
 
     buf = ngx_create_temp_buf(h2c->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE + len);
     if (buf == NULL) {
@@ -2521,28 +2529,26 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c, ngx_uint_t ack)
     buf->last = ngx_http_v2_write_len_and_type(buf->last, len,
                                                NGX_HTTP_V2_SETTINGS_FRAME);
 
-    *buf->last++ = ack ? NGX_HTTP_V2_ACK_FLAG : NGX_HTTP_V2_NO_FLAG;
+    *buf->last++ = NGX_HTTP_V2_NO_FLAG;
 
     buf->last = ngx_http_v2_write_sid(buf->last, 0);
 
-    if (!ack) {
-        h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                             ngx_http_v2_module);
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
 
-        buf->last = ngx_http_v2_write_uint16(buf->last,
-                                             NGX_HTTP_V2_MAX_STREAMS_SETTING);
-        buf->last = ngx_http_v2_write_uint32(buf->last,
-                                             h2scf->concurrent_streams);
+    buf->last = ngx_http_v2_write_uint16(buf->last,
+                                         NGX_HTTP_V2_MAX_STREAMS_SETTING);
+    buf->last = ngx_http_v2_write_uint32(buf->last,
+                                         h2scf->concurrent_streams);
 
-        buf->last = ngx_http_v2_write_uint16(buf->last,
+    buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING);
-        buf->last = ngx_http_v2_write_uint32(buf->last, h2scf->preread_size);
+    buf->last = ngx_http_v2_write_uint32(buf->last, h2scf->preread_size);
 
-        buf->last = ngx_http_v2_write_uint16(buf->last,
-                                           NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
-        buf->last = ngx_http_v2_write_uint32(buf->last,
-                                             NGX_HTTP_V2_MAX_FRAME_SIZE);
-    }
+    buf->last = ngx_http_v2_write_uint16(buf->last,
+                                         NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
+    buf->last = ngx_http_v2_write_uint32(buf->last,
+                                         NGX_HTTP_V2_MAX_FRAME_SIZE);
 
     ngx_http_v2_queue_blocked_frame(h2c, frame);
 
