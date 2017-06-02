@@ -261,6 +261,15 @@ ngx_http_v2_queue_blocked_frame(ngx_http_v2_connection_t *h2c,
 }
 
 
+static ngx_inline void
+ngx_http_v2_queue_ordered_frame(ngx_http_v2_connection_t *h2c,
+    ngx_http_v2_out_frame_t *frame)
+{
+    frame->next = h2c->last_out;
+    h2c->last_out = frame;
+}
+
+
 void ngx_http_v2_init(ngx_event_t *rev);
 void ngx_http_v2_request_headers_init(void);
 
