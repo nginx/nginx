@@ -1959,8 +1959,6 @@ ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
     }
 
-    ngx_http_v2_send_settings(h2c, 1);
-
     return ngx_http_v2_state_settings_params(h2c, pos, end);
 }
 
@@ -2025,6 +2023,8 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         pos += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
     }
+
+    ngx_http_v2_send_settings(h2c, 1);
 
     if (window_delta) {
         if (ngx_http_v2_adjust_windows(h2c, window_delta) != NGX_OK) {
