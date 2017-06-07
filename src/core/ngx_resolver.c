@@ -224,8 +224,9 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
             continue;
         }
 
-#if (NGX_HAVE_INET6)
         if (ngx_strncmp(names[i].data, "ipv6=", 5) == 0) {
+            
+#if (NGX_HAVE_INET6)
 
             if (ngx_strcmp(&names[i].data[5], "on") == 0) {
                 r->ipv6 = 1;
@@ -238,10 +239,10 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
                                    "invalid parameter: %V", &names[i]);
                 return NULL;
             }
-
+#endif
             continue;
         }
-#endif
+
 
         ngx_memzero(&u, sizeof(ngx_url_t));
 
