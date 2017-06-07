@@ -2388,7 +2388,7 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         ctx->timefmt.len = value->len;
         ctx->timefmt.data = ngx_pnalloc(r->pool, value->len + 1);
         if (ctx->timefmt.data == NULL) {
-            return NGX_HTTP_SSI_ERROR;
+            return NGX_ERROR;
         }
 
         ngx_cpystrn(ctx->timefmt.data, value->data, value->len + 1);
