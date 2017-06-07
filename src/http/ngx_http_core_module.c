@@ -1353,6 +1353,7 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
             r->uri.len = alias + path.len;
             r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
             if (r->uri.data == NULL) {
+                r->uri.len = 0;
                 ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return NGX_OK;
             }
