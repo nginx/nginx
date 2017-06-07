@@ -3442,7 +3442,7 @@ ngx_http_core_create_srv_conf(ngx_conf_t *cf)
      *     conf->client_large_buffers.num = 0;
      */
 
-    if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
+    if (ngx_array_init(&cscf->server_names, cf->pool, 4,
                        sizeof(ngx_http_server_name_t))
         != NGX_OK)
     {
