@@ -14,11 +14,11 @@
 
 
 typedef struct {
-    void        *elts;
-    ngx_uint_t   nelts;
-    size_t       size;
-    ngx_uint_t   nalloc;
-    ngx_pool_t  *pool;
+    void        *elts; //数组使用的内存块的起始地址
+    ngx_uint_t   nelts; //当前内存块已存在的元素个数
+    size_t       size; //数组大小
+    ngx_uint_t   nalloc; //内存块最多能容纳的数组元素个数，因此，内存块的结束地址= elts+nalloc*size
+    ngx_pool_t  *pool; //使用的内存所在的内存池
 } ngx_array_t;
 
 
