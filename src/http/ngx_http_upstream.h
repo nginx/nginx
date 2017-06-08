@@ -57,6 +57,9 @@
 #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
 
 
+#define NGX_HTTP_UPSTREAM_NOTIFY_HEADER      0x1
+
+
 typedef struct {
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;

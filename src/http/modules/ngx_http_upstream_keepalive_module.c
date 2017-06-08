@@ -52,6 +52,8 @@ typedef struct {
     ngx_event_save_peer_session_pt     original_save_session;
 #endif
 
+    ngx_event_notify_peer_pt           original_notify;
+
 } ngx_http_upstream_keepalive_peer_data_t;
 
 
@@ -72,6 +74,9 @@ static ngx_int_t ngx_http_upstream_keepalive_set_session(
 static void ngx_http_upstream_keepalive_save_session(ngx_peer_connection_t *pc,
     void *data);
 #endif
+
+static void ngx_http_upstream_notify_keepalive_peer(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t type);
 
 static void *ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -227,6 +232,11 @@ ngx_http_upstream_init_keepalive_peer(ngx_http_request_t *r,
     r->upstream->peer.set_session = ngx_http_upstream_keepalive_set_session;
     r->upstream->peer.save_session = ngx_http_upstream_keepalive_save_session;
 #endif
+
+    if (r->upstream->peer.notify) {
+        kp->original_notify = r->upstream->peer.notify;
+        r->upstream->peer.notify = ngx_http_upstream_notify_keepalive_peer;
+    }
 
     return NGX_OK;
 }
@@ -505,6 +515,16 @@ ngx_http_upstream_keepalive_save_session(ngx_peer_connection_t *pc, void *data)
 }
 
 #endif
+
+
+static void
+ngx_http_upstream_notify_keepalive_peer(ngx_peer_connection_t *pc, void *data,
+    ngx_uint_t type)
+{
+    ngx_http_upstream_keepalive_peer_data_t  *kp = data;
+
+    kp->original_notify(pc, kp->data, type);
+}
 
 
 static void *
