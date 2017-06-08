@@ -74,6 +74,7 @@ typedef struct {
     time_t                                      cookie_expires;
     unsigned                                    cookie_httponly:1;
     unsigned                                    cookie_secure:1;
+    unsigned                                    learn_after_headers:1;
 } ngx_http_upstream_sticky_srv_conf_t;
 
 
@@ -93,6 +94,9 @@ typedef struct {
     ngx_event_set_peer_session_pt               original_set_session;
     ngx_event_save_peer_session_pt              original_save_session;
 #endif
+
+    ngx_event_notify_peer_pt                    original_notify;
+
 } ngx_http_upstream_sticky_peer_data_t;
 
 
@@ -109,6 +113,8 @@ static ngx_int_t ngx_http_upstream_sticky_get_peer(ngx_peer_connection_t *pc,
     void *data);
 static void ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t state);
+static void ngx_http_upstream_sticky_learn_peer(
+    ngx_http_upstream_sticky_peer_data_t *stp, ngx_peer_connection_t *pc);
 
 
 #if (NGX_HTTP_SSL)
@@ -119,6 +125,8 @@ static void ngx_http_upstream_sticky_save_session(ngx_peer_connection_t *pc,
 #endif
 
 
+static void ngx_http_upstream_sticky_notify_peer(
+    ngx_peer_connection_t *pc, void *data, ngx_uint_t type);
 static ngx_int_t ngx_http_upstream_sticky_cookie_insert(
     ngx_peer_connection_t *pc, ngx_http_upstream_sticky_peer_data_t *stp);
 
@@ -269,6 +277,11 @@ ngx_http_upstream_sticky_init_peer(ngx_http_request_t *r,
     u->peer.save_session = ngx_http_upstream_sticky_save_session;
 #endif
 
+    if (u->peer.notify || stcf->learn_after_headers) {
+        stp->original_notify = u->peer.notify;
+        u->peer.notify = ngx_http_upstream_sticky_notify_peer;
+    }
+
     ngx_http_upstream_sticky_get_id(stcf, r, stcf->lookup_vars, &stp->id);
 
     return NGX_OK;
@@ -393,6 +406,24 @@ ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc, void *data,
 {
     ngx_http_upstream_sticky_peer_data_t  *stp = data;
 
+    if (state & (NGX_PEER_FAILED|NGX_PEER_NEXT)) {
+        goto done;
+    }
+
+    if (stp->conf->shm_zone && !stp->conf->learn_after_headers) {
+        ngx_http_upstream_sticky_learn_peer(stp, pc);
+    }
+
+done:
+
+    stp->original_free_peer(pc, stp->original_data, state);
+}
+
+
+static void
+ngx_http_upstream_sticky_learn_peer(ngx_http_upstream_sticky_peer_data_t *stp,
+    ngx_peer_connection_t *pc)
+{
     ngx_str_t                              sess_id;
     ngx_msec_t                             now;
     ngx_time_t                            *tp;
@@ -403,21 +434,13 @@ ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc, void *data,
     ngx_http_upstream_sticky_srv_conf_t   *stcf;
     ngx_http_upstream_sticky_sess_node_t  *sn;
 
-    if (state & (NGX_PEER_FAILED|NGX_PEER_NEXT)) {
-        goto done;
-    }
-
-    stcf = stp->conf;
-
-    if (stcf->shm_zone == NULL) {
-        goto done;
-    }
-
     if (pc->sid == NULL) {
         ngx_log_error(NGX_LOG_WARN, pc->log, 0,
                       "balancer does not support sticky");
-        goto done;
+        return;
     }
+
+    stcf = stp->conf;
 
     r = stp->request;
 
@@ -485,10 +508,6 @@ ngx_http_upstream_sticky_free_peer(ngx_peer_connection_t *pc, void *data,
     }
 
     ngx_shmtx_unlock(&sess->shpool->mutex);
-
-done:
-
-    stp->original_free_peer(pc, stp->original_data, state);
 }
 
 
@@ -512,6 +531,24 @@ ngx_http_upstream_sticky_save_session(ngx_peer_connection_t *pc, void *data)
 }
 
 #endif
+
+
+static void
+ngx_http_upstream_sticky_notify_peer(ngx_peer_connection_t *pc, void *data,
+    ngx_uint_t type)
+{
+    ngx_http_upstream_sticky_peer_data_t  *stp = data;
+
+    if (type == NGX_HTTP_UPSTREAM_NOTIFY_HEADER
+        && stp->conf->learn_after_headers)
+    {
+        ngx_http_upstream_sticky_learn_peer(stp, pc);
+    }
+
+    if (stp->original_notify) {
+        stp->original_notify(pc, stp->original_data, type);
+    }
+}
 
 
 static ngx_int_t
@@ -934,6 +971,8 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
      *     stcf->cookie_path = { 0, NULL };
      *     stcf->cookie_httponly = 0;
      *     stcf->cookie_secure = 0;
+     *
+     *     stcf->learn_after_headers = 0;
      */
 
     stcf->cookie_expires = NGX_CONF_UNSET;
@@ -1266,6 +1305,9 @@ ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
             }
 
             *indexp = index;
+
+        } else if (ngx_strcmp(value[i].data, "header") == 0) {
+            stcf->learn_after_headers = 1;
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
