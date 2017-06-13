@@ -3332,6 +3332,7 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
     static const u_char ending[] = " HTTP/2.0";
 
     if (r->method_name.len == 0
+        || r->schema_start == NULL
         || r->unparsed_uri.len == 0)
     {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
