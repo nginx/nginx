@@ -1143,10 +1143,13 @@ ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
 static void
 ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
 {
+    ngx_uint_t                     run_posted;
     ngx_connection_t              *c;
     ngx_http_request_t            *r;
     ngx_http_upstream_t           *u;
     ngx_http_upstream_resolved_t  *ur;
+
+    run_posted = ctx->async;
 
     r = ctx->data;
     c = r->connection;
@@ -1211,7 +1214,9 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
 
 failed:
 
-    ngx_http_run_posted_requests(c);
+    if (run_posted) {
+        ngx_http_run_posted_requests(c);
+    }
 }
 
 
