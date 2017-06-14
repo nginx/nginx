@@ -622,9 +622,7 @@ ngx_create_paths(ngx_cycle_t *cycle, ngx_uid_t user)
         {
         ngx_file_info_t   fi;
 
-        if (ngx_file_info((const char *) path[i]->name.data, &fi)
-            == NGX_FILE_ERROR)
-        {
+        if (ngx_file_info(path[i]->name.data, &fi) == NGX_FILE_ERROR) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           ngx_file_info_n " \"%s\" failed", path[i]->name.data);
             return NGX_ERROR;
