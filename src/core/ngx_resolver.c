@@ -746,6 +746,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
             last->next = rn->waiting;
             rn->waiting = ctx;
             ctx->state = NGX_AGAIN;
+            ctx->async = 1;
 
             do {
                 ctx->node = rn;
@@ -892,6 +893,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
     rn->waiting = ctx;
 
     ctx->state = NGX_AGAIN;
+    ctx->async = 1;
 
     do {
         ctx->node = rn;
@@ -1023,6 +1025,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
             ctx->next = rn->waiting;
             rn->waiting = ctx;
             ctx->state = NGX_AGAIN;
+            ctx->async = 1;
             ctx->node = rn;
 
             /* unlock addr mutex */
@@ -1119,6 +1122,7 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
     /* unlock addr mutex */
 
     ctx->state = NGX_AGAIN;
+    ctx->async = 1;
     ctx->node = rn;
 
     return NGX_OK;
@@ -3019,6 +3023,7 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
     srv = cctx->srvs;
 
     ctx->count--;
+    ctx->async |= cctx->async;
 
     srv->ctx = NULL;
     srv->state = cctx->state;
