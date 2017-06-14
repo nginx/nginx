@@ -1084,16 +1084,16 @@ ngx_http_gzip_ratio_variable(ngx_http_request_t *r,
     ngx_uint_t            zint, zfrac;
     ngx_http_gzip_ctx_t  *ctx;
 
-    v->valid = 1;
-    v->no_cacheable = 0;
-    v->not_found = 0;
-
     ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
 
     if (ctx == NULL || ctx->zout == 0) {
         v->not_found = 1;
         return NGX_OK;
     }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN + 3);
     if (v->data == NULL) {
