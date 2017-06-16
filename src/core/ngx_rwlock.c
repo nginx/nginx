@@ -109,6 +109,15 @@ ngx_rwlock_unlock(ngx_atomic_t *lock)
 }
 
 
+void
+ngx_rwlock_downgrade(ngx_atomic_t *lock)
+{
+    if (*lock == NGX_RWLOCK_WLOCK) {
+        *lock = 1;
+    }
+}
+
+
 #else
 
 #if (NGX_HTTP_UPSTREAM_ZONE || NGX_STREAM_UPSTREAM_ZONE)
