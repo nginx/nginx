@@ -443,7 +443,7 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
 
         name.data = ngx_resolver_alloc(r, name.len);
         if (name.data == NULL) {
-            return NGX_ERROR;
+            goto failed;
         }
 
         if (slen == ctx->service.len) {
@@ -480,6 +480,8 @@ ngx_resolve_name(ngx_resolver_ctx_t *ctx)
     if (ctx->event) {
         ngx_resolver_free(r, ctx->event);
     }
+
+failed:
 
     ngx_resolver_free(r, ctx);
 
