@@ -182,7 +182,9 @@ static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
 #if (NGX_HTTP_SSL)
 static void ngx_http_upstream_ssl_init_connection(ngx_http_request_t *,
     ngx_http_upstream_t *u, ngx_connection_t *c);
-static void ngx_http_upstream_ssl_handshake(ngx_connection_t *c);
+static void ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c);
+static void ngx_http_upstream_ssl_handshake(ngx_http_request_t *,
+    ngx_http_upstream_t *u, ngx_connection_t *c);
 static ngx_int_t ngx_http_upstream_ssl_name(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_connection_t *c);
 #endif
@@ -1667,25 +1669,42 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
             ngx_add_timer(c->write, u->conf->connect_timeout);
         }
 
-        c->ssl->handler = ngx_http_upstream_ssl_handshake;
+        c->ssl->handler = ngx_http_upstream_ssl_handshake_handler;
         return;
     }
 
-    ngx_http_upstream_ssl_handshake(c);
+    ngx_http_upstream_ssl_handshake(r, u, c);
 }
 
 
 static void
-ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
+ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c)
 {
-    long                  rc;
     ngx_http_request_t   *r;
     ngx_http_upstream_t  *u;
 
     r = c->data;
+
     u = r->upstream;
+    c = r->connection;
 
     ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream ssl handshake: \"%V?%V\"",
+                   &r->uri, &r->args);
+
+    ngx_http_upstream_ssl_handshake(r, u, u->peer.connection);
+
+    ngx_http_run_posted_requests(c);
+}
+
+
+static void
+ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
+    ngx_connection_t *c)
+{
+    long  rc;
 
     if (c->ssl->handshaked) {
 
@@ -1714,28 +1733,19 @@ ngx_http_upstream_ssl_handshake(ngx_connection_t *c)
         c->write->handler = ngx_http_upstream_handler;
         c->read->handler = ngx_http_upstream_handler;
 
-        c = r->connection;
-
         ngx_http_upstream_send_request(r, u, 1);
 
-        ngx_http_run_posted_requests(c);
         return;
     }
 
     if (c->write->timedout) {
-        c = r->connection;
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-        ngx_http_run_posted_requests(c);
         return;
     }
 
 failed:
 
-    c = r->connection;
-
     ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
-
-    ngx_http_run_posted_requests(c);
 }
 
 
