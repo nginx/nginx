@@ -5,6 +5,79 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.2" date="2017-06-27">
+
+<change type="change">
+<para lang="ru">
+теперь при запросе диапазона, начинающегося с 0, из пустого файла
+nginx возвращает ответ 200 вместо 416.
+</para>
+<para lang="en">
+nginx now returns 200 instead of 416
+when a range starting with 0 is requested from an empty file.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива add_trailer.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the "add_trailer" directive.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под Cygwin и NetBSD;
+ошибка появилась в 1.13.0.
+</para>
+<para lang="en">
+nginx could not be built on Cygwin and NetBSD;
+the bug had appeared in 1.13.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под MSYS2 / MinGW 64-bit.<br/>
+Спасибо Orgad Shaneh.
+</para>
+<para lang="en">
+nginx could not be built under MSYS2 / MinGW 64-bit.<br/>
+Thanks to Orgad Shaneh.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SSI с большим количеством подзапросов
+и proxy_pass с переменными
+в рабочем процессе мог произойти segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using SSI with many includes
+and proxy_pass with variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.1" date="2017-05-30">
 
 <change type="feature">
