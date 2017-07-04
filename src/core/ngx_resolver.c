@@ -191,6 +191,7 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
     r->event->handler = ngx_resolver_resend_handler;
     r->event->data = r;
     r->event->log = &cf->cycle->new_log;
+    r->event->cancelable = 1;
     r->ident = -1;
 
     r->resend_timeout = 5;
@@ -4008,6 +4009,7 @@ ngx_resolver_set_timeout(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
     ctx->event->handler = ngx_resolver_timeout_handler;
     ctx->event->data = ctx;
     ctx->event->log = r->log;
+    ctx->event->cancelable = ctx->cancelable;
     ctx->ident = -1;
 
     ngx_add_timer(ctx->event, ctx->timeout);

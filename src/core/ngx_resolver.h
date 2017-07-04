@@ -220,6 +220,7 @@ struct ngx_resolver_ctx_s {
 
     unsigned                  quick:1;
     unsigned                  async:1;
+    unsigned                  cancelable:1;
     ngx_uint_t                recursion;
     ngx_event_t              *event;
 };
