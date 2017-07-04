@@ -3034,25 +3034,15 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
 
         addrs = ngx_resolver_calloc(r, cctx->naddrs * sizeof(ngx_addr_t));
         if (addrs == NULL) {
-            ngx_resolve_name_done(cctx);
-
-            ctx->state = NGX_ERROR;
-            ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
-
-            ctx->handler(ctx);
-            return;
+            srv->state = NGX_ERROR;
+            goto done;
         }
 
         sockaddr = ngx_resolver_alloc(r, cctx->naddrs * sizeof(ngx_sockaddr_t));
         if (sockaddr == NULL) {
             ngx_resolver_free(r, addrs);
-            ngx_resolve_name_done(cctx);
-
-            ctx->state = NGX_ERROR;
-            ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
-
-            ctx->handler(ctx);
-            return;
+            srv->state = NGX_ERROR;
+            goto done;
         }
 
         for (i = 0; i < cctx->naddrs; i++) {
@@ -3068,6 +3058,8 @@ ngx_resolver_srv_names_handler(ngx_resolver_ctx_t *cctx)
         srv->addrs = addrs;
         srv->naddrs = cctx->naddrs;
     }
+
+done:
 
     ngx_resolve_name_done(cctx);
 
@@ -4254,10 +4246,21 @@ ngx_resolver_report_srv(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
     ngx_resolver_addr_t      *addrs;
     ngx_resolver_srv_name_t  *srvs;
 
+    srvs = ctx->srvs;
+    nsrvs = ctx->nsrvs;
+
     naddrs = 0;
 
-    for (i = 0; i < ctx->nsrvs; i++) {
-        naddrs += ctx->srvs[i].naddrs;
+    for (i = 0; i < nsrvs; i++) {
+        if (srvs[i].state == NGX_ERROR) {
+            ctx->state = NGX_ERROR;
+            ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
+
+            ctx->handler(ctx);
+            return;
+        }
+
+        naddrs += srvs[i].naddrs;
     }
 
     if (naddrs == 0) {
@@ -4276,9 +4279,6 @@ ngx_resolver_report_srv(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
         ctx->handler(ctx);
         return;
     }
-
-    srvs = ctx->srvs;
-    nsrvs = ctx->nsrvs;
 
     i = 0;
     n = 0;
