@@ -105,6 +105,8 @@ static void ngx_resolver_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 static ngx_int_t ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name,
     u_char *buf, u_char *src, u_char *last);
+static ngx_int_t ngx_resolver_set_timeout(ngx_resolver_t *r,
+    ngx_resolver_ctx_t *ctx);
 static void ngx_resolver_timeout_handler(ngx_event_t *ev);
 static void ngx_resolver_free_node(ngx_resolver_t *r, ngx_resolver_node_t *rn);
 static void *ngx_resolver_alloc(ngx_resolver_t *r, size_t size);
@@ -728,19 +730,8 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         }
 
         if (rn->waiting) {
-
-            if (ctx->event == NULL && ctx->timeout) {
-                ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-                if (ctx->event == NULL) {
-                    return NGX_ERROR;
-                }
-
-                ctx->event->handler = ngx_resolver_timeout_handler;
-                ctx->event->data = ctx;
-                ctx->event->log = r->log;
-                ctx->ident = -1;
-
-                ngx_add_timer(ctx->event, ctx->timeout);
+            if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             last->next = rn->waiting;
@@ -864,18 +855,8 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         goto failed;
     }
 
-    if (ctx->event == NULL && ctx->timeout) {
-        ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-        if (ctx->event == NULL) {
-            goto failed;
-        }
-
-        ctx->event->handler = ngx_resolver_timeout_handler;
-        ctx->event->data = ctx;
-        ctx->event->log = r->log;
-        ctx->ident = -1;
-
-        ngx_add_timer(ctx->event, ctx->timeout);
+    if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
+        goto failed;
     }
 
     if (ngx_resolver_resend_empty(r)) {
@@ -1007,19 +988,8 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         }
 
         if (rn->waiting) {
-
-            if (ctx->event == NULL && ctx->timeout) {
-                ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-                if (ctx->event == NULL) {
-                    return NGX_ERROR;
-                }
-
-                ctx->event->handler = ngx_resolver_timeout_handler;
-                ctx->event->data = ctx;
-                ctx->event->log = r->log;
-                ctx->ident = -1;
-
-                ngx_add_timer(ctx->event, ctx->timeout);
+            if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             ctx->next = rn->waiting;
@@ -1089,18 +1059,8 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
         goto failed;
     }
 
-    if (ctx->event == NULL && ctx->timeout) {
-        ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
-        if (ctx->event == NULL) {
-            goto failed;
-        }
-
-        ctx->event->handler = ngx_resolver_timeout_handler;
-        ctx->event->data = ctx;
-        ctx->event->log = r->log;
-        ctx->ident = -1;
-
-        ngx_add_timer(ctx->event, ctx->timeout);
+    if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
+        goto failed;
     }
 
     if (ngx_resolver_resend_empty(r)) {
@@ -4030,6 +3990,29 @@ done:
             return NGX_OK;
         }
     }
+}
+
+
+static ngx_int_t
+ngx_resolver_set_timeout(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
+{
+    if (ctx->event || ctx->timeout == 0) {
+        return NGX_OK;
+    }
+
+    ctx->event = ngx_resolver_calloc(r, sizeof(ngx_event_t));
+    if (ctx->event == NULL) {
+        return NGX_ERROR;
+    }
+
+    ctx->event->handler = ngx_resolver_timeout_handler;
+    ctx->event->data = ctx;
+    ctx->event->log = r->log;
+    ctx->ident = -1;
+
+    ngx_add_timer(ctx->event, ctx->timeout);
+
+    return NGX_OK;
 }
 
 
