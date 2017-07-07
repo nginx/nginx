@@ -1463,17 +1463,15 @@ static ngx_int_t
 ngx_http_variable_is_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    v->valid = 1;
-    v->no_cacheable = 0;
-    v->not_found = 0;
-
     if (r->args.len == 0) {
-        v->len = 0;
-        v->data = NULL;
+        *v = ngx_http_variable_null_value;
         return NGX_OK;
     }
 
     v->len = 1;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
     v->data = (u_char *) "?";
 
     return NGX_OK;
@@ -1990,11 +1988,7 @@ ngx_http_variable_request_completion(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    v->len = 0;
-    v->valid = 1;
-    v->no_cacheable = 0;
-    v->not_found = 0;
-    v->data = (u_char *) "";
+    *v = ngx_http_variable_null_value;
 
     return NGX_OK;
 }
