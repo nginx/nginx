@@ -20,6 +20,11 @@ typedef struct {
 
 
 typedef struct {
+    ngx_array_t                     servers; /* ngx_stream_proxy_srv_conf_t */
+} ngx_stream_proxy_main_conf_t;
+
+
+typedef struct {
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       timeout;
     ngx_msec_t                       next_upstream_timeout;
@@ -34,6 +39,8 @@ typedef struct {
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
+    ngx_flag_t                       ssl_sync_enable;
+    ngx_msec_t                       ssl_sync_interval;
     ngx_flag_t                       ssl_session_reuse;
     ngx_uint_t                       ssl_protocols;
     ngx_str_t                        ssl_ciphers;
@@ -49,6 +56,9 @@ typedef struct {
     ngx_array_t                     *ssl_passwords;
 
     ngx_ssl_t                       *ssl;
+    ngx_ssl_t                       *new_ssl;
+    time_t                          ssl_certificate_mtime;
+    time_t                          ssl_certificate_key_mtime;
 #endif
 
     ngx_stream_upstream_srv_conf_t  *upstream;
@@ -77,6 +87,7 @@ static void ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc);
 static u_char *ngx_stream_proxy_log_error(ngx_log_t *log, u_char *buf,
     size_t len);
 
+static void *ngx_stream_proxy_create_main_conf(ngx_conf_t *cf);
 static void *ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -228,6 +239,20 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       offsetof(ngx_stream_proxy_srv_conf_t, ssl_enable),
       NULL },
 
+    { ngx_string("proxy_ssl_sync"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, ssl_sync_enable),
+      NULL },
+
+    { ngx_string("proxy_ssl_sync_interval"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_sync_srv_conf_t, ssl_sync_interval),
+      NULL },
+
     { ngx_string("proxy_ssl_session_reuse"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -322,7 +347,7 @@ static ngx_stream_module_t  ngx_stream_proxy_module_ctx = {
     NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
-    NULL,                                  /* create main configuration */
+    ngx_stream_proxy_create_main_conf,     /* create main configuration */
     NULL,                                  /* init main configuration */
 
     ngx_stream_proxy_create_srv_conf,      /* create server configuration */
@@ -1802,6 +1827,26 @@ ngx_stream_proxy_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
 
 static void *
+ngx_stream_proxy_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_stream_proxy_main_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_proxy_main_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    if (ngx_array_init(&conf->servers, cf->pool, 4,
+          sizeof(ngx_stream_proxy_srv_conf_t *)) != NGX_OK)
+    {
+        return NULL;
+    }
+
+    return conf
+}
+
+
+static void *
 ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_stream_proxy_srv_conf_t  *conf;
@@ -1891,6 +1936,11 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_STREAM_SSL)
 
     ngx_conf_merge_value(conf->ssl_enable, prev->ssl_enable, 0);
+
+    ngx_conf_merge_value(conf->ssl_sync_enable, prev->ssl_sync_enable, 0);
+
+    ngx_conf_merge_msec_value(conf->ssl_sync_interval,
+        prev->ssl_sync_interval, 5000);
 
     ngx_conf_merge_value(conf->ssl_session_reuse,
                               prev->ssl_session_reuse, 1);
