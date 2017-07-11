@@ -5,6 +5,26 @@
 <change_log title="nginx">
 
 
+<changes ver="1.12.1" date="2017-07-11">
+
+<change type="security">
+<para lang="ru">
+специально созданный запрос мог вызвать целочисленное переполнение
+в range-фильтре и последующую некорректную обработку запрошенных диапазонов,
+что потенциально могло привести к утечке конфиденциальной информации
+(CVE-2017-7529).
+</para>
+<para lang="en">
+a specially crafted request might result in an integer overflow
+and incorrect processing of ranges in the range filter,
+potentially resulting in sensitive information leak
+(CVE-2017-7529).
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.12.0" date="2017-04-12">
 
 <change>
