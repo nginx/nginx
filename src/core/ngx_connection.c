@@ -483,7 +483,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                     == -1)
                 {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  "setsockopt(SO_REUSEPORT) %V failed, ignored",
+                                  "setsockopt(SO_REUSEPORT) %V failed",
                                   &ls[i].addr_text);
 
                     if (ngx_close_socket(s) == -1) {
