@@ -315,7 +315,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
                     return NGX_HTTP_RANGE_NOT_SATISFIABLE;
                 }
 
-                start = start * 10 + *p++ - '0';
+                start = start * 10 + (*p++ - '0');
             }
 
             while (*p == ' ') { p++; }
@@ -345,7 +345,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
                 return NGX_HTTP_RANGE_NOT_SATISFIABLE;
             }
 
-            end = end * 10 + *p++ - '0';
+            end = end * 10 + (*p++ - '0');
         }
 
         while (*p == ' ') { p++; }

@@ -178,7 +178,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             slen = (size_t) -1;
 
             while (*fmt >= '0' && *fmt <= '9') {
-                width = width * 10 + *fmt++ - '0';
+                width = width * 10 + (*fmt++ - '0');
             }
 
 
@@ -211,7 +211,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
                     fmt++;
 
                     while (*fmt >= '0' && *fmt <= '9') {
-                        frac_width = frac_width * 10 + *fmt++ - '0';
+                        frac_width = frac_width * 10 + (*fmt++ - '0');
                     }
 
                     break;
@@ -1655,7 +1655,7 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
             state = sw_usual;
 
             if (ch >= '0' && ch <= '9') {
-                ch = (u_char) ((decoded << 4) + ch - '0');
+                ch = (u_char) ((decoded << 4) + (ch - '0'));
 
                 if (type & NGX_UNESCAPE_REDIRECT) {
                     if (ch > '%' && ch < 0x7f) {
@@ -1675,7 +1675,7 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
 
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                ch = (u_char) ((decoded << 4) + c - 'a' + 10);
+                ch = (u_char) ((decoded << 4) + (c - 'a') + 10);
 
                 if (type & NGX_UNESCAPE_URI) {
                     if (ch == '?') {

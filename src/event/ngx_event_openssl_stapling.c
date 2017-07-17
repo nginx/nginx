@@ -1486,7 +1486,7 @@ ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx)
                 return NGX_ERROR;
             }
 
-            ctx->code = ctx->code * 10 + ch - '0';
+            ctx->code = ctx->code * 10 + (ch - '0');
 
             if (++ctx->count == 3) {
                 state = sw_space_after_status;

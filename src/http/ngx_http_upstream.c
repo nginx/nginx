@@ -4503,7 +4503,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
             }
 
             if (*p >= '0' && *p <= '9') {
-                n = n * 10 + *p - '0';
+                n = n * 10 + (*p - '0');
                 continue;
             }
 
@@ -4531,7 +4531,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
             }
 
             if (*p >= '0' && *p <= '9') {
-                n = n * 10 + *p - '0';
+                n = n * 10 + (*p - '0');
                 continue;
             }
 
@@ -4554,7 +4554,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
             }
 
             if (*p >= '0' && *p <= '9') {
-                n = n * 10 + *p - '0';
+                n = n * 10 + (*p - '0');
                 continue;
             }
 
