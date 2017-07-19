@@ -190,6 +190,8 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
         return rc;
     }
 
+    r->preserve_body = 1;
+
     if (r->headers_out.status == NGX_HTTP_PARTIAL_CONTENT) {
         if (ctx->start + (off_t) slcf->size <= r->headers_out.content_offset) {
             ctx->start = slcf->size
