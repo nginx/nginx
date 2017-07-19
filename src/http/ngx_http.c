@@ -548,7 +548,7 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 
         n += cmcf->phases[i].handlers.nelts;
 
-        for (j = cmcf->phases[i].handlers.nelts - 1; j >=0; j--) {
+        for (j = cmcf->phases[i].handlers.nelts - 1; j >= 0; j--) {
             ph->checker = checker;
             ph->handler = h[j];
             ph->next = n;
