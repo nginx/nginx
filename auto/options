@@ -70,6 +70,7 @@ HTTP_DAV=NO
 HTTP_ACCESS=YES
 HTTP_AUTH_BASIC=YES
 HTTP_AUTH_REQUEST=NO
+HTTP_MIRROR=YES
 HTTP_USERID=YES
 HTTP_SLICE=NO
 HTTP_AUTOINDEX=YES
@@ -249,6 +250,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --without-http_userid_module)    HTTP_USERID=NO             ;;
         --without-http_access_module)    HTTP_ACCESS=NO             ;;
         --without-http_auth_basic_module) HTTP_AUTH_BASIC=NO        ;;
+        --without-http_mirror_module)    HTTP_MIRROR=NO             ;;
         --without-http_autoindex_module) HTTP_AUTOINDEX=NO          ;;
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
@@ -458,6 +460,7 @@ cat << END
   --without-http_userid_module       disable ngx_http_userid_module
   --without-http_access_module       disable ngx_http_access_module
   --without-http_auth_basic_module   disable ngx_http_auth_basic_module
+  --without-http_mirror_module       disable ngx_http_mirror_module
   --without-http_autoindex_module    disable ngx_http_autoindex_module
   --without-http_geo_module          disable ngx_http_geo_module
   --without-http_map_module          disable ngx_http_map_module
