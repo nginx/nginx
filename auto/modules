@@ -506,6 +506,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if :; then
+        ngx_module_name=ngx_http_try_files_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_try_files_module.c
+        ngx_module_libs=
+        ngx_module_link=YES
+
+        . auto/module
+    fi
+
     if [ $HTTP_AUTH_REQUEST = YES ]; then
         ngx_module_name=ngx_http_auth_request_module
         ngx_module_incs=

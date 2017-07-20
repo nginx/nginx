@@ -382,6 +382,13 @@ ngx_http_init_phases(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
         return NGX_ERROR;
     }
 
+    if (ngx_array_init(&cmcf->phases[NGX_HTTP_PRECONTENT_PHASE].handlers,
+                       cf->pool, 2, sizeof(ngx_http_handler_pt))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers,
                        cf->pool, 4, sizeof(ngx_http_handler_pt))
         != NGX_OK)
@@ -459,8 +466,7 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 
     n = 1                  /* find config phase */
         + use_rewrite      /* post rewrite phase */
-        + use_access       /* post access phase */
-        + cmcf->try_files;
+        + use_access;      /* post access phase */
 
     for (i = 0; i < NGX_HTTP_LOG_PHASE; i++) {
         n += cmcf->phases[i].handlers.nelts;
@@ -524,15 +530,6 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
             if (use_access) {
                 ph->checker = ngx_http_core_post_access_phase;
                 ph->next = n;
-                ph++;
-            }
-
-            continue;
-
-        case NGX_HTTP_TRY_FILES_PHASE:
-            if (cmcf->try_files) {
-                ph->checker = ngx_http_core_try_files_phase;
-                n++;
                 ph++;
             }
 
