@@ -27,6 +27,7 @@ static ngx_int_t ngx_http_mirror_handler_internal(ngx_http_request_t *r);
 static void *ngx_http_mirror_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_mirror_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static char *ngx_http_mirror(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_mirror_init(ngx_conf_t *cf);
 
 
@@ -34,9 +35,9 @@ static ngx_command_t  ngx_http_mirror_commands[] = {
 
     { ngx_string("mirror"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
+      ngx_http_mirror,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_mirror_loc_conf_t, mirror),
+      0,
       NULL },
 
     { ngx_string("mirror_request_body"),
@@ -199,6 +200,46 @@ ngx_http_mirror_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->mirror, prev->mirror, NULL);
     ngx_conf_merge_value(conf->request_body, prev->request_body, 1);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_mirror(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_mirror_loc_conf_t *mlcf = conf;
+
+    ngx_str_t  *value, *s;
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        if (mlcf->mirror != NGX_CONF_UNSET_PTR) {
+            return "is duplicate";
+        }
+
+        mlcf->mirror = NULL;
+        return NGX_CONF_OK;
+    }
+
+    if (mlcf->mirror == NULL) {
+        return "is duplicate";
+    }
+
+    if (mlcf->mirror == NGX_CONF_UNSET_PTR) {
+        mlcf->mirror = ngx_array_create(cf->pool, 4, sizeof(ngx_str_t));
+        if (mlcf->mirror == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    s = ngx_array_push(mlcf->mirror);
+    if (s == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *s = value[1];
 
     return NGX_CONF_OK;
 }
