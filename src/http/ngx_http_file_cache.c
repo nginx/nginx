@@ -129,6 +129,7 @@ ngx_http_file_cache_init(ngx_shm_zone_t *shm_zone, void *data)
     if (shm_zone->shm.exists) {
         cache->sh = cache->shpool->data;
         cache->bsize = ngx_fs_bsize(cache->path->name.data);
+        cache->max_size /= cache->bsize;
 
         return NGX_OK;
     }
