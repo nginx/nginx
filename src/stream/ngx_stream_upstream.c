@@ -100,7 +100,7 @@ static ngx_stream_variable_t  ngx_stream_upstream_vars[] = {
       ngx_stream_upstream_bytes_variable, 1,
       NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 

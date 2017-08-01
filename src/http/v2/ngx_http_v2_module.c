@@ -225,7 +225,7 @@ static ngx_http_variable_t  ngx_http_v2_vars[] = {
     { ngx_string("http2"), NULL,
       ngx_http_v2_variable, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 

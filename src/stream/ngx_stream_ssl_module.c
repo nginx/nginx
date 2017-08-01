@@ -273,7 +273,7 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
     { ngx_string("ssl_client_v_remain"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_v_remain, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 

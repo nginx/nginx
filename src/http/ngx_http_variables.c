@@ -376,7 +376,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("arg_"), NULL, ngx_http_variable_argument,
       0, NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_PREFIX, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 

@@ -427,7 +427,7 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
     { ngx_string("upstream_cookie_"), NULL, ngx_http_upstream_cookie_variable,
       0, NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_PREFIX, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 

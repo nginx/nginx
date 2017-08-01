@@ -89,7 +89,7 @@ static ngx_stream_variable_t  ngx_stream_realip_vars[] = {
     { ngx_string("realip_remote_port"), NULL,
       ngx_stream_realip_remote_port_variable, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 

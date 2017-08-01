@@ -85,7 +85,7 @@ static ngx_stream_variable_t  ngx_stream_ssl_preread_vars[] = {
     { ngx_string("ssl_preread_server_name"), NULL,
       ngx_stream_ssl_preread_server_name_variable, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 

@@ -222,7 +222,7 @@ static ngx_http_variable_t  ngx_http_browser_vars[] = {
     { ngx_string("ancient_browser"), NULL, ngx_http_browser_variable,
       NGX_HTTP_ANCIENT_BROWSER, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 

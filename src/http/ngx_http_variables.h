@@ -43,6 +43,8 @@ struct ngx_http_variable_s {
     ngx_uint_t                    index;
 };
 
+#define ngx_http_null_variable  { ngx_null_string, NULL, NULL, 0, 0, 0 }
+
 
 ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name,
     ngx_uint_t flags);

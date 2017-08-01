@@ -111,7 +111,7 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
     { ngx_string("protocol"), NULL,
       ngx_stream_variable_protocol, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 
