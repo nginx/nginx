@@ -38,13 +38,6 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t                   name;
-    ngx_http_get_variable_pt    handler;
-    uintptr_t                   data;
-} ngx_http_browser_variable_t;
-
-
-typedef struct {
     ngx_array_t                *modern_browsers;
     ngx_array_t                *ancient_browsers;
     ngx_http_variable_value_t  *modern_browser_value;
@@ -63,7 +56,7 @@ static ngx_int_t ngx_http_browser_variable(ngx_http_request_t *r,
 static ngx_uint_t ngx_http_browser(ngx_http_request_t *r,
     ngx_http_browser_conf_t *cf);
 
-static ngx_int_t ngx_http_browser_add_variable(ngx_conf_t *cf);
+static ngx_int_t ngx_http_browser_add_variables(ngx_conf_t *cf);
 static void *ngx_http_browser_create_conf(ngx_conf_t *cf);
 static char *ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -114,7 +107,7 @@ static ngx_command_t  ngx_http_browser_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_browser_module_ctx = {
-    ngx_http_browser_add_variable,         /* preconfiguration */
+    ngx_http_browser_add_variables,        /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -218,13 +211,18 @@ static ngx_http_modern_browser_mask_t  ngx_http_modern_browser_masks[] = {
 };
 
 
-static ngx_http_browser_variable_t  ngx_http_browsers[] = {
-    { ngx_string("msie"), ngx_http_msie_variable, 0 },
-    { ngx_string("modern_browser"), ngx_http_browser_variable,
-          NGX_HTTP_MODERN_BROWSER },
-    { ngx_string("ancient_browser"), ngx_http_browser_variable,
-          NGX_HTTP_ANCIENT_BROWSER },
-    { ngx_null_string, NULL, 0 }
+static ngx_http_variable_t  ngx_http_browser_vars[] = {
+
+    { ngx_string("msie"), NULL, ngx_http_msie_variable,
+      0, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("modern_browser"), NULL, ngx_http_browser_variable,
+      NGX_HTTP_MODERN_BROWSER, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ancient_browser"), NULL, ngx_http_browser_variable,
+      NGX_HTTP_ANCIENT_BROWSER, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
 
@@ -397,20 +395,19 @@ ngx_http_msie_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
 
 static ngx_int_t
-ngx_http_browser_add_variable(ngx_conf_t *cf)
+ngx_http_browser_add_variables(ngx_conf_t *cf)
 {
-    ngx_http_browser_variable_t   *var;
-    ngx_http_variable_t           *v;
+    ngx_http_variable_t  *var, *v;
 
-    for (var = ngx_http_browsers; var->name.len; var++) {
+    for (v = ngx_http_browser_vars; v->name.len; v++) {
 
-        v = ngx_http_add_variable(cf, &var->name, NGX_HTTP_VAR_CHANGEABLE);
-        if (v == NULL) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
             return NGX_ERROR;
         }
 
-        v->get_handler = var->handler;
-        v->data = var->data;
+        var->get_handler = v->get_handler;
+        var->data = v->data;
     }
 
     return NGX_OK;
