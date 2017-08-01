@@ -185,6 +185,7 @@ static ngx_http_upstream_rr_peers_t *
 ngx_http_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
     ngx_http_upstream_srv_conf_t *uscf)
 {
+    ngx_str_t                     *name;
     ngx_http_upstream_rr_peer_t   *peer, **peerp;
     ngx_http_upstream_rr_peers_t  *peers, *backup;
 
@@ -194,6 +195,21 @@ ngx_http_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
     }
 
     ngx_memcpy(peers, uscf->peer.data, sizeof(ngx_http_upstream_rr_peers_t));
+
+    name = ngx_slab_alloc(shpool, sizeof(ngx_str_t));
+    if (name == NULL) {
+        return NULL;
+    }
+
+    name->data = ngx_slab_alloc(shpool, peers->name->len);
+    if (name->data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(name->data, peers->name->data, peers->name->len);
+    name->len = peers->name->len;
+
+    peers->name = name;
 
     peers->shpool = shpool;
 
@@ -220,6 +236,8 @@ ngx_http_upstream_zone_copy_peers(ngx_slab_pool_t *shpool,
     }
 
     ngx_memcpy(backup, peers->next, sizeof(ngx_http_upstream_rr_peers_t));
+
+    backup->name = name;
 
     backup->shpool = shpool;
 
