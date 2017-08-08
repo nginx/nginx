@@ -5,6 +5,71 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.4" date="2017-08-08">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_mirror_module.
+</para>
+<para lang="en">
+the ngx_http_mirror_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+клиентские соединения могли сбрасываться при тестировании конфигурации,
+если использовался параметр reuseport директивы listen на Linux.
+</para>
+<para lang="en">
+client connections might be dropped during configuration testing
+when using the "reuseport" parameter of the "listen" directive on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+тело запроса могло быть недоступно в подзапросах,
+если оно было сохранено в файл и использовалось проксирование.
+</para>
+<para lang="en">
+request body might not be available in subrequests
+if it was saved to a file and proxying was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+очистка кэша по max_size не работала на Windows.
+</para>
+<para lang="en">
+cleaning cache based on the "max_size" parameter did not work on Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+любое выделение разделяемой памяти на Windows требовало 4096 байт памяти.
+</para>
+<para lang="en">
+any shared memory allocation required 4096 bytes on Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы zone в блоке upstream на Windows
+рабочий процесс мог завершаться аварийно.
+</para>
+<para lang="en">
+nginx worker might be terminated abnormally
+when using the "zone" directive inside the "upstream" block on Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.3" date="2017-07-11">
 
 <change type="security">
