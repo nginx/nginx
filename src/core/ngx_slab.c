@@ -83,6 +83,19 @@ static ngx_uint_t  ngx_slab_exact_shift;
 
 
 void
+ngx_slab_sizes_init(void)
+{
+    ngx_uint_t  n;
+
+    ngx_slab_max_size = ngx_pagesize / 2;
+    ngx_slab_exact_size = ngx_pagesize / (8 * sizeof(uintptr_t));
+    for (n = ngx_slab_exact_size; n >>= 1; ngx_slab_exact_shift++) {
+        /* void */
+    }
+}
+
+
+void
 ngx_slab_init(ngx_slab_pool_t *pool)
 {
     u_char           *p;
@@ -90,16 +103,6 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     ngx_int_t         m;
     ngx_uint_t        i, n, pages;
     ngx_slab_page_t  *slots, *page;
-
-    /* STUB */
-    if (ngx_slab_max_size == 0) {
-        ngx_slab_max_size = ngx_pagesize / 2;
-        ngx_slab_exact_size = ngx_pagesize / (8 * sizeof(uintptr_t));
-        for (n = ngx_slab_exact_size; n >>= 1; ngx_slab_exact_shift++) {
-            /* void */
-        }
-    }
-    /**/
 
     pool->min_size = (size_t) 1 << pool->min_shift;
 
