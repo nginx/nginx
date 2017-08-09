@@ -1327,6 +1327,7 @@ ngx_stream_geo_include_binary_base(ngx_conf_t *cf,
     file.log = cf->log;
 
     file.fd = ngx_open_file(name->data, NGX_FILE_RDONLY, 0, 0);
+
     if (file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         if (err != NGX_ENOENT) {
