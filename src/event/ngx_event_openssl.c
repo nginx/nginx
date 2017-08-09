@@ -2906,7 +2906,8 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         file.name = path[i];
         file.log = cf->log;
 
-        file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY, 0, 0);
+        file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
+                                NGX_FILE_OPEN, 0);
 
         if (file.fd == NGX_INVALID_FILE) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
