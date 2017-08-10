@@ -865,7 +865,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
             skip_empty = lcode(&le);
 
-            for (val_len = 0; *(uintptr_t *) le.ip; val_len += lcode (&le)) {
+            for (val_len = 0; *(uintptr_t *) le.ip; val_len += lcode(&le)) {
                 lcode = *(ngx_http_script_len_code_pt *) le.ip;
             }
             le.ip += sizeof(uintptr_t);
@@ -990,7 +990,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         while (*(uintptr_t *) le.ip) {
 
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
-            key_len = (u_char) lcode (&le);
+            key_len = (u_char) lcode(&le);
 
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
             skip_empty = lcode(&le);
@@ -1018,14 +1018,14 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
 
             code = *(ngx_http_script_code_pt *) e.ip;
-            code((ngx_http_script_engine_t *) & e);
+            code((ngx_http_script_engine_t *) &e);
 
             *e.pos++ = (u_char) (val_len & 0xff);
             *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
-                code((ngx_http_script_engine_t *) & e);
+                code((ngx_http_script_engine_t *) &e);
             }
 
             e.ip += sizeof(uintptr_t);

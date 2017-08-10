@@ -819,7 +819,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
             key = e.pos;
 #endif
             code = *(ngx_http_script_code_pt *) e.ip;
-            code((ngx_http_script_engine_t *) & e);
+            code((ngx_http_script_engine_t *) &e);
 
 #if (NGX_DEBUG)
             val = e.pos;
