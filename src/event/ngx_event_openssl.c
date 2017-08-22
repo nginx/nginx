@@ -3663,6 +3663,36 @@ ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_escaped_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s)
+{
+    ngx_str_t  cert;
+    uintptr_t  n;
+
+    if (ngx_ssl_get_raw_certificate(c, pool, &cert) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (cert.len == 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    n = ngx_escape_uri(NULL, cert.data, cert.len, NGX_ESCAPE_URI_COMPONENT);
+
+    s->len = cert.len + n * 2;
+    s->data = ngx_pnalloc(pool, s->len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_escape_uri(s->data, cert.data, cert.len, NGX_ESCAPE_URI_COMPONENT);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;

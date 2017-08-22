@@ -299,6 +299,10 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
       (uintptr_t) ngx_ssl_get_raw_certificate,
       NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_client_escaped_cert"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_escaped_certificate,
+      NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_s_dn"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_subject_dn, NGX_HTTP_VAR_CHANGEABLE, 0 },
 

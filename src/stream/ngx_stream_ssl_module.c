@@ -249,6 +249,10 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
       (uintptr_t) ngx_ssl_get_raw_certificate,
       NGX_STREAM_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_client_escaped_cert"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_escaped_certificate,
+      NGX_STREAM_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_s_dn"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_subject_dn, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
