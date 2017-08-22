@@ -3551,13 +3551,22 @@ ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
-    const char  *servername;
+    size_t       len;
+    const char  *name;
 
-    servername = SSL_get_servername(c->ssl->connection,
-                                    TLSEXT_NAMETYPE_host_name);
-    if (servername) {
-        s->data = (u_char *) servername;
-        s->len = ngx_strlen(servername);
+    name = SSL_get_servername(c->ssl->connection, TLSEXT_NAMETYPE_host_name);
+
+    if (name) {
+        len = ngx_strlen(name);
+
+        s->len = len;
+        s->data = ngx_pnalloc(pool, len);
+        if (s->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(s->data, name, len);
+
         return NGX_OK;
     }
 
