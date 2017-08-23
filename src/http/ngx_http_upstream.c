@@ -4390,15 +4390,8 @@ ngx_http_upstream_process_last_modified(ngx_http_request_t *r,
     u = r->upstream;
 
     u->headers_in.last_modified = h;
-
-#if (NGX_HTTP_CACHE)
-
-    if (u->cacheable) {
-        u->headers_in.last_modified_time = ngx_parse_http_time(h->value.data,
-                                                               h->value.len);
-    }
-
-#endif
+    u->headers_in.last_modified_time = ngx_parse_http_time(h->value.data,
+                                                           h->value.len);
 
     return NGX_OK;
 }
@@ -4940,15 +4933,8 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
     *ho = *h;
 
     r->headers_out.last_modified = ho;
-
-#if (NGX_HTTP_CACHE)
-
-    if (r->upstream->cacheable) {
-        r->headers_out.last_modified_time =
+    r->headers_out.last_modified_time =
                                     r->upstream->headers_in.last_modified_time;
-    }
-
-#endif
 
     return NGX_OK;
 }
