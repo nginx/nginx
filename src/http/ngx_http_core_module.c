@@ -2274,7 +2274,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->pool = r->pool;
 
     sr->headers_in = r->headers_in;
-    if (sr->headers_in.headers.part->next == NULL) {
+    if (sr->headers_in.headers.part.next == NULL) {
         sr->headers_in.headers.last = &sr->headers_in.headers.part;
     }
 
