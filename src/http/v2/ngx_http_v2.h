@@ -144,6 +144,7 @@ struct ngx_http_v2_connection_s {
 
     unsigned                         closed_nodes:8;
     unsigned                         settings_ack:1;
+    unsigned                         table_update:1;
     unsigned                         blocked:1;
     unsigned                         goaway:1;
 };

@@ -139,6 +139,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     ngx_connection_t          *fc;
     ngx_http_cleanup_t        *cln;
     ngx_http_v2_out_frame_t   *frame;
+    ngx_http_v2_connection_t  *h2c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     addr[NGX_SOCKADDR_STRLEN];
@@ -235,7 +236,11 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         }
     }
 
-    len = status ? 1 : 1 + ngx_http_v2_literal_size("418");
+    h2c = r->stream->connection;
+
+    len = h2c->table_update ? 1 : 0;
+
+    len += status ? 1 : 1 + ngx_http_v2_literal_size("418");
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -422,6 +427,13 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     start = pos;
+
+    if (h2c->table_update) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 table size update: 0");
+        *pos++ = (1 << 5) | 0;
+        h2c->table_update = 0;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 output header: \":status: %03ui\"",

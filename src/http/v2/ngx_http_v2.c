@@ -245,6 +245,8 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     h2c->frame_size = NGX_HTTP_V2_DEFAULT_FRAME_SIZE;
 
+    h2c->table_update = 1;
+
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
