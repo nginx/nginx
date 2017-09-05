@@ -5,6 +5,59 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.5" date="2017-09-05">
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_client_escaped_cert.
+</para>
+<para lang="en">
+the $ssl_client_escaped_cert variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива ssl_session_ticket_key и параметр include директивы geo
+не работали на Windows.
+</para>
+<para lang="en">
+the "ssl_session_ticket_key" directive and
+the "include" parameter of the "geo" directive did not work on Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на 32-битных платформах
+при запросе более 4 гигабайт с помощью нескольких диапазонов
+возвращалась некорректная длина ответа.
+</para>
+<para lang="en">
+incorrect response length was returned
+on 32-bit platforms when requesting more than 4 gigabytes
+with multiple ranges.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива "expires modified" и
+обработка строки If-Range заголовка запроса
+не учитывали время последнего изменения ответа,
+если использовалось проксирование без кэширования.
+</para>
+<para lang="en">
+the "expires modified" directive and
+processing of the "If-Range" request header line
+did not use the response last modification time 
+if proxying without caching was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.4" date="2017-08-08">
 
 <change type="feature">
