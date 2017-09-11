@@ -50,7 +50,7 @@ with multiple ranges.
 <para lang="en">
 the "expires modified" directive and
 processing of the "If-Range" request header line
-did not use the response last modification time 
+did not use the response last modification time
 if proxying without caching was used.
 </para>
 </change>
