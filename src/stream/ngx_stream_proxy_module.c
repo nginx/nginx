@@ -1331,13 +1331,17 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
                     return;
                 }
 
+                ngx_connection_error(pc, NGX_ETIMEDOUT, "upstream timed out");
+
                 if (u->received == 0) {
                     ngx_stream_proxy_next_upstream(s);
                     return;
                 }
+
+            } else {
+                ngx_connection_error(c, NGX_ETIMEDOUT, "connection timed out");
             }
 
-            ngx_connection_error(c, NGX_ETIMEDOUT, "connection timed out");
             ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
             return;
         }
