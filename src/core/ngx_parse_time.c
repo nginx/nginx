@@ -44,14 +44,15 @@ ngx_parse_http_time(u_char *value, size_t len)
         }
     }
 
-    for (p++; p < end; p++)
+    for (p++; p < end; p++) {
         if (*p != ' ') {
             break;
         }
+    }
 
     if (end - p < 18) {
         return NGX_ERROR;
-        }
+    }
 
     if (fmt != isoc) {
         if (*p < '0' || *p > '9' || *(p + 1) < '0' || *(p + 1) > '9') {
