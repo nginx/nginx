@@ -320,7 +320,7 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
 
     /*
      * the algorithm based on Gauss' formula,
-     * see src/http/ngx_http_parse_time.c
+     * see src/core/ngx_parse_time.c
      */
 
     /* days since March 1, 1 BC */
