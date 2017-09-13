@@ -300,23 +300,25 @@ void
 ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
     ngx_int_t   yday;
-    ngx_uint_t  n, sec, min, hour, mday, mon, year, wday, days, leap;
+    ngx_uint_t  sec, min, hour, mday, mon, year, wday, days, leap;
 
     /* the calculation is valid for positive time_t only */
 
-    n = (ngx_uint_t) t;
+    if (t < 0) {
+        t = 0;
+    }
 
-    days = n / 86400;
+    days = t / 86400;
+    sec = t % 86400;
 
     /* January 1, 1970 was Thursday */
 
     wday = (4 + days) % 7;
 
-    n %= 86400;
-    hour = n / 3600;
-    n %= 3600;
-    min = n / 60;
-    sec = n % 60;
+    hour = sec / 3600;
+    sec %= 3600;
+    min = sec / 60;
+    sec %= 60;
 
     /*
      * the algorithm based on Gauss' formula,
