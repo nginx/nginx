@@ -180,7 +180,7 @@ ngx_http_v2_add_header(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_header_t  *entry, **entries;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 add header to hpack table: \"%V: %V\"",
+                   "http2 table add: \"%V: %V\"",
                    &header->name, &header->value);
 
     if (h2c->hpack.entries == NULL) {
@@ -293,7 +293,7 @@ ngx_http_v2_table_account(ngx_http_v2_connection_t *h2c, size_t size)
     size += 32;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 hpack table account: %uz free:%uz",
+                   "http2 table account: %uz free:%uz",
                    size, h2c->hpack.free);
 
     if (size <= h2c->hpack.free) {

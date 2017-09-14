@@ -1269,7 +1269,7 @@ ngx_http_v2_flow_control(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2:%ui available windows: conn:%uz stream:%z",
+                   "http2:%ui windows: conn:%uz stream:%z",
                    stream->node->id, h2c->send_window, stream->send_window);
 
     if (stream->send_window <= 0) {

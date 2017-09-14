@@ -748,7 +748,7 @@ ngx_http_v2_state_head(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
     type = ngx_http_v2_parse_type(head);
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "process http2 frame type:%ui f:%Xd l:%uz sid:%ui",
+                   "http2 frame type:%ui f:%Xd l:%uz sid:%ui",
                    type, h2c->state.flags, h2c->state.length, h2c->state.sid);
 
     if (type >= NGX_HTTP_V2_FRAME_STATES) {
@@ -1316,7 +1316,7 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 hpack %s string length: %i",
+                   "http2 %s string, len:%i",
                    huff ? "encoded" : "raw", len);
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
@@ -1571,7 +1571,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         if (rc == NGX_OK) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http2 pseudo-header: \":%V: %V\"",
+                           "http2 header: \":%V: %V\"",
                            &header->name, &header->value);
 
             return ngx_http_v2_state_header_complete(h2c, pos, end);
@@ -1647,7 +1647,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http2 http header: \"%V: %V\"",
+                   "http2 header: \"%V: %V\"",
                    &header->name, &header->value);
 
     return ngx_http_v2_state_header_complete(h2c, pos, end);
@@ -3375,7 +3375,7 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
     ngx_memcpy(p, ending, sizeof(ending));
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http2 http request line: \"%V\"", &r->request_line);
+                   "http2 request line: \"%V\"", &r->request_line);
 
     return NGX_OK;
 }
