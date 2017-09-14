@@ -102,7 +102,7 @@ ngx_http_v2_get_indexed_header(ngx_http_v2_connection_t *h2c, ngx_uint_t index,
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 get indexed %s: %ui",
-                   name_only ? "header" : "header name", index);
+                   name_only ? "name" : "header", index);
 
     index--;
 
