@@ -3337,6 +3337,19 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
         || r->schema_start == NULL
         || r->unparsed_uri.len == 0)
     {
+        if (r->method_name.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :method header");
+
+        } else if (r->schema_start == NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :schema header");
+
+        } else {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :path header");
+        }
+
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
