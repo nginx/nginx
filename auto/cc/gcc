@@ -171,6 +171,9 @@ CFLAGS="$CFLAGS -Werror"
 # debug
 CFLAGS="$CFLAGS -g"
 
+# C99
+CFLAGS="$CFLAGS -std=99"
+
 # DragonFly's gcc3 generates DWARF
 #CFLAGS="$CFLAGS -g -gstabs"
 
