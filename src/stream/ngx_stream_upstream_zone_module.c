@@ -278,7 +278,7 @@ ngx_stream_upstream_zone_copy_peer(ngx_stream_upstream_rr_peers_t *peers,
         dst->server.data = NULL;
     }
 
-    dst->sockaddr = ngx_slab_calloc_locked(pool, NGX_SOCKADDRLEN);
+    dst->sockaddr = ngx_slab_calloc_locked(pool, sizeof(ngx_sockaddr_t));
     if (dst->sockaddr == NULL) {
         goto failed;
     }
