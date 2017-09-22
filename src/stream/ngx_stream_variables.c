@@ -460,7 +460,7 @@ ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
 static ngx_int_t
 ngx_stream_variable_binary_remote_addr(ngx_stream_session_t *s,
      ngx_stream_variable_value_t *v, uintptr_t data)
- {
+{
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
     struct sockaddr_in6  *sin6;
