@@ -17,10 +17,11 @@
 #define NGX_INET6_ADDRSTRLEN                                                 \
     (sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255") - 1)
 #define NGX_UNIX_ADDRSTRLEN                                                  \
-    (sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
+    (sizeof("unix:") - 1 +                                                   \
+     sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
 
 #if (NGX_HAVE_UNIX_DOMAIN)
-#define NGX_SOCKADDR_STRLEN   (sizeof("unix:") - 1 + NGX_UNIX_ADDRSTRLEN)
+#define NGX_SOCKADDR_STRLEN   NGX_UNIX_ADDRSTRLEN
 #elif (NGX_HAVE_INET6)
 #define NGX_SOCKADDR_STRLEN   (NGX_INET6_ADDRSTRLEN + sizeof("[]:65535") - 1)
 #else
