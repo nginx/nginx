@@ -582,6 +582,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
                 rc = NGX_DECLINED;
                 r->cached = 0;
+                u->buffer.start = NULL;
+                u->cache_status = NGX_HTTP_CACHE_MISS;
             }
 
             if (ngx_http_upstream_cache_background_update(r, u) != NGX_OK) {
@@ -1059,7 +1061,15 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
+    if (rc == NGX_AGAIN) {
+        rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
     /* rc == NGX_HTTP_UPSTREAM_INVALID_HEADER */
+
+    ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                  "cache file \"%s\" contains invalid header",
+                  c->file.name.data);
 
     /* TODO: delete file */
 
