@@ -16,13 +16,13 @@ types {
     text/x-component                      htc;
 
     image/png                             png;
+    image/svg+xml                         svg svgz;
     image/tiff                            tif tiff;
     image/vnd.wap.wbmp                    wbmp;
+    image/webp                            webp;
     image/x-icon                          ico;
     image/x-jng                           jng;
     image/x-ms-bmp                        bmp;
-    image/svg+xml                         svg svgz;
-    image/webp                            webp;
 
     application/font-woff                 woff;
     application/java-archive              jar war ear;
@@ -33,12 +33,18 @@ types {
     application/postscript                ps eps ai;
     application/rtf                       rtf;
     application/vnd.apple.mpegurl         m3u8;
+    application/vnd.google-earth.kml+xml  kml;
+    application/vnd.google-earth.kmz      kmz;
     application/vnd.ms-excel              xls;
     application/vnd.ms-fontobject         eot;
     application/vnd.ms-powerpoint         ppt;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation
+                                          pptx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                                          xlsx;
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                                          docx;
     application/vnd.wap.wmlc              wmlc;
-    application/vnd.google-earth.kml+xml  kml;
-    application/vnd.google-earth.kmz      kmz;
     application/x-7z-compressed           7z;
     application/x-cocoa                   cco;
     application/x-java-archive-diff       jardiff;
@@ -63,10 +69,6 @@ types {
     application/octet-stream              dmg;
     application/octet-stream              iso img;
     application/octet-stream              msi msp msm;
-
-    application/vnd.openxmlformats-officedocument.wordprocessingml.document    docx;
-    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet          xlsx;
-    application/vnd.openxmlformats-officedocument.presentationml.presentation  pptx;
 
     audio/midi                            mid midi kar;
     audio/mpeg                            mp3;
