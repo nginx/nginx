@@ -2528,13 +2528,23 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
 #if (NGX_HTTP_CACHE)
 
             if (r->cache) {
-                time_t  valid;
 
-                valid = ngx_http_file_cache_valid(u->conf->cache_valid, status);
+                if (u->cacheable) {
+                    time_t  valid;
 
-                if (valid) {
-                    r->cache->valid_sec = ngx_time() + valid;
-                    r->cache->error = status;
+                    valid = r->cache->valid_sec;
+
+                    if (valid == 0) {
+                        valid = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                                          status);
+                        if (valid) {
+                            r->cache->valid_sec = ngx_time() + valid;
+                        }
+                    }
+
+                    if (valid) {
+                        r->cache->error = status;
+                    }
                 }
 
                 ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
