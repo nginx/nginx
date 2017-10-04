@@ -241,7 +241,9 @@ ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text, size_t len,
             p = ngx_snprintf(text, len, "unix:%Z");
 
         } else {
-            p = ngx_snprintf(text, len, "unix:%s%Z", saun->sun_path);
+            n = ngx_strnlen((u_char *) saun->sun_path,
+                            socklen - offsetof(struct sockaddr_un, sun_path));
+            p = ngx_snprintf(text, len, "unix:%*s%Z", n, saun->sun_path);
         }
 
         /* we do not include trailing zero in address length */
