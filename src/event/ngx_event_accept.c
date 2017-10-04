@@ -164,6 +164,10 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+        if (socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            socklen = sizeof(ngx_sockaddr_t);
+        }
+
         c->sockaddr = ngx_palloc(c->pool, socklen);
         if (c->sockaddr == NULL) {
             ngx_close_accepted_connection(c);
@@ -439,6 +443,10 @@ ngx_event_recvmsg(ngx_event_t *ev)
         c->shared = 1;
         c->type = SOCK_DGRAM;
         c->socklen = msg.msg_namelen;
+
+        if (c->socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            c->socklen = sizeof(ngx_sockaddr_t);
+        }
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);

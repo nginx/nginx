@@ -165,6 +165,10 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
             continue;
         }
 
+        if (ls[i].socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            ls[i].socklen = sizeof(ngx_sockaddr_t);
+        }
+
         switch (ls[i].sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
