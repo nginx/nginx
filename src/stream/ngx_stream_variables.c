@@ -481,6 +481,18 @@ ngx_stream_variable_binary_remote_addr(ngx_stream_session_t *s,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+
+        v->len = s->connection->addr_text.len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = s->connection->addr_text.data;
+
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) s->connection->sockaddr;
 
