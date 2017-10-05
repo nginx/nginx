@@ -543,13 +543,6 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
                 continue;
             }
 
-            if (peer->server.len != server->len
-                || ngx_strncmp(peer->server.data, server->data, server->len)
-                   != 0)
-            {
-                continue;
-            }
-
             if (peer->max_fails
                 && peer->fails >= peer->max_fails
                 && now - peer->checked <= peer->fail_timeout)
@@ -558,6 +551,13 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
             }
 
             if (peer->max_conns && peer->conns >= peer->max_conns) {
+                continue;
+            }
+
+            if (peer->server.len != server->len
+                || ngx_strncmp(peer->server.data, server->data, server->len)
+                   != 0)
+            {
                 continue;
             }
 
