@@ -505,6 +505,11 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_stream_upstream_rr_peers_wlock(hp->rrp.peers);
 
+    if (hp->tries > 20 || hp->rrp.peers->single) {
+        ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);
+        return hp->get_rr_peer(pc, &hp->rrp);
+    }
+
     pc->connection = NULL;
 
     now = ngx_time();
@@ -578,10 +583,9 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->hash++;
         hp->tries++;
 
-        if (hp->tries >= points->number) {
-            pc->name = hp->rrp.peers->name;
+        if (hp->tries > 20) {
             ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);
-            return NGX_BUSY;
+            return hp->get_rr_peer(pc, &hp->rrp);
         }
     }
 
