@@ -182,9 +182,11 @@ ngx_sock_ntop(struct sockaddr *sa, socklen_t socklen, u_char *text, size_t len,
     ngx_uint_t port)
 {
     u_char               *p;
+#if (NGX_HAVE_INET6 || NGX_HAVE_UNIX_DOMAIN)
+    size_t                n;
+#endif
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
-    size_t                n;
     struct sockaddr_in6  *sin6;
 #endif
 #if (NGX_HAVE_UNIX_DOMAIN)
