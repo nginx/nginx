@@ -2404,9 +2404,20 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
             rc = u->reinit_request(r);
 
-            if (rc == NGX_OK) {
-                u->cache_status = NGX_HTTP_CACHE_STALE;
-                rc = ngx_http_upstream_cache_send(r, u);
+            if (rc != NGX_OK) {
+                ngx_http_upstream_finalize_request(r, u, rc);
+                return NGX_OK;
+            }
+
+            u->cache_status = NGX_HTTP_CACHE_STALE;
+            rc = ngx_http_upstream_cache_send(r, u);
+
+            if (rc == NGX_DONE) {
+                return NGX_OK;
+            }
+
+            if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
+                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ngx_http_upstream_finalize_request(r, u, rc);
@@ -2443,6 +2454,14 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         u->cache_status = NGX_HTTP_CACHE_REVALIDATED;
         rc = ngx_http_upstream_cache_send(r, u);
+
+        if (rc == NGX_DONE) {
+            return NGX_OK;
+        }
+
+        if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
+            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
         if (valid == 0) {
             valid = r->cache->valid_sec;
@@ -4150,9 +4169,20 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
             rc = u->reinit_request(r);
 
-            if (rc == NGX_OK) {
-                u->cache_status = NGX_HTTP_CACHE_STALE;
-                rc = ngx_http_upstream_cache_send(r, u);
+            if (rc != NGX_OK) {
+                ngx_http_upstream_finalize_request(r, u, rc);
+                return;
+            }
+
+            u->cache_status = NGX_HTTP_CACHE_STALE;
+            rc = ngx_http_upstream_cache_send(r, u);
+
+            if (rc == NGX_DONE) {
+                return;
+            }
+
+            if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
+                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ngx_http_upstream_finalize_request(r, u, rc);
