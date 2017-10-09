@@ -584,6 +584,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
                 r->cached = 0;
                 u->buffer.start = NULL;
                 u->cache_status = NGX_HTTP_CACHE_MISS;
+                u->request_sent = 1;
             }
 
             if (ngx_http_upstream_cache_background_update(r, u) != NGX_OK) {
