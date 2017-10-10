@@ -5,6 +5,126 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.6" date="2017-10-10">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ssl_preread
+в модуле stream не работало переключение на следующий бэкенд.
+</para>
+<para lang="en">
+switching to the next upstream server in the stream module did not work
+when using the "ssl_preread" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не поддерживал даты после 2038 года
+на 32-битных платформах с 64-битным time_t.
+</para>
+<para lang="en">
+nginx did not support dates after the year 2038
+on 32-bit platforms with 64-bit time_t.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке дат до 1970 года и после 10000 года.
+</para>
+<para lang="en">
+in handling of dates prior to the year 1970 and after the year 10000.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле stream таймауты ожидания UDP-пакетов от бэкендов
+не логгировались или логгировались на уровне info вместо error.
+</para>
+<para lang="en">
+in the stream module timeouts waiting for UDP datagrams from upstream servers
+were not logged or logged at the "info" level instead of "error".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 nginx мог вернуть ошибку 400,
+не указав в логе причину.
+</para>
+<para lang="en">
+when using HTTP/2 nginx might return the 400 response
+without logging the reason.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке повреждённых файлов кэша.
+</para>
+<para lang="en">
+in processing of corrupted cache files.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при кэшировании ошибок, перехваченных error_page,
+не учитывались заголовки управления кэшированием.
+</para>
+<para lang="en">
+cache control headers were ignored
+when caching errors intercepted by error_page.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 тело запроса могло быть повреждено.
+</para>
+<para lang="en">
+when using HTTP/2 client request body might be corrupted.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке адресов клиентов при использовании unix domain сокетов.
+</para>
+<para lang="en">
+in handling of client addresses when using unix domain sockets.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы "hash ... consistent" в блоке upstream
+nginx нагружал процессор, если использовались большие веса
+и все или почти все бэкенды были недоступны.
+</para>
+<para lang="en">
+nginx hogged CPU
+when using the "hash ... consistent" directive in the upstream block
+if large weights were used and all or most of the servers were unavailable.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.5" date="2017-09-05">
 
 <change type="feature">
