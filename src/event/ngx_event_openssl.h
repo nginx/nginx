@@ -22,6 +22,7 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
 #endif
