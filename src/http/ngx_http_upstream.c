@@ -4111,11 +4111,16 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     switch (ft_type) {
 
     case NGX_HTTP_UPSTREAM_FT_TIMEOUT:
+    case NGX_HTTP_UPSTREAM_FT_HTTP_504:
         status = NGX_HTTP_GATEWAY_TIME_OUT;
         break;
 
     case NGX_HTTP_UPSTREAM_FT_HTTP_500:
         status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        break;
+
+    case NGX_HTTP_UPSTREAM_FT_HTTP_503:
+        status = NGX_HTTP_SERVICE_UNAVAILABLE;
         break;
 
     case NGX_HTTP_UPSTREAM_FT_HTTP_403:
