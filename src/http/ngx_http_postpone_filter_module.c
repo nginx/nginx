@@ -63,7 +63,10 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (r != c->data) {
 
         if (in) {
-            ngx_http_postpone_filter_add(r, in);
+            if (ngx_http_postpone_filter_add(r, in) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
             return NGX_OK;
         }
 
@@ -86,7 +89,9 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     if (in) {
-        ngx_http_postpone_filter_add(r, in);
+        if (ngx_http_postpone_filter_add(r, in) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     do {
