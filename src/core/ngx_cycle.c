@@ -470,8 +470,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 goto shm_zone_found;
             }
 
-            ngx_shm_free(&oshm_zone[n].shm);
-
             break;
         }
 
@@ -662,14 +660,26 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 n = 0;
             }
 
-            if (oshm_zone[i].shm.name.len == shm_zone[n].shm.name.len
-                && ngx_strncmp(oshm_zone[i].shm.name.data,
-                               shm_zone[n].shm.name.data,
-                               oshm_zone[i].shm.name.len)
-                == 0)
+            if (oshm_zone[i].shm.name.len != shm_zone[n].shm.name.len) {
+                continue;
+            }
+
+            if (ngx_strncmp(oshm_zone[i].shm.name.data,
+                            shm_zone[n].shm.name.data,
+                            oshm_zone[i].shm.name.len)
+                != 0)
+            {
+                continue;
+            }
+
+            if (oshm_zone[i].tag == shm_zone[n].tag
+                && oshm_zone[i].shm.size == shm_zone[n].shm.size
+                && !oshm_zone[i].noreuse)
             {
                 goto live_shm_zone;
             }
+
+            break;
         }
 
         ngx_shm_free(&oshm_zone[i].shm);
