@@ -178,10 +178,10 @@ ngx_module_t  ngx_core_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
+// static全局变量，全局，仅限本文件中使用
 static ngx_uint_t   ngx_show_help;
-static ngx_uint_t   ngx_show_version;
-static ngx_uint_t   ngx_show_configure;
+static ngx_uint_t   ngx_show_version;   // -v
+static ngx_uint_t   ngx_show_configure; // -V
 static u_char      *ngx_prefix;
 static u_char      *ngx_conf_file;
 static u_char      *ngx_conf_params;
@@ -203,6 +203,7 @@ main(int argc, char *const *argv)
 
     ngx_debug_init();
 
+    // errno-->errstr, init ngx_sys_errlist
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
@@ -747,11 +748,13 @@ ngx_get_options(int argc, char *const *argv)
 
         p = (u_char *) argv[i];
 
+        // 每个参数必须是-打头
         if (*p++ != '-') {
             ngx_log_stderr(0, "invalid option: \"%s\"", argv[i]);
             return NGX_ERROR;
         }
 
+        // 解析每一个参数
         while (*p) {
 
             switch (*p++) {

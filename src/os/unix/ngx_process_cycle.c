@@ -68,7 +68,7 @@ static ngx_cycle_t      ngx_exit_cycle;
 static ngx_log_t        ngx_exit_log;
 static ngx_open_file_t  ngx_exit_log_file;
 
-
+// 只关注UNIX-Like OS
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {

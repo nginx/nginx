@@ -64,6 +64,10 @@ ngx_os_init(ngx_log_t *log)
 
     ngx_cpuinfo();
 
+    /*
+     * nginx里getrlimit和setrlimit的只有RLIMIT_NOFILE和RLIMIT_CORE
+     * RLIMIT_NOFILE，进程可打开的最大文件数量，超出将会产生EMFILE
+     */
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed");

@@ -48,7 +48,9 @@
 #define NGX_HAVE_SO_SNDLOWAT     1
 #endif
 
-
+// kill -l 查看信号列表
+// /usr/include/linux/signal.h
+// /usr/include/asm/signal.h
 #if !(NGX_WIN32)
 
 #define ngx_signal_helper(n)     SIG##n

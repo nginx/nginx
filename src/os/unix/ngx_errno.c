@@ -41,7 +41,9 @@ ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
     return ngx_cpymem(errstr, msg->data, size);
 }
 
-
+// 通过strerror，将errno及errstr初始化进ngx_sys_errlist这个全局数组中
+// 为什么要这么做，可以看这个C文件头部的原生注释，主要是异步信号安全问题
+// 线程安全、可重入、异步信号安全
 ngx_int_t
 ngx_strerror_init(void)
 {

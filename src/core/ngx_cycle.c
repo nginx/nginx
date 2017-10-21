@@ -17,7 +17,7 @@ static ngx_int_t ngx_test_lockfile(u_char *file, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
 static void ngx_shutdown_timer_handler(ngx_event_t *ev);
 
-
+// 一个进程只有一个ngx_cycle_t变量，全局的
 volatile ngx_cycle_t  *ngx_cycle;
 ngx_array_t            ngx_old_cycles;
 

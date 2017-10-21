@@ -34,10 +34,10 @@ struct ngx_shm_zone_s {
     ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
 };
 
-
+// 核心数据结构
 struct ngx_cycle_s {
     void                  ****conf_ctx;
-    ngx_pool_t               *pool;
+    ngx_pool_t               *pool; // 内存池
 
     ngx_log_t                *log;
     ngx_log_t                 new_log;
@@ -82,7 +82,7 @@ struct ngx_cycle_s {
     ngx_str_t                 hostname;
 };
 
-
+// 与配置项一一对应
 typedef struct {
     ngx_flag_t                daemon;
     ngx_flag_t                master;
@@ -133,6 +133,7 @@ ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,
 void ngx_set_shutdown_timer(ngx_cycle_t *cycle);
 
 
+// 一个进程只有一个全局的ngx_cycle_t变量
 extern volatile ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;

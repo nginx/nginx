@@ -12,7 +12,8 @@
 u_char  ngx_linux_kern_ostype[50];
 u_char  ngx_linux_kern_osrelease[50];
 
-
+// 全局变量
+// Linux/Windows(iocp)/FreeBSD/Mac(darwin) 各有独立的一个ngx_xxx_init.c
 static ngx_os_io_t ngx_linux_io = {
     ngx_unix_recv,
     ngx_readv_chain,

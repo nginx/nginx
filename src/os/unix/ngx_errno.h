@@ -15,8 +15,13 @@
 
 typedef int               ngx_err_t;
 
-#define NGX_EPERM         EPERM
-#define NGX_ENOENT        ENOENT
+/*
+ * 系统的错误码定义及具体含义，可以参考这个文件
+ * /usr/include/asm-generic/errno-base.h
+ * 也可参考man 3 errno
+ */
+#define NGX_EPERM         EPERM     // 没有权限访问
+#define NGX_ENOENT        ENOENT    // 文件或目录不存在
 #define NGX_ENOPATH       ENOENT
 #define NGX_ESRCH         ESRCH
 #define NGX_EINTR         EINTR
@@ -68,7 +73,7 @@ typedef int               ngx_err_t;
 
 #define ngx_errno                  errno
 #define ngx_socket_errno           errno
-#define ngx_set_errno(err)         errno = err
+#define ngx_set_errno(err)         errno = err  // 设置errno的宏
 #define ngx_set_socket_errno(err)  errno = err
 
 

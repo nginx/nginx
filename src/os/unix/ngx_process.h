@@ -19,6 +19,7 @@ typedef pid_t       ngx_pid_t;
 
 typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);
 
+// 记录每个worker进程的信息
 typedef struct {
     ngx_pid_t           pid;
     int                 status;

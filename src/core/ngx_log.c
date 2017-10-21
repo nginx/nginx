@@ -266,6 +266,7 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 
     p = ngx_cpymem(errstr, "nginx: ", 7);
 
+    // 这里va_start初始化，va_end结束，ngx_vslprintf里面va_arg取用
     va_start(args, fmt);
     p = ngx_vslprintf(p, last, fmt, args);
     va_end(args);
