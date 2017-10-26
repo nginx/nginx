@@ -1630,8 +1630,7 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     u_char                      ch, *p, **value, *data, *part_data;
     size_t                     *size, len, prefix, part_len;
     ngx_str_t                   var, *val;
-    ngx_int_t                   key;
-    ngx_uint_t                  i, n, bracket, quoted;
+    ngx_uint_t                  i, n, bracket, quoted, key;
     ngx_array_t                 lengths, values;
     ngx_http_variable_value_t  *vv;
 
@@ -1883,9 +1882,8 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
     int                   rc, *captures;
     u_char               *p, errstr[NGX_MAX_CONF_ERRSTR];
     size_t                size;
-    ngx_int_t             key;
     ngx_str_t            *vv, name, value;
-    ngx_uint_t            i, n;
+    ngx_uint_t            i, n, key;
     ngx_http_ssi_ctx_t   *ctx;
     ngx_http_ssi_var_t   *var;
     ngx_regex_compile_t   rgc;
@@ -1988,10 +1986,10 @@ static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    ngx_int_t                    rc, key;
+    ngx_int_t                    rc;
     ngx_str_t                   *uri, *file, *wait, *set, *stub, args;
     ngx_buf_t                   *b;
-    ngx_uint_t                   flags, i;
+    ngx_uint_t                   flags, i, key;
     ngx_chain_t                 *cl, *tl, **ll, *out;
     ngx_http_request_t          *sr;
     ngx_http_ssi_var_t          *var;
@@ -2248,9 +2246,9 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 {
     u_char                     *p;
     uintptr_t                   len;
-    ngx_int_t                   key;
     ngx_buf_t                  *b;
     ngx_str_t                  *var, *value, *enc, text;
+    ngx_uint_t                  key;
     ngx_chain_t                *cl;
     ngx_http_variable_value_t  *vv;
 
@@ -2410,8 +2408,9 @@ static ngx_int_t
 ngx_http_ssi_set(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
 {
-    ngx_int_t            key, rc;
+    ngx_int_t            rc;
     ngx_str_t           *name, *value, *vv;
+    ngx_uint_t           key;
     ngx_http_ssi_var_t  *var;
     ngx_http_ssi_ctx_t  *mctx;
 
