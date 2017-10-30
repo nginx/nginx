@@ -738,12 +738,8 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     for ( ;; ) {
 
         if (ngx_exiting) {
-            ngx_event_cancel_timers();
-
-            if (ngx_event_timer_rbtree.root == ngx_event_timer_rbtree.sentinel)
-            {
+            if (ngx_event_no_timers_left() == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
-
                 ngx_worker_process_exit(cycle);
             }
         }
@@ -754,7 +750,6 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
-
             ngx_worker_process_exit(cycle);
         }
 
@@ -766,6 +761,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
             if (!ngx_exiting) {
                 ngx_exiting = 1;
+                ngx_set_shutdown_timer(cycle);
                 ngx_close_listening_sockets(cycle);
                 ngx_close_idle_connections(cycle);
             }

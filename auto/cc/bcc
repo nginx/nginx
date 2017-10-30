@@ -62,7 +62,6 @@ ngx_include_opt="-I"
 ngx_objout="-o"
 ngx_binout="-e"
 ngx_objext="obj"
-ngx_binext=".exe"
 
 ngx_long_start='@&&|
 	'

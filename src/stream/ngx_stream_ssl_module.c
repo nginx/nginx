@@ -45,6 +45,16 @@ static ngx_conf_bitmask_t  ngx_stream_ssl_protocols[] = {
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
     { ngx_string("TLSv1.1"), NGX_SSL_TLSv1_1 },
     { ngx_string("TLSv1.2"), NGX_SSL_TLSv1_2 },
+    { ngx_string("TLSv1.3"), NGX_SSL_TLSv1_3 },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_conf_enum_t  ngx_stream_ssl_verify[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_string("optional"), 2 },
+    { ngx_string("optional_no_ca"), 3 },
     { ngx_null_string, 0 }
 };
 
@@ -107,6 +117,34 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_conf_t, ciphers),
       NULL },
 
+    { ngx_string("ssl_verify_client"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, verify),
+      &ngx_stream_ssl_verify },
+
+    { ngx_string("ssl_verify_depth"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, verify_depth),
+      NULL },
+
+    { ngx_string("ssl_client_certificate"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, client_certificate),
+      NULL },
+
+    { ngx_string("ssl_trusted_certificate"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, trusted_certificate),
+      NULL },
+
     { ngx_string("ssl_prefer_server_ciphers"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -140,6 +178,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       ngx_conf_set_sec_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_ssl_conf_t, session_timeout),
+      NULL },
+
+    { ngx_string("ssl_crl"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, crl),
       NULL },
 
       ngx_null_command
@@ -182,6 +227,12 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
     { ngx_string("ssl_cipher"), NULL, ngx_stream_ssl_static_variable,
       (uintptr_t) ngx_ssl_get_cipher_name, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_ciphers"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ciphers, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_curves"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_curves, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_session_id"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_id, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
@@ -191,7 +242,42 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
     { ngx_string("ssl_server_name"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_server_name, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+    { ngx_string("ssl_client_cert"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_certificate, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_raw_cert"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_raw_certificate,
+      NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_escaped_cert"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_escaped_certificate,
+      NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_s_dn"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_subject_dn, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_i_dn"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_issuer_dn, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_serial"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_serial_number, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_fingerprint"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_fingerprint, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_verify"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_verify, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_start"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_start, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_end"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_end, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_remain"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_remain, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+      ngx_stream_null_variable
 };
 
 
@@ -201,14 +287,21 @@ static ngx_str_t ngx_stream_ssl_sess_id_ctx = ngx_string("STREAM");
 static ngx_int_t
 ngx_stream_ssl_handler(ngx_stream_session_t *s)
 {
+    long                    rc;
+    X509                   *cert;
+    ngx_int_t               rv;
     ngx_connection_t       *c;
     ngx_stream_ssl_conf_t  *sslcf;
+
+    if (!s->ssl) {
+        return NGX_OK;
+    }
 
     c = s->connection;
 
     sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
-    if (s->ssl && c->ssl == NULL) {
+    if (c->ssl == NULL) {
         c->log->action = "SSL handshaking";
 
         if (sslcf->ssl.ctx == NULL) {
@@ -218,7 +311,42 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
             return NGX_ERROR;
         }
 
-        return ngx_stream_ssl_init_connection(&sslcf->ssl, c);
+        rv = ngx_stream_ssl_init_connection(&sslcf->ssl, c);
+
+        if (rv != NGX_OK) {
+            return rv;
+        }
+    }
+
+    if (sslcf->verify) {
+        rc = SSL_get_verify_result(c->ssl->connection);
+
+        if (rc != X509_V_OK
+            && (sslcf->verify != 3 || !ngx_ssl_verify_error_optional(rc)))
+        {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client SSL certificate verify error: (%l:%s)",
+                          rc, X509_verify_cert_error_string(rc));
+
+            ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+                                       (SSL_get0_session(c->ssl->connection)));
+            return NGX_ERROR;
+        }
+
+        if (sslcf->verify == 1) {
+            cert = SSL_get_peer_certificate(c->ssl->connection);
+
+            if (cert == NULL) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent no required SSL certificate");
+
+                ngx_ssl_remove_cached_session(sslcf->ssl.ctx,
+                                       (SSL_get0_session(c->ssl->connection)));
+                return NGX_ERROR;
+            }
+
+            X509_free(cert);
+        }
     }
 
     return NGX_OK;
@@ -228,13 +356,20 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
 static ngx_int_t
 ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 {
-    ngx_int_t               rc;
-    ngx_stream_session_t   *s;
-    ngx_stream_ssl_conf_t  *sslcf;
+    ngx_int_t                    rc;
+    ngx_stream_session_t        *s;
+    ngx_stream_ssl_conf_t       *sslcf;
+    ngx_stream_core_srv_conf_t  *cscf;
 
     s = c->data;
 
-    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
+    cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+
+    if (cscf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_ssl_create_connection(ssl, c, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -378,6 +513,9 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
      *     scf->protocols = 0;
      *     scf->dhparam = { 0, NULL };
      *     scf->ecdh_curve = { 0, NULL };
+     *     scf->client_certificate = { 0, NULL };
+     *     scf->trusted_certificate = { 0, NULL };
+     *     scf->crl = { 0, NULL };
      *     scf->ciphers = { 0, NULL };
      *     scf->shm_zone = NULL;
      */
@@ -387,6 +525,8 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
     scf->passwords = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
+    scf->verify = NGX_CONF_UNSET_UINT;
+    scf->verify_depth = NGX_CONF_UNSET_UINT;
     scf->builtin_session_cache = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
     scf->session_tickets = NGX_CONF_UNSET;
@@ -417,6 +557,9 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                          (NGX_CONF_BITMASK_SET|NGX_SSL_TLSv1
                           |NGX_SSL_TLSv1_1|NGX_SSL_TLSv1_2));
 
+    ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
+    ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
+
     ngx_conf_merge_ptr_value(conf->certificates, prev->certificates, NULL);
     ngx_conf_merge_ptr_value(conf->certificate_keys, prev->certificate_keys,
                          NULL);
@@ -424,6 +567,12 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
+
+    ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
+                         "");
+    ngx_conf_merge_str_value(conf->trusted_certificate,
+                         prev->trusted_certificate, "");
+    ngx_conf_merge_str_value(conf->crl, prev->crl, "");
 
     ngx_conf_merge_str_value(conf->ecdh_curve, prev->ecdh_curve,
                          NGX_DEFAULT_ECDH_CURVE);
@@ -472,6 +621,35 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->verify) {
+
+        if (conf->client_certificate.len == 0 && conf->verify != 3) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no ssl_client_certificate for ssl_client_verify");
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_client_certificate(cf, &conf->ssl,
+                                       &conf->client_certificate,
+                                       conf->verify_depth)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_trusted_certificate(cf, &conf->ssl,
+                                        &conf->trusted_certificate,
+                                        conf->verify_depth)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {

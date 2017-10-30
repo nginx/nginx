@@ -46,13 +46,6 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-#if (NGX_HTTP_V2)
-    if (r->stream) {
-        rc = ngx_http_v2_read_request_body(r, post_handler);
-        goto done;
-    }
-#endif
-
     if (ngx_http_test_expect(r) != NGX_OK) {
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto done;
@@ -84,6 +77,13 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         post_handler(r);
         return NGX_OK;
     }
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        rc = ngx_http_v2_read_request_body(r);
+        goto done;
+    }
+#endif
 
     preread = r->header_in->last - r->header_in->pos;
 
@@ -805,7 +805,11 @@ ngx_http_test_expect(ngx_http_request_t *r)
 
     if (r->expect_tested
         || r->headers_in.expect == NULL
-        || r->http_version < NGX_HTTP_VERSION_11)
+        || r->http_version < NGX_HTTP_VERSION_11
+#if (NGX_HTTP_V2)
+        || r->stream != NULL
+#endif
+       )
     {
         return NGX_OK;
     }
@@ -834,6 +838,8 @@ ngx_http_test_expect(ngx_http_request_t *r)
     }
 
     /* we assume that such small packet should be send successfully */
+
+    r->connection->error = 1;
 
     return NGX_ERROR;
 }
@@ -1085,6 +1091,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if (NGX_DEBUG)
 
+#if 0
     for (cl = rb->bufs; cl; cl = cl->next) {
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
                        "http body old buf t:%d f:%d %p, pos %p, size: %z "
@@ -1095,6 +1102,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
                        cl->buf->file_pos,
                        cl->buf->file_last - cl->buf->file_pos);
     }
+#endif
 
     for (cl = in; cl; cl = cl->next) {
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,

@@ -30,6 +30,8 @@ typedef ngx_int_t (*ngx_http_get_variable_pt) (ngx_http_request_t *r,
 #define NGX_HTTP_VAR_NOCACHEABLE  2
 #define NGX_HTTP_VAR_INDEXED      4
 #define NGX_HTTP_VAR_NOHASH       8
+#define NGX_HTTP_VAR_WEAK         16
+#define NGX_HTTP_VAR_PREFIX       32
 
 
 struct ngx_http_variable_s {
@@ -40,6 +42,8 @@ struct ngx_http_variable_s {
     ngx_uint_t                    flags;
     ngx_uint_t                    index;
 };
+
+#define ngx_http_null_variable  { ngx_null_string, NULL, NULL, 0, 0, 0 }
 
 
 ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name,

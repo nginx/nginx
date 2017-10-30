@@ -107,7 +107,7 @@ ngx_http_secure_link_variable(ngx_http_request_t *r,
     ngx_md5_t                     md5;
     ngx_http_secure_link_ctx_t   *ctx;
     ngx_http_secure_link_conf_t  *conf;
-    u_char                        hash_buf[16], md5_buf[16];
+    u_char                        hash_buf[18], md5_buf[16];
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_secure_link_module);
 
@@ -154,7 +154,6 @@ ngx_http_secure_link_variable(ngx_http_request_t *r,
         goto not_found;
     }
 
-    hash.len = 16;
     hash.data = hash_buf;
 
     if (ngx_decode_base64url(&hash, &val) != NGX_OK) {

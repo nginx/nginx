@@ -57,6 +57,7 @@ static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
     { ngx_string("TLSv1"), NGX_SSL_TLSv1 },
     { ngx_string("TLSv1.1"), NGX_SSL_TLSv1_1 },
     { ngx_string("TLSv1.2"), NGX_SSL_TLSv1_2 },
+    { ngx_string("TLSv1.3"), NGX_SSL_TLSv1_3 },
     { ngx_null_string, 0 }
 };
 
@@ -276,6 +277,12 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_cipher"), NULL, ngx_http_ssl_static_variable,
       (uintptr_t) ngx_ssl_get_cipher_name, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_ciphers"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ciphers, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_curves"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_curves, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_session_id"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_id, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
@@ -290,6 +297,10 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
     { ngx_string("ssl_client_raw_cert"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_raw_certificate,
+      NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_escaped_cert"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_escaped_certificate,
       NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_s_dn"), NULL, ngx_http_ssl_variable,
@@ -313,7 +324,16 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_client_verify"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_verify, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+    { ngx_string("ssl_client_v_start"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_start, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_end"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_end, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_remain"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_remain, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+      ngx_http_null_variable
 };
 
 

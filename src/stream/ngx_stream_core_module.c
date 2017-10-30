@@ -309,7 +309,6 @@ ngx_int_t
 ngx_stream_core_content_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph)
 {
-    int                          tcp_nodelay;
     ngx_connection_t            *c;
     ngx_stream_core_srv_conf_t  *cscf;
 
@@ -321,22 +320,10 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
 
     if (c->type == SOCK_STREAM
         && cscf->tcp_nodelay
-        && c->tcp_nodelay == NGX_TCP_NODELAY_UNSET)
+        && ngx_tcp_nodelay(c) != NGX_OK)
     {
-        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0, "tcp_nodelay");
-
-        tcp_nodelay = 1;
-
-        if (setsockopt(c->fd, IPPROTO_TCP, TCP_NODELAY,
-                       (const void *) &tcp_nodelay, sizeof(int)) == -1)
-        {
-            ngx_connection_error(c, ngx_socket_errno,
-                                 "setsockopt(TCP_NODELAY) failed");
-            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-            return NGX_OK;
-        }
-
-        c->tcp_nodelay = NGX_TCP_NODELAY_SET;
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return NGX_OK;
     }
 
     cscf->handler(s);
@@ -582,7 +569,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_stream_core_srv_conf_t  *cscf = conf;
 
-    ngx_str_t                    *value;
+    ngx_str_t                    *value, size;
     ngx_url_t                     u;
     ngx_uint_t                    i, backlog;
     ngx_stream_listen_t          *ls, *als;
@@ -620,6 +607,8 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ls->socklen = u.socklen;
     ls->backlog = NGX_LISTEN_BACKLOG;
+    ls->rcvbuf = -1;
+    ls->sndbuf = -1;
     ls->type = SOCK_STREAM;
     ls->wildcard = u.wildcard;
     ls->ctx = cf->ctx;
@@ -655,6 +644,38 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             backlog = 1;
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "rcvbuf=", 7) == 0) {
+            size.len = value[i].len - 7;
+            size.data = value[i].data + 7;
+
+            ls->rcvbuf = ngx_parse_size(&size);
+            ls->bind = 1;
+
+            if (ls->rcvbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid rcvbuf \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "sndbuf=", 7) == 0) {
+            size.len = value[i].len - 7;
+            size.data = value[i].data + 7;
+
+            ls->sndbuf = ngx_parse_size(&size);
+            ls->bind = 1;
+
+            if (ls->sndbuf == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid sndbuf \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
 
             continue;
         }

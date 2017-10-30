@@ -4,10 +4,11 @@ VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
 NGINX =		nginx-$(VER)
 TEMP =		tmp
 
+CC =		cl
 OBJS =		objs.msvc8
-OPENSSL =	openssl-1.0.2j
-ZLIB =		zlib-1.2.8
-PCRE =		pcre-8.39
+OPENSSL =	openssl-1.0.2l
+ZLIB =		zlib-1.2.11
+PCRE =		pcre-8.41
 
 
 release: export
@@ -47,7 +48,7 @@ RELEASE:
 
 win32:
 	./auto/configure						\
-		--with-cc=cl						\
+		--with-cc=$(CC)						\
 		--builddir=$(OBJS)					\
 		--with-debug						\
 		--prefix= 						\
@@ -65,6 +66,7 @@ win32:
 		--with-pcre=$(OBJS)/lib/$(PCRE)				\
 		--with-zlib=$(OBJS)/lib/$(ZLIB)				\
 		--with-select_module					\
+		--with-http_v2_module					\
 		--with-http_realip_module				\
 		--with-http_addition_module				\
 		--with-http_sub_module					\

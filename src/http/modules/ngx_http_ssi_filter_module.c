@@ -321,7 +321,7 @@ static ngx_http_variable_t  ngx_http_ssi_vars[] = {
     { ngx_string("date_gmt"), NULL, ngx_http_ssi_date_gmt_local_variable, 1,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 
@@ -369,6 +369,8 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     if (r == r->main) {
         ngx_http_clear_content_length(r);
         ngx_http_clear_accept_ranges(r);
+
+        r->preserve_body = 1;
 
         if (!slcf->last_modified) {
             ngx_http_clear_last_modified(r);
@@ -2388,7 +2390,7 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         ctx->timefmt.len = value->len;
         ctx->timefmt.data = ngx_pnalloc(r->pool, value->len + 1);
         if (ctx->timefmt.data == NULL) {
-            return NGX_HTTP_SSI_ERROR;
+            return NGX_ERROR;
         }
 
         ngx_cpystrn(ctx->timefmt.data, value->data, value->len + 1);

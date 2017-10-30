@@ -232,7 +232,7 @@ static ngx_http_variable_t  ngx_http_geoip_vars[] = {
       ngx_http_geoip_city_int_variable,
       offsetof(GeoIPRecord, area_code), 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_http_null_variable
 };
 
 

@@ -41,6 +41,14 @@ case "$NGX_PLATFORM" in
 '
     ;;
 
+    NetBSD:*)
+        CORE_INCS="$UNIX_INCS"
+        CORE_DEPS="$UNIX_DEPS $POSIX_DEPS"
+        CORE_SRCS="$UNIX_SRCS"
+
+        NGX_RPATH=YES
+    ;;
+
     HP-UX:*)
         # HP/UX
         have=NGX_HPUX . auto/have_headers

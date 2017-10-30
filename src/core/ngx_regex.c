@@ -262,7 +262,7 @@ ngx_pcre_free_studies(void *data)
     part = &studies->part;
     elts = part->elts;
 
-    for (i = 0 ; /* void */ ; i++) {
+    for (i = 0; /* void */ ; i++) {
 
         if (i >= part->nelts) {
             if (part->next == NULL) {
@@ -326,7 +326,7 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
     part = &ngx_pcre_studies->part;
     elts = part->elts;
 
-    for (i = 0 ; /* void */ ; i++) {
+    for (i = 0; /* void */ ; i++) {
 
         if (i >= part->nelts) {
             if (part->next == NULL) {

@@ -218,7 +218,9 @@ struct ngx_resolver_ctx_s {
     void                     *data;
     ngx_msec_t                timeout;
 
-    ngx_uint_t                quick;  /* unsigned  quick:1; */
+    unsigned                  quick:1;
+    unsigned                  async:1;
+    unsigned                  cancelable:1;
     ngx_uint_t                recursion;
     ngx_event_t              *event;
 };

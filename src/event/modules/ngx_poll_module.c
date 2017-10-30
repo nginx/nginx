@@ -25,9 +25,9 @@ static struct pollfd  *event_list;
 static ngx_uint_t      nevents;
 
 
-static ngx_str_t    poll_name = ngx_string("poll");
+static ngx_str_t           poll_name = ngx_string("poll");
 
-ngx_event_module_t  ngx_poll_module_ctx = {
+static ngx_event_module_t  ngx_poll_module_ctx = {
     &poll_name,
     NULL,                                  /* create configuration */
     ngx_poll_init_conf,                    /* init configuration */
@@ -353,13 +353,11 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             continue;
         }
 
-        if ((revents & (POLLERR|POLLHUP|POLLNVAL))
-             && (revents & (POLLIN|POLLOUT)) == 0)
-        {
+        if (revents & (POLLERR|POLLHUP|POLLNVAL)) {
+
             /*
-             * if the error events were returned without POLLIN or POLLOUT,
-             * then add these flags to handle the events at least in one
-             * active handler
+             * if the error events were returned, add POLLIN and POLLOUT
+             * to handle the events at least in one active handler
              */
 
             revents |= POLLIN|POLLOUT;

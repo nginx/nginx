@@ -84,7 +84,6 @@ ngx_include_opt="-i="
 ngx_objout="-fo"
 ngx_binout="-fe="
 ngx_objext="obj"
-ngx_binext=".exe"
 
 ngx_regex_dirsep='\\'
 ngx_dirsep="\\"

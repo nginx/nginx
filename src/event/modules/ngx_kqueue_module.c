@@ -73,7 +73,7 @@ static ngx_command_t  ngx_kqueue_commands[] = {
 };
 
 
-ngx_event_module_t  ngx_kqueue_module_ctx = {
+static ngx_event_module_t  ngx_kqueue_module_ctx = {
     &kqueue_name,
     ngx_kqueue_create_conf,                /* create configuration */
     ngx_kqueue_init_conf,                  /* init configuration */

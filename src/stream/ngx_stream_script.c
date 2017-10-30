@@ -222,7 +222,7 @@ ngx_stream_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     cv = (ngx_stream_complex_value_t **) (p + cmd->offset);
 
     if (*cv != NULL) {
-        return "duplicate";
+        return "is duplicate";
     }
 
     *cv = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));

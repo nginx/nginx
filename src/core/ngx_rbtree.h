@@ -54,6 +54,8 @@ void ngx_rbtree_insert_value(ngx_rbtree_node_t *root, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel);
 void ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
+ngx_rbtree_node_t *ngx_rbtree_next(ngx_rbtree_t *tree,
+    ngx_rbtree_node_t *node);
 
 
 #define ngx_rbt_red(node)               ((node)->color = 1)

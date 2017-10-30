@@ -210,7 +210,7 @@ static ngx_stream_variable_t  ngx_stream_geoip_vars[] = {
       ngx_stream_geoip_city_int_variable,
       offsetof(GeoIPRecord, area_code), 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 

@@ -276,6 +276,8 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     r->read_event_handler = ngx_http_test_reading;
     r->write_event_handler = ngx_http_limit_req_delay;
+
+    r->connection->write->delayed = 1;
     ngx_add_timer(r->connection->write, delay);
 
     return NGX_AGAIN;
@@ -292,7 +294,7 @@ ngx_http_limit_req_delay(ngx_http_request_t *r)
 
     wev = r->connection->write;
 
-    if (!wev->timedout) {
+    if (wev->delayed) {
 
         if (ngx_handle_write_event(wev, 0) != NGX_OK) {
             ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -300,8 +302,6 @@ ngx_http_limit_req_delay(ngx_http_request_t *r)
 
         return;
     }
-
-    wev->timedout = 0;
 
     if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);

@@ -636,7 +636,7 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
     }
 
     if (mp4 == NULL) {
-        b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+        b = ngx_calloc_buf(r->pool);
         if (b == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -1229,7 +1229,9 @@ ngx_http_mp4_update_mdat_atom(ngx_http_mp4_file_t *mp4, off_t start_offset,
 
     atom_header = mp4->mdat_atom_header;
 
-    if ((uint64_t) atom_data_size > (uint64_t) 0xffffffff) {
+    if ((uint64_t) atom_data_size
+        > (uint64_t) 0xffffffff - sizeof(ngx_mp4_atom_header_t))
+    {
         atom_size = 1;
         atom_header_size = sizeof(ngx_mp4_atom_header64_t);
         ngx_mp4_set_64value(atom_header + sizeof(ngx_mp4_atom_header_t),

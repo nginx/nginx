@@ -67,7 +67,7 @@ ngx_event_expire_timers(void)
 
         node = ngx_rbtree_min(root, sentinel);
 
-        /* node->key > ngx_current_time */
+        /* node->key > ngx_current_msec */
 
         if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {
             return;
@@ -96,43 +96,31 @@ ngx_event_expire_timers(void)
 }
 
 
-void
-ngx_event_cancel_timers(void)
+ngx_int_t
+ngx_event_no_timers_left(void)
 {
     ngx_event_t        *ev;
     ngx_rbtree_node_t  *node, *root, *sentinel;
 
     sentinel = ngx_event_timer_rbtree.sentinel;
+    root = ngx_event_timer_rbtree.root;
 
-    for ( ;; ) {
-        root = ngx_event_timer_rbtree.root;
+    if (root == sentinel) {
+        return NGX_OK;
+    }
 
-        if (root == sentinel) {
-            return;
-        }
-
-        node = ngx_rbtree_min(root, sentinel);
-
+    for (node = ngx_rbtree_min(root, sentinel);
+         node;
+         node = ngx_rbtree_next(&ngx_event_timer_rbtree, node))
+    {
         ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
         if (!ev->cancelable) {
-            return;
+            return NGX_AGAIN;
         }
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "event timer cancel: %d: %M",
-                       ngx_event_ident(ev->data), ev->timer.key);
-
-        ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
-
-#if (NGX_DEBUG)
-        ev->timer.left = NULL;
-        ev->timer.right = NULL;
-        ev->timer.parent = NULL;
-#endif
-
-        ev->timer_set = 0;
-
-        ev->handler(ev);
     }
+
+    /* only cancelable timers left */
+
+    return NGX_OK;
 }

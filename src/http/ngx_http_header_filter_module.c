@@ -46,8 +46,9 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static char ngx_http_server_string[] = "Server: nginx" CRLF;
-static char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
+static u_char ngx_http_server_string[] = "Server: nginx" CRLF;
+static u_char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
+static u_char ngx_http_server_build_string[] = "Server: " NGINX_VER_BUILD CRLF;
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -74,8 +75,9 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_null_string,  /* "305 Use Proxy" */
     ngx_null_string,  /* "306 unused" */
     ngx_string("307 Temporary Redirect"),
+    ngx_string("308 Permanent Redirect"),
 
-#define NGX_HTTP_LAST_3XX  308
+#define NGX_HTTP_LAST_3XX  309
 #define NGX_HTTP_OFF_4XX   (NGX_HTTP_LAST_3XX - 301 + NGX_HTTP_OFF_3XX)
 
     ngx_string("400 Bad Request"),
@@ -100,12 +102,16 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_null_string,  /* "419 unused" */
     ngx_null_string,  /* "420 unused" */
     ngx_string("421 Misdirected Request"),
+    ngx_null_string,  /* "422 Unprocessable Entity" */
+    ngx_null_string,  /* "423 Locked" */
+    ngx_null_string,  /* "424 Failed Dependency" */
+    ngx_null_string,  /* "425 unused" */
+    ngx_null_string,  /* "426 Upgrade Required" */
+    ngx_null_string,  /* "427 unused" */
+    ngx_null_string,  /* "428 Precondition Required" */
+    ngx_string("429 Too Many Requests"),
 
-    /* ngx_null_string, */  /* "422 Unprocessable Entity" */
-    /* ngx_null_string, */  /* "423 Locked" */
-    /* ngx_null_string, */  /* "424 Failed Dependency" */
-
-#define NGX_HTTP_LAST_4XX  422
+#define NGX_HTTP_LAST_4XX  430
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string("500 Internal Server Error"),
@@ -113,7 +119,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("502 Bad Gateway"),
     ngx_string("503 Service Temporarily Unavailable"),
     ngx_string("504 Gateway Time-out"),
-    ngx_null_string,        /* "505 HTTP Version Not Supported" */
+    ngx_string("505 HTTP Version Not Supported"),
     ngx_null_string,        /* "506 Variant Also Negotiates" */
     ngx_string("507 Insufficient Storage"),
 
@@ -274,8 +280,15 @@ ngx_http_header_filter(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->headers_out.server == NULL) {
-        len += clcf->server_tokens ? sizeof(ngx_http_server_full_string) - 1:
-                                     sizeof(ngx_http_server_string) - 1;
+        if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
+            len += sizeof(ngx_http_server_full_string) - 1;
+
+        } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
+            len += sizeof(ngx_http_server_build_string) - 1;
+
+        } else {
+            len += sizeof(ngx_http_server_string) - 1;
+        }
     }
 
     if (r->headers_out.date == NULL) {
@@ -309,7 +322,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.location
         && r->headers_out.location->value.len
-        && r->headers_out.location->value.data[0] == '/')
+        && r->headers_out.location->value.data[0] == '/'
+        && clcf->absolute_redirect)
     {
         r->headers_out.location->hash = 0;
 
@@ -435,12 +449,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
     *b->last++ = CR; *b->last++ = LF;
 
     if (r->headers_out.server == NULL) {
-        if (clcf->server_tokens) {
-            p = (u_char *) ngx_http_server_full_string;
+        if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
+            p = ngx_http_server_full_string;
             len = sizeof(ngx_http_server_full_string) - 1;
 
+        } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
+            p = ngx_http_server_build_string;
+            len = sizeof(ngx_http_server_build_string) - 1;
+
         } else {
-            p = (u_char *) ngx_http_server_string;
+            p = ngx_http_server_string;
             len = sizeof(ngx_http_server_string) - 1;
         }
 

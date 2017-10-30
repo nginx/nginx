@@ -50,13 +50,17 @@
 #define NGX_HTTP_V2_SERVER_INDEX          54
 #define NGX_HTTP_V2_VARY_INDEX            59
 
+#define NGX_HTTP_V2_NO_TRAILERS           (ngx_http_v2_out_frame_t *) -1
+
 
 static u_char *ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len,
     u_char *tmp, ngx_uint_t lower);
 static u_char *ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix,
     ngx_uint_t value);
 static ngx_http_v2_out_frame_t *ngx_http_v2_create_headers_frame(
-    ngx_http_request_t *r, u_char *pos, u_char *end);
+    ngx_http_request_t *r, u_char *pos, u_char *end, ngx_uint_t fin);
+static ngx_http_v2_out_frame_t *ngx_http_v2_create_trailers_frame(
+    ngx_http_request_t *r);
 
 static ngx_chain_t *ngx_http_v2_send_chain(ngx_connection_t *fc,
     ngx_chain_t *in, off_t limit);
@@ -135,6 +139,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     ngx_connection_t          *fc;
     ngx_http_cleanup_t        *cln;
     ngx_http_v2_out_frame_t   *frame;
+    ngx_http_v2_connection_t  *h2c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     addr[NGX_SOCKADDR_STRLEN];
@@ -147,6 +152,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     static size_t nginx_ver_len = ngx_http_v2_literal_size(NGINX_VER);
     static u_char nginx_ver[ngx_http_v2_literal_size(NGINX_VER)];
+
+    static size_t nginx_ver_build_len =
+                                  ngx_http_v2_literal_size(NGINX_VER_BUILD);
+    static u_char nginx_ver_build[ngx_http_v2_literal_size(NGINX_VER_BUILD)];
 
     if (!r->stream) {
         return ngx_http_next_header_filter(r);
@@ -227,12 +236,25 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         }
     }
 
-    len = status ? 1 : 1 + ngx_http_v2_literal_size("418");
+    h2c = r->stream->connection;
+
+    len = h2c->table_update ? 1 : 0;
+
+    len += status ? 1 : 1 + ngx_http_v2_literal_size("418");
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->headers_out.server == NULL) {
-        len += 1 + (clcf->server_tokens ? nginx_ver_len : sizeof(nginx));
+
+        if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
+            len += 1 + nginx_ver_len;
+
+        } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
+            len += 1 + nginx_ver_build_len;
+
+        } else {
+            len += 1 + sizeof(nginx);
+        }
     }
 
     if (r->headers_out.date == NULL) {
@@ -263,7 +285,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
 
-        if (r->headers_out.location->value.data[0] == '/') {
+        if (r->headers_out.location->value.data[0] == '/'
+            && clcf->absolute_redirect)
+        {
             if (clcf->server_name_in_redirect) {
                 cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
                 host = cscf->server_name;
@@ -404,6 +428,13 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     start = pos;
 
+    if (h2c->table_update) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 table size update: 0");
+        *pos++ = (1 << 5) | 0;
+        h2c->table_update = 0;
+    }
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 output header: \":status: %03ui\"",
                    r->headers_out.status);
@@ -418,13 +449,25 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.server == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
-                       "http2 output header: \"server: %s\"",
-                       clcf->server_tokens ? NGINX_VER : "nginx");
+
+        if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output header: \"server: %s\"",
+                           NGINX_VER);
+
+        } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output header: \"server: %s\"",
+                           NGINX_VER_BUILD);
+
+        } else {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output header: \"server: nginx\"");
+        }
 
         *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_SERVER_INDEX);
 
-        if (clcf->server_tokens) {
+        if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
             if (nginx_ver[0] == '\0') {
                 p = ngx_http_v2_write_value(nginx_ver, (u_char *) NGINX_VER,
                                             sizeof(NGINX_VER) - 1, tmp);
@@ -432,6 +475,16 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
             }
 
             pos = ngx_cpymem(pos, nginx_ver, nginx_ver_len);
+
+        } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
+            if (nginx_ver_build[0] == '\0') {
+                p = ngx_http_v2_write_value(nginx_ver_build,
+                                            (u_char *) NGINX_VER_BUILD,
+                                            sizeof(NGINX_VER_BUILD) - 1, tmp);
+                nginx_ver_build_len = p - nginx_ver_build;
+            }
+
+            pos = ngx_cpymem(pos, nginx_ver_build, nginx_ver_build_len);
 
         } else {
             pos = ngx_cpymem(pos, nginx, sizeof(nginx));
@@ -575,12 +628,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                                       header[i].value.len, tmp);
     }
 
-    frame = ngx_http_v2_create_headers_frame(r, start, pos);
+    frame = ngx_http_v2_create_headers_frame(r, start, pos, r->header_only);
     if (frame == NULL) {
         return NGX_ERROR;
     }
 
     ngx_http_v2_queue_blocked_frame(r->stream->connection, frame);
+
+    r->stream->queued = 1;
 
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
@@ -590,12 +645,122 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     cln->handler = ngx_http_v2_filter_cleanup;
     cln->data = r->stream;
 
-    r->stream->queued = 1;
-
     fc->send_chain = ngx_http_v2_send_chain;
     fc->need_last_buf = 1;
 
     return ngx_http_v2_filter_send(fc, r->stream);
+}
+
+
+static ngx_http_v2_out_frame_t *
+ngx_http_v2_create_trailers_frame(ngx_http_request_t *r)
+{
+    u_char           *pos, *start, *tmp;
+    size_t            len, tmp_len;
+    ngx_uint_t        i;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header;
+
+    len = 0;
+    tmp_len = 0;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "too long response trailer name: \"%V\"",
+                          &header[i].key);
+            return NULL;
+        }
+
+        if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                          "too long response trailer value: \"%V: %V\"",
+                          &header[i].key, &header[i].value);
+            return NULL;
+        }
+
+        len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
+                 + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
+
+        if (header[i].key.len > tmp_len) {
+            tmp_len = header[i].key.len;
+        }
+
+        if (header[i].value.len > tmp_len) {
+            tmp_len = header[i].value.len;
+        }
+    }
+
+    if (len == 0) {
+        return NGX_HTTP_V2_NO_TRAILERS;
+    }
+
+    tmp = ngx_palloc(r->pool, tmp_len);
+    pos = ngx_pnalloc(r->pool, len);
+
+    if (pos == NULL || tmp == NULL) {
+        return NULL;
+    }
+
+    start = pos;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+#if (NGX_DEBUG)
+        if (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP) {
+            ngx_strlow(tmp, header[i].key.data, header[i].key.len);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http2 output trailer: \"%*s: %V\"",
+                           header[i].key.len, tmp, &header[i].value);
+        }
+#endif
+
+        *pos++ = 0;
+
+        pos = ngx_http_v2_write_name(pos, header[i].key.data,
+                                     header[i].key.len, tmp);
+
+        pos = ngx_http_v2_write_value(pos, header[i].value.data,
+                                      header[i].value.len, tmp);
+    }
+
+    return ngx_http_v2_create_headers_frame(r, start, pos, 1);
 }
 
 
@@ -649,7 +814,7 @@ ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix, ngx_uint_t value)
 
 static ngx_http_v2_out_frame_t *
 ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
-    u_char *end)
+    u_char *end, ngx_uint_t fin)
 {
     u_char                    type, flags;
     size_t                    rest, frame_size;
@@ -670,12 +835,12 @@ ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
     frame->stream = stream;
     frame->length = rest;
     frame->blocked = 1;
-    frame->fin = r->header_only;
+    frame->fin = fin;
 
     ll = &frame->first;
 
     type = NGX_HTTP_V2_HEADERS_FRAME;
-    flags = r->header_only ? NGX_HTTP_V2_END_STREAM_FLAG : NGX_HTTP_V2_NO_FLAG;
+    flags = fin ? NGX_HTTP_V2_END_STREAM_FLAG : NGX_HTTP_V2_NO_FLAG;
     frame_size = stream->connection->frame_size;
 
     for ( ;; ) {
@@ -732,12 +897,14 @@ ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
         rest -= frame_size;
 
         if (rest) {
+            frame->length += NGX_HTTP_V2_FRAME_HEADER_SIZE;
+
             type = NGX_HTTP_V2_CONTINUATION_FRAME;
             flags = NGX_HTTP_V2_NO_FLAG;
             continue;
         }
 
-        b->last_buf = r->header_only;
+        b->last_buf = fin;
         cl->next = NULL;
         frame->last = cl;
 
@@ -759,7 +926,7 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     ngx_http_request_t        *r;
     ngx_http_v2_stream_t      *stream;
     ngx_http_v2_loc_conf_t    *h2lcf;
-    ngx_http_v2_out_frame_t   *frame;
+    ngx_http_v2_out_frame_t   *frame, *trailers;
     ngx_http_v2_connection_t  *h2c;
 
     r = fc->data;
@@ -833,6 +1000,8 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     frame_size = (h2lcf->chunk_size < h2c->frame_size)
                  ? h2lcf->chunk_size : h2c->frame_size;
 
+    trailers = NGX_HTTP_V2_NO_TRAILERS;
+
 #if (NGX_SUPPRESS_WARN)
     cl = NULL;
 #endif
@@ -895,19 +1064,39 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
             size -= rest;
         }
 
-        frame = ngx_http_v2_filter_get_data_frame(stream, frame_size, out, cl);
-        if (frame == NULL) {
-            return NGX_CHAIN_ERROR;
+        if (cl->buf->last_buf) {
+            trailers = ngx_http_v2_create_trailers_frame(r);
+            if (trailers == NULL) {
+                return NGX_CHAIN_ERROR;
+            }
+
+            if (trailers != NGX_HTTP_V2_NO_TRAILERS) {
+                cl->buf->last_buf = 0;
+            }
         }
 
-        ngx_http_v2_queue_frame(h2c, frame);
+        if (frame_size || cl->buf->last_buf) {
+            frame = ngx_http_v2_filter_get_data_frame(stream, frame_size,
+                                                      out, cl);
+            if (frame == NULL) {
+                return NGX_CHAIN_ERROR;
+            }
 
-        h2c->send_window -= frame_size;
+            ngx_http_v2_queue_frame(h2c, frame);
 
-        stream->send_window -= frame_size;
-        stream->queued++;
+            h2c->send_window -= frame_size;
+
+            stream->send_window -= frame_size;
+            stream->queued++;
+        }
 
         if (in == NULL) {
+
+            if (trailers != NGX_HTTP_V2_NO_TRAILERS) {
+                ngx_http_v2_queue_frame(h2c, trailers);
+                stream->queued++;
+            }
+
             break;
         }
 
@@ -1079,6 +1268,10 @@ static ngx_inline ngx_int_t
 ngx_http_v2_flow_control(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2:%ui windows: conn:%uz stream:%z",
+                   stream->node->id, h2c->send_window, stream->send_window);
+
     if (stream->send_window <= 0) {
         stream->exhausted = 1;
         return NGX_DECLINED;
@@ -1100,11 +1293,11 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     ngx_queue_t           *q;
     ngx_http_v2_stream_t  *s;
 
-    if (stream->handled) {
+    if (stream->waiting) {
         return;
     }
 
-    stream->handled = 1;
+    stream->waiting = 1;
 
     for (q = ngx_queue_last(&h2c->waiting);
          q != ngx_queue_sentinel(&h2c->waiting);
@@ -1167,6 +1360,9 @@ ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2:%ui HEADERS frame %p was sent",
                    stream->node->id, frame);
+
+    stream->request->header_size += NGX_HTTP_V2_FRAME_HEADER_SIZE
+                                    + frame->length;
 
     ngx_http_v2_handle_frame(stream, frame);
 
@@ -1294,20 +1490,29 @@ static ngx_inline void
 ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
+    ngx_event_t       *wev;
     ngx_connection_t  *fc;
 
-    if (stream->handled || stream->blocked) {
+    if (stream->waiting || stream->blocked) {
         return;
     }
 
     fc = stream->request->connection;
 
-    if (!fc->error && (stream->exhausted || fc->write->delayed)) {
+    if (!fc->error && stream->exhausted) {
         return;
     }
 
-    stream->handled = 1;
-    ngx_queue_insert_tail(&h2c->posted, &stream->queue);
+    wev = fc->write;
+
+    wev->active = 0;
+    wev->ready = 1;
+
+    if (!fc->error && wev->delayed) {
+        return;
+    }
+
+    ngx_post_event(wev, &ngx_posted_events);
 }
 
 
@@ -1317,11 +1522,13 @@ ngx_http_v2_filter_cleanup(void *data)
     ngx_http_v2_stream_t *stream = data;
 
     size_t                     window;
+    ngx_event_t               *wev;
+    ngx_queue_t               *q;
     ngx_http_v2_out_frame_t   *frame, **fn;
     ngx_http_v2_connection_t  *h2c;
 
-    if (stream->handled) {
-        stream->handled = 0;
+    if (stream->waiting) {
+        stream->waiting = 0;
         ngx_queue_remove(&stream->queue);
     }
 
@@ -1355,9 +1562,26 @@ ngx_http_v2_filter_cleanup(void *data)
         fn = &frame->next;
     }
 
-    if (h2c->send_window == 0 && window && !ngx_queue_empty(&h2c->waiting)) {
-        ngx_queue_add(&h2c->posted, &h2c->waiting);
-        ngx_queue_init(&h2c->waiting);
+    if (h2c->send_window == 0 && window) {
+
+        while (!ngx_queue_empty(&h2c->waiting)) {
+            q = ngx_queue_head(&h2c->waiting);
+
+            ngx_queue_remove(q);
+
+            stream = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
+
+            stream->waiting = 0;
+
+            wev = stream->request->connection->write;
+
+            wev->active = 0;
+            wev->ready = 1;
+
+            if (!wev->delayed) {
+                ngx_post_event(wev, &ngx_posted_events);
+            }
+        }
     }
 
     h2c->send_window += window;

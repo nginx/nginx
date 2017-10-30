@@ -3,9 +3,6 @@
 # Copyright (C) Nginx, Inc.
 
 
-v=`grep 'define NGINX_VERSION' src/core/nginx.h | sed -e 's/^.*"\(.*\)".*/\1/'`
-
-
 cat << END                                                    >> $NGX_MAKEFILE
 
 $NGX_OBJS/src/http/modules/perl/ngx_http_perl_module.o: \\
@@ -27,7 +24,11 @@ $NGX_OBJS/src/http/modules/perl/Makefile: \\
 		src/http/modules/perl/nginx.pm \\
 		src/http/modules/perl/nginx.xs \\
 		src/http/modules/perl/typemap
-	sed "s/%%VERSION%%/$v/" src/http/modules/perl/nginx.pm > \\
+	grep 'define NGINX_VERSION' src/core/nginx.h \\
+		| sed -e 's/^.*"\(.*\)".*/\1/' > \\
+		$NGX_OBJS/src/http/modules/perl/version
+	sed "s/%%VERSION%%/\`cat $NGX_OBJS/src/http/modules/perl/version\`/" \\
+		src/http/modules/perl/nginx.pm > \\
 		$NGX_OBJS/src/http/modules/perl/nginx.pm
 	cp -p src/http/modules/perl/nginx.xs $NGX_OBJS/src/http/modules/perl/
 	cp -p src/http/modules/perl/typemap $NGX_OBJS/src/http/modules/perl/

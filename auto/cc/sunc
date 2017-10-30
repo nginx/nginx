@@ -8,7 +8,10 @@
 # Sun C 5.9 SunOS_i386 2007/05/03         Sun Studio 12
 # Sun C 5.9 SunOS_sparc 2007/05/03
 # Sun C 5.10 SunOS_i386 2009/06/03        Sun Studio 12.1
-# Sun C 5.11 SunOS_i386 2010/08/13        Sun Studio 12.2
+# Sun C 5.11 SunOS_i386 2010/08/13        Oracle Solaris Studio 12.2
+# Sun C 5.12 SunOS_i386 2011/11/16        Oracle Solaris Studio 12.3
+# Sun C 5.13 SunOS_i386 2014/10/20        Oracle Solaris Studio 12.4
+# Sun C 5.14 SunOS_i386 2016/05/31        Oracle Developer Studio 12.5
 
 NGX_SUNC_VER=`$CC -V 2>&1 | grep 'Sun C' 2>&1 \
                           | sed -e 's/^.* Sun C \(.*\)/\1/'`

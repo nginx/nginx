@@ -15,6 +15,7 @@ static ngx_int_t ngx_init_zone_pool(ngx_cycle_t *cycle,
     ngx_shm_zone_t *shm_zone);
 static ngx_int_t ngx_test_lockfile(u_char *file, ngx_log_t *log);
 static void ngx_clean_old_cycles(ngx_event_t *ev);
+static void ngx_shutdown_timer_handler(ngx_event_t *ev);
 
 
 volatile ngx_cycle_t  *ngx_cycle;
@@ -22,6 +23,7 @@ ngx_array_t            ngx_old_cycles;
 
 static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
+static ngx_event_t     ngx_shutdown_event;
 
 ngx_uint_t             ngx_test_config;
 ngx_uint_t             ngx_dump_config;
@@ -37,7 +39,7 @@ ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
     void                *rv;
-    char               **senv, **env;
+    char               **senv;
     ngx_uint_t           i, n;
     ngx_log_t           *log;
     ngx_time_t          *tp;
@@ -113,16 +115,14 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     n = old_cycle->paths.nelts ? old_cycle->paths.nelts : 10;
 
-    cycle->paths.elts = ngx_pcalloc(pool, n * sizeof(ngx_path_t *));
-    if (cycle->paths.elts == NULL) {
+    if (ngx_array_init(&cycle->paths, pool, n, sizeof(ngx_path_t *))
+        != NGX_OK)
+    {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    cycle->paths.nelts = 0;
-    cycle->paths.size = sizeof(ngx_path_t *);
-    cycle->paths.nalloc = n;
-    cycle->paths.pool = pool;
+    ngx_memzero(cycle->paths.elts, n * sizeof(ngx_path_t *));
 
 
     if (ngx_array_init(&cycle->config_dump, pool, 1, sizeof(ngx_conf_dump_t))
@@ -173,16 +173,14 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     n = old_cycle->listening.nelts ? old_cycle->listening.nelts : 10;
 
-    cycle->listening.elts = ngx_pcalloc(pool, n * sizeof(ngx_listening_t));
-    if (cycle->listening.elts == NULL) {
+    if (ngx_array_init(&cycle->listening, pool, n, sizeof(ngx_listening_t))
+        != NGX_OK)
+    {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    cycle->listening.nelts = 0;
-    cycle->listening.size = sizeof(ngx_listening_t);
-    cycle->listening.nalloc = n;
-    cycle->listening.pool = pool;
+    ngx_memzero(cycle->listening.elts, n * sizeof(ngx_listening_t));
 
 
     ngx_queue_init(&cycle->reusable_connections_queue);
@@ -472,8 +470,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 goto shm_zone_found;
             }
 
-            ngx_shm_free(&oshm_zone[n].shm);
-
             break;
         }
 
@@ -664,14 +660,26 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 n = 0;
             }
 
-            if (oshm_zone[i].shm.name.len == shm_zone[n].shm.name.len
-                && ngx_strncmp(oshm_zone[i].shm.name.data,
-                               shm_zone[n].shm.name.data,
-                               oshm_zone[i].shm.name.len)
-                == 0)
+            if (oshm_zone[i].shm.name.len != shm_zone[n].shm.name.len) {
+                continue;
+            }
+
+            if (ngx_strncmp(oshm_zone[i].shm.name.data,
+                            shm_zone[n].shm.name.data,
+                            oshm_zone[i].shm.name.len)
+                != 0)
+            {
+                continue;
+            }
+
+            if (oshm_zone[i].tag == shm_zone[n].tag
+                && oshm_zone[i].shm.size == shm_zone[n].shm.size
+                && !oshm_zone[i].noreuse)
             {
                 goto live_shm_zone;
             }
+
+            break;
         }
 
         ngx_shm_free(&oshm_zone[i].shm);
@@ -750,19 +758,8 @@ old_shm_zone_done:
 
     if (ngx_process == NGX_PROCESS_MASTER || ngx_is_init_cycle(old_cycle)) {
 
-        /*
-         * perl_destruct() frees environ, if it is not the same as it was at
-         * perl_construct() time, therefore we save the previous cycle
-         * environment before ngx_conf_parse() where it will be changed.
-         */
-
-        env = environ;
-        environ = senv;
-
         ngx_destroy_pool(old_cycle->pool);
         cycle->old_cycle = NULL;
-
-        environ = env;
 
         return cycle;
     }
@@ -777,15 +774,15 @@ old_shm_zone_done:
         }
 
         n = 10;
-        ngx_old_cycles.elts = ngx_pcalloc(ngx_temp_pool,
-                                          n * sizeof(ngx_cycle_t *));
-        if (ngx_old_cycles.elts == NULL) {
+
+        if (ngx_array_init(&ngx_old_cycles, ngx_temp_pool, n,
+                           sizeof(ngx_cycle_t *))
+            != NGX_OK)
+        {
             exit(1);
         }
-        ngx_old_cycles.nelts = 0;
-        ngx_old_cycles.size = sizeof(ngx_cycle_t *);
-        ngx_old_cycles.nalloc = n;
-        ngx_old_cycles.pool = ngx_temp_pool;
+
+        ngx_memzero(ngx_old_cycles.elts, n * sizeof(ngx_cycle_t *));
 
         ngx_cleaner_event.handler = ngx_clean_old_cycles;
         ngx_cleaner_event.log = cycle->log;
@@ -1137,9 +1134,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
         if (user != (ngx_uid_t) NGX_CONF_UNSET_UINT) {
             ngx_file_info_t  fi;
 
-            if (ngx_file_info((const char *) file[i].name.data, &fi)
-                == NGX_FILE_ERROR)
-            {
+            if (ngx_file_info(file[i].name.data, &fi) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                               ngx_file_info_n " \"%s\" failed",
                               file[i].name.data);
@@ -1342,5 +1337,56 @@ ngx_clean_old_cycles(ngx_event_t *ev)
         ngx_destroy_pool(ngx_temp_pool);
         ngx_temp_pool = NULL;
         ngx_old_cycles.nelts = 0;
+    }
+}
+
+
+void
+ngx_set_shutdown_timer(ngx_cycle_t *cycle)
+{
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (ccf->shutdown_timeout) {
+        ngx_shutdown_event.handler = ngx_shutdown_timer_handler;
+        ngx_shutdown_event.data = cycle;
+        ngx_shutdown_event.log = cycle->log;
+        ngx_shutdown_event.cancelable = 1;
+
+        ngx_add_timer(&ngx_shutdown_event, ccf->shutdown_timeout);
+    }
+}
+
+
+static void
+ngx_shutdown_timer_handler(ngx_event_t *ev)
+{
+    ngx_uint_t         i;
+    ngx_cycle_t       *cycle;
+    ngx_connection_t  *c;
+
+    cycle = ev->data;
+
+    c = cycle->connections;
+
+    for (i = 0; i < cycle->connection_n; i++) {
+
+        if (c[i].fd == (ngx_socket_t) -1
+            || c[i].read == NULL
+            || c[i].read->accept
+            || c[i].read->channel
+            || c[i].read->resolver)
+        {
+            continue;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                       "*%uA shutdown timeout", c[i].number);
+
+        c[i].close = 1;
+        c[i].error = 1;
+
+        c[i].read->handler(c[i].read);
     }
 }

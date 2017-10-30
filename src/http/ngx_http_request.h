@@ -54,15 +54,19 @@
 #define NGX_HTTP_CLIENT_ERROR              10
 #define NGX_HTTP_PARSE_INVALID_METHOD      10
 #define NGX_HTTP_PARSE_INVALID_REQUEST     11
-#define NGX_HTTP_PARSE_INVALID_09_METHOD   12
+#define NGX_HTTP_PARSE_INVALID_VERSION     12
+#define NGX_HTTP_PARSE_INVALID_09_METHOD   13
 
-#define NGX_HTTP_PARSE_INVALID_HEADER      13
+#define NGX_HTTP_PARSE_INVALID_HEADER      14
 
 
 /* unused                                  1 */
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
 #define NGX_HTTP_SUBREQUEST_WAITED         4
-#define NGX_HTTP_LOG_UNSAFE                8
+#define NGX_HTTP_SUBREQUEST_CLONE          8
+#define NGX_HTTP_SUBREQUEST_BACKGROUND     16
+
+#define NGX_HTTP_LOG_UNSAFE                1
 
 
 #define NGX_HTTP_CONTINUE                  100
@@ -81,6 +85,7 @@
 #define NGX_HTTP_SEE_OTHER                 303
 #define NGX_HTTP_NOT_MODIFIED              304
 #define NGX_HTTP_TEMPORARY_REDIRECT        307
+#define NGX_HTTP_PERMANENT_REDIRECT        308
 
 #define NGX_HTTP_BAD_REQUEST               400
 #define NGX_HTTP_UNAUTHORIZED              401
@@ -96,6 +101,7 @@
 #define NGX_HTTP_UNSUPPORTED_MEDIA_TYPE    415
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 #define NGX_HTTP_MISDIRECTED_REQUEST       421
+#define NGX_HTTP_TOO_MANY_REQUESTS         429
 
 
 /* Our own HTTP codes */
@@ -132,6 +138,7 @@
 #define NGX_HTTP_BAD_GATEWAY               502
 #define NGX_HTTP_SERVICE_UNAVAILABLE       503
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
+#define NGX_HTTP_VERSION_NOT_SUPPORTED     505
 #define NGX_HTTP_INSUFFICIENT_STORAGE      507
 
 
@@ -245,6 +252,7 @@ typedef struct {
 
 typedef struct {
     ngx_list_t                        headers;
+    ngx_list_t                        trailers;
 
     ngx_uint_t                        status;
     ngx_str_t                         status_line;
@@ -307,11 +315,10 @@ typedef struct {
 #endif
 #endif
 
-    ngx_buf_t                       **busy;
+    ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 
-    ngx_buf_t                       **free;
-    ngx_int_t                         nfree;
+    ngx_chain_t                      *free;
 
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
@@ -508,6 +515,7 @@ struct ngx_http_request_s {
     unsigned                          pipeline:1;
     unsigned                          chunked:1;
     unsigned                          header_only:1;
+    unsigned                          expect_trailers:1;
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;
@@ -529,6 +537,7 @@ struct ngx_http_request_s {
     unsigned                          main_filter_need_in_memory:1;
     unsigned                          filter_need_in_memory:1;
     unsigned                          filter_need_temporary:1;
+    unsigned                          preserve_body:1;
     unsigned                          allow_ranges:1;
     unsigned                          subrequest_ranges:1;
     unsigned                          single_range:1;
@@ -537,6 +546,7 @@ struct ngx_http_request_s {
     unsigned                          stat_writing:1;
     unsigned                          stat_processing:1;
 
+    unsigned                          background:1;
     unsigned                          health_check:1;
 
     /* used to parse HTTP headers */

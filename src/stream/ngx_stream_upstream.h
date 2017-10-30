@@ -24,6 +24,9 @@
 #define NGX_STREAM_UPSTREAM_MAX_CONNS     0x0100
 
 
+#define NGX_STREAM_UPSTREAM_NOTIFY_CONNECT     0x1
+
+
 typedef struct {
     ngx_array_t                        upstreams;
                                            /* ngx_stream_upstream_srv_conf_t */
@@ -55,8 +58,8 @@ typedef struct {
     ngx_uint_t                         max_fails;
     time_t                             fail_timeout;
     ngx_msec_t                         slow_start;
+    ngx_uint_t                         down;
 
-    unsigned                           down:1;
     unsigned                           backup:1;
 
     NGX_COMPAT_BEGIN(4)

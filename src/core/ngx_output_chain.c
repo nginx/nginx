@@ -512,7 +512,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
     size = ngx_buf_size(src);
     size = ngx_min(size, dst->end - dst->pos);
 
-    sendfile = ctx->sendfile & !ctx->directio;
+    sendfile = ctx->sendfile && !ctx->directio;
 
 #if (NGX_SENDFILE_LIMIT)
 

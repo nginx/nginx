@@ -26,10 +26,11 @@
 #define NGX_HTTP_UPSTREAM_FT_HTTP_504        0x00000080
 #define NGX_HTTP_UPSTREAM_FT_HTTP_403        0x00000100
 #define NGX_HTTP_UPSTREAM_FT_HTTP_404        0x00000200
-#define NGX_HTTP_UPSTREAM_FT_UPDATING        0x00000400
-#define NGX_HTTP_UPSTREAM_FT_BUSY_LOCK       0x00000800
-#define NGX_HTTP_UPSTREAM_FT_MAX_WAITING     0x00001000
-#define NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT  0x00002000
+#define NGX_HTTP_UPSTREAM_FT_HTTP_429        0x00000400
+#define NGX_HTTP_UPSTREAM_FT_UPDATING        0x00000800
+#define NGX_HTTP_UPSTREAM_FT_BUSY_LOCK       0x00001000
+#define NGX_HTTP_UPSTREAM_FT_MAX_WAITING     0x00002000
+#define NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT  0x00004000
 #define NGX_HTTP_UPSTREAM_FT_NOLIVE          0x40000000
 #define NGX_HTTP_UPSTREAM_FT_OFF             0x80000000
 
@@ -38,7 +39,8 @@
                                              |NGX_HTTP_UPSTREAM_FT_HTTP_503  \
                                              |NGX_HTTP_UPSTREAM_FT_HTTP_504  \
                                              |NGX_HTTP_UPSTREAM_FT_HTTP_403  \
-                                             |NGX_HTTP_UPSTREAM_FT_HTTP_404)
+                                             |NGX_HTTP_UPSTREAM_FT_HTTP_404  \
+                                             |NGX_HTTP_UPSTREAM_FT_HTTP_429)
 
 #define NGX_HTTP_UPSTREAM_INVALID_HEADER     40
 
@@ -55,9 +57,6 @@
 
 
 typedef struct {
-    ngx_msec_t                       bl_time;
-    ngx_uint_t                       bl_state;
-
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;
     ngx_msec_t                       connect_time;
@@ -99,8 +98,8 @@ typedef struct {
     ngx_uint_t                       max_fails;
     time_t                           fail_timeout;
     ngx_msec_t                       slow_start;
+    ngx_uint_t                       down;
 
-    unsigned                         down:1;
     unsigned                         backup:1;
 
     NGX_COMPAT_BEGIN(6)
@@ -151,7 +150,6 @@ typedef struct {
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       send_timeout;
     ngx_msec_t                       read_timeout;
-    ngx_msec_t                       timeout;
     ngx_msec_t                       next_upstream_timeout;
 
     size_t                           send_lowat;
@@ -198,12 +196,15 @@ typedef struct {
     ngx_uint_t                       cache_use_stale;
     ngx_uint_t                       cache_methods;
 
+    off_t                            cache_max_range_offset;
+
     ngx_flag_t                       cache_lock;
     ngx_msec_t                       cache_lock_timeout;
     ngx_msec_t                       cache_lock_age;
 
     ngx_flag_t                       cache_revalidate;
     ngx_flag_t                       cache_convert_head;
+    ngx_flag_t                       cache_background_update;
 
     ngx_array_t                     *cache_valid;
     ngx_array_t                     *cache_bypass;
@@ -388,9 +389,6 @@ struct ngx_http_upstream_s {
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         header_sent:1;
-
-    NGX_COMPAT_BEGIN(1)
-    NGX_COMPAT_END
 };
 
 
@@ -406,11 +404,6 @@ typedef struct {
     ngx_uint_t  skip_empty;
 } ngx_http_upstream_param_t;
 
-
-ngx_int_t ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-ngx_int_t ngx_http_upstream_header_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
 
 ngx_int_t ngx_http_upstream_create(ngx_http_request_t *r);
 void ngx_http_upstream_init(ngx_http_request_t *r);

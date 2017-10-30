@@ -222,7 +222,7 @@ ngx_mail_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
     ngx_mail_session_t        *s;
     ngx_mail_core_srv_conf_t  *cscf;
 
-    if (ngx_ssl_create_connection(ssl, c, 0) == NGX_ERROR) {
+    if (ngx_ssl_create_connection(ssl, c, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
         return;
     }

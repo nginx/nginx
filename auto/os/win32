@@ -13,6 +13,7 @@ NGX_ICONS="$NGX_WIN32_ICONS"
 SELECT_SRCS=$WIN32_SELECT_SRCS
 
 ngx_pic_opt=
+ngx_binext=".exe"
 
 case "$NGX_CC_NAME" in
 

@@ -137,7 +137,6 @@ struct ngx_http_v2_connection_s {
 
     ngx_http_v2_out_frame_t         *last_out;
 
-    ngx_queue_t                      posted;
     ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
@@ -145,6 +144,7 @@ struct ngx_http_v2_connection_s {
 
     unsigned                         closed_nodes:8;
     unsigned                         settings_ack:1;
+    unsigned                         table_update:1;
     unsigned                         blocked:1;
     unsigned                         goaway:1;
 };
@@ -192,7 +192,7 @@ struct ngx_http_v2_stream_s {
 
     ngx_pool_t                      *pool;
 
-    unsigned                         handled:1;
+    unsigned                         waiting:1;
     unsigned                         blocked:1;
     unsigned                         exhausted:1;
     unsigned                         in_closed:1;
@@ -250,8 +250,8 @@ ngx_http_v2_queue_blocked_frame(ngx_http_v2_connection_t *h2c,
 {
     ngx_http_v2_out_frame_t  **out;
 
-    for (out = &h2c->last_out; *out; out = &(*out)->next)
-    {
+    for (out = &h2c->last_out; *out; out = &(*out)->next) {
+
         if ((*out)->blocked || (*out)->stream == NULL) {
             break;
         }
@@ -262,11 +262,19 @@ ngx_http_v2_queue_blocked_frame(ngx_http_v2_connection_t *h2c,
 }
 
 
+static ngx_inline void
+ngx_http_v2_queue_ordered_frame(ngx_http_v2_connection_t *h2c,
+    ngx_http_v2_out_frame_t *frame)
+{
+    frame->next = h2c->last_out;
+    h2c->last_out = frame;
+}
+
+
 void ngx_http_v2_init(ngx_event_t *rev);
 void ngx_http_v2_request_headers_init(void);
 
-ngx_int_t ngx_http_v2_read_request_body(ngx_http_request_t *r,
-    ngx_http_client_body_handler_pt post_handler);
+ngx_int_t ngx_http_v2_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r);
 
 void ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc);

@@ -248,8 +248,6 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
                                  ctx->matches->nelts);
     }
 
-    ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
-
     ctx->saved.data = ngx_pnalloc(r->pool, ctx->tables->max_match_len - 1);
     if (ctx->saved.data == NULL) {
         return NGX_ERROR;
@@ -259,6 +257,8 @@ ngx_http_sub_header_filter(ngx_http_request_t *r)
     if (ctx->looked.data == NULL) {
         return NGX_ERROR;
     }
+
+    ngx_http_set_ctx(r, ctx, ngx_http_sub_filter_module);
 
     ctx->offset = ctx->tables->min_match_len - 1;
     ctx->last_out = &ctx->out;
@@ -645,7 +645,7 @@ ngx_http_sub_parse(ngx_http_request_t *r, ngx_http_sub_ctx_t *ctx,
 
         start = offset - (ngx_int_t) tables->min_match_len + 1;
 
-        i = ngx_max(tables->index[c], ctx->index);
+        i = ngx_max((ngx_uint_t) tables->index[c], ctx->index);
         j = tables->index[c + 1];
 
         while (i != j) {
@@ -978,7 +978,7 @@ ngx_http_sub_init_tables(ngx_http_sub_tables_t *tables,
         }
 
         c = match[i].match.data[tables->min_match_len - 1];
-        while (ch <= c) {
+        while (ch <= (ngx_uint_t) c) {
             tables->index[ch++] = (u_char) i;
         }
     }

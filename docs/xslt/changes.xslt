@@ -26,13 +26,19 @@
                        '                                                    '),
                 1, $conf/changes[@lang=$lang]/length)"/>
 
-    <xsl:if test="$lang='ru'"> <xsl:value-of select="@date"/> </xsl:if>
+    <xsl:if test="$lang='ru'">
+        <xsl:value-of select="substring(@date, 9, 2)"/>
+        <xsl:text>.</xsl:text>
+        <xsl:value-of select="substring(@date, 6, 2)"/>
+        <xsl:text>.</xsl:text>
+        <xsl:value-of select="substring(@date, 1, 4)"/>
+    </xsl:if>
 
     <xsl:if test="$lang='en'">
-        <xsl:value-of select="substring(@date, 1, 2)"/>
+        <xsl:value-of select="substring(@date, 9, 2)"/>
         <xsl:value-of select="$conf/changes[@lang=$lang]/month[number(substring(current()/@date,
-                                                            4, 2))]"/>
-        <xsl:value-of select="substring(@date, 7, 4)"/>
+                                                            6, 2))]"/>
+        <xsl:value-of select="substring(@date, 1, 4)"/>
     </xsl:if>
 
     <xsl:text>&#10;</xsl:text>

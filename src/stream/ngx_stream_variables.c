@@ -10,6 +10,8 @@
 #include <ngx_stream.h>
 #include <nginx.h>
 
+static ngx_stream_variable_t *ngx_stream_add_prefix_variable(ngx_conf_t *cf,
+    ngx_str_t *name, ngx_uint_t flags);
 
 static ngx_int_t ngx_stream_variable_binary_remote_addr(
     ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
@@ -109,7 +111,7 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
     { ngx_string("protocol"), NULL,
       ngx_stream_variable_protocol, 0, 0, 0 },
 
-    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+      ngx_stream_null_variable
 };
 
 
@@ -117,6 +119,9 @@ ngx_stream_variable_value_t  ngx_stream_variable_null_value =
     ngx_stream_variable("");
 ngx_stream_variable_value_t  ngx_stream_variable_true_value =
     ngx_stream_variable("1");
+
+
+static ngx_uint_t  ngx_stream_variable_depth = 100;
 
 
 ngx_stream_variable_t *
@@ -132,6 +137,10 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid variable name \"$\"");
         return NULL;
+    }
+
+    if (flags & NGX_STREAM_VAR_PREFIX) {
+        return ngx_stream_add_prefix_variable(cf, name, flags);
     }
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
@@ -151,6 +160,8 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
                                "the duplicate \"%V\" variable", name);
             return NULL;
         }
+
+        v->flags &= flags | ~NGX_STREAM_VAR_WEAK;
 
         return v;
     }
@@ -185,6 +196,60 @@ ngx_stream_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
                            "conflicting variable name \"%V\"", name);
         return NULL;
     }
+
+    return v;
+}
+
+
+static ngx_stream_variable_t *
+ngx_stream_add_prefix_variable(ngx_conf_t *cf, ngx_str_t *name,
+    ngx_uint_t flags)
+{
+    ngx_uint_t                    i;
+    ngx_stream_variable_t        *v;
+    ngx_stream_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+
+    v = cmcf->prefix_variables.elts;
+    for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
+        if (name->len != v[i].name.len
+            || ngx_strncasecmp(name->data, v[i].name.data, name->len) != 0)
+        {
+            continue;
+        }
+
+        v = &v[i];
+
+        if (!(v->flags & NGX_STREAM_VAR_CHANGEABLE)) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the duplicate \"%V\" variable", name);
+            return NULL;
+        }
+
+        v->flags &= flags | ~NGX_STREAM_VAR_WEAK;
+
+        return v;
+    }
+
+    v = ngx_array_push(&cmcf->prefix_variables);
+    if (v == NULL) {
+        return NULL;
+    }
+
+    v->name.len = name->len;
+    v->name.data = ngx_pnalloc(cf->pool, name->len);
+    if (v->name.data == NULL) {
+        return NULL;
+    }
+
+    ngx_strlow(v->name.data, name->data, name->len);
+
+    v->set_handler = NULL;
+    v->get_handler = NULL;
+    v->data = 0;
+    v->flags = flags;
+    v->index = 0;
 
     return v;
 }
@@ -270,15 +335,28 @@ ngx_stream_get_indexed_variable(ngx_stream_session_t *s, ngx_uint_t index)
 
     v = cmcf->variables.elts;
 
+    if (ngx_stream_variable_depth == 0) {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "cycle while evaluating variable \"%V\"",
+                      &v[index].name);
+        return NULL;
+    }
+
+    ngx_stream_variable_depth--;
+
     if (v[index].get_handler(s, &s->variables[index], v[index].data)
         == NGX_OK)
     {
+        ngx_stream_variable_depth++;
+
         if (v[index].flags & NGX_STREAM_VAR_NOCACHEABLE) {
             s->variables[index].no_cacheable = 1;
         }
 
         return &s->variables[index];
     }
+
+    ngx_stream_variable_depth++;
 
     s->variables[index].valid = 0;
     s->variables[index].not_found = 1;
@@ -311,6 +389,8 @@ ngx_stream_variable_value_t *
 ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
     ngx_uint_t key)
 {
+    size_t                        len;
+    ngx_uint_t                    i, n;
     ngx_stream_variable_t        *v;
     ngx_stream_variable_value_t  *vv;
     ngx_stream_core_main_conf_t  *cmcf;
@@ -322,22 +402,52 @@ ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
     if (v) {
         if (v->flags & NGX_STREAM_VAR_INDEXED) {
             return ngx_stream_get_flushed_variable(s, v->index);
+        }
 
-        } else {
-
-            vv = ngx_palloc(s->connection->pool,
-                            sizeof(ngx_stream_variable_value_t));
-
-            if (vv && v->get_handler(s, vv, v->data) == NGX_OK) {
-                return vv;
-            }
-
+        if (ngx_stream_variable_depth == 0) {
+            ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                          "cycle while evaluating variable \"%V\"", name);
             return NULL;
         }
+
+        ngx_stream_variable_depth--;
+
+        vv = ngx_palloc(s->connection->pool,
+                        sizeof(ngx_stream_variable_value_t));
+
+        if (vv && v->get_handler(s, vv, v->data) == NGX_OK) {
+            ngx_stream_variable_depth++;
+            return vv;
+        }
+
+        ngx_stream_variable_depth++;
+        return NULL;
     }
 
     vv = ngx_palloc(s->connection->pool, sizeof(ngx_stream_variable_value_t));
     if (vv == NULL) {
+        return NULL;
+    }
+
+    len = 0;
+
+    v = cmcf->prefix_variables.elts;
+    n = cmcf->prefix_variables.nelts;
+
+    for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
+        if (name->len >= v[i].name.len && name->len > len
+            && ngx_strncmp(name->data, v[i].name.data, v[i].name.len) == 0)
+        {
+            len = v[i].name.len;
+            n = i;
+        }
+    }
+
+    if (n != cmcf->prefix_variables.nelts) {
+        if (v[n].get_handler(s, vv, (uintptr_t) name) == NGX_OK) {
+            return vv;
+        }
+
         return NULL;
     }
 
@@ -350,7 +460,7 @@ ngx_stream_get_variable(ngx_stream_session_t *s, ngx_str_t *name,
 static ngx_int_t
 ngx_stream_variable_binary_remote_addr(ngx_stream_session_t *s,
      ngx_stream_variable_value_t *v, uintptr_t data)
- {
+{
     struct sockaddr_in   *sin;
 #if (NGX_HAVE_INET6)
     struct sockaddr_in6  *sin6;
@@ -367,6 +477,18 @@ ngx_stream_variable_binary_remote_addr(ngx_stream_session_t *s,
         v->no_cacheable = 0;
         v->not_found = 0;
         v->data = sin6->sin6_addr.s6_addr;
+
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+
+        v->len = s->connection->addr_text.len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = s->connection->addr_text.data;
 
         break;
 #endif
@@ -976,7 +1098,6 @@ ngx_stream_regex_exec(ngx_stream_session_t *s, ngx_stream_regex_t *re,
 ngx_int_t
 ngx_stream_variables_add_core_vars(ngx_conf_t *cf)
 {
-    ngx_int_t                     rc;
     ngx_stream_variable_t        *cv, *v;
     ngx_stream_core_main_conf_t  *cmcf;
 
@@ -997,27 +1118,20 @@ ngx_stream_variables_add_core_vars(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
+    if (ngx_array_init(&cmcf->prefix_variables, cf->pool, 8,
+                       sizeof(ngx_stream_variable_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     for (cv = ngx_stream_core_variables; cv->name.len; cv++) {
-        v = ngx_palloc(cf->pool, sizeof(ngx_stream_variable_t));
+        v = ngx_stream_add_variable(cf, &cv->name, cv->flags);
         if (v == NULL) {
             return NGX_ERROR;
         }
 
         *v = *cv;
-
-        rc = ngx_hash_add_key(cmcf->variables_keys, &v->name, v,
-                              NGX_HASH_READONLY_KEY);
-
-        if (rc == NGX_OK) {
-            continue;
-        }
-
-        if (rc == NGX_BUSY) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "conflicting variable name \"%V\"", &v->name);
-        }
-
-        return NGX_ERROR;
     }
 
     return NGX_OK;
@@ -1027,10 +1141,11 @@ ngx_stream_variables_add_core_vars(ngx_conf_t *cf)
 ngx_int_t
 ngx_stream_variables_init_vars(ngx_conf_t *cf)
 {
+    size_t                        len;
     ngx_uint_t                    i, n;
     ngx_hash_key_t               *key;
     ngx_hash_init_t               hash;
-    ngx_stream_variable_t        *v, *av;
+    ngx_stream_variable_t        *v, *av, *pv;
     ngx_stream_core_main_conf_t  *cmcf;
 
     /* set the handlers for the indexed stream variables */
@@ -1038,6 +1153,7 @@ ngx_stream_variables_init_vars(ngx_conf_t *cf)
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
     v = cmcf->variables.elts;
+    pv = cmcf->prefix_variables.elts;
     key = cmcf->variables_keys->keys.elts;
 
     for (i = 0; i < cmcf->variables.nelts; i++) {
@@ -1058,7 +1174,9 @@ ngx_stream_variables_init_vars(ngx_conf_t *cf)
 
                 av->index = i;
 
-                if (av->get_handler == NULL) {
+                if (av->get_handler == NULL
+                    || (av->flags & NGX_STREAM_VAR_WEAK))
+                {
                     break;
                 }
 
@@ -1066,10 +1184,32 @@ ngx_stream_variables_init_vars(ngx_conf_t *cf)
             }
         }
 
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "unknown \"%V\" variable", &v[i].name);
+        len = 0;
+        av = NULL;
 
-        return NGX_ERROR;
+        for (n = 0; n < cmcf->prefix_variables.nelts; n++) {
+            if (v[i].name.len >= pv[n].name.len && v[i].name.len > len
+                && ngx_strncmp(v[i].name.data, pv[n].name.data, pv[n].name.len)
+                   == 0)
+            {
+                av = &pv[n];
+                len = pv[n].name.len;
+            }
+        }
+
+        if (av) {
+            v[i].get_handler = av->get_handler;
+            v[i].data = (uintptr_t) &v[i].name;
+            v[i].flags = av->flags;
+
+            goto next;
+         }
+
+        if (v[i].get_handler == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "unknown \"%V\" variable", &v[i].name);
+            return NGX_ERROR;
+        }
 
     next:
         continue;

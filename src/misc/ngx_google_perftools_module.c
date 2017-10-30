@@ -36,7 +36,7 @@ static ngx_command_t  ngx_google_perftools_commands[] = {
       offsetof(ngx_google_perftools_conf_t, profiles),
       NULL },
 
-    ngx_null_command
+      ngx_null_command
 };
 
 

@@ -9,16 +9,6 @@
 #include <ngx_core.h>
 
 
-/*
- * Solaris has thread-safe crypt()
- * Linux has crypt_r(); "struct crypt_data" is more than 128K
- * FreeBSD needs the mutex to protect crypt()
- *
- * TODO:
- *     ngx_crypt_init() to init mutex
- */
-
-
 #if (NGX_CRYPT)
 
 #if (NGX_HAVE_GNU_CRYPT_R)

@@ -44,21 +44,22 @@ ngx_parse_http_time(u_char *value, size_t len)
         }
     }
 
-    for (p++; p < end; p++)
+    for (p++; p < end; p++) {
         if (*p != ' ') {
             break;
         }
+    }
 
     if (end - p < 18) {
         return NGX_ERROR;
-        }
+    }
 
     if (fmt != isoc) {
         if (*p < '0' || *p > '9' || *(p + 1) < '0' || *(p + 1) > '9') {
             return NGX_ERROR;
         }
 
-        day = (*p - '0') * 10 + *(p + 1) - '0';
+        day = (*p - '0') * 10 + (*(p + 1) - '0');
         p += 2;
 
         if (*p == ' ') {
@@ -132,7 +133,7 @@ ngx_parse_http_time(u_char *value, size_t len)
         }
 
         year = (*p - '0') * 1000 + (*(p + 1) - '0') * 100
-               + (*(p + 2) - '0') * 10 + *(p + 3) - '0';
+               + (*(p + 2) - '0') * 10 + (*(p + 3) - '0');
         p += 4;
 
     } else if (fmt == rfc850) {
@@ -140,7 +141,7 @@ ngx_parse_http_time(u_char *value, size_t len)
             return NGX_ERROR;
         }
 
-        year = (*p - '0') * 10 + *(p + 1) - '0';
+        year = (*p - '0') * 10 + (*(p + 1) - '0');
         year += (year < 70) ? 2000 : 1900;
         p += 2;
     }
@@ -161,7 +162,7 @@ ngx_parse_http_time(u_char *value, size_t len)
                 return NGX_ERROR;
             }
 
-            day = day * 10 + *p++ - '0';
+            day = day * 10 + (*p++ - '0');
         }
 
         if (end - p < 14) {
@@ -177,7 +178,7 @@ ngx_parse_http_time(u_char *value, size_t len)
         return NGX_ERROR;
     }
 
-    hour = (*p - '0') * 10 + *(p + 1) - '0';
+    hour = (*p - '0') * 10 + (*(p + 1) - '0');
     p += 2;
 
     if (*p++ != ':') {
@@ -188,7 +189,7 @@ ngx_parse_http_time(u_char *value, size_t len)
         return NGX_ERROR;
     }
 
-    min = (*p - '0') * 10 + *(p + 1) - '0';
+    min = (*p - '0') * 10 + (*(p + 1) - '0');
     p += 2;
 
     if (*p++ != ':') {
@@ -199,7 +200,7 @@ ngx_parse_http_time(u_char *value, size_t len)
         return NGX_ERROR;
     }
 
-    sec = (*p - '0') * 10 + *(p + 1) - '0';
+    sec = (*p - '0') * 10 + (*(p + 1) - '0');
 
     if (fmt == isoc) {
         p += 2;
@@ -216,7 +217,7 @@ ngx_parse_http_time(u_char *value, size_t len)
         }
 
         year = (*p - '0') * 1000 + (*(p + 1) - '0') * 100
-               + (*(p + 2) - '0') * 10 + *(p + 3) - '0';
+               + (*(p + 2) - '0') * 10 + (*(p + 3) - '0');
     }
 
     if (hour > 23 || min > 59 || sec > 59) {

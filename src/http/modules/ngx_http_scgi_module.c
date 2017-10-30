@@ -82,6 +82,7 @@ static ngx_conf_bitmask_t ngx_http_scgi_next_upstream_masks[] = {
     { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
     { ngx_string("http_403"), NGX_HTTP_UPSTREAM_FT_HTTP_403 },
     { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    { ngx_string("http_429"), NGX_HTTP_UPSTREAM_FT_HTTP_429 },
     { ngx_string("updating"), NGX_HTTP_UPSTREAM_FT_UPDATING },
     { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF },
     { ngx_null_string, 0 }
@@ -270,6 +271,13 @@ static ngx_command_t ngx_http_scgi_commands[] = {
       offsetof(ngx_http_scgi_loc_conf_t, upstream.cache_min_uses),
       NULL },
 
+    { ngx_string("scgi_cache_max_range_offset"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_off_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_scgi_loc_conf_t, upstream.cache_max_range_offset),
+      NULL },
+
     { ngx_string("scgi_cache_use_stale"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
@@ -310,6 +318,13 @@ static ngx_command_t ngx_http_scgi_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.cache_revalidate),
+      NULL },
+
+    { ngx_string("scgi_cache_background_update"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_scgi_loc_conf_t, upstream.cache_background_update),
       NULL },
 
 #endif
@@ -804,7 +819,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
             key = e.pos;
 #endif
             code = *(ngx_http_script_code_pt *) e.ip;
-            code((ngx_http_script_engine_t *) & e);
+            code((ngx_http_script_engine_t *) &e);
 
 #if (NGX_DEBUG)
             val = e.pos;
@@ -1025,6 +1040,7 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
                                       h->key.len + 1 + h->value.len + 1
                                       + h->key.len);
             if (h->key.data == NULL) {
+                h->hash = 0;
                 return NGX_ERROR;
             }
 
@@ -1204,6 +1220,7 @@ ngx_http_scgi_create_loc_conf(ngx_conf_t *cf)
 #if (NGX_HTTP_CACHE)
     conf->upstream.cache = NGX_CONF_UNSET;
     conf->upstream.cache_min_uses = NGX_CONF_UNSET_UINT;
+    conf->upstream.cache_max_range_offset = NGX_CONF_UNSET;
     conf->upstream.cache_bypass = NGX_CONF_UNSET_PTR;
     conf->upstream.no_cache = NGX_CONF_UNSET_PTR;
     conf->upstream.cache_valid = NGX_CONF_UNSET_PTR;
@@ -1211,6 +1228,7 @@ ngx_http_scgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.cache_lock_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.cache_lock_age = NGX_CONF_UNSET_MSEC;
     conf->upstream.cache_revalidate = NGX_CONF_UNSET;
+    conf->upstream.cache_background_update = NGX_CONF_UNSET;
 #endif
 
     conf->upstream.hide_headers = NGX_CONF_UNSET_PTR;
@@ -1444,6 +1462,10 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->upstream.cache_min_uses,
                               prev->upstream.cache_min_uses, 1);
 
+    ngx_conf_merge_off_value(conf->upstream.cache_max_range_offset,
+                              prev->upstream.cache_max_range_offset,
+                              NGX_MAX_OFF_T_VALUE);
+
     ngx_conf_merge_bitmask_value(conf->upstream.cache_use_stale,
                               prev->upstream.cache_use_stale,
                               (NGX_CONF_BITMASK_SET
@@ -1493,6 +1515,9 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.cache_revalidate,
                               prev->upstream.cache_revalidate, 0);
+
+    ngx_conf_merge_value(conf->upstream.cache_background_update,
+                              prev->upstream.cache_background_update, 0);
 
 #endif
 

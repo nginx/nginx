@@ -723,6 +723,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             }
 
             r->http_major = ch - '0';
+
+            if (r->http_major > 1) {
+                return NGX_HTTP_PARSE_INVALID_VERSION;
+            }
+
             state = sw_major_digit;
             break;
 
@@ -737,11 +742,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
-            if (r->http_major > 99) {
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            r->http_major = r->http_major * 10 + (ch - '0');
+
+            if (r->http_major > 1) {
+                return NGX_HTTP_PARSE_INVALID_VERSION;
             }
 
-            r->http_major = r->http_major * 10 + ch - '0';
             break;
 
         /* first digit of minor HTTP version */
@@ -778,7 +784,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
-            r->http_minor = r->http_minor * 10 + ch - '0';
+            r->http_minor = r->http_minor * 10 + (ch - '0');
             break;
 
         case sw_spaces_after_digit:
@@ -1390,6 +1396,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
+                /* fall through */
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -1431,6 +1438,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
+                /* fall through */
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -1478,6 +1486,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
+                /* fall through */
             default:
                 state = sw_usual;
                 *u++ = ch;
@@ -1509,7 +1518,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
         case sw_quoted_second:
             if (ch >= '0' && ch <= '9') {
-                ch = (u_char) ((decoded << 4) + ch - '0');
+                ch = (u_char) ((decoded << 4) + (ch - '0'));
 
                 if (ch == '%' || ch == '#') {
                     state = sw_usual;
@@ -1527,7 +1536,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
             c = (u_char) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                ch = (u_char) ((decoded << 4) + c - 'a' + 10);
+                ch = (u_char) ((decoded << 4) + (c - 'a') + 10);
 
                 if (ch == '?') {
                     state = sw_usual;
@@ -1692,7 +1701,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
-            r->http_major = r->http_major * 10 + ch - '0';
+            r->http_major = r->http_major * 10 + (ch - '0');
             break;
 
         /* the first digit of minor HTTP version */
@@ -1720,7 +1729,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
-            r->http_minor = r->http_minor * 10 + ch - '0';
+            r->http_minor = r->http_minor * 10 + (ch - '0');
             break;
 
         /* HTTP status code */
@@ -1733,7 +1742,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_ERROR;
             }
 
-            status->code = status->code * 10 + ch - '0';
+            status->code = status->code * 10 + (ch - '0');
 
             if (++status->count == 3) {
                 state = sw_space_after_status;

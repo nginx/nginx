@@ -15,13 +15,13 @@ typedef struct {
     int     signo;
     char   *signame;
     char   *name;
-    void  (*handler)(int signo);
+    void  (*handler)(int signo, siginfo_t *siginfo, void *ucontext);
 } ngx_signal_t;
 
 
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
-static void ngx_signal_handler(int signo);
+static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 static void ngx_process_get_status(void);
 static void ngx_unlock_mutexes(ngx_pid_t pid);
 
@@ -75,9 +75,9 @@ ngx_signal_t  signals[] = {
 
     { SIGCHLD, "SIGCHLD", "", ngx_signal_handler },
 
-    { SIGSYS, "SIGSYS, SIG_IGN", "", SIG_IGN },
+    { SIGSYS, "SIGSYS, SIG_IGN", "", NULL },
 
-    { SIGPIPE, "SIGPIPE, SIG_IGN", "", SIG_IGN },
+    { SIGPIPE, "SIGPIPE, SIG_IGN", "", NULL },
 
     { 0, NULL, "", NULL }
 };
@@ -288,7 +288,15 @@ ngx_init_signals(ngx_log_t *log)
 
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
-        sa.sa_handler = sig->handler;
+
+        if (sig->handler) {
+            sa.sa_sigaction = sig->handler;
+            sa.sa_flags = SA_SIGINFO;
+
+        } else {
+            sa.sa_handler = SIG_IGN;
+        }
+
         sigemptyset(&sa.sa_mask);
         if (sigaction(sig->signo, &sa, NULL) == -1) {
 #if (NGX_VALGRIND)
@@ -306,8 +314,8 @@ ngx_init_signals(ngx_log_t *log)
 }
 
 
-void
-ngx_signal_handler(int signo)
+static void
+ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 {
     char            *action;
     ngx_int_t        ignore;
@@ -405,6 +413,7 @@ ngx_signal_handler(int signo)
                 break;
             }
             ngx_debug_quit = 1;
+            /* fall through */
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
             action = ", shutting down";
@@ -431,8 +440,16 @@ ngx_signal_handler(int signo)
         break;
     }
 
-    ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
-                  "signal %d (%s) received%s", signo, sig->signame, action);
+    if (siginfo && siginfo->si_pid) {
+        ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
+                      "signal %d (%s) received from %P%s",
+                      signo, sig->signame, siginfo->si_pid, action);
+
+    } else {
+        ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
+                      "signal %d (%s) received%s",
+                      signo, sig->signame, action);
+    }
 
     if (ignore) {
         ngx_log_error(NGX_LOG_CRIT, ngx_cycle->log, 0,

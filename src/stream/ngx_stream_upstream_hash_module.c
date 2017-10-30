@@ -505,6 +505,11 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_stream_upstream_rr_peers_wlock(hp->rrp.peers);
 
+    if (hp->tries > 20 || hp->rrp.peers->single) {
+        ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);
+        return hp->get_rr_peer(pc, &hp->rrp);
+    }
+
     pc->connection = NULL;
 
     now = ngx_time();
@@ -539,13 +544,6 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
                 continue;
             }
 
-            if (peer->server.len != server->len
-                || ngx_strncmp(peer->server.data, server->data, server->len)
-                   != 0)
-            {
-                continue;
-            }
-
             if (peer->max_fails
                 && peer->fails >= peer->max_fails
                 && now - peer->checked <= peer->fail_timeout)
@@ -554,6 +552,13 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
             }
 
             if (peer->max_conns && peer->conns >= peer->max_conns) {
+                continue;
+            }
+
+            if (peer->server.len != server->len
+                || ngx_strncmp(peer->server.data, server->data, server->len)
+                   != 0)
+            {
                 continue;
             }
 
@@ -578,10 +583,9 @@ ngx_stream_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
         hp->hash++;
         hp->tries++;
 
-        if (hp->tries >= points->number) {
-            pc->name = hp->rrp.peers->name;
+        if (hp->tries > 20) {
             ngx_stream_upstream_rr_peers_unlock(hp->rrp.peers);
-            return NGX_BUSY;
+            return hp->get_rr_peer(pc, &hp->rrp);
         }
     }
 

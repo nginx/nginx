@@ -98,7 +98,7 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             send += file_size;
 
-            if (header.count == 0) {
+            if (header.count == 0 && send < limit) {
 
                 /*
                  * create the trailer iovec and coalesce the neighbouring bufs

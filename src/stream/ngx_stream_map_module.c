@@ -26,7 +26,8 @@ typedef struct {
 
     ngx_stream_variable_value_t  *default_value;
     ngx_conf_t                   *cf;
-    ngx_uint_t                    hostnames;      /* unsigned  hostnames:1 */
+    unsigned                      hostnames:1;
+    unsigned                      no_cacheable:1;
 } ngx_stream_map_conf_ctx_t;
 
 
@@ -264,6 +265,7 @@ ngx_stream_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ctx.default_value = NULL;
     ctx.cf = &save;
     ctx.hostnames = 0;
+    ctx.no_cacheable = 0;
 
     save = *cf;
     cf->pool = pool;
@@ -278,6 +280,10 @@ ngx_stream_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (rv != NGX_CONF_OK) {
         ngx_destroy_pool(pool);
         return rv;
+    }
+
+    if (ctx.no_cacheable) {
+        var->flags |= NGX_STREAM_VAR_NOCACHEABLE;
     }
 
     map->default_value = ctx.default_value ? ctx.default_value:
@@ -392,8 +398,16 @@ ngx_stream_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     {
         ctx->hostnames = 1;
         return NGX_CONF_OK;
+    }
 
-    } else if (cf->args->nelts != 2) {
+    if (cf->args->nelts == 1
+        && ngx_strcmp(value[0].data, "volatile") == 0)
+    {
+        ctx->no_cacheable = 1;
+        return NGX_CONF_OK;
+    }
+
+    if (cf->args->nelts != 2) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid number of the map parameters");
         return NGX_CONF_ERROR;

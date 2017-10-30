@@ -157,20 +157,6 @@ ngx_feature_test="if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) return 1"
 . auto/feature
 
 
-# sched_setaffinity()
-
-ngx_feature="sched_setaffinity()"
-ngx_feature_name="NGX_HAVE_SCHED_SETAFFINITY"
-ngx_feature_run=no
-ngx_feature_incs="#include <sched.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="cpu_set_t mask;
-                  CPU_ZERO(&mask);
-                  sched_setaffinity(0, sizeof(cpu_set_t), &mask)"
-. auto/feature
-
-
 # crypt_r()
 
 ngx_feature="crypt_r()"

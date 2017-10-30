@@ -94,7 +94,7 @@ ngx_rwlock_unlock(ngx_atomic_t *lock)
     readers = *lock;
 
     if (readers == NGX_RWLOCK_WLOCK) {
-        *lock = 0;
+        (void) ngx_atomic_cmp_set(lock, NGX_RWLOCK_WLOCK, 0);
         return;
     }
 
@@ -105,6 +105,15 @@ ngx_rwlock_unlock(ngx_atomic_t *lock)
         }
 
         readers = *lock;
+    }
+}
+
+
+void
+ngx_rwlock_downgrade(ngx_atomic_t *lock)
+{
+    if (*lock == NGX_RWLOCK_WLOCK) {
+        *lock = 1;
     }
 }
 

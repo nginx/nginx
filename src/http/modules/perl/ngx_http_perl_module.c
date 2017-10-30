@@ -207,6 +207,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     dTHXa(pmcf->perl);
     PERL_SET_CONTEXT(pmcf->perl);
+    PERL_SET_INTERP(pmcf->perl);
 
     if (ctx->next == NULL) {
         plcf = ngx_http_get_module_loc_conf(r, ngx_http_perl_module);
@@ -277,15 +278,16 @@ ngx_http_perl_sleep_handler(ngx_http_request_t *r)
 
     wev = r->connection->write;
 
-    if (wev->timedout) {
-        wev->timedout = 0;
-        ngx_http_perl_handle_request(r);
+    if (wev->delayed) {
+
+        if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        }
+
         return;
     }
 
-    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    }
+    ngx_http_perl_handle_request(r);
 }
 
 
@@ -322,6 +324,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     dTHXa(pmcf->perl);
     PERL_SET_CONTEXT(pmcf->perl);
+    PERL_SET_INTERP(pmcf->perl);
 
     rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, pv->sub, NULL,
                                     &pv->handler, &value);
@@ -387,6 +390,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
 
     dTHXa(pmcf->perl);
     PERL_SET_CONTEXT(pmcf->perl);
+    PERL_SET_INTERP(pmcf->perl);
 
 #if 0
 
@@ -568,6 +572,7 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
 
     dTHXa(perl);
     PERL_SET_CONTEXT(perl);
+    PERL_SET_INTERP(perl);
 
     perl_construct(perl);
 
@@ -828,6 +833,7 @@ ngx_http_perl_cleanup_perl(void *data)
     PerlInterpreter  *perl = data;
 
     PERL_SET_CONTEXT(perl);
+    PERL_SET_INTERP(perl);
 
     (void) perl_destruct(perl);
 
@@ -936,6 +942,7 @@ ngx_http_perl(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     dTHXa(pmcf->perl);
     PERL_SET_CONTEXT(pmcf->perl);
+    PERL_SET_INTERP(pmcf->perl);
 
     ngx_http_perl_eval_anon_sub(aTHX_ &value[1], &plcf->sub);
 
@@ -1007,6 +1014,7 @@ ngx_http_perl_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     dTHXa(pmcf->perl);
     PERL_SET_CONTEXT(pmcf->perl);
+    PERL_SET_INTERP(pmcf->perl);
 
     ngx_http_perl_eval_anon_sub(aTHX_ &value[2], &pv->sub);
 
@@ -1039,6 +1047,7 @@ ngx_http_perl_init_worker(ngx_cycle_t *cycle)
     if (pmcf) {
         dTHXa(pmcf->perl);
         PERL_SET_CONTEXT(pmcf->perl);
+        PERL_SET_INTERP(pmcf->perl);
 
         /* set worker's $$ */
 

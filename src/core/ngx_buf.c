@@ -186,16 +186,18 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
 {
     ngx_chain_t  *cl;
 
-    if (*busy == NULL) {
-        *busy = *out;
+    if (*out) {
+        if (*busy == NULL) {
+            *busy = *out;
 
-    } else {
-        for (cl = *busy; cl->next; cl = cl->next) { /* void */ }
+        } else {
+            for (cl = *busy; cl->next; cl = cl->next) { /* void */ }
 
-        cl->next = *out;
+            cl->next = *out;
+        }
+
+        *out = NULL;
     }
-
-    *out = NULL;
 
     while (*busy) {
         cl = *busy;
@@ -244,6 +246,9 @@ ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
             if (aligned <= cl->buf->file_last) {
                 size = aligned - cl->buf->file_pos;
             }
+
+            total += size;
+            break;
         }
 
         total += size;
