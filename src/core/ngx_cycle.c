@@ -38,7 +38,7 @@ static ngx_connection_t  dumb;
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
-    void                *rv;
+    void                *rv, *data;
     char               **senv;
     ngx_uint_t           i, n;
     ngx_log_t           *log;
@@ -438,6 +438,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         opart = &old_cycle->shared_memory.part;
         oshm_zone = opart->elts;
 
+        data = NULL;
+
         for (n = 0; /* void */ ; n++) {
 
             if (n >= opart->nelts) {
@@ -461,9 +463,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 continue;
             }
 
+            if (shm_zone[i].tag == oshm_zone[n].tag && shm_zone[i].noreuse) {
+                data = oshm_zone[n].data;
+                break;
+            }
+
             if (shm_zone[i].tag == oshm_zone[n].tag
-                && shm_zone[i].shm.size == oshm_zone[n].shm.size
-                && !shm_zone[i].noreuse)
+                && shm_zone[i].shm.size == oshm_zone[n].shm.size)
             {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
 #if (NGX_WIN32)
@@ -490,7 +496,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             goto failed;
         }
 
-        if (shm_zone[i].init(&shm_zone[i], NULL) != NGX_OK) {
+        if (shm_zone[i].init(&shm_zone[i], data) != NGX_OK) {
             goto failed;
         }
 
