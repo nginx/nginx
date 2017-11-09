@@ -2646,6 +2646,7 @@ ngx_http_fastcgi_process_record(ngx_http_request_t *r,
         }
     }
 
+    f->pos = p;
     f->state = state;
 
     return NGX_AGAIN;
