@@ -686,8 +686,19 @@ ngx_http_xslt_params(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
          * specified in xslt_stylesheet directives
          */
 
-        p = string.data;
-        last = string.data + string.len;
+        if (param[i].value.lengths) {
+            p = string.data;
+
+        } else {
+            p = ngx_pnalloc(r->pool, string.len + 1);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            ngx_memcpy(p, string.data, string.len + 1);
+        }
+
+        last = p + string.len;
 
         while (p && *p) {
 
