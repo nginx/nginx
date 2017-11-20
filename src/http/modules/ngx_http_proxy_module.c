@@ -1086,8 +1086,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
 
         return NGX_OK;
 
-    } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri && r == r->main)
-    {
+    } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri) {
         *key = r->unparsed_uri;
         u->uri = r->unparsed_uri;
 
@@ -1201,8 +1200,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     if (plcf->proxy_lengths && ctx->vars.uri.len) {
         uri_len = ctx->vars.uri.len;
 
-    } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri && r == r->main)
-    {
+    } else if (ctx->vars.uri.len == 0 && r->valid_unparsed_uri) {
         unparsed_uri = 1;
         uri_len = r->unparsed_uri.len;
 
