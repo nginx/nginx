@@ -2363,6 +2363,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         sr->method_name = r->method_name;
         sr->loc_conf = r->loc_conf;
         sr->valid_location = r->valid_location;
+        sr->valid_unparsed_uri = r->valid_unparsed_uri;
         sr->content_handler = r->content_handler;
         sr->phase_handler = r->phase_handler;
         sr->write_event_handler = ngx_http_core_run_phases;
