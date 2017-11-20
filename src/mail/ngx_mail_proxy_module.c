@@ -882,10 +882,13 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
     c = ev->data;
     s = c->data;
 
-    if (ev->timedout) {
+    if (ev->timedout || c->close) {
         c->log->action = "proxying";
 
-        if (c == s->connection) {
+        if (c->close) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "shutdown timeout");
+
+        } else if (c == s->connection) {
             ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
                           "client timed out");
             c->timedout = 1;

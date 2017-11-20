@@ -1290,6 +1290,12 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
     s = c->data;
     u = s->upstream;
 
+    if (c->close) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "shutdown timeout");
+        ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+        return;
+    }
+
     c = s->connection;
     pc = u->peer.connection;
 

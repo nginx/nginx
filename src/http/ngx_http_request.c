@@ -2225,6 +2225,13 @@ ngx_http_request_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http run request: \"%V?%V\"", &r->uri, &r->args);
 
+    if (c->close) {
+        r->main->count++;
+        ngx_http_terminate_request(r, 0);
+        ngx_http_run_posted_requests(c);
+        return;
+    }
+
     if (ev->delayed && ev->timedout) {
         ev->delayed = 0;
         ev->timedout = 0;
