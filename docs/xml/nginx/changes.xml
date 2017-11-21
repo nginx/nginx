@@ -5,6 +5,89 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.7" date="2017-11-21">
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $upstream_status.
+</para>
+<para lang="en">
+in the $upstream_status variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если бэкенд возвращал ответ "101 Switching Protocols" на подзапрос.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if a backend returned a "101 Switching Protocols" response to a subrequest.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при переконфигурации изменялся размер зоны разделяемой памяти
+и переконфигурация завершалась неудачно,
+то в главном процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in a master process
+if a shared memory zone size was changed during a reconfiguration
+and the reconfiguration failed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_fastcgi_module.
+</para>
+<para lang="en">
+in the ngx_http_fastcgi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 500,
+если в директиве xslt_stylesheet
+были заданы параметры без использования переменных.
+</para>
+<para lang="en">
+nginx returned the 500 error
+if parameters without variables were specified
+in the "xslt_stylesheet" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании варианта библиотеки zlib от Intel
+в лог писались сообщения "gzip filter failed to use preallocated memory".
+</para>
+<para lang="en">
+"gzip filter failed to use preallocated memory" alerts appeared in logs
+when using a zlib library variant from Intel.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива worker_shutdown_timeout не работала
+при использовании почтового прокси-сервера
+и при проксировании WebSocket-соединений.
+</para>
+<para lang="en">
+the "worker_shutdown_timeout" directive did not work
+when using mail proxy and when proxying WebSocket connections.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.6" date="2017-10-10">
 
 <change type="bugfix">
