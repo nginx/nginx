@@ -20,6 +20,7 @@ types {
     image/tiff                                       tif tiff;
     image/vnd.wap.wbmp                               wbmp;
     image/webp                                       webp;
+    image/heic                                       heic;
     image/x-icon                                     ico;
     image/x-jng                                      jng;
     image/x-ms-bmp                                   bmp;
