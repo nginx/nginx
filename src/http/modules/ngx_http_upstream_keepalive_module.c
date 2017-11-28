@@ -340,6 +340,7 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     pc->connection = NULL;
 
     if (c->read->timer_set) {
+        c->read->delayed = 0;
         ngx_del_timer(c->read);
     }
     if (c->write->timer_set) {
