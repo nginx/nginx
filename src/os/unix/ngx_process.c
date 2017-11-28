@@ -194,6 +194,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         return NGX_INVALID_PID;
 
     case 0:
+        ngx_parent = ngx_pid;
         ngx_pid = ngx_getpid();
         proc(cycle, data);
         break;
@@ -371,12 +372,12 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
             break;
 
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
-            if (getppid() > 1 || ngx_new_binary > 0) {
+            if (ngx_getppid() == ngx_parent || ngx_new_binary > 0) {
 
                 /*
                  * Ignore the signal in the new binary if its parent is
-                 * not the init process, i.e. the old binary's process
-                 * is still running.  Or ignore the signal in the old binary's
+                 * not changed, i.e. the old binary's process is still
+                 * running.  Or ignore the signal in the old binary's
                  * process if the new binary's process is already running.
                  */
 

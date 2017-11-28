@@ -54,6 +54,7 @@ typedef struct {
 
 
 #define ngx_getpid   getpid
+#define ngx_getppid  getppid
 
 #ifndef ngx_log_pid
 #define ngx_log_pid  ngx_pid
@@ -79,6 +80,7 @@ extern char         **ngx_argv;
 extern char         **ngx_os_argv;
 
 extern ngx_pid_t      ngx_pid;
+extern ngx_pid_t      ngx_parent;
 extern ngx_socket_t   ngx_channel;
 extern ngx_int_t      ngx_process_slot;
 extern ngx_int_t      ngx_last_process;

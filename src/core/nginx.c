@@ -228,6 +228,7 @@ main(int argc, char *const *argv)
 #endif
 
     ngx_pid = ngx_getpid();
+    ngx_parent = ngx_getppid();
 
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
