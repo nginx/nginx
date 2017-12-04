@@ -180,6 +180,12 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    rc = ngx_http_discard_request_body(r);
+
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
     /* NGX_DIR_MASK_LEN is lesser than NGX_HTTP_AUTOINDEX_PREALLOCATE */
 
     last = ngx_http_map_uri_to_path(r, &path, &root,
