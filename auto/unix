@@ -964,6 +964,16 @@ ngx_feature_test="sysconf(_SC_NPROCESSORS_ONLN)"
 . auto/feature
 
 
+ngx_feature="sysconf(_SC_LEVEL1_DCACHE_LINESIZE)"
+ngx_feature_name="NGX_HAVE_LEVEL1_DCACHE_LINESIZE"
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="sysconf(_SC_LEVEL1_DCACHE_LINESIZE)"
+. auto/feature
+
+
 ngx_feature="openat(), fstatat()"
 ngx_feature_name="NGX_HAVE_OPENAT"
 ngx_feature_run=no
