@@ -839,12 +839,44 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
                           ccf->username, ccf->group);
         }
 
+#if (NGX_HAVE_PR_SET_KEEPCAPS && NGX_HAVE_CAPABILITIES)
+        if (ccf->transparent && ccf->user) {
+            if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "prctl(PR_SET_KEEPCAPS, 1) failed");
+                /* fatal */
+                exit(2);
+            }
+        }
+#endif
+
         if (setuid(ccf->user) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "setuid(%d) failed", ccf->user);
             /* fatal */
             exit(2);
         }
+
+#if (NGX_HAVE_CAPABILITIES)
+        if (ccf->transparent && ccf->user) {
+            struct __user_cap_data_struct    data;
+            struct __user_cap_header_struct  header;
+
+            ngx_memzero(&header, sizeof(struct __user_cap_header_struct));
+            ngx_memzero(&data, sizeof(struct __user_cap_data_struct));
+
+            header.version = _LINUX_CAPABILITY_VERSION_3;
+            data.effective = CAP_TO_MASK(CAP_NET_RAW);
+            data.permitted = data.effective;
+
+            if (capset(&header, &data) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "capset() failed");
+                /* fatal */
+                exit(2);
+            }
+        }
+#endif
     }
 
     if (worker >= 0) {

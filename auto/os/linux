@@ -157,6 +157,37 @@ ngx_feature_test="if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) return 1"
 . auto/feature
 
 
+# prctl(PR_SET_KEEPCAPS)
+
+ngx_feature="prctl(PR_SET_KEEPCAPS)"
+ngx_feature_name="NGX_HAVE_PR_SET_KEEPCAPS"
+ngx_feature_run=yes
+ngx_feature_incs="#include <sys/prctl.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) return 1"
+. auto/feature
+
+
+# capabilities
+
+ngx_feature="capabilities"
+ngx_feature_name="NGX_HAVE_CAPABILITIES"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/capability.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct __user_cap_data_struct    data;
+                  struct __user_cap_header_struct  header;
+
+                  header.version = _LINUX_CAPABILITY_VERSION_3;
+                  data.effective = CAP_TO_MASK(CAP_NET_RAW);
+                  data.permitted = 0;
+
+                  (void) capset(&header, &data)"
+. auto/feature
+
+
 # crypt_r()
 
 ngx_feature="crypt_r()"

@@ -2155,6 +2155,12 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cf->args->nelts > 2) {
         if (ngx_strcmp(value[2].data, "transparent") == 0) {
 #if (NGX_HAVE_TRANSPARENT_PROXY)
+            ngx_core_conf_t  *ccf;
+
+            ccf = (ngx_core_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
+                                                   ngx_core_module);
+
+            ccf->transparent = 1;
             local->transparent = 1;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
