@@ -174,7 +174,8 @@ ngx_feature_test="if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) return 1"
 ngx_feature="capabilities"
 ngx_feature_name="NGX_HAVE_CAPABILITIES"
 ngx_feature_run=no
-ngx_feature_incs="#include <sys/capability.h>"
+ngx_feature_incs="#include <linux/capability.h>
+                  #include <sys/syscall.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="struct __user_cap_data_struct    data;
@@ -184,7 +185,7 @@ ngx_feature_test="struct __user_cap_data_struct    data;
                   data.effective = CAP_TO_MASK(CAP_NET_RAW);
                   data.permitted = 0;
 
-                  (void) capset(&header, &data)"
+                  (void) SYS_capset"
 . auto/feature
 
 

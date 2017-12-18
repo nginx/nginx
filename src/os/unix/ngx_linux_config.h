@@ -100,7 +100,7 @@ typedef struct iocb  ngx_aiocb_t;
 
 
 #if (NGX_HAVE_CAPABILITIES)
-#include <sys/capability.h>
+#include <linux/capability.h>
 #endif
 
 

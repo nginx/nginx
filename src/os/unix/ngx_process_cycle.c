@@ -869,7 +869,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
             data.effective = CAP_TO_MASK(CAP_NET_RAW);
             data.permitted = data.effective;
 
-            if (capset(&header, &data) == -1) {
+            if (syscall(SYS_capset, &header, &data) == -1) {
                 ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                               "capset() failed");
                 /* fatal */
