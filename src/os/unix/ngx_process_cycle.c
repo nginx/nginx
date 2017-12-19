@@ -865,7 +865,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
             ngx_memzero(&header, sizeof(struct __user_cap_header_struct));
             ngx_memzero(&data, sizeof(struct __user_cap_data_struct));
 
-            header.version = _LINUX_CAPABILITY_VERSION_3;
+            header.version = _LINUX_CAPABILITY_VERSION_1;
             data.effective = CAP_TO_MASK(CAP_NET_RAW);
             data.permitted = data.effective;
 
