@@ -62,13 +62,16 @@ syn match ngxListenComment '#.*$'
     \ contained
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn keyword ngxListenOptions contained
-    \ default_server ssl http2 spdy proxy_protocol
+    \ default_server ssl http2 proxy_protocol
     \ setfib fastopen backlog rcvbuf sndbuf accept_filter deferred bind
-    \ ipv6only reuseport so_keepalive keepidle
+    \ ipv6only reuseport so_keepalive
+    \ nextgroup=@ngxListenParams skipwhite skipempty
+syn keyword ngxListenOptionsDeprecated contained
+    \ spdy
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn cluster ngxListenParams
     \ contains=ngxListenParam,ngxListenString,ngxListenComment
-    \ add=ngxListenOptions
+    \ add=ngxListenOptions,ngxListenOptionsDeprecated
 
 syn keyword ngxDirectiveBlock contained http
 syn keyword ngxDirectiveBlock contained stream
@@ -2177,5 +2180,6 @@ hi link ngxDirective Identifier
 hi link ngxDirectiveThirdParty Special
 
 hi link ngxListenOptions Keyword
+hi link ngxListenOptionsDeprecated Error
 
 let b:current_syntax = "nginx"
