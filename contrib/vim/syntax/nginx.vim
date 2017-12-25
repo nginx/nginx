@@ -15,7 +15,7 @@ endif
 syn match ngxName '\([^;{} \t\\]\|\\.\)\+'
     \ contains=@ngxDirectives
     \ nextgroup=@ngxParams skipwhite skipempty
-syn match ngxParam '\([^;{ \t\\]\|\\.\)\+'
+syn match ngxParam '\(\${\|[^;{ \t\\]\|\\.\)\+'
     \ contained
     \ contains=ngxVariable
     \ nextgroup=@ngxParams skipwhite skipempty
@@ -29,7 +29,7 @@ syn region ngxBlock start=+{+ end=+}+ contained
     \ contains=@ngxTopLevel
 syn match ngxComment '#.*$'
 
-syn match ngxVariable '\$\w\+' contained
+syn match ngxVariable '\$\(\w\+\|{\w\+}\)' contained
 syn match ngxVariableString '\$\(\w\+\|{\w\+}\)' contained
 
 syn cluster ngxTopLevel
@@ -52,7 +52,7 @@ syn cluster ngxParams add=ngxBoolean
 syn cluster ngxTopLevel add=ngxDirectiveListen
 syn keyword ngxDirectiveListen listen
     \ nextgroup=@ngxListenParams skipwhite skipempty
-syn match ngxListenParam '\([^;{ \t\\]\|\\.\)\+'
+syn match ngxListenParam '\(\${\|[^;{ \t\\]\|\\.\)\+'
     \ contained
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn region ngxListenString start=+\z(["']\)+ end=+\z1+ skip=+\\\\\|\\\z1+
