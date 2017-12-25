@@ -71,6 +71,7 @@ syn cluster ngxListenParams
     \ add=ngxListenOptions
 
 syn keyword ngxDirectiveBlock contained http
+syn keyword ngxDirectiveBlock contained stream
 syn keyword ngxDirectiveBlock contained mail
 syn keyword ngxDirectiveBlock contained events
 syn keyword ngxDirectiveBlock contained server
@@ -105,14 +106,16 @@ syn keyword ngxDirectiveControl contained set
 syn keyword ngxDirectiveError contained error_page
 syn keyword ngxDirectiveError contained post_action
 
-syn keyword ngxDirectiveDeprecated contained connections
-syn keyword ngxDirectiveDeprecated contained imap
-syn keyword ngxDirectiveDeprecated contained limit_zone
-syn keyword ngxDirectiveDeprecated contained mysql_test
-syn keyword ngxDirectiveDeprecated contained open_file_cache_retest
-syn keyword ngxDirectiveDeprecated contained optimize_server_names
-syn keyword ngxDirectiveDeprecated contained satisfy_any
-syn keyword ngxDirectiveDeprecated contained so_keepalive
+syn keyword ngxDirectiveDeprecated contained proxy_downstream_buffer
+syn keyword ngxDirectiveDeprecated contained proxy_upstream_buffer
+syn keyword ngxDirectiveDeprecated contained spdy_chunk_size
+syn keyword ngxDirectiveDeprecated contained spdy_headers_comp
+syn keyword ngxDirectiveDeprecated contained spdy_keepalive_timeout
+syn keyword ngxDirectiveDeprecated contained spdy_max_concurrent_streams
+syn keyword ngxDirectiveDeprecated contained spdy_pool_size
+syn keyword ngxDirectiveDeprecated contained spdy_recv_buffer_size
+syn keyword ngxDirectiveDeprecated contained spdy_recv_timeout
+syn keyword ngxDirectiveDeprecated contained spdy_streams_index_size
 
 syn keyword ngxDirective contained absolute_redirect
 syn keyword ngxDirective contained accept_mutex
@@ -122,6 +125,7 @@ syn keyword ngxDirective contained access_log
 syn keyword ngxDirective contained add_after_body
 syn keyword ngxDirective contained add_before_body
 syn keyword ngxDirective contained add_header
+syn keyword ngxDirective contained add_trailer
 syn keyword ngxDirective contained addition_types
 syn keyword ngxDirective contained aio
 syn keyword ngxDirective contained aio_write
@@ -186,6 +190,7 @@ syn keyword ngxDirective contained fastcgi_buffering
 syn keyword ngxDirective contained fastcgi_buffers
 syn keyword ngxDirective contained fastcgi_busy_buffers_size
 syn keyword ngxDirective contained fastcgi_cache
+syn keyword ngxDirective contained fastcgi_cache_background_update
 syn keyword ngxDirective contained fastcgi_cache_bypass
 syn keyword ngxDirective contained fastcgi_cache_key
 syn keyword ngxDirective contained fastcgi_cache_lock
@@ -258,15 +263,17 @@ syn keyword ngxDirective contained hls_forward_args
 syn keyword ngxDirective contained hls_fragment
 syn keyword ngxDirective contained hls_mp4_buffer_size
 syn keyword ngxDirective contained hls_mp4_max_buffer_size
-syn keyword ngxDirective contained http2_chunk_size
 syn keyword ngxDirective contained http2_body_preread_size
+syn keyword ngxDirective contained http2_chunk_size
 syn keyword ngxDirective contained http2_idle_timeout
 syn keyword ngxDirective contained http2_max_concurrent_streams
 syn keyword ngxDirective contained http2_max_field_size
 syn keyword ngxDirective contained http2_max_header_size
 syn keyword ngxDirective contained http2_max_requests
+syn keyword ngxDirective contained http2_pool_size
 syn keyword ngxDirective contained http2_recv_buffer_size
 syn keyword ngxDirective contained http2_recv_timeout
+syn keyword ngxDirective contained http2_streams_index_size
 syn keyword ngxDirective contained if_modified_since
 syn keyword ngxDirective contained ignore_invalid_headers
 syn keyword ngxDirective contained image_filter
@@ -332,6 +339,8 @@ syn keyword ngxDirective contained memcached_read_timeout
 syn keyword ngxDirective contained memcached_send_timeout
 syn keyword ngxDirective contained merge_slashes
 syn keyword ngxDirective contained min_delete_depth
+syn keyword ngxDirective contained mirror
+syn keyword ngxDirective contained mirror_request_body
 syn keyword ngxDirective contained modern_browser
 syn keyword ngxDirective contained modern_browser_value
 syn keyword ngxDirective contained mp4
@@ -374,6 +383,7 @@ syn keyword ngxDirective contained proxy_buffering
 syn keyword ngxDirective contained proxy_buffers
 syn keyword ngxDirective contained proxy_busy_buffers_size
 syn keyword ngxDirective contained proxy_cache
+syn keyword ngxDirective contained proxy_cache_background_update
 syn keyword ngxDirective contained proxy_cache_bypass
 syn keyword ngxDirective contained proxy_cache_convert_head
 syn keyword ngxDirective contained proxy_cache_key
@@ -421,6 +431,7 @@ syn keyword ngxDirective contained proxy_send_lowat
 syn keyword ngxDirective contained proxy_send_timeout
 syn keyword ngxDirective contained proxy_set_body
 syn keyword ngxDirective contained proxy_set_header
+syn keyword ngxDirective contained proxy_ssl
 syn keyword ngxDirective contained proxy_ssl_certificate
 syn keyword ngxDirective contained proxy_ssl_certificate_key
 syn keyword ngxDirective contained proxy_ssl_ciphers
@@ -463,6 +474,7 @@ syn keyword ngxDirective contained scgi_buffering
 syn keyword ngxDirective contained scgi_buffers
 syn keyword ngxDirective contained scgi_busy_buffers_size
 syn keyword ngxDirective contained scgi_cache
+syn keyword ngxDirective contained scgi_cache_background_update
 syn keyword ngxDirective contained scgi_cache_bypass
 syn keyword ngxDirective contained scgi_cache_key
 syn keyword ngxDirective contained scgi_cache_lock
@@ -520,14 +532,6 @@ syn keyword ngxDirective contained smtp_capabilities
 syn keyword ngxDirective contained smtp_client_buffer
 syn keyword ngxDirective contained smtp_greeting_delay
 syn keyword ngxDirective contained source_charset
-syn keyword ngxDirective contained spdy_chunk_size
-syn keyword ngxDirective contained spdy_headers_comp
-syn keyword ngxDirective contained spdy_keepalive_timeout
-syn keyword ngxDirective contained spdy_max_concurrent_streams
-syn keyword ngxDirective contained spdy_pool_size
-syn keyword ngxDirective contained spdy_recv_buffer_size
-syn keyword ngxDirective contained spdy_recv_timeout
-syn keyword ngxDirective contained spdy_streams_index_size
 syn keyword ngxDirective contained ssi
 syn keyword ngxDirective contained ssi_ignore_recycled_buffers
 syn keyword ngxDirective contained ssi_last_modified
@@ -600,11 +604,13 @@ syn keyword ngxDirective contained uwsgi_buffering
 syn keyword ngxDirective contained uwsgi_buffers
 syn keyword ngxDirective contained uwsgi_busy_buffers_size
 syn keyword ngxDirective contained uwsgi_cache
+syn keyword ngxDirective contained uwsgi_cache_background_update
 syn keyword ngxDirective contained uwsgi_cache_bypass
 syn keyword ngxDirective contained uwsgi_cache_key
 syn keyword ngxDirective contained uwsgi_cache_lock
 syn keyword ngxDirective contained uwsgi_cache_lock_age
 syn keyword ngxDirective contained uwsgi_cache_lock_timeout
+syn keyword ngxDirective contained uwsgi_cache_max_range_offset
 syn keyword ngxDirective contained uwsgi_cache_methods
 syn keyword ngxDirective contained uwsgi_cache_min_uses
 syn keyword ngxDirective contained uwsgi_cache_path
@@ -662,6 +668,7 @@ syn keyword ngxDirective contained worker_processes
 syn keyword ngxDirective contained worker_rlimit_core
 syn keyword ngxDirective contained worker_rlimit_nofile
 syn keyword ngxDirective contained worker_rlimit_sigpending
+syn keyword ngxDirective contained worker_shutdown_timeout
 syn keyword ngxDirective contained worker_threads
 syn keyword ngxDirective contained working_directory
 syn keyword ngxDirective contained xclient
