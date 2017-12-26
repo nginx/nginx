@@ -5,6 +5,112 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.8" date="2017-12-26">
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании параметра transparent директив proxy_bind,
+fastcgi_bind, memcached_bind, scgi_bind и uwsgi_bind
+nginx автоматически сохраняет capability CAP_NET_RAW в рабочих процессах.
+</para>
+<para lang="en">
+now nginx automatically preserves the CAP_NET_RAW capability in worker processes
+when using the "transparent" parameter of the "proxy_bind",
+"fastcgi_bind", "memcached_bind", "scgi_bind", and "uwsgi_bind" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения в определении размера строки кэша процессора.<br/>
+Спасибо Debayan Ghosh.
+</para>
+<para lang="en">
+improved CPU cache line size detection.<br/>
+Thanks to Debayan Ghosh.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+new directives in vim syntax highlighting scripts.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+процедура обновления исполняемого файла не работала,
+если после завершения родительского процесса
+новым родительским процессом nginx'а становился процесс с PID, отличным от 1.
+</para>
+<para lang="en">
+binary upgrade refused to work
+if nginx was re-parented to a process with PID different from 1
+after its parent process has finished.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module неправильно обрабатывал запросы с телом.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module incorrectly handled requests with bodies.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_limit_rate при использовании с директивой keepalive.
+</para>
+<para lang="en">
+in the "proxy_limit_rate" directive when used with the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании "proxy_buffering off" часть ответа могла буферизироваться,
+если клиентское соединение использовало SSL.<br/>
+Спасибо Patryk Lesiewicz.
+</para>
+<para lang="en">
+some parts of a response might be buffered when using "proxy_buffering off"
+if the client connection used SSL.<br/>
+Thanks to Patryk Lesiewicz.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменную вида "${name}" с именем в фигурных скобках
+нельзя было использовать в начале параметра
+не заключив весь параметр в кавычки.
+</para>
+<para lang="en">
+it was not possible to start a parameter
+with a variable in the "${name}" form with the name in curly brackets
+without enclosing the parameter into single or double quotes.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.7" date="2017-11-21">
 
 <change type="bugfix">
