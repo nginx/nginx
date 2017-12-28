@@ -90,9 +90,7 @@ syn keyword ngxDirectiveBlock contained split_clients
 
 syn keyword ngxDirectiveImportant contained include
 syn keyword ngxDirectiveImportant contained root
-"syn keyword ngxDirectiveImportant contained server
 syn keyword ngxDirectiveImportant contained server_name
-"syn keyword ngxDirectiveImportant contained listen
 syn keyword ngxDirectiveImportant contained internal
 syn keyword ngxDirectiveImportant contained proxy_pass
 syn keyword ngxDirectiveImportant contained memcached_pass
@@ -151,7 +149,6 @@ syn keyword ngxDirective contained autoindex_exact_size
 syn keyword ngxDirective contained autoindex_format
 syn keyword ngxDirective contained autoindex_localtime
 syn keyword ngxDirective contained charset
-syn keyword ngxDirective contained charset_map
 syn keyword ngxDirective contained charset_types
 syn keyword ngxDirective contained chunked_transfer_encoding
 syn keyword ngxDirective contained client_body_buffer_size
@@ -466,10 +463,6 @@ syn keyword ngxDirective contained reset_timedout_connection
 syn keyword ngxDirective contained resolver
 syn keyword ngxDirective contained resolver_timeout
 syn keyword ngxDirective contained rewrite_log
-syn keyword ngxDirective contained rtsig_overflow_events
-syn keyword ngxDirective contained rtsig_overflow_test
-syn keyword ngxDirective contained rtsig_overflow_threshold
-syn keyword ngxDirective contained rtsig_signo
 syn keyword ngxDirective contained satisfy
 syn keyword ngxDirective contained scgi_bind
 syn keyword ngxDirective contained scgi_buffer_size
@@ -583,7 +576,6 @@ syn keyword ngxDirective contained sub_filter_types
 syn keyword ngxDirective contained tcp_nodelay
 syn keyword ngxDirective contained tcp_nopush
 syn keyword ngxDirective contained thread_pool
-syn keyword ngxDirective contained thread_stack_size
 syn keyword ngxDirective contained timeout
 syn keyword ngxDirective contained timer_resolution
 syn keyword ngxDirective contained types_hash_bucket_size
@@ -636,7 +628,6 @@ syn keyword ngxDirective contained uwsgi_next_upstream_timeout
 syn keyword ngxDirective contained uwsgi_next_upstream_tries
 syn keyword ngxDirective contained uwsgi_no_cache
 syn keyword ngxDirective contained uwsgi_param
-syn keyword ngxDirective contained uwsgi_pass
 syn keyword ngxDirective contained uwsgi_pass_header
 syn keyword ngxDirective contained uwsgi_pass_request_body
 syn keyword ngxDirective contained uwsgi_pass_request_headers
@@ -670,9 +661,7 @@ syn keyword ngxDirective contained worker_priority
 syn keyword ngxDirective contained worker_processes
 syn keyword ngxDirective contained worker_rlimit_core
 syn keyword ngxDirective contained worker_rlimit_nofile
-syn keyword ngxDirective contained worker_rlimit_sigpending
 syn keyword ngxDirective contained worker_shutdown_timeout
-syn keyword ngxDirective contained worker_threads
 syn keyword ngxDirective contained working_directory
 syn keyword ngxDirective contained xclient
 syn keyword ngxDirective contained xml_entities
