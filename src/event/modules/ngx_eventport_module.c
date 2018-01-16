@@ -19,6 +19,8 @@
 #define CLOCK_REALTIME          0
 typedef int     clockid_t;
 typedef void *  timer_t;
+#elif (NGX_DARWIN)
+typedef void *  timer_t;
 #endif
 
 /* Solaris declarations */
