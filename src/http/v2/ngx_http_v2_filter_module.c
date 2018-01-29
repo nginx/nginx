@@ -138,6 +138,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     ngx_table_elt_t           *header;
     ngx_connection_t          *fc;
     ngx_http_cleanup_t        *cln;
+    ngx_http_v2_stream_t      *stream;
     ngx_http_v2_out_frame_t   *frame;
     ngx_http_v2_connection_t  *h2c;
     ngx_http_core_loc_conf_t  *clcf;
@@ -157,7 +158,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                                   ngx_http_v2_literal_size(NGINX_VER_BUILD);
     static u_char nginx_ver_build[ngx_http_v2_literal_size(NGINX_VER_BUILD)];
 
-    if (!r->stream) {
+    stream = r->stream;
+
+    if (!stream) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -236,7 +239,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         }
     }
 
-    h2c = r->stream->connection;
+    h2c = stream->connection;
 
     len = h2c->table_update ? 1 : 0;
 
@@ -633,9 +636,9 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    ngx_http_v2_queue_blocked_frame(r->stream->connection, frame);
+    ngx_http_v2_queue_blocked_frame(h2c, frame);
 
-    r->stream->queued = 1;
+    stream->queued = 1;
 
     cln = ngx_http_cleanup_add(r, 0);
     if (cln == NULL) {
@@ -643,124 +646,12 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     cln->handler = ngx_http_v2_filter_cleanup;
-    cln->data = r->stream;
+    cln->data = stream;
 
     fc->send_chain = ngx_http_v2_send_chain;
     fc->need_last_buf = 1;
 
-    return ngx_http_v2_filter_send(fc, r->stream);
-}
-
-
-static ngx_http_v2_out_frame_t *
-ngx_http_v2_create_trailers_frame(ngx_http_request_t *r)
-{
-    u_char           *pos, *start, *tmp;
-    size_t            len, tmp_len;
-    ngx_uint_t        i;
-    ngx_list_part_t  *part;
-    ngx_table_elt_t  *header;
-
-    len = 0;
-    tmp_len = 0;
-
-    part = &r->headers_out.trailers.part;
-    header = part->elts;
-
-    for (i = 0; /* void */; i++) {
-
-        if (i >= part->nelts) {
-            if (part->next == NULL) {
-                break;
-            }
-
-            part = part->next;
-            header = part->elts;
-            i = 0;
-        }
-
-        if (header[i].hash == 0) {
-            continue;
-        }
-
-        if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "too long response trailer name: \"%V\"",
-                          &header[i].key);
-            return NULL;
-        }
-
-        if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
-                          "too long response trailer value: \"%V: %V\"",
-                          &header[i].key, &header[i].value);
-            return NULL;
-        }
-
-        len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
-                 + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
-
-        if (header[i].key.len > tmp_len) {
-            tmp_len = header[i].key.len;
-        }
-
-        if (header[i].value.len > tmp_len) {
-            tmp_len = header[i].value.len;
-        }
-    }
-
-    if (len == 0) {
-        return NGX_HTTP_V2_NO_TRAILERS;
-    }
-
-    tmp = ngx_palloc(r->pool, tmp_len);
-    pos = ngx_pnalloc(r->pool, len);
-
-    if (pos == NULL || tmp == NULL) {
-        return NULL;
-    }
-
-    start = pos;
-
-    part = &r->headers_out.trailers.part;
-    header = part->elts;
-
-    for (i = 0; /* void */; i++) {
-
-        if (i >= part->nelts) {
-            if (part->next == NULL) {
-                break;
-            }
-
-            part = part->next;
-            header = part->elts;
-            i = 0;
-        }
-
-        if (header[i].hash == 0) {
-            continue;
-        }
-
-#if (NGX_DEBUG)
-        if (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP) {
-            ngx_strlow(tmp, header[i].key.data, header[i].key.len);
-
-            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http2 output trailer: \"%*s: %V\"",
-                           header[i].key.len, tmp, &header[i].value);
-        }
-#endif
-
-        *pos++ = 0;
-
-        pos = ngx_http_v2_write_name(pos, header[i].key.data,
-                                     header[i].key.len, tmp);
-
-        pos = ngx_http_v2_write_value(pos, header[i].value.data,
-                                      header[i].value.len, tmp);
-    }
-
-    return ngx_http_v2_create_headers_frame(r, start, pos, 1);
+    return ngx_http_v2_filter_send(fc, stream);
 }
 
 
@@ -914,6 +805,120 @@ ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
 
         return frame;
     }
+}
+
+
+static ngx_http_v2_out_frame_t *
+ngx_http_v2_create_trailers_frame(ngx_http_request_t *r)
+{
+    u_char            *pos, *start, *tmp;
+    size_t             len, tmp_len;
+    ngx_uint_t         i;
+    ngx_list_part_t   *part;
+    ngx_table_elt_t   *header;
+    ngx_connection_t  *fc;
+
+    fc = r->connection;
+    len = 0;
+    tmp_len = 0;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response trailer name: \"%V\"",
+                          &header[i].key);
+            return NULL;
+        }
+
+        if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response trailer value: \"%V: %V\"",
+                          &header[i].key, &header[i].value);
+            return NULL;
+        }
+
+        len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
+                 + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
+
+        if (header[i].key.len > tmp_len) {
+            tmp_len = header[i].key.len;
+        }
+
+        if (header[i].value.len > tmp_len) {
+            tmp_len = header[i].value.len;
+        }
+    }
+
+    if (len == 0) {
+        return NGX_HTTP_V2_NO_TRAILERS;
+    }
+
+    tmp = ngx_palloc(r->pool, tmp_len);
+    pos = ngx_pnalloc(r->pool, len);
+
+    if (pos == NULL || tmp == NULL) {
+        return NULL;
+    }
+
+    start = pos;
+
+    part = &r->headers_out.trailers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+#if (NGX_DEBUG)
+        if (fc->log->log_level & NGX_LOG_DEBUG_HTTP) {
+            ngx_strlow(tmp, header[i].key.data, header[i].key.len);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output trailer: \"%*s: %V\"",
+                           header[i].key.len, tmp, &header[i].value);
+        }
+#endif
+
+        *pos++ = 0;
+
+        pos = ngx_http_v2_write_name(pos, header[i].key.data,
+                                     header[i].key.len, tmp);
+
+        pos = ngx_http_v2_write_value(pos, header[i].value.data,
+                                      header[i].value.len, tmp);
+    }
+
+    return ngx_http_v2_create_headers_frame(r, start, pos, 1);
 }
 
 
@@ -1240,31 +1245,6 @@ ngx_http_v2_filter_get_data_frame(ngx_http_v2_stream_t *stream,
 
 
 static ngx_inline ngx_int_t
-ngx_http_v2_filter_send(ngx_connection_t *fc, ngx_http_v2_stream_t *stream)
-{
-    stream->blocked = 1;
-
-    if (ngx_http_v2_send_output_queue(stream->connection) == NGX_ERROR) {
-        fc->error = 1;
-        return NGX_ERROR;
-    }
-
-    stream->blocked = 0;
-
-    if (stream->queued) {
-        fc->buffered |= NGX_HTTP_V2_BUFFERED;
-        fc->write->active = 1;
-        fc->write->ready = 0;
-        return NGX_AGAIN;
-    }
-
-    fc->buffered &= ~NGX_HTTP_V2_BUFFERED;
-
-    return NGX_OK;
-}
-
-
-static ngx_inline ngx_int_t
 ngx_http_v2_flow_control(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
@@ -1316,6 +1296,30 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     ngx_queue_insert_after(q, &stream->queue);
 }
 
+
+static ngx_inline ngx_int_t
+ngx_http_v2_filter_send(ngx_connection_t *fc, ngx_http_v2_stream_t *stream)
+{
+    stream->blocked = 1;
+
+    if (ngx_http_v2_send_output_queue(stream->connection) == NGX_ERROR) {
+        fc->error = 1;
+        return NGX_ERROR;
+    }
+
+    stream->blocked = 0;
+
+    if (stream->queued) {
+        fc->buffered |= NGX_HTTP_V2_BUFFERED;
+        fc->write->active = 1;
+        fc->write->ready = 0;
+        return NGX_AGAIN;
+    }
+
+    fc->buffered &= ~NGX_HTTP_V2_BUFFERED;
+
+    return NGX_OK;
+}
 
 
 static ngx_int_t

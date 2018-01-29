@@ -185,16 +185,16 @@ static void ngx_http_v2_pool_cleanup(void *data);
 
 
 static ngx_http_v2_handler_pt ngx_http_v2_frame_states[] = {
-    ngx_http_v2_state_data,
-    ngx_http_v2_state_headers,
-    ngx_http_v2_state_priority,
-    ngx_http_v2_state_rst_stream,
-    ngx_http_v2_state_settings,
-    ngx_http_v2_state_push_promise,
-    ngx_http_v2_state_ping,
-    ngx_http_v2_state_goaway,
-    ngx_http_v2_state_window_update,
-    ngx_http_v2_state_continuation
+    ngx_http_v2_state_data,               /* NGX_HTTP_V2_DATA_FRAME */
+    ngx_http_v2_state_headers,            /* NGX_HTTP_V2_HEADERS_FRAME */
+    ngx_http_v2_state_priority,           /* NGX_HTTP_V2_PRIORITY_FRAME */
+    ngx_http_v2_state_rst_stream,         /* NGX_HTTP_V2_RST_STREAM_FRAME */
+    ngx_http_v2_state_settings,           /* NGX_HTTP_V2_SETTINGS_FRAME */
+    ngx_http_v2_state_push_promise,       /* NGX_HTTP_V2_PUSH_PROMISE_FRAME */
+    ngx_http_v2_state_ping,               /* NGX_HTTP_V2_PING_FRAME */
+    ngx_http_v2_state_goaway,             /* NGX_HTTP_V2_GOAWAY_FRAME */
+    ngx_http_v2_state_window_update,      /* NGX_HTTP_V2_WINDOW_UPDATE_FRAME */
+    ngx_http_v2_state_continuation        /* NGX_HTTP_V2_CONTINUATION_FRAME */
 };
 
 #define NGX_HTTP_V2_FRAME_STATES                                              \
@@ -1046,7 +1046,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     depend = 0;
     excl = 0;
-    weight = 16;
+    weight = NGX_HTTP_V2_DEFAULT_WEIGHT;
 
     if (priority) {
         dependency = ngx_http_v2_parse_uint32(pos);
@@ -1059,7 +1059,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 HEADERS frame sid:%ui on %ui excl:%ui weight:%ui",
+                   "http2 HEADERS frame sid:%ui "
+                   "depends on %ui excl:%ui weight:%ui",
                    h2c->state.sid, depend, excl, weight);
 
     if (h2c->state.sid % 2 == 0 || h2c->state.sid <= h2c->last_sid) {
@@ -1788,7 +1789,8 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
     pos += NGX_HTTP_V2_PRIORITY_SIZE;
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 PRIORITY frame sid:%ui on %ui excl:%ui weight:%ui",
+                   "http2 PRIORITY frame sid:%ui "
+                   "depends on %ui excl:%ui weight:%ui",
                    h2c->state.sid, depend, excl, weight);
 
     if (h2c->state.sid == 0) {
@@ -1985,6 +1987,9 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         id = ngx_http_v2_parse_uint16(pos);
         value = ngx_http_v2_parse_uint32(&pos[2]);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 setting %ui:%ui", id, value);
 
         switch (id) {
 
@@ -3343,7 +3348,7 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 
         } else if (r->schema_start == NULL) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent no :schema header");
+                          "client sent no :scheme header");
 
         } else {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
