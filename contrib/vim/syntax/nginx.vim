@@ -87,6 +87,7 @@ syn keyword ngxDirectiveBlock contained if
 syn keyword ngxDirectiveBlock contained geo
 syn keyword ngxDirectiveBlock contained map
 syn keyword ngxDirectiveBlock contained split_clients
+syn keyword ngxDirectiveBlock contained match
 
 syn keyword ngxDirectiveImportant contained include
 syn keyword ngxDirectiveImportant contained root
@@ -117,6 +118,7 @@ syn keyword ngxDirectiveDeprecated contained spdy_pool_size
 syn keyword ngxDirectiveDeprecated contained spdy_recv_buffer_size
 syn keyword ngxDirectiveDeprecated contained spdy_recv_timeout
 syn keyword ngxDirectiveDeprecated contained spdy_streams_index_size
+syn keyword ngxDirectiveDeprecated contained upstream_conf
 
 syn keyword ngxDirective contained absolute_redirect
 syn keyword ngxDirective contained accept_mutex
@@ -324,7 +326,6 @@ syn keyword ngxDirective contained log_not_found
 syn keyword ngxDirective contained log_subrequest
 syn keyword ngxDirective contained map_hash_bucket_size
 syn keyword ngxDirective contained map_hash_max_size
-syn keyword ngxDirective contained match
 syn keyword ngxDirective contained master_process
 syn keyword ngxDirective contained max_ranges
 syn keyword ngxDirective contained memcached_bind
@@ -582,7 +583,6 @@ syn keyword ngxDirective contained types_hash_bucket_size
 syn keyword ngxDirective contained types_hash_max_size
 syn keyword ngxDirective contained underscores_in_headers
 syn keyword ngxDirective contained uninitialized_variable_warn
-syn keyword ngxDirective contained upstream_conf
 syn keyword ngxDirective contained use
 syn keyword ngxDirective contained user
 syn keyword ngxDirective contained userid
