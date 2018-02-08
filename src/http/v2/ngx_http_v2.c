@@ -150,13 +150,13 @@ static ngx_int_t ngx_http_v2_validate_header(ngx_http_request_t *r,
 static ngx_int_t ngx_http_v2_pseudo_header(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_parse_path(ngx_http_request_t *r,
-    ngx_http_v2_header_t *header);
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_method(ngx_http_request_t *r,
-    ngx_http_v2_header_t *header);
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
-    ngx_http_v2_header_t *header);
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
-    ngx_http_v2_header_t *header);
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
@@ -3082,7 +3082,7 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if (ngx_memcmp(header->name.data, "path", sizeof("path") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_path(r, header);
+            return ngx_http_v2_parse_path(r, &header->value);
         }
 
         break;
@@ -3091,13 +3091,13 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if (ngx_memcmp(header->name.data, "method", sizeof("method") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_method(r, header);
+            return ngx_http_v2_parse_method(r, &header->value);
         }
 
         if (ngx_memcmp(header->name.data, "scheme", sizeof("scheme") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_scheme(r, header);
+            return ngx_http_v2_parse_scheme(r, &header->value);
         }
 
         break;
@@ -3106,7 +3106,7 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if (ngx_memcmp(header->name.data, "authority", sizeof("authority") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_authority(r, header);
+            return ngx_http_v2_parse_authority(r, &header->value);
         }
 
         break;
@@ -3121,7 +3121,7 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
 
 static ngx_int_t
-ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_http_v2_header_t *header)
+ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_str_t *value)
 {
     if (r->unparsed_uri.len) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3130,20 +3130,19 @@ ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         return NGX_DECLINED;
     }
 
-    if (header->value.len == 0) {
+    if (value->len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent empty :path header");
 
         return NGX_DECLINED;
     }
 
-    r->uri_start = header->value.data;
-    r->uri_end = header->value.data + header->value.len;
+    r->uri_start = value->data;
+    r->uri_end = value->data + value->len;
 
     if (ngx_http_parse_uri(r) != NGX_OK) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid :path header: \"%V\"",
-                      &header->value);
+                      "client sent invalid :path header: \"%V\"", value);
 
         return NGX_DECLINED;
     }
@@ -3161,7 +3160,7 @@ ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
 
 static ngx_int_t
-ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_http_v2_header_t *header)
+ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
 {
     size_t         k, len;
     ngx_uint_t     n;
@@ -3201,15 +3200,15 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         return NGX_DECLINED;
     }
 
-    if (header->value.len == 0) {
+    if (value->len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent empty :method header");
 
         return NGX_DECLINED;
     }
 
-    r->method_name.len = header->value.len;
-    r->method_name.data = header->value.data;
+    r->method_name.len = value->len;
+    r->method_name.data = value->data;
 
     len = r->method_name.len;
     n = sizeof(tests) / sizeof(tests[0]);
@@ -3256,7 +3255,7 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
 
 static ngx_int_t
-ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_http_v2_header_t *header)
+ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 {
     if (r->schema_start) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3265,22 +3264,22 @@ ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         return NGX_DECLINED;
     }
 
-    if (header->value.len == 0) {
+    if (value->len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent empty :scheme header");
 
         return NGX_DECLINED;
     }
 
-    r->schema_start = header->value.data;
-    r->schema_end = header->value.data + header->value.len;
+    r->schema_start = value->data;
+    r->schema_end = value->data + value->len;
 
     return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_http_v2_header_t *header)
+ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 {
     ngx_table_elt_t            *h;
     ngx_http_header_t          *hh;
@@ -3298,8 +3297,8 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_http_v2_header_t *header)
     h->key.len = host.len;
     h->key.data = host.data;
 
-    h->value.len = header->value.len;
-    h->value.data = header->value.data;
+    h->value.len = value->len;
+    h->value.data = value->data;
 
     h->lowcase_key = host.data;
 
