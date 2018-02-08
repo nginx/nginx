@@ -318,6 +318,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_headers,
       offsetof(ngx_http_request_t, headers_out.cache_control), 0, 0 },
 
+    { ngx_string("sent_http_link"), NULL, ngx_http_variable_headers,
+      offsetof(ngx_http_request_t, headers_out.link), 0, 0 },
+
     { ngx_string("limit_rate"), ngx_http_variable_request_set_size,
       ngx_http_variable_request_get_size,
       offsetof(ngx_http_request_t, limit_rate),

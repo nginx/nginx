@@ -56,7 +56,7 @@ static ngx_int_t ngx_http_set_expires(ngx_http_request_t *r,
     ngx_http_headers_conf_t *conf);
 static ngx_int_t ngx_http_parse_expires(ngx_str_t *value,
     ngx_http_expires_t *expires, time_t *expires_time, char **err);
-static ngx_int_t ngx_http_add_cache_control(ngx_http_request_t *r,
+static ngx_int_t ngx_http_add_multi_header_lines(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
@@ -77,7 +77,13 @@ static char *ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static ngx_http_set_header_t  ngx_http_set_headers[] = {
 
-    { ngx_string("Cache-Control"), 0, ngx_http_add_cache_control },
+    { ngx_string("Cache-Control"),
+                 offsetof(ngx_http_headers_out_t, cache_control),
+                 ngx_http_add_multi_header_lines },
+
+    { ngx_string("Link"),
+                 offsetof(ngx_http_headers_out_t, link),
+                 ngx_http_add_multi_header_lines },
 
     { ngx_string("Last-Modified"),
                  offsetof(ngx_http_headers_out_t, last_modified),
@@ -555,42 +561,40 @@ ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
 
 
 static ngx_int_t
-ngx_http_add_cache_control(ngx_http_request_t *r, ngx_http_header_val_t *hv,
-    ngx_str_t *value)
+ngx_http_add_multi_header_lines(ngx_http_request_t *r,
+    ngx_http_header_val_t *hv, ngx_str_t *value)
 {
-    ngx_table_elt_t  *cc, **ccp;
+    ngx_array_t      *pa;
+    ngx_table_elt_t  *h, **ph;
 
     if (value->len == 0) {
         return NGX_OK;
     }
 
-    ccp = r->headers_out.cache_control.elts;
+    pa = (ngx_array_t *) ((char *) &r->headers_out + hv->offset);
 
-    if (ccp == NULL) {
-
-        if (ngx_array_init(&r->headers_out.cache_control, r->pool,
-                           1, sizeof(ngx_table_elt_t *))
-            != NGX_OK)
+    if (pa->elts == NULL) {
+        if (ngx_array_init(pa, r->pool, 1, sizeof(ngx_table_elt_t *)) != NGX_OK)
         {
             return NGX_ERROR;
         }
     }
 
-    cc = ngx_list_push(&r->headers_out.headers);
-    if (cc == NULL) {
+    h = ngx_list_push(&r->headers_out.headers);
+    if (h == NULL) {
         return NGX_ERROR;
     }
 
-    cc->hash = 1;
-    ngx_str_set(&cc->key, "Cache-Control");
-    cc->value = *value;
+    h->hash = 1;
+    h->key = hv->key;
+    h->value = *value;
 
-    ccp = ngx_array_push(&r->headers_out.cache_control);
-    if (ccp == NULL) {
+    ph = ngx_array_push(pa);
+    if (ph == NULL) {
         return NGX_ERROR;
     }
 
-    *ccp = cc;
+    *ph = h;
 
     return NGX_OK;
 }

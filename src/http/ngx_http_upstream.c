@@ -284,6 +284,11 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_process_vary, 0,
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
+    { ngx_string("Link"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_multi_header_lines,
+                 offsetof(ngx_http_headers_out_t, link), 0 },
+
     { ngx_string("X-Accel-Expires"),
                  ngx_http_upstream_process_accel_expires, 0,
                  ngx_http_upstream_copy_header_line, 0, 0 },

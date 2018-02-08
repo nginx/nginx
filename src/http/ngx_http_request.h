@@ -279,6 +279,7 @@ typedef struct {
     ngx_uint_t                        content_type_hash;
 
     ngx_array_t                       cache_control;
+    ngx_array_t                       link;
 
     off_t                             content_length_n;
     off_t                             content_offset;
