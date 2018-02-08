@@ -688,18 +688,11 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
     ngx_str_t                   path, authority;
     ngx_uint_t                  i, push;
     ngx_table_elt_t           **h;
-    ngx_connection_t           *fc;
-    ngx_http_v2_stream_t       *stream;
     ngx_http_v2_loc_conf_t     *h2lcf;
-    ngx_http_v2_connection_t   *h2c;
     ngx_http_complex_value_t   *pushes;
 
-    fc = r->connection;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0, "http2 push resources");
-
-    stream = r->stream;
-    h2c = stream->connection;
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http2 push resources");
 
     ngx_str_null(&authority);
 
@@ -744,7 +737,7 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
 
     for (i = 0; i < r->headers_out.link.nelts; i++) {
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http2 parse link: \"%V\"", &h[i]->value);
 
         start = h[i]->value.data;
