@@ -23,6 +23,7 @@ typedef struct {
 typedef struct {
     size_t                          pool_size;
     ngx_uint_t                      concurrent_streams;
+    ngx_uint_t                      concurrent_pushes;
     ngx_uint_t                      max_requests;
     size_t                          max_field_size;
     size_t                          max_header_size;
@@ -35,6 +36,11 @@ typedef struct {
 
 typedef struct {
     size_t                          chunk_size;
+
+    ngx_flag_t                      push_preload;
+
+    ngx_flag_t                      push;
+    ngx_array_t                    *pushes;
 } ngx_http_v2_loc_conf_t;
 
 

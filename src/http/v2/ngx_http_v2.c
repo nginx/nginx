@@ -35,12 +35,11 @@
 #define NGX_HTTP_V2_GOAWAY_SIZE                  8
 #define NGX_HTTP_V2_WINDOW_UPDATE_SIZE           4
 
-#define NGX_HTTP_V2_STREAM_ID_SIZE               4
-
 #define NGX_HTTP_V2_SETTINGS_PARAM_SIZE          6
 
 /* settings fields */
 #define NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING    0x1
+#define NGX_HTTP_V2_ENABLE_PUSH_SETTING          0x2
 #define NGX_HTTP_V2_MAX_STREAMS_SETTING          0x3
 #define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING     0x4
 #define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING       0x5
@@ -121,7 +120,7 @@ static ngx_int_t ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c,
     u_char **pos, u_char *end, ngx_uint_t prefix);
 
 static ngx_http_v2_stream_t *ngx_http_v2_create_stream(
-    ngx_http_v2_connection_t *h2c);
+    ngx_http_v2_connection_t *h2c, ngx_uint_t push);
 static ngx_http_v2_node_t *ngx_http_v2_get_node_by_id(
     ngx_http_v2_connection_t *h2c, ngx_uint_t sid, ngx_uint_t alloc);
 static ngx_http_v2_node_t *ngx_http_v2_get_closed_node(
@@ -162,6 +161,7 @@ static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_construct_cookie_header(ngx_http_request_t *r);
 static void ngx_http_v2_run_request(ngx_http_request_t *r);
+static void ngx_http_v2_run_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_v2_process_request_body(ngx_http_request_t *r,
     u_char *pos, size_t size, ngx_uint_t last);
 static ngx_int_t ngx_http_v2_filter_request_body(ngx_http_request_t *r);
@@ -248,6 +248,8 @@ ngx_http_v2_init(ngx_event_t *rev)
     h2c->table_update = 1;
 
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+
+    h2c->concurrent_pushes = h2scf->concurrent_pushes;
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {
@@ -366,7 +368,9 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
             break;
         }
 
-        if (n == 0 && (h2c->state.incomplete || h2c->processing)) {
+        if (n == 0
+            && (h2c->state.incomplete || h2c->processing || h2c->pushing))
+        {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client prematurely closed connection");
         }
@@ -405,7 +409,7 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
 
     h2c->blocked = 0;
 
-    if (h2c->processing) {
+    if (h2c->processing || h2c->pushing) {
         if (rev->timer_set) {
             ngx_del_timer(rev);
         }
@@ -589,7 +593,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     ngx_connection_t        *c;
     ngx_http_v2_srv_conf_t  *h2scf;
 
-    if (h2c->last_out || h2c->processing) {
+    if (h2c->last_out || h2c->processing || h2c->pushing) {
         return;
     }
 
@@ -1123,7 +1127,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         h2c->closed_nodes--;
     }
 
-    stream = ngx_http_v2_create_stream(h2c);
+    stream = ngx_http_v2_create_stream(h2c, 0);
     if (stream == NULL) {
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
@@ -1909,6 +1913,11 @@ ngx_http_v2_state_rst_stream(ngx_http_v2_connection_t *h2c, u_char *pos,
                       "client canceled stream %ui", h2c->state.sid);
         break;
 
+    case NGX_HTTP_V2_REFUSED_STREAM:
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client refused stream %ui", h2c->state.sid);
+        break;
+
     case NGX_HTTP_V2_INTERNAL_ERROR:
         ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                       "client terminated stream %ui due to internal error",
@@ -1966,6 +1975,7 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
 {
     ssize_t                   window_delta;
     ngx_uint_t                id, value;
+    ngx_http_v2_srv_conf_t   *h2scf;
     ngx_http_v2_out_frame_t  *frame;
 
     window_delta = 0;
@@ -2014,6 +2024,27 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
             }
 
             h2c->frame_size = value;
+            break;
+
+        case NGX_HTTP_V2_ENABLE_PUSH_SETTING:
+
+            if (value > 1) {
+                ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                              "client sent SETTINGS frame with incorrect "
+                              "ENABLE_PUSH value %ui", value);
+
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_PROTOCOL_ERROR);
+            }
+
+            h2c->push_disabled = !value;
+            break;
+
+        case NGX_HTTP_V2_MAX_STREAMS_SETTING:
+            h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                                 ngx_http_v2_module);
+
+            h2c->concurrent_pushes = ngx_min(value, h2scf->concurrent_pushes);
             break;
 
         default:
@@ -2483,6 +2514,119 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
 }
 
 
+ngx_int_t
+ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
+    size_t request_length, ngx_str_t *path, ngx_str_t *authority)
+{
+    ngx_int_t              rc;
+    ngx_str_t              value;
+    ngx_connection_t      *fc;
+    ngx_http_request_t    *r;
+    ngx_http_v2_node_t    *node;
+    ngx_http_v2_stream_t  *stream;
+
+    node = ngx_http_v2_get_node_by_id(h2c, h2c->last_push, 1);
+
+    if (node == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (node->parent) {
+        ngx_queue_remove(&node->reuse);
+        h2c->closed_nodes--;
+    }
+
+    stream = ngx_http_v2_create_stream(h2c, 1);
+    if (stream == NULL) {
+        return NGX_ERROR;
+    }
+
+    stream->pool = ngx_create_pool(1024, h2c->connection->log);
+    if (stream->pool == NULL) {
+        return NGX_ERROR;
+    }
+
+    r = stream->request;
+    fc = r->connection;
+
+    r->request_length = request_length;
+
+    stream->in_closed = 1;
+    stream->node = node;
+
+    node->stream = stream;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 push stream sid:%ui "
+                   "depends on %ui excl:0 weight:16",
+                   h2c->last_push, depend);
+
+    node->weight = NGX_HTTP_V2_DEFAULT_WEIGHT;
+    ngx_http_v2_set_dependency(h2c, node, depend, 0);
+
+    r->method_name = ngx_http_core_get_method;
+    r->method = NGX_HTTP_GET;
+
+    r->schema_start = (u_char *) "https";
+
+#if (NGX_HTTP_SSL)
+    if (fc->ssl) {
+        r->schema_end = r->schema_start + 5;
+
+    } else
+#endif
+    {
+        r->schema_end = r->schema_start + 4;
+    }
+
+    value.len = authority->len;
+
+    value.data = ngx_pstrdup(stream->pool, authority);
+    if (value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    rc = ngx_http_v2_parse_authority(r, &value);
+
+    if (rc != NGX_OK) {
+        goto error;
+    }
+
+    value.len = path->len;
+
+    value.data = ngx_pstrdup(stream->pool, path);
+    if (value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    rc = ngx_http_v2_parse_path(r, &value);
+
+    if (rc != NGX_OK) {
+        goto error;
+    }
+
+    fc->write->handler = ngx_http_v2_run_request_handler;
+    ngx_post_event(fc->write, &ngx_posted_events);
+
+    return NGX_OK;
+
+error:
+
+    if (rc == NGX_ABORT) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_DECLINED) {
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    (void) ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+
+    return NGX_ERROR;
+}
+
+
 static ngx_int_t
 ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 {
@@ -2743,7 +2887,7 @@ ngx_http_v2_frame_handler(ngx_http_v2_connection_t *h2c,
 
 
 static ngx_http_v2_stream_t *
-ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
+ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t push)
 {
     ngx_log_t                 *log;
     ngx_event_t               *rev, *wev;
@@ -2798,7 +2942,13 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
     ngx_memcpy(log, h2c->connection->log, sizeof(ngx_log_t));
 
     log->data = ctx;
-    log->action = "reading client request headers";
+
+    if (push) {
+        log->action = "processing pushed request headers";
+
+    } else {
+        log->action = "reading client request headers";
+    }
 
     ngx_memzero(rev, sizeof(ngx_event_t));
 
@@ -2870,7 +3020,12 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
     stream->send_window = h2c->init_window;
     stream->recv_window = h2scf->preread_size;
 
-    h2c->processing++;
+    if (push) {
+        h2c->pushing++;
+
+    } else {
+        h2c->processing++;
+    }
 
     return stream;
 }
@@ -3532,6 +3687,22 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 }
 
 
+static void
+ngx_http_v2_run_request_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *fc;
+    ngx_http_request_t  *r;
+
+    fc = ev->data;
+    r = fc->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 run request handler");
+
+    ngx_http_v2_run_request(r);
+}
+
+
 ngx_int_t
 ngx_http_v2_read_request_body(ngx_http_request_t *r)
 {
@@ -4003,6 +4174,7 @@ void
 ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 {
     ngx_pool_t                *pool;
+    ngx_uint_t                 push;
     ngx_event_t               *ev;
     ngx_connection_t          *fc;
     ngx_http_v2_node_t        *node;
@@ -4011,9 +4183,10 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     h2c = stream->connection;
     node = stream->node;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 close stream %ui, queued %ui, processing %ui",
-                   node->id, stream->queued, h2c->processing);
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 close stream %ui, queued %ui, "
+                   "processing %ui, pushing %ui",
+                   node->id, stream->queued, h2c->processing, h2c->pushing);
 
     fc = stream->request->connection;
 
@@ -4069,6 +4242,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
         h2c->state.stream = NULL;
     }
 
+    push = stream->node->id % 2 == 0;
+
     node->stream = NULL;
 
     ngx_queue_insert_tail(&h2c->closed, &node->reuse);
@@ -4116,9 +4291,14 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     fc->data = h2c->free_fake_connections;
     h2c->free_fake_connections = fc;
 
-    h2c->processing--;
+    if (push) {
+        h2c->pushing--;
 
-    if (h2c->processing || h2c->blocked) {
+    } else {
+        h2c->processing--;
+    }
+
+    if (h2c->processing || h2c->pushing || h2c->blocked) {
         return;
     }
 
@@ -4267,7 +4447,7 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
     c->error = 1;
 
-    if (!h2c->processing) {
+    if (!h2c->processing && !h2c->pushing) {
         ngx_http_close_connection(c);
         return;
     }
@@ -4316,7 +4496,7 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
     h2c->blocked = 0;
 
-    if (h2c->processing) {
+    if (h2c->processing || h2c->pushing) {
         return;
     }
 
