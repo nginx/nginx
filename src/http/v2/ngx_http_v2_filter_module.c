@@ -946,7 +946,11 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
 
     host = r->headers_in.host;
 
-    if (authority->len == 0 && host) {
+    if (host == NULL) {
+        return NGX_ABORT;
+    }
+
+    if (authority->len == 0) {
 
         len = 1 + NGX_HTTP_V2_INT_OCTETS + host->value.len;
 
