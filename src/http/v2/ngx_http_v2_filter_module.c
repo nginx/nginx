@@ -929,8 +929,8 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                  "http2 pushing:%ui limit:%ui",
-                  h2c->pushing, h2c->concurrent_pushes);
+                   "http2 pushing:%ui limit:%ui",
+                   h2c->pushing, h2c->concurrent_pushes);
 
     if (h2c->pushing >= h2c->concurrent_pushes) {
         return NGX_ABORT;

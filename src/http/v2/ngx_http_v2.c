@@ -3862,8 +3862,8 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
         } else {
             if (size > (size_t) (buf->end - buf->last)) {
                 ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                                "client intended to send body data "
-                                "larger than declared");
+                              "client intended to send body data "
+                              "larger than declared");
 
                 return NGX_HTTP_BAD_REQUEST;
             }
