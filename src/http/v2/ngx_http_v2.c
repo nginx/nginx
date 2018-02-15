@@ -2546,20 +2546,47 @@ ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
 {
     ngx_int_t                     rc;
     ngx_str_t                     value;
+    ngx_pool_t                   *pool;
+    ngx_uint_t                    index;
     ngx_table_elt_t             **h;
     ngx_connection_t             *fc;
     ngx_http_request_t           *r;
     ngx_http_v2_node_t           *node;
     ngx_http_v2_stream_t         *stream;
+    ngx_http_v2_srv_conf_t       *h2scf;
     ngx_http_v2_connection_t     *h2c;
     ngx_http_v2_parse_header_t   *header;
 
     h2c = parent->connection;
 
+    pool = ngx_create_pool(1024, h2c->connection->log);
+    if (pool == NULL) {
+        goto rst_stream;
+    }
+
     node = ngx_http_v2_get_node_by_id(h2c, h2c->last_push, 1);
 
     if (node == NULL) {
-        return NULL;
+        ngx_destroy_pool(pool);
+        goto rst_stream;
+    }
+
+    stream = ngx_http_v2_create_stream(h2c, 1);
+    if (stream == NULL) {
+
+        if (node->parent == NULL) {
+            h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                                 ngx_http_v2_module);
+
+            index = ngx_http_v2_index(h2scf, h2c->last_push);
+            h2c->streams_index[index] = node->index;
+
+            ngx_queue_insert_tail(&h2c->closed, &node->reuse);
+            h2c->closed_nodes++;
+        }
+
+        ngx_destroy_pool(pool);
+        goto rst_stream;
     }
 
     if (node->parent) {
@@ -2567,15 +2594,7 @@ ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
         h2c->closed_nodes--;
     }
 
-    stream = ngx_http_v2_create_stream(h2c, 1);
-    if (stream == NULL) {
-        return NULL;
-    }
-
-    stream->pool = ngx_create_pool(1024, h2c->connection->log);
-    if (stream->pool == NULL) {
-        return NULL;
-    }
+    stream->pool = pool;
 
     r = stream->request;
     fc = r->connection;
@@ -2608,9 +2627,9 @@ ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
         r->schema_end = r->schema_start + 4;
     }
 
-    value.data = ngx_pstrdup(stream->pool, path);
+    value.data = ngx_pstrdup(pool, path);
     if (value.data == NULL) {
-        return NULL;
+        goto close;
     }
 
     value.len = path->len;
@@ -2631,9 +2650,9 @@ ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
 
         value.len = (*h)->value.len;
 
-        value.data = ngx_pnalloc(stream->pool, value.len + 1);
+        value.data = ngx_pnalloc(pool, value.len + 1);
         if (value.data == NULL) {
-            return NULL;
+            goto close;
         }
 
         ngx_memcpy(value.data, (*h)->value.data, value.len);
@@ -2663,7 +2682,20 @@ error:
         return NULL;
     }
 
-    (void) ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+close:
+
+    ngx_http_v2_close_stream(stream, NGX_HTTP_INTERNAL_SERVER_ERROR);
+
+    return NULL;
+
+rst_stream:
+
+    if (ngx_http_v2_send_rst_stream(h2c, h2c->last_push,
+                                    NGX_HTTP_INTERNAL_SERVER_ERROR)
+        != NGX_OK)
+    {
+        h2c->connection->error = 1;
+    }
 
     return NULL;
 }
