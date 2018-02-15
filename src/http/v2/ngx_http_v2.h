@@ -283,9 +283,8 @@ void ngx_http_v2_init(ngx_event_t *rev);
 ngx_int_t ngx_http_v2_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r);
 
-ngx_int_t ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c,
-    ngx_uint_t depend, size_t request_length, ngx_str_t *path,
-    ngx_str_t *authority);
+ngx_http_v2_stream_t *ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent,
+    ngx_str_t *path);
 
 void ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc);
 

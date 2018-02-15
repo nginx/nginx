@@ -50,20 +50,48 @@
 #define NGX_HTTP_V2_STATUS_404_INDEX      13
 #define NGX_HTTP_V2_STATUS_500_INDEX      14
 
+#define NGX_HTTP_V2_ACCEPT_ENCODING_INDEX 16
+#define NGX_HTTP_V2_ACCEPT_LANGUAGE_INDEX 17
 #define NGX_HTTP_V2_CONTENT_LENGTH_INDEX  28
 #define NGX_HTTP_V2_CONTENT_TYPE_INDEX    31
 #define NGX_HTTP_V2_DATE_INDEX            33
 #define NGX_HTTP_V2_LAST_MODIFIED_INDEX   44
 #define NGX_HTTP_V2_LOCATION_INDEX        46
 #define NGX_HTTP_V2_SERVER_INDEX          54
+#define NGX_HTTP_V2_USER_AGENT_INDEX      58
 #define NGX_HTTP_V2_VARY_INDEX            59
 
 #define NGX_HTTP_V2_NO_TRAILERS           (ngx_http_v2_out_frame_t *) -1
 
 
+typedef struct {
+    ngx_str_t      name;
+    u_char         index;
+    ngx_uint_t     offset;
+} ngx_http_v2_push_header_t;
+
+
+static ngx_http_v2_push_header_t  ngx_http_v2_push_headers[] = {
+    { ngx_string(":authority"), NGX_HTTP_V2_AUTHORITY_INDEX,
+      offsetof(ngx_http_headers_in_t, host) },
+
+    { ngx_string("accept-encoding"), NGX_HTTP_V2_ACCEPT_ENCODING_INDEX,
+      offsetof(ngx_http_headers_in_t, accept_encoding) },
+
+    { ngx_string("accept-language"), NGX_HTTP_V2_ACCEPT_LANGUAGE_INDEX,
+      offsetof(ngx_http_headers_in_t, accept_language) },
+
+    { ngx_string("user-agent"), NGX_HTTP_V2_USER_AGENT_INDEX,
+      offsetof(ngx_http_headers_in_t, user_agent) },
+};
+
+#define NGX_HTTP_V2_PUSH_HEADERS                                              \
+    (sizeof(ngx_http_v2_push_headers) / sizeof(ngx_http_v2_push_header_t))
+
+
 static ngx_int_t ngx_http_v2_push_resources(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_push_resource(ngx_http_request_t *r,
-    ngx_str_t *path, ngx_str_t *authority);
+    ngx_str_t *path, ngx_str_t *binary);
 
 static u_char *ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len,
     u_char *tmp, ngx_uint_t lower);
@@ -685,16 +713,17 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
 {
     u_char                     *start, *end, *last;
     ngx_int_t                   rc;
-    ngx_str_t                   path, authority;
+    ngx_str_t                   path;
     ngx_uint_t                  i, push;
     ngx_table_elt_t           **h;
     ngx_http_v2_loc_conf_t     *h2lcf;
     ngx_http_complex_value_t   *pushes;
+    ngx_str_t                   binary[NGX_HTTP_V2_PUSH_HEADERS];
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http2 push resources");
 
-    ngx_str_null(&authority);
+    ngx_memzero(binary, NGX_HTTP_V2_PUSH_HEADERS * sizeof(ngx_str_t));
 
     h2lcf = ngx_http_get_module_loc_conf(r, ngx_http_v2_module);
 
@@ -715,7 +744,7 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
                 continue;
             }
 
-            rc = ngx_http_v2_push_resource(r, &path, &authority);
+            rc = ngx_http_v2_push_resource(r, &path, binary);
 
             if (rc == NGX_ERROR) {
                 return NGX_ERROR;
@@ -880,7 +909,7 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
         if (push && path.len
             && !(path.len > 1 && path.data[0] == '/' && path.data[1] == '/'))
         {
-            rc = ngx_http_v2_push_resource(r, &path, &authority);
+            rc = ngx_http_v2_push_resource(r, &path, binary);
 
             if (rc == NGX_ERROR) {
                 return NGX_ERROR;
@@ -905,15 +934,18 @@ ngx_http_v2_push_resources(ngx_http_request_t *r)
 
 static ngx_int_t
 ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
-    ngx_str_t *authority)
+    ngx_str_t *binary)
 {
-    u_char                    *start, *pos, *tmp;
-    size_t                     len;
-    ngx_table_elt_t           *host;
-    ngx_connection_t          *fc;
-    ngx_http_v2_stream_t      *stream;
-    ngx_http_v2_out_frame_t   *frame;
-    ngx_http_v2_connection_t  *h2c;
+    u_char                      *start, *pos, *tmp;
+    size_t                       len;
+    ngx_str_t                   *value;
+    ngx_uint_t                   i;
+    ngx_table_elt_t            **h;
+    ngx_connection_t            *fc;
+    ngx_http_v2_stream_t        *stream;
+    ngx_http_v2_out_frame_t     *frame;
+    ngx_http_v2_connection_t    *h2c;
+    ngx_http_v2_push_header_t   *ph;
 
     fc = r->connection;
 
@@ -944,42 +976,70 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         return NGX_DECLINED;
     }
 
-    host = r->headers_in.host;
-
-    if (host == NULL) {
+    if (r->headers_in.host == NULL) {
         return NGX_ABORT;
     }
 
-    if (authority->len == 0) {
+    ph = ngx_http_v2_push_headers;
 
-        len = 1 + NGX_HTTP_V2_INT_OCTETS + host->value.len;
-
-        tmp = ngx_palloc(r->pool, len);
-        pos = ngx_pnalloc(r->pool, len);
-
-        if (pos == NULL || tmp == NULL) {
+    if (binary[0].len) {
+        tmp = ngx_palloc(r->pool, path->len);
+        if (tmp == NULL) {
             return NGX_ERROR;
         }
 
-        authority->data = pos;
+    } else {
+        len = path->len;
 
-        *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_AUTHORITY_INDEX);
-        pos = ngx_http_v2_write_value(pos, host->value.data, host->value.len,
-                                      tmp);
+        for (i = 0; i < NGX_HTTP_V2_PUSH_HEADERS; i++) {
+            h = (ngx_table_elt_t **) ((char *) &r->headers_in + ph[i].offset);
 
-        authority->len = pos - authority->data;
+            if (*h) {
+                len = ngx_max(len, (*h)->value.len);
+            }
+        }
+
+        tmp = ngx_palloc(r->pool, len);
+        if (tmp == NULL) {
+            return NGX_ERROR;
+        }
+
+        for (i = 0; i < NGX_HTTP_V2_PUSH_HEADERS; i++) {
+            h = (ngx_table_elt_t **) ((char *) &r->headers_in + ph[i].offset);
+
+            if (*h == NULL) {
+                continue;
+            }
+
+            value = &(*h)->value;
+
+            len = 1 + NGX_HTTP_V2_INT_OCTETS + value->len;
+
+            pos = ngx_pnalloc(r->pool, len);
+            if (pos == NULL) {
+                return NGX_ERROR;
+            }
+
+            binary[i].data = pos;
+
+            *pos++ = ngx_http_v2_inc_indexed(ph[i].index);
+            pos = ngx_http_v2_write_value(pos, value->data, value->len, tmp);
+
+            binary[i].len = pos - binary[i].data;
+        }
     }
 
     len = (h2c->table_update ? 1 : 0)
           + 1
           + 1 + NGX_HTTP_V2_INT_OCTETS + path->len
-          + authority->len
           + 1;
 
-    tmp = ngx_palloc(r->pool, len);
-    pos = ngx_pnalloc(r->pool, len);
+    for (i = 0; i < NGX_HTTP_V2_PUSH_HEADERS; i++) {
+        len += binary[i].len;
+    }
 
-    if (pos == NULL || tmp == NULL) {
+    pos = ngx_pnalloc(r->pool, len);
+    if (pos == NULL) {
         return NGX_ERROR;
     }
 
@@ -1003,11 +1063,6 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
     pos = ngx_http_v2_write_value(pos, path->data, path->len, tmp);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
-                   "http2 push header: \":authority: %V\"", &host->value);
-
-    pos = ngx_cpymem(pos, authority->data, authority->len);
-
 #if (NGX_HTTP_SSL)
     if (fc->ssl) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
@@ -1022,6 +1077,20 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         *pos++ = ngx_http_v2_indexed(NGX_HTTP_V2_SCHEME_HTTP_INDEX);
     }
 
+    for (i = 0; i < NGX_HTTP_V2_PUSH_HEADERS; i++) {
+        h = (ngx_table_elt_t **) ((char *) &r->headers_in + ph[i].offset);
+
+        if (*h == NULL) {
+            continue;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 push header: \"%V: %V\"",
+                       &ph[i].name, &(*h)->value);
+
+        pos = ngx_cpymem(pos, binary[i].data, binary[i].len);
+    }
+
     frame = ngx_http_v2_create_push_frame(r, start, pos);
     if (frame == NULL) {
         return NGX_ERROR;
@@ -1031,8 +1100,14 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
 
     stream->queued++;
 
-    return ngx_http_v2_push_stream(h2c, stream->node->id, pos - start,
-                                   path, &host->value);
+    stream = ngx_http_v2_push_stream(stream, path);
+
+    if (stream) {
+        stream->request->request_length = pos - start;
+        return NGX_OK;
+    }
+
+    return NGX_ERROR;
 }
 
 

@@ -11,6 +11,14 @@
 #include <ngx_http_v2_module.h>
 
 
+typedef struct {
+    ngx_str_t           name;
+    ngx_uint_t          offset;
+    ngx_uint_t          hash;
+    ngx_http_header_t  *hh;
+} ngx_http_v2_parse_header_t;
+
+
 /* errors */
 #define NGX_HTTP_V2_NO_ERROR                     0x0
 #define NGX_HTTP_V2_PROTOCOL_ERROR               0x1
@@ -156,6 +164,8 @@ static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
     ngx_str_t *value);
+static ngx_int_t ngx_http_v2_parse_header(ngx_http_request_t *r,
+    ngx_http_v2_parse_header_t *header, ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
@@ -199,6 +209,23 @@ static ngx_http_v2_handler_pt ngx_http_v2_frame_states[] = {
 
 #define NGX_HTTP_V2_FRAME_STATES                                              \
     (sizeof(ngx_http_v2_frame_states) / sizeof(ngx_http_v2_handler_pt))
+
+
+static ngx_http_v2_parse_header_t  ngx_http_v2_parse_headers[] = {
+    { ngx_string("host"),
+      offsetof(ngx_http_headers_in_t, host), 0, NULL },
+
+    { ngx_string("accept-encoding"),
+      offsetof(ngx_http_headers_in_t, accept_encoding), 0, NULL },
+
+    { ngx_string("accept-language"),
+      offsetof(ngx_http_headers_in_t, accept_language), 0, NULL },
+
+    { ngx_string("user-agent"),
+      offsetof(ngx_http_headers_in_t, user_agent), 0, NULL },
+
+    { ngx_null_string, 0, 0, NULL }
+};
 
 
 void
@@ -2514,21 +2541,25 @@ ngx_http_v2_parse_int(ngx_http_v2_connection_t *h2c, u_char **pos, u_char *end,
 }
 
 
-ngx_int_t
-ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
-    size_t request_length, ngx_str_t *path, ngx_str_t *authority)
+ngx_http_v2_stream_t *
+ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
 {
-    ngx_int_t              rc;
-    ngx_str_t              value;
-    ngx_connection_t      *fc;
-    ngx_http_request_t    *r;
-    ngx_http_v2_node_t    *node;
-    ngx_http_v2_stream_t  *stream;
+    ngx_int_t                     rc;
+    ngx_str_t                     value;
+    ngx_table_elt_t             **h;
+    ngx_connection_t             *fc;
+    ngx_http_request_t           *r;
+    ngx_http_v2_node_t           *node;
+    ngx_http_v2_stream_t         *stream;
+    ngx_http_v2_connection_t     *h2c;
+    ngx_http_v2_parse_header_t   *header;
+
+    h2c = parent->connection;
 
     node = ngx_http_v2_get_node_by_id(h2c, h2c->last_push, 1);
 
     if (node == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     if (node->parent) {
@@ -2538,18 +2569,16 @@ ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
 
     stream = ngx_http_v2_create_stream(h2c, 1);
     if (stream == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     stream->pool = ngx_create_pool(1024, h2c->connection->log);
     if (stream->pool == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     r = stream->request;
     fc = r->connection;
-
-    r->request_length = request_length;
 
     stream->in_closed = 1;
     stream->node = node;
@@ -2559,10 +2588,10 @@ ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 push stream sid:%ui "
                    "depends on %ui excl:0 weight:16",
-                   h2c->last_push, depend);
+                   h2c->last_push, parent->node->id);
 
     node->weight = NGX_HTTP_V2_DEFAULT_WEIGHT;
-    ngx_http_v2_set_dependency(h2c, node, depend, 0);
+    ngx_http_v2_set_dependency(h2c, node, parent->node->id, 0);
 
     r->method_name = ngx_http_core_get_method;
     r->method = NGX_HTTP_GET;
@@ -2579,25 +2608,12 @@ ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
         r->schema_end = r->schema_start + 4;
     }
 
-    value.len = authority->len;
-
-    value.data = ngx_pstrdup(stream->pool, authority);
+    value.data = ngx_pstrdup(stream->pool, path);
     if (value.data == NULL) {
-        return NGX_ERROR;
-    }
-
-    rc = ngx_http_v2_parse_authority(r, &value);
-
-    if (rc != NGX_OK) {
-        goto error;
+        return NULL;
     }
 
     value.len = path->len;
-
-    value.data = ngx_pstrdup(stream->pool, path);
-    if (value.data == NULL) {
-        return NGX_ERROR;
-    }
 
     rc = ngx_http_v2_parse_path(r, &value);
 
@@ -2605,25 +2621,51 @@ ngx_http_v2_push_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t depend,
         goto error;
     }
 
+    for (header = ngx_http_v2_parse_headers; header->name.len; header++) {
+        h = (ngx_table_elt_t **)
+                ((char *) &parent->request->headers_in + header->offset);
+
+        if (*h == NULL) {
+            continue;
+        }
+
+        value.len = (*h)->value.len;
+
+        value.data = ngx_pnalloc(stream->pool, value.len + 1);
+        if (value.data == NULL) {
+            return NULL;
+        }
+
+        ngx_memcpy(value.data, (*h)->value.data, value.len);
+        value.data[value.len] = '\0';
+
+        rc = ngx_http_v2_parse_header(r, header, &value);
+
+        if (rc != NGX_OK) {
+            goto error;
+        }
+    }
+
     fc->write->handler = ngx_http_v2_run_request_handler;
     ngx_post_event(fc->write, &ngx_posted_events);
 
-    return NGX_OK;
+    return stream;
 
 error:
 
     if (rc == NGX_ABORT) {
-        return NGX_ERROR;
+        /* header handler has already finalized request */
+        return NULL;
     }
 
     if (rc == NGX_DECLINED) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-        return NGX_ERROR;
+        return NULL;
     }
 
     (void) ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
 
-    return NGX_ERROR;
+    return NULL;
 }
 
 
@@ -3436,41 +3478,45 @@ ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 static ngx_int_t
 ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 {
-    ngx_table_elt_t            *h;
-    ngx_http_header_t          *hh;
-    ngx_http_core_main_conf_t  *cmcf;
+    return ngx_http_v2_parse_header(r, &ngx_http_v2_parse_headers[0], value);
+}
 
-    static ngx_str_t host = ngx_string("host");
+
+static ngx_int_t
+ngx_http_v2_parse_header(ngx_http_request_t *r,
+    ngx_http_v2_parse_header_t *header, ngx_str_t *value)
+{
+    ngx_table_elt_t            *h;
+    ngx_http_core_main_conf_t  *cmcf;
 
     h = ngx_list_push(&r->headers_in.headers);
     if (h == NULL) {
         return NGX_ERROR;
     }
 
-    h->hash = ngx_hash_key(host.data, host.len);
+    h->key.len = header->name.len;
+    h->key.data = header->name.data;
+    h->lowcase_key = header->name.data;
 
-    h->key.len = host.len;
-    h->key.data = host.data;
+    if (header->hh == NULL) {
+        header->hash = ngx_hash_key(header->name.data, header->name.len);
+
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+        header->hh = ngx_hash_find(&cmcf->headers_in_hash, header->hash,
+                                   h->lowcase_key, h->key.len);
+        if (header->hh == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    h->hash = header->hash;
 
     h->value.len = value->len;
     h->value.data = value->data;
 
-    h->lowcase_key = host.data;
-
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
-                       h->lowcase_key, h->key.len);
-
-    if (hh == NULL) {
-        return NGX_ERROR;
-    }
-
-    if (hh->handler(r, h, hh->offset) != NGX_OK) {
-        /*
-         * request has been finalized already
-         * in ngx_http_process_host()
-         */
+    if (header->hh->handler(r, h, header->hh->offset) != NGX_OK) {
+        /* header handler has already finalized request */
         return NGX_ABORT;
     }
 
