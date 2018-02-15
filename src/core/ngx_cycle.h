@@ -31,6 +31,7 @@ struct ngx_shm_zone_s {
     ngx_shm_t                 shm;
     ngx_shm_zone_init_pt      init;
     void                     *tag;
+    void                     *sync;
     ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
 };
 
