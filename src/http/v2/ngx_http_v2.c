@@ -3698,7 +3698,8 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    h->hash = ngx_hash_key(cookie.data, cookie.len);
+    h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
+                                    ngx_hash('c', 'o'), 'o'), 'k'), 'i'), 'e');
 
     h->key.len = cookie.len;
     h->key.data = cookie.data;
