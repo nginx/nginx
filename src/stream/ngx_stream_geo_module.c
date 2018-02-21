@@ -341,18 +341,18 @@ ngx_stream_geo_addr(ngx_stream_session_t *s, ngx_stream_geo_ctx_t *ctx,
 static char *
 ngx_stream_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    char                         *rv;
-    size_t                        len;
-    ngx_str_t                    *value, name;
-    ngx_uint_t                    i;
-    ngx_conf_t                    save;
-    ngx_pool_t                   *pool;
-    ngx_array_t                  *a;
-    ngx_stream_variable_t        *var;
-    ngx_stream_geo_ctx_t         *geo;
-    ngx_stream_geo_conf_ctx_t     ctx;
+    char                       *rv;
+    size_t                      len;
+    ngx_str_t                  *value, name;
+    ngx_uint_t                  i;
+    ngx_conf_t                  save;
+    ngx_pool_t                 *pool;
+    ngx_array_t                *a;
+    ngx_stream_variable_t      *var;
+    ngx_stream_geo_ctx_t       *geo;
+    ngx_stream_geo_conf_ctx_t   ctx;
 #if (NGX_HAVE_INET6)
-    static struct in6_addr        zero;
+    static struct in6_addr      zero;
 #endif
 
     value = cf->args->elts;
