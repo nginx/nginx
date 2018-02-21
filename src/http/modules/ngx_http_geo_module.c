@@ -461,6 +461,10 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *cf = save;
 
+    if (rv != NGX_CONF_OK) {
+        goto failed;
+    }
+
     geo->proxies = ctx.proxies;
     geo->proxy_recursive = ctx.proxy_recursive;
 
@@ -555,7 +559,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_destroy_pool(ctx.temp_pool);
     ngx_destroy_pool(pool);
 
-    return rv;
+    return NGX_CONF_OK;
 
 failed:
 
