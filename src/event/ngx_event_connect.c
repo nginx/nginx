@@ -388,7 +388,16 @@ ngx_event_connect_set_transparent(ngx_peer_connection_t *pc, ngx_socket_t s)
             return NGX_ERROR;
         }
 
+#else
+
+        ngx_log_error(NGX_LOG_ALERT, pc->log, 0,
+                      "could not enable transparent proxying for IPv6 "
+                      "on this platform");
+
+        return NGX_ERROR;
+
 #endif
+
         break;
 
 #endif /* NGX_HAVE_INET6 */
