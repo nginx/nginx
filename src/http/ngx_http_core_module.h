@@ -351,6 +351,8 @@ struct ngx_http_core_loc_conf_s {
     size_t        limit_rate_after;        /* limit_rate_after */
     size_t        sendfile_max_chunk;      /* sendfile_max_chunk */
     size_t        read_ahead;              /* read_ahead */
+    size_t        subrequest_output_buffer_size;
+                                           /* subrequest_output_buffer_size */
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
     ngx_msec_t    send_timeout;            /* send_timeout */

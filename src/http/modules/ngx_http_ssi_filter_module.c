@@ -2231,9 +2231,11 @@ ngx_http_ssi_set_variable(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
     ngx_str_t  *value = data;
 
-    if (r->upstream) {
-        value->len = r->upstream->buffer.last - r->upstream->buffer.pos;
-        value->data = r->upstream->buffer.pos;
+    if (r->headers_out.status < NGX_HTTP_SPECIAL_RESPONSE
+        && r->out && r->out->buf)
+    {
+        value->len = r->out->buf->last - r->out->buf->pos;
+        value->data = r->out->buf->pos;
     }
 
     return rc;
