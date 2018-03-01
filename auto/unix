@@ -791,6 +791,30 @@ ngx_feature_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
 . auto/feature
 
 
+ngx_feature="clock_gettime(CLOCK_MONOTONIC)"
+ngx_feature_name="NGX_HAVE_CLOCK_MONOTONIC"
+ngx_feature_run=no
+ngx_feature_incs="#include <time.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts)"
+. auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    # Linux before glibc 2.17, notably CentOS 6
+
+    ngx_feature="clock_gettime(CLOCK_MONOTONIC) in librt"
+    ngx_feature_libs="-lrt"
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -lrt"
+    fi
+fi
+
+
 ngx_feature="posix_memalign()"
 ngx_feature_name="NGX_HAVE_POSIX_MEMALIGN"
 ngx_feature_run=no
