@@ -191,11 +191,6 @@ ngx_http_postpone_filter_in_memory(ngx_http_request_t *r, ngx_chain_t *in)
                    "http postpone filter in memory");
 
     if (r->out == NULL) {
-        r->out = ngx_alloc_chain_link(r->pool);
-        if (r->out == NULL) {
-            return NGX_ERROR;
-        }
-
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
         if (r->headers_out.content_length_n != -1) {
@@ -217,6 +212,11 @@ ngx_http_postpone_filter_in_memory(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         b->last_buf = 1;
+
+        r->out = ngx_alloc_chain_link(r->pool);
+        if (r->out == NULL) {
+            return NGX_ERROR;
+        }
 
         r->out->buf = b;
         r->out->next = NULL;
