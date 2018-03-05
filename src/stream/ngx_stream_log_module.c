@@ -868,7 +868,8 @@ ngx_stream_log_json_variable(ngx_stream_session_t *s, u_char *buf,
 
 
 static size_t
-ngx_stream_log_unescaped_variable_getlen(ngx_stream_session_t *s, uintptr_t data)
+ngx_stream_log_unescaped_variable_getlen(ngx_stream_session_t *s,
+    uintptr_t data)
 {
     ngx_stream_variable_value_t  *value;
 
