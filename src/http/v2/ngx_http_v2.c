@@ -783,8 +783,8 @@ ngx_http_v2_state_head(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
                    type, h2c->state.flags, h2c->state.length, h2c->state.sid);
 
     if (type >= NGX_HTTP_V2_FRAME_STATES) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                       "http2 frame with unknown type %ui", type);
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent frame with unknown type %ui", type);
         return ngx_http_v2_state_skip(h2c, pos, end);
     }
 
