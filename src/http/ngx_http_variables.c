@@ -429,7 +429,9 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
             return NULL;
         }
 
-        v->flags &= flags | ~NGX_HTTP_VAR_WEAK;
+        if (!(flags & NGX_HTTP_VAR_WEAK)) {
+            v->flags &= ~NGX_HTTP_VAR_WEAK;
+        }
 
         return v;
     }
@@ -494,7 +496,9 @@ ngx_http_add_prefix_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
             return NULL;
         }
 
-        v->flags &= flags | ~NGX_HTTP_VAR_WEAK;
+        if (!(flags & NGX_HTTP_VAR_WEAK)) {
+            v->flags &= ~NGX_HTTP_VAR_WEAK;
+        }
 
         return v;
     }
