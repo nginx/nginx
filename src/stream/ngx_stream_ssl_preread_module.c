@@ -437,9 +437,9 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         }
 
         if (left < size) {
-           ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
-                          "ssl preread: failed to parse handshake");
-           return NGX_DECLINED;
+            ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                           "ssl preread: failed to parse handshake");
+            return NGX_DECLINED;
         }
     }
 
