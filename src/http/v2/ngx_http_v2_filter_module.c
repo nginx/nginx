@@ -136,7 +136,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     u_char                     status, *pos, *start, *p, *tmp;
     size_t                     len, tmp_len;
     ngx_str_t                  host, location;
-    ngx_uint_t                 i, port;
+    ngx_uint_t                 i, port, fin;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *fc;
@@ -643,7 +643,10 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
                                       header[i].value.len, tmp);
     }
 
-    frame = ngx_http_v2_create_headers_frame(r, start, pos, r->header_only);
+    fin = r->header_only
+          || (r->headers_out.content_length_n == 0 && !r->expect_trailers);
+
+    frame = ngx_http_v2_create_headers_frame(r, start, pos, fin);
     if (frame == NULL) {
         return NGX_ERROR;
     }
@@ -1437,7 +1440,7 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
         in = in->next;
     }
 
-    if (in == NULL) {
+    if (in == NULL || stream->out_closed) {
 
         if (stream->queued) {
             fc->write->active = 1;

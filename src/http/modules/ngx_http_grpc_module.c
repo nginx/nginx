@@ -1743,13 +1743,16 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "grpc header done");
 
-                if (ctx->end_stream
-                    && ctx->in == NULL
-                    && ctx->out == NULL
-                    && ctx->output_closed
-                    && b->last == b->pos)
-                {
-                    u->keepalive = 1;
+                if (ctx->end_stream) {
+                    u->headers_in.content_length_n = 0;
+
+                    if (ctx->in == NULL
+                        && ctx->out == NULL
+                        && ctx->output_closed
+                        && b->last == b->pos)
+                    {
+                        u->keepalive = 1;
+                    }
                 }
 
                 return NGX_OK;
