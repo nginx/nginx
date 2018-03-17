@@ -744,6 +744,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_GRPC = YES -a $HTTP_V2 = YES ]; then
+        ngx_module_name=ngx_http_grpc_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_grpc_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_GRPC
+
+        . auto/module
+    fi
+
     if [ $HTTP_PERL != NO ]; then
         ngx_module_name=ngx_http_perl_module
         ngx_module_incs=src/http/modules/perl
