@@ -2031,7 +2031,9 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
     }
 
-    u->write_event_handler = ngx_http_upstream_dummy_handler;
+    if (!u->conf->preserve_output) {
+        u->write_event_handler = ngx_http_upstream_dummy_handler;
+    }
 
     if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
@@ -2193,7 +2195,7 @@ ngx_http_upstream_send_request_handler(ngx_http_request_t *r,
 
 #endif
 
-    if (u->header_sent) {
+    if (u->header_sent && !u->conf->preserve_output) {
         u->write_event_handler = ngx_http_upstream_dummy_handler;
 
         (void) ngx_handle_write_event(c->write, 0);
