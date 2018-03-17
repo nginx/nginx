@@ -222,6 +222,7 @@ typedef struct {
     signed                           store:2;
     unsigned                         intercept_404:1;
     unsigned                         change_buffering:1;
+    unsigned                         pass_trailers:1;
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_ssl_t                       *ssl;
@@ -251,6 +252,7 @@ typedef struct {
 
 typedef struct {
     ngx_list_t                       headers;
+    ngx_list_t                       trailers;
 
     ngx_uint_t                       status_n;
     ngx_str_t                        status_line;
