@@ -1616,6 +1616,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->request_sent = 0;
     u->request_body_sent = 0;
+    u->request_body_blocked = 0;
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, u->conf->connect_timeout);
@@ -1994,7 +1995,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     if (rc == NGX_AGAIN) {
-        if (!c->write->ready) {
+        if (!c->write->ready || u->request_body_blocked) {
             ngx_add_timer(c->write, u->conf->send_timeout);
 
         } else if (c->write->timer_set) {
@@ -2071,7 +2072,16 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
             out = NULL;
         }
 
-        return ngx_output_chain(&u->output, out);
+        rc = ngx_output_chain(&u->output, out);
+
+        if (rc == NGX_AGAIN) {
+            u->request_body_blocked = 1;
+
+        } else {
+            u->request_body_blocked = 0;
+        }
+
+        return rc;
     }
 
     if (!u->request_sent) {
@@ -2110,6 +2120,13 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
                 ln = out;
                 out = out->next;
                 ngx_free_chain(r->pool, ln);
+            }
+
+            if (rc == NGX_AGAIN) {
+                u->request_body_blocked = 1;
+
+            } else {
+                u->request_body_blocked = 0;
             }
 
             if (rc == NGX_OK && !r->reading_body) {
