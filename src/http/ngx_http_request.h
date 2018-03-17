@@ -197,6 +197,7 @@ typedef struct {
     ngx_table_elt_t                  *if_range;
 
     ngx_table_elt_t                  *transfer_encoding;
+    ngx_table_elt_t                  *te;
     ngx_table_elt_t                  *expect;
     ngx_table_elt_t                  *upgrade;
 

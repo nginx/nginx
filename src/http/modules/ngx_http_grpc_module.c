@@ -176,6 +176,10 @@ static void ngx_http_grpc_abort_request(ngx_http_request_t *r);
 static void ngx_http_grpc_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
 
+static ngx_int_t ngx_http_grpc_internal_trailers_variable(
+    ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data);
+
+static ngx_int_t ngx_http_grpc_add_variables(ngx_conf_t *cf);
 static void *ngx_http_grpc_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -419,7 +423,7 @@ static ngx_command_t  ngx_http_grpc_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_grpc_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_grpc_add_variables,           /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -463,10 +467,10 @@ static u_char  ngx_http_grpc_connection_start[] =
 
 static ngx_keyval_t  ngx_http_grpc_headers[] = {
     { ngx_string("Content-Length"), ngx_string("$content_length") },
+    { ngx_string("TE"), ngx_string("$grpc_internal_trailers") },
     { ngx_string("Host"), ngx_string("") },
     { ngx_string("Connection"), ngx_string("") },
     { ngx_string("Transfer-Encoding"), ngx_string("") },
-    { ngx_string("TE"), ngx_string("") },
     { ngx_string("Keep-Alive"), ngx_string("") },
     { ngx_string("Expect"), ngx_string("") },
     { ngx_string("Upgrade"), ngx_string("") },
@@ -483,6 +487,16 @@ static ngx_str_t  ngx_http_grpc_hide_headers[] = {
     ngx_string("X-Accel-Buffering"),
     ngx_string("X-Accel-Charset"),
     ngx_null_string
+};
+
+
+static ngx_http_variable_t  ngx_http_grpc_vars[] = {
+
+    { ngx_string("grpc_internal_trailers"), NULL,
+      ngx_http_grpc_internal_trailers_variable, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
+
+      ngx_http_null_variable
 };
 
 
@@ -3993,6 +4007,57 @@ ngx_http_grpc_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize grpc request");
     return;
+}
+
+
+static ngx_int_t
+ngx_http_grpc_internal_trailers_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_table_elt_t  *te;
+
+    te = r->headers_in.te;
+
+    if (te == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    if (ngx_strlcasestrn(te->value.data, te->value.data + te->value.len,
+                         (u_char *) "trailers", 8 - 1)
+        == NULL)
+    {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = (u_char *) "trailers";
+    v->len = sizeof("trailers") - 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_grpc_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t  *var, *v;
+
+    for (v = ngx_http_grpc_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
 }
 
 
