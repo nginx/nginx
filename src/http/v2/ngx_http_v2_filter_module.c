@@ -23,43 +23,6 @@
 #define ngx_http_v2_literal_size(h)                                           \
     (ngx_http_v2_integer_octets(sizeof(h) - 1) + sizeof(h) - 1)
 
-#define ngx_http_v2_indexed(i)      (128 + (i))
-#define ngx_http_v2_inc_indexed(i)  (64 + (i))
-
-#define ngx_http_v2_write_name(dst, src, len, tmp)                            \
-    ngx_http_v2_string_encode(dst, src, len, tmp, 1)
-#define ngx_http_v2_write_value(dst, src, len, tmp)                           \
-    ngx_http_v2_string_encode(dst, src, len, tmp, 0)
-
-#define NGX_HTTP_V2_ENCODE_RAW            0
-#define NGX_HTTP_V2_ENCODE_HUFF           0x80
-
-#define NGX_HTTP_V2_AUTHORITY_INDEX       1
-#define NGX_HTTP_V2_METHOD_GET_INDEX      2
-#define NGX_HTTP_V2_PATH_INDEX            4
-
-#define NGX_HTTP_V2_SCHEME_HTTP_INDEX     6
-#define NGX_HTTP_V2_SCHEME_HTTPS_INDEX    7
-
-#define NGX_HTTP_V2_STATUS_INDEX          8
-#define NGX_HTTP_V2_STATUS_200_INDEX      8
-#define NGX_HTTP_V2_STATUS_204_INDEX      9
-#define NGX_HTTP_V2_STATUS_206_INDEX      10
-#define NGX_HTTP_V2_STATUS_304_INDEX      11
-#define NGX_HTTP_V2_STATUS_400_INDEX      12
-#define NGX_HTTP_V2_STATUS_404_INDEX      13
-#define NGX_HTTP_V2_STATUS_500_INDEX      14
-
-#define NGX_HTTP_V2_ACCEPT_ENCODING_INDEX 16
-#define NGX_HTTP_V2_ACCEPT_LANGUAGE_INDEX 17
-#define NGX_HTTP_V2_CONTENT_LENGTH_INDEX  28
-#define NGX_HTTP_V2_CONTENT_TYPE_INDEX    31
-#define NGX_HTTP_V2_DATE_INDEX            33
-#define NGX_HTTP_V2_LAST_MODIFIED_INDEX   44
-#define NGX_HTTP_V2_LOCATION_INDEX        46
-#define NGX_HTTP_V2_SERVER_INDEX          54
-#define NGX_HTTP_V2_USER_AGENT_INDEX      58
-#define NGX_HTTP_V2_VARY_INDEX            59
 
 #define NGX_HTTP_V2_NO_TRAILERS           (ngx_http_v2_out_frame_t *) -1
 
@@ -93,10 +56,6 @@ static ngx_int_t ngx_http_v2_push_resources(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_push_resource(ngx_http_request_t *r,
     ngx_str_t *path, ngx_str_t *binary);
 
-static u_char *ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len,
-    u_char *tmp, ngx_uint_t lower);
-static u_char *ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix,
-    ngx_uint_t value);
 static ngx_http_v2_out_frame_t *ngx_http_v2_create_headers_frame(
     ngx_http_request_t *r, u_char *pos, u_char *end, ngx_uint_t fin);
 static ngx_http_v2_out_frame_t *ngx_http_v2_create_push_frame(
@@ -1108,54 +1067,6 @@ ngx_http_v2_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     }
 
     return NGX_ERROR;
-}
-
-
-static u_char *
-ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len, u_char *tmp,
-    ngx_uint_t lower)
-{
-    size_t  hlen;
-
-    hlen = ngx_http_v2_huff_encode(src, len, tmp, lower);
-
-    if (hlen > 0) {
-        *dst = NGX_HTTP_V2_ENCODE_HUFF;
-        dst = ngx_http_v2_write_int(dst, ngx_http_v2_prefix(7), hlen);
-        return ngx_cpymem(dst, tmp, hlen);
-    }
-
-    *dst = NGX_HTTP_V2_ENCODE_RAW;
-    dst = ngx_http_v2_write_int(dst, ngx_http_v2_prefix(7), len);
-
-    if (lower) {
-        ngx_strlow(dst, src, len);
-        return dst + len;
-    }
-
-    return ngx_cpymem(dst, src, len);
-}
-
-
-static u_char *
-ngx_http_v2_write_int(u_char *pos, ngx_uint_t prefix, ngx_uint_t value)
-{
-    if (value < prefix) {
-        *pos++ |= value;
-        return pos;
-    }
-
-    *pos++ |= prefix;
-    value -= prefix;
-
-    while (value >= 128) {
-        *pos++ = value % 128 + 128;
-        value /= 128;
-    }
-
-    *pos++ = (u_char) value;
-
-    return pos;
 }
 
 

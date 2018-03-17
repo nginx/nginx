@@ -54,8 +54,6 @@ typedef struct {
 
 #define NGX_HTTP_V2_FRAME_BUFFER_SIZE            24
 
-#define NGX_HTTP_V2_DEFAULT_FRAME_SIZE           (1 << 14)
-
 #define NGX_HTTP_V2_ROOT                         (void *) -1
 
 
