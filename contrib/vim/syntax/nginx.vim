@@ -241,6 +241,32 @@ syn keyword ngxDirective contained geoip_org
 syn keyword ngxDirective contained geoip_proxy
 syn keyword ngxDirective contained geoip_proxy_recursive
 syn keyword ngxDirective contained google_perftools_profiles
+syn keyword ngxDirective contained grpc_bind
+syn keyword ngxDirective contained grpc_buffer_size
+syn keyword ngxDirective contained grpc_connect_timeout
+syn keyword ngxDirective contained grpc_hide_header
+syn keyword ngxDirective contained grpc_ignore_headers
+syn keyword ngxDirective contained grpc_intercept_errors
+syn keyword ngxDirective contained grpc_next_upstream
+syn keyword ngxDirective contained grpc_next_upstream_timeout
+syn keyword ngxDirective contained grpc_next_upstream_tries
+syn keyword ngxDirective contained grpc_pass
+syn keyword ngxDirective contained grpc_pass_header
+syn keyword ngxDirective contained grpc_read_timeout
+syn keyword ngxDirective contained grpc_send_timeout
+syn keyword ngxDirective contained grpc_set_header
+syn keyword ngxDirective contained grpc_ssl_certificate
+syn keyword ngxDirective contained grpc_ssl_certificate_key
+syn keyword ngxDirective contained grpc_ssl_ciphers
+syn keyword ngxDirective contained grpc_ssl_crl
+syn keyword ngxDirective contained grpc_ssl_name
+syn keyword ngxDirective contained grpc_ssl_password_file
+syn keyword ngxDirective contained grpc_ssl_protocols
+syn keyword ngxDirective contained grpc_ssl_server_name
+syn keyword ngxDirective contained grpc_ssl_session_reuse
+syn keyword ngxDirective contained grpc_ssl_trusted_certificate
+syn keyword ngxDirective contained grpc_ssl_verify
+syn keyword ngxDirective contained grpc_ssl_verify_depth
 syn keyword ngxDirective contained gunzip
 syn keyword ngxDirective contained gunzip_buffers
 syn keyword ngxDirective contained gzip
@@ -268,11 +294,14 @@ syn keyword ngxDirective contained hls_mp4_max_buffer_size
 syn keyword ngxDirective contained http2_body_preread_size
 syn keyword ngxDirective contained http2_chunk_size
 syn keyword ngxDirective contained http2_idle_timeout
+syn keyword ngxDirective contained http2_max_concurrent_pushes
 syn keyword ngxDirective contained http2_max_concurrent_streams
 syn keyword ngxDirective contained http2_max_field_size
 syn keyword ngxDirective contained http2_max_header_size
 syn keyword ngxDirective contained http2_max_requests
 syn keyword ngxDirective contained http2_pool_size
+syn keyword ngxDirective contained http2_push
+syn keyword ngxDirective contained http2_push_preload
 syn keyword ngxDirective contained http2_recv_buffer_size
 syn keyword ngxDirective contained http2_recv_timeout
 syn keyword ngxDirective contained http2_streams_index_size
@@ -574,6 +603,7 @@ syn keyword ngxDirective contained sub_filter
 syn keyword ngxDirective contained sub_filter_last_modified
 syn keyword ngxDirective contained sub_filter_once
 syn keyword ngxDirective contained sub_filter_types
+syn keyword ngxDirective contained subrequest_output_buffer_size
 syn keyword ngxDirective contained tcp_nodelay
 syn keyword ngxDirective contained tcp_nopush
 syn keyword ngxDirective contained thread_pool
@@ -1323,11 +1353,8 @@ syn keyword ngxDirectiveThirdParty contained rules_enabled
 
 " Phusion Passenger
 " https://www.phusionpassenger.com/library/config/nginx/reference/
-syn keyword ngxDirectiveThirdParty contained disable_security_update_check
 syn keyword ngxDirectiveThirdParty contained passenger_abort_on_startup_error
 syn keyword ngxDirectiveThirdParty contained passenger_abort_websockets_on_process_shutdown
-syn keyword ngxDirectiveThirdParty contained passenger_analytics_log_group
-syn keyword ngxDirectiveThirdParty contained passenger_analytics_log_user
 syn keyword ngxDirectiveThirdParty contained passenger_app_env
 syn keyword ngxDirectiveThirdParty contained passenger_app_file_descriptor_ulimit
 syn keyword ngxDirectiveThirdParty contained passenger_app_group_name
@@ -1369,6 +1396,7 @@ syn keyword ngxDirectiveThirdParty contained passenger_max_instances_per_app
 syn keyword ngxDirectiveThirdParty contained passenger_max_pool_size
 syn keyword ngxDirectiveThirdParty contained passenger_max_preloader_idle_time
 syn keyword ngxDirectiveThirdParty contained passenger_max_request_queue_size
+syn keyword ngxDirectiveThirdParty contained passenger_max_request_queue_time
 syn keyword ngxDirectiveThirdParty contained passenger_max_request_time
 syn keyword ngxDirectiveThirdParty contained passenger_max_requests
 syn keyword ngxDirectiveThirdParty contained passenger_memory_limit
@@ -1402,21 +1430,22 @@ syn keyword ngxDirectiveThirdParty contained passenger_turbocaching
 syn keyword ngxDirectiveThirdParty contained passenger_user
 syn keyword ngxDirectiveThirdParty contained passenger_user_switching
 syn keyword ngxDirectiveThirdParty contained passenger_vary_turbocache_by_cookie
-syn keyword ngxDirectiveThirdParty contained rack_env
-syn keyword ngxDirectiveThirdParty contained rails_app_spawner_idle_time
-syn keyword ngxDirectiveThirdParty contained rails_env
-syn keyword ngxDirectiveThirdParty contained security_update_check_proxy
-syn keyword ngxDirectiveThirdParty contained union_station_filter
-syn keyword ngxDirectiveThirdParty contained union_station_gateway_address
-syn keyword ngxDirectiveThirdParty contained union_station_gateway_cert
-syn keyword ngxDirectiveThirdParty contained union_station_gateway_port
-syn keyword ngxDirectiveThirdParty contained union_station_key
-syn keyword ngxDirectiveThirdParty contained union_station_proxy_address
-syn keyword ngxDirectiveThirdParty contained union_station_support
+syn keyword ngxDirectiveThirdPartyDeprecated contained passenger_analytics_log_group
+syn keyword ngxDirectiveThirdPartyDeprecated contained passenger_analytics_log_user
 syn keyword ngxDirectiveThirdPartyDeprecated contained passenger_debug_log_file
 syn keyword ngxDirectiveThirdPartyDeprecated contained passenger_use_global_queue
+syn keyword ngxDirectiveThirdPartyDeprecated contained rack_env
+syn keyword ngxDirectiveThirdPartyDeprecated contained rails_app_spawner_idle_time
+syn keyword ngxDirectiveThirdPartyDeprecated contained rails_env
 syn keyword ngxDirectiveThirdPartyDeprecated contained rails_framework_spawner_idle_time
 syn keyword ngxDirectiveThirdPartyDeprecated contained rails_spawn_method
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_filter
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_gateway_address
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_gateway_cert
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_gateway_port
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_key
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_proxy_address
+syn keyword ngxDirectiveThirdPartyDeprecated contained union_station_support
 
 " ngx_postgres is an upstream module that allows nginx to communicate directly with PostgreSQL database
 " https://github.com/FRiCKLE/ngx_postgres
@@ -2028,6 +2057,7 @@ syn keyword ngxDirectiveThirdParty contained sass_source_map_embed
 syn keyword ngxDirectiveThirdParty contained selective_cache_purge_query
 syn keyword ngxDirectiveThirdParty contained selective_cache_purge_redis_database
 syn keyword ngxDirectiveThirdParty contained selective_cache_purge_redis_host
+syn keyword ngxDirectiveThirdParty contained selective_cache_purge_redis_password
 syn keyword ngxDirectiveThirdParty contained selective_cache_purge_redis_port
 syn keyword ngxDirectiveThirdParty contained selective_cache_purge_redis_unix_socket
 
