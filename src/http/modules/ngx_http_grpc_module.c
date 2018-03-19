@@ -2953,7 +2953,7 @@ ngx_http_grpc_parse_fragment(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
                 ctx->name.data[ctx->name.len] = '\0';
 
             } else {
-                ngx_memcpy(ctx->field_end, p, size);
+                ctx->field_end = ngx_cpymem(ctx->field_end, p, size);
                 ctx->name.data[ctx->name.len] = '\0';
             }
 
@@ -3062,7 +3062,7 @@ ngx_http_grpc_parse_fragment(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
                 ctx->value.data[ctx->value.len] = '\0';
 
             } else {
-                ngx_memcpy(ctx->field_end, p, size);
+                ctx->field_end = ngx_cpymem(ctx->field_end, p, size);
                 ctx->value.data[ctx->value.len] = '\0';
             }
 
