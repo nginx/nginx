@@ -1169,9 +1169,9 @@ ngx_http_v2_create_headers_frame(ngx_http_request_t *r, u_char *pos,
         cl->next = NULL;
         frame->last = cl;
 
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http2:%ui create HEADERS frame %p: len:%uz",
-                       stream->node->id, frame, frame->length);
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http2:%ui create HEADERS frame %p: len:%uz fin:%ui",
+                       stream->node->id, frame, frame->length, fin);
 
         return frame;
     }
