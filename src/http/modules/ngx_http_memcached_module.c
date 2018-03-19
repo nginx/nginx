@@ -592,8 +592,6 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.bufs.num = 0;
      *     conf->upstream.next_upstream = 0;
      *     conf->upstream.temp_path = NULL;
-     *     conf->upstream.uri = { 0, NULL };
-     *     conf->upstream.location = NULL;
      */
 
     conf->upstream.local = NGX_CONF_UNSET_PTR;
