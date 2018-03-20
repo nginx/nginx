@@ -2410,6 +2410,7 @@ ngx_http_grpc_parse_header(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
         }
 
         ctx->padding = 0;
+        ctx->frame_state = state;
     }
 
     if (state < sw_fragment) {
