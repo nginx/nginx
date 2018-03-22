@@ -51,7 +51,7 @@ END
 $OPENSSL/.openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
 	cd $OPENSSL \\
 	&& if [ -f Makefile ]; then \$(MAKE) clean; fi \\
-	&& ./config --prefix=$ngx_prefix no-shared $OPENSSL_OPT \\
+	&& ./config --prefix=$ngx_prefix no-shared no-threads $OPENSSL_OPT \\
 	&& \$(MAKE) \\
 	&& \$(MAKE) install_sw LIBDIR=lib
 
