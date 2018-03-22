@@ -901,6 +901,7 @@ if [ $ngx_found = no ]; then
 
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS -lpthread"
+        NGX_LIBPTHREAD="-lpthread"
     fi
 fi
 
