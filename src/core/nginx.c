@@ -985,8 +985,8 @@ ngx_process_options(ngx_cycle_t *cycle)
          p--)
     {
         if (ngx_path_separator(*p)) {
-            cycle->conf_prefix.len = p - ngx_cycle->conf_file.data + 1;
-            cycle->conf_prefix.data = ngx_cycle->conf_file.data;
+            cycle->conf_prefix.len = p - cycle->conf_file.data + 1;
+            cycle->conf_prefix.data = cycle->conf_file.data;
             break;
         }
     }
