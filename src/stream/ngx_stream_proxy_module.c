@@ -801,8 +801,6 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
                        NGX_STREAM_UPSTREAM_NOTIFY_CONNECT);
     }
 
-    c->log->action = "proxying connection";
-
     if (u->upstream_buf.start == NULL) {
         p = ngx_pnalloc(c->pool, pscf->buffer_size);
         if (p == NULL) {
@@ -1449,6 +1447,7 @@ static void
 ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     ngx_uint_t do_write)
 {
+    char                         *recv_action, *send_action;
     off_t                        *received, limit;
     size_t                        size, limit_rate;
     ssize_t                       n;
@@ -1492,6 +1491,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         received = &u->received;
         out = &u->downstream_out;
         busy = &u->downstream_busy;
+        recv_action = "proxying and reading from upstream";
+        send_action = "proxying and sending to client";
 
     } else {
         src = c;
@@ -1501,6 +1502,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         received = &s->received;
         out = &u->upstream_out;
         busy = &u->upstream_busy;
+        recv_action = "proxying and reading from client";
+        send_action = "proxying and sending to upstream";
     }
 
     for ( ;; ) {
@@ -1508,6 +1511,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         if (do_write && dst) {
 
             if (*out || *busy || dst->buffered) {
+                c->log->action = send_action;
+
                 rc = ngx_stream_top_filter(s, *out, from_upstream);
 
                 if (rc == NGX_ERROR) {
@@ -1550,6 +1555,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     size = (size_t) limit;
                 }
             }
+
+            c->log->action = recv_action;
 
             n = src->recv(src, b->last, size);
 
@@ -1619,6 +1626,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
         break;
     }
+
+    c->log->action = "proxying connection";
 
     if (src->read->eof && dst && (dst->read->eof || !dst->buffered)) {
         handler = c->log->handler;
