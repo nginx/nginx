@@ -18,15 +18,13 @@
 #define NGX_PP_V2_AF_INET6       2
 
 
-#define ngx_pp_v2_get_u16(p)                                                  \
-    ( ((uint16_t) ((u_char *) (p))[0] << 8)                                   \
-    + (           ((u_char *) (p))[1]) )
+#define ngx_pp_v2_get_u16(p)     ((p)[0] << 8 | (p)[1])
 
 
 typedef struct {
     u_char                       signature[NGX_PP_V2_SIGLEN];
     u_char                       ver_cmd;
-    u_char                       fam_transp;
+    u_char                       family_transport;
     u_char                       len[2];
 } ngx_pp_v2_header_t;
 
@@ -57,7 +55,7 @@ static u_char *ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 
 static const u_char ngx_pp_v2_signature[NGX_PP_V2_SIGLEN] =
-    { 0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A };
+    { 0x0d, 0x0a, 0x0d, 0x0a, 0x00, 0x0d, 0x0a, 0x51, 0x55, 0x49, 0x54, 0x0a };
 
 
 u_char *
@@ -162,7 +160,8 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
     c->proxy_protocol_port = (in_port_t) n;
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol address: %V %i", &c->proxy_protocol_addr, n);
+                   "PROXY protocol address: %V %d", &c->proxy_protocol_addr,
+                   c->proxy_protocol_port);
 
 skip:
 
@@ -258,15 +257,15 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
     end = buf + len;
 
-    cmd = hdr->ver_cmd & 0x0F;
+    cmd = hdr->ver_cmd & 0x0f;
 
     if (cmd != NGX_PP_V2_CMD_PROXY) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
-                       "PROXY protocol v2 unsupported cmd 0x%xi", cmd);
+                       "PROXY protocol v2 unsupported command 0x%xi", cmd);
         return end;
     }
 
-    transport = hdr->fam_transp & 0x0F;
+    transport = hdr->family_transport & 0x0f;
 
     if (transport != NGX_PP_V2_STREAM) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
@@ -275,7 +274,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         return end;
     }
 
-    family = hdr->fam_transp >> 4;
+    family = hdr->family_transport >> 4;
 
     addrs = (ngx_pp_v2_addrs_t *) buf;
 
@@ -308,7 +307,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case NGX_PP_V2_AF_INET6:
 
-        if ((size_t) (end - buf) <  sizeof(ngx_pp_v2_inet6_addrs_t)) {
+        if ((size_t) (end - buf) < sizeof(ngx_pp_v2_inet6_addrs_t)) {
             return NULL;
         }
 
@@ -329,8 +328,8 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     default:
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
-                       "PROXY_protocol v2 unsupported address family "
-                       "0x%xi", family);
+                       "PROXY protocol v2 unsupported address family 0x%xi",
+                       family);
         return end;
     }
 
@@ -348,8 +347,8 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol v2 address: %V %i", name,
-                   (ngx_int_t) c->proxy_protocol_port);
+                   "PROXY protocol v2 address: %V %d", name,
+                   c->proxy_protocol_port);
 
     if (buf < end) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
