@@ -25,18 +25,18 @@ typedef struct {
 
 
 typedef struct {
-    u_char                                  s_addr[4];
-    u_char                                  d_addr[4];
-    u_char                                  s_port[2];
-    u_char                                  d_port[2];
+    u_char                                  src_addr[4];
+    u_char                                  dst_addr[4];
+    u_char                                  src_port[2];
+    u_char                                  dst_port[2];
 } ngx_proxy_protocol_inet_addrs_t;
 
 
 typedef struct {
-    u_char                                  s_addr[16];
-    u_char                                  d_addr[16];
-    u_char                                  s_port[2];
-    u_char                                  d_port[2];
+    u_char                                  src_addr[16];
+    u_char                                  dst_addr[16];
+    u_char                                  src_port[2];
+    u_char                                  dst_port[2];
 } ngx_proxy_protocol_inet6_addrs_t;
 
 
@@ -221,9 +221,9 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     ngx_uint_t                          version, command, family, transport;
     ngx_sockaddr_t                      sockaddr;
     ngx_proxy_protocol_header_t        *header;
-    ngx_proxy_protocol_inet_addrs_t    *inet;
+    ngx_proxy_protocol_inet_addrs_t    *in;
 #if (NGX_HAVE_INET6)
-    ngx_proxy_protocol_inet6_addrs_t   *inet6;
+    ngx_proxy_protocol_inet6_addrs_t   *in6;
 #endif
 
     header = (ngx_proxy_protocol_header_t *) buf;
@@ -276,13 +276,13 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
             return NULL;
         }
 
-        inet = (ngx_proxy_protocol_inet_addrs_t *) buf;
+        in = (ngx_proxy_protocol_inet_addrs_t *) buf;
 
         sockaddr.sockaddr_in.sin_family = AF_INET;
         sockaddr.sockaddr_in.sin_port = 0;
-        memcpy(&sockaddr.sockaddr_in.sin_addr, inet->s_addr, 4);
+        memcpy(&sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
 
-        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(inet->s_port);
+        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(in->src_port);
 
         socklen = sizeof(struct sockaddr_in);
 
@@ -298,13 +298,13 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
             return NULL;
         }
 
-        inet6 = (ngx_proxy_protocol_inet6_addrs_t *) buf;
+        in6 = (ngx_proxy_protocol_inet6_addrs_t *) buf;
 
         sockaddr.sockaddr_in6.sin6_family = AF_INET6;
         sockaddr.sockaddr_in6.sin6_port = 0;
-        memcpy(&sockaddr.sockaddr_in6.sin6_addr, inet6->s_addr, 16);
+        memcpy(&sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
 
-        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(inet6->s_port);
+        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
 
         socklen = sizeof(struct sockaddr_in6);
 
