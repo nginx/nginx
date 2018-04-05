@@ -2013,8 +2013,6 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     /* rc == NGX_OK */
 
-    u->request_body_sent = 1;
-
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
@@ -2041,11 +2039,19 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return;
     }
 
-    ngx_add_timer(c->read, u->conf->read_timeout);
+    if (!u->request_body_sent) {
+        u->request_body_sent = 1;
 
-    if (c->read->ready) {
-        ngx_http_upstream_process_header(r, u);
-        return;
+        if (u->header_sent) {
+            return;
+        }
+
+        ngx_add_timer(c->read, u->conf->read_timeout);
+
+        if (c->read->ready) {
+            ngx_http_upstream_process_header(r, u);
+            return;
+        }
     }
 }
 
