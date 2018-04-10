@@ -262,7 +262,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 break;
 
             } else if (p->cacheable
-                       || p->temp_file->offset < p->max_temp_file_size)
+                       && p->temp_file->offset < p->max_temp_file_size)
             {
 
                 /*
