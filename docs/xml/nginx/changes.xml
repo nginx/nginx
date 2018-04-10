@@ -5,6 +5,22 @@
 <change_log title="nginx">
 
 
+<changes ver="1.13.12" date="2018-04-10">
+
+<change type="bugfix">
+<para lang="ru">
+при возврате большого ответа
+соединения с gRPC-бэкендами могли неожиданно закрываться.
+</para>
+<para lang="en">
+connections with gRPC backends might be closed unexpectedly
+when returning a large response.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.11" date="2018-04-03">
 
 <change type="feature">
