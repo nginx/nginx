@@ -350,10 +350,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_certificate_key\" is defined "
                           "for certificate \"%V\" and "
-                          "the \"ssl\" directive in %s:%ui",
+                          "the \"%s\" directive in %s:%ui",
                           ((ngx_str_t *) conf->certificates->elts)
                           + conf->certificates->nelts - 1,
-                          conf->file, conf->line);
+                          mode, conf->file, conf->line);
             return NGX_CONF_ERROR;
         }
 
