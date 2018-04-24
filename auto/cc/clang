@@ -6,7 +6,8 @@
 
 
 NGX_CLANG_VER=`$CC -v 2>&1 | grep 'version' 2>&1 \
-                           | sed -e 's/^.* version \(.*\)/\1/'`
+                           | sed -n -e 's/^.*clang version \(.*\)/\1/p' \
+                                    -e 's/^.*LLVM version \(.*\)/\1/p'`
 
 echo " + clang version: $NGX_CLANG_VER"
 
