@@ -336,19 +336,8 @@ ngx_http_init_connection(ngx_connection_t *c)
     sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
     if (sscf->enable || hc->addr_conf->ssl) {
-
-        c->log->action = "SSL handshaking";
-
-        if (hc->addr_conf->ssl && sscf->ssl.ctx == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no \"ssl_certificate\" is defined "
-                          "in server listening on SSL port");
-            ngx_http_close_connection(c);
-            return;
-        }
-
         hc->ssl = 1;
-
+        c->log->action = "SSL handshaking";
         rev->handler = ngx_http_ssl_handshake;
     }
     }

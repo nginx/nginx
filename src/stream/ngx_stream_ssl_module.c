@@ -304,13 +304,6 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
     if (c->ssl == NULL) {
         c->log->action = "SSL handshaking";
 
-        if (sslcf->ssl.ctx == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no \"ssl_certificate\" is defined "
-                          "in server listening on SSL port");
-            return NGX_ERROR;
-        }
-
         rv = ngx_stream_ssl_init_connection(&sslcf->ssl, c);
 
         if (rv != NGX_OK) {
@@ -510,6 +503,7 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
+     *     scf->listen = 0;
      *     scf->protocols = 0;
      *     scf->dhparam = { 0, NULL };
      *     scf->ecdh_curve = { 0, NULL };
@@ -582,18 +576,34 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     conf->ssl.log = cf->log;
 
-    if (conf->certificates == NULL) {
+    if (!conf->listen) {
         return NGX_CONF_OK;
     }
 
-    if (conf->certificate_keys == NULL
-        || conf->certificate_keys->nelts < conf->certificates->nelts)
-    {
+    if (conf->certificates == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"ssl_certificate\" is defined for "
+                      "the \"listen ... ssl\" directive in %s:%ui",
+                      conf->file, conf->line);
+        return NGX_CONF_ERROR;
+    }
+
+    if (conf->certificate_keys == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"ssl_certificate_key\" is defined for "
+                      "the \"listen ... ssl\" directive in %s:%ui",
+                      conf->file, conf->line);
+        return NGX_CONF_ERROR;
+    }
+
+    if (conf->certificate_keys->nelts < conf->certificates->nelts) {
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "no \"ssl_certificate_key\" is defined "
-                      "for certificate \"%V\"",
+                      "for certificate \"%V\" and "
+                      "the \"listen ... ssl\" directive in %s:%ui",
                       ((ngx_str_t *) conf->certificates->elts)
-                      + conf->certificates->nelts - 1);
+                      + conf->certificates->nelts - 1,
+                      conf->file, conf->line);
         return NGX_CONF_ERROR;
     }
 

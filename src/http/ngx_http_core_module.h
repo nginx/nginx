@@ -184,6 +184,9 @@ typedef struct {
     /* server ctx */
     ngx_http_conf_ctx_t        *ctx;
 
+    u_char                     *file_name;
+    ngx_uint_t                  line;
+
     ngx_str_t                   server_name;
 
     size_t                      connection_pool_size;

@@ -165,24 +165,8 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
     sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
-    if (sslcf->enable) {
+    if (sslcf->enable || addr_conf->ssl) {
         c->log->action = "SSL handshaking";
-
-        ngx_mail_ssl_init_connection(&sslcf->ssl, c);
-        return;
-    }
-
-    if (addr_conf->ssl) {
-
-        c->log->action = "SSL handshaking";
-
-        if (sslcf->ssl.ctx == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no \"ssl_certificate\" is defined "
-                          "in server listening on SSL port");
-            ngx_mail_close_connection(c);
-            return;
-        }
 
         ngx_mail_ssl_init_connection(&sslcf->ssl, c);
         return;

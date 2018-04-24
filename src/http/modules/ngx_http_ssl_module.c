@@ -966,10 +966,12 @@ invalid:
 static ngx_int_t
 ngx_http_ssl_init(ngx_conf_t *cf)
 {
-    ngx_uint_t                   s;
+    ngx_uint_t                   a, p, s;
+    ngx_http_conf_addr_t        *addr;
+    ngx_http_conf_port_t        *port;
     ngx_http_ssl_srv_conf_t     *sscf;
     ngx_http_core_loc_conf_t    *clcf;
-    ngx_http_core_srv_conf_t   **cscfp;
+    ngx_http_core_srv_conf_t   **cscfp, *cscf;
     ngx_http_core_main_conf_t   *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
@@ -990,6 +992,33 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             != NGX_OK)
         {
             return NGX_ERROR;
+        }
+    }
+
+    if (cmcf->ports == NULL) {
+        return NGX_OK;
+    }
+
+    port = cmcf->ports->elts;
+    for (p = 0; p < cmcf->ports->nelts; p++) {
+
+        addr = port[p].addrs.elts;
+        for (a = 0; a < port[p].addrs.nelts; a++) {
+
+            if (!addr[a].opt.ssl) {
+                continue;
+            }
+
+            cscf = addr[a].default_server;
+            sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+
+            if (sscf->certificates == NULL) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "no \"ssl_certificate\" is defined for "
+                              "the \"listen ... ssl\" directive in %s:%ui",
+                              cscf->file_name, cscf->line);
+                return NGX_ERROR;
+            }
         }
     }
 

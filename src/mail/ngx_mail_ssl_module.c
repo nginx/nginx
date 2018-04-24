@@ -238,6 +238,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
+     *     scf->listen = 0;
      *     scf->protocols = 0;
      *     scf->dhparam = { 0, NULL };
      *     scf->ecdh_curve = { 0, NULL };
@@ -313,14 +314,17 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     conf->ssl.log = cf->log;
 
-    if (conf->enable) {
+    if (conf->listen) {
+        mode = "listen ... ssl";
+
+    } else if (conf->enable) {
         mode = "ssl";
 
     } else if (conf->starttls != NGX_MAIL_STARTTLS_OFF) {
         mode = "starttls";
 
     } else {
-        mode = "";
+        return NGX_CONF_OK;
     }
 
     if (conf->file == NULL) {
@@ -328,51 +332,31 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->line = prev->line;
     }
 
-    if (*mode) {
+    if (conf->certificates == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"ssl_certificate\" is defined for "
+                      "the \"%s\" directive in %s:%ui",
+                      mode, conf->file, conf->line);
+        return NGX_CONF_ERROR;
+    }
 
-        if (conf->certificates == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate\" is defined for "
-                          "the \"%s\" directive in %s:%ui",
-                          mode, conf->file, conf->line);
-            return NGX_CONF_ERROR;
-        }
+    if (conf->certificate_keys == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"ssl_certificate_key\" is defined for "
+                      "the \"%s\" directive in %s:%ui",
+                      mode, conf->file, conf->line);
+        return NGX_CONF_ERROR;
+    }
 
-        if (conf->certificate_keys == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate_key\" is defined for "
-                          "the \"%s\" directive in %s:%ui",
-                          mode, conf->file, conf->line);
-            return NGX_CONF_ERROR;
-        }
-
-        if (conf->certificate_keys->nelts < conf->certificates->nelts) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate_key\" is defined "
-                          "for certificate \"%V\" and "
-                          "the \"%s\" directive in %s:%ui",
-                          ((ngx_str_t *) conf->certificates->elts)
-                          + conf->certificates->nelts - 1,
-                          mode, conf->file, conf->line);
-            return NGX_CONF_ERROR;
-        }
-
-    } else {
-
-        if (conf->certificates == NULL) {
-            return NGX_CONF_OK;
-        }
-
-        if (conf->certificate_keys == NULL
-            || conf->certificate_keys->nelts < conf->certificates->nelts)
-        {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate_key\" is defined "
-                          "for certificate \"%V\"",
-                          ((ngx_str_t *) conf->certificates->elts)
-                          + conf->certificates->nelts - 1);
-            return NGX_CONF_ERROR;
-        }
+    if (conf->certificate_keys->nelts < conf->certificates->nelts) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no \"ssl_certificate_key\" is defined "
+                      "for certificate \"%V\" and "
+                      "the \"%s\" directive in %s:%ui",
+                      ((ngx_str_t *) conf->certificates->elts)
+                      + conf->certificates->nelts - 1,
+                      mode, conf->file, conf->line);
+        return NGX_CONF_ERROR;
     }
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, NULL) != NGX_OK) {
@@ -494,8 +478,10 @@ ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    scf->file = cf->conf_file->file.name.data;
-    scf->line = cf->conf_file->line;
+    if (!scf->listen) {
+        scf->file = cf->conf_file->file.name.data;
+        scf->line = cf->conf_file->line;
+    }
 
     return NGX_CONF_OK;
 }
@@ -520,8 +506,10 @@ ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    scf->file = cf->conf_file->file.name.data;
-    scf->line = cf->conf_file->line;
+    if (!scf->listen) {
+        scf->file = cf->conf_file->file.name.data;
+        scf->line = cf->conf_file->line;
+    }
 
     return NGX_CONF_OK;
 }
