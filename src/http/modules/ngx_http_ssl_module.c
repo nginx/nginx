@@ -71,6 +71,11 @@ static ngx_conf_enum_t  ngx_http_ssl_verify[] = {
 };
 
 
+static ngx_conf_deprecated_t  ngx_http_ssl_deprecated = {
+    ngx_conf_deprecated, "ssl", "listen ... ssl"
+};
+
+
 static ngx_command_t  ngx_http_ssl_commands[] = {
 
     { ngx_string("ssl"),
@@ -78,7 +83,7 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_http_ssl_enable,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, enable),
-      NULL },
+      &ngx_http_ssl_deprecated },
 
     { ngx_string("ssl_certificate"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,

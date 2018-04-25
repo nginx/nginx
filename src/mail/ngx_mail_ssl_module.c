@@ -56,6 +56,11 @@ static ngx_conf_enum_t  ngx_mail_ssl_verify[] = {
 };
 
 
+static ngx_conf_deprecated_t  ngx_mail_ssl_deprecated = {
+    ngx_conf_deprecated, "ssl", "listen ... ssl"
+};
+
+
 static ngx_command_t  ngx_mail_ssl_commands[] = {
 
     { ngx_string("ssl"),
@@ -63,7 +68,7 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       ngx_mail_ssl_enable,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, enable),
-      NULL },
+      &ngx_mail_ssl_deprecated },
 
     { ngx_string("starttls"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
