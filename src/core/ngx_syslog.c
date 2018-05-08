@@ -289,9 +289,7 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
         n = ngx_os_io.send(&peer->conn, buf, len);
     }
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-    if (n == NGX_ERROR && peer->server.sockaddr->sa_family == AF_UNIX) {
+    if (n == NGX_ERROR) {
 
         if (ngx_close_socket(peer->conn.fd) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
@@ -300,8 +298,6 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
 
         peer->conn.fd = (ngx_socket_t) -1;
     }
-
-#endif
 
     return n;
 }
