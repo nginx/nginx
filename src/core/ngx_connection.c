@@ -305,7 +305,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         {
             err = ngx_socket_errno;
 
-            if (err != NGX_EOPNOTSUPP && err != NGX_ENOPROTOOPT) {
+            if (err != NGX_EOPNOTSUPP && err != NGX_ENOPROTOOPT
+                && err != NGX_EINVAL)
+            {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
                               "getsockopt(TCP_FASTOPEN) %V failed, ignored",
                               &ls[i].addr_text);
