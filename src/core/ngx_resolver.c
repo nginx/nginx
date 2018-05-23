@@ -1300,15 +1300,22 @@ ngx_resolver_send_udp_query(ngx_resolver_t *r, ngx_resolver_connection_t  *rec,
     n = ngx_send(rec->udp, query, qlen);
 
     if (n == NGX_ERROR) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if ((size_t) n != (size_t) qlen) {
         ngx_log_error(NGX_LOG_CRIT, &rec->log, 0, "send() incomplete");
-        return NGX_ERROR;
+        goto failed;
     }
 
     return NGX_OK;
+
+failed:
+
+    ngx_close_connection(rec->udp);
+    rec->udp = NULL;
+
+    return NGX_ERROR;
 }
 
 
