@@ -1299,7 +1299,7 @@ ngx_resolver_send_udp_query(ngx_resolver_t *r, ngx_resolver_connection_t  *rec,
 
     n = ngx_send(rec->udp, query, qlen);
 
-    if (n == -1) {
+    if (n == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -4546,7 +4546,7 @@ ngx_tcp_connect(ngx_resolver_connection_t *rec)
                 level = NGX_LOG_CRIT;
             }
 
-            ngx_log_error(level, c->log, err, "connect() to %V failed",
+            ngx_log_error(level, &rec->log, err, "connect() to %V failed",
                           &rec->server);
 
             ngx_close_connection(c);
