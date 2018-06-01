@@ -95,6 +95,7 @@ EVENT_SRCS="src/event/ngx_event.c \
             src/event/ngx_event_timer.c \
             src/event/ngx_event_posted.c \
             src/event/ngx_event_accept.c \
+            src/event/ngx_event_udp.c \
             src/event/ngx_event_connect.c \
             src/event/ngx_event_pipe.c"
 
