@@ -448,6 +448,18 @@ ngx_event_recvmsg(ngx_event_t *ev)
             c->socklen = sizeof(ngx_sockaddr_t);
         }
 
+        if (c->socklen == 0) {
+
+            /*
+             * on Linux recvmsg() returns zero msg_namelen
+             * when receiving packets from unbound AF_UNIX sockets
+             */
+
+            c->socklen = sizeof(struct sockaddr);
+            ngx_memzero(&sa, sizeof(struct sockaddr));
+            sa.sockaddr.sa_family = ls->sockaddr->sa_family;
+        }
+
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
