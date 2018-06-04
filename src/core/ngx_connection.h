@@ -51,6 +51,9 @@ struct ngx_listening_s {
     ngx_listening_t    *previous;
     ngx_connection_t   *connection;
 
+    ngx_rbtree_t        rbtree;
+    ngx_rbtree_node_t   sentinel;
+
     ngx_uint_t          worker;
 
     unsigned            open:1;
@@ -150,6 +153,8 @@ struct ngx_connection_s {
 #if (NGX_SSL || NGX_COMPAT)
     ngx_ssl_connection_t  *ssl;
 #endif
+
+    ngx_udp_connection_t  *udp;
 
     struct sockaddr    *local_sockaddr;
     socklen_t           local_socklen;

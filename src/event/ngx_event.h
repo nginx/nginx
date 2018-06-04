@@ -506,6 +506,8 @@ extern ngx_module_t           ngx_event_core_module;
 void ngx_event_accept(ngx_event_t *ev);
 #if !(NGX_WIN32)
 void ngx_event_recvmsg(ngx_event_t *ev);
+void ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
+    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 #endif
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
