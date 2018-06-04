@@ -137,6 +137,7 @@ ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
     while (in) {
         cl = ngx_alloc_chain_link(pool);
         if (cl == NULL) {
+            *ll = NULL;
             return NGX_ERROR;
         }
 
