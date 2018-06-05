@@ -5,6 +5,137 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.0" date="2018-06-05">
+
+<change type="change">
+<para lang="ru">
+директива "ssl" теперь считается устаревшей;
+вместо неё следует использовать параметр ssl директивы listen.
+</para>
+<para lang="en">
+the "ssl" directive is deprecated;
+the "ssl" parameter of the "listen" directive should be used instead.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при использовании директивы listen с параметром ssl
+nginx определяет отсутствие SSL-сертификатов при тестировании конфигурации.
+</para>
+<para lang="en">
+now nginx detects missing SSL certificates during configuration testing
+when using the "ssl" parameter of the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь модуль stream умеет обрабатывать
+несколько входящих UDP-пакетов от клиента в рамках одной сессии.
+</para>
+<para lang="en">
+now the stream module can handle
+multiple incoming UDP datagrams from a client within a single session.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_valid
+можно было указать некорректный код ответа.
+</para>
+<para lang="en">
+it was possible to specify an incorrect response code
+in the "proxy_cache_valid" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 8.1.
+</para>
+<para lang="en">
+nginx could not be built by gcc 8.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+логгирование в syslog останавливалось при изменении локального IP-адреса.
+</para>
+<para lang="en">
+logging to syslog stopped on local IP address changes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался компилятором clang, если был установлен CUDA SDK;
+ошибка появилась в 1.13.8.
+</para>
+<para lang="en">
+nginx could not be built by clang with CUDA SDK installed;
+the bug had appeared in 1.13.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании unix domain listen-сокетов на FreeBSD
+в процессе обновления исполняемого файла
+в логе могли появляться сообщения "getsockopt(TCP_FASTOPEN) ... failed".
+</para>
+<para lang="en">
+"getsockopt(TCP_FASTOPEN) ... failed" messages might appear in logs
+during binary upgrade
+when using unix domain listen sockets on FreeBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Fedora 28 Linux.
+</para>
+<para lang="en">
+nginx could not be built on Fedora 28 Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы limit_req
+заданная скорость обработки запросов могла не соблюдаться.
+</para>
+<para lang="en">
+request processing rate might exceed configured rate
+when using the "limit_req" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке адресов клиентов при использовании unix domain listen-сокетов
+для работы с датаграммами на Linux.
+</para>
+<para lang="en">
+in handling of client addresses when using unix domain listen sockets
+to work with datagrams on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.
+</para>
+<para lang="en">
+in memory allocation error handling.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.12" date="2018-04-10">
 
 <change type="bugfix">
