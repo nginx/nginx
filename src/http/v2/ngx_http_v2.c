@@ -2616,15 +2616,12 @@ ngx_http_v2_push_stream(ngx_http_v2_stream_t *parent, ngx_str_t *path)
     r->method_name = ngx_http_core_get_method;
     r->method = NGX_HTTP_GET;
 
-#if (NGX_HTTP_SSL)
-    if (fc->ssl) {
-        ngx_str_set(&r->schema, "https");
-
-    } else
-#endif
-    {
-        ngx_str_set(&r->schema, "http");
+    r->schema.data = ngx_pstrdup(pool, &parent->request->schema);
+    if (r->schema.data == NULL) {
+        goto close;
     }
+
+    r->schema.len = parent->request->schema.len;
 
     value.data = ngx_pstrdup(pool, path);
     if (value.data == NULL) {
