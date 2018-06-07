@@ -2318,6 +2318,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->unparsed_uri = r->unparsed_uri;
     sr->method_name = ngx_http_core_get_method;
     sr->http_protocol = r->http_protocol;
+    sr->schema = r->schema;
 
     ngx_http_set_exten(sr);
 
