@@ -2901,7 +2901,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (r->request_body && r->request_body->temp_file
-        && r == r->main && !r->preserve_body)
+        && r == r->main && !r->preserve_body
+        && !u->conf->preserve_output)
     {
         ngx_pool_run_cleanup_file(r->pool, r->request_body->temp_file->file.fd);
         r->request_body->temp_file->file.fd = NGX_INVALID_FILE;
