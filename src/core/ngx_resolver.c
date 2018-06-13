@@ -275,6 +275,11 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         }
     }
 
+    if (n && r->connections.nelts == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no name servers defined");
+        return NULL;
+    }
+
     return r;
 }
 
