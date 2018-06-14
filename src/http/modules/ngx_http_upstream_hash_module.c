@@ -176,7 +176,7 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "get hash peer, try: %ui", pc->tries);
 
-    ngx_http_upstream_rr_peers_wlock(hp->rrp.peers);
+    ngx_http_upstream_rr_peers_rlock(hp->rrp.peers);
 
     if (hp->tries > 20 || hp->rrp.peers->single) {
         ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
@@ -228,10 +228,13 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
             goto next;
         }
 
+        ngx_http_upstream_rr_peer_lock(hp->rrp.peers, peer);
+
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                        "get hash peer, value:%uD, peer:%ui", hp->hash, p);
 
         if (peer->down) {
+            ngx_http_upstream_rr_peer_unlock(hp->rrp.peers, peer);
             goto next;
         }
 
@@ -239,10 +242,12 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
             && peer->fails >= peer->max_fails
             && now - peer->checked <= peer->fail_timeout)
         {
+            ngx_http_upstream_rr_peer_unlock(hp->rrp.peers, peer);
             goto next;
         }
 
         if (peer->max_conns && peer->conns >= peer->max_conns) {
+            ngx_http_upstream_rr_peer_unlock(hp->rrp.peers, peer);
             goto next;
         }
 
@@ -268,6 +273,7 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
         peer->checked = now;
     }
 
+    ngx_http_upstream_rr_peer_unlock(hp->rrp.peers, peer);
     ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
 
     hp->rrp.tried[n] |= m;
