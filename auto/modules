@@ -878,6 +878,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_UPSTREAM_RANDOM = YES ]; then
+        ngx_module_name=ngx_http_upstream_random_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_random_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_RANDOM
+
+        . auto/module
+    fi
+
     if [ $HTTP_UPSTREAM_KEEPALIVE = YES ]; then
         ngx_module_name=ngx_http_upstream_keepalive_module
         ngx_module_incs=
@@ -1139,6 +1150,16 @@ if [ $STREAM != NO ]; then
         ngx_module_srcs=src/stream/ngx_stream_upstream_least_conn_module.c
         ngx_module_libs=
         ngx_module_link=$STREAM_UPSTREAM_LEAST_CONN
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_RANDOM = YES ]; then
+        ngx_module_name=ngx_stream_upstream_random_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_random_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_RANDOM
 
         . auto/module
     fi
