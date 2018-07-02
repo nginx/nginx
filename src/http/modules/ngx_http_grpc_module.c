@@ -3868,6 +3868,7 @@ ngx_http_grpc_send_window_update(ngx_http_request_t *r,
 static ngx_chain_t *
 ngx_http_grpc_get_buf(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx)
 {
+    u_char       *start;
     ngx_buf_t    *b;
     ngx_chain_t  *cl;
 
@@ -3877,28 +3878,32 @@ ngx_http_grpc_get_buf(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx)
     }
 
     b = cl->buf;
+    start = b->start;
 
-    b->tag = (ngx_buf_tag_t) &ngx_http_grpc_body_output_filter;
-    b->temporary = 1;
-    b->flush = 1;
-
-    if (b->start == NULL) {
+    if (start == NULL) {
 
         /*
          * each buffer is large enough to hold two window update
          * frames in a row
          */
 
-        b->start = ngx_palloc(r->pool, 2 * sizeof(ngx_http_grpc_frame_t) + 8);
-        if (b->start == NULL) {
+        start = ngx_palloc(r->pool, 2 * sizeof(ngx_http_grpc_frame_t) + 8);
+        if (start == NULL) {
             return NULL;
         }
 
-        b->pos = b->start;
-        b->last = b->start;
-
-        b->end = b->start + 2 * sizeof(ngx_http_grpc_frame_t) + 8;
     }
+
+    ngx_memzero(b, sizeof(ngx_buf_t));
+
+    b->start = start;
+    b->pos = start;
+    b->last = start;
+    b->end = start + 2 * sizeof(ngx_http_grpc_frame_t) + 8;
+
+    b->tag = (ngx_buf_tag_t) &ngx_http_grpc_body_output_filter;
+    b->temporary = 1;
+    b->flush = 1;
 
     return cl;
 }
