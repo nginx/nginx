@@ -5,6 +5,73 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.1" date="2018-07-03">
+
+<change type="feature">
+<para lang="ru">
+директива random в блоке upstream.
+</para>
+<para lang="en">
+the "random" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшена производительность при использовании директив hash и ip_hash
+совместно с директивой zone.
+</para>
+<para lang="en">
+improved performance when using the "hash" and "ip_hash" directives
+with the "zone" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр reuseport директивы listen
+теперь использует SO_REUSEPORT_LB на FreeBSD 12.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive
+now uses SO_REUSEPORT_LB on FreeBSD 12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+HTTP/2 server push не работал, если SSL терминировался прокси-сервером
+перед nginx'ом.
+</para>
+<para lang="en">
+HTTP/2 server push did not work if SSL was terminated by a proxy server
+in front of nginx.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива tcp_nopush всегда использовалась для соединений к бэкендам.
+</para>
+<para lang="en">
+the "tcp_nopush" directive was always used on backend connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при отправке сохранённого на диск тела запроса на gRPC-бэкенд
+могли возникать ошибки.
+</para>
+<para lang="en">
+sending a disk-buffered request body to a gRPC backend
+might fail.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.0" date="2018-06-05">
 
 <change type="change">
