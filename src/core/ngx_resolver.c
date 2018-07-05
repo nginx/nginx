@@ -847,7 +847,15 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
     rn->nsrvs = 0;
 
     if (ngx_resolver_send_query(r, rn) != NGX_OK) {
-        goto failed;
+
+        /* immediately retry once on failure */
+
+        rn->last_connection++;
+        if (rn->last_connection == r->connections.nelts) {
+            rn->last_connection = 0;
+        }
+
+        (void) ngx_resolver_send_query(r, rn);
     }
 
     if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
@@ -1051,7 +1059,15 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
     rn->nsrvs = 0;
 
     if (ngx_resolver_send_query(r, rn) != NGX_OK) {
-        goto failed;
+
+        /* immediately retry once on failure */
+
+        rn->last_connection++;
+        if (rn->last_connection == r->connections.nelts) {
+            rn->last_connection = 0;
+        }
+
+        (void) ngx_resolver_send_query(r, rn);
     }
 
     if (ngx_resolver_set_timeout(r, ctx) != NGX_OK) {
