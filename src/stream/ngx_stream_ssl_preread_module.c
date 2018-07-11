@@ -21,6 +21,7 @@ typedef struct {
     u_char         *pos;
     u_char         *dst;
     u_char          buf[4];
+    u_char          version[2];
     ngx_str_t       host;
     ngx_str_t       alpn;
     ngx_log_t      *log;
@@ -32,6 +33,8 @@ typedef struct {
 static ngx_int_t ngx_stream_ssl_preread_handler(ngx_stream_session_t *s);
 static ngx_int_t ngx_stream_ssl_preread_parse_record(
     ngx_stream_ssl_preread_ctx_t *ctx, u_char *pos, u_char *last);
+static ngx_int_t ngx_stream_ssl_preread_protocol_variable(
+    ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_preread_server_name_variable(
     ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_preread_alpn_protocols_variable(
@@ -85,6 +88,9 @@ ngx_module_t  ngx_stream_ssl_preread_module = {
 
 
 static ngx_stream_variable_t  ngx_stream_ssl_preread_vars[] = {
+
+    { ngx_string("ssl_preread_protocol"), NULL,
+      ngx_stream_ssl_preread_protocol_variable, 0, 0, 0 },
 
     { ngx_string("ssl_preread_server_name"), NULL,
       ngx_stream_ssl_preread_server_name_variable, 0, 0, 0 },
@@ -196,7 +202,8 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
     enum {
         sw_start = 0,
         sw_header,          /* handshake msg_type, length */
-        sw_head_tail,       /* version, random */
+        sw_version,         /* client_version */
+        sw_random,          /* random */
         sw_sid_len,         /* session_id length */
         sw_sid,             /* session_id */
         sw_cs_len,          /* cipher_suites length */
@@ -210,7 +217,8 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         sw_sni_host,        /* SNI host_name */
         sw_alpn_len,        /* ALPN length */
         sw_alpn_proto_len,  /* ALPN protocol_name length */
-        sw_alpn_proto_data  /* ALPN protocol_name */
+        sw_alpn_proto_data, /* ALPN protocol_name */
+        sw_supver_len       /* supported_versions length */
     } state;
 
     ngx_log_debug2(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
@@ -254,13 +262,19 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
                 return NGX_DECLINED;
             }
 
-            state = sw_head_tail;
-            dst = NULL;
-            size = 34;
+            state = sw_version;
+            dst = ctx->version;
+            size = 2;
             left = (p[1] << 16) + (p[2] << 8) + p[3];
             break;
 
-        case sw_head_tail:
+        case sw_version:
+            state = sw_random;
+            dst = NULL;
+            size = 32;
+            break;
+
+        case sw_random:
             state = sw_sid_len;
             dst = p;
             size = 1;
@@ -331,6 +345,14 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
                 state = sw_alpn_len;
                 dst = p;
                 size = 2;
+                break;
+            }
+
+            if (p[0] == 0 && p[1] == 43) {
+                /* supported_versions extension */
+                state = sw_supver_len;
+                dst = p;
+                size = 1;
                 break;
             }
 
@@ -434,6 +456,19 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             dst = NULL;
             size = 0;
             break;
+
+        case sw_supver_len:
+            ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                           "ssl preread: supported_versions");
+
+            /* set TLSv1.3 */
+            ctx->version[0] = 3;
+            ctx->version[1] = 4;
+
+            state = sw_ext;
+            dst = NULL;
+            size = p[0];
+            break;
         }
 
         if (left < size) {
@@ -450,6 +485,58 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
     ctx->dst = dst;
 
     return NGX_AGAIN;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_preread_protocol_variable(ngx_stream_session_t *s,
+    ngx_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t                      version;
+    ngx_stream_ssl_preread_ctx_t  *ctx;
+
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_ssl_preread_module);
+
+    if (ctx == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    /* SSL_get_version() format */
+
+    ngx_str_null(&version);
+
+    switch (ctx->version[0]) {
+    case 2:
+        ngx_str_set(&version, "SSLv2");
+        break;
+    case 3:
+        switch (ctx->version[1]) {
+        case 0:
+            ngx_str_set(&version, "SSLv3");
+            break;
+        case 1:
+            ngx_str_set(&version, "TLSv1");
+            break;
+        case 2:
+            ngx_str_set(&version, "TLSv1.1");
+            break;
+        case 3:
+            ngx_str_set(&version, "TLSv1.2");
+            break;
+        case 4:
+            ngx_str_set(&version, "TLSv1.3");
+            break;
+        }
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->len = version.len;
+    v->data = version.data;
+
+    return NGX_OK;
 }
 
 
