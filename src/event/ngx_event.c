@@ -421,6 +421,21 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (cycle->connection_n < cycle->listening.nelts + 1) {
+
+        /*
+         * there should be at least one connection for each listening
+         * socket, plus an additional connection for channel
+         */
+
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "%ui worker_connections are not enough "
+                      "for %ui listening sockets",
+                      cycle->connection_n, cycle->listening.nelts);
+
+        return NGX_CONF_ERROR;
+    }
+
 #if (NGX_HAVE_REUSEPORT)
 
     ls = cycle->listening.elts;
