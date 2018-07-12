@@ -2353,6 +2353,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         || rc == NGX_HTTP_NO_CONTENT)
     {
         if (rc == NGX_HTTP_CLOSE) {
+            c->timedout = 1;
             ngx_http_terminate_request(r, rc);
             return;
         }
