@@ -96,7 +96,7 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
 
 
 ngx_int_t
-ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
+ngx_clone_listening(ngx_cycle_t *cycle, ngx_listening_t *ls)
 {
 #if (NGX_HAVE_REUSEPORT)
 
@@ -104,20 +104,19 @@ ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
     ngx_core_conf_t  *ccf;
     ngx_listening_t   ols;
 
-    if (!ls->reuseport) {
+    if (!ls->reuseport || ls->worker != 0) {
         return NGX_OK;
     }
 
     ols = *ls;
 
-    ccf = (ngx_core_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
-                                           ngx_core_module);
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     for (n = 1; n < ccf->worker_processes; n++) {
 
         /* create a socket for each worker process */
 
-        ls = ngx_array_push(&cf->cycle->listening);
+        ls = ngx_array_push(&cycle->listening);
         if (ls == NULL) {
             return NGX_ERROR;
         }
