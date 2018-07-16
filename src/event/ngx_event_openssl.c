@@ -2080,6 +2080,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
             || n == SSL_R_UNKNOWN_ALERT_TYPE                         /*  246 */
             || n == SSL_R_UNKNOWN_PROTOCOL                           /*  252 */
+            || n == SSL_R_UNSUPPORTED_PROTOCOL                       /*  258 */
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
@@ -2095,6 +2096,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_INAPPROPRIATE_FALLBACK
             || n == SSL_R_INAPPROPRIATE_FALLBACK                     /*  373 */
+#endif
+#ifdef SSL_R_VERSION_TOO_LOW
+            || n == SSL_R_VERSION_TOO_LOW                            /*  396 */
 #endif
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
 #ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
