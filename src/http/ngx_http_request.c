@@ -912,7 +912,7 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
         SSL_set_verify_depth(ssl_conn, SSL_CTX_get_verify_depth(sscf->ssl.ctx));
 
-#ifdef SSL_CTRL_CLEAR_OPTIONS
+#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
         /* only in 0.9.8m+ */
         SSL_clear_options(ssl_conn, SSL_get_options(ssl_conn) &
                                     ~SSL_CTX_get_options(sscf->ssl.ctx));

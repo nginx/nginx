@@ -295,7 +295,7 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_DH_USE);
 
-#ifdef SSL_CTRL_CLEAR_OPTIONS
+#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
     /* only in 0.9.8m+ */
     SSL_CTX_clear_options(ssl->ctx,
                           SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
