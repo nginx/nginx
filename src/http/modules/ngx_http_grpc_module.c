@@ -4627,6 +4627,13 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
         }
     }
 
+    if (ngx_ssl_client_session_cache(cf, glcf->upstream.ssl,
+                                     glcf->upstream.ssl_session_reuse)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 
     if (SSL_CTX_set_alpn_protos(glcf->upstream.ssl->ctx,

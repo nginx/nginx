@@ -24,6 +24,8 @@ static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
 static void ngx_ssl_passwords_cleanup(void *data);
+static int ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn,
+    ngx_ssl_session_t *sess);
 static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
@@ -1162,6 +1164,42 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
 
 ngx_int_t
+ngx_ssl_client_session_cache(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
+{
+    if (!enable) {
+        return NGX_OK;
+    }
+
+    SSL_CTX_set_session_cache_mode(ssl->ctx,
+                                   SSL_SESS_CACHE_CLIENT
+                                   |SSL_SESS_CACHE_NO_INTERNAL);
+
+    SSL_CTX_sess_set_new_cb(ssl->ctx, ngx_ssl_new_client_session);
+
+    return NGX_OK;
+}
+
+
+static int
+ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
+{
+    ngx_connection_t  *c;
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    if (c->ssl->save_session) {
+        c->ssl->session = sess;
+
+        c->ssl->save_session(c);
+
+        c->ssl->session = NULL;
+    }
+
+    return 0;
+}
+
+
+ngx_int_t
 ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 {
     ngx_ssl_connection_t  *sc;
@@ -1207,6 +1245,31 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     c->ssl = sc;
 
     return NGX_OK;
+}
+
+
+ngx_ssl_session_t *
+ngx_ssl_get_session(ngx_connection_t *c)
+{
+#ifdef TLS1_3_VERSION
+    if (c->ssl->session) {
+        SSL_SESSION_up_ref(c->ssl->session);
+        return c->ssl->session;
+    }
+#endif
+
+    return SSL_get1_session(c->ssl->connection);
+}
+
+
+ngx_ssl_session_t *
+ngx_ssl_get0_session(ngx_connection_t *c)
+{
+    if (c->ssl->session) {
+        return c->ssl->session;
+    }
+
+    return SSL_get0_session(c->ssl->connection);
 }
 
 

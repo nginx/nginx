@@ -776,7 +776,7 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 
     if (peers->shpool) {
 
-        ssl_session = SSL_get0_session(pc->connection->ssl->connection);
+        ssl_session = ngx_ssl_get0_session(pc->connection);
 
         if (ssl_session == NULL) {
             return;

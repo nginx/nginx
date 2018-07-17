@@ -92,6 +92,7 @@ static char *ngx_stream_proxy_ssl_password_file(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static void ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s);
 static void ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc);
+static void ngx_stream_proxy_ssl_save_session(ngx_connection_t *c);
 static ngx_int_t ngx_stream_proxy_ssl_name(ngx_stream_session_t *s);
 static ngx_int_t ngx_stream_proxy_set_ssl(ngx_conf_t *cf,
     ngx_stream_proxy_srv_conf_t *pscf);
@@ -1008,6 +1009,8 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
     }
 
     if (pscf->ssl_session_reuse) {
+        pc->ssl->save_session = ngx_stream_proxy_ssl_save_session;
+
         if (u->peer.set_session(&u->peer, u->peer.data) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
@@ -1066,11 +1069,6 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
             }
         }
 
-        if (pscf->ssl_session_reuse) {
-            u = s->upstream;
-            u->peer.save_session(&u->peer, u->peer.data);
-        }
-
         if (pc->write->timer_set) {
             ngx_del_timer(pc->write);
         }
@@ -1083,6 +1081,19 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
 failed:
 
     ngx_stream_proxy_next_upstream(s);
+}
+
+
+static void
+ngx_stream_proxy_ssl_save_session(ngx_connection_t *c)
+{
+    ngx_stream_session_t   *s;
+    ngx_stream_upstream_t  *u;
+
+    s = c->data;
+    u = s->upstream;
+
+    u->peer.save_session(&u->peer, u->peer.data);
 }
 
 
@@ -2049,6 +2060,12 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
         if (ngx_ssl_crl(cf, pscf->ssl, &pscf->ssl_crl) != NGX_OK) {
             return NGX_ERROR;
         }
+    }
+
+    if (ngx_ssl_client_session_cache(cf, pscf->ssl, pscf->ssl_session_reuse)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
     }
 
     return NGX_OK;
