@@ -47,12 +47,12 @@ typedef uint32_t   ngx_tid_t;
 #elif (NGX_DARWIN)
 
 typedef uint64_t   ngx_tid_t;
-#define NGX_TID_T_FMT         "%uA"
+#define NGX_TID_T_FMT         "%uL"
 
 #else
 
 typedef uint64_t   ngx_tid_t;
-#define NGX_TID_T_FMT         "%uA"
+#define NGX_TID_T_FMT         "%uL"
 
 #endif
 
