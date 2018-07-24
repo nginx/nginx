@@ -5,6 +5,92 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.2" date="2018-07-24">
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_preread_protocol
+в модуле ngx_stream_ssl_preread_module.
+</para>
+<para lang="en">
+the $ssl_preread_protocol variable
+in the ngx_stream_ssl_preread_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании директивы reset_timedout_connection
+nginx сбрасывает соединения, закрываемые с кодом 444.
+</para>
+<para lang="en">
+now when using the "reset_timedout_connection" directive
+nginx will reset connections being closed with the 444 code.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "http request", "https proxy request",
+"unsupported protocol" и "version too low"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+a logging level of the "http request", "https proxy request",
+"unsupported protocol", and "version too low" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+запросы к DNS-серверу не отправлялись повторно,
+если при первой попытке отправки происходила ошибка.
+</para>
+<para lang="en">
+DNS requests were not resent
+if initial sending of a request failed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр reuseport директивы listen игнорировался,
+если количество рабочих процессов было задано после директивы listen.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive was ignored
+if the number of worker processes was specified after the "listen" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании OpenSSL 1.1.0 и новее
+директиву ssl_prefer_server_ciphers нельзя было выключить
+в виртуальном сервере, если она была включена в сервере по умолчанию.
+</para>
+<para lang="en">
+when using OpenSSL 1.1.0 or newer
+it was not possible to switch off "ssl_prefer_server_ciphers" in
+a virtual server if it was switched on in the default server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+повторное использование SSL-сессий к бэкендам
+не работало с протоколом TLS 1.3.
+</para>
+<para lang="en">
+SSL session reuse with upstream servers
+did not work with the TLS 1.3 protocol.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.1" date="2018-07-03">
 
 <change type="feature">
