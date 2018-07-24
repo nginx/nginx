@@ -185,6 +185,8 @@ ngx_feature_test="struct __user_cap_data_struct    data;
                   data.effective = CAP_TO_MASK(CAP_NET_RAW);
                   data.permitted = 0;
 
+                  (void) header;
+                  (void) data;
                   (void) SYS_capset"
 . auto/feature
 

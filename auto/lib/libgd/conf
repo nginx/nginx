@@ -9,7 +9,8 @@
     ngx_feature_incs="#include <gd.h>"
     ngx_feature_path=
     ngx_feature_libs="-lgd"
-    ngx_feature_test="gdImagePtr img = gdImageCreateFromGifPtr(1, NULL);"
+    ngx_feature_test="gdImagePtr img = gdImageCreateFromGifPtr(1, NULL);
+                      (void) img"
     . auto/feature
 
 
@@ -76,7 +77,8 @@ if [ $ngx_found = yes ]; then
 
     ngx_feature="GD WebP support"
     ngx_feature_name="NGX_HAVE_GD_WEBP"
-    ngx_feature_test="gdImagePtr img = gdImageCreateFromWebpPtr(1, NULL);"
+    ngx_feature_test="gdImagePtr img = gdImageCreateFromWebpPtr(1, NULL);
+                      (void) img"
     . auto/feature
 
 else

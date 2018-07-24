@@ -16,8 +16,8 @@
     ngx_feature_libs="-lxml2 -lxslt"
     ngx_feature_test="xmlParserCtxtPtr    ctxt = NULL;
                       xsltStylesheetPtr   sheet = NULL;
-                      xmlDocPtr           doc;
-                      doc = xmlParseChunk(ctxt, NULL, 0, 0);
+                      xmlDocPtr           doc = NULL;
+                      xmlParseChunk(ctxt, NULL, 0, 0);
                       xsltApplyStylesheet(sheet, doc, NULL);"
     . auto/feature
 
