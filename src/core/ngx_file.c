@@ -839,8 +839,7 @@ ngx_copy_file(u_char *from, u_char *to, ngx_copy_file_t *cf)
         goto failed;
     }
 
-    nfd = ngx_open_file(to, NGX_FILE_WRONLY, NGX_FILE_CREATE_OR_OPEN,
-                        cf->access);
+    nfd = ngx_open_file(to, NGX_FILE_WRONLY, NGX_FILE_TRUNCATE, cf->access);
 
     if (nfd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_CRIT, cf->log, ngx_errno,
