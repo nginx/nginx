@@ -270,8 +270,6 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     h2c->frame_size = NGX_HTTP_V2_DEFAULT_FRAME_SIZE;
 
-    h2c->table_update = 1;
-
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
     h2c->concurrent_pushes = h2scf->concurrent_pushes;
@@ -2073,6 +2071,11 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
                                                  ngx_http_v2_module);
 
             h2c->concurrent_pushes = ngx_min(value, h2scf->concurrent_pushes);
+            break;
+
+        case NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING:
+
+            h2c->table_update = 1;
             break;
 
         default:
