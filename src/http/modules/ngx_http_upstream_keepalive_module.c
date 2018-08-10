@@ -518,6 +518,8 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     kcf->max_cached = n;
 
+    /* init upstream handler */
+
     uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
 
     kcf->original_init_upstream = uscf->peer.init_upstream
