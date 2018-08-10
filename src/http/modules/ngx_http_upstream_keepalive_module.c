@@ -12,6 +12,7 @@
 
 typedef struct {
     ngx_uint_t                         max_cached;
+    ngx_uint_t                         requests;
     ngx_msec_t                         timeout;
 
     ngx_queue_t                        cache;
@@ -92,6 +93,13 @@ static ngx_command_t  ngx_http_upstream_keepalive_commands[] = {
       offsetof(ngx_http_upstream_keepalive_srv_conf_t, timeout),
       NULL },
 
+    { ngx_string("keepalive_requests"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_upstream_keepalive_srv_conf_t, requests),
+      NULL },
+
       ngx_null_command
 };
 
@@ -142,6 +150,7 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
                                           ngx_http_upstream_keepalive_module);
 
     ngx_conf_init_msec_value(kcf->timeout, 60000);
+    ngx_conf_init_uint_value(kcf->requests, 100);
 
     if (kcf->original_init_upstream(cf, us) != NGX_OK) {
         return NGX_ERROR;
@@ -309,6 +318,10 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
         || c->write->error
         || c->write->timedout)
     {
+        goto invalid;
+    }
+
+    if (c->requests >= kp->conf->requests) {
         goto invalid;
     }
 
@@ -500,6 +513,7 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
      */
 
     conf->timeout = NGX_CONF_UNSET_MSEC;
+    conf->requests = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
