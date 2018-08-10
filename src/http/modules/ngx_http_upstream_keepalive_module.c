@@ -12,6 +12,7 @@
 
 typedef struct {
     ngx_uint_t                         max_cached;
+    ngx_msec_t                         timeout;
 
     ngx_queue_t                        cache;
     ngx_queue_t                        free;
@@ -84,6 +85,13 @@ static ngx_command_t  ngx_http_upstream_keepalive_commands[] = {
       0,
       NULL },
 
+    { ngx_string("keepalive_timeout"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_upstream_keepalive_srv_conf_t, timeout),
+      NULL },
+
       ngx_null_command
 };
 
@@ -132,6 +140,8 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
 
     kcf = ngx_http_conf_upstream_srv_conf(us,
                                           ngx_http_upstream_keepalive_module);
+
+    ngx_conf_init_msec_value(kcf->timeout, 60000);
 
     if (kcf->original_init_upstream(cf, us) != NGX_OK) {
         return NGX_ERROR;
@@ -261,6 +271,10 @@ found:
     c->write->log = pc->log;
     c->pool->log = pc->log;
 
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
     pc->connection = c;
     pc->cached = 1;
 
@@ -339,10 +353,9 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
 
     pc->connection = NULL;
 
-    if (c->read->timer_set) {
-        c->read->delayed = 0;
-        ngx_del_timer(c->read);
-    }
+    c->read->delayed = 0;
+    ngx_add_timer(c->read, kp->conf->timeout);
+
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
@@ -393,7 +406,7 @@ ngx_http_upstream_keepalive_close_handler(ngx_event_t *ev)
 
     c = ev->data;
 
-    if (c->close) {
+    if (c->close || c->read->timedout) {
         goto close;
     }
 
@@ -485,6 +498,8 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
      *     conf->original_init_peer = NULL;
      *     conf->max_cached = 0;
      */
+
+    conf->timeout = NGX_CONF_UNSET_MSEC;
 
     return conf;
 }
