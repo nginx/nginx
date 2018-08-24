@@ -2135,7 +2135,7 @@ ngx_http_upstream_send_request_body(ngx_http_request_t *r,
         out = u->request_bufs;
 
         if (r->request_body->bufs) {
-            for (cl = out; cl->next; cl = out->next) { /* void */ }
+            for (cl = out; cl->next; cl = cl->next) { /* void */ }
             cl->next = r->request_body->bufs;
             r->request_body->bufs = NULL;
         }
