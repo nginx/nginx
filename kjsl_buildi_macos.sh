@@ -1,7 +1,28 @@
 #!/bin/bash
 git clone https://github.com/kevleyski/nginx-rtmp-module nginx-rtmp-module
 git clone https://github.com/kevleyski/ngx_devel_kit ngx_devel_kit 
-git clone https://github.com/kevleyski/lua-nginx-module.git lua-nginx-module
+
+wget http://www.openssl.org/source/openssl-1.0.2o.tar.gz
+tar -zxf openssl-1.0.2o.tar.gz
+cd openssl-1.0.2o
+./Configure darwin64-x86_64-cc --prefix=/usr
+make
+sudo make install
+
+wget http://zlib.net/zlib-1.2.11.tar.gz
+tar -zxf zlib-1.2.11.tar.gz
+cd zlib-1.2.11
+./configure
+make
+sudo make install
+
+wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.42.tar.gz
+tar -zxf pcre-8.42.tar.gz
+cd pcre-8.42
+./configure
+make
+sudo make install
+
 mkdir -p /usr/local/nginx
 mkdir -p /usr/local/nginx/nginx
 ./auto/configure --prefix=/etc/nginx \
@@ -12,7 +33,10 @@ mkdir -p /usr/local/nginx/nginx
 	--http-log-path=/var/log/nginx/access.log \
 	--pid-path=/var/run/nginx.pid \
 	--lock-path=/var/run/nginx.lock \
-	--build=CentOS \
+	--with-pcre=../pcre-8.41 \
+	--with-zlib=../zlib-1.2.11 \
+	--with-openssl=../openss-1.0.2o \
+	--with-http_ssl_module \
 	--http-client-body-temp-path=/var/cache/nginx/client_temp \
 	--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
 	--http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
@@ -20,7 +44,6 @@ mkdir -p /usr/local/nginx/nginx
 	--http-scgi-temp-path=/var/cache/nginx/scgi_temp \
 	--user=nginx \
 	--group=nginx \
-	--with-http_ssl_module \
 	--with-http_realip_module \
 	--with-http_addition_module \
 	--with-http_sub_module \
@@ -35,17 +58,13 @@ mkdir -p /usr/local/nginx/nginx
 	--with-http_auth_request_module \
 	--with-threads \
 	--with-stream \
-	--with-stream_ssl_module \
 	--with-http_slice_module \
 	--with-mail \
-	--with-mail_ssl_module \
-	--with-file-aio \
-	--add-module=lua-nginx-module \
-	--add-module=ngx_devel_kit \
- 	--add-module=nginx-rtmp-module
-	--with-ipv6 \
+	--add-module=./ngx_devel_kit \
+ 	--add-module=./nginx-rtmp-module \
 	--with-http_v2_module \
-	--with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic' \
+ 	--add-module=../smootha/nginx-switch-module \
+	--with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic'
 
 make -j9
 sudo make install
