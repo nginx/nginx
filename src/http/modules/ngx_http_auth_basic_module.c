@@ -266,8 +266,8 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
     }
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "user \"%V\" was not found in \"%V\"",
-                  &r->headers_in.user, &user_file);
+                  "user \"%V\" was not found in \"%s\"",
+                  &r->headers_in.user, user_file.data);
 
     return ngx_http_auth_basic_set_realm(r, &realm);
 }

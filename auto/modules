@@ -420,6 +420,7 @@ if [ $HTTP = YES ]; then
 
     if [ $HTTP_V2 = YES ]; then
         have=NGX_HTTP_V2 . auto/have
+        have=NGX_HTTP_HEADERS . auto/have
 
         ngx_module_name=ngx_http_v2_module
         ngx_module_incs=src/http/v2
@@ -427,6 +428,7 @@ if [ $HTTP = YES ]; then
                          src/http/v2/ngx_http_v2_module.h"
         ngx_module_srcs="src/http/v2/ngx_http_v2.c \
                          src/http/v2/ngx_http_v2_table.c \
+                         src/http/v2/ngx_http_v2_encode.c \
                          src/http/v2/ngx_http_v2_huff_decode.c \
                          src/http/v2/ngx_http_v2_huff_encode.c \
                          src/http/v2/ngx_http_v2_module.c"
@@ -742,6 +744,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_GRPC = YES -a $HTTP_V2 = YES ]; then
+        ngx_module_name=ngx_http_grpc_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_grpc_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_GRPC
+
+        . auto/module
+    fi
+
     if [ $HTTP_PERL != NO ]; then
         ngx_module_name=ngx_http_perl_module
         ngx_module_incs=src/http/modules/perl
@@ -861,6 +874,17 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_upstream_least_conn_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_UPSTREAM_LEAST_CONN
+
+        . auto/module
+    fi
+
+    if [ $HTTP_UPSTREAM_RANDOM = YES ]; then
+        ngx_module_name=ngx_http_upstream_random_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_random_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_RANDOM
 
         . auto/module
     fi
@@ -1126,6 +1150,16 @@ if [ $STREAM != NO ]; then
         ngx_module_srcs=src/stream/ngx_stream_upstream_least_conn_module.c
         ngx_module_libs=
         ngx_module_link=$STREAM_UPSTREAM_LEAST_CONN
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_RANDOM = YES ]; then
+        ngx_module_name=ngx_stream_upstream_random_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_random_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_RANDOM
 
         . auto/module
     fi

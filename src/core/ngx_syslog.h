@@ -9,7 +9,6 @@
 
 
 typedef struct {
-    ngx_pool_t       *pool;
     ngx_uint_t        facility;
     ngx_uint_t        severity;
     ngx_str_t         tag;

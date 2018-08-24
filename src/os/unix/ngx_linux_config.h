@@ -99,6 +99,11 @@ typedef struct iocb  ngx_aiocb_t;
 #endif
 
 
+#if (NGX_HAVE_CAPABILITIES)
+#include <linux/capability.h>
+#endif
+
+
 #define NGX_LISTEN_BACKLOG        511
 
 

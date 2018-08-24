@@ -9,7 +9,8 @@
     ngx_feature_incs=
     ngx_feature_path=
     ngx_feature_libs="-lprofiler"
-    ngx_feature_test="ProfilerStop()"
+    ngx_feature_test="void ProfilerStop(void);
+                      ProfilerStop()"
     . auto/feature
 
 

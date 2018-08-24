@@ -342,7 +342,7 @@ ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_ACCEPTFILTER, NULL, 0)"
 . auto/feature
 
 
-# NetBSD bind to any address for transparent proxying
+# OpenBSD bind to any address for transparent proxying
 
 ngx_feature="SO_BINDANY"
 ngx_feature_name="NGX_HAVE_TRANSPARENT_PROXY"
@@ -351,19 +351,6 @@ ngx_feature_incs="#include <sys/socket.h>"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_BINDANY, NULL, 0)"
-. auto/feature
-
-
-# Linux IP_BIND_ADDRESS_NO_PORT
-
-ngx_feature="IP_BIND_ADDRESS_NO_PORT"
-ngx_feature_name="NGX_HAVE_IP_BIND_ADDRESS_NO_PORT"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  #include <netinet/in.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, NULL, 0)"
 . auto/feature
 
 
@@ -390,6 +377,19 @@ ngx_feature_incs="#include <sys/socket.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BINDANY, NULL, 0)"
+. auto/feature
+
+
+# Linux IP_BIND_ADDRESS_NO_PORT
+
+ngx_feature="IP_BIND_ADDRESS_NO_PORT"
+ngx_feature_name="NGX_HAVE_IP_BIND_ADDRESS_NO_PORT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT, NULL, 0)"
 . auto/feature
 
 
@@ -791,6 +791,30 @@ ngx_feature_test="struct tm t; time_t c=0; localtime_r(&c, &t)"
 . auto/feature
 
 
+ngx_feature="clock_gettime(CLOCK_MONOTONIC)"
+ngx_feature_name="NGX_HAVE_CLOCK_MONOTONIC"
+ngx_feature_run=no
+ngx_feature_incs="#include <time.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts)"
+. auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    # Linux before glibc 2.17, notably CentOS 6
+
+    ngx_feature="clock_gettime(CLOCK_MONOTONIC) in librt"
+    ngx_feature_libs="-lrt"
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        CORE_LIBS="$CORE_LIBS -lrt"
+    fi
+fi
+
+
 ngx_feature="posix_memalign()"
 ngx_feature_name="NGX_HAVE_POSIX_MEMALIGN"
 ngx_feature_run=no
@@ -877,6 +901,7 @@ if [ $ngx_found = no ]; then
 
     if [ $ngx_found = yes ]; then
         CORE_LIBS="$CORE_LIBS -lpthread"
+        NGX_LIBPTHREAD="-lpthread"
     fi
 fi
 
@@ -961,6 +986,16 @@ ngx_feature_incs=
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="sysconf(_SC_NPROCESSORS_ONLN)"
+. auto/feature
+
+
+ngx_feature="sysconf(_SC_LEVEL1_DCACHE_LINESIZE)"
+ngx_feature_name="NGX_HAVE_LEVEL1_DCACHE_LINESIZE"
+ngx_feature_run=no
+ngx_feature_incs=
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="sysconf(_SC_LEVEL1_DCACHE_LINESIZE)"
 . auto/feature
 
 

@@ -57,6 +57,7 @@ typedef struct {
     unsigned             nomem:1;
     unsigned             gzheader:1;
     unsigned             buffering:1;
+    unsigned             intel:1;
 
     size_t               zin;
     size_t               zout;
@@ -232,6 +233,8 @@ static ngx_str_t  ngx_http_gzip_ratio = ngx_string("gzip_ratio");
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
+
+static ngx_uint_t  ngx_http_gzip_assume_intel;
 
 
 static ngx_int_t
@@ -527,7 +530,27 @@ ngx_http_gzip_filter_memory(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
      *  *) 5920 bytes on amd64 and sparc64
      */
 
-    ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
+    if (!ngx_http_gzip_assume_intel) {
+        ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
+
+    } else {
+        /*
+         * A zlib variant from Intel, https://github.com/jtkukunas/zlib.
+         * It can force window bits to 13 for fast compression level,
+         * on processors with SSE 4.2 it uses 64K hash instead of scaling
+         * it from the specified memory level, and also introduces
+         * 16-byte padding in one out of the two window-sized buffers.
+         */
+
+        if (conf->level == 1) {
+            wbits = ngx_max(wbits, 13);
+        }
+
+        ctx->allocated = 8192 + 16 + (1 << (wbits + 2))
+                         + (1 << (ngx_max(memlevel, 8) + 8))
+                         + (1 << (memlevel + 8));
+        ctx->intel = 1;
+    }
 }
 
 
@@ -1003,7 +1026,7 @@ ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
 
     alloc = items * size;
 
-    if (alloc % 512 != 0 && alloc < 8192) {
+    if (items == 1 && alloc % 512 != 0 && alloc < 8192) {
 
         /*
          * The zlib deflate_state allocation, it takes about 6K,
@@ -1025,9 +1048,14 @@ ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
         return p;
     }
 
-    ngx_log_error(NGX_LOG_ALERT, ctx->request->connection->log, 0,
-                  "gzip filter failed to use preallocated memory: %ud of %ui",
-                  items * size, ctx->allocated);
+    if (ctx->intel) {
+        ngx_log_error(NGX_LOG_ALERT, ctx->request->connection->log, 0,
+                      "gzip filter failed to use preallocated memory: "
+                      "%ud of %ui", items * size, ctx->allocated);
+
+    } else {
+        ngx_http_gzip_assume_intel = 1;
+    }
 
     p = ngx_palloc(ctx->request->pool, items * size);
 

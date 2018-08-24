@@ -439,6 +439,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ctx.temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
     if (ctx.temp_pool == NULL) {
+        ngx_destroy_pool(pool);
         return NGX_CONF_ERROR;
     }
 
@@ -459,6 +460,10 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     rv = ngx_conf_parse(cf, NULL);
 
     *cf = save;
+
+    if (rv != NGX_CONF_OK) {
+        goto failed;
+    }
 
     geo->proxies = ctx.proxies;
     geo->proxy_recursive = ctx.proxy_recursive;
@@ -482,7 +487,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
                 ctx.high.low[i] = ngx_palloc(cf->pool, len + sizeof(void *));
                 if (ctx.high.low[i] == NULL) {
-                    return NGX_CONF_ERROR;
+                    goto failed;
                 }
 
                 ngx_memcpy(ctx.high.low[i], a->elts, len);
@@ -508,14 +513,11 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         var->get_handler = ngx_http_geo_range_variable;
         var->data = (uintptr_t) geo;
 
-        ngx_destroy_pool(ctx.temp_pool);
-        ngx_destroy_pool(pool);
-
     } else {
         if (ctx.tree == NULL) {
             ctx.tree = ngx_radix_tree_create(cf->pool, -1);
             if (ctx.tree == NULL) {
-                return NGX_CONF_ERROR;
+                goto failed;
             }
         }
 
@@ -525,7 +527,7 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (ctx.tree6 == NULL) {
             ctx.tree6 = ngx_radix_tree_create(cf->pool, -1);
             if (ctx.tree6 == NULL) {
-                return NGX_CONF_ERROR;
+                goto failed;
             }
         }
 
@@ -535,14 +537,11 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         var->get_handler = ngx_http_geo_cidr_variable;
         var->data = (uintptr_t) geo;
 
-        ngx_destroy_pool(ctx.temp_pool);
-        ngx_destroy_pool(pool);
-
         if (ngx_radix32tree_insert(ctx.tree, 0, 0,
                                    (uintptr_t) &ngx_http_variable_null_value)
             == NGX_ERROR)
         {
-            return NGX_CONF_ERROR;
+            goto failed;
         }
 
         /* NGX_BUSY is okay (default was set explicitly) */
@@ -552,12 +551,22 @@ ngx_http_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                     (uintptr_t) &ngx_http_variable_null_value)
             == NGX_ERROR)
         {
-            return NGX_CONF_ERROR;
+            goto failed;
         }
 #endif
     }
 
-    return rv;
+    ngx_destroy_pool(ctx.temp_pool);
+    ngx_destroy_pool(pool);
+
+    return NGX_CONF_OK;
+
+failed:
+
+    ngx_destroy_pool(ctx.temp_pool);
+    ngx_destroy_pool(pool);
+
+    return NGX_CONF_ERROR;
 }
 
 

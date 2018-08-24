@@ -39,7 +39,8 @@ static ngx_event_t  ngx_syslog_dummy_event;
 char *
 ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 {
-    peer->pool = cf->pool;
+    ngx_pool_cleanup_t  *cln;
+
     peer->facility = NGX_CONF_UNSET_UINT;
     peer->severity = NGX_CONF_UNSET_UINT;
 
@@ -66,6 +67,19 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
     }
 
     peer->conn.fd = (ngx_socket_t) -1;
+
+    peer->conn.read = &ngx_syslog_dummy_event;
+    peer->conn.write = &ngx_syslog_dummy_event;
+
+    ngx_syslog_dummy_event.log = &ngx_syslog_dummy_log;
+
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    cln->data = peer;
+    cln->handler = ngx_syslog_cleanup;
 
     return NGX_CONF_OK;
 }
@@ -289,9 +303,7 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
         n = ngx_os_io.send(&peer->conn, buf, len);
     }
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-    if (n == NGX_ERROR && peer->server.sockaddr->sa_family == AF_UNIX) {
+    if (n == NGX_ERROR) {
 
         if (ngx_close_socket(peer->conn.fd) == -1) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
@@ -301,8 +313,6 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
         peer->conn.fd = (ngx_socket_t) -1;
     }
 
-#endif
-
     return n;
 }
 
@@ -310,13 +320,7 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
 static ngx_int_t
 ngx_syslog_init_peer(ngx_syslog_peer_t *peer)
 {
-    ngx_socket_t         fd;
-    ngx_pool_cleanup_t  *cln;
-
-    peer->conn.read = &ngx_syslog_dummy_event;
-    peer->conn.write = &ngx_syslog_dummy_event;
-
-    ngx_syslog_dummy_event.log = &ngx_syslog_dummy_log;
+    ngx_socket_t  fd;
 
     fd = ngx_socket(peer->server.sockaddr->sa_family, SOCK_DGRAM, 0);
     if (fd == (ngx_socket_t) -1) {
@@ -336,14 +340,6 @@ ngx_syslog_init_peer(ngx_syslog_peer_t *peer)
                       "connect() failed");
         goto failed;
     }
-
-    cln = ngx_pool_cleanup_add(peer->pool, 0);
-    if (cln == NULL) {
-        goto failed;
-    }
-
-    cln->data = peer;
-    cln->handler = ngx_syslog_cleanup;
 
     peer->conn.fd = fd;
 

@@ -27,6 +27,8 @@ static void *ngx_http_v2_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_v2_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
 
+static char *ngx_http_v2_push(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 static char *ngx_http_v2_recv_buffer_size(ngx_conf_t *cf, void *post,
     void *data);
 static char *ngx_http_v2_pool_size(ngx_conf_t *cf, void *post, void *data);
@@ -71,6 +73,13 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       ngx_conf_set_num_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v2_srv_conf_t, concurrent_streams),
+      NULL },
+
+    { ngx_string("http2_max_concurrent_pushes"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v2_srv_conf_t, concurrent_pushes),
       NULL },
 
     { ngx_string("http2_max_requests"),
@@ -128,6 +137,20 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_v2_loc_conf_t, chunk_size),
       &ngx_http_v2_chunk_size_post },
+
+    { ngx_string("http2_push_preload"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_v2_loc_conf_t, push_preload),
+      NULL },
+
+    { ngx_string("http2_push"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_v2_push,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
 
     { ngx_string("spdy_recv_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
@@ -329,6 +352,7 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
     h2scf->pool_size = NGX_CONF_UNSET_SIZE;
 
     h2scf->concurrent_streams = NGX_CONF_UNSET_UINT;
+    h2scf->concurrent_pushes = NGX_CONF_UNSET_UINT;
     h2scf->max_requests = NGX_CONF_UNSET_UINT;
 
     h2scf->max_field_size = NGX_CONF_UNSET_SIZE;
@@ -355,6 +379,8 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->concurrent_streams,
                               prev->concurrent_streams, 128);
+    ngx_conf_merge_uint_value(conf->concurrent_pushes,
+                              prev->concurrent_pushes, 10);
     ngx_conf_merge_uint_value(conf->max_requests, prev->max_requests, 1000);
 
     ngx_conf_merge_size_value(conf->max_field_size, prev->max_field_size,
@@ -386,7 +412,16 @@ ngx_http_v2_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     h2lcf->pushes = NULL;
+     */
+
     h2lcf->chunk_size = NGX_CONF_UNSET_SIZE;
+
+    h2lcf->push_preload = NGX_CONF_UNSET;
+    h2lcf->push = NGX_CONF_UNSET;
 
     return h2lcf;
 }
@@ -399,6 +434,72 @@ ngx_http_v2_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v2_loc_conf_t *conf = child;
 
     ngx_conf_merge_size_value(conf->chunk_size, prev->chunk_size, 8 * 1024);
+
+    ngx_conf_merge_value(conf->push, prev->push, 1);
+
+    if (conf->push && conf->pushes == NULL) {
+        conf->pushes = prev->pushes;
+    }
+
+    ngx_conf_merge_value(conf->push_preload, prev->push_preload, 0);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_v2_push(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_v2_loc_conf_t *h2lcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_http_complex_value_t          *cv;
+    ngx_http_compile_complex_value_t   ccv;
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+
+        if (h2lcf->pushes) {
+            return "\"off\" parameter cannot be used with URI";
+        }
+
+        if (h2lcf->push == 0) {
+            return "is duplicate";
+        }
+
+        h2lcf->push = 0;
+        return NGX_CONF_OK;
+    }
+
+    if (h2lcf->push == 0) {
+        return "URI cannot be used with \"off\" parameter";
+    }
+
+    h2lcf->push = 1;
+
+    if (h2lcf->pushes == NULL) {
+        h2lcf->pushes = ngx_array_create(cf->pool, 1,
+                                         sizeof(ngx_http_complex_value_t));
+        if (h2lcf->pushes == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    cv = ngx_array_push(h2lcf->pushes);
+    if (cv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }

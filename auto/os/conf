@@ -110,6 +110,11 @@ case "$NGX_MACHINE" in
         NGX_MACH_CACHE_LINE=64
     ;;
 
+    aarch64 )
+        have=NGX_ALIGNMENT value=16 . auto/define
+        NGX_MACH_CACHE_LINE=64
+    ;;
+
     *)
         have=NGX_ALIGNMENT value=16 . auto/define
         NGX_MACH_CACHE_LINE=32

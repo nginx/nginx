@@ -2620,7 +2620,8 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
     time_t                    valid;
     ngx_str_t                *value;
-    ngx_uint_t                i, n, status;
+    ngx_int_t                 status;
+    ngx_uint_t                i, n;
     ngx_array_t             **a;
     ngx_http_cache_valid_t   *v;
     static ngx_uint_t         statuses[] = { 200, 301, 302 };

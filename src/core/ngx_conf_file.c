@@ -656,12 +656,13 @@ ngx_conf_read_token(ngx_conf_t *cf)
         }
 
         if (last_space) {
-            if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
-                continue;
-            }
 
             start = b->pos - 1;
             start_line = cf->conf_file->line;
+
+            if (ch == ' ' || ch == '\t' || ch == CR || ch == LF) {
+                continue;
+            }
 
             switch (ch) {
 
@@ -706,6 +707,11 @@ ngx_conf_read_token(ngx_conf_t *cf)
             case '\'':
                 start++;
                 s_quoted = 1;
+                last_space = 0;
+                continue;
+
+            case '$':
+                variable = 1;
                 last_space = 0;
                 continue;
 

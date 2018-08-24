@@ -86,6 +86,20 @@ static ngx_http_v2_header_t  ngx_http_v2_static_table[] = {
      / sizeof(ngx_http_v2_header_t))
 
 
+ngx_str_t *
+ngx_http_v2_get_static_name(ngx_uint_t index)
+{
+    return &ngx_http_v2_static_table[index - 1].name;
+}
+
+
+ngx_str_t *
+ngx_http_v2_get_static_value(ngx_uint_t index)
+{
+    return &ngx_http_v2_static_table[index - 1].value;
+}
+
+
 ngx_int_t
 ngx_http_v2_get_indexed_header(ngx_http_v2_connection_t *h2c, ngx_uint_t index,
     ngx_uint_t name_only)

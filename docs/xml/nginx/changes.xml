@@ -5,6 +5,675 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.2" date="2018-07-24">
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_preread_protocol
+в модуле ngx_stream_ssl_preread_module.
+</para>
+<para lang="en">
+the $ssl_preread_protocol variable
+in the ngx_stream_ssl_preread_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании директивы reset_timedout_connection
+nginx сбрасывает соединения, закрываемые с кодом 444.
+</para>
+<para lang="en">
+now when using the "reset_timedout_connection" directive
+nginx will reset connections being closed with the 444 code.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "http request", "https proxy request",
+"unsupported protocol" и "version too low"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+a logging level of the "http request", "https proxy request",
+"unsupported protocol", and "version too low" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+запросы к DNS-серверу не отправлялись повторно,
+если при первой попытке отправки происходила ошибка.
+</para>
+<para lang="en">
+DNS requests were not resent
+if initial sending of a request failed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр reuseport директивы listen игнорировался,
+если количество рабочих процессов было задано после директивы listen.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive was ignored
+if the number of worker processes was specified after the "listen" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании OpenSSL 1.1.0 и новее
+директиву ssl_prefer_server_ciphers нельзя было выключить
+в виртуальном сервере, если она была включена в сервере по умолчанию.
+</para>
+<para lang="en">
+when using OpenSSL 1.1.0 or newer
+it was not possible to switch off "ssl_prefer_server_ciphers" in
+a virtual server if it was switched on in the default server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+повторное использование SSL-сессий к бэкендам
+не работало с протоколом TLS 1.3.
+</para>
+<para lang="en">
+SSL session reuse with upstream servers
+did not work with the TLS 1.3 protocol.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.1" date="2018-07-03">
+
+<change type="feature">
+<para lang="ru">
+директива random в блоке upstream.
+</para>
+<para lang="en">
+the "random" directive inside the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшена производительность при использовании директив hash и ip_hash
+совместно с директивой zone.
+</para>
+<para lang="en">
+improved performance when using the "hash" and "ip_hash" directives
+with the "zone" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр reuseport директивы listen
+теперь использует SO_REUSEPORT_LB на FreeBSD 12.
+</para>
+<para lang="en">
+the "reuseport" parameter of the "listen" directive
+now uses SO_REUSEPORT_LB on FreeBSD 12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+HTTP/2 server push не работал, если SSL терминировался прокси-сервером
+перед nginx'ом.
+</para>
+<para lang="en">
+HTTP/2 server push did not work if SSL was terminated by a proxy server
+in front of nginx.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива tcp_nopush всегда использовалась для соединений к бэкендам.
+</para>
+<para lang="en">
+the "tcp_nopush" directive was always used on backend connections.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при отправке сохранённого на диск тела запроса на gRPC-бэкенд
+могли возникать ошибки.
+</para>
+<para lang="en">
+sending a disk-buffered request body to a gRPC backend
+might fail.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.0" date="2018-06-05">
+
+<change type="change">
+<para lang="ru">
+директива "ssl" теперь считается устаревшей;
+вместо неё следует использовать параметр ssl директивы listen.
+</para>
+<para lang="en">
+the "ssl" directive is deprecated;
+the "ssl" parameter of the "listen" directive should be used instead.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при использовании директивы listen с параметром ssl
+nginx определяет отсутствие SSL-сертификатов при тестировании конфигурации.
+</para>
+<para lang="en">
+now nginx detects missing SSL certificates during configuration testing
+when using the "ssl" parameter of the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь модуль stream умеет обрабатывать
+несколько входящих UDP-пакетов от клиента в рамках одной сессии.
+</para>
+<para lang="en">
+now the stream module can handle
+multiple incoming UDP datagrams from a client within a single session.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_valid
+можно было указать некорректный код ответа.
+</para>
+<para lang="en">
+it was possible to specify an incorrect response code
+in the "proxy_cache_valid" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 8.1.
+</para>
+<para lang="en">
+nginx could not be built by gcc 8.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+логгирование в syslog останавливалось при изменении локального IP-адреса.
+</para>
+<para lang="en">
+logging to syslog stopped on local IP address changes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался компилятором clang, если был установлен CUDA SDK;
+ошибка появилась в 1.13.8.
+</para>
+<para lang="en">
+nginx could not be built by clang with CUDA SDK installed;
+the bug had appeared in 1.13.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании unix domain listen-сокетов на FreeBSD
+в процессе обновления исполняемого файла
+в логе могли появляться сообщения "getsockopt(TCP_FASTOPEN) ... failed".
+</para>
+<para lang="en">
+"getsockopt(TCP_FASTOPEN) ... failed" messages might appear in logs
+during binary upgrade
+when using unix domain listen sockets on FreeBSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Fedora 28 Linux.
+</para>
+<para lang="en">
+nginx could not be built on Fedora 28 Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы limit_req
+заданная скорость обработки запросов могла не соблюдаться.
+</para>
+<para lang="en">
+request processing rate might exceed configured rate
+when using the "limit_req" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке адресов клиентов при использовании unix domain listen-сокетов
+для работы с датаграммами на Linux.
+</para>
+<para lang="en">
+in handling of client addresses when using unix domain listen sockets
+to work with datagrams on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти.
+</para>
+<para lang="en">
+in memory allocation error handling.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.12" date="2018-04-10">
+
+<change type="bugfix">
+<para lang="ru">
+при возврате большого ответа
+соединения с gRPC-бэкендами могли неожиданно закрываться.
+</para>
+<para lang="en">
+connections with gRPC backends might be closed unexpectedly
+when returning a large response.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.11" date="2018-04-03">
+
+<change type="feature">
+<para lang="ru">
+параметр proxy_protocol директивы listen
+теперь поддерживает протокол PROXY версии 2.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive
+now supports the PROXY protocol version 2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с OpenSSL 1.1.1 статически на Linux.
+</para>
+<para lang="en">
+nginx could not be built with OpenSSL 1.1.1 statically on Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в параметрах http_404, http_500 и им подобных
+директивы proxy_next_upstream.
+</para>
+<para lang="en">
+in the "http_404", "http_500", etc. parameters
+of the "proxy_next_upstream" directive.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.10" date="2018-03-20">
+
+<change type="feature">
+<para lang="ru">
+теперь параметр set в SSI-директиве include
+позволяет сохранять в переменную любые ответы;
+максимальный размер ответа задаётся директивой subrequest_output_buffer_size.
+</para>
+<para lang="en">
+the "set" parameter of the "include" SSI directive now allows
+writing arbitrary responses to a variable;
+the "subrequest_output_buffer_size" directive defines maximum response size.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь nginx использует вызов clock_gettime(CLOCK_MONOTONIC), если он доступен,
+что позволяет избежать некорректного срабатывания таймаутов
+при изменениях системного времени.
+</para>
+<para lang="en">
+now nginx uses clock_gettime(CLOCK_MONOTONIC) if available,
+to avoid timeouts being incorrectly triggered
+on system time changes.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр "escape=none" директивы log_format.<br/>
+Спасибо Johannes Baiter и Calin Don.
+</para>
+<para lang="en">
+the "escape=none" parameter of the "log_format" directive.<br/>
+Thanks to Johannes Baiter and Calin Don.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_preread_alpn_protocols
+в модуле ngx_stream_ssl_preread_module.
+</para>
+<para lang="en">
+the $ssl_preread_alpn_protocols variable
+in the ngx_stream_ssl_preread_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_http_grpc_module.
+</para>
+<para lang="en">
+the ngx_http_grpc_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок выделения памяти в директиве geo.
+</para>
+<para lang="en">
+in memory allocation error handling in the "geo" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании переменных в директиве auth_basic_user_file
+в лог мог выводиться символ '\0'.<br/>
+Спасибо Вадиму Филимонову.
+</para>
+<para lang="en">
+when using variables in the "auth_basic_user_file" directive
+a null character might appear in logs.<br/>
+Thanks to Vadim Filimonov.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.9" date="2018-02-20">
+
+<change type="feature">
+<para lang="ru">
+поддержка HTTP/2 server push;
+директивы http2_push и http2_push_preload.
+</para>
+<para lang="en">
+HTTP/2 server push support;
+the "http2_push" and "http2_push_preload" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании кэша
+в логах могли появляться сообщения "header already sent";
+ошибка появилась в 1.9.13.
+</para>
+<para lang="en">
+"header already sent" alerts might appear in logs
+when using cache;
+the bug had appeared in 1.9.13.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ssl_verify_client
+в рабочем процессе мог произойти segmentation fault,
+если в виртуальном сервере не был указан SSL-сертификат.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "ssl_verify_client" directive was used
+and no SSL certificate was specified in a virtual server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_v2_module.
+</para>
+<para lang="en">
+in the ngx_http_v2_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_dav_module.
+</para>
+<para lang="en">
+in the ngx_http_dav_module.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.8" date="2017-12-26">
+
+<change type="feature">
+<para lang="ru">
+теперь при использовании параметра transparent директив proxy_bind,
+fastcgi_bind, memcached_bind, scgi_bind и uwsgi_bind
+nginx автоматически сохраняет capability CAP_NET_RAW в рабочих процессах.
+</para>
+<para lang="en">
+now nginx automatically preserves the CAP_NET_RAW capability in worker processes
+when using the "transparent" parameter of the "proxy_bind",
+"fastcgi_bind", "memcached_bind", "scgi_bind", and "uwsgi_bind" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+улучшения в определении размера строки кэша процессора.<br/>
+Спасибо Debayan Ghosh.
+</para>
+<para lang="en">
+improved CPU cache line size detection.<br/>
+Thanks to Debayan Ghosh.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+new directives in vim syntax highlighting scripts.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+процедура обновления исполняемого файла не работала,
+если после завершения родительского процесса
+новым родительским процессом nginx'а становился процесс с PID, отличным от 1.
+</para>
+<para lang="en">
+binary upgrade refused to work
+if nginx was re-parented to a process with PID different from 1
+after its parent process has finished.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_autoindex_module неправильно обрабатывал запросы с телом.
+</para>
+<para lang="en">
+the ngx_http_autoindex_module incorrectly handled requests with bodies.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_limit_rate при использовании с директивой keepalive.
+</para>
+<para lang="en">
+in the "proxy_limit_rate" directive when used with the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании "proxy_buffering off" часть ответа могла буферизироваться,
+если клиентское соединение использовало SSL.<br/>
+Спасибо Patryk Lesiewicz.
+</para>
+<para lang="en">
+some parts of a response might be buffered when using "proxy_buffering off"
+if the client connection used SSL.<br/>
+Thanks to Patryk Lesiewicz.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменную вида "${name}" с именем в фигурных скобках
+нельзя было использовать в начале параметра
+не заключив весь параметр в кавычки.
+</para>
+<para lang="en">
+it was not possible to start a parameter
+with a variable in the "${name}" form with the name in curly brackets
+without enclosing the parameter into single or double quotes.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.13.7" date="2017-11-21">
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $upstream_status.
+</para>
+<para lang="en">
+in the $upstream_status variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если бэкенд возвращал ответ "101 Switching Protocols" на подзапрос.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if a backend returned a "101 Switching Protocols" response to a subrequest.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при переконфигурации изменялся размер зоны разделяемой памяти
+и переконфигурация завершалась неудачно,
+то в главном процессе происходил segmentation fault.
+</para>
+<para lang="en">
+a segmentation fault occurred in a master process
+if a shared memory zone size was changed during a reconfiguration
+and the reconfiguration failed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_fastcgi_module.
+</para>
+<para lang="en">
+in the ngx_http_fastcgi_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx возвращал ошибку 500,
+если в директиве xslt_stylesheet
+были заданы параметры без использования переменных.
+</para>
+<para lang="en">
+nginx returned the 500 error
+if parameters without variables were specified
+in the "xslt_stylesheet" directive.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании варианта библиотеки zlib от Intel
+в лог писались сообщения "gzip filter failed to use preallocated memory".
+</para>
+<para lang="en">
+"gzip filter failed to use preallocated memory" alerts appeared in logs
+when using a zlib library variant from Intel.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива worker_shutdown_timeout не работала
+при использовании почтового прокси-сервера
+и при проксировании WebSocket-соединений.
+</para>
+<para lang="en">
+the "worker_shutdown_timeout" directive did not work
+when using mail proxy and when proxying WebSocket connections.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.13.6" date="2017-10-10">
 
 <change type="bugfix">

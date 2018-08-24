@@ -128,6 +128,7 @@ typedef struct {
 
     off_t                              received;
     time_t                             start_sec;
+    ngx_uint_t                         requests;
     ngx_uint_t                         responses;
 
     ngx_str_t                          ssl_name;

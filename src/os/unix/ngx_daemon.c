@@ -26,6 +26,7 @@ ngx_daemon(ngx_log_t *log)
         exit(0);
     }
 
+    ngx_parent = ngx_pid;
     ngx_pid = ngx_getpid();
 
     if (setsid() == -1) {

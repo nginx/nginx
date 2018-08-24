@@ -31,6 +31,7 @@ struct ngx_shm_zone_s {
     ngx_shm_t                 shm;
     ngx_shm_zone_init_pt      init;
     void                     *tag;
+    void                     *sync;
     ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
 };
 
@@ -114,6 +115,8 @@ typedef struct {
 
     ngx_array_t               env;
     char                    **environment;
+
+    ngx_uint_t                transparent;  /* unsigned  transparent:1; */
 } ngx_core_conf_t;
 
 

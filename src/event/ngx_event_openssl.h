@@ -36,7 +36,11 @@
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
+#if (LIBRESSL_VERSION_NUMBER >= 0x2080000fL)
+#define OPENSSL_VERSION_NUMBER  0x1010000fL
+#else
 #define OPENSSL_VERSION_NUMBER  0x1000107fL
+#endif
 #endif
 
 
@@ -76,6 +80,9 @@ struct ngx_ssl_connection_s {
     size_t                      buffer_size;
 
     ngx_connection_handler_pt   handler;
+
+    ngx_ssl_session_t          *session;
+    ngx_connection_handler_pt   save_session;
 
     ngx_event_handler_pt        saved_read_handler;
     ngx_event_handler_pt        saved_write_handler;
@@ -168,6 +175,10 @@ RSA *ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_int_t ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file);
 ngx_int_t ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name);
+ngx_int_t ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_uint_t enable);
+ngx_int_t ngx_ssl_client_session_cache(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_uint_t enable);
 ngx_int_t ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
     ssize_t builtin_session_cache, ngx_shm_zone_t *shm_zone, time_t timeout);
 ngx_int_t ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl,
@@ -178,7 +189,8 @@ ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
 
 void ngx_ssl_remove_cached_session(SSL_CTX *ssl, ngx_ssl_session_t *sess);
 ngx_int_t ngx_ssl_set_session(ngx_connection_t *c, ngx_ssl_session_t *session);
-#define ngx_ssl_get_session(c)      SSL_get1_session(c->ssl->connection)
+ngx_ssl_session_t *ngx_ssl_get_session(ngx_connection_t *c);
+ngx_ssl_session_t *ngx_ssl_get0_session(ngx_connection_t *c);
 #define ngx_ssl_free_session        SSL_SESSION_free
 #define ngx_ssl_get_connection(ssl_conn)                                      \
     SSL_get_ex_data(ssl_conn, ngx_ssl_connection_index)
@@ -206,6 +218,8 @@ ngx_int_t ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool,
 ngx_int_t ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_session_reused(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_early_data(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
