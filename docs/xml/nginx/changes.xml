@@ -5,6 +5,103 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.3" date="2018-08-28">
+
+<change type="feature">
+<para lang="ru">
+теперь TLSv1.3 можно использовать с BoringSSL.
+</para>
+<para lang="en">
+now TLSv1.3 can be used with BoringSSL.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_early_data,
+сейчас доступна при использовании BoringSSL.
+</para>
+<para lang="en">
+the "ssl_early_data" directive,
+currently available with BoringSSL.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы keepalive_timeout и keepalive_requests
+в блоке upstream.
+</para>
+<para lang="en">
+the "keepalive_timeout" and "keepalive_requests" directives
+in the "upstream" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при копировании файла поверх существующего файла с помощью метода COPY
+не обнулял целевой файл.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+did not truncate destination file when copying a file over an existing one
+with the COPY method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при перемещении файла между файловыми системами с помощью метода MOVE
+устанавливал нулевые права доступа на результирующий файл
+и не сохранял время изменения файла.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+used zero access rights on the destination file
+and did not preserve file modification time
+when moving a file between different file systems with the MOVE method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при копировании файла с помощью метода COPY
+для результирующего файла использовал права доступа по умолчанию.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+used default access rights
+when copying a file with the COPY method.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+некоторые клиенты могли не работать при использовании HTTP/2;
+ошибка появилась в 1.13.5.
+</para>
+<para lang="en">
+some clients might not work when using HTTP/2;
+the bug had appeared in 1.13.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с LibreSSL 2.8.0.
+</para>
+<para lang="en">
+nginx could not be built with LibreSSL 2.8.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.2" date="2018-07-24">
 
 <change type="feature">
