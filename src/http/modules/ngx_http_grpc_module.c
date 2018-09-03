@@ -112,6 +112,7 @@ typedef struct {
 
     unsigned                   header_sent:1;
     unsigned                   output_closed:1;
+    unsigned                   output_blocked:1;
     unsigned                   parsing_headers:1;
     unsigned                   end_stream:1;
     unsigned                   done:1;
@@ -1076,6 +1077,7 @@ ngx_http_grpc_reinit_request(ngx_http_request_t *r)
     ctx->state = 0;
     ctx->header_sent = 0;
     ctx->output_closed = 0;
+    ctx->output_blocked = 0;
     ctx->parsing_headers = 0;
     ctx->end_stream = 0;
     ctx->done = 0;
@@ -1413,6 +1415,13 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
         rc = NGX_AGAIN;
     }
 
+    if (rc == NGX_AGAIN) {
+        ctx->output_blocked = 1;
+
+    } else {
+        ctx->output_blocked = 0;
+    }
+
     if (ctx->done) {
 
         /*
@@ -1427,6 +1436,7 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
         if (ctx->in == NULL
             && ctx->out == NULL
             && ctx->output_closed
+            && !ctx->output_blocked
             && ctx->state == ngx_http_grpc_st_start)
         {
             u->keepalive = 1;
@@ -1777,6 +1787,7 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                     if (ctx->in == NULL
                         && ctx->out == NULL
                         && ctx->output_closed
+                        && !ctx->output_blocked
                         && b->last == b->pos)
                     {
                         u->keepalive = 1;
@@ -1879,6 +1890,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
 
                     if (ctx->in == NULL
                         && ctx->output_closed
+                        && !ctx->output_blocked
                         && ctx->state == ngx_http_grpc_st_start)
                     {
                         u->keepalive = 1;
