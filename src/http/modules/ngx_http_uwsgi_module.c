@@ -960,6 +960,12 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
     }
 #endif
 
+    if (len > 65535) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "uwsgi request is too big: %uz", len);
+        return NGX_ERROR;
+    }
+
     b = ngx_create_temp_buf(r->pool, len + 4);
     if (b == NULL) {
         return NGX_ERROR;
