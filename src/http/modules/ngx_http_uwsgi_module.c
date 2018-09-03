@@ -954,8 +954,8 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 #if 0
     /* allow custom uwsgi packet */
     if (len > 0 && len < 2) {
-        ngx_log_error (NGX_LOG_ALERT, r->connection->log, 0,
-                       "uwsgi request is too little: %uz", len);
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "uwsgi request is too little: %uz", len);
         return NGX_ERROR;
     }
 #endif
