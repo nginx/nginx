@@ -3311,6 +3311,10 @@ ngx_http_lingering_close_handler(ngx_event_t *rev)
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "lingering read: %z", n);
 
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
         if (n == NGX_ERROR || n == 0) {
             ngx_http_close_request(r, 0);
             return;
