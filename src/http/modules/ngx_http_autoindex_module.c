@@ -452,7 +452,7 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 
     static u_char  header[] =
         "</title></head>" CRLF
-        "<body bgcolor=\"white\">" CRLF
+        "<body>" CRLF
         "<h1>Index of "
     ;
 
