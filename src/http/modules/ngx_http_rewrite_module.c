@@ -180,15 +180,7 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
         code(e);
     }
 
-    if (e->status < NGX_HTTP_BAD_REQUEST) {
-        return e->status;
-    }
-
-    if (r->err_status == 0) {
-        return e->status;
-    }
-
-    return r->err_status;
+    return e->status;
 }
 
 
