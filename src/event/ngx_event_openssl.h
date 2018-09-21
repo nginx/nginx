@@ -87,12 +87,17 @@ struct ngx_ssl_connection_s {
     ngx_event_handler_pt        saved_read_handler;
     ngx_event_handler_pt        saved_write_handler;
 
+    u_char                      early_buf;
+
     unsigned                    handshaked:1;
     unsigned                    renegotiation:1;
     unsigned                    buffer:1;
     unsigned                    no_wait_shutdown:1;
     unsigned                    no_send_shutdown:1;
     unsigned                    handshake_buffer_set:1;
+    unsigned                    try_early_data:1;
+    unsigned                    in_early:1;
+    unsigned                    early_preread:1;
 };
 
 
