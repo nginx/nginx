@@ -843,6 +843,8 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
     BIO               *rbio, *wbio;
     ngx_connection_t  *c;
 
+#ifndef SSL_OP_NO_RENEGOTIATION
+
     if ((where & SSL_CB_HANDSHAKE_START)
         && SSL_is_server((ngx_ssl_conn_t *) ssl_conn))
     {
@@ -853,6 +855,8 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL renegotiation");
         }
     }
+
+#endif
 
     if ((where & SSL_CB_ACCEPT_LOOP) == SSL_CB_ACCEPT_LOOP) {
         c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
@@ -1391,6 +1395,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
 
+#ifndef SSL_OP_NO_RENEGOTIATION
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 
@@ -1399,6 +1404,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
             c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
         }
 
+#endif
 #endif
 #endif
 
@@ -1628,6 +1634,8 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     int        sslerr;
     ngx_err_t  err;
 
+#ifndef SSL_OP_NO_RENEGOTIATION
+
     if (c->ssl->renegotiation) {
         /*
          * disable renegotiation (CVE-2009-3555):
@@ -1649,6 +1657,8 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
 
         return NGX_ERROR;
     }
+
+#endif
 
     if (n > 0) {
 
