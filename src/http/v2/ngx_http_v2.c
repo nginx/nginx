@@ -2673,11 +2673,13 @@ error:
 
     if (rc == NGX_ABORT) {
         /* header handler has already finalized request */
+        ngx_http_run_posted_requests(fc);
         return NULL;
     }
 
     if (rc == NGX_DECLINED) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_run_posted_requests(fc);
         return NULL;
     }
 
@@ -3742,18 +3744,22 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
+    ngx_connection_t  *fc;
+
+    fc = r->connection;
+
     if (ngx_http_v2_construct_request_line(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     if (ngx_http_v2_construct_cookie_header(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
     if (ngx_http_process_request_header(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
@@ -3763,7 +3769,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->stream->skip_data = 1;
 
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-        return;
+        goto failed;
     }
 
     if (r->headers_in.content_length_n == -1 && !r->stream->in_closed) {
@@ -3771,6 +3777,10 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     }
 
     ngx_http_process_request(r);
+
+failed:
+
+    ngx_http_run_posted_requests(fc);
 }
 
 
