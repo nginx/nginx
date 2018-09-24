@@ -2669,7 +2669,7 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
         } else {
 
             status = ngx_atoi(value[i].data, value[i].len);
-            if (status < 100) {
+            if (status < 100 || status > 599) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid status \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
