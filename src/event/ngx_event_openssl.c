@@ -2062,6 +2062,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_NO_SUITABLE_KEY_SHARE
             || n == SSL_R_NO_SUITABLE_KEY_SHARE                      /*  101 */
 #endif
+#ifdef SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM
+            || n == SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM            /*  118 */
+#endif
             || n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                  /*  129 */
             || n == SSL_R_DIGEST_CHECK_FAILED                        /*  149 */
             || n == SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST              /*  151 */
@@ -2083,6 +2086,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
             || n == SSL_R_UNKNOWN_ALERT_TYPE                         /*  246 */
             || n == SSL_R_UNKNOWN_PROTOCOL                           /*  252 */
+#ifdef SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS
+            || n == SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS             /*  253 */
+#endif
             || n == SSL_R_UNSUPPORTED_PROTOCOL                       /*  258 */
 #ifdef SSL_R_NO_SHARED_GROUP
             || n == SSL_R_NO_SHARED_GROUP                            /*  266 */
