@@ -3146,6 +3146,7 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
     const
 #endif
     u_char                   *p;
+    size_t                    slen;
     uint32_t                  hash;
     ngx_int_t                 rc;
     ngx_shm_zone_t           *shm_zone;
@@ -3201,12 +3202,14 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
         if (rc == 0) {
 
             if (sess_id->expire > ngx_time()) {
-                ngx_memcpy(buf, sess_id->session, sess_id->len);
+                slen = sess_id->len;
+
+                ngx_memcpy(buf, sess_id->session, slen);
 
                 ngx_shmtx_unlock(&shpool->mutex);
 
                 p = buf;
-                sess = d2i_SSL_SESSION(NULL, &p, sess_id->len);
+                sess = d2i_SSL_SESSION(NULL, &p, slen);
 
                 return sess;
             }
