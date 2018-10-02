@@ -854,7 +854,7 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     c = ngx_ssl_get_connection(ssl_conn);
 
-    if (c->ssl->renegotiation) {
+    if (c->ssl->handshaked) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
@@ -919,6 +919,10 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 #endif
 
         SSL_set_options(ssl_conn, SSL_CTX_get_options(sscf->ssl.ctx));
+
+#ifdef SSL_OP_NO_RENEGOTIATION
+        SSL_set_options(ssl_conn, SSL_OP_NO_RENEGOTIATION);
+#endif
     }
 
     return SSL_TLSEXT_ERR_OK;
