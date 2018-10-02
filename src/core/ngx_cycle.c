@@ -921,7 +921,8 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 
 #else
 
-    file = ngx_pnalloc(cycle->pool, cycle->lock_file.len + zn->shm.name.len);
+    file = ngx_pnalloc(cycle->pool,
+                       cycle->lock_file.len + zn->shm.name.len + 1);
     if (file == NULL) {
         return NGX_ERROR;
     }
