@@ -31,6 +31,7 @@ typedef struct {
     ngx_flag_t                       next_upstream;
     ngx_flag_t                       proxy_protocol;
     ngx_stream_upstream_local_t     *local;
+    ngx_flag_t                       socket_keepalive;
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -134,6 +135,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_stream_proxy_bind,
       NGX_STREAM_SRV_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("proxy_socket_keepalive"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, socket_keepalive),
       NULL },
 
     { ngx_string("proxy_connect_timeout"),
@@ -386,6 +394,10 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     if (ngx_stream_proxy_set_local(s, u, pscf->local) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
+    }
+
+    if (pscf->socket_keepalive) {
+        u->peer.so_keepalive = 1;
     }
 
     u->peer.type = c->type;
@@ -1898,6 +1910,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->next_upstream = NGX_CONF_UNSET;
     conf->proxy_protocol = NGX_CONF_UNSET;
     conf->local = NGX_CONF_UNSET_PTR;
+    conf->socket_keepalive = NGX_CONF_UNSET;
 
 #if (NGX_STREAM_SSL)
     conf->ssl_enable = NGX_CONF_UNSET;
@@ -1947,6 +1960,9 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->proxy_protocol, prev->proxy_protocol, 0);
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
+
+    ngx_conf_merge_value(conf->socket_keepalive,
+                              prev->socket_keepalive, 0);
 
 #if (NGX_STREAM_SSL)
 
