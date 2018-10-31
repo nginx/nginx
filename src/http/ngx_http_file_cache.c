@@ -2418,23 +2418,32 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             p = (u_char *) ngx_strchr(name.data, ':');
 
-            if (p) {
-                name.len = p - name.data;
-
-                p++;
-
-                s.len = value[i].data + value[i].len - p;
-                s.data = p;
-
-                size = ngx_parse_size(&s);
-                if (size >= (ssize_t) (2 * ngx_pagesize)) {
-                    continue;
-                }
+            if (p == NULL) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid keys zone size \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
             }
 
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid keys zone size \"%V\"", &value[i]);
-            return NGX_CONF_ERROR;
+            name.len = p - name.data;
+
+            s.data = p + 1;
+            s.len = value[i].data + value[i].len - s.data;
+
+            size = ngx_parse_size(&s);
+
+            if (size == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid keys zone size \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            if (size < (ssize_t) (2 * ngx_pagesize)) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "keys zone \"%V\" is too small", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
         }
 
         if (ngx_strncmp(value[i].data, "inactive=", 9) == 0) {
