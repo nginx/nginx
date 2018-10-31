@@ -2427,7 +2427,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 s.data = p;
 
                 size = ngx_parse_size(&s);
-                if (size > 8191) {
+                if (size >= (ssize_t) (2 * ngx_pagesize)) {
                     continue;
                 }
             }
