@@ -5,6 +5,46 @@
 <change_log title="nginx">
 
 
+<changes ver="1.14.1" date="2018-11-06">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/2 клиент мог вызвать
+чрезмерное потреблению памяти (CVE-2018-16843)
+и ресурсов процессора (CVE-2018-16844).
+</para>
+<para lang="en">
+when using HTTP/2 a client might cause
+excessive memory consumption (CVE-2018-16843)
+and CPU usage (CVE-2018-16844).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного mp4-файла модулем ngx_http_mp4_module
+содержимое памяти рабочего процесса могло быть отправлено клиенту
+(CVE-2018-16845).
+</para>
+<para lang="en">
+processing of a specially crafted mp4 file with the ngx_http_mp4_module
+might result in worker process memory disclosure
+(CVE-2018-16845).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работе с gRPC-бэкендами могло расходоваться большое количество памяти.
+</para>
+<para lang="en">
+working with gRPC backends might result in excessive memory consumption.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.14.0" date="2018-04-17">
 
 <change>
