@@ -664,6 +664,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 
     h2c->pool = NULL;
     h2c->free_frames = NULL;
+    h2c->frames = 0;
     h2c->free_fake_connections = NULL;
 
 #if (NGX_HTTP_SSL)
@@ -2895,7 +2896,7 @@ ngx_http_v2_get_frame(ngx_http_v2_connection_t *h2c, size_t length,
 
         frame->blocked = 0;
 
-    } else {
+    } else if (h2c->frames < 10000) {
         pool = h2c->pool ? h2c->pool : h2c->connection->pool;
 
         frame = ngx_pcalloc(pool, sizeof(ngx_http_v2_out_frame_t));
@@ -2919,6 +2920,15 @@ ngx_http_v2_get_frame(ngx_http_v2_connection_t *h2c, size_t length,
         frame->last = frame->first;
 
         frame->handler = ngx_http_v2_frame_handler;
+
+        h2c->frames++;
+
+    } else {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "http2 flood detected");
+
+        h2c->connection->error = 1;
+        return NULL;
     }
 
 #if (NGX_DEBUG)
