@@ -78,6 +78,9 @@ typedef struct {
 
     ngx_uint_t                 id;
 
+    ngx_uint_t                 pings;
+    ngx_uint_t                 settings;
+
     ssize_t                    send_window;
     size_t                     recv_window;
 
@@ -3584,6 +3587,12 @@ ngx_http_grpc_parse_settings(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
                           ctx->rest);
             return NGX_ERROR;
         }
+
+        if (ctx->free == NULL && ctx->settings++ > 1000) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent too many settings frames");
+            return NGX_ERROR;
+        }
     }
 
     for (p = b->pos; p < last; p++) {
@@ -3734,6 +3743,12 @@ ngx_http_grpc_parse_ping(ngx_http_request_t *r,
         if (ctx->flags & NGX_HTTP_V2_ACK_FLAG) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent ping frame with ack flag");
+            return NGX_ERROR;
+        }
+
+        if (ctx->free == NULL && ctx->pings++ > 1000) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent too many ping frames");
             return NGX_ERROR;
         }
     }
