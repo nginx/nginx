@@ -4481,11 +4481,18 @@ ngx_http_v2_idle_handler(ngx_event_t *rev)
 
 #endif
 
-    c->destroyed = 0;
-    ngx_reusable_connection(c, 0);
-
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
+
+    if (h2c->idle++ > 10 * h2scf->max_requests) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "http2 flood detected");
+        ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
+        return;
+    }
+
+    c->destroyed = 0;
+    ngx_reusable_connection(c, 0);
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {
