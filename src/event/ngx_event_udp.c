@@ -261,7 +261,10 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
             rev->handler(rev);
 
-            c->udp->buffer = NULL;
+            if (c->udp) {
+                c->udp->buffer = NULL;
+            }
+
             rev->ready = 0;
 
             goto next;
@@ -561,6 +564,8 @@ ngx_delete_udp_connection(void *data)
     ngx_connection_t  *c = data;
 
     ngx_rbtree_delete(&c->listening->rbtree, &c->udp->node);
+
+    c->udp = NULL;
 }
 
 
