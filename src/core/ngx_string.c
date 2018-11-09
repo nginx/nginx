@@ -172,8 +172,9 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
     ngx_uint_t             width, sign, hex, max_width, frac_width, scale, n;
     ngx_str_t             *v;
     ngx_variable_value_t  *vv;
+    char *fmt_last = (char *)fmt + strlen(fmt);
 
-    while (*fmt && buf < last) {
+    while (*fmt && buf < last && fmt < fmt_last) {
 
         /*
          * "buf < last" means that we could copy at least one character:
