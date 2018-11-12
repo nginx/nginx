@@ -26,6 +26,7 @@ typedef struct {
     size_t                           buffer_size;
     size_t                           upload_rate;
     size_t                           download_rate;
+    ngx_uint_t                       requests;
     ngx_uint_t                       responses;
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
@@ -193,6 +194,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, download_rate),
+      NULL },
+
+    { ngx_string("proxy_requests"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, requests),
       NULL },
 
     { ngx_string("proxy_responses"),
@@ -1341,11 +1349,14 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
 
         } else {
             if (s->connection->type == SOCK_DGRAM) {
-                if (pscf->responses == NGX_MAX_INT32_VALUE) {
+
+                if (pscf->responses == NGX_MAX_INT32_VALUE
+                    || (u->responses >= pscf->responses * u->requests))
+                {
 
                     /*
                      * successfully terminate timed out UDP session
-                     * with unspecified number of responses
+                     * if expected number of responses was received
                      */
 
                     handler = c->log->handler;
@@ -1692,6 +1703,14 @@ ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
 
     if (c->type == SOCK_DGRAM) {
 
+        if (pscf->requests && u->requests < pscf->requests) {
+            return NGX_DECLINED;
+        }
+
+        if (pscf->requests) {
+            ngx_delete_udp_connection(c);
+        }
+
         if (pscf->responses == NGX_MAX_INT32_VALUE
             || u->responses < pscf->responses * u->requests)
         {
@@ -1943,6 +1962,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
     conf->upload_rate = NGX_CONF_UNSET_SIZE;
     conf->download_rate = NGX_CONF_UNSET_SIZE;
+    conf->requests = NGX_CONF_UNSET_UINT;
     conf->responses = NGX_CONF_UNSET_UINT;
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->next_upstream = NGX_CONF_UNSET;
@@ -1986,6 +2006,9 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->download_rate,
                               prev->download_rate, 0);
+
+    ngx_conf_merge_uint_value(conf->requests,
+                              prev->requests, 0);
 
     ngx_conf_merge_uint_value(conf->responses,
                               prev->responses, NGX_MAX_INT32_VALUE);
