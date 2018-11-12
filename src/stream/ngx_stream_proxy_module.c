@@ -73,6 +73,8 @@ static void ngx_stream_proxy_connect_handler(ngx_event_t *ev);
 static ngx_int_t ngx_stream_proxy_test_connect(ngx_connection_t *c);
 static void ngx_stream_proxy_process(ngx_stream_session_t *s,
     ngx_uint_t from_upstream, ngx_uint_t do_write);
+static ngx_int_t ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
+    ngx_uint_t from_upstream);
 static void ngx_stream_proxy_next_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc);
 static u_char *ngx_stream_proxy_log_error(ngx_log_t *log, u_char *buf,
@@ -1646,44 +1648,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
     c->log->action = "proxying connection";
 
-    if (c->type == SOCK_DGRAM
-        && pscf->responses != NGX_MAX_INT32_VALUE
-        && u->responses >= pscf->responses * u->requests
-        && !src->buffered && dst && !dst->buffered)
-    {
-        handler = c->log->handler;
-        c->log->handler = NULL;
-
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "udp done"
-                      ", packets from/to client:%ui/%ui"
-                      ", bytes from/to client:%O/%O"
-                      ", bytes from/to upstream:%O/%O",
-                      u->requests, u->responses,
-                      s->received, c->sent, u->received, pc ? pc->sent : 0);
-
-        c->log->handler = handler;
-
-        ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
-        return;
-    }
-
-    if (c->type == SOCK_STREAM
-        && src->read->eof && dst && (dst->read->eof || !dst->buffered))
-    {
-        handler = c->log->handler;
-        c->log->handler = NULL;
-
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "%s disconnected"
-                      ", bytes from/to client:%O/%O"
-                      ", bytes from/to upstream:%O/%O",
-                      from_upstream ? "upstream" : "client",
-                      s->received, c->sent, u->received, pc ? pc->sent : 0);
-
-        c->log->handler = handler;
-
-        ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+    if (ngx_stream_proxy_test_finalize(s, from_upstream) == NGX_OK) {
         return;
     }
 
@@ -1707,6 +1672,79 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
             ngx_del_timer(c->write);
         }
     }
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
+    ngx_uint_t from_upstream)
+{
+    ngx_connection_t             *c, *pc;
+    ngx_log_handler_pt            handler;
+    ngx_stream_upstream_t        *u;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+    c = s->connection;
+    u = s->upstream;
+    pc = u->connected ? u->peer.connection : NULL;
+
+    if (c->type == SOCK_DGRAM) {
+
+        if (pscf->responses == NGX_MAX_INT32_VALUE
+            || u->responses < pscf->responses * u->requests)
+        {
+            return NGX_DECLINED;
+        }
+
+        if (pc == NULL || c->buffered || pc->buffered) {
+            return NGX_DECLINED;
+        }
+
+        handler = c->log->handler;
+        c->log->handler = NULL;
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "udp done"
+                      ", packets from/to client:%ui/%ui"
+                      ", bytes from/to client:%O/%O"
+                      ", bytes from/to upstream:%O/%O",
+                      u->requests, u->responses,
+                      s->received, c->sent, u->received, pc ? pc->sent : 0);
+
+        c->log->handler = handler;
+
+        ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+
+        return NGX_OK;
+    }
+
+    /* c->type == SOCK_STREAM */
+
+    if (pc == NULL
+        || (!c->read->eof && !pc->read->eof)
+        || (!c->read->eof && c->buffered)
+        || (!pc->read->eof && pc->buffered))
+    {
+        return NGX_DECLINED;
+    }
+
+    handler = c->log->handler;
+    c->log->handler = NULL;
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                  "%s disconnected"
+                  ", bytes from/to client:%O/%O"
+                  ", bytes from/to upstream:%O/%O",
+                  from_upstream ? "upstream" : "client",
+                  s->received, c->sent, u->received, pc ? pc->sent : 0);
+
+    c->log->handler = handler;
+
+    ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+
+    return NGX_OK;
 }
 
 
