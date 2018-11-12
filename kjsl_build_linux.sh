@@ -38,9 +38,11 @@ mkdir -p /usr/nginx/nginx
 	--with-cc-opt="-I/usr/include -I/usr/opt/openssl/include" \
 	--with-ld-opt="-L/usr/lib -L/usr/opt/openssl/lib" \
         --with-http_stub_status_module \
+        --with-compat \
 	--prefix=/etc/nginx \
 	--sbin-path=/sbin/nginx \
 	--conf-path=/etc/nginx/nginx.conf \
+        --with-http_dav_module \
 	--error-log-path=/var/log/nginx/error.log \
 	--http-log-path=/var/log/nginx/access.log \
 	--pid-path=/var/run/nginx.pid \
