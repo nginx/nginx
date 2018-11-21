@@ -908,7 +908,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             burst = ngx_atoi(value[i].data + 6, value[i].len - 6);
             if (burst <= 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid burst rate \"%V\"", &value[i]);
+                                   "invalid burst value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
             }
 
