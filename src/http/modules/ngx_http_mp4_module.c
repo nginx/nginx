@@ -169,7 +169,14 @@ typedef struct {
 
 
 #define ngx_mp4_atom_next(mp4, n)                                             \
-    mp4->buffer_pos += (size_t) n;                                            \
+                                                                              \
+    if (n > (size_t) (mp4->buffer_end - mp4->buffer_pos)) {                   \
+        mp4->buffer_pos = mp4->buffer_end;                                    \
+                                                                              \
+    } else {                                                                  \
+        mp4->buffer_pos += (size_t) n;                                        \
+    }                                                                         \
+                                                                              \
     mp4->offset += n
 
 
