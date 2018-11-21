@@ -267,24 +267,22 @@ ngx_stream_upstream_response_time_variable(ngx_stream_session_t *s,
     for ( ;; ) {
 
         if (data == 1) {
-            if (state[i].first_byte_time == (ngx_msec_t) -1) {
-                *p++ = '-';
-                goto next;
-            }
-
             ms = state[i].first_byte_time;
 
-        } else if (data == 2 && state[i].connect_time != (ngx_msec_t) -1) {
+        } else if (data == 2) {
             ms = state[i].connect_time;
 
         } else {
             ms = state[i].response_time;
         }
 
-        ms = ngx_max(ms, 0);
-        p = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000);
+        if (ms != -1) {
+            ms = ngx_max(ms, 0);
+            p = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000);
 
-    next:
+        } else {
+            *p++ = '-';
+        }
 
         if (++i == s->upstream_states->nelts) {
             break;
