@@ -5,6 +5,121 @@
 <change_log title="nginx">
 
 
+<changes ver="1.14.2" date="2018-12-04">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 8.1.
+</para>
+<para lang="en">
+nginx could not be built by gcc 8.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Fedora 28 Linux.
+</para>
+<para lang="en">
+nginx could not be built on Fedora 28 Linux.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке адресов клиентов при использовании unix domain listen-сокетов
+для работы с датаграммами на Linux.
+</para>
+<para lang="en">
+in handling of client addresses when using unix domain listen sockets
+to work with datagrams on Linux.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "http request", "https proxy request",
+"unsupported protocol", "version too low", "no suitable key share" и
+"no suitable signature algorithm"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the "http request", "https proxy request",
+"unsupported protocol", "version too low", "no suitable key share", and
+"no suitable signature algorithm" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании OpenSSL 1.1.0 и новее
+директиву ssl_prefer_server_ciphers нельзя было выключить
+в виртуальном сервере, если она была включена в сервере по умолчанию.
+</para>
+<para lang="en">
+when using OpenSSL 1.1.0 or newer
+it was not possible to switch off "ssl_prefer_server_ciphers" in
+a virtual server if it was switched on in the default server.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с LibreSSL 2.8.0.
+</para>
+<para lang="en">
+nginx could not be built with LibreSSL 2.8.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с OpenSSL 1.1.0, а использовался с OpenSSL 1.1.1,
+протокол TLS 1.3 всегда был разрешён.
+</para>
+<para lang="en">
+if nginx was built with OpenSSL 1.1.0 and used with OpenSSL 1.1.1,
+the TLS 1.3 protocol was always enabled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при отправке сохранённого на диск тела запроса на gRPC-бэкенд
+могли возникать ошибки.
+</para>
+<para lang="en">
+sending a disk-buffered request body to a gRPC backend
+might fail.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения к некоторым gRPC-бэкендам могли не кэшироваться
+при использовании директивы keepalive.
+</para>
+<para lang="en">
+connections with some gRPC backends might not be cached
+when using the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_mp4_module на 32-битных платформах.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_mp4_module was used on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.14.1" date="2018-11-06">
 
 <change type="security">
