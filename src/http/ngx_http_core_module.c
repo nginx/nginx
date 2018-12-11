@@ -2386,6 +2386,14 @@ ngx_http_subrequest(ngx_http_request_t *r,
         sr->phase_handler = r->phase_handler;
         sr->write_event_handler = ngx_http_core_run_phases;
 
+#if (NGX_PCRE)
+        sr->ncaptures = r->ncaptures;
+        sr->captures = r->captures;
+        sr->captures_data = r->captures_data;
+        sr->realloc_captures = 1;
+        r->realloc_captures = 1;
+#endif
+
         ngx_http_update_location_config(sr);
     }
 
