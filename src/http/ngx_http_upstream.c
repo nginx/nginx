@@ -409,6 +409,10 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
       ngx_http_upstream_response_length_variable, 1,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
+    { ngx_string("upstream_bytes_sent"), NULL,
+      ngx_http_upstream_response_length_variable, 2,
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
 #if (NGX_HTTP_CACHE)
 
     { ngx_string("upstream_cache_status"), NULL,
@@ -4136,6 +4140,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     if (u->peer.sockaddr) {
 
+        if (u->peer.connection) {
+            u->state->bytes_sent = u->peer.connection->sent;
+        }
+
         if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_403
             || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404)
         {
@@ -4318,6 +4326,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
             u->state->bytes_received += u->pipe->read_length
                                         - u->pipe->preread_size;
             u->state->response_length = u->pipe->read_length;
+        }
+
+        if (u->peer.connection) {
+            u->state->bytes_sent = u->peer.connection->sent;
         }
     }
 
@@ -5501,6 +5513,9 @@ ngx_http_upstream_response_length_variable(ngx_http_request_t *r,
 
         if (data == 1) {
             p = ngx_sprintf(p, "%O", state[i].bytes_received);
+
+        } else if (data == 2) {
+            p = ngx_sprintf(p, "%O", state[i].bytes_sent);
 
         } else {
             p = ngx_sprintf(p, "%O", state[i].response_length);
