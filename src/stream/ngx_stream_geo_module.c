@@ -206,6 +206,13 @@ ngx_stream_geo_cidr_variable(ngx_stream_session_t *s,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        vv = (ngx_stream_variable_value_t *)
+                  ngx_radix32tree_find(ctx->u.trees.tree, INADDR_NONE);
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) addr.sockaddr;
         inaddr = ntohl(sin->sin_addr.s_addr);
@@ -265,6 +272,12 @@ ngx_stream_geo_range_variable(ngx_stream_session_t *s,
                 inaddr = INADDR_NONE;
             }
 
+            break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            inaddr = INADDR_NONE;
             break;
 #endif
 
