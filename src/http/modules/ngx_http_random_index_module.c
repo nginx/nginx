@@ -98,7 +98,7 @@ ngx_http_random_index_handler(ngx_http_request_t *r)
     }
 
 #if (NGX_HAVE_D_TYPE)
-    len = NGX_DIR_MASK_LEN;
+    len = 0;
 #else
     len = NGX_HTTP_RANDOM_INDEX_PREALLOCATE;
 #endif
