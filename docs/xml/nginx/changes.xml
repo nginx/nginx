@@ -5,6 +5,82 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.8" date="2018-12-25">
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_bytes_sent.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the $upstream_bytes_sent variable.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+new directives in vim syntax highlighting scripts.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве geo при использовании unix domain listen-сокетов.
+</para>
+<para lang="en">
+in the "geo" directive when using unix domain listen sockets.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании директивы ssl_early_data с OpenSSL
+в логах могли появляться сообщения
+"ignoring stale global SSL error ... bad length".
+</para>
+<para lang="en">
+the "ignoring stale global SSL error ... bad length"
+alerts might appear in logs
+when using the "ssl_early_data" directive with OpenSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в nginx/Windows.
+</para>
+<para lang="en">
+in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module на 32-битных платформах.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.7" date="2018-11-27">
 
 <change type="feature">
