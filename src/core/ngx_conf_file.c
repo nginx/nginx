@@ -310,7 +310,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
                 goto failed;
             }
 
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, rv);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", rv);
 
             goto failed;
         }
