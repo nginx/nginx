@@ -1593,7 +1593,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     break;
                 }
 
-                if ((off_t) size > limit) {
+                if (c->type == SOCK_STREAM && (off_t) size > limit) {
                     size = (size_t) limit;
                 }
             }
