@@ -44,6 +44,8 @@ mkdir -p /usr/local/nginx/nginx
 	--http-log-path=/usr/local/var/log/nginx/access.log \
 	--pid-path=/usr/local/var/run/nginx.pid \
 	--lock-path=/usr/local/var/run/nginx.lock \
+        --with-http_ssl_module \
+        --with-http_v2_module \
 	--add-module=./ngx_devel_kit \
  	--add-module=./nginx-rtmp-module \
  	--add-module=../smootha/nginx-switch-module
