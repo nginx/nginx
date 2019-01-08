@@ -557,12 +557,38 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t       *clcf;
     ngx_http_upstream_srv_conf_t   *uscf, **uscfp;
     ngx_http_upstream_main_conf_t  *umcf;
+    ngx_str_t                      ar_cache_use_stale_val;
 
     if (r->aio) {
         return;
     }
 
     u = r->upstream;
+
+    if ((u->conf->ar_cache_use_stale != NULL
+            && ngx_http_complex_value(r, u->conf->ar_cache_use_stale, &ar_cache_use_stale_val) == NGX_OK)) {
+  	    if(ngx_strncasecmp((u_char *)ar_cache_use_stale_val.data, (u_char *) "on", 2) == 0){
+            //some case will be commented
+			u->conf->cache_use_stale = NGX_HTTP_UPSTREAM_FT_ERROR |
+									   NGX_HTTP_UPSTREAM_FT_TIMEOUT |
+									   //NGX_HTTP_UPSTREAM_FT_INVALID_HEADER |
+									   NGX_HTTP_UPSTREAM_FT_HTTP_500 |
+									   NGX_HTTP_UPSTREAM_FT_HTTP_502 |
+									   NGX_HTTP_UPSTREAM_FT_HTTP_503 |
+									   NGX_HTTP_UPSTREAM_FT_HTTP_504 |
+									   //NGX_HTTP_UPSTREAM_FT_HTTP_403 |
+									   //NGX_HTTP_UPSTREAM_FT_HTTP_404 |
+									   NGX_HTTP_UPSTREAM_FT_UPDATING |
+									   //NGX_HTTP_UPSTREAM_FT_BUSY_LOCK |
+									   //NGX_HTTP_UPSTREAM_FT_MAX_WAITING |
+									   //NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT |
+									   NGX_HTTP_UPSTREAM_FT_NOLIVE;
+
+  	    }else {
+  	        u->conf->cache_use_stale = NGX_CONF_BITMASK_SET |
+  	                                   NGX_HTTP_UPSTREAM_FT_OFF;
+  	    }
+    }
 
 #if (NGX_HTTP_CACHE)
 

@@ -197,6 +197,7 @@ typedef struct {
 
     ngx_uint_t                       cache_min_uses;
     ngx_uint_t                       cache_use_stale;
+    ngx_http_complex_value_t         *ar_cache_use_stale;
     ngx_uint_t                       cache_methods;
 
     off_t                            cache_max_range_offset;
