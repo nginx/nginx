@@ -624,10 +624,10 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_ignore_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
-      ngx_conf_set_bitmask_slot,
+	  ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.ignore_headers),
-      &ngx_http_upstream_ignore_headers_masks },
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ar_ignore_headers),
+      NULL },
 
     { ngx_string("proxy_http_version"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
