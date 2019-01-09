@@ -7,10 +7,12 @@ services:
 
 os:
   - linux
-
-env:
-  - VERSION=1.15.8.1
   
+global:
+    - PROJECT_NAME=nginx
+    - VERSION=1.15.8.1
+    - FILE_NAME=${PROJECT_NAME}-${VERSION}.tar.gz
+
 before_install:
   - sudo apt-get update
   - sudo apt-get install curl
@@ -70,3 +72,15 @@ script:
             --with-cc-opt='-g -O0 -fPIE -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2' \
             --with-ld-opt='-Wl,-Bsymbolic-functions -fPIE -pie -Wl,-z,relro -Wl,-z,now'
     - make
+deploy:
+  provider: releases
+  api_key:
+    secure: d98b299aaed3bb356463e8cc14aaea8e2f691198
+  file: "${FILE_NAME}"
+  skip_cleanup: true
+  on:
+    tags: true
+
+notifications:
+  email:
+    on_success: never
