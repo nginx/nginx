@@ -43,7 +43,7 @@ deploy:
   provider: releases
   api_key:
     secure: d98b299aaed3bb356463e8cc14aaea8e2f691198
-  file: "${FILE_NAME}"
+  file: nginx-1.15.8.1.tar.gz
   skip_cleanup: true
   on:
     tags: true
