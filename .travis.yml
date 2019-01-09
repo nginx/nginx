@@ -37,8 +37,7 @@ script:
   - make
 
 before_deploy:
-  - cd ..
-  - tar -czvf "${FILE_NAME}" "${REPO}"
+  - tar -czvf "${FILE_NAME}" auto/ conf/ contrib/ docs/ misc/ src/ .hgtags 
 
 deploy:
   provider: releases
