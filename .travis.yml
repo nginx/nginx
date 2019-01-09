@@ -30,14 +30,7 @@ script:
   - sudo make install_sw 1> /dev/null
   - sudo ldconfig
   - cd $ROOT
-  - ./auto/configure --prefix=/usr/share/nginx \
-            --sbin-path=/usr/sbin/nginx \
-            --modules-path=/usr/lib/nginx/modules \
-            --conf-path=/etc/nginx/nginx.conf \
-            --error-log-path=/var/log/nginx/error.log \
-            --http-log-path=/var/log/nginx/access.log \
-            --pid-path=/run/nginx.pid \
-            --lock-path=/var/lock/nginx.lock \
+  - ./auto/configure \
             --user=www-data \
             --group=www-data \
             --build=Ubuntu \
