@@ -187,6 +187,8 @@ static ngx_event_module_t  ngx_eventport_module_ctx = {
         ngx_eventport_process_events,      /* process the events */
         ngx_eventport_init,                /* init the events */
         ngx_eventport_done,                /* done the events */
+        NULL,                              /* add an async conn */
+        NULL                               /* del an async conn */
     }
 
 };

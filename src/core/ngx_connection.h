@@ -127,7 +127,9 @@ struct ngx_connection_s {
     ngx_event_t        *write;
 
     ngx_socket_t        fd;
-
+#if (NGX_SSL)
+    ngx_socket_t        async_fd;
+#endif
     ngx_recv_pt         recv;
     ngx_send_pt         send;
     ngx_recv_chain_pt   recv_chain;
@@ -152,6 +154,7 @@ struct ngx_connection_s {
 
 #if (NGX_SSL || NGX_COMPAT)
     ngx_ssl_connection_t  *ssl;
+    ngx_flag_t          asynch;
 #endif
 
     ngx_udp_connection_t  *udp;
@@ -187,6 +190,9 @@ struct ngx_connection_s {
 
     unsigned            need_last_buf:1;
 
+#if (NGX_SSL)
+    unsigned            num_async_fds:8;
+#endif
 #if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
     unsigned            busy_count:2;
 #endif

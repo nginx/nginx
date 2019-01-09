@@ -191,6 +191,9 @@ typedef struct {
 
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);
+
+    ngx_int_t  (*add_async_conn)(ngx_connection_t *c);
+    ngx_int_t  (*del_async_conn)(ngx_connection_t *c, ngx_uint_t flags);
 } ngx_event_actions_t;
 
 
@@ -415,6 +418,8 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
 #define ngx_del_event        ngx_event_actions.del
 #define ngx_add_conn         ngx_event_actions.add_conn
 #define ngx_del_conn         ngx_event_actions.del_conn
+#define ngx_add_async_conn   ngx_event_actions.add_async_conn
+#define ngx_del_async_conn   ngx_event_actions.del_async_conn
 
 #define ngx_notify           ngx_event_actions.notify
 

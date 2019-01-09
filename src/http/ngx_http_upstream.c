@@ -1536,6 +1536,14 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 
         event = ev->write ? NGX_WRITE_EVENT : NGX_READ_EVENT;
 
+#if (NGX_HTTP_SSL)
+            if (c->asynch && ngx_del_async_conn) {
+                if (c->num_async_fds) {
+                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                    c->num_async_fds--;
+                }
+            }
+#endif
         if (ngx_del_event(ev, event, 0) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
