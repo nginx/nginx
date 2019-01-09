@@ -9,9 +9,10 @@ os:
   - linux
   
 global:
+    - REPO=arvannginx
     - PROJECT_NAME=nginx
     - VERSION=1.15.8.1
-    - FILE_NAME=${PROJECT_NAME}-${VERSION}.tar.gz
+    - FILE_NAME=${REPO}-${TRAVIS_TAG}.tar.gz
 
 before_install:
   - sudo apt-get update
@@ -36,7 +37,8 @@ script:
   - make
 
 before_deploy:
-  - tar -czvf "${FILE_NAME}" .
+  - cd ..
+  - tar -czvf "${FILE_NAME}" "${REPO}"
 
 deploy:
   provider: releases
