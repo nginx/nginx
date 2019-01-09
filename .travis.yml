@@ -37,7 +37,7 @@ script:
   - make
 
 before_deploy:
-  - tar -czvf "${FILE_NAME}" auto/ conf/ contrib/ docs/ misc/ src/
+  - tar czvf nginx-1.15.8.1.tar.gz auto/ conf/ contrib/ docs/ misc/ src/
 
 deploy:
   provider: releases
