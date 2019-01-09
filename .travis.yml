@@ -34,6 +34,10 @@ script:
   - cd $ROOT
   - ./auto/configure
   - make
+
+before_deploy:
+  - tar -czvf "${FILE_NAME}" .
+
 deploy:
   provider: releases
   api_key:
