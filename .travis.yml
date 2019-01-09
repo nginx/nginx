@@ -33,9 +33,6 @@ script:
   - sudo ldconfig
   - cd $ROOT
   - ./auto/configure \
-            --user=www-data \
-            --group=www-data \
-            --build=Ubuntu \
             --http-client-body-temp-path=/var/lib/nginx/body \
             --http-fastcgi-temp-path=/var/lib/nginx/fastcgi \
             --http-proxy-temp-path=/var/lib/nginx/proxy \
