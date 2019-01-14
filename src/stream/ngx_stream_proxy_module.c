@@ -1667,13 +1667,13 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
     flags = src->read->eof ? NGX_CLOSE_EVENT : 0;
 
-    if (!src->shared && ngx_handle_read_event(src->read, flags) != NGX_OK) {
+    if (ngx_handle_read_event(src->read, flags) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
     if (dst) {
-        if (!dst->shared && ngx_handle_write_event(dst->write, 0) != NGX_OK) {
+        if (ngx_handle_write_event(dst->write, 0) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
         }
