@@ -214,6 +214,8 @@ char *ngx_http_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
 ngx_int_t ngx_http_test_predicates(ngx_http_request_t *r,
     ngx_array_t *predicates);
+ngx_int_t ngx_http_test_required_predicates(ngx_http_request_t *r,
+    ngx_array_t *predicates);
 char *ngx_http_set_predicate_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
