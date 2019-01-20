@@ -11,7 +11,7 @@
 
 #define nginx_version      1015006
 #define NGINX_VERSION      "1.15.6"
-#define NGINX_VER          "ArvanCloud(nginx)/" NGINX_VERSION
+#define NGINX_VER          "ArvanCloud/" NGINX_VERSION
 
 #ifdef NGX_BUILD
 #define NGINX_VER_BUILD    NGINX_VER " (" NGX_BUILD ")"
@@ -19,7 +19,7 @@
 #define NGINX_VER_BUILD    NGINX_VER
 #endif
 
-#define NGINX_VAR          "ARVANCLOUD(NGINX)"
+#define NGINX_VAR          "ARVANCLOUD"
 #define NGX_OLDPID_EXT     ".oldbin"
 
 
