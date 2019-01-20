@@ -1045,7 +1045,14 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                      * for closed shared listening sockets unless
                      * the events was explicitly deleted
                      */
-
+#if (NGX_SSL)
+                    if (c->asynch && ngx_del_async_conn) {
+                        if (c->num_async_fds) {
+                            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                            c->num_async_fds--;
+                        }
+                    }
+#endif
                     ngx_del_event(c->read, NGX_READ_EVENT, 0);
 
                 } else {
@@ -1138,6 +1145,12 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     c->fd = s;
     c->log = log;
 
+#if (NGX_SSL)
+    c->num_async_fds = 0;
+    c->async_fd = 0;
+    c->asynch = 0;
+#endif
+
     instance = rev->instance;
 
     ngx_memzero(rev, sizeof(ngx_event_t));
@@ -1191,11 +1204,28 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_del_timer(c->write);
     }
 
+#if (NGX_SSL)
+    if (c->asynch && ngx_del_async_conn) {
+        if (c->num_async_fds) {
+            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+            c->num_async_fds--;
+        }
+    }
+#endif
+
     if (!c->shared) {
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
 
         } else {
+#if (NGX_SSL)
+            if (c->asynch && ngx_del_async_conn) {
+                if (c->num_async_fds) {
+                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                    c->num_async_fds--;
+                }
+            }
+#endif            
             if (c->read->active || c->read->disabled) {
                 ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             }
