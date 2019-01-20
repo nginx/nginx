@@ -553,6 +553,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t       *clcf;
     ngx_http_upstream_srv_conf_t   *uscf, **uscfp;
     ngx_http_upstream_main_conf_t  *umcf;
+    ngx_str_t                      ar_ignore_headers_val;
     ngx_str_t                      ar_cache_use_stale_val;
 
     if (r->aio) {
@@ -560,6 +561,58 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     }
 
     u = r->upstream;
+
+    if ((u->conf->ar_ignore_headers != NULL
+            && ngx_http_complex_value(r, u->conf->ar_ignore_headers, &ar_ignore_headers_val) == NGX_OK)) {
+          char* ar_char_ignore_headers_val;
+          ar_char_ignore_headers_val = ngx_pcalloc(r->pool, sizeof(u_char) * ar_ignore_headers_val.len + 1);
+          ngx_memcpy(ar_char_ignore_headers_val, ar_ignore_headers_val.data, sizeof(u_char) * (ar_ignore_headers_val.len));
+          ar_char_ignore_headers_val[ar_ignore_headers_val.len] = 0;
+    	  char * pch;
+    	  pch = strtok (ar_char_ignore_headers_val, " ");
+    	  while (pch != NULL)
+    	  {
+
+      	    if(ngx_strncasecmp((u_char *)pch, (u_char *) "X-Accel-Redirect", 16) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT;
+      	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "X-Accel-Expires", 15) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_XA_EXPIRES;
+    	    }
+
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "Expires", 7) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_EXPIRES;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "Cache-Control", 13) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "Set-Cookie", 10) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_SET_COOKIE;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "X-Accel-Limit-Rate", 18) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_XA_LIMIT_RATE;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "X-Accel-Buffering", 17) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_XA_BUFFERING;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "X-Accel-Charset", 15) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_XA_CHARSET;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "Vary", 4) == 0){
+      	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_VARY;
+    	    }
+    	    pch = strtok (NULL, " ");
+    	  }
+    }
+
 
     if ((u->conf->ar_cache_use_stale != NULL
             && ngx_http_complex_value(r, u->conf->ar_cache_use_stale, &ar_cache_use_stale_val) == NGX_OK)) {
