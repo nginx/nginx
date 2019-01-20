@@ -2274,7 +2274,7 @@ ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache)
 
 
 time_t
-ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status)
+ngx_http_file_cache_valid(ngx_http_request_t *r, ngx_array_t *cache_valid, ngx_uint_t status)
 {
     ngx_uint_t               i;
     ngx_http_cache_valid_t  *valid;
@@ -2286,12 +2286,33 @@ ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status)
     valid = cache_valid->elts;
     for (i = 0; i < cache_valid->nelts; i++) {
 
+    	ngx_str_t                 unparsed_valid_time;
+    	time_t                    valid_time;
+
         if (valid[i].status == 0) {
-            return valid[i].valid;
+            if (ngx_http_complex_value(r, valid[i].valid, &unparsed_valid_time) != NGX_OK) {
+                return 0;
+            }
+            valid_time = ngx_parse_time(&unparsed_valid_time, 1);
+            if (valid_time == (time_t) NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                                   "invalid time value \"%V\"", &unparsed_valid_time);
+                return 0;
+            }
+            return valid_time;
         }
 
         if (valid[i].status == status) {
-            return valid[i].valid;
+            if (ngx_http_complex_value(r, valid[i].valid, &unparsed_valid_time) != NGX_OK) {
+                return 0;
+            }
+            valid_time = ngx_parse_time(&unparsed_valid_time, 1);
+            if (valid_time == (time_t) NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                                   "invalid time value \"%V\"", &unparsed_valid_time);
+                return 0;
+            }
+            return valid_time;
         }
     }
 
@@ -2627,13 +2648,11 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     char  *p = conf;
 
-    time_t                    valid;
-    ngx_str_t                *value;
-    ngx_int_t                 status;
-    ngx_uint_t                i, n;
-    ngx_array_t             **a;
-    ngx_http_cache_valid_t   *v;
-    static ngx_uint_t         statuses[] = { 200, 301, 302 };
+    ngx_str_t                   *value;
+    ngx_uint_t                  i, n, status;
+    ngx_array_t                 **a;
+    ngx_http_cache_valid_t      *v;
+    static ngx_uint_t           statuses[] = { 200, 301, 302 };
 
     a = (ngx_array_t **) (p + cmd->offset);
 
@@ -2646,53 +2665,59 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
     value = cf->args->elts;
     n = cf->args->nelts - 1;
+	ngx_http_complex_value_t           *valid_cv;
+	ngx_http_compile_complex_value_t   valid_ccv;
 
-    valid = ngx_parse_time(&value[n], 1);
-    if (valid == (time_t) NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid time value \"%V\"", &value[n]);
-        return NGX_CONF_ERROR;
-    }
+	valid_cv = malloc(sizeof(ngx_http_complex_value_t));
+	ngx_memzero(&valid_ccv, sizeof(ngx_http_compile_complex_value_t));
+	valid_ccv.cf = cf;
+	valid_ccv.value = &value[n];
+	valid_ccv.complex_value = valid_cv;
 
-    if (n == 1) {
+	if (ngx_http_compile_complex_value(&valid_ccv) != NGX_OK) {
+		return NGX_CONF_ERROR;
+	}
 
-        for (i = 0; i < 3; i++) {
-            v = ngx_array_push(*a);
-            if (v == NULL) {
-                return NGX_CONF_ERROR;
-            }
+	if (n == 1) {
 
-            v->status = statuses[i];
-            v->valid = valid;
-        }
+		for (i = 0; i < 3; i++) {
+			v = ngx_array_push(*a);
+			if (v == NULL) {
+				return NGX_CONF_ERROR;
+			}
 
-        return NGX_CONF_OK;
-    }
+			v->status  = statuses[i];
+			v->valid   = valid_cv;
 
-    for (i = 1; i < n; i++) {
+		}
 
-        if (ngx_strcmp(value[i].data, "any") == 0) {
+		return NGX_CONF_OK;
+	}
 
-            status = 0;
+	for (i = 1; i < n; i++) {
 
-        } else {
+		if (ngx_strcmp(value[i].data, "any") == 0) {
 
-            status = ngx_atoi(value[i].data, value[i].len);
-            if (status < 100 || status > 599) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid status \"%V\"", &value[i]);
-                return NGX_CONF_ERROR;
-            }
-        }
+			status = 0;
 
-        v = ngx_array_push(*a);
-        if (v == NULL) {
-            return NGX_CONF_ERROR;
-        }
+		} else {
 
-        v->status = status;
-        v->valid = valid;
-    }
+			status = ngx_atoi(value[i].data, value[i].len);
+			if (status < 100) {
+				ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+								   "invalid status \"%V\"", &value[i]);
+				return NGX_CONF_ERROR;
+			}
+		}
+
+		v = ngx_array_push(*a);
+		if (v == NULL) {
+			return NGX_CONF_ERROR;
+		}
+
+		v->status = status;
+		v->valid = valid_cv;
+	}
 
     return NGX_CONF_OK;
 }
