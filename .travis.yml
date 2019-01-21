@@ -11,7 +11,7 @@ os:
 global:
     - REPO=arvannginx
     - PROJECT_NAME=nginx
-    - VERSION=1.15.8.1
+    - VERSION=1.15.6.1
     - FILE_NAME=${REPO}-${TRAVIS_TAG}.tar.gz
 
 before_install:
