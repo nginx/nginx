@@ -65,7 +65,6 @@ win32:
 		--with-cc-opt=-DFD_SETSIZE=1024				\
 		--with-pcre=$(OBJS)/lib/$(PCRE)				\
 		--with-zlib=$(OBJS)/lib/$(ZLIB)				\
-		--with-select_module					\
 		--with-http_v2_module					\
 		--with-http_realip_module				\
 		--with-http_addition_module				\
