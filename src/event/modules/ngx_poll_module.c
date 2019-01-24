@@ -84,7 +84,7 @@ ngx_poll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
 
         if (event_list) {
-            ngx_memcpy(list, event_list, sizeof(ngx_event_t *) * nevents);
+            ngx_memcpy(list, event_list, sizeof(struct pollfd) * nevents);
             ngx_free(event_list);
         }
 
