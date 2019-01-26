@@ -213,9 +213,6 @@ void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 #endif
 
 
-#define NGX_DIR_MASK_LEN         0
-
-
 ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_open_dir_n           "opendir()"
 

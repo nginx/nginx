@@ -2013,6 +2013,14 @@ ngx_sort(void *base, size_t n, size_t size,
 }
 
 
+void
+ngx_explicit_memzero(void *buf, size_t n)
+{
+    ngx_memzero(buf, n);
+    ngx_memory_barrier();
+}
+
+
 #if (NGX_MEMCPY_LIMIT)
 
 void *

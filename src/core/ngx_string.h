@@ -88,6 +88,8 @@ ngx_strlchr(u_char *p, u_char *last, u_char c)
 #define ngx_memzero(buf, n)       (void) memset(buf, 0, n)
 #define ngx_memset(buf, c, n)     (void) memset(buf, c, n)
 
+void ngx_explicit_memzero(void *buf, size_t n);
+
 
 #if (NGX_MEMCPY_LIMIT)
 

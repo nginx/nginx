@@ -1054,7 +1054,7 @@ cleanup:
                            ngx_close_file_n " \"%s\" failed", file->data);
     }
 
-    ngx_memzero(buf, NGX_SSL_PASSWORD_BUFFER_SIZE);
+    ngx_explicit_memzero(buf, NGX_SSL_PASSWORD_BUFFER_SIZE);
 
     return passwords;
 }
@@ -1071,7 +1071,7 @@ ngx_ssl_passwords_cleanup(void *data)
     pwd = passwords->elts;
 
     for (i = 0; i < passwords->nelts; i++) {
-        ngx_memzero(pwd[i].data, pwd[i].len);
+        ngx_explicit_memzero(pwd[i].data, pwd[i].len);
     }
 }
 
@@ -1937,6 +1937,10 @@ ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf, size_t size)
         buf += 1;
     }
 
+    if (c->ssl->write_blocked) {
+        return NGX_AGAIN;
+    }
+
     /*
      * SSL_read_early_data() may return data in parts, so try to read
      * until SSL_read_early_data() would return no data
@@ -2478,6 +2482,11 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
             ngx_post_event(c->read, &ngx_posted_events);
         }
 
+        if (c->ssl->write_blocked) {
+            c->ssl->write_blocked = 0;
+            ngx_post_event(c->read, &ngx_posted_events);
+        }
+
         c->sent += written;
 
         return written;
@@ -2491,6 +2500,9 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
 
     if (sslerr == SSL_ERROR_WANT_WRITE) {
 
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "SSL_write_early_data: want write");
+
         if (c->ssl->saved_read_handler) {
 
             c->read->handler = c->ssl->saved_read_handler;
@@ -2503,6 +2515,14 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
 
             ngx_post_event(c->read, &ngx_posted_events);
         }
+
+        /*
+         * OpenSSL 1.1.1a fails to handle SSL_read_early_data()
+         * if an SSL_write_early_data() call blocked on writing,
+         * see https://github.com/openssl/openssl/issues/7757
+         */
+
+        c->ssl->write_blocked = 1;
 
         c->write->ready = 0;
         return NGX_AGAIN;

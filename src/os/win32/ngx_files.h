@@ -181,9 +181,6 @@ u_char *ngx_realpath(u_char *path, u_char *resolved);
 #define NGX_HAVE_MAX_PATH           1
 #define NGX_MAX_PATH                MAX_PATH
 
-#define NGX_DIR_MASK                (u_char *) "/*"
-#define NGX_DIR_MASK_LEN            2
-
 
 ngx_int_t ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir);
 #define ngx_open_dir_n              "FindFirstFile()"

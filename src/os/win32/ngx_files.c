@@ -427,15 +427,30 @@ ngx_realpath(u_char *path, u_char *resolved)
 ngx_int_t
 ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
-    ngx_cpystrn(name->data + name->len, NGX_DIR_MASK, NGX_DIR_MASK_LEN + 1);
+    u_char     *pattern, *p;
+    ngx_err_t   err;
 
-    dir->dir = FindFirstFile((const char *) name->data, &dir->finddata);
-
-    name->data[name->len] = '\0';
-
-    if (dir->dir == INVALID_HANDLE_VALUE) {
+    pattern = malloc(name->len + 3);
+    if (pattern == NULL) {
         return NGX_ERROR;
     }
+
+    p = ngx_cpymem(pattern, name->data, name->len);
+
+    *p++ = '/';
+    *p++ = '*';
+    *p = '\0';
+
+    dir->dir = FindFirstFile((const char *) pattern, &dir->finddata);
+
+    if (dir->dir == INVALID_HANDLE_VALUE) {
+        err = ngx_errno;
+        ngx_free(pattern);
+        ngx_set_errno(err);
+        return NGX_ERROR;
+    }
+
+    ngx_free(pattern);
 
     dir->valid_info = 1;
     dir->ready = 1;

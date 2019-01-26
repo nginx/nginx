@@ -215,6 +215,13 @@ ngx_http_geo_cidr_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         break;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+        vv = (ngx_http_variable_value_t *)
+                  ngx_radix32tree_find(ctx->u.trees.tree, INADDR_NONE);
+        break;
+#endif
+
     default: /* AF_INET */
         sin = (struct sockaddr_in *) addr.sockaddr;
         inaddr = ntohl(sin->sin_addr.s_addr);
@@ -274,6 +281,12 @@ ngx_http_geo_range_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
                 inaddr = INADDR_NONE;
             }
 
+            break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+        case AF_UNIX:
+            inaddr = INADDR_NONE;
             break;
 #endif
 

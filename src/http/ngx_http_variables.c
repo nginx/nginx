@@ -2504,7 +2504,9 @@ ngx_http_regex_exec(ngx_http_request_t *r, ngx_http_regex_t *re, ngx_str_t *s)
     if (re->ncaptures) {
         len = cmcf->ncaptures;
 
-        if (r->captures == NULL) {
+        if (r->captures == NULL || r->realloc_captures) {
+            r->realloc_captures = 0;
+
             r->captures = ngx_palloc(r->pool, len * sizeof(int));
             if (r->captures == NULL) {
                 return NGX_ERROR;
