@@ -28,6 +28,7 @@ types {
     font/woff2                                       woff2;
 
     application/java-archive                         jar war ear;
+    application/vnd.android.package-archive          apk;
     application/json                                 json;
     application/mac-binhex40                         hqx;
     application/msword                               doc;
