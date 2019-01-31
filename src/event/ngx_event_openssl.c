@@ -947,10 +947,13 @@ ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file)
         return NULL;
     }
 
-    cln = ngx_pool_cleanup_add(cf->temp_pool, 0);
     passwords = ngx_array_create(cf->temp_pool, 4, sizeof(ngx_str_t));
+    if (passwords == NULL) {
+        return NULL;
+    }
 
-    if (cln == NULL || passwords == NULL) {
+    cln = ngx_pool_cleanup_add(cf->temp_pool, 0);
+    if (cln == NULL) {
         return NULL;
     }
 
