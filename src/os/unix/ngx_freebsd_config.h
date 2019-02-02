@@ -89,8 +89,14 @@
 
 
 #if (NGX_HAVE_FILE_AIO)
+
 #include <aio.h>
 typedef struct aiocb  ngx_aiocb_t;
+
+#if (__FreeBSD_version < 700005 && !defined __DragonFly__)
+#define sival_ptr     sigval_ptr
+#endif
+
 #endif
 
 
