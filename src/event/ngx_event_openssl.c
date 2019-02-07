@@ -2928,7 +2928,7 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
 
     if (EVP_DigestFinal_ex(md, buf, &len) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "EVP_DigestUpdate() failed");
+                      "EVP_DigestFinal_ex() failed");
         goto failed;
     }
 
