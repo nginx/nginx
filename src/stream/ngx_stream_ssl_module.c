@@ -22,6 +22,9 @@ static ngx_int_t ngx_stream_ssl_handler(ngx_stream_session_t *s);
 static ngx_int_t ngx_stream_ssl_init_connection(ngx_ssl_t *ssl,
     ngx_connection_t *c);
 static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
+#ifdef SSL_R_CERT_CB_ERROR
+static int ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg);
+#endif
 static ngx_int_t ngx_stream_ssl_static_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_variable(ngx_stream_session_t *s,
@@ -31,6 +34,9 @@ static ngx_int_t ngx_stream_ssl_add_variables(ngx_conf_t *cf);
 static void *ngx_stream_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+
+static ngx_int_t ngx_stream_ssl_compile_certificates(ngx_conf_t *cf,
+    ngx_stream_ssl_conf_t *conf);
 
 static char *ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -408,6 +414,62 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 }
 
 
+#ifdef SSL_R_CERT_CB_ERROR
+
+int
+ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
+{
+    ngx_str_t                    cert, key;
+    ngx_uint_t                   i, nelts;
+    ngx_connection_t            *c;
+    ngx_stream_session_t        *s;
+    ngx_stream_ssl_conf_t       *sslcf;
+    ngx_stream_complex_value_t  *certs, *keys;
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    if (c->ssl->handshaked) {
+        return 0;
+    }
+
+    s = c->data;
+
+    sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+
+    nelts = sslcf->certificate_values->nelts;
+    certs = sslcf->certificate_values->elts;
+    keys = sslcf->certificate_key_values->elts;
+
+    for (i = 0; i < nelts; i++) {
+
+        if (ngx_stream_complex_value(s, &certs[i], &cert) != NGX_OK) {
+            return 0;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "ssl cert: \"%s\"", cert.data);
+
+        if (ngx_stream_complex_value(s, &keys[i], &key) != NGX_OK) {
+            return 0;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "ssl key: \"%s\"", key.data);
+
+        if (ngx_ssl_connection_certificate(c, c->pool, &cert, &key,
+                                           sslcf->passwords)
+            != NGX_OK)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+#endif
+
+
 static ngx_int_t
 ngx_stream_ssl_static_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data)
@@ -505,6 +567,7 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
      *
      *     scf->listen = 0;
      *     scf->protocols = 0;
+     *     scf->certificate_values = NULL;
      *     scf->dhparam = { 0, NULL };
      *     scf->ecdh_curve = { 0, NULL };
      *     scf->client_certificate = { 0, NULL };
@@ -619,11 +682,36 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
-    if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
-                             conf->certificate_keys, conf->passwords)
-        != NGX_OK)
-    {
+    if (ngx_stream_ssl_compile_certificates(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->certificate_values) {
+
+#ifdef SSL_R_CERT_CB_ERROR
+
+        /* install callback to lookup certificates */
+
+        SSL_CTX_set_cert_cb(conf->ssl.ctx, ngx_stream_ssl_certificate, NULL);
+
+#else
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "variables in "
+                      "\"ssl_certificate\" and \"ssl_certificate_key\" "
+                      "directives are not supported on this platform");
+        return NGX_CONF_ERROR;
+#endif
+
+    } else {
+
+        /* configure certificates */
+
+        if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
+                                 conf->certificate_keys, conf->passwords)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
@@ -704,6 +792,90 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_compile_certificates(ngx_conf_t *cf,
+    ngx_stream_ssl_conf_t *conf)
+{
+    ngx_str_t                           *cert, *key;
+    ngx_uint_t                           i, nelts;
+    ngx_stream_complex_value_t          *cv;
+    ngx_stream_compile_complex_value_t   ccv;
+
+    cert = conf->certificates->elts;
+    key = conf->certificate_keys->elts;
+    nelts = conf->certificates->nelts;
+
+    for (i = 0; i < nelts; i++) {
+
+        if (ngx_stream_script_variables_count(&cert[i])) {
+            goto found;
+        }
+
+        if (ngx_stream_script_variables_count(&key[i])) {
+            goto found;
+        }
+    }
+
+    return NGX_OK;
+
+found:
+
+    conf->certificate_values = ngx_array_create(cf->pool, nelts,
+                                           sizeof(ngx_stream_complex_value_t));
+    if (conf->certificate_values == NULL) {
+        return NGX_ERROR;
+    }
+
+    conf->certificate_key_values = ngx_array_create(cf->pool, nelts,
+                                           sizeof(ngx_stream_complex_value_t));
+    if (conf->certificate_key_values == NULL) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < nelts; i++) {
+
+        cv = ngx_array_push(conf->certificate_values);
+        if (cv == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &cert[i];
+        ccv.complex_value = cv;
+        ccv.zero = 1;
+
+        if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        cv = ngx_array_push(conf->certificate_key_values);
+        if (cv == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &key[i];
+        ccv.complex_value = cv;
+        ccv.zero = 1;
+
+        if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    conf->passwords = ngx_ssl_preserve_passwords(cf, conf->passwords);
+    if (conf->passwords == NULL) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
