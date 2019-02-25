@@ -741,7 +741,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         /* install callback to lookup certificates */
 
-        SSL_CTX_set_cert_cb(conf->ssl.ctx, ngx_http_ssl_certificate, NULL);
+        SSL_CTX_set_cert_cb(conf->ssl.ctx, ngx_http_ssl_certificate, conf);
 
 #else
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,

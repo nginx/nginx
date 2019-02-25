@@ -973,7 +973,7 @@ ngx_http_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
 
     r->logged = 1;
 
-    sscf = ngx_http_get_module_srv_conf(r, ngx_http_ssl_module);
+    sscf = arg;
 
     nelts = sscf->certificate_values->nelts;
     certs = sscf->certificate_values->elts;
