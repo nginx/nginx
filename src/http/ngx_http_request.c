@@ -833,6 +833,7 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
     ngx_http_close_connection(c);
 }
 
+
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
 int
