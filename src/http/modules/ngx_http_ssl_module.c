@@ -935,6 +935,11 @@ found:
         }
     }
 
+    conf->passwords = ngx_ssl_preserve_passwords(cf, conf->passwords);
+    if (conf->passwords == NULL) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 

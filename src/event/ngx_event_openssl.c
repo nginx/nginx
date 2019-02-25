@@ -771,7 +771,7 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
             break;
         }
 
-        if (--tries) {
+        if (tries-- > 1) {
             ERR_clear_error();
             (void) BIO_reset(bio);
             pwd++;
@@ -797,6 +797,10 @@ ngx_ssl_password_callback(char *buf, int size, int rwflag, void *userdata)
     if (rwflag) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                       "ngx_ssl_password_callback() is called for encryption");
+        return 0;
+    }
+
+    if (pwd == NULL) {
         return 0;
     }
 
@@ -1212,6 +1216,69 @@ cleanup:
     ngx_explicit_memzero(buf, NGX_SSL_PASSWORD_BUFFER_SIZE);
 
     return passwords;
+}
+
+
+ngx_array_t *
+ngx_ssl_preserve_passwords(ngx_conf_t *cf, ngx_array_t *passwords)
+{
+    ngx_str_t           *opwd, *pwd;
+    ngx_uint_t           i;
+    ngx_array_t         *pwds;
+    ngx_pool_cleanup_t  *cln;
+    static ngx_array_t   empty_passwords;
+
+    if (passwords == NULL) {
+
+        /*
+         * If there are no passwords, an empty array is used
+         * to make sure OpenSSL's default password callback
+         * won't block on reading from stdin.
+         */
+
+        return &empty_passwords;
+    }
+
+    /*
+     * Passwords are normally allocated from the temporary pool
+     * and cleared after parsing configuration.  To be used at
+     * runtime they have to be copied to the configuration pool.
+     */
+
+    pwds = ngx_array_create(cf->pool, passwords->nelts, sizeof(ngx_str_t));
+    if (pwds == NULL) {
+        return NULL;
+    }
+
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        return NULL;
+    }
+
+    cln->handler = ngx_ssl_passwords_cleanup;
+    cln->data = pwds;
+
+    opwd = passwords->elts;
+
+    for (i = 0; i < passwords->nelts; i++) {
+
+        pwd = ngx_array_push(pwds);
+        if (pwd == NULL) {
+            return NULL;
+        }
+
+        pwd->len = opwd[i].len;
+        pwd->data = ngx_pnalloc(cf->pool, pwd->len);
+
+        if (pwd->data == NULL) {
+            pwds->nelts--;
+            return NULL;
+        }
+
+        ngx_memcpy(pwd->data, opwd[i].data, opwd[i].len);
+    }
+
+    return pwds;
 }
 
 

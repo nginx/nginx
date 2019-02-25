@@ -995,7 +995,8 @@ ngx_http_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "ssl key: \"%s\"", key.data);
 
-        if (ngx_ssl_connection_certificate(c, r->pool, &cert, &key, NULL)
+        if (ngx_ssl_connection_certificate(c, r->pool, &cert, &key,
+                                           sscf->passwords)
             != NGX_OK)
         {
             goto failed;
