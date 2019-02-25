@@ -54,7 +54,7 @@ static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
 static void ngx_ssl_clear_error(ngx_log_t *log);
 
 static ngx_int_t ngx_ssl_session_id_context(ngx_ssl_t *ssl,
-    ngx_str_t *sess_ctx);
+    ngx_str_t *sess_ctx, ngx_array_t *certificates);
 static int ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
 static ngx_ssl_session_t *ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
@@ -3013,13 +3013,14 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 
 ngx_int_t
 ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
-    ssize_t builtin_session_cache, ngx_shm_zone_t *shm_zone, time_t timeout)
+    ngx_array_t *certificates, ssize_t builtin_session_cache,
+    ngx_shm_zone_t *shm_zone, time_t timeout)
 {
     long  cache_mode;
 
     SSL_CTX_set_timeout(ssl->ctx, (long) timeout);
 
-    if (ngx_ssl_session_id_context(ssl, sess_ctx) != NGX_OK) {
+    if (ngx_ssl_session_id_context(ssl, sess_ctx, certificates) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -3085,11 +3086,14 @@ ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 
 
 static ngx_int_t
-ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
+ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
+    ngx_array_t *certificates)
 {
     int                   n, i;
     X509                 *cert;
     X509_NAME            *name;
+    ngx_str_t            *certs;
+    ngx_uint_t            k;
     EVP_MD_CTX           *md;
     unsigned int          len;
     STACK_OF(X509_NAME)  *list;
@@ -3131,6 +3135,24 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx)
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                           "EVP_DigestUpdate() failed");
             goto failed;
+        }
+    }
+
+    if (SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index) == NULL) {
+
+        /*
+         * If certificates are loaded dynamically, we use certificate
+         * names as specified in the configuration (with variables).
+         */
+
+        certs = certificates->elts;
+        for (k = 0; k < certificates->nelts; k++) {
+
+            if (EVP_DigestUpdate(md, certs[k].data, certs[k].len) == 0) {
+                ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                              "EVP_DigestUpdate() failed");
+                goto failed;
+            }
         }
     }
 
