@@ -528,6 +528,77 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 }
 
 
+ngx_int_t
+ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords)
+{
+    char            *err;
+    X509            *x509;
+    EVP_PKEY        *pkey;
+    STACK_OF(X509)  *chain;
+
+    x509 = ngx_ssl_load_certificate(pool, &err, cert, &chain);
+    if (x509 == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                          "cannot load certificate \"%s\": %s",
+                          cert->data, err);
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (SSL_use_certificate(c->ssl->connection, x509) == 0) {
+        ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                      "SSL_use_certificate(\"%s\") failed", cert->data);
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+    X509_free(x509);
+
+#ifdef SSL_set0_chain
+
+    /*
+     * SSL_set0_chain() is only available in OpenSSL 1.0.2+,
+     * but this function is only called via certificate callback,
+     * which is only available in OpenSSL 1.0.2+ as well
+     */
+
+    if (SSL_set0_chain(c->ssl->connection, chain) == 0) {
+        ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                      "SSL_set0_chain(\"%s\") failed", cert->data);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+#endif
+
+    pkey = ngx_ssl_load_certificate_key(pool, &err, key, passwords);
+    if (pkey == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                          "cannot load certificate key \"%s\": %s",
+                          key->data, err);
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (SSL_use_PrivateKey(c->ssl->connection, pkey) == 0) {
+        ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                      "SSL_use_PrivateKey(\"%s\") failed", key->data);
+        EVP_PKEY_free(pkey);
+        return NGX_ERROR;
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return NGX_OK;
+}
+
+
 static X509 *
 ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
     STACK_OF(X509) **chain)
@@ -2746,6 +2817,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_INAPPROPRIATE_FALLBACK
             || n == SSL_R_INAPPROPRIATE_FALLBACK                     /*  373 */
+#endif
+#ifdef SSL_R_CERT_CB_ERROR
+            || n == SSL_R_CERT_CB_ERROR                              /*  377 */
 #endif
 #ifdef SSL_R_VERSION_TOO_LOW
             || n == SSL_R_VERSION_TOO_LOW                            /*  396 */
