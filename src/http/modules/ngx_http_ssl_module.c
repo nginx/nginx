@@ -41,6 +41,9 @@ static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
 
+static ngx_int_t ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
+    ngx_http_ssl_srv_conf_t *conf);
+
 static char *ngx_http_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -550,6 +553,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     sscf->protocols = 0;
+     *     sscf->certificate_values = NULL;
      *     sscf->dhparam = { 0, NULL };
      *     sscf->ecdh_curve = { 0, NULL };
      *     sscf->client_certificate = { 0, NULL };
@@ -727,11 +731,36 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
-    if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
-                             conf->certificate_keys, conf->passwords)
-        != NGX_OK)
-    {
+    if (ngx_http_ssl_compile_certificates(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->certificate_values) {
+
+#ifdef SSL_R_CERT_CB_ERROR
+
+        /* install callback to lookup certificates */
+
+        SSL_CTX_set_cert_cb(conf->ssl.ctx, ngx_http_ssl_certificate, NULL);
+
+#else
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "variables in "
+                      "\"ssl_certificate\" and \"ssl_certificate_key\" "
+                      "directives are not supported on this platform");
+        return NGX_CONF_ERROR;
+#endif
+
+    } else {
+
+        /* configure certificates */
+
+        if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
+                                 conf->certificate_keys, conf->passwords)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
@@ -828,6 +857,85 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
+    ngx_http_ssl_srv_conf_t *conf)
+{
+    ngx_str_t                         *cert, *key;
+    ngx_uint_t                         i, nelts;
+    ngx_http_complex_value_t          *cv;
+    ngx_http_compile_complex_value_t   ccv;
+
+    cert = conf->certificates->elts;
+    key = conf->certificate_keys->elts;
+    nelts = conf->certificates->nelts;
+
+    for (i = 0; i < nelts; i++) {
+
+        if (ngx_http_script_variables_count(&cert[i])) {
+            goto found;
+        }
+
+        if (ngx_http_script_variables_count(&key[i])) {
+            goto found;
+        }
+    }
+
+    return NGX_OK;
+
+found:
+
+    conf->certificate_values = ngx_array_create(cf->pool, nelts,
+                                             sizeof(ngx_http_complex_value_t));
+    if (conf->certificate_values == NULL) {
+        return NGX_ERROR;
+    }
+
+    conf->certificate_key_values = ngx_array_create(cf->pool, nelts,
+                                             sizeof(ngx_http_complex_value_t));
+    if (conf->certificate_key_values == NULL) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < nelts; i++) {
+
+        cv = ngx_array_push(conf->certificate_values);
+        if (cv == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &cert[i];
+        ccv.complex_value = cv;
+        ccv.zero = 1;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        cv = ngx_array_push(conf->certificate_key_values);
+        if (cv == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &key[i];
+        ccv.complex_value = cv;
+        ccv.zero = 1;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 
