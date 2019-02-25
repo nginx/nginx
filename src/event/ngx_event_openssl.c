@@ -18,6 +18,10 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
+static X509 *ngx_ssl_load_certificate(ngx_pool_t *pool, char **err,
+    ngx_str_t *cert, STACK_OF(X509) **chain);
+static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+    ngx_str_t *key, ngx_array_t *passwords);
 static int ngx_ssl_password_callback(char *buf, int size, int rwflag,
     void *userdata);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
@@ -407,14 +411,136 @@ ngx_int_t
 ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_str_t *key, ngx_array_t *passwords)
 {
-    BIO         *bio;
-    X509        *x509;
-    u_long       n;
-    ngx_str_t   *pwd;
-    ngx_uint_t   tries;
+    char            *err;
+    X509            *x509;
+    EVP_PKEY        *pkey;
+    STACK_OF(X509)  *chain;
 
-    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
+    x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
+    if (x509 == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load certificate \"%s\": %s",
+                          cert->data, err);
+        }
+
         return NGX_ERROR;
+    }
+
+    if (SSL_CTX_use_certificate(ssl->ctx, x509) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_use_certificate(\"%s\") failed", cert->data);
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+    if (X509_set_ex_data(x509, ngx_ssl_certificate_name_index, cert->data)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+    if (X509_set_ex_data(x509, ngx_ssl_next_certificate_index,
+                      SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index))
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_index, x509) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_ex_data() failed");
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+    /*
+     * Note that x509 is not freed here, but will be instead freed in
+     * ngx_ssl_cleanup_ctx().  This is because we need to preserve all
+     * certificates to be able to iterate all of them through exdata
+     * (ngx_ssl_certificate_index, ngx_ssl_next_certificate_index),
+     * while OpenSSL can free a certificate if it is replaced with another
+     * certificate of the same type.
+     */
+
+#ifdef SSL_CTX_set0_chain
+
+    if (SSL_CTX_set0_chain(ssl->ctx, chain) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set0_chain(\"%s\") failed", cert->data);
+        sk_X509_pop_free(chain, X509_free);
+        return NGX_ERROR;
+    }
+
+#else
+    {
+    int  n;
+
+    /* SSL_CTX_set0_chain() is only available in OpenSSL 1.0.2+ */
+
+    n = sk_X509_num(chain);
+
+    while (n--) {
+        x509 = sk_X509_shift(chain);
+
+        if (SSL_CTX_add_extra_chain_cert(ssl->ctx, x509) == 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "SSL_CTX_add_extra_chain_cert(\"%s\") failed",
+                          cert->data);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+    }
+
+    sk_X509_free(chain);
+    }
+#endif
+
+    pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords);
+    if (pkey == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load certificate key \"%s\": %s",
+                          key->data, err);
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_use_PrivateKey(ssl->ctx, pkey) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_use_PrivateKey(\"%s\") failed", key->data);
+        EVP_PKEY_free(pkey);
+        return NGX_ERROR;
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return NGX_OK;
+}
+
+
+static X509 *
+ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
+    STACK_OF(X509) **chain)
+{
+    BIO     *bio;
+    X509    *x509, *temp;
+    u_long   n;
+
+    if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, cert)
+        != NGX_OK)
+    {
+        *err = NULL;
+        return NULL;
     }
 
     /*
@@ -425,62 +551,33 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
     bio = BIO_new_file((char *) cert->data, "r");
     if (bio == NULL) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "BIO_new_file(\"%s\") failed", cert->data);
-        return NGX_ERROR;
+        *err = "BIO_new_file() failed";
+        return NULL;
     }
+
+    /* certificate itself */
 
     x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
     if (x509 == NULL) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "PEM_read_bio_X509_AUX(\"%s\") failed", cert->data);
+        *err = "PEM_read_bio_X509_AUX() failed";
         BIO_free(bio);
-        return NGX_ERROR;
+        return NULL;
     }
 
-    if (SSL_CTX_use_certificate(ssl->ctx, x509) == 0) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_use_certificate(\"%s\") failed", cert->data);
+    /* rest of the chain */
+
+    *chain = sk_X509_new_null();
+    if (*chain == NULL) {
+        *err = "sk_X509_new_null() failed";
+        BIO_free(bio);
         X509_free(x509);
-        BIO_free(bio);
-        return NGX_ERROR;
+        return NULL;
     }
-
-    if (X509_set_ex_data(x509, ngx_ssl_certificate_name_index, cert->data)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
-        X509_free(x509);
-        BIO_free(bio);
-        return NGX_ERROR;
-    }
-
-    if (X509_set_ex_data(x509, ngx_ssl_next_certificate_index,
-                      SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index))
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
-        X509_free(x509);
-        BIO_free(bio);
-        return NGX_ERROR;
-    }
-
-    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_index, x509)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set_ex_data() failed");
-        X509_free(x509);
-        BIO_free(bio);
-        return NGX_ERROR;
-    }
-
-    /* read rest of the chain */
 
     for ( ;; ) {
 
-        x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-        if (x509 == NULL) {
+        temp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        if (temp == NULL) {
             n = ERR_peek_last_error();
 
             if (ERR_GET_LIB(n) == ERR_LIB_PEM
@@ -493,42 +590,37 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
             /* some real error */
 
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "PEM_read_bio_X509(\"%s\") failed", cert->data);
+            *err = "PEM_read_bio_X509() failed";
             BIO_free(bio);
-            return NGX_ERROR;
-        }
-
-#ifdef SSL_CTRL_CHAIN_CERT
-
-        /*
-         * SSL_CTX_add0_chain_cert() is needed to add chain to
-         * a particular certificate when multiple certificates are used;
-         * only available in OpenSSL 1.0.2+
-         */
-
-        if (SSL_CTX_add0_chain_cert(ssl->ctx, x509) == 0) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "SSL_CTX_add0_chain_cert(\"%s\") failed",
-                          cert->data);
             X509_free(x509);
-            BIO_free(bio);
-            return NGX_ERROR;
+            sk_X509_pop_free(*chain, X509_free);
+            return NULL;
         }
 
-#else
-        if (SSL_CTX_add_extra_chain_cert(ssl->ctx, x509) == 0) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "SSL_CTX_add_extra_chain_cert(\"%s\") failed",
-                          cert->data);
-            X509_free(x509);
+        if (sk_X509_push(*chain, temp) == 0) {
+            *err = "sk_X509_push() failed";
             BIO_free(bio);
-            return NGX_ERROR;
+            X509_free(x509);
+            sk_X509_pop_free(*chain, X509_free);
+            return NULL;
         }
-#endif
     }
 
     BIO_free(bio);
+
+    return x509;
+}
+
+
+static EVP_PKEY *
+ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
+    ngx_str_t *key, ngx_array_t *passwords)
+{
+    BIO              *bio;
+    EVP_PKEY         *pkey;
+    ngx_str_t        *pwd;
+    ngx_uint_t        tries;
+    pem_password_cb  *cb;
 
     if (ngx_strncmp(key->data, "engine:", sizeof("engine:") - 1) == 0) {
 
@@ -542,9 +634,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         last = (u_char *) ngx_strchr(p, ':');
 
         if (last == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid syntax in \"%V\"", key);
-            return NGX_ERROR;
+            *err = "invalid syntax";
+            return NULL;
         }
 
         *last = '\0';
@@ -552,9 +643,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         engine = ENGINE_by_id((char *) p);
 
         if (engine == NULL) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "ENGINE_by_id(\"%s\") failed", p);
-            return NGX_ERROR;
+            *err = "ENGINE_by_id() failed";
+            return NULL;
         }
 
         *last++ = ':';
@@ -562,76 +652,69 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
 
         if (pkey == NULL) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "ENGINE_load_private_key(\"%s\") failed", last);
+            *err = "ENGINE_load_private_key() failed";
             ENGINE_free(engine);
-            return NGX_ERROR;
+            return NULL;
         }
 
         ENGINE_free(engine);
 
-        if (SSL_CTX_use_PrivateKey(ssl->ctx, pkey) == 0) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "SSL_CTX_use_PrivateKey(\"%s\") failed", last);
-            EVP_PKEY_free(pkey);
-            return NGX_ERROR;
-        }
-
-        EVP_PKEY_free(pkey);
-
-        return NGX_OK;
+        return pkey;
 
 #else
 
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "loading \"engine:...\" certificate keys "
-                           "is not supported");
-        return NGX_ERROR;
+        *err = "loading \"engine:...\" certificate keys is not supported";
+        return NULL;
 
 #endif
     }
 
-    if (ngx_conf_full_name(cf->cycle, key, 1) != NGX_OK) {
-        return NGX_ERROR;
+    if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, key)
+        != NGX_OK)
+    {
+        *err = NULL;
+        return NULL;
+    }
+
+    bio = BIO_new_file((char *) key->data, "r");
+    if (bio == NULL) {
+        *err = "BIO_new_file() failed";
+        return NULL;
     }
 
     if (passwords) {
         tries = passwords->nelts;
         pwd = passwords->elts;
-
-        SSL_CTX_set_default_passwd_cb(ssl->ctx, ngx_ssl_password_callback);
-        SSL_CTX_set_default_passwd_cb_userdata(ssl->ctx, pwd);
+        cb = ngx_ssl_password_callback;
 
     } else {
         tries = 1;
-#if (NGX_SUPPRESS_WARN)
         pwd = NULL;
-#endif
+        cb = NULL;
     }
 
     for ( ;; ) {
 
-        if (SSL_CTX_use_PrivateKey_file(ssl->ctx, (char *) key->data,
-                                        SSL_FILETYPE_PEM)
-            != 0)
-        {
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
+        if (pkey != NULL) {
             break;
         }
 
         if (--tries) {
             ERR_clear_error();
-            SSL_CTX_set_default_passwd_cb_userdata(ssl->ctx, ++pwd);
+            (void) BIO_reset(bio);
+            pwd++;
             continue;
         }
 
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_use_PrivateKey_file(\"%s\") failed", key->data);
-        return NGX_ERROR;
+        *err = "PEM_read_bio_PrivateKey() failed";
+        BIO_free(bio);
+        return NULL;
     }
 
-    SSL_CTX_set_default_passwd_cb(ssl->ctx, NULL);
+    BIO_free(bio);
 
-    return NGX_OK;
+    return pkey;
 }
 
 
