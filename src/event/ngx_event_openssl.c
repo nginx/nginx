@@ -2743,41 +2743,47 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
     p = ngx_vslprintf(errstr, last - 1, fmt, args);
     va_end(args);
 
-    p = ngx_cpystrn(p, (u_char *) " (SSL:", last - p);
+    if (ERR_peek_error()) {
+        p = ngx_cpystrn(p, (u_char *) " (SSL:", last - p);
 
-    for ( ;; ) {
+        for ( ;; ) {
 
-        n = ERR_peek_error_line_data(NULL, NULL, &data, &flags);
+            n = ERR_peek_error_line_data(NULL, NULL, &data, &flags);
 
-        if (n == 0) {
-            break;
+            if (n == 0) {
+                break;
+            }
+
+            /* ERR_error_string_n() requires at least one byte */
+
+            if (p >= last - 1) {
+                goto next;
+            }
+
+            *p++ = ' ';
+
+            ERR_error_string_n(n, (char *) p, last - p);
+
+            while (p < last && *p) {
+                p++;
+            }
+
+            if (p < last && *data && (flags & ERR_TXT_STRING)) {
+                *p++ = ':';
+                p = ngx_cpystrn(p, (u_char *) data, last - p);
+            }
+
+        next:
+
+            (void) ERR_get_error();
         }
 
-        /* ERR_error_string_n() requires at least one byte */
-
-        if (p >= last - 1) {
-            goto next;
+        if (p < last) {
+            *p++ = ')';
         }
-
-        *p++ = ' ';
-
-        ERR_error_string_n(n, (char *) p, last - p);
-
-        while (p < last && *p) {
-            p++;
-        }
-
-        if (p < last && *data && (flags & ERR_TXT_STRING)) {
-            *p++ = ':';
-            p = ngx_cpystrn(p, (u_char *) data, last - p);
-        }
-
-    next:
-
-        (void) ERR_get_error();
     }
 
-    ngx_log_error(level, log, err, "%*s)", p - errstr, errstr);
+    ngx_log_error(level, log, err, "%*s", p - errstr, errstr);
 }
 
 
