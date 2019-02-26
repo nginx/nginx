@@ -5,6 +5,59 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.9" date="2019-02-26">
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_certificate и ssl_certificate_key
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "ssl_certificate" and "ssl_certificate_key" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод poll теперь доступен на Windows
+при использовании Windows Vista и новее.
+</para>
+<para lang="en">
+the "poll" method is now available on Windows
+when using Windows Vista or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании метода select на Windows
+происходила ошибка при установлении соединения с бэкендом,
+nginx ожидал истечения таймаута на установление соединения.
+</para>
+<para lang="en">
+if the "select" method was used on Windows
+and an error occurred while establishing a backend connection,
+nginx waited for the connection establishment timeout to expire.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_upload_rate и proxy_download_rate
+в модуле stream
+работали некорректно при проксировании UDP-пакетов.
+</para>
+<para lang="en">
+the "proxy_upload_rate" and "proxy_download_rate" directives
+in the stream module
+worked incorrectly when proxying UDP datagrams.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.8" date="2018-12-25">
 
 <change type="feature">
