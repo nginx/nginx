@@ -700,6 +700,15 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cln == NULL) {
+        ngx_ssl_cleanup_ctx(&conf->ssl);
+        return NGX_CONF_ERROR;
+    }
+
+    cln->handler = ngx_ssl_cleanup_ctx;
+    cln->data = &conf->ssl;
+
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
     if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
@@ -722,14 +731,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     SSL_CTX_set_next_protos_advertised_cb(conf->ssl.ctx,
                                           ngx_http_ssl_npn_advertised, NULL);
 #endif
-
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
-    if (cln == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    cln->handler = ngx_ssl_cleanup_ctx;
-    cln->data = &conf->ssl;
 
     if (ngx_http_ssl_compile_certificates(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
