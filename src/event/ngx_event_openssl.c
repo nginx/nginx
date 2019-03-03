@@ -368,6 +368,10 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_ANTI_REPLAY);
 #endif
 
+#ifdef SSL_OP_NO_CLIENT_RENEGOTIATION
+    SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_CLIENT_RENEGOTIATION);
+#endif
+
 #ifdef SSL_MODE_RELEASE_BUFFERS
     SSL_CTX_set_mode(ssl->ctx, SSL_MODE_RELEASE_BUFFERS);
 #endif
