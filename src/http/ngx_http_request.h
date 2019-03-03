@@ -65,6 +65,8 @@
 #define NGX_HTTP_SUBREQUEST_WAITED         4
 #define NGX_HTTP_SUBREQUEST_CLONE          8
 #define NGX_HTTP_SUBREQUEST_BACKGROUND     16
+#define AR_NGX_HTTP_SUBREQUEST_SLICE       32
+
 
 #define NGX_HTTP_LOG_UNSAFE                1
 
