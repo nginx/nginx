@@ -2855,8 +2855,14 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_NO_COMPRESSION_SPECIFIED                   /*  187 */
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
+#ifdef SSL_R_CLIENTHELLO_TLSEXT
+            || n == SSL_R_CLIENTHELLO_TLSEXT                         /*  226 */
+#endif
 #ifdef SSL_R_PARSE_TLSEXT
             || n == SSL_R_PARSE_TLSEXT                               /*  227 */
+#endif
+#ifdef SSL_R_CALLBACK_FAILED
+            || n == SSL_R_CALLBACK_FAILED                            /*  234 */
 #endif
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
