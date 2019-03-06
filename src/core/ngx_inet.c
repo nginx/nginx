@@ -782,7 +782,7 @@ ngx_parse_unix_domain_url(ngx_pool_t *pool, ngx_url_t *u)
 static ngx_int_t
 ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 {
-    u_char              *host, *port, *last, *uri, *args;
+    u_char              *host, *port, *last, *uri, *args, *dash;
     size_t               len;
     ngx_int_t            n;
     struct sockaddr_in  *sin;
@@ -830,6 +830,25 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
         len = last - port;
 
+        if (u->listen) {
+            dash = ngx_strlchr(port, last, '-');
+
+            if (dash) {
+                dash++;
+
+                n = ngx_atoi(dash, last - dash);
+
+                if (n < 1 || n > 65535) {
+                    u->err = "invalid port";
+                    return NGX_ERROR;
+                }
+
+                u->last_port = (in_port_t) n;
+
+                len = dash - port - 1;
+            }
+        }
+
         n = ngx_atoi(port, len);
 
         if (n < 1 || n > 65535) {
@@ -837,10 +856,15 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
             return NGX_ERROR;
         }
 
+        if (u->last_port && n > u->last_port) {
+            u->err = "invalid port range";
+            return NGX_ERROR;
+        }
+
         u->port = (in_port_t) n;
         sin->sin_port = htons((in_port_t) n);
 
-        u->port_text.len = len;
+        u->port_text.len = last - port;
         u->port_text.data = port;
 
         last = port - 1;
@@ -852,12 +876,44 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
 
                 /* test value as port only */
 
-                n = ngx_atoi(host, last - host);
+                len = last - host;
 
-                if (n != NGX_ERROR) {
+                dash = ngx_strlchr(host, last, '-');
+
+                if (dash) {
+                    dash++;
+
+                    n = ngx_atoi(dash, last - dash);
+
+                    if (n == NGX_ERROR) {
+                        goto no_port;
+                    }
 
                     if (n < 1 || n > 65535) {
                         u->err = "invalid port";
+
+                    } else {
+                        u->last_port = (in_port_t) n;
+                    }
+
+                    len = dash - host - 1;
+                }
+
+                n = ngx_atoi(host, len);
+
+                if (n != NGX_ERROR) {
+
+                    if (u->err) {
+                        return NGX_ERROR;
+                    }
+
+                    if (n < 1 || n > 65535) {
+                        u->err = "invalid port";
+                        return NGX_ERROR;
+                    }
+
+                    if (u->last_port && n > u->last_port) {
+                        u->err = "invalid port range";
                         return NGX_ERROR;
                     }
 
@@ -876,9 +932,13 @@ ngx_parse_inet_url(ngx_pool_t *pool, ngx_url_t *u)
             }
         }
 
+no_port:
+
+        u->err = NULL;
         u->no_port = 1;
         u->port = u->default_port;
         sin->sin_port = htons(u->default_port);
+        u->last_port = 0;
     }
 
     len = last - host;
@@ -929,7 +989,7 @@ static ngx_int_t
 ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 {
 #if (NGX_HAVE_INET6)
-    u_char               *p, *host, *port, *last, *uri;
+    u_char               *p, *host, *port, *last, *uri, *dash;
     size_t                len;
     ngx_int_t             n;
     struct sockaddr_in6  *sin6;
@@ -975,6 +1035,25 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
 
         len = last - port;
 
+        if (u->listen) {
+            dash = ngx_strlchr(port, last, '-');
+
+            if (dash) {
+                dash++;
+
+                n = ngx_atoi(dash, last - dash);
+
+                if (n < 1 || n > 65535) {
+                    u->err = "invalid port";
+                    return NGX_ERROR;
+                }
+
+                u->last_port = (in_port_t) n;
+
+                len = dash - port - 1;
+            }
+        }
+
         n = ngx_atoi(port, len);
 
         if (n < 1 || n > 65535) {
@@ -982,10 +1061,15 @@ ngx_parse_inet6_url(ngx_pool_t *pool, ngx_url_t *u)
             return NGX_ERROR;
         }
 
+        if (u->last_port && n > u->last_port) {
+            u->err = "invalid port range";
+            return NGX_ERROR;
+        }
+
         u->port = (in_port_t) n;
         sin6->sin6_port = htons((in_port_t) n);
 
-        u->port_text.len = len;
+        u->port_text.len = last - port;
         u->port_text.data = port;
 
     } else {
@@ -1181,51 +1265,56 @@ ngx_inet_add_addr(ngx_pool_t *pool, ngx_url_t *u, struct sockaddr *sockaddr,
 {
     u_char           *p;
     size_t            len;
+    ngx_uint_t        i, nports;
     ngx_addr_t       *addr;
     struct sockaddr  *sa;
 
+    nports = u->last_port ? u->last_port - u->port + 1 : 1;
+
     if (u->addrs == NULL) {
-        u->addrs = ngx_palloc(pool, total * sizeof(ngx_addr_t));
+        u->addrs = ngx_palloc(pool, total * nports * sizeof(ngx_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
         }
     }
 
-    sa = ngx_pcalloc(pool, socklen);
-    if (sa == NULL) {
-        return NGX_ERROR;
-    }
+    for (i = 0; i < nports; i++) {
+        sa = ngx_pcalloc(pool, socklen);
+        if (sa == NULL) {
+            return NGX_ERROR;
+        }
 
-    ngx_memcpy(sa, sockaddr, socklen);
+        ngx_memcpy(sa, sockaddr, socklen);
 
-    ngx_inet_set_port(sa, u->port);
+        ngx_inet_set_port(sa, u->port + i);
 
-    switch (sa->sa_family) {
+        switch (sa->sa_family) {
 
 #if (NGX_HAVE_INET6)
-    case AF_INET6:
-        len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65536") - 1;
-        break;
+        case AF_INET6:
+            len = NGX_INET6_ADDRSTRLEN + sizeof("[]:65536") - 1;
+            break;
 #endif
 
-    default: /* AF_INET */
-        len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+        default: /* AF_INET */
+            len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+        }
+
+        p = ngx_pnalloc(pool, len);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        len = ngx_sock_ntop(sa, socklen, p, len, 1);
+
+        addr = &u->addrs[u->naddrs++];
+
+        addr->sockaddr = sa;
+        addr->socklen = socklen;
+
+        addr->name.len = len;
+        addr->name.data = p;
     }
-
-    p = ngx_pnalloc(pool, len);
-    if (p == NULL) {
-        return NGX_ERROR;
-    }
-
-    len = ngx_sock_ntop(sa, socklen, p, len, 1);
-
-    addr = &u->addrs[u->naddrs++];
-
-    addr->sockaddr = sa;
-    addr->socklen = socklen;
-
-    addr->name.len = len;
-    addr->name.data = p;
 
     return NGX_OK;
 }

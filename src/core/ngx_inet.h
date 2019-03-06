@@ -86,6 +86,7 @@ typedef struct {
 
     in_port_t                 port;
     in_port_t                 default_port;
+    in_port_t                 last_port;
     int                       family;
 
     unsigned                  listen:1;
