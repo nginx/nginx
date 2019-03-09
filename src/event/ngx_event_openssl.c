@@ -611,23 +611,29 @@ ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
     X509    *x509, *temp;
     u_long   n;
 
-    if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, cert)
-        != NGX_OK)
-    {
-        *err = NULL;
-        return NULL;
-    }
+    if (ngx_strncmp(cert->data, "data:", sizeof("data:") - 1) == 0) {
 
-    /*
-     * we can't use SSL_CTX_use_certificate_chain_file() as it doesn't
-     * allow to access certificate later from SSL_CTX, so we reimplement
-     * it here
-     */
+        bio = BIO_new_mem_buf(cert->data + sizeof("data:") - 1,
+                              cert->len - (sizeof("data:") - 1));
+        if (bio == NULL) {
+            *err = "BIO_new_mem_buf() failed";
+            return NULL;
+        }
 
-    bio = BIO_new_file((char *) cert->data, "r");
-    if (bio == NULL) {
-        *err = "BIO_new_file() failed";
-        return NULL;
+    } else {
+
+        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, cert)
+            != NGX_OK)
+        {
+            *err = NULL;
+            return NULL;
+        }
+
+        bio = BIO_new_file((char *) cert->data, "r");
+        if (bio == NULL) {
+            *err = "BIO_new_file() failed";
+            return NULL;
+        }
     }
 
     /* certificate itself */
@@ -743,17 +749,29 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
 #endif
     }
 
-    if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, key)
-        != NGX_OK)
-    {
-        *err = NULL;
-        return NULL;
-    }
+    if (ngx_strncmp(key->data, "data:", sizeof("data:") - 1) == 0) {
 
-    bio = BIO_new_file((char *) key->data, "r");
-    if (bio == NULL) {
-        *err = "BIO_new_file() failed";
-        return NULL;
+        bio = BIO_new_mem_buf(key->data + sizeof("data:") - 1,
+                              key->len - (sizeof("data:") - 1));
+        if (bio == NULL) {
+            *err = "BIO_new_mem_buf() failed";
+            return NULL;
+        }
+
+    } else {
+
+        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, key)
+            != NGX_OK)
+        {
+            *err = NULL;
+            return NULL;
+        }
+
+        bio = BIO_new_file((char *) key->data, "r");
+        if (bio == NULL) {
+            *err = "BIO_new_file() failed";
+            return NULL;
+        }
     }
 
     if (passwords) {
