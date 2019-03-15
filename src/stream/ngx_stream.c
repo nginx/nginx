@@ -387,7 +387,7 @@ ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     ngx_stream_conf_port_t  *port;
     ngx_stream_conf_addr_t  *addr;
 
-    sa = &listen->sockaddr.sockaddr;
+    sa = listen->sockaddr;
     p = ngx_inet_get_port(sa);
 
     port = ports->elts;
@@ -476,7 +476,7 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
                 continue;
             }
 
-            ls = ngx_create_listening(cf, &addr[i].opt.sockaddr.sockaddr,
+            ls = ngx_create_listening(cf, addr[i].opt.sockaddr,
                                       addr[i].opt.socklen);
             if (ls == NULL) {
                 return NGX_CONF_ERROR;
@@ -551,12 +551,9 @@ static ngx_int_t
 ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
     ngx_stream_conf_addr_t *addr)
 {
-    u_char                *p;
-    size_t                 len;
     ngx_uint_t             i;
     struct sockaddr_in    *sin;
     ngx_stream_in_addr_t  *addrs;
-    u_char                 buf[NGX_SOCKADDR_STRLEN];
 
     stport->addrs = ngx_pcalloc(cf->pool,
                                 stport->naddrs * sizeof(ngx_stream_in_addr_t));
@@ -568,7 +565,7 @@ ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
 
     for (i = 0; i < stport->naddrs; i++) {
 
-        sin = &addr[i].opt.sockaddr.sockaddr_in;
+        sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
         addrs[i].addr = sin->sin_addr.s_addr;
 
         addrs[i].conf.ctx = addr[i].opt.ctx;
@@ -576,19 +573,7 @@ ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
         addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
         addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
-
-        len = ngx_sock_ntop(&addr[i].opt.sockaddr.sockaddr, addr[i].opt.socklen,
-                            buf, NGX_SOCKADDR_STRLEN, 1);
-
-        p = ngx_pnalloc(cf->pool, len);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(p, buf, len);
-
-        addrs[i].conf.addr_text.len = len;
-        addrs[i].conf.addr_text.data = p;
+        addrs[i].conf.addr_text = addr[i].opt.addr_text;
     }
 
     return NGX_OK;
@@ -601,12 +586,9 @@ static ngx_int_t
 ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
     ngx_stream_conf_addr_t *addr)
 {
-    u_char                 *p;
-    size_t                  len;
     ngx_uint_t              i;
     struct sockaddr_in6    *sin6;
     ngx_stream_in6_addr_t  *addrs6;
-    u_char                  buf[NGX_SOCKADDR_STRLEN];
 
     stport->addrs = ngx_pcalloc(cf->pool,
                                 stport->naddrs * sizeof(ngx_stream_in6_addr_t));
@@ -618,7 +600,7 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
 
     for (i = 0; i < stport->naddrs; i++) {
 
-        sin6 = &addr[i].opt.sockaddr.sockaddr_in6;
+        sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
         addrs6[i].addr6 = sin6->sin6_addr;
 
         addrs6[i].conf.ctx = addr[i].opt.ctx;
@@ -626,19 +608,7 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
         addrs6[i].conf.ssl = addr[i].opt.ssl;
 #endif
         addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
-
-        len = ngx_sock_ntop(&addr[i].opt.sockaddr.sockaddr, addr[i].opt.socklen,
-                            buf, NGX_SOCKADDR_STRLEN, 1);
-
-        p = ngx_pnalloc(cf->pool, len);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(p, buf, len);
-
-        addrs6[i].conf.addr_text.len = len;
-        addrs6[i].conf.addr_text.data = p;
+        addrs6[i].conf.addr_text = addr[i].opt.addr_text;
     }
 
     return NGX_OK;

@@ -125,6 +125,7 @@ ngx_int_t ngx_cmp_sockaddr(struct sockaddr *sa1, socklen_t slen1,
     struct sockaddr *sa2, socklen_t slen2, ngx_uint_t cmp_port);
 in_port_t ngx_inet_get_port(struct sockaddr *sa);
 void ngx_inet_set_port(struct sockaddr *sa, in_port_t port);
+ngx_uint_t ngx_inet_wildcard(struct sockaddr *sa);
 
 
 #endif /* _NGX_INET_H_INCLUDED_ */
