@@ -114,7 +114,7 @@ ngx_http_stub_status_handler(ngx_http_request_t *r)
     }
 
     size = sizeof("Active connections:  \n") + NGX_ATOMIC_T_LEN
-           + sizeof("server accepts handled requests\n") - 1
+           + sizeof("server accepted handled requests\n") - 1
            + 6 + 3 * NGX_ATOMIC_T_LEN
            + sizeof("Reading:  Writing:  Waiting:  \n") + 3 * NGX_ATOMIC_T_LEN;
 
@@ -136,8 +136,8 @@ ngx_http_stub_status_handler(ngx_http_request_t *r)
 
     b->last = ngx_sprintf(b->last, "Active connections: %uA \n", ac);
 
-    b->last = ngx_cpymem(b->last, "server accepts handled requests\n",
-                         sizeof("server accepts handled requests\n") - 1);
+    b->last = ngx_cpymem(b->last, "server accepted handled requests\n",
+                         sizeof("server accepted handled requests\n") - 1);
 
     b->last = ngx_sprintf(b->last, " %uA %uA %uA \n", ap, hn, rq);
 
