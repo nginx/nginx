@@ -1080,24 +1080,15 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
 
     /* MP: ngx_shared_palloc() */
 
-    /* AF_INET addresses first */
-
     for (rp = res; rp != NULL; rp = rp->ai_next) {
 
-        if (rp->ai_family != AF_INET) {
-            continue;
-        }
+        switch (rp->ai_family) {
 
-        if (ngx_inet_add_addr(pool, u, rp->ai_addr, rp->ai_addrlen, n)
-            != NGX_OK)
-        {
-            goto failed;
-        }
-    }
+        case AF_INET:
+        case AF_INET6:
+            break;
 
-    for (rp = res; rp != NULL; rp = rp->ai_next) {
-
-        if (rp->ai_family != AF_INET6) {
+        default:
             continue;
         }
 
