@@ -5,6 +5,66 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.10" date="2019-03-26">
+
+<change type="change">
+<para lang="ru">
+теперь при использовании имени хоста в директиве listen
+nginx создаёт listen-сокеты для всех адресов,
+соответствующих этому имени
+(ранее использовался только первый адрес).
+</para>
+<para lang="en">
+when using a hostname in the "listen" directive
+nginx now creates listening sockets
+for all addresses the hostname resolves to
+(previously, only the first address was used).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+диапазоны портов в директиве listen.
+</para>
+<para lang="en">
+port ranges in the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+возможность загрузки SSL-сертификатов и секретных ключей из переменных.
+</para>
+<para lang="en">
+loading of SSL certificates and secret keys from variables.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+переменная $ssl_server_name могла быть пустой
+при использовании OpenSSL 1.1.1.
+</para>
+<para lang="en">
+the $ssl_server_name variable might be empty
+when using OpenSSL 1.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с Visual Studio 2015 и новее;
+ошибка появилась в 1.15.9.
+</para>
+<para lang="en">
+nginx/Windows could not be built with Visual Studio 2015 or newer;
+the bug had appeared in 1.15.9.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.9" date="2019-02-26">
 
 <change type="feature">
