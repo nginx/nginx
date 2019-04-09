@@ -5,6 +5,20 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.11" date="2019-04-09">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_stapling_file на Windows.
+</para>
+<para lang="en">
+in the "ssl_stapling_file" directive on Windows.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.10" date="2019-03-26">
 
 <change type="change">
