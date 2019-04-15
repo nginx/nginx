@@ -1381,7 +1381,7 @@ ngx_utf8_length(u_char *p, size_t n)
             continue;
         }
 
-        if (ngx_utf8_decode(&p, n) > 0x10ffff) {
+        if (ngx_utf8_decode(&p, last - p) > 0x10ffff) {
             /* invalid UTF-8 */
             return n;
         }
