@@ -511,6 +511,11 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
     rc = SSL_TLSEXT_ERR_NOACK;
 
     cert = SSL_get_certificate(ssl_conn);
+
+    if (cert == NULL) {
+        return rc;
+    }
+
     staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
 
     if (staple == NULL) {
