@@ -3770,6 +3770,29 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
     r = ctx->request;
 
     if (r) {
+        ngx_str_t                    text;
+        u_char                      *p2, *lowcase;
+        size_t                       len2 = 10;
+        ngx_str_t                    name;
+        ngx_http_variable_value_t   *vv;
+        ngx_uint_t                   hash;
+        p2 = (u_char *) "request_id";
+        lowcase = ngx_pnalloc(r->pool, len2);
+        if (lowcase == NULL) {
+            return r->log_handler(r, ctx->current_request, p, len);
+        }
+        hash = ngx_hash_strlow(lowcase, p2, len2);
+        name.len = len2;
+        name.data = lowcase;
+        vv = ngx_http_get_variable(r, &name, hash);
+        if (!vv->not_found) {
+            text.data = vv->data;
+            text.len = vv->len;
+        	buf=p;
+        	p = ngx_snprintf(buf, len, ", request_id: %V", &text);
+            len -= p - buf;
+        }
+
         return r->log_handler(r, ctx->current_request, p, len);
 
     } else {
