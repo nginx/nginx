@@ -106,6 +106,7 @@ WIN32_SELECT_SRCS=src/event/modules/ngx_win32_select_module.c
 
 POLL_MODULE=ngx_poll_module
 POLL_SRCS=src/event/modules/ngx_poll_module.c
+WIN32_POLL_SRCS=src/event/modules/ngx_win32_poll_module.c
 
 KQUEUE_MODULE=ngx_kqueue_module
 KQUEUE_SRCS=src/event/modules/ngx_kqueue_module.c

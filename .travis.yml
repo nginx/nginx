@@ -1,0 +1,37 @@
+sudo: required
+
+language: c
+
+services:
+  - docker
+
+os:
+  - linux
+  
+global:
+    - REPO=arvannginx
+    - PROJECT_NAME=nginx
+    - VERSION=1.15.6.1
+    - FILE_NAME=${REPO}-${TRAVIS_TAG}.tar.gz
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install curl
+
+
+script:
+  - ROOT=$(pwd)
+  - mkdir -p /tmp
+  - mkdir -p /opt
+  - mkdir -p /opt/openssl
+  - curl -fsSL https://www.openssl.org/source/openssl-1.1.0j.tar.gz -o /tmp/openssl.tar.gz
+  - tar -C /opt/openssl -xzf /tmp/openssl.tar.gz --strip-components 1
+  - cd /opt/openssl
+  - ls 
+  - ./config
+  - sudo make 1> /dev/null
+  - sudo make install_sw 1> /dev/null
+  - sudo ldconfig
+  - cd $ROOT
+  - ./auto/configure
+  - make

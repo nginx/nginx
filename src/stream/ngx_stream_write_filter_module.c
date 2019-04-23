@@ -104,7 +104,6 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
                        cl->buf->file_pos,
                        cl->buf->file_last - cl->buf->file_pos);
 
-#if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
@@ -122,7 +121,24 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
             ngx_debug_point();
             return NGX_ERROR;
         }
-#endif
+
+        if (ngx_buf_size(cl->buf) < 0) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "negative size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
+            ngx_debug_point();
+            return NGX_ERROR;
+        }
 
         size += ngx_buf_size(cl->buf);
 
@@ -160,7 +176,6 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
                        cl->buf->file_pos,
                        cl->buf->file_last - cl->buf->file_pos);
 
-#if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
@@ -178,7 +193,24 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
             ngx_debug_point();
             return NGX_ERROR;
         }
-#endif
+
+        if (ngx_buf_size(cl->buf) < 0) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "negative size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
+            ngx_debug_point();
+            return NGX_ERROR;
+        }
 
         size += ngx_buf_size(cl->buf);
 

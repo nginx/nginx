@@ -5,6 +5,285 @@
 <change_log title="nginx">
 
 
+<changes ver="1.15.12" date="2019-04-16">
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если в директивах ssl_certificate или ssl_certificate_key
+использовались переменные
+и был включён OCSP stapling.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if variables were used
+in the "ssl_certificate" or "ssl_certificate_key" directives
+and OCSP stapling was enabled.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.11" date="2019-04-09">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_stapling_file на Windows.
+</para>
+<para lang="en">
+in the "ssl_stapling_file" directive on Windows.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.10" date="2019-03-26">
+
+<change type="change">
+<para lang="ru">
+теперь при использовании имени хоста в директиве listen
+nginx создаёт listen-сокеты для всех адресов,
+соответствующих этому имени
+(ранее использовался только первый адрес).
+</para>
+<para lang="en">
+when using a hostname in the "listen" directive
+nginx now creates listening sockets
+for all addresses the hostname resolves to
+(previously, only the first address was used).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+диапазоны портов в директиве listen.
+</para>
+<para lang="en">
+port ranges in the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+возможность загрузки SSL-сертификатов и секретных ключей из переменных.
+</para>
+<para lang="en">
+loading of SSL certificates and secret keys from variables.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+переменная $ssl_server_name могла быть пустой
+при использовании OpenSSL 1.1.1.
+</para>
+<para lang="en">
+the $ssl_server_name variable might be empty
+when using OpenSSL 1.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с Visual Studio 2015 и новее;
+ошибка появилась в 1.15.9.
+</para>
+<para lang="en">
+nginx/Windows could not be built with Visual Studio 2015 or newer;
+the bug had appeared in 1.15.9.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.9" date="2019-02-26">
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_certificate и ssl_certificate_key
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "ssl_certificate" and "ssl_certificate_key" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод poll теперь доступен на Windows
+при использовании Windows Vista и новее.
+</para>
+<para lang="en">
+the "poll" method is now available on Windows
+when using Windows Vista or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании метода select на Windows
+происходила ошибка при установлении соединения с бэкендом,
+nginx ожидал истечения таймаута на установление соединения.
+</para>
+<para lang="en">
+if the "select" method was used on Windows
+and an error occurred while establishing a backend connection,
+nginx waited for the connection establishment timeout to expire.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_upload_rate и proxy_download_rate
+в модуле stream
+работали некорректно при проксировании UDP-пакетов.
+</para>
+<para lang="en">
+the "proxy_upload_rate" and "proxy_download_rate" directives
+in the stream module
+worked incorrectly when proxying UDP datagrams.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.8" date="2018-12-25">
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_bytes_sent.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the $upstream_bytes_sent variable.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+new directives in vim syntax highlighting scripts.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве geo при использовании unix domain listen-сокетов.
+</para>
+<para lang="en">
+in the "geo" directive when using unix domain listen sockets.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании директивы ssl_early_data с OpenSSL
+в логах могли появляться сообщения
+"ignoring stale global SSL error ... bad length".
+</para>
+<para lang="en">
+the "ignoring stale global SSL error ... bad length"
+alerts might appear in logs
+when using the "ssl_early_data" directive with OpenSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в nginx/Windows.
+</para>
+<para lang="en">
+in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module на 32-битных платформах.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.7" date="2018-11-27">
+
+<change type="feature">
+<para lang="ru">
+директива proxy_requests в модуле stream.
+</para>
+<para lang="en">
+the "proxy_requests" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр "delay" директивы "limit_req".<br/>
+Спасибо Владиславу Шабанову и Петру Щучкину.
+</para>
+<para lang="en">
+the "delay" parameter of the "limit_req" directive.<br/>
+Thanks to Vladislav Shabanov and Peter Shchuchkin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в случае ошибок при переконфигурации.
+</para>
+<para lang="en">
+memory leak on errors during reconfiguration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменных $upstream_response_time, $upstream_connect_time и
+$upstream_header_time.
+</para>
+<para lang="en">
+in the $upstream_response_time, $upstream_connect_time, and
+$upstream_header_time variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_mp4_module на 32-битных платформах.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_mp4_module was used on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.6" date="2018-11-06">
 
 <change type="security">
