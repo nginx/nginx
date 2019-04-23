@@ -27,8 +27,9 @@ typedef struct {
 
 
 typedef struct {
-    ngx_sockaddr_t          sockaddr;
+    struct sockaddr        *sockaddr;
     socklen_t               socklen;
+    ngx_str_t               addr_text;
 
     /* server ctx */
     ngx_mail_conf_ctx_t    *ctx;

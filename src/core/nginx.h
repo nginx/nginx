@@ -9,8 +9,8 @@
 #define _NGINX_H_INCLUDED_
 
 
-#define nginx_version      1015008
-#define NGINX_VERSION      "1.15.8"
+#define nginx_version      1015012
+#define NGINX_VERSION      "1.15.12"
 #define NGINX_VER          "ArvanCloud/" NGINX_VERSION
 
 #ifdef NGX_BUILD

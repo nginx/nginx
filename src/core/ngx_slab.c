@@ -635,10 +635,9 @@ ngx_slab_free_locked(ngx_slab_pool_t *pool, void *p)
             goto fail;
         }
 
-        n = ((u_char *) p - pool->start) >> ngx_pagesize_shift;
         size = slab & ~NGX_SLAB_PAGE_START;
 
-        ngx_slab_free_pages(pool, &pool->pages[n], size);
+        ngx_slab_free_pages(pool, page, size);
 
         ngx_slab_junk(p, size << ngx_pagesize_shift);
 

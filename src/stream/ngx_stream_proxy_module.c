@@ -1593,7 +1593,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     break;
                 }
 
-                if ((off_t) size > limit) {
+                if (c->type == SOCK_STREAM && (off_t) size > limit) {
                     size = (size_t) limit;
                 }
             }
@@ -1667,13 +1667,13 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
     flags = src->read->eof ? NGX_CLOSE_EVENT : 0;
 
-    if (!src->shared && ngx_handle_read_event(src->read, flags) != NGX_OK) {
+    if (ngx_handle_read_event(src->read, flags) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
 
     if (dst) {
-        if (!dst->shared && ngx_handle_write_event(dst->write, 0) != NGX_OK) {
+        if (ngx_handle_write_event(dst->write, 0) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
         }
@@ -1685,6 +1685,87 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
             ngx_del_timer(c->write);
         }
     }
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
+    ngx_uint_t from_upstream)
+{
+    ngx_connection_t             *c, *pc;
+    ngx_log_handler_pt            handler;
+    ngx_stream_upstream_t        *u;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+    c = s->connection;
+    u = s->upstream;
+    pc = u->connected ? u->peer.connection : NULL;
+
+    if (c->type == SOCK_DGRAM) {
+
+        if (pscf->requests && u->requests < pscf->requests) {
+            return NGX_DECLINED;
+        }
+
+        if (pscf->requests) {
+            ngx_delete_udp_connection(c);
+        }
+
+        if (pscf->responses == NGX_MAX_INT32_VALUE
+            || u->responses < pscf->responses * u->requests)
+        {
+            return NGX_DECLINED;
+        }
+
+        if (pc == NULL || c->buffered || pc->buffered) {
+            return NGX_DECLINED;
+        }
+
+        handler = c->log->handler;
+        c->log->handler = NULL;
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "udp done"
+                      ", packets from/to client:%ui/%ui"
+                      ", bytes from/to client:%O/%O"
+                      ", bytes from/to upstream:%O/%O",
+                      u->requests, u->responses,
+                      s->received, c->sent, u->received, pc ? pc->sent : 0);
+
+        c->log->handler = handler;
+
+        ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+
+        return NGX_OK;
+    }
+
+    /* c->type == SOCK_STREAM */
+
+    if (pc == NULL
+        || (!c->read->eof && !pc->read->eof)
+        || (!c->read->eof && c->buffered)
+        || (!pc->read->eof && pc->buffered))
+    {
+        return NGX_DECLINED;
+    }
+
+    handler = c->log->handler;
+    c->log->handler = NULL;
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                  "%s disconnected"
+                  ", bytes from/to client:%O/%O"
+                  ", bytes from/to upstream:%O/%O",
+                  from_upstream ? "upstream" : "client",
+                  s->received, c->sent, u->received, pc ? pc->sent : 0);
+
+    c->log->handler = handler;
+
+    ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
+
+    return NGX_OK;
 }
 
 
@@ -2096,6 +2177,7 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
+        ngx_ssl_cleanup_ctx(pscf->ssl);
         return NGX_ERROR;
     }
 
