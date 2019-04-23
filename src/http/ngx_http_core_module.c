@@ -2715,6 +2715,8 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
     char                        *rv;
     void                        *mconf;
+    size_t                       len;
+    u_char                      *p;
     ngx_uint_t                   i;
     ngx_conf_t                   pcf;
     ngx_http_module_t           *module;
@@ -2802,7 +2804,14 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     if (rv == NGX_CONF_OK && !cscf->listen) {
         ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-        sin = &lsopt.sockaddr.sockaddr_in;
+        p = ngx_pcalloc(cf->pool, sizeof(struct sockaddr_in));
+        if (p == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        lsopt.sockaddr = (struct sockaddr *) p;
+
+        sin = (struct sockaddr_in *) p;
 
         sin->sin_family = AF_INET;
 #if (NGX_WIN32)
@@ -2825,8 +2834,16 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 #endif
         lsopt.wildcard = 1;
 
-        (void) ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen,
-                             lsopt.addr, NGX_SOCKADDR_STRLEN, 1);
+        len = NGX_INET_ADDRSTRLEN + sizeof(":65535") - 1;
+
+        p = ngx_pnalloc(cf->pool, len);
+        if (p == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        lsopt.addr_text.data = p;
+        lsopt.addr_text.len = ngx_sock_ntop(lsopt.sockaddr, lsopt.socklen, p,
+                                            len, 1);
 
         if (ngx_http_add_listen(cf, cscf, &lsopt) != NGX_OK) {
             return NGX_CONF_ERROR;
@@ -3779,9 +3796,6 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
-    ngx_memcpy(&lsopt.sockaddr.sockaddr, &u.sockaddr, u.socklen);
-
-    lsopt.socklen = u.socklen;
     lsopt.backlog = NGX_LISTEN_BACKLOG;
     lsopt.rcvbuf = -1;
     lsopt.sndbuf = -1;
@@ -3791,13 +3805,9 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_TCP_FASTOPEN)
     lsopt.fastopen = -1;
 #endif
-    lsopt.wildcard = u.wildcard;
 #if (NGX_HAVE_INET6)
     lsopt.ipv6only = 1;
 #endif
-
-    (void) ngx_sock_ntop(&lsopt.sockaddr.sockaddr, lsopt.socklen, lsopt.addr,
-                         NGX_SOCKADDR_STRLEN, 1);
 
     for (n = 2; n < cf->args->nelts; n++) {
 
@@ -3923,33 +3933,21 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ngx_strncmp(value[n].data, "ipv6only=o", 10) == 0) {
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
-            struct sockaddr  *sa;
+            if (ngx_strcmp(&value[n].data[10], "n") == 0) {
+                lsopt.ipv6only = 1;
 
-            sa = &lsopt.sockaddr.sockaddr;
-
-            if (sa->sa_family == AF_INET6) {
-
-                if (ngx_strcmp(&value[n].data[10], "n") == 0) {
-                    lsopt.ipv6only = 1;
-
-                } else if (ngx_strcmp(&value[n].data[10], "ff") == 0) {
-                    lsopt.ipv6only = 0;
-
-                } else {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "invalid ipv6only flags \"%s\"",
-                                       &value[n].data[9]);
-                    return NGX_CONF_ERROR;
-                }
-
-                lsopt.set = 1;
-                lsopt.bind = 1;
+            } else if (ngx_strcmp(&value[n].data[10], "ff") == 0) {
+                lsopt.ipv6only = 0;
 
             } else {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "ipv6only is not supported "
-                                   "on addr \"%s\", ignored", lsopt.addr);
+                                   "invalid ipv6only flags \"%s\"",
+                                   &value[n].data[9]);
+                return NGX_CONF_ERROR;
             }
+
+            lsopt.set = 1;
+            lsopt.bind = 1;
 
             continue;
 #else
@@ -4106,11 +4104,18 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_http_add_listen(cf, cscf, &lsopt) == NGX_OK) {
-        return NGX_CONF_OK;
+    for (n = 0; n < u.naddrs; n++) {
+        lsopt.sockaddr = u.addrs[n].sockaddr;
+        lsopt.socklen = u.addrs[n].socklen;
+        lsopt.addr_text = u.addrs[n].name;
+        lsopt.wildcard = ngx_inet_wildcard(lsopt.sockaddr);
+
+        if (ngx_http_add_listen(cf, cscf, &lsopt) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
-    return NGX_CONF_ERROR;
+    return NGX_CONF_OK;
 }
 
 

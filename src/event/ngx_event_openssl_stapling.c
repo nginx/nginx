@@ -227,7 +227,7 @@ ngx_ssl_stapling_file(ngx_conf_t *cf, ngx_ssl_t *ssl,
         return NGX_ERROR;
     }
 
-    bio = BIO_new_file((char *) file->data, "r");
+    bio = BIO_new_file((char *) file->data, "rb");
     if (bio == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "BIO_new_file(\"%s\") failed", file->data);
@@ -511,6 +511,11 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
     rc = SSL_TLSEXT_ERR_NOACK;
 
     cert = SSL_get_certificate(ssl_conn);
+
+    if (cert == NULL) {
+        return rc;
+    }
+
     staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
 
     if (staple == NULL) {

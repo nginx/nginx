@@ -6,9 +6,9 @@ TEMP =		tmp
 
 CC =		cl
 OBJS =		objs.msvc8
-OPENSSL =	openssl-1.0.2q
+OPENSSL =	openssl-1.1.1b
 ZLIB =		zlib-1.2.11
-PCRE =		pcre-8.42
+PCRE =		pcre-8.43
 
 
 release: export
@@ -82,7 +82,7 @@ win32:
 		--with-mail						\
 		--with-stream						\
 		--with-openssl=$(OBJS)/lib/$(OPENSSL)			\
-		--with-openssl-opt=no-asm				\
+		--with-openssl-opt="no-asm no-tests -D_WIN32_WINNT=0x0501" \
 		--with-http_ssl_module					\
 		--with-mail_ssl_module					\
 		--with-stream_ssl_module
