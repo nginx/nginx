@@ -515,6 +515,9 @@ struct ngx_http_request_s {
     unsigned                          limit_conn_set:1;
     unsigned                          limit_req_set:1;
 
+    unsigned                          limit_rate_set:1;
+    unsigned                          limit_rate_after_set:1;
+
 #if 0
     unsigned                          cacheable:1;
 #endif
