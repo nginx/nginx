@@ -105,6 +105,37 @@ ngx_stream_complex_value(ngx_stream_session_t *s,
 }
 
 
+size_t
+ngx_stream_complex_value_size(ngx_stream_session_t *s,
+    ngx_stream_complex_value_t *val, size_t default_value)
+{
+    size_t     size;
+    ngx_str_t  value;
+
+    if (val == NULL) {
+        return default_value;
+    }
+
+    if (val->lengths == NULL) {
+        return val->u.size;
+    }
+
+    if (ngx_stream_complex_value(s, val, &value) != NGX_OK) {
+        return default_value;
+    }
+
+    size = ngx_parse_size(&value);
+
+    if (size == (size_t) NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "invalid size \"%V\"", &value);
+        return default_value;
+    }
+
+    return size;
+}
+
+
 ngx_int_t
 ngx_stream_compile_complex_value(ngx_stream_compile_complex_value_t *ccv)
 {
@@ -240,6 +271,36 @@ ngx_stream_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
     if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_stream_set_complex_value_size_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    char  *p = conf;
+
+    char                        *rv;
+    ngx_stream_complex_value_t  *cv;
+
+    rv = ngx_stream_set_complex_value_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    cv = *(ngx_stream_complex_value_t **) (p + cmd->offset);
+
+    if (cv->lengths) {
+        return NGX_CONF_OK;
+    }
+
+    cv->u.size = ngx_parse_size(&cv->value);
+    if (cv->u.size == (size_t) NGX_ERROR) {
+        return "invalid value";
     }
 
     return NGX_CONF_OK;
