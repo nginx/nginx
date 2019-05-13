@@ -723,6 +723,10 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
 
         if (ngx_buf_special(buf)) {
 
+            if (range->end <= start) {
+                continue;
+            }
+
             tl = ngx_alloc_chain_link(r->pool);
             if (tl == NULL) {
                 return NGX_ERROR;
@@ -800,10 +804,6 @@ ngx_http_range_singlepart_body(ngx_http_request_t *r,
 
         *ll = tl;
         ll = &tl->next;
-    }
-
-    if (out == NULL) {
-        return NGX_OK;
     }
 
     rc = ngx_http_next_body_filter(r, out);
