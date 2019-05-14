@@ -566,7 +566,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     }
 
     u = r->upstream;
-
+    
+    u->conf->ignore_headers = 0;
+	
     if ((u->conf->ar_ignore_headers != NULL
             && ngx_http_complex_value(r, u->conf->ar_ignore_headers, &ar_ignore_headers_val) == NGX_OK)) {
           char* ar_char_ignore_headers_val;
