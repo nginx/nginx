@@ -589,15 +589,12 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
 static void
 ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x0090707fL
-    const
-#endif
-    u_char                *p;
     int                    n;
     size_t                 len;
     time_t                 now, valid;
     ngx_str_t              response;
     X509_STORE            *store;
+    const u_char          *p;
     STACK_OF(X509)        *chain;
     OCSP_CERTID           *id;
     OCSP_RESPONSE         *ocsp;

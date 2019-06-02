@@ -24,8 +24,8 @@ typedef struct {
     ngx_msec_t                       timeout;
     ngx_msec_t                       next_upstream_timeout;
     size_t                           buffer_size;
-    size_t                           upload_rate;
-    size_t                           download_rate;
+    ngx_stream_complex_value_t      *upload_rate;
+    ngx_stream_complex_value_t      *download_rate;
     ngx_uint_t                       requests;
     ngx_uint_t                       responses;
     ngx_uint_t                       next_upstream_tries;
@@ -184,14 +184,14 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
 
     { ngx_string("proxy_upload_rate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
+      ngx_stream_set_complex_value_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, upload_rate),
       NULL },
 
     { ngx_string("proxy_download_rate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
+      ngx_stream_set_complex_value_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, download_rate),
       NULL },
@@ -895,6 +895,9 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
         u->proxy_protocol = 0;
     }
 
+    u->upload_rate = ngx_stream_complex_value_size(s, pscf->upload_rate, 0);
+    u->download_rate = ngx_stream_complex_value_size(s, pscf->download_rate, 0);
+
     u->connected = 1;
 
     pc->read->handler = ngx_stream_proxy_upstream_handler;
@@ -1532,7 +1535,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         src = pc;
         dst = c;
         b = &u->upstream_buf;
-        limit_rate = pscf->download_rate;
+        limit_rate = u->download_rate;
         received = &u->received;
         packets = &u->responses;
         out = &u->downstream_out;
@@ -1544,7 +1547,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         src = c;
         dst = pc;
         b = &u->downstream_buf;
-        limit_rate = pscf->upload_rate;
+        limit_rate = u->upload_rate;
         received = &s->received;
         packets = &u->requests;
         out = &u->upstream_out;
@@ -1955,6 +1958,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
      *     conf->ssl_certificate = { 0, NULL };
      *     conf->ssl_certificate_key = { 0, NULL };
      *
+     *     conf->upload_rate = NULL;
+     *     conf->download_rate = NULL;
      *     conf->ssl = NULL;
      *     conf->upstream = NULL;
      *     conf->upstream_value = NULL;
@@ -1964,8 +1969,6 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->timeout = NGX_CONF_UNSET_MSEC;
     conf->next_upstream_timeout = NGX_CONF_UNSET_MSEC;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
-    conf->upload_rate = NGX_CONF_UNSET_SIZE;
-    conf->download_rate = NGX_CONF_UNSET_SIZE;
     conf->requests = NGX_CONF_UNSET_UINT;
     conf->responses = NGX_CONF_UNSET_UINT;
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
@@ -2005,11 +2008,13 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->buffer_size,
                               prev->buffer_size, 16384);
 
-    ngx_conf_merge_size_value(conf->upload_rate,
-                              prev->upload_rate, 0);
+    if (conf->upload_rate == NULL) {
+        conf->upload_rate = prev->upload_rate;
+    }
 
-    ngx_conf_merge_size_value(conf->download_rate,
-                              prev->download_rate, 0);
+    if (conf->download_rate == NULL) {
+        conf->download_rate = prev->download_rate;
+    }
 
     ngx_conf_merge_uint_value(conf->requests,
                               prev->requests, 0);
