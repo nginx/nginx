@@ -1690,7 +1690,6 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     }
 }
 
-
 static ngx_int_t
 ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
     ngx_uint_t from_upstream)

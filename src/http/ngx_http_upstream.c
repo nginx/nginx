@@ -559,13 +559,16 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     ngx_http_upstream_main_conf_t  *umcf;
     ngx_str_t                      ar_ignore_headers_val;
     ngx_str_t                      ar_cache_use_stale_val;
+    ngx_str_t                      ar_next_upstream_val;
 
     if (r->aio) {
         return;
     }
 
     u = r->upstream;
-
+    
+    u->conf->ignore_headers = 0;
+	
     if ((u->conf->ar_ignore_headers != NULL
             && ngx_http_complex_value(r, u->conf->ar_ignore_headers, &ar_ignore_headers_val) == NGX_OK)) {
           char* ar_char_ignore_headers_val;
@@ -612,6 +615,75 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
       	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "Vary", 4) == 0){
       	    	u->conf->ignore_headers |=  NGX_HTTP_UPSTREAM_IGN_VARY;
+    	    }
+    	    pch = strtok (NULL, " ");
+    	  }
+    }
+
+
+
+    if ((u->conf->ar_next_upstream != NULL
+            && ngx_http_complex_value(r, u->conf->ar_next_upstream, &ar_next_upstream_val) == NGX_OK)) {
+          char* ar_char_next_upstream_val;
+          ar_char_next_upstream_val = ngx_pcalloc(r->pool, sizeof(u_char) * ar_next_upstream_val.len + 1);
+          ngx_memcpy(ar_char_next_upstream_val, ar_next_upstream_val.data, sizeof(u_char) * (ar_next_upstream_val.len));
+          ar_char_next_upstream_val[ar_next_upstream_val.len] = 0;
+    	  char * pch;
+    	  pch = strtok (ar_char_next_upstream_val, " ");
+    	  u->conf->next_upstream = 0;
+    	  while (pch != NULL)
+    	  {
+
+      	    if(ngx_strncasecmp((u_char *)pch, (u_char *) "error", 5) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_ERROR;
+      	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "timeout", 7) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_TIMEOUT;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "invalid_header", 14) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_INVALID_HEADER;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "non_idempotent", 14) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_500", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_500;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_502", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_502;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_503", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_503;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_504", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_504;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_403", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_403;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_404", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_404;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "http_429", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_HTTP_429;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "updating", 8) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_UPDATING;
+    	    }
+
+      	    else if(ngx_strncasecmp((u_char *)pch, (u_char *) "off", 3) == 0){
+      	    	u->conf->next_upstream |=  NGX_HTTP_UPSTREAM_FT_OFF;
     	    }
     	    pch = strtok (NULL, " ");
     	  }
