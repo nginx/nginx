@@ -102,21 +102,6 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_SSI = YES ]; then
-        HTTP_POSTPONE=YES
-    fi
-
-
-    if [ $HTTP_SLICE = YES ]; then
-        HTTP_POSTPONE=YES
-    fi
-
-
-    if [ $HTTP_ADDITION = YES ]; then
-        HTTP_POSTPONE=YES
-    fi
-
-
     # the module order is important
     #     ngx_http_static_module
     #     ngx_http_gzip_static_module
@@ -252,13 +237,13 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
-    if [ $HTTP_POSTPONE = YES ]; then
+    if :; then
         ngx_module_name=ngx_http_postpone_filter_module
         ngx_module_incs=
         ngx_module_deps=
         ngx_module_srcs=src/http/ngx_http_postpone_filter_module.c
         ngx_module_libs=
-        ngx_module_link=$HTTP_POSTPONE
+        ngx_module_link=YES
 
         . auto/module
     fi

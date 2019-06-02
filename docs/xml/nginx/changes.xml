@@ -5,6 +5,68 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.0" date="2019-05-21">
+
+<change type="feature">
+<para lang="ru">
+директивы limit_rate и limit_rate_after поддерживают переменные.
+</para>
+<para lang="en">
+variables support in the "limit_rate" and "limit_rate_after" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_upload_rate и proxy_download_rate в модуле stream
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "proxy_upload_rate" and "proxy_download_rate" directives
+in the stream module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+минимальная поддерживаемая версия OpenSSL&mdash;0.9.8.
+</para>
+<para lang="en">
+minimum supported OpenSSL version is 0.9.8.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь postpone-фильтр собирается всегда.
+</para>
+<para lang="en">
+now the postpone filter is always built.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива include не работала в блоках if и limit_except.
+</para>
+<para lang="en">
+the "include" directive did not work inside the "if" and "limit_except" blocks.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке byte ranges.
+</para>
+<para lang="en">
+in byte ranges processing.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.12" date="2019-04-16">
 
 <change type="bugfix">
