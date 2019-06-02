@@ -669,10 +669,7 @@ ngx_http_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
     ngx_http_upstream_rr_peer_t   *peer;
 #if (NGX_HTTP_UPSTREAM_ZONE)
     int                            len;
-#if OPENSSL_VERSION_NUMBER >= 0x0090707fL
-    const
-#endif
-    u_char                        *p;
+    const u_char                  *p;
     ngx_http_upstream_rr_peers_t  *peers;
     u_char                         buf[NGX_SSL_MAX_SESSION_SIZE];
 #endif

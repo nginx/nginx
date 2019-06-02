@@ -56,6 +56,10 @@ typedef struct {
     ngx_uint_t                   *flushes;
     void                         *lengths;
     void                         *values;
+
+    union {
+        size_t                    size;
+    } u;
 } ngx_stream_complex_value_t;
 
 
@@ -102,9 +106,13 @@ void ngx_stream_script_flush_complex_value(ngx_stream_session_t *s,
     ngx_stream_complex_value_t *val);
 ngx_int_t ngx_stream_complex_value(ngx_stream_session_t *s,
     ngx_stream_complex_value_t *val, ngx_str_t *value);
+size_t ngx_stream_complex_value_size(ngx_stream_session_t *s,
+    ngx_stream_complex_value_t *val, size_t default_value);
 ngx_int_t ngx_stream_compile_complex_value(
     ngx_stream_compile_complex_value_t *ccv);
 char *ngx_stream_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+char *ngx_stream_set_complex_value_size_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
