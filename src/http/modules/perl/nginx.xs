@@ -147,6 +147,8 @@ send_http_header(r, ...)
         }
     }
 
+    r->disable_not_modified = 1;
+
     (void) ngx_http_send_header(r);
 
 
