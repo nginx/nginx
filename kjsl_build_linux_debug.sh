@@ -35,12 +35,24 @@ fi
 mkdir -p /usr/nginx
 mkdir -p /usr/nginx/nginx
 ./auto/configure --prefix=/etc/nginx \
-	--with-cc-opt="-I/usr/include" \
-	--with-ld-opt="-L/usr/lib" \
+	--with-cc-opt="-I/usr/include -I/usr/opt/openssl/include" \
+	--with-ld-opt="-L/usr/lib -L/usr/opt/openssl/lib" \
+        --with-http_stub_status_module \
         --with-compat \
- 	--add-module=../nginx_mod_smooth_streaming-1.9.6 \
-        --with-openssl=/usr/include/openssl \
-        --with-http_stub_status_module
+        --with-debug \
+	--prefix=/etc/nginx \
+	--sbin-path=/sbin/nginx \
+	--conf-path=/etc/nginx/nginx.conf \
+        --with-http_dav_module \
+	--error-log-path=/var/log/nginx/error.log \
+	--http-log-path=/var/log/nginx/access.log \
+	--pid-path=/var/run/nginx.pid \
+	--lock-path=/var/run/nginx.lock \
+        --modules-path=/etc/nginx/modules \
+	--add-module=./ngx_devel_kit \
+ 	--add-module=./nginx-rtmp-module \
+ 	--add-module=../smootha/nginx-switch-module \
+ 	--add-module=../nginx_mod_smooth_streaming-1.9.5
 
 make -j9
 sudo make install
