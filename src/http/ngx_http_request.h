@@ -397,6 +397,8 @@ struct ngx_http_request_s {
     ngx_http_headers_in_t             headers_in;
     ngx_http_headers_out_t            headers_out;
 
+    ngx_uint_t						  ar_ignore_headers;
+
     ngx_http_request_body_t          *request_body;
 
     time_t                            lingering_time;
