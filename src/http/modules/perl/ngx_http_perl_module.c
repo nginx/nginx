@@ -228,11 +228,6 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl handler done: %i", rc);
 
-    if (rc == NGX_DONE) {
-        ngx_http_finalize_request(r, rc);
-        return;
-    }
-
     if (rc > 600) {
         rc = NGX_OK;
     }
