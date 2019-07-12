@@ -394,6 +394,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
     ctx->ssi = ssi_ctx;
+    ctx->header_sent = 1;
 
     handler = params[NGX_HTTP_PERL_SSI_SUB];
     handler->data[handler->len] = '\0';

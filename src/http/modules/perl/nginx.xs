@@ -141,6 +141,14 @@ send_http_header(r, ...)
         croak("send_http_header(): cannot be used in variable handler");
     }
 
+    if (ctx->header_sent) {
+        croak("send_http_header(): header already sent");
+    }
+
+    if (ctx->redirect_uri.len) {
+        croak("send_http_header(): cannot be used with internal_redirect()");
+    }
+
     if (r->headers_out.status == 0) {
         r->headers_out.status = NGX_HTTP_OK;
     }
@@ -666,6 +674,10 @@ print(r, ...)
         croak("print(): cannot be used in variable handler");
     }
 
+    if (!ctx->header_sent) {
+        croak("print(): header not sent");
+    }
+
     if (items == 2) {
 
         /*
@@ -780,6 +792,10 @@ sendfile(r, filename, offset = -1, bytes = 0)
         croak("sendfile(): cannot be used in variable handler");
     }
 
+    if (!ctx->header_sent) {
+        croak("sendfile(): header not sent");
+    }
+
     filename = SvPV_nolen(ST(1));
 
     if (filename == NULL) {
@@ -886,6 +902,10 @@ flush(r)
         croak("flush(): cannot be used in variable handler");
     }
 
+    if (!ctx->header_sent) {
+        croak("flush(): header not sent");
+    }
+
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         ctx->error = 1;
@@ -919,6 +939,10 @@ internal_redirect(r, uri)
 
     if (ctx->variable) {
         croak("internal_redirect(): cannot be used in variable handler");
+    }
+
+    if (ctx->header_sent) {
+        croak("internal_redirect(): header already sent");
     }
 
     uri = ST(1);
