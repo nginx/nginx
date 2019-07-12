@@ -400,6 +400,10 @@ has_request_body(r, next)
 
     ngx_http_perl_set_request(r, ctx);
 
+    if (ctx->next) {
+        croak("has_request_body(): another handler active");
+    }
+
     if (r->headers_in.content_length_n <= 0 && !r->headers_in.chunked) {
         XSRETURN_UNDEF;
     }
@@ -1092,6 +1096,10 @@ sleep(r, sleep, next)
     ngx_msec_t            sleep;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->next) {
+        croak("sleep(): another handler active");
+    }
 
     sleep = (ngx_msec_t) SvIV(ST(1));
 
