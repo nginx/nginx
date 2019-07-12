@@ -246,6 +246,11 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 
+    if (rc == NGX_ERROR) {
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
     if (ctx->done || ctx->next) {
         ngx_http_finalize_request(r, NGX_DONE);
         return;
@@ -690,6 +695,9 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
     status = 0;
 
+    ctx->error = 0;
+    ctx->status = NGX_OK;
+
     ENTER;
     SAVETMPS;
 
@@ -738,6 +746,18 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
     FREETMPS;
     LEAVE;
+
+    if (ctx->error) {
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "call_sv: error, %d", ctx->status);
+
+        if (ctx->status != NGX_OK) {
+            return ctx->status;
+        }
+
+        return NGX_ERROR;
+    }
 
     /* check $@ */
 

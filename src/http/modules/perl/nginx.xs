@@ -125,8 +125,13 @@ send_http_header(r, ...)
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
     SV                   *sv;
+    ngx_int_t             rc;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->error) {
+        croak("send_http_header(): called after error");
+    }
 
     if (r->headers_out.status == 0) {
         r->headers_out.status = NGX_HTTP_OK;
@@ -151,7 +156,13 @@ send_http_header(r, ...)
 
     r->disable_not_modified = 1;
 
-    (void) ngx_http_send_header(r);
+    rc = ngx_http_send_header(r);
+
+    if (rc == NGX_ERROR || rc > NGX_OK) {
+        ctx->error = 1;
+        ctx->status = rc;
+        croak("ngx_http_send_header() failed");
+    }
 
 
 void
@@ -381,6 +392,7 @@ has_request_body(r, next)
     dXSTARG;
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
+    ngx_int_t             rc;
 
     ngx_http_perl_set_request(r, ctx);
 
@@ -398,7 +410,14 @@ has_request_body(r, next)
         r->request_body_file_log_level = 0;
     }
 
-    ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
+    rc = ngx_http_read_client_request_body(r, ngx_http_perl_handle_request);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        ctx->error = 1;
+        ctx->status = rc;
+        ctx->next = NULL;
+        croak("ngx_http_read_client_request_body() failed");
+    }
 
     sv_upgrade(TARG, SVt_IV);
     sv_setiv(TARG, 1);
@@ -494,10 +513,17 @@ discard_request_body(r)
 
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
+    ngx_int_t             rc;
 
     ngx_http_perl_set_request(r, ctx);
 
-    ngx_http_discard_request_body(r);
+    rc = ngx_http_discard_request_body(r);
+
+    if (rc != NGX_OK) {
+        ctx->error = 1;
+        ctx->status = rc;
+        croak("ngx_http_discard_request_body() failed");
+    }
 
 
 void
@@ -511,6 +537,10 @@ header_out(r, key, value)
     ngx_table_elt_t      *header;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->error) {
+        croak("header_out(): called after error");
+    }
 
     key = ST(1);
     value = ST(2);
@@ -588,9 +618,14 @@ print(r, ...)
     u_char               *p;
     size_t                size;
     STRLEN                len;
+    ngx_int_t             rc;
     ngx_buf_t            *b;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->error) {
+        croak("print(): called after error");
+    }
 
     if (items == 2) {
 
@@ -671,7 +706,12 @@ print(r, ...)
 
     out:
 
-    (void) ngx_http_perl_output(r, ctx, b);
+    rc = ngx_http_perl_output(r, ctx, b);
+
+    if (rc == NGX_ERROR) {
+        ctx->error = 1;
+        croak("ngx_http_perl_output() failed");
+    }
 
 
 void
@@ -683,12 +723,17 @@ sendfile(r, filename, offset = -1, bytes = 0)
     char                      *filename;
     off_t                      offset;
     size_t                     bytes;
+    ngx_int_t                  rc;
     ngx_str_t                  path;
     ngx_buf_t                 *b;
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->error) {
+        croak("sendfile(): called after error");
+    }
 
     filename = SvPV_nolen(ST(1));
 
@@ -762,7 +807,12 @@ sendfile(r, filename, offset = -1, bytes = 0)
     b->file->log = r->connection->log;
     b->file->directio = of.is_directio;
 
-    (void) ngx_http_perl_output(r, ctx, b);
+    rc = ngx_http_perl_output(r, ctx, b);
+
+    if (rc == NGX_ERROR) {
+        ctx->error = 1;
+        croak("ngx_http_perl_output() failed");
+    }
 
 
 void
@@ -771,9 +821,14 @@ flush(r)
 
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
+    ngx_int_t             rc;
     ngx_buf_t            *b;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->error) {
+        croak("flush(): called after error");
+    }
 
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
@@ -784,7 +839,12 @@ flush(r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "$r->flush");
 
-    (void) ngx_http_perl_output(r, ctx, b);
+    rc = ngx_http_perl_output(r, ctx, b);
+
+    if (rc == NGX_ERROR) {
+        ctx->error = 1;
+        croak("ngx_http_perl_output() failed");
+    }
 
     XSRETURN_EMPTY;
 

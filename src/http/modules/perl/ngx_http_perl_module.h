@@ -29,7 +29,10 @@ typedef struct {
 
     SV                       *next;
 
-    ngx_uint_t                done;       /* unsigned  done:1; */
+    ngx_int_t                 status;
+
+    unsigned                  done:1;
+    unsigned                  error:1;
 
     ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
 
