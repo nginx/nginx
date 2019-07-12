@@ -43,7 +43,8 @@ static PerlInterpreter *ngx_http_perl_create_interpreter(ngx_conf_t *cf,
 static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
-    HV *nginx, SV *sub, SV **args, ngx_str_t *handler, ngx_str_t *rv);
+    ngx_http_perl_ctx_t *ctx, HV *nginx, SV *sub, SV **args,
+    ngx_str_t *handler, ngx_str_t *rv);
 static void ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv);
 
 static ngx_int_t ngx_http_perl_preconfiguration(ngx_conf_t *cf);
@@ -199,6 +200,8 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
+
+        ctx->request = r;
     }
 
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
@@ -220,8 +223,8 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         ctx->next = NULL;
     }
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sub, NULL, handler,
-                                    NULL);
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, sub, NULL,
+                                    handler, NULL);
 
     }
 
@@ -309,6 +312,8 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
+
+        ctx->request = r;
     }
 
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
@@ -321,7 +326,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     PERL_SET_CONTEXT(pmcf->perl);
     PERL_SET_INTERP(pmcf->perl);
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, pv->sub, NULL,
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, pv->sub, NULL,
                                     &pv->handler, &value);
 
     }
@@ -372,6 +377,8 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_perl_module);
+
+        ctx->request = r;
     }
 
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
@@ -430,8 +437,8 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
         asv = NULL;
     }
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, pmcf->nginx, sv, asv, handler,
-                                    NULL);
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, sv, asv,
+                                    handler, NULL);
 
     SvREFCNT_dec(sv);
 
@@ -667,8 +674,9 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
 
 static ngx_int_t
-ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
-    SV **args, ngx_str_t *handler, ngx_str_t *rv)
+ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
+    ngx_http_perl_ctx_t *ctx, HV *nginx, SV *sub, SV **args,
+    ngx_str_t *handler, ngx_str_t *rv)
 {
     SV                *sv;
     int                n, status;
@@ -687,7 +695,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r, HV *nginx, SV *sub,
 
     PUSHMARK(sp);
 
-    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(r))), nginx));
+    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(ctx))), nginx));
     XPUSHs(sv);
 
     if (args) {

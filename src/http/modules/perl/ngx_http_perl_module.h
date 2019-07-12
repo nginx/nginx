@@ -21,6 +21,8 @@
 typedef ngx_http_request_t   *nginx;
 
 typedef struct {
+    ngx_http_request_t       *request;
+
     ngx_str_t                 filename;
     ngx_str_t                 redirect_uri;
     ngx_str_t                 redirect_args;
