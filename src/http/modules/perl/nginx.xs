@@ -952,17 +952,6 @@ internal_redirect(r, uri)
         croak("ngx_http_perl_sv2str() failed");
     }
 
-    for (i = 0; i < ctx->redirect_uri.len; i++) {
-        if (ctx->redirect_uri.data[i] == '?') {
-
-            ctx->redirect_args.len = ctx->redirect_uri.len - (i + 1);
-            ctx->redirect_args.data = &ctx->redirect_uri.data[i + 1];
-            ctx->redirect_uri.len = i;
-
-            XSRETURN_EMPTY;
-        }
-    }
-
 
 void
 allow_ranges(r)

@@ -184,6 +184,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     SV                         *sub;
     ngx_int_t                   rc;
     ngx_str_t                   uri, args, *handler;
+    ngx_uint_t                  flags;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_loc_conf_t   *plcf;
     ngx_http_perl_main_conf_t  *pmcf;
@@ -237,7 +238,6 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
 
     if (ctx->redirect_uri.len) {
         uri = ctx->redirect_uri;
-        args = ctx->redirect_args;
 
     } else {
         uri.len = 0;
@@ -257,6 +257,14 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     }
 
     if (uri.len) {
+        ngx_str_null(&args);
+        flags = NGX_HTTP_LOG_UNSAFE;
+
+        if (ngx_http_parse_unsafe_uri(r, &uri, &args, &flags) != NGX_OK) {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
         ngx_http_internal_redirect(r, &uri, &args);
         ngx_http_finalize_request(r, NGX_DONE);
         return;
