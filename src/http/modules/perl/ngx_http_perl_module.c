@@ -257,15 +257,21 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
     }
 
     if (uri.len) {
-        ngx_str_null(&args);
-        flags = NGX_HTTP_LOG_UNSAFE;
+        if (uri.data[0] == '@') {
+            ngx_http_named_location(r, &uri);
 
-        if (ngx_http_parse_unsafe_uri(r, &uri, &args, &flags) != NGX_OK) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+        } else {
+            ngx_str_null(&args);
+            flags = NGX_HTTP_LOG_UNSAFE;
+
+            if (ngx_http_parse_unsafe_uri(r, &uri, &args, &flags) != NGX_OK) {
+                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            ngx_http_internal_redirect(r, &uri, &args);
         }
 
-        ngx_http_internal_redirect(r, &uri, &args);
         ngx_http_finalize_request(r, NGX_DONE);
         return;
     }
