@@ -780,6 +780,10 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
         ctx->redirect_uri.len = 0;
 
+        if (ctx->header_sent) {
+            return NGX_ERROR;
+        }
+
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 

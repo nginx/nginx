@@ -164,6 +164,8 @@ send_http_header(r, ...)
         }
     }
 
+    ctx->header_sent = 1;
+
     r->disable_not_modified = 1;
 
     rc = ngx_http_send_header(r);
