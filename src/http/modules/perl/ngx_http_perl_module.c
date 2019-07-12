@@ -302,6 +302,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
     ngx_int_t                   rc;
     ngx_str_t                   value;
+    ngx_uint_t                  saved;
     ngx_http_perl_ctx_t        *ctx;
     ngx_http_perl_main_conf_t  *pmcf;
 
@@ -320,6 +321,9 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
 
         ctx->request = r;
     }
+
+    saved = ctx->variable;
+    ctx->variable = 1;
 
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_perl_module);
 
@@ -347,6 +351,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         v->not_found = 1;
     }
 
+    ctx->variable = saved;
     ctx->filename.data = NULL;
     ctx->redirect_uri.len = 0;
 

@@ -33,6 +33,7 @@ typedef struct {
 
     unsigned                  done:1;
     unsigned                  error:1;
+    unsigned                  variable:1;
 
     ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
 

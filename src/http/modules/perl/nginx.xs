@@ -110,6 +110,10 @@ status(r, code)
 
     ngx_http_perl_set_request(r, ctx);
 
+    if (ctx->variable) {
+        croak("status(): cannot be used in variable handler");
+    }
+
     r->headers_out.status = SvIV(ST(1));
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -131,6 +135,10 @@ send_http_header(r, ...)
 
     if (ctx->error) {
         croak("send_http_header(): called after error");
+    }
+
+    if (ctx->variable) {
+        croak("send_http_header(): cannot be used in variable handler");
     }
 
     if (r->headers_out.status == 0) {
@@ -400,6 +408,10 @@ has_request_body(r, next)
 
     ngx_http_perl_set_request(r, ctx);
 
+    if (ctx->variable) {
+        croak("has_request_body(): cannot be used in variable handler");
+    }
+
     if (ctx->next) {
         croak("has_request_body(): another handler active");
     }
@@ -526,6 +538,10 @@ discard_request_body(r)
 
     ngx_http_perl_set_request(r, ctx);
 
+    if (ctx->variable) {
+        croak("discard_request_body(): cannot be used in variable handler");
+    }
+
     rc = ngx_http_discard_request_body(r);
 
     if (rc != NGX_OK) {
@@ -549,6 +565,10 @@ header_out(r, key, value)
 
     if (ctx->error) {
         croak("header_out(): called after error");
+    }
+
+    if (ctx->variable) {
+        croak("header_out(): cannot be used in variable handler");
     }
 
     key = ST(1);
@@ -638,6 +658,10 @@ print(r, ...)
 
     if (ctx->error) {
         croak("print(): called after error");
+    }
+
+    if (ctx->variable) {
+        croak("print(): cannot be used in variable handler");
     }
 
     if (items == 2) {
@@ -750,6 +774,10 @@ sendfile(r, filename, offset = -1, bytes = 0)
         croak("sendfile(): called after error");
     }
 
+    if (ctx->variable) {
+        croak("sendfile(): cannot be used in variable handler");
+    }
+
     filename = SvPV_nolen(ST(1));
 
     if (filename == NULL) {
@@ -852,6 +880,10 @@ flush(r)
         croak("flush(): called after error");
     }
 
+    if (ctx->variable) {
+        croak("flush(): cannot be used in variable handler");
+    }
+
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
         ctx->error = 1;
@@ -883,6 +915,10 @@ internal_redirect(r, uri)
 
     ngx_http_perl_set_request(r, ctx);
 
+    if (ctx->variable) {
+        croak("internal_redirect(): cannot be used in variable handler");
+    }
+
     uri = ST(1);
 
     if (ngx_http_perl_sv2str(aTHX_ r, &ctx->redirect_uri, uri) != NGX_OK) {
@@ -910,6 +946,10 @@ allow_ranges(r)
     ngx_http_perl_ctx_t  *ctx;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->variable) {
+        croak("allow_ranges(): cannot be used in variable handler");
+    }
 
     r->allow_ranges = 1;
 
@@ -1096,6 +1136,10 @@ sleep(r, sleep, next)
     ngx_msec_t            sleep;
 
     ngx_http_perl_set_request(r, ctx);
+
+    if (ctx->variable) {
+        croak("sleep(): cannot be used in variable handler");
+    }
 
     if (ctx->next) {
         croak("sleep(): another handler active");
