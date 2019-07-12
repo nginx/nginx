@@ -143,14 +143,16 @@ send_http_header(r, ...)
         if (ngx_http_perl_sv2str(aTHX_ r, &r->headers_out.content_type, sv)
             != NGX_OK)
         {
-            XSRETURN_EMPTY;
+            ctx->error = 1;
+            croak("ngx_http_perl_sv2str() failed");
         }
 
         r->headers_out.content_type_len = r->headers_out.content_type.len;
 
     } else {
         if (ngx_http_set_content_type(r) != NGX_OK) {
-            XSRETURN_EMPTY;
+            ctx->error = 1;
+            croak("ngx_http_set_content_type() failed");
         }
     }
 
@@ -270,7 +272,8 @@ header_in(r, key)
 
     lowcase_key = ngx_pnalloc(r->pool, len);
     if (lowcase_key == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
     }
 
     hash = ngx_hash_strlow(lowcase_key, p, len);
@@ -330,7 +333,8 @@ header_in(r, key)
 
         value = ngx_pnalloc(r->pool, size);
         if (value == NULL) {
-            XSRETURN_UNDEF;
+            ctx->error = 1;
+            croak("ngx_pnalloc() failed");
         }
 
         p = value;
@@ -465,7 +469,8 @@ request_body(r)
 
     p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
     }
 
     data = p;
@@ -547,19 +552,22 @@ header_out(r, key, value)
 
     header = ngx_list_push(&r->headers_out.headers);
     if (header == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_list_push() failed");
     }
 
     header->hash = 1;
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->key, key) != NGX_OK) {
         header->hash = 0;
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_http_perl_sv2str() failed");
     }
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->value, value) != NGX_OK) {
         header->hash = 0;
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_http_perl_sv2str() failed");
     }
 
     if (header->key.len == sizeof("Content-Length") - 1
@@ -594,7 +602,8 @@ filename(r)
     }
 
     if (ngx_http_map_uri_to_path(r, &ctx->filename, &root, 0) == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_http_map_uri_to_path() failed");
     }
 
     ctx->filename.len--;
@@ -650,7 +659,8 @@ print(r, ...)
 
             b = ngx_calloc_buf(r->pool);
             if (b == NULL) {
-                XSRETURN_EMPTY;
+                ctx->error = 1;
+                croak("ngx_calloc_buf() failed");
             }
 
             b->memory = 1;
@@ -690,7 +700,8 @@ print(r, ...)
 
     b = ngx_create_temp_buf(r->pool, size);
     if (b == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_create_temp_buf() failed");
     }
 
     for (i = 1; i < items; i++) {
@@ -746,19 +757,22 @@ sendfile(r, filename, offset = -1, bytes = 0)
 
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_calloc_buf() failed");
     }
 
     b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
     if (b->file == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_pcalloc() failed");
     }
 
     path.len = ngx_strlen(filename);
 
     path.data = ngx_pnalloc(r->pool, path.len + 1);
     if (path.data == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
     }
 
     (void) ngx_cpystrn(path.data, (u_char *) filename, path.len + 1);
@@ -775,19 +789,23 @@ sendfile(r, filename, offset = -1, bytes = 0)
     of.events = clcf->open_file_cache_events;
 
     if (ngx_http_set_disable_symlinks(r, clcf, &path, &of) != NGX_OK) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_http_set_disable_symlinks() failed");
     }
 
     if (ngx_open_cached_file(clcf->open_file_cache, &path, &of, r->pool)
         != NGX_OK)
     {
         if (of.err == 0) {
-            XSRETURN_EMPTY;
+            ctx->error = 1;
+            croak("ngx_open_cached_file() failed");
         }
 
         ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                       "%s \"%s\" failed", of.failed, filename);
-        XSRETURN_EMPTY;
+
+        ctx->error = 1;
+        croak("ngx_open_cached_file() failed");
     }
 
     if (offset == -1) {
@@ -832,7 +850,8 @@ flush(r)
 
     b = ngx_calloc_buf(r->pool);
     if (b == NULL) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_calloc_buf() failed");
     }
 
     b->flush = 1;
@@ -863,7 +882,8 @@ internal_redirect(r, uri)
     uri = ST(1);
 
     if (ngx_http_perl_sv2str(aTHX_ r, &ctx->redirect_uri, uri) != NGX_OK) {
-        XSRETURN_EMPTY;
+        ctx->error = 1;
+        croak("ngx_http_perl_sv2str() failed");
     }
 
     for (i = 0; i < ctx->redirect_uri.len; i++) {
@@ -910,7 +930,8 @@ unescape(r, text, type = 0)
 
     p = ngx_pnalloc(r->pool, len + 1);
     if (p == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
     }
 
     dst = p;
@@ -959,7 +980,8 @@ variable(r, name, value = NULL)
         }
 
         if (ngx_http_perl_sv2str(aTHX_ r, &val, value) != NGX_OK) {
-            XSRETURN_UNDEF;
+            ctx->error = 1;
+            croak("ngx_http_perl_sv2str() failed");
         }
     }
 
@@ -967,7 +989,8 @@ variable(r, name, value = NULL)
 
     lowcase = ngx_pnalloc(r->pool, len);
     if (lowcase == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
     }
 
     hash = ngx_hash_strlow(lowcase, p, len);
@@ -987,7 +1010,8 @@ variable(r, name, value = NULL)
 
     vv = ngx_http_get_variable(r, &var, hash);
     if (vv == NULL) {
-        XSRETURN_UNDEF;
+        ctx->error = 1;
+        croak("ngx_http_get_variable() failed");
     }
 
     if (vv->not_found) {
@@ -1020,13 +1044,15 @@ variable(r, name, value = NULL)
                 ctx->variables = ngx_array_create(r->pool, 1,
                                                   sizeof(ngx_http_perl_var_t));
                 if (ctx->variables == NULL) {
-                    XSRETURN_UNDEF;
+                    ctx->error = 1;
+                    croak("ngx_array_create() failed");
                 }
             }
 
             v = ngx_array_push(ctx->variables);
             if (v == NULL) {
-                XSRETURN_UNDEF;
+                ctx->error = 1;
+                croak("ngx_array_push() failed");
             }
 
             v->hash = hash;
