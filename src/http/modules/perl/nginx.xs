@@ -933,7 +933,6 @@ internal_redirect(r, uri)
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
     SV                   *uri;
-    ngx_uint_t            i;
 
     ngx_http_perl_set_request(r, ctx);
 
