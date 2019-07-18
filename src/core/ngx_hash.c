@@ -265,6 +265,14 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         return NGX_ERROR;
     }
 
+    if (hinit->bucket_size > 65536 - ngx_cacheline_size) {
+        ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
+                      "could not build %s, too large "
+                      "%s_bucket_size: %i",
+                      hinit->name, hinit->name, hinit->bucket_size);
+        return NGX_ERROR;
+    }
+
     for (n = 0; n < nelts; n++) {
         if (hinit->bucket_size < NGX_HASH_ELT_SIZE(&names[n]) + sizeof(void *))
         {
@@ -300,17 +308,19 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
             }
 
             key = names[n].key_hash % size;
-            test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
+            len = test[key] + NGX_HASH_ELT_SIZE(&names[n]);
 
 #if 0
             ngx_log_error(NGX_LOG_ALERT, hinit->pool->log, 0,
-                          "%ui: %ui %ui \"%V\"",
-                          size, key, test[key], &names[n].key);
+                          "%ui: %ui %uz \"%V\"",
+                          size, key, len, &names[n].key);
 #endif
 
-            if (test[key] > (u_short) bucket_size) {
+            if (len > bucket_size) {
                 goto next;
             }
+
+            test[key] = (u_short) len;
         }
 
         goto found;
@@ -341,7 +351,17 @@ found:
         }
 
         key = names[n].key_hash % size;
-        test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
+        len = test[key] + NGX_HASH_ELT_SIZE(&names[n]);
+
+        if (len > 65536 - ngx_cacheline_size) {
+            ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
+                          "could not build %s, you should "
+                          "increase %s_max_size: %i",
+                          hinit->name, hinit->name, hinit->max_size);
+            return NGX_ERROR;
+        }
+
+        test[key] = (u_short) len;
     }
 
     len = 0;
