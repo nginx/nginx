@@ -358,6 +358,7 @@ found:
                           "could not build %s, you should "
                           "increase %s_max_size: %i",
                           hinit->name, hinit->name, hinit->max_size);
+            ngx_free(test);
             return NGX_ERROR;
         }
 
