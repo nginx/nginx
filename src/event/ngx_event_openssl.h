@@ -151,6 +151,7 @@ typedef struct {
 #define NGX_SSL_TLSv1_1  0x0010
 #define NGX_SSL_TLSv1_2  0x0020
 #define NGX_SSL_TLSv1_3  0x0040
+#define NGX_SSL_GMTLS    0x0080
 
 
 #define NGX_SSL_BUFFER   1
