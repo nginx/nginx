@@ -1,6 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
+ * Copyright (C) Maxim Dounin
  * Copyright (C) Nginx, Inc.
  */
 
@@ -21,8 +22,9 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-static struct pollfd  *event_list;
-static ngx_uint_t      nevents;
+static struct pollfd      *event_list;
+static ngx_connection_t  **event_index;
+static ngx_uint_t          nevents;
 
 
 static ngx_str_t           poll_name = ngx_string("poll");
@@ -67,7 +69,8 @@ ngx_module_t  ngx_poll_module = {
 static ngx_int_t
 ngx_poll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
-    struct pollfd   *list;
+    struct pollfd      *list;
+    ngx_connection_t  **index;
 
     if (event_list == NULL) {
         nevents = 0;
@@ -89,13 +92,27 @@ ngx_poll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
 
         event_list = list;
+
+        index = ngx_alloc(sizeof(ngx_connection_t *) * cycle->connection_n,
+                          cycle->log);
+        if (index == NULL) {
+            return NGX_ERROR;
+        }
+
+        if (event_index) {
+            ngx_memcpy(index, event_index,
+                       sizeof(ngx_connection_t *) * nevents);
+            ngx_free(event_index);
+        }
+
+        event_index = index;
     }
 
     ngx_io = ngx_os_io;
 
     ngx_event_actions = ngx_poll_module_ctx.actions;
 
-    ngx_event_flags = NGX_USE_LEVEL_EVENT|NGX_USE_FD_EVENT;
+    ngx_event_flags = NGX_USE_LEVEL_EVENT;
 
     return NGX_OK;
 }
@@ -105,8 +122,10 @@ static void
 ngx_poll_done(ngx_cycle_t *cycle)
 {
     ngx_free(event_list);
+    ngx_free(event_index);
 
     event_list = NULL;
+    event_index = NULL;
 }
 
 
@@ -143,9 +162,12 @@ ngx_poll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                    "poll add event: fd:%d ev:%i", c->fd, event);
 
     if (e == NULL || e->index == NGX_INVALID_INDEX) {
+
         event_list[nevents].fd = c->fd;
         event_list[nevents].events = (short) event;
         event_list[nevents].revents = 0;
+
+        event_index[nevents] = c;
 
         ev->index = nevents;
         nevents++;
@@ -204,10 +226,11 @@ ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
                            "index: copy event %ui to %i", nevents, ev->index);
 
             event_list[ev->index] = event_list[nevents];
+            event_index[ev->index] = event_index[nevents];
 
-            c = ngx_cycle->files[event_list[nevents].fd];
+            c = event_index[ev->index];
 
-            if (c->fd == -1) {
+            if (c->fd == (ngx_socket_t) -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                               "unexpected last event");
 
@@ -240,7 +263,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                 ready, revents;
     ngx_err_t           err;
-    ngx_uint_t          i, found, level;
+    ngx_uint_t          i, found;
     ngx_event_t        *ev;
     ngx_queue_t        *queue;
     ngx_connection_t   *c;
@@ -259,7 +282,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "poll timer: %M", timer);
 
-    ready = poll(event_list, (u_int) nevents, (int) timer);
+    ready = WSAPoll(event_list, (u_int) nevents, (int) timer);
 
     err = (ready == -1) ? ngx_errno : 0;
 
@@ -271,20 +294,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                    "poll ready %d of %ui", ready, nevents);
 
     if (err) {
-        if (err == NGX_EINTR) {
-
-            if (ngx_event_timer_alarm) {
-                ngx_event_timer_alarm = 0;
-                return NGX_OK;
-            }
-
-            level = NGX_LOG_INFO;
-
-        } else {
-            level = NGX_LOG_ALERT;
-        }
-
-        ngx_log_error(level, cycle->log, err, "poll() failed");
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, err, "WSAPoll() failed");
         return NGX_ERROR;
     }
 
@@ -294,7 +304,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         }
 
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
-                      "poll() returned no events without timeout");
+                      "WSAPoll() returned no events without timeout");
         return NGX_ERROR;
     }
 
@@ -326,7 +336,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                           event_list[i].fd, event_list[i].events, revents);
         }
 
-        if (event_list[i].fd == -1) {
+        if (event_list[i].fd == (ngx_socket_t) -1) {
             /*
              * the disabled event, a workaround for our possible bug,
              * see the comment below
@@ -334,9 +344,9 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             continue;
         }
 
-        c = ngx_cycle->files[event_list[i].fd];
+        c = event_index[i];
 
-        if (c->fd == -1) {
+        if (c->fd == (ngx_socket_t) -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
 
             /*
@@ -347,7 +357,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             if (i == nevents - 1) {
                 nevents--;
             } else {
-                event_list[i].fd = -1;
+                event_list[i].fd = (ngx_socket_t) -1;
             }
 
             continue;
@@ -410,6 +420,16 @@ ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf)
     if (ecf->use != ngx_poll_module.ctx_index) {
         return NGX_CONF_OK;
     }
+
+#if (NGX_LOAD_WSAPOLL)
+
+    if (!ngx_have_wsapoll) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                      "poll is not available on this platform");
+        return NGX_CONF_ERROR;
+    }
+
+#endif
 
     return NGX_CONF_OK;
 }

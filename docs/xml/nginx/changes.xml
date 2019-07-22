@@ -5,6 +5,681 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.1" date="2019-06-25">
+
+<change type="feature">
+<para lang="ru">
+директива limit_req_dry_run.
+</para>
+<para lang="en">
+the "limit_req_dry_run" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при использовании директивы hash в блоке upstream
+пустой ключ хэширования теперь приводит к переключению
+на round-robin балансировку.<br/>
+Спасибо Niklas Keller.
+</para>
+<para lang="en">
+when using the "hash" directive inside the "upstream" block
+an empty hash key now triggers round-robin balancing.<br/>
+Thanks to Niklas Keller.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалось кэширование и директива image_filter,
+а ошибки с кодом 415 перенаправлялись с помощью директивы error_page;
+ошибка появилась в 1.11.10.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if caching was used along with the "image_filter" directive,
+and errors with code 415 were redirected with the "error_page" directive;
+the bug had appeared in 1.11.10.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался встроенный перл;
+ошибка появилась в 1.7.3.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if embedded perl was used;
+the bug had appeared in 1.7.3.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.17.0" date="2019-05-21">
+
+<change type="feature">
+<para lang="ru">
+директивы limit_rate и limit_rate_after поддерживают переменные.
+</para>
+<para lang="en">
+variables support in the "limit_rate" and "limit_rate_after" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_upload_rate и proxy_download_rate в модуле stream
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "proxy_upload_rate" and "proxy_download_rate" directives
+in the stream module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+минимальная поддерживаемая версия OpenSSL&mdash;0.9.8.
+</para>
+<para lang="en">
+minimum supported OpenSSL version is 0.9.8.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь postpone-фильтр собирается всегда.
+</para>
+<para lang="en">
+now the postpone filter is always built.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива include не работала в блоках if и limit_except.
+</para>
+<para lang="en">
+the "include" directive did not work inside the "if" and "limit_except" blocks.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке byte ranges.
+</para>
+<para lang="en">
+in byte ranges processing.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.12" date="2019-04-16">
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если в директивах ssl_certificate или ssl_certificate_key
+использовались переменные
+и был включён OCSP stapling.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if variables were used
+in the "ssl_certificate" or "ssl_certificate_key" directives
+and OCSP stapling was enabled.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.11" date="2019-04-09">
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_stapling_file на Windows.
+</para>
+<para lang="en">
+in the "ssl_stapling_file" directive on Windows.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.10" date="2019-03-26">
+
+<change type="change">
+<para lang="ru">
+теперь при использовании имени хоста в директиве listen
+nginx создаёт listen-сокеты для всех адресов,
+соответствующих этому имени
+(ранее использовался только первый адрес).
+</para>
+<para lang="en">
+when using a hostname in the "listen" directive
+nginx now creates listening sockets
+for all addresses the hostname resolves to
+(previously, only the first address was used).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+диапазоны портов в директиве listen.
+</para>
+<para lang="en">
+port ranges in the "listen" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+возможность загрузки SSL-сертификатов и секретных ключей из переменных.
+</para>
+<para lang="en">
+loading of SSL certificates and secret keys from variables.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+переменная $ssl_server_name могла быть пустой
+при использовании OpenSSL 1.1.1.
+</para>
+<para lang="en">
+the $ssl_server_name variable might be empty
+when using OpenSSL 1.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с Visual Studio 2015 и новее;
+ошибка появилась в 1.15.9.
+</para>
+<para lang="en">
+nginx/Windows could not be built with Visual Studio 2015 or newer;
+the bug had appeared in 1.15.9.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.9" date="2019-02-26">
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_certificate и ssl_certificate_key
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "ssl_certificate" and "ssl_certificate_key" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+метод poll теперь доступен на Windows
+при использовании Windows Vista и новее.
+</para>
+<para lang="en">
+the "poll" method is now available on Windows
+when using Windows Vista or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если при использовании метода select на Windows
+происходила ошибка при установлении соединения с бэкендом,
+nginx ожидал истечения таймаута на установление соединения.
+</para>
+<para lang="en">
+if the "select" method was used on Windows
+and an error occurred while establishing a backend connection,
+nginx waited for the connection establishment timeout to expire.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директивы proxy_upload_rate и proxy_download_rate
+в модуле stream
+работали некорректно при проксировании UDP-пакетов.
+</para>
+<para lang="en">
+the "proxy_upload_rate" and "proxy_download_rate" directives
+in the stream module
+worked incorrectly when proxying UDP datagrams.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.8" date="2018-12-25">
+
+<change type="feature">
+<para lang="ru">
+переменная $upstream_bytes_sent.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+the $upstream_bytes_sent variable.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+новые директивы в скриптах подсветки синтаксиса для vim.<br/>
+Спасибо Геннадию Махомеду.
+</para>
+<para lang="en">
+new directives in vim syntax highlighting scripts.<br/>
+Thanks to Gena Makhomed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_cache_background_update.
+</para>
+<para lang="en">
+in the "proxy_cache_background_update" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве geo при использовании unix domain listen-сокетов.
+</para>
+<para lang="en">
+in the "geo" directive when using unix domain listen sockets.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании директивы ssl_early_data с OpenSSL
+в логах могли появляться сообщения
+"ignoring stale global SSL error ... bad length".
+</para>
+<para lang="en">
+the "ignoring stale global SSL error ... bad length"
+alerts might appear in logs
+when using the "ssl_early_data" directive with OpenSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в nginx/Windows.
+</para>
+<para lang="en">
+in nginx/Windows.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_autoindex_module на 32-битных платформах.
+</para>
+<para lang="en">
+in the ngx_http_autoindex_module on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.7" date="2018-11-27">
+
+<change type="feature">
+<para lang="ru">
+директива proxy_requests в модуле stream.
+</para>
+<para lang="en">
+the "proxy_requests" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр "delay" директивы "limit_req".<br/>
+Спасибо Владиславу Шабанову и Петру Щучкину.
+</para>
+<para lang="en">
+the "delay" parameter of the "limit_req" directive.<br/>
+Thanks to Vladislav Shabanov and Peter Shchuchkin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти в случае ошибок при переконфигурации.
+</para>
+<para lang="en">
+memory leak on errors during reconfiguration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменных $upstream_response_time, $upstream_connect_time и
+$upstream_header_time.
+</para>
+<para lang="en">
+in the $upstream_response_time, $upstream_connect_time, and
+$upstream_header_time variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался модуль ngx_http_mp4_module на 32-битных платформах.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_mp4_module was used on 32-bit platforms.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.6" date="2018-11-06">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/2 клиент мог вызвать
+чрезмерное потреблению памяти (CVE-2018-16843)
+и ресурсов процессора (CVE-2018-16844).
+</para>
+<para lang="en">
+when using HTTP/2 a client might cause
+excessive memory consumption (CVE-2018-16843)
+and CPU usage (CVE-2018-16844).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при обработке специально созданного mp4-файла модулем ngx_http_mp4_module
+содержимое памяти рабочего процесса могло быть отправлено клиенту
+(CVE-2018-16845).
+</para>
+<para lang="en">
+processing of a specially crafted mp4 file with the ngx_http_mp4_module
+might result in worker process memory disclosure
+(CVE-2018-16845).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_socket_keepalive, fastcgi_socket_keepalive,
+grpc_socket_keepalive, memcached_socket_keepalive,
+scgi_socket_keepalive и uwsgi_socket_keepalive.
+</para>
+<para lang="en">
+the "proxy_socket_keepalive", "fastcgi_socket_keepalive",
+"grpc_socket_keepalive", "memcached_socket_keepalive",
+"scgi_socket_keepalive", and "uwsgi_socket_keepalive" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если nginx был собран с OpenSSL 1.1.0, а использовался с OpenSSL 1.1.1,
+протокол TLS 1.3 всегда был разрешён.
+</para>
+<para lang="en">
+if nginx was built with OpenSSL 1.1.0 and used with OpenSSL 1.1.1,
+the TLS 1.3 protocol was always enabled.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работе с gRPC-бэкендами могло расходоваться большое количество памяти.
+</para>
+<para lang="en">
+working with gRPC backends might result in excessive memory consumption.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.5" date="2018-10-02">
+
+<change type="bugfix">
+<para lang="ru">
+при использовании OpenSSL 1.1.0h и новее
+в рабочем процессе мог произойти segmentation fault;
+ошибка появилась в 1.15.4.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using OpenSSL 1.1.0h or newer;
+the bug had appeared in 1.15.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+незначительных потенциальных ошибок.
+</para>
+<para lang="en">
+of minor potential bugs.
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.4" date="2018-09-25">
+
+<change type="feature">
+<para lang="ru">
+теперь директиву ssl_early_data можно использовать с OpenSSL.
+</para>
+<para lang="en">
+now the "ssl_early_data" directive can be used with OpenSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_uwsgi_module.<br/>
+Спасибо Chris Caputo.
+</para>
+<para lang="en">
+in the ngx_http_uwsgi_module.<br/>
+Thanks to Chris Caputo.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения к некоторым gRPC-бэкендам могли не кэшироваться
+при использовании директивы keepalive.
+</para>
+<para lang="en">
+connections with some gRPC backends might not be cached
+when using the "keepalive" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы error_page для перенаправления ошибок,
+возникающих на ранних этапах обработки запроса,
+в частности ошибок с кодом 400,
+могла происходить утечка сокетов.
+</para>
+<para lang="en">
+a socket leak might occur
+when using the "error_page" directive
+to redirect early request processing errors,
+notably errors with code 400.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+директива return при возврате ошибок не изменяла код ответа,
+если запрос был перенаправлен с помощью директивы error_page.
+</para>
+<para lang="en">
+the "return" directive did not change the response code when returning errors
+if the request was redirected by the "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+стандартные сообщения об ошибках и ответы модуля ngx_http_autoindex_module
+содержали атрибут bgcolor, что могло приводить к их некорректному отображению
+при использовании пользовательских настроек цветов в браузерах.<br/>
+Спасибо Nova DasSarma.
+</para>
+<para lang="en">
+standard error pages and responses of the ngx_http_autoindex_module module
+used the "bgcolor" attribute, and might be displayed incorrectly when using
+custom color settings in browsers.<br/>
+Thanks to Nova DasSarma.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "no suitable key share" и
+"no suitable signature algorithm"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the "no suitable key share" and
+"no suitable signature algorithm" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+</changes>
+
+
+<changes ver="1.15.3" date="2018-08-28">
+
+<change type="feature">
+<para lang="ru">
+теперь TLSv1.3 можно использовать с BoringSSL.
+</para>
+<para lang="en">
+now TLSv1.3 can be used with BoringSSL.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_early_data,
+сейчас доступна при использовании BoringSSL.
+</para>
+<para lang="en">
+the "ssl_early_data" directive,
+currently available with BoringSSL.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы keepalive_timeout и keepalive_requests
+в блоке upstream.
+</para>
+<para lang="en">
+the "keepalive_timeout" and "keepalive_requests" directives
+in the "upstream" block.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при копировании файла поверх существующего файла с помощью метода COPY
+не обнулял целевой файл.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+did not truncate destination file when copying a file over an existing one
+with the COPY method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при перемещении файла между файловыми системами с помощью метода MOVE
+устанавливал нулевые права доступа на результирующий файл
+и не сохранял время изменения файла.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+used zero access rights on the destination file
+and did not preserve file modification time
+when moving a file between different file systems with the MOVE method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+модуль ngx_http_dav_module
+при копировании файла с помощью метода COPY
+для результирующего файла использовал права доступа по умолчанию.
+</para>
+<para lang="en">
+the ngx_http_dav_module
+used default access rights
+when copying a file with the COPY method.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+некоторые клиенты могли не работать при использовании HTTP/2;
+ошибка появилась в 1.13.5.
+</para>
+<para lang="en">
+some clients might not work when using HTTP/2;
+the bug had appeared in 1.13.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с LibreSSL 2.8.0.
+</para>
+<para lang="en">
+nginx could not be built with LibreSSL 2.8.0.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.15.2" date="2018-07-24">
 
 <change type="feature">

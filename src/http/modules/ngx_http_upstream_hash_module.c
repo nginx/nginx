@@ -178,7 +178,7 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_http_upstream_rr_peers_rlock(hp->rrp.peers);
 
-    if (hp->tries > 20 || hp->rrp.peers->single) {
+    if (hp->tries > 20 || hp->rrp.peers->single || hp->key.len == 0) {
         ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
         return hp->get_rr_peer(pc, &hp->rrp);
     }
@@ -509,7 +509,7 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
 
     ngx_http_upstream_rr_peers_wlock(hp->rrp.peers);
 
-    if (hp->tries > 20 || hp->rrp.peers->single) {
+    if (hp->tries > 20 || hp->rrp.peers->single || hp->key.len == 0) {
         ngx_http_upstream_rr_peers_unlock(hp->rrp.peers);
         return hp->get_rr_peer(pc, &hp->rrp);
     }

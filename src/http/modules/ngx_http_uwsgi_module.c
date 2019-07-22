@@ -204,6 +204,13 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.local),
       NULL },
 
+    { ngx_string("uwsgi_socket_keepalive"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.socket_keepalive),
+      NULL },
+
     { ngx_string("uwsgi_connect_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -954,11 +961,17 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 #if 0
     /* allow custom uwsgi packet */
     if (len > 0 && len < 2) {
-        ngx_log_error (NGX_LOG_ALERT, r->connection->log, 0,
-                       "uwsgi request is too little: %uz", len);
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "uwsgi request is too little: %uz", len);
         return NGX_ERROR;
     }
 #endif
+
+    if (len > 65535) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "uwsgi request is too big: %uz", len);
+        return NGX_ERROR;
+    }
 
     b = ngx_create_temp_buf(r->pool, len + 4);
     if (b == NULL) {
@@ -1407,6 +1420,7 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.force_ranges = NGX_CONF_UNSET;
 
     conf->upstream.local = NGX_CONF_UNSET_PTR;
+    conf->upstream.socket_keepalive = NGX_CONF_UNSET;
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
@@ -1512,6 +1526,9 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->upstream.local,
                               prev->upstream.local, NULL);
+
+    ngx_conf_merge_value(conf->upstream.socket_keepalive,
+                              prev->upstream.socket_keepalive, 0);
 
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);
@@ -2342,6 +2359,7 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
+        ngx_ssl_cleanup_ctx(uwcf->upstream.ssl);
         return NGX_ERROR;
     }
 

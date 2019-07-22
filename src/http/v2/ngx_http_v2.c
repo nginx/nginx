@@ -662,6 +662,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 
     h2c->pool = NULL;
     h2c->free_frames = NULL;
+    h2c->frames = 0;
     h2c->free_fake_connections = NULL;
 
 #if (NGX_HTTP_SSL)
@@ -2673,11 +2674,13 @@ error:
 
     if (rc == NGX_ABORT) {
         /* header handler has already finalized request */
+        ngx_http_run_posted_requests(fc);
         return NULL;
     }
 
     if (rc == NGX_DECLINED) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        ngx_http_run_posted_requests(fc);
         return NULL;
     }
 
@@ -2893,7 +2896,7 @@ ngx_http_v2_get_frame(ngx_http_v2_connection_t *h2c, size_t length,
 
         frame->blocked = 0;
 
-    } else {
+    } else if (h2c->frames < 10000) {
         pool = h2c->pool ? h2c->pool : h2c->connection->pool;
 
         frame = ngx_pcalloc(pool, sizeof(ngx_http_v2_out_frame_t));
@@ -2917,6 +2920,15 @@ ngx_http_v2_get_frame(ngx_http_v2_connection_t *h2c, size_t length,
         frame->last = frame->first;
 
         frame->handler = ngx_http_v2_frame_handler;
+
+        h2c->frames++;
+
+    } else {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "http2 flood detected");
+
+        h2c->connection->error = 1;
+        return NULL;
     }
 
 #if (NGX_DEBUG)
@@ -3742,18 +3754,22 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
+    ngx_connection_t  *fc;
+
+    fc = r->connection;
+
     if (ngx_http_v2_construct_request_line(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     if (ngx_http_v2_construct_cookie_header(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
     if (ngx_http_process_request_header(r) != NGX_OK) {
-        return;
+        goto failed;
     }
 
     if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
@@ -3763,7 +3779,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->stream->skip_data = 1;
 
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-        return;
+        goto failed;
     }
 
     if (r->headers_in.content_length_n == -1 && !r->stream->in_closed) {
@@ -3771,6 +3787,10 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     }
 
     ngx_http_process_request(r);
+
+failed:
+
+    ngx_http_run_posted_requests(fc);
 }
 
 
@@ -4491,11 +4511,18 @@ ngx_http_v2_idle_handler(ngx_event_t *rev)
 
 #endif
 
-    c->destroyed = 0;
-    ngx_reusable_connection(c, 0);
-
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
+
+    if (h2c->idle++ > 10 * h2scf->max_requests) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "http2 flood detected");
+        ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
+        return;
+    }
+
+    c->destroyed = 0;
+    ngx_reusable_connection(c, 0);
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {

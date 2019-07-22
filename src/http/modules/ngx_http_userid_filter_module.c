@@ -545,6 +545,13 @@ ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 
                 break;
 #endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+            case AF_UNIX:
+                ctx->uid_set[0] = 0;
+                break;
+#endif
+
             default: /* AF_INET */
                 sin = (struct sockaddr_in *) c->local_sockaddr;
                 ctx->uid_set[0] = sin->sin_addr.s_addr;

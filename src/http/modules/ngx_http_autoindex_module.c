@@ -186,8 +186,6 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return rc;
     }
 
-    /* NGX_DIR_MASK_LEN is lesser than NGX_HTTP_AUTOINDEX_PREALLOCATE */
-
     last = ngx_http_map_uri_to_path(r, &path, &root,
                                     NGX_HTTP_AUTOINDEX_PREALLOCATE);
     if (last == NULL) {
@@ -436,7 +434,7 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 {
     u_char                         *last, scale;
     off_t                           length;
-    size_t                          len, char_len, escape_html;
+    size_t                          len, entry_len, char_len, escape_html;
     ngx_tm_t                        tm;
     ngx_buf_t                      *b;
     ngx_int_t                       size;
@@ -452,7 +450,7 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 
     static u_char  header[] =
         "</title></head>" CRLF
-        "<body bgcolor=\"white\">" CRLF
+        "<body>" CRLF
         "<h1>Index of "
     ;
 
@@ -501,17 +499,23 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
             entry[i].utf_len = entry[i].name.len;
         }
 
-        len += sizeof("<a href=\"") - 1
-            + entry[i].name.len + entry[i].escape
-            + 1                                          /* 1 is for "/" */
-            + sizeof("\">") - 1
-            + entry[i].name.len - entry[i].utf_len
-            + entry[i].escape_html
-            + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
-            + sizeof("</a>") - 1
-            + sizeof(" 28-Sep-1970 12:00 ") - 1
-            + 20                                         /* the file size */
-            + 2;
+        entry_len = sizeof("<a href=\"") - 1
+                  + entry[i].name.len + entry[i].escape
+                  + 1                                    /* 1 is for "/" */
+                  + sizeof("\">") - 1
+                  + entry[i].name.len - entry[i].utf_len
+                  + entry[i].escape_html
+                  + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
+                  + sizeof("</a>") - 1
+                  + sizeof(" 28-Sep-1970 12:00 ") - 1
+                  + 20                                   /* the file size */
+                  + 2;
+
+        if (len > NGX_MAX_SIZE_T_VALUE - entry_len) {
+            return NULL;
+        }
+
+        len += entry_len;
     }
 
     b = ngx_create_temp_buf(r->pool, len);
@@ -699,7 +703,7 @@ static ngx_buf_t *
 ngx_http_autoindex_json(ngx_http_request_t *r, ngx_array_t *entries,
     ngx_str_t *callback)
 {
-    size_t                       len;
+    size_t                       len, entry_len;
     ngx_buf_t                   *b;
     ngx_uint_t                   i;
     ngx_http_autoindex_entry_t  *entry;
@@ -716,15 +720,21 @@ ngx_http_autoindex_json(ngx_http_request_t *r, ngx_array_t *entries,
         entry[i].escape = ngx_escape_json(NULL, entry[i].name.data,
                                           entry[i].name.len);
 
-        len += sizeof("{  }," CRLF) - 1
-            + sizeof("\"name\":\"\"") - 1
-            + entry[i].name.len + entry[i].escape
-            + sizeof(", \"type\":\"directory\"") - 1
-            + sizeof(", \"mtime\":\"Wed, 31 Dec 1986 10:00:00 GMT\"") - 1;
+        entry_len = sizeof("{  }," CRLF) - 1
+                  + sizeof("\"name\":\"\"") - 1
+                  + entry[i].name.len + entry[i].escape
+                  + sizeof(", \"type\":\"directory\"") - 1
+                  + sizeof(", \"mtime\":\"Wed, 31 Dec 1986 10:00:00 GMT\"") - 1;
 
         if (entry[i].file) {
-            len += sizeof(", \"size\":") - 1 + NGX_OFF_T_LEN;
+            entry_len += sizeof(", \"size\":") - 1 + NGX_OFF_T_LEN;
         }
+
+        if (len > NGX_MAX_SIZE_T_VALUE - entry_len) {
+            return NULL;
+        }
+
+        len += entry_len;
     }
 
     b = ngx_create_temp_buf(r->pool, len);
@@ -843,7 +853,7 @@ ngx_http_autoindex_jsonp_callback(ngx_http_request_t *r, ngx_str_t *callback)
 static ngx_buf_t *
 ngx_http_autoindex_xml(ngx_http_request_t *r, ngx_array_t *entries)
 {
-    size_t                          len;
+    size_t                          len, entry_len;
     ngx_tm_t                        tm;
     ngx_buf_t                      *b;
     ngx_str_t                       type;
@@ -861,13 +871,19 @@ ngx_http_autoindex_xml(ngx_http_request_t *r, ngx_array_t *entries)
         entry[i].escape = ngx_escape_html(NULL, entry[i].name.data,
                                           entry[i].name.len);
 
-        len += sizeof("<directory></directory>" CRLF) - 1
-            + entry[i].name.len + entry[i].escape
-            + sizeof(" mtime=\"1986-12-31T10:00:00Z\"") - 1;
+        entry_len = sizeof("<directory></directory>" CRLF) - 1
+                  + entry[i].name.len + entry[i].escape
+                  + sizeof(" mtime=\"1986-12-31T10:00:00Z\"") - 1;
 
         if (entry[i].file) {
-            len += sizeof(" size=\"\"") - 1 + NGX_OFF_T_LEN;
+            entry_len += sizeof(" size=\"\"") - 1 + NGX_OFF_T_LEN;
         }
+
+        if (len > NGX_MAX_SIZE_T_VALUE - entry_len) {
+            return NULL;
+        }
+
+        len += entry_len;
     }
 
     b = ngx_create_temp_buf(r->pool, len);

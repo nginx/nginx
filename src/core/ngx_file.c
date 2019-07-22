@@ -1017,13 +1017,13 @@ ngx_walk_tree(ngx_tree_ctx_t *ctx, ngx_str_t *tree)
 
         file.len = tree->len + 1 + len;
 
-        if (file.len + NGX_DIR_MASK_LEN > buf.len) {
+        if (file.len > buf.len) {
 
             if (buf.len) {
                 ngx_free(buf.data);
             }
 
-            buf.len = tree->len + 1 + len + NGX_DIR_MASK_LEN;
+            buf.len = tree->len + 1 + len;
 
             buf.data = ngx_alloc(buf.len + 1, ctx->log);
             if (buf.data == NULL) {

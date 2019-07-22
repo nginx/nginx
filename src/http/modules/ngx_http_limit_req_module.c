@@ -44,7 +44,7 @@ typedef struct {
     ngx_shm_zone_t              *shm_zone;
     /* integer value, 1 corresponds to 0.001 r/s */
     ngx_uint_t                   burst;
-    ngx_uint_t                   nodelay; /* unsigned  nodelay:1 */
+    ngx_uint_t                   delay;
 } ngx_http_limit_req_limit_t;
 
 
@@ -53,6 +53,7 @@ typedef struct {
     ngx_uint_t                   limit_log_level;
     ngx_uint_t                   delay_log_level;
     ngx_uint_t                   status_code;
+    ngx_flag_t                   dry_run;
 } ngx_http_limit_req_conf_t;
 
 
@@ -117,6 +118,13 @@ static ngx_command_t  ngx_http_limit_req_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_limit_req_conf_t, status_code),
       &ngx_http_limit_req_status_bounds },
+
+    { ngx_string("limit_req_dry_run"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_limit_req_conf_t, dry_run),
+      NULL },
 
       ngx_null_command
 };
@@ -230,9 +238,10 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
         if (rc == NGX_BUSY) {
             ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
-                          "limiting requests, excess: %ui.%03ui by zone \"%V\"",
-                          excess / 1000, excess % 1000,
-                          &limit->shm_zone->shm.name);
+                        "limiting requests%s, excess: %ui.%03ui by zone \"%V\"",
+                        lrcf->dry_run ? ", dry run" : "",
+                        excess / 1000, excess % 1000,
+                        &limit->shm_zone->shm.name);
         }
 
         while (n--) {
@@ -251,6 +260,10 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
             ctx->node = NULL;
         }
 
+        if (lrcf->dry_run) {
+            return NGX_DECLINED;
+        }
+
         return lrcf->status_code;
     }
 
@@ -267,8 +280,13 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
     }
 
     ngx_log_error(lrcf->delay_log_level, r->connection->log, 0,
-                  "delaying request, excess: %ui.%03ui, by zone \"%V\"",
+                  "delaying request%s, excess: %ui.%03ui, by zone \"%V\"",
+                  lrcf->dry_run ? ", dry run" : "",
                   excess / 1000, excess % 1000, &limit->shm_zone->shm.name);
+
+    if (lrcf->dry_run) {
+        return NGX_DECLINED;
+    }
 
     if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -499,12 +517,12 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 
     excess = *ep;
 
-    if (excess == 0 || (*limit)->nodelay) {
+    if ((ngx_uint_t) excess <= (*limit)->delay) {
         max_delay = 0;
 
     } else {
         ctx = (*limit)->shm_zone->data;
-        max_delay = excess * 1000 / ctx->rate;
+        max_delay = (excess - (*limit)->delay) * 1000 / ctx->rate;
     }
 
     while (n--) {
@@ -544,11 +562,11 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 
         ctx->node = NULL;
 
-        if (limits[n].nodelay) {
+        if ((ngx_uint_t) excess <= limits[n].delay) {
             continue;
         }
 
-        delay = excess * 1000 / ctx->rate;
+        delay = (excess - limits[n].delay) * 1000 / ctx->rate;
 
         if (delay > max_delay) {
             max_delay = delay;
@@ -711,6 +729,7 @@ ngx_http_limit_req_create_conf(ngx_conf_t *cf)
 
     conf->limit_log_level = NGX_CONF_UNSET_UINT;
     conf->status_code = NGX_CONF_UNSET_UINT;
+    conf->dry_run = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -734,6 +753,8 @@ ngx_http_limit_req_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->status_code, prev->status_code,
                               NGX_HTTP_SERVICE_UNAVAILABLE);
+
+    ngx_conf_merge_value(conf->dry_run, prev->dry_run, 0);
 
     return NGX_CONF_OK;
 }
@@ -875,9 +896,9 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_limit_req_conf_t  *lrcf = conf;
 
-    ngx_int_t                    burst;
+    ngx_int_t                    burst, delay;
     ngx_str_t                   *value, s;
-    ngx_uint_t                   i, nodelay;
+    ngx_uint_t                   i;
     ngx_shm_zone_t              *shm_zone;
     ngx_http_limit_req_limit_t  *limit, *limits;
 
@@ -885,7 +906,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     shm_zone = NULL;
     burst = 0;
-    nodelay = 0;
+    delay = 0;
 
     for (i = 1; i < cf->args->nelts; i++) {
 
@@ -908,7 +929,19 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             burst = ngx_atoi(value[i].data + 6, value[i].len - 6);
             if (burst <= 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid burst rate \"%V\"", &value[i]);
+                                   "invalid burst value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "delay=", 6) == 0) {
+
+            delay = ngx_atoi(value[i].data + 6, value[i].len - 6);
+            if (delay <= 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid delay value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
             }
 
@@ -916,7 +949,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[i].data, "nodelay") == 0) {
-            nodelay = 1;
+            delay = NGX_MAX_INT_T_VALUE / 1000;
             continue;
         }
 
@@ -956,7 +989,7 @@ ngx_http_limit_req(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     limit->shm_zone = shm_zone;
     limit->burst = burst * 1000;
-    limit->nodelay = nodelay;
+    limit->delay = delay * 1000;
 
     return NGX_CONF_OK;
 }

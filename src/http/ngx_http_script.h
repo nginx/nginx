@@ -68,6 +68,10 @@ typedef struct {
     ngx_uint_t                 *flushes;
     void                       *lengths;
     void                       *values;
+
+    union {
+        size_t                  size;
+    } u;
 } ngx_http_complex_value_t;
 
 
@@ -207,12 +211,18 @@ void ngx_http_script_flush_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val);
 ngx_int_t ngx_http_complex_value(ngx_http_request_t *r,
     ngx_http_complex_value_t *val, ngx_str_t *value);
+size_t ngx_http_complex_value_size(ngx_http_request_t *r,
+    ngx_http_complex_value_t *val, size_t default_value);
 ngx_int_t ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv);
 char *ngx_http_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+char *ngx_http_set_complex_value_size_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
 ngx_int_t ngx_http_test_predicates(ngx_http_request_t *r,
+    ngx_array_t *predicates);
+ngx_int_t ngx_http_test_required_predicates(ngx_http_request_t *r,
     ngx_array_t *predicates);
 char *ngx_http_set_predicate_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);

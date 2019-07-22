@@ -80,7 +80,6 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                        cl->buf->file_pos,
                        cl->buf->file_last - cl->buf->file_pos);
 
-#if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
@@ -98,7 +97,24 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ngx_debug_point();
             return NGX_ERROR;
         }
-#endif
+
+        if (ngx_buf_size(cl->buf) < 0) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "negative size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
+            ngx_debug_point();
+            return NGX_ERROR;
+        }
 
         size += ngx_buf_size(cl->buf);
 
@@ -136,7 +152,6 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
                        cl->buf->file_pos,
                        cl->buf->file_last - cl->buf->file_pos);
 
-#if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "zero size buf in writer "
@@ -154,7 +169,24 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ngx_debug_point();
             return NGX_ERROR;
         }
-#endif
+
+        if (ngx_buf_size(cl->buf) < 0) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "negative size buf in writer "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          cl->buf->temporary,
+                          cl->buf->recycled,
+                          cl->buf->in_file,
+                          cl->buf->start,
+                          cl->buf->pos,
+                          cl->buf->last,
+                          cl->buf->file,
+                          cl->buf->file_pos,
+                          cl->buf->file_last);
+
+            ngx_debug_point();
+            return NGX_ERROR;
+        }
 
         size += ngx_buf_size(cl->buf);
 
@@ -218,9 +250,17 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    if (!r->limit_rate_set) {
+        r->limit_rate = ngx_http_complex_value_size(r, clcf->limit_rate, 0);
+        r->limit_rate_set = 1;
+    }
+
     if (r->limit_rate) {
-        if (r->limit_rate_after == 0) {
-            r->limit_rate_after = clcf->limit_rate_after;
+
+        if (!r->limit_rate_after_set) {
+            r->limit_rate_after = ngx_http_complex_value_size(r,
+                                                    clcf->limit_rate_after, 0);
+            r->limit_rate_after_set = 1;
         }
 
         limit = (off_t) r->limit_rate * (ngx_time() - r->start_sec + 1)

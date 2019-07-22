@@ -169,7 +169,14 @@ typedef struct {
 
 
 #define ngx_mp4_atom_next(mp4, n)                                             \
-    mp4->buffer_pos += (size_t) n;                                            \
+                                                                              \
+    if (n > (size_t) (mp4->buffer_end - mp4->buffer_pos)) {                   \
+        mp4->buffer_pos = mp4->buffer_end;                                    \
+                                                                              \
+    } else {                                                                  \
+        mp4->buffer_pos += (size_t) n;                                        \
+    }                                                                         \
+                                                                              \
     mp4->offset += n
 
 
@@ -941,6 +948,13 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
                 atom_header = mp4->buffer_pos;
                 atom_size = ngx_mp4_get_64value(atom_header + 8);
                 atom_header_size = sizeof(ngx_mp4_atom_header64_t);
+
+                if (atom_size < sizeof(ngx_mp4_atom_header64_t)) {
+                    ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                                  "\"%s\" mp4 atom is too small:%uL",
+                                  mp4->file.name.data, atom_size);
+                    return NGX_ERROR;
+                }
 
             } else {
                 ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,

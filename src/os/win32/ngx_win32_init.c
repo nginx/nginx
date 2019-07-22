@@ -58,6 +58,12 @@ static GUID cx_guid = WSAID_CONNECTEX;
 static GUID dx_guid = WSAID_DISCONNECTEX;
 
 
+#if (NGX_LOAD_WSAPOLL)
+ngx_wsapoll_pt             WSAPoll;
+ngx_uint_t                 ngx_have_wsapoll;
+#endif
+
+
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {
@@ -222,6 +228,32 @@ ngx_os_init(ngx_log_t *log)
         ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
     }
+
+#if (NGX_LOAD_WSAPOLL)
+    {
+    HMODULE  hmod;
+
+    hmod = GetModuleHandle("ws2_32.dll");
+    if (hmod == NULL) {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
+                      "GetModuleHandle(\"ws2_32.dll\") failed");
+        goto nopoll;
+    }
+
+    WSAPoll = (ngx_wsapoll_pt) GetProcAddress(hmod, "WSAPoll");
+    if (WSAPoll == NULL) {
+        ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
+                      "GetProcAddress(\"WSAPoll\") failed");
+        goto nopoll;
+    }
+
+    ngx_have_wsapoll = 1;
+
+    }
+
+nopoll:
+
+#endif
 
     if (GetEnvironmentVariable("ngx_unique", ngx_unique, NGX_INT32_LEN + 1)
         != 0)

@@ -4266,7 +4266,15 @@ ngx_resolver_report_srv(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx)
     }
 
     if (naddrs == 0) {
-        ctx->state = NGX_RESOLVE_NXDOMAIN;
+        ctx->state = srvs[0].state;
+
+        for (i = 0; i < nsrvs; i++) {
+            if (srvs[i].state == NGX_RESOLVE_NXDOMAIN) {
+                ctx->state = NGX_RESOLVE_NXDOMAIN;
+                break;
+            }
+        }
+
         ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
 
         ctx->handler(ctx);
