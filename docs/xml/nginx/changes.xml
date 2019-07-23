@@ -5,6 +5,95 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.2" date="2019-07-23">
+
+<change type="change">
+<para lang="ru">
+минимальная поддерживаемая версия zlib&mdash;1.2.0.4.<br/>
+Спасибо Илье Леошкевичу.
+</para>
+<para lang="en">
+minimum supported zlib version is 1.2.0.4.<br/>
+Thanks to Ilya Leoshkevich.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+метод $r->internal_redirect() встроенного перла
+теперь ожидает закодированный URI.
+</para>
+<para lang="en">
+the $r->internal_redirect() embedded perl method
+now expects escaped URIs.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь с помощью метода $r->internal_redirect() встроенного перла
+можно перейти в именованный location.
+</para>
+<para lang="en">
+it is now possible to switch to a named location
+using the $r->internal_redirect() embedded perl method.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок во встроенном перле.
+</para>
+<para lang="en">
+in error handling in embedded perl.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации мог произойти segmentation fault,
+если в конфигурации использовалось значение hash bucket size больше 64 килобайт.
+</para>
+<para lang="en">
+a segmentation fault might occur on start or during reconfiguration
+if hash bucket size larger than 64 kilobytes was used in the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании методов обработки соединений select, poll и /dev/poll
+nginx мог нагружать процессор во время небуферизованного проксирования
+и при проксировании WebSocket-соединений.
+</para>
+<para lang="en">
+nginx might hog CPU during unbuffered proxying
+and when proxying WebSocket connections
+if the select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_xslt_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_xslt_filter_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_ssi_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_ssi_filter_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.17.1" date="2019-06-25">
 
 <change type="feature">
