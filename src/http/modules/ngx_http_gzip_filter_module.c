@@ -778,7 +778,7 @@ ngx_http_gzip_filter_deflate(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
 
     ctx->out_buf->last = ctx->zstream.next_out;
 
-    if (ctx->zstream.avail_out == 0) {
+    if (ctx->zstream.avail_out == 0 && rc != Z_STREAM_END) {
 
         /* zlib wants to output some more gzipped data */
 
@@ -868,6 +868,7 @@ ngx_http_gzip_filter_deflate_end(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t *ctx)
 {
     int           rc;
+    ngx_buf_t    *b;
     ngx_chain_t  *cl;
 
     ctx->zin = ctx->zstream.total_in;
@@ -888,12 +889,18 @@ ngx_http_gzip_filter_deflate_end(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    cl->buf = ctx->out_buf;
+    b = ctx->out_buf;
+
+    if (ngx_buf_size(b) == 0) {
+        b->temporary = 0;
+    }
+
+    b->last_buf = 1;
+
+    cl->buf = b;
     cl->next = NULL;
     *ctx->last_out = cl;
     ctx->last_out = &cl->next;
-
-    ctx->out_buf->last_buf = 1;
 
     ctx->zstream.avail_in = 0;
     ctx->zstream.avail_out = 0;
