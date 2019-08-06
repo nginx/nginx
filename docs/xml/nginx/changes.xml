@@ -4,7 +4,6 @@
 
 <change_log title="nginx">
 
-
 <changes ver="1.17.2" date="2019-07-23">
 
 <change type="change">
@@ -210,7 +209,6 @@ in byte ranges processing.
 </change>
 
 </changes>
-
 
 <changes ver="1.15.12" date="2019-04-16">
 

@@ -24,7 +24,7 @@ script:
   - mkdir -p /tmp
   - mkdir -p /opt
   - mkdir -p /opt/openssl
-  - curl -fsSL https://www.openssl.org/source/openssl-1.1.0j.tar.gz -o /tmp/openssl.tar.gz
+  - curl -fsSL https://www.openssl.org/source/openssl-1.1.1b.tar.gz -o /tmp/openssl.tar.gz
   - tar -C /opt/openssl -xzf /tmp/openssl.tar.gz --strip-components 1
   - cd /opt/openssl
   - ls 

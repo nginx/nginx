@@ -2393,6 +2393,10 @@ ngx_http_subrequest(ngx_http_request_t *r,
         ngx_http_update_location_config(sr);
     }
 
+    if (flags & AR_NGX_HTTP_SUBREQUEST_SLICE) {
+        ngx_http_update_location_config(sr);
+    }
+
     return ngx_http_post_request(sr, NULL);
 }
 
