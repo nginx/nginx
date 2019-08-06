@@ -1444,6 +1444,12 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
 
     if (in == NULL || stream->out_closed) {
 
+        if (size) {
+            ngx_log_error(NGX_LOG_ERR, fc->log, 0,
+                          "output on closed stream");
+            return NGX_CHAIN_ERROR;
+        }
+
         if (stream->queued) {
             fc->write->active = 1;
             fc->write->ready = 0;
