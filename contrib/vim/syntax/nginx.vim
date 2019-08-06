@@ -333,6 +333,7 @@ syn keyword ngxDirective contained js_access
 syn keyword ngxDirective contained js_content
 syn keyword ngxDirective contained js_filter
 syn keyword ngxDirective contained js_include
+syn keyword ngxDirective contained js_path
 syn keyword ngxDirective contained js_preread
 syn keyword ngxDirective contained js_set
 syn keyword ngxDirective contained keepalive
@@ -353,6 +354,7 @@ syn keyword ngxDirective contained limit_conn_zone
 syn keyword ngxDirective contained limit_rate
 syn keyword ngxDirective contained limit_rate_after
 syn keyword ngxDirective contained limit_req
+syn keyword ngxDirective contained limit_req_dry_run
 syn keyword ngxDirective contained limit_req_log_level
 syn keyword ngxDirective contained limit_req_status
 syn keyword ngxDirective contained limit_req_zone
@@ -472,6 +474,7 @@ syn keyword ngxDirective contained proxy_requests
 syn keyword ngxDirective contained proxy_responses
 syn keyword ngxDirective contained proxy_send_lowat
 syn keyword ngxDirective contained proxy_send_timeout
+syn keyword ngxDirective contained proxy_session_drop
 syn keyword ngxDirective contained proxy_set_body
 syn keyword ngxDirective contained proxy_set_header
 syn keyword ngxDirective contained proxy_socket_keepalive
@@ -1325,6 +1328,7 @@ syn keyword ngxDirectiveThirdParty contained lua_check_client_abort
 syn keyword ngxDirectiveThirdParty contained lua_code_cache
 syn keyword ngxDirectiveThirdParty contained lua_fake_shm
 syn keyword ngxDirectiveThirdParty contained lua_http10_buffering
+syn keyword ngxDirectiveThirdParty contained lua_load_resty_core
 syn keyword ngxDirectiveThirdParty contained lua_malloc_trim
 syn keyword ngxDirectiveThirdParty contained lua_max_pending_timers
 syn keyword ngxDirectiveThirdParty contained lua_max_running_timers
@@ -1779,6 +1783,7 @@ syn keyword ngxDirectiveThirdParty contained vod_expires_live_time_dependent
 syn keyword ngxDirectiveThirdParty contained vod_fallback_upstream_location
 syn keyword ngxDirectiveThirdParty contained vod_force_continuous_timestamps
 syn keyword ngxDirectiveThirdParty contained vod_force_playlist_type_vod
+syn keyword ngxDirectiveThirdParty contained vod_force_sequence_index
 syn keyword ngxDirectiveThirdParty contained vod_gop_look_ahead
 syn keyword ngxDirectiveThirdParty contained vod_gop_look_behind
 syn keyword ngxDirectiveThirdParty contained vod_ignore_edit_list

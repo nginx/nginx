@@ -21,13 +21,19 @@
 typedef ngx_http_request_t   *nginx;
 
 typedef struct {
+    ngx_http_request_t       *request;
+
     ngx_str_t                 filename;
     ngx_str_t                 redirect_uri;
-    ngx_str_t                 redirect_args;
 
     SV                       *next;
 
-    ngx_uint_t                done;       /* unsigned  done:1; */
+    ngx_int_t                 status;
+
+    unsigned                  done:1;
+    unsigned                  error:1;
+    unsigned                  variable:1;
+    unsigned                  header_sent:1;
 
     ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
 
