@@ -1546,6 +1546,14 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
         header->name.len = h2c->state.field_end - h2c->state.field_start;
         header->name.data = h2c->state.field_start;
 
+        if (header->name.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                          "client sent zero header name length");
+
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_PROTOCOL_ERROR);
+        }
+
         return ngx_http_v2_state_field_len(h2c, pos, end);
     }
 
@@ -3248,10 +3256,6 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
     u_char                     ch;
     ngx_uint_t                 i;
     ngx_http_core_srv_conf_t  *cscf;
-
-    if (header->name.len == 0) {
-        return NGX_ERROR;
-    }
 
     r->invalid_header = 0;
 
