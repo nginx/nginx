@@ -4369,6 +4369,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
      */
     pool = stream->pool;
 
+    h2c->frames -= stream->frames;
+
     ngx_http_free_request(stream->request, rc);
 
     if (pool != h2c->state.pool) {
