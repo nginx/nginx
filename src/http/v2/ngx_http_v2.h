@@ -192,6 +192,8 @@ struct ngx_http_v2_stream_s {
 
     ngx_buf_t                       *preread;
 
+    ngx_uint_t                       frames;
+
     ngx_http_v2_out_frame_t         *free_frames;
     ngx_chain_t                     *free_frame_headers;
     ngx_chain_t                     *free_bufs;
