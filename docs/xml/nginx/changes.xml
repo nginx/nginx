@@ -5,6 +5,24 @@
 <change_log title="nginx">
 
 
+<changes ver="1.16.1" date="2019-08-13">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/2 клиент мог вызвать
+чрезмерное потребление памяти и ресурсов процессора
+(CVE-2019-9511, CVE-2019-9513, CVE-2019-9516).
+</para>
+<para lang="en">
+when using HTTP/2 a client might cause
+excessive memory consumption and CPU usage
+(CVE-2019-9511, CVE-2019-9513, CVE-2019-9516).
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.16.0" date="2019-04-23">
 
 <change>
