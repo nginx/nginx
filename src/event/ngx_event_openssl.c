@@ -2814,6 +2814,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
     if (sslerr == SSL_ERROR_SYSCALL) {
 
         if (err == NGX_ECONNRESET
+#if (NGX_WIN32)
+            || err == NGX_ECONNABORTED
+#endif
             || err == NGX_EPIPE
             || err == NGX_ENOTCONN
             || err == NGX_ETIMEDOUT
