@@ -947,14 +947,21 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
+    r = stream->request;
+
+    if (r->reading_body && !r->request_body_no_buffering) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "skipping http2 DATA frame");
+
+        return ngx_http_v2_state_skip_padded(h2c, pos, end);
+    }
+
     size = end - pos;
 
     if (size >= h2c->state.length) {
         size = h2c->state.length;
         stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
     }
-
-    r = stream->request;
 
     if (r->request_body) {
         rc = ngx_http_v2_process_request_body(r, pos, size, stream->in_closed);
