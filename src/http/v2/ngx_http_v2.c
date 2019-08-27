@@ -273,6 +273,7 @@ ngx_http_v2_init(ngx_event_t *rev)
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
     h2c->concurrent_pushes = h2scf->concurrent_pushes;
+    h2c->priority_limit = h2scf->concurrent_streams;
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {
@@ -946,14 +947,21 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
+    r = stream->request;
+
+    if (r->reading_body && !r->request_body_no_buffering) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "skipping http2 DATA frame");
+
+        return ngx_http_v2_state_skip_padded(h2c, pos, end);
+    }
+
     size = end - pos;
 
     if (size >= h2c->state.length) {
         size = h2c->state.length;
         stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
     }
-
-    r = stream->request;
 
     if (r->request_body) {
         rc = ngx_http_v2_process_request_body(r, pos, size, stream->in_closed);
@@ -1546,6 +1554,14 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
         header->name.len = h2c->state.field_end - h2c->state.field_start;
         header->name.data = h2c->state.field_start;
 
+        if (header->name.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                          "client sent zero header name length");
+
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_PROTOCOL_ERROR);
+        }
+
         return ngx_http_v2_state_field_len(h2c, pos, end);
     }
 
@@ -1794,6 +1810,13 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
                       h2c->state.length);
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    if (--h2c->priority_limit == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent too many PRIORITY frames");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
 
     if (end - pos < NGX_HTTP_V2_PRIORITY_SIZE) {
@@ -3112,6 +3135,8 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t push)
         h2c->processing++;
     }
 
+    h2c->priority_limit += h2scf->concurrent_streams;
+
     return stream;
 }
 
@@ -3248,10 +3273,6 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
     u_char                     ch;
     ngx_uint_t                 i;
     ngx_http_core_srv_conf_t  *cscf;
-
-    if (header->name.len == 0) {
-        return NGX_ERROR;
-    }
 
     r->invalid_header = 0;
 
@@ -4364,6 +4385,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
      * will be destroyed after a call to ngx_http_free_request().
      */
     pool = stream->pool;
+
+    h2c->frames -= stream->frames;
 
     ngx_http_free_request(stream->request, rc);
 
