@@ -2268,6 +2268,9 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 state = sw_chunk_start;
+                break;
+            default:
+                goto invalid;
             }
             break;
 
