@@ -298,9 +298,9 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_buffering"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_proxy_loc_conf_t, upstream.buffering),
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.ar_buffering),
       NULL },
 
     { ngx_string("proxy_request_buffering"),

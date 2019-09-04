@@ -560,6 +560,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     ngx_str_t                      ar_ignore_headers_val;
     ngx_str_t                      ar_cache_use_stale_val;
     ngx_str_t                      ar_next_upstream_val;
+    ngx_str_t                      ar_buffering_val;
 
     if (r->aio) {
         return;
@@ -713,6 +714,14 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
   	    }
     }
 
+    if ((u->conf->ar_buffering != NULL
+    		&& ngx_http_complex_value(r, u->conf->ar_buffering, &ar_buffering_val) == NGX_OK)) {
+    	if(ngx_strncasecmp((u_char *)ar_buffering_val.data, (u_char *) "on", 2) == 0){
+    		u->buffering = 1;
+    	}else {
+    		u->buffering = 0;
+    	}
+    }
 #if (NGX_HTTP_CACHE)
 
     if (u->conf->cache) {

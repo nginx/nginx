@@ -174,6 +174,7 @@ typedef struct {
     ngx_uint_t                       store_access;
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       buffering;
+    ngx_http_complex_value_t         *ar_buffering;
     ngx_flag_t                       request_buffering;
     ngx_flag_t                       pass_request_headers;
     ngx_flag_t                       pass_request_body;
