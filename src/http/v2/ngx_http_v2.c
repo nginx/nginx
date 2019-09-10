@@ -2231,41 +2231,11 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
                    h2c->state.sid, window);
 
     if (window == 0) {
-        if (h2c->state.sid == 0) {
-            ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                          "client sent WINDOW_UPDATE frame "
-                          "with incorrect window increment 0");
-
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_PROTOCOL_ERROR);
-        }
-
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent WINDOW_UPDATE frame for stream %ui "
-                      "with incorrect window increment 0", h2c->state.sid);
+                      "client sent WINDOW_UPDATE frame "
+                      "with incorrect window increment 0");
 
-        node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
-
-        if (node && node->stream) {
-            if (ngx_http_v2_terminate_stream(h2c, node->stream,
-                                             NGX_HTTP_V2_PROTOCOL_ERROR)
-                == NGX_ERROR)
-            {
-                return ngx_http_v2_connection_error(h2c,
-                                                    NGX_HTTP_V2_INTERNAL_ERROR);
-            }
-
-        } else {
-            if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid,
-                                            NGX_HTTP_V2_PROTOCOL_ERROR)
-                == NGX_ERROR)
-            {
-                return ngx_http_v2_connection_error(h2c,
-                                                    NGX_HTTP_V2_INTERNAL_ERROR);
-            }
-        }
-
-        return ngx_http_v2_state_complete(h2c, pos, end);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
     if (h2c->state.sid) {
