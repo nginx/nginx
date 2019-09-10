@@ -972,7 +972,8 @@ ngx_resolve_addr(ngx_resolver_ctx_t *ctx)
 
             name = ngx_resolver_dup(r, rn->name, rn->nlen);
             if (name == NULL) {
-                goto failed;
+                ngx_resolver_free(r, ctx);
+                return NGX_ERROR;
             }
 
             ctx->name.len = rn->nlen;
