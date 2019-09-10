@@ -1107,20 +1107,19 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
-    h2c->last_sid = h2c->state.sid;
-
-    h2c->state.pool = ngx_create_pool(1024, h2c->connection->log);
-    if (h2c->state.pool == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
-
     if (depend == h2c->state.sid) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent HEADERS frame for stream %ui "
                       "with incorrect dependency", h2c->state.sid);
 
-        status = NGX_HTTP_V2_PROTOCOL_ERROR;
-        goto rst_stream;
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    h2c->last_sid = h2c->state.sid;
+
+    h2c->state.pool = ngx_create_pool(1024, h2c->connection->log);
+    if (h2c->state.pool == NULL) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
@@ -1849,28 +1848,7 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
                       "client sent PRIORITY frame for stream %ui "
                       "with incorrect dependency", h2c->state.sid);
 
-        node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
-
-        if (node && node->stream) {
-            if (ngx_http_v2_terminate_stream(h2c, node->stream,
-                                             NGX_HTTP_V2_PROTOCOL_ERROR)
-                == NGX_ERROR)
-            {
-                return ngx_http_v2_connection_error(h2c,
-                                                    NGX_HTTP_V2_INTERNAL_ERROR);
-            }
-
-        } else {
-            if (ngx_http_v2_send_rst_stream(h2c, h2c->state.sid,
-                                            NGX_HTTP_V2_PROTOCOL_ERROR)
-                == NGX_ERROR)
-            {
-                return ngx_http_v2_connection_error(h2c,
-                                                    NGX_HTTP_V2_INTERNAL_ERROR);
-            }
-        }
-
-        return ngx_http_v2_state_complete(h2c, pos, end);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
     node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
