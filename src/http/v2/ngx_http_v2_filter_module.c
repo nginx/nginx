@@ -1877,6 +1877,8 @@ ngx_http_v2_headers_frame_handler(ngx_http_v2_connection_t *h2c,
     stream->request->header_size += NGX_HTTP_V2_FRAME_HEADER_SIZE
                                     + frame->length;
 
+    h2c->payload_bytes += frame->length;
+
     ngx_http_v2_handle_frame(stream, frame);
 
     ngx_http_v2_handle_stream(h2c, stream);
@@ -1930,6 +1932,8 @@ ngx_http_v2_push_frame_handler(ngx_http_v2_connection_t *h2c,
 
     stream->request->header_size += NGX_HTTP_V2_FRAME_HEADER_SIZE
                                     + frame->length;
+
+    h2c->payload_bytes += frame->length;
 
     ngx_http_v2_handle_frame(stream, frame);
 
@@ -2024,6 +2028,8 @@ done:
 
     stream->request->header_size += NGX_HTTP_V2_FRAME_HEADER_SIZE;
 
+    h2c->payload_bytes += frame->length;
+
     ngx_http_v2_handle_frame(stream, frame);
 
     ngx_http_v2_handle_stream(h2c, stream);
@@ -2036,11 +2042,16 @@ static ngx_inline void
 ngx_http_v2_handle_frame(ngx_http_v2_stream_t *stream,
     ngx_http_v2_out_frame_t *frame)
 {
-    ngx_http_request_t  *r;
+    ngx_http_request_t        *r;
+    ngx_http_v2_connection_t  *h2c;
 
     r = stream->request;
 
     r->connection->sent += NGX_HTTP_V2_FRAME_HEADER_SIZE + frame->length;
+
+    h2c = stream->connection;
+
+    h2c->total_bytes += NGX_HTTP_V2_FRAME_HEADER_SIZE + frame->length;
 
     if (frame->fin) {
         stream->out_closed = 1;

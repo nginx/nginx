@@ -419,6 +419,14 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
 
         } while (p != end);
 
+        h2c->total_bytes += n;
+
+        if (h2c->total_bytes / 8 > h2c->payload_bytes + 1048576) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "http2 flood detected");
+            ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
+            return;
+        }
+
     } while (rev->ready);
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -962,6 +970,8 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         size = h2c->state.length;
         stream->in_closed = h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG;
     }
+
+    h2c->payload_bytes += size;
 
     if (r->request_body) {
         rc = ngx_http_v2_process_request_body(r, pos, size, stream->in_closed);
@@ -2909,9 +2919,9 @@ ngx_http_v2_get_frame(ngx_http_v2_connection_t *h2c, size_t length,
                       "requested control frame is too large: %uz", length);
         return NULL;
     }
+#endif
 
     frame->length = length;
-#endif
 
     buf->last = ngx_http_v2_write_len_and_type(buf->pos, length, type);
 
@@ -2937,6 +2947,8 @@ ngx_http_v2_frame_handler(ngx_http_v2_connection_t *h2c,
 
     frame->next = h2c->free_frames;
     h2c->free_frames = frame;
+
+    h2c->total_bytes += NGX_HTTP_V2_FRAME_HEADER_SIZE + frame->length;
 
     return NGX_OK;
 }
@@ -3723,7 +3735,8 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
-    ngx_connection_t  *fc;
+    ngx_connection_t          *fc;
+    ngx_http_v2_connection_t  *h2c;
 
     fc = r->connection;
 
@@ -3754,6 +3767,10 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     if (r->headers_in.content_length_n == -1 && !r->stream->in_closed) {
         r->headers_in.chunked = 1;
     }
+
+    h2c = r->stream->connection;
+
+    h2c->payload_bytes += r->request_length;
 
     ngx_http_process_request(r);
 
