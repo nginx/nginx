@@ -354,6 +354,11 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
     if (c->close) {
         c->close = 0;
 
+        if (c->error) {
+            ngx_http_v2_finalize_connection(h2c, 0);
+            return;
+        }
+
         if (!h2c->goaway) {
             h2c->goaway = 1;
 
