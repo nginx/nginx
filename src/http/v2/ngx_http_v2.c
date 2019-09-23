@@ -513,12 +513,11 @@ ngx_http_v2_send_output_queue(ngx_http_v2_connection_t *h2c)
     ngx_http_core_loc_conf_t  *clcf;
 
     c = h2c->connection;
+    wev = c->write;
 
     if (c->error) {
-        return NGX_ERROR;
+        goto error;
     }
-
-    wev = c->write;
 
     if (!wev->ready) {
         return NGX_AGAIN;
