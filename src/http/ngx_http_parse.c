@@ -1471,7 +1471,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '/':
             case '?':
             case '#':
-                u -= 5;
+                u -= 4;
                 for ( ;; ) {
                     if (u < r->uri.data) {
                         return NGX_HTTP_PARSE_INVALID_REQUEST;
@@ -1575,7 +1575,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
         u--;
 
     } else if (state == sw_dot_dot) {
-        u -= 5;
+        u -= 4;
 
         for ( ;; ) {
             if (u < r->uri.data) {
