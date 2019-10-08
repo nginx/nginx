@@ -1437,9 +1437,11 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 state = sw_quoted;
                 break;
             case '?':
+                u--;
                 r->args_start = p;
                 goto args;
             case '#':
+                u--;
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -1467,7 +1469,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '\\':
 #endif
             case '/':
-                state = sw_slash;
+            case '?':
+            case '#':
                 u -= 5;
                 for ( ;; ) {
                     if (u < r->uri.data) {
@@ -1479,16 +1482,19 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                     }
                     u--;
                 }
+                if (ch == '?') {
+                    r->args_start = p;
+                    goto args;
+                }
+                if (ch == '#') {
+                    goto done;
+                }
+                state = sw_slash;
                 break;
             case '%':
                 quoted_state = state;
                 state = sw_quoted;
                 break;
-            case '?':
-                r->args_start = p;
-                goto args;
-            case '#':
-                goto done;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1563,6 +1569,26 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
     if (state == sw_quoted || state == sw_quoted_second) {
         return NGX_HTTP_PARSE_INVALID_REQUEST;
+    }
+
+    if (state == sw_dot) {
+        u--;
+
+    } else if (state == sw_dot_dot) {
+        u -= 5;
+
+        for ( ;; ) {
+            if (u < r->uri.data) {
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+
+            if (*u == '/') {
+                u++;
+                break;
+            }
+
+            u--;
+        }
     }
 
 done:
