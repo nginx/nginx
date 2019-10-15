@@ -912,6 +912,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                         i = 1;
 
                     } else {
+                        hash = 0;
+                        i = 0;
                         r->invalid_header = 1;
                     }
 
@@ -922,6 +924,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
 
+                hash = 0;
+                i = 0;
                 r->invalid_header = 1;
 
                 break;
