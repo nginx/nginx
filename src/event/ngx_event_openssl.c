@@ -1922,6 +1922,10 @@ ngx_ssl_recv_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t limit)
             last += n;
             bytes += n;
 
+            if (!c->read->ready) {
+                return bytes;
+            }
+
             if (last == b->end) {
                 cl = cl->next;
 
