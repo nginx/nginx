@@ -43,6 +43,7 @@ static ssize_t ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf,
 #endif
 static ngx_int_t ngx_ssl_handle_recv(ngx_connection_t *c, int n);
 static void ngx_ssl_write_handler(ngx_event_t *wev);
+static void ngx_ssl_next_read_handler(ngx_event_t *rev);
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
 static ssize_t ngx_ssl_write_early(ngx_connection_t *c, u_char *data,
     size_t size);
@@ -2003,6 +2004,48 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
             if (size == 0) {
                 c->read->ready = 1;
+
+                if (c->read->available >= 0) {
+                    c->read->available -= bytes;
+
+                    /*
+                     * there can be data buffered at SSL layer,
+                     * so we post an event to continue reading on the next
+                     * iteration of the event loop
+                     */
+
+                    if (c->read->available < 0) {
+                        c->read->available = 0;
+                        c->read->ready = 0;
+
+                        if (c->ssl->next_read_handler == NULL) {
+                            c->ssl->next_read_handler = c->read->handler;
+                            c->read->handler = ngx_ssl_next_read_handler;
+                        }
+
+                        ngx_post_event(c->read, &ngx_posted_next_events);
+                    }
+
+                    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "SSL_read: avail:%d", c->read->available);
+
+                } else {
+
+#if (NGX_HAVE_FIONREAD)
+
+                    if (ngx_socket_nread(c->fd, &c->read->available) == -1) {
+                        c->read->error = 1;
+                        ngx_connection_error(c, ngx_socket_errno,
+                                             ngx_socket_nread_n " failed");
+                        return NGX_ERROR;
+                    }
+
+                    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "SSL_read: avail:%d", c->read->available);
+
+#endif
+                }
+
                 return bytes;
             }
 
@@ -2282,6 +2325,31 @@ ngx_ssl_write_handler(ngx_event_t *wev)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL write handler");
 
     c->read->handler(c->read);
+}
+
+
+static void
+ngx_ssl_next_read_handler(ngx_event_t *rev)
+{
+    ngx_connection_t  *c;
+
+    c = rev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL next read handler");
+
+    rev->handler = c->ssl->next_read_handler;
+    c->ssl->next_read_handler = NULL;
+
+    if (!rev->ready) {
+        rev->ready = 1;
+        rev->available = -1;
+    }
+
+    if (rev->posted) {
+        ngx_delete_posted_event(rev);
+    }
+
+    rev->handler(rev);
 }
 
 

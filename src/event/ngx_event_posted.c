@@ -11,6 +11,7 @@
 
 
 ngx_queue_t  ngx_posted_accept_events;
+ngx_queue_t  ngx_posted_next_events;
 ngx_queue_t  ngx_posted_events;
 
 
