@@ -172,7 +172,11 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
              */
 
             if (p->upstream->read->available == 0
-                && p->upstream->read->pending_eof)
+                && p->upstream->read->pending_eof
+#if (NGX_SSL)
+                && !p->upstream->ssl
+#endif
+                )
             {
                 p->upstream->read->ready = 0;
                 p->upstream->read->eof = 1;
