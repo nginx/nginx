@@ -51,6 +51,45 @@ ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
         return n;
     }
 
+#if (NGX_HAVE_FIONREAD)
+
+    if (rev->available >= 0 && bytes > 0) {
+        rev->available -= bytes;
+
+        /*
+         * negative rev->available means some additional bytes
+         * were received between kernel notification and WSARecv(),
+         * and therefore ev->ready can be safely reset even for
+         * edge-triggered event methods
+         */
+
+        if (rev->available < 0) {
+            rev->available = 0;
+            rev->ready = 0;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "WSARecv: avail:%d", rev->available);
+
+    } else if (bytes == size) {
+
+        if (ngx_socket_nread(c->fd, &rev->available) == -1) {
+            n = ngx_connection_error(c, ngx_socket_errno,
+                                     ngx_socket_nread_n " failed");
+
+            if (n == NGX_ERROR) {
+                rev->error = 1;
+            }
+
+            return n;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "WSARecv: avail:%d", rev->available);
+    }
+
+#endif
+
     if (bytes < size) {
         rev->ready = 0;
     }

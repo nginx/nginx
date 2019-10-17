@@ -273,6 +273,10 @@ typedef int                 sig_atomic_t;
 #define NGX_HAVE_SO_SNDLOWAT         0
 #endif
 
+#ifndef NGX_HAVE_FIONREAD
+#define NGX_HAVE_FIONREAD            1
+#endif
+
 #define NGX_HAVE_GETADDRINFO         1
 
 #define ngx_random               rand

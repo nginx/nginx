@@ -943,6 +943,18 @@ ngx_feature_test="int i = FIONBIO; printf(\"%d\", i)"
 . auto/feature
 
 
+ngx_feature="ioctl(FIONREAD)"
+ngx_feature_name="NGX_HAVE_FIONREAD"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/ioctl.h>
+                  #include <stdio.h>
+                  $NGX_INCLUDE_SYS_FILIO_H"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="int i = FIONREAD; printf(\"%d\", i)"
+. auto/feature
+
+
 ngx_feature="struct tm.tm_gmtoff"
 ngx_feature_name="NGX_HAVE_GMTOFF"
 ngx_feature_run=no

@@ -28,6 +28,21 @@ ngx_blocking(ngx_socket_t s)
 
 
 int
+ngx_socket_nread(ngx_socket_t s, int *n)
+{
+    unsigned long  nread;
+
+    if (ioctlsocket(s, FIONREAD, &nread) == -1) {
+        return -1;
+    }
+
+    *n = nread;
+
+    return 0;
+}
+
+
+int
 ngx_tcp_push(ngx_socket_t s)
 {
     return 0;

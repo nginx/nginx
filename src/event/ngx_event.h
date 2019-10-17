@@ -91,21 +91,14 @@ struct ngx_event_s {
      *   write:      available space in buffer when event is ready
      *               or lowat when event is set with NGX_LOWAT_EVENT flag
      *
-     * epoll with EPOLLRDHUP:
-     *   accept:     1 if accept many, 0 otherwise
-     *   read:       1 if there can be data to read, 0 otherwise
-     *
      * iocp: TODO
      *
      * otherwise:
      *   accept:     1 if accept many, 0 otherwise
+     *   read:       bytes to read when event is ready, -1 if not known
      */
 
-#if (NGX_HAVE_KQUEUE) || (NGX_HAVE_IOCP)
     int              available;
-#else
-    unsigned         available:1;
-#endif
 
     ngx_event_handler_pt  handler;
 

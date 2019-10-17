@@ -886,11 +886,10 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             if (revents & EPOLLRDHUP) {
                 rev->pending_eof = 1;
             }
-
-            rev->available = 1;
 #endif
 
             rev->ready = 1;
+            rev->available = -1;
 
             if (flags & NGX_POST_EVENTS) {
                 queue = rev->accept ? &ngx_posted_accept_events

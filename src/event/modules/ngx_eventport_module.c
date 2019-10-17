@@ -559,6 +559,7 @@ ngx_eventport_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
             if (revents & POLLIN) {
                 rev->ready = 1;
+                rev->available = -1;
 
                 if (flags & NGX_POST_EVENTS) {
                     queue = rev->accept ? &ngx_posted_accept_events

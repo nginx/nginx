@@ -38,6 +38,13 @@ int ngx_blocking(ngx_socket_t s);
 
 #endif
 
+#if (NGX_HAVE_FIONREAD)
+
+#define ngx_socket_nread(s, n)  ioctl(s, FIONREAD, n)
+#define ngx_socket_nread_n      "ioctl(FIONREAD)"
+
+#endif
+
 int ngx_tcp_nopush(ngx_socket_t s);
 int ngx_tcp_push(ngx_socket_t s);
 

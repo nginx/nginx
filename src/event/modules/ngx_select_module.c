@@ -330,6 +330,7 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 
         if (found) {
             ev->ready = 1;
+            ev->available = -1;
 
             queue = ev->accept ? &ngx_posted_accept_events
                                : &ngx_posted_events;
