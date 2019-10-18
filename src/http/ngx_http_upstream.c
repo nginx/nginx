@@ -169,6 +169,10 @@ static ngx_int_t ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
 static char *ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static char *ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+#if (NGX_HTTP_UPSTREAM_ZONE)
+static char *ngx_http_upstream_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+#endif
 
 static ngx_int_t ngx_http_upstream_set_local(ngx_http_request_t *r,
   ngx_http_upstream_t *u, ngx_http_upstream_local_t *local);
@@ -338,6 +342,24 @@ static ngx_command_t  ngx_http_upstream_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+
+    { ngx_string("resolver"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+      ngx_http_upstream_resolver,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("resolver_timeout"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_upstream_srv_conf_t, resolver_timeout),
+      NULL },
+
+#endif
 
       ngx_null_command
 };
@@ -6434,6 +6456,32 @@ not_supported:
 }
 
 
+#if (NGX_HTTP_UPSTREAM_ZONE)
+
+static char *
+ngx_http_upstream_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_upstream_srv_conf_t  *uscf = conf;
+
+    ngx_str_t  *value;
+
+    if (uscf->resolver) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    uscf->resolver = ngx_resolver_create(cf, &value[1], cf->args->nelts - 1);
+    if (uscf->resolver == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+#endif
+
+
 ngx_http_upstream_srv_conf_t *
 ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 {
@@ -6515,6 +6563,9 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
     uscf->line = cf->conf_file->line;
     uscf->port = u->port;
     uscf->no_port = u->no_port;
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    uscf->resolver_timeout = NGX_CONF_UNSET_MSEC;
+#endif
 
     if (u->naddrs == 1 && (u->port || u->family == AF_UNIX)) {
         uscf->servers = ngx_array_create(cf->pool, 1,
