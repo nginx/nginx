@@ -104,15 +104,15 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
             cscf = ngx_stream_conf_get_module_srv_conf(cf,
                                                        ngx_stream_core_module);
 
-            us->resolver = cscf->resolver;
-            us->resolver_timeout = cscf->resolver_timeout;
+            if (us->resolver == NULL) {
+                us->resolver = cscf->resolver;
+            }
 
             /*
-             * Without "resolver_timeout" in stream{}, the value is unset.
-             * Even if we set it in ngx_stream_core_merge_srv_conf(), it's
-             * still dependent on the module order and unreliable.
+             * Without "resolver_timeout" in stream{} the merged value is unset.
              */
-            ngx_conf_init_msec_value(us->resolver_timeout, 30000);
+            ngx_conf_merge_msec_value(us->resolver_timeout,
+                                      cscf->resolver_timeout, 30000);
 
             if (resolve
                 && (us->resolver == NULL
