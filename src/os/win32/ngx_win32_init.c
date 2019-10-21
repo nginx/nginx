@@ -240,7 +240,7 @@ ngx_os_init(ngx_log_t *log)
         goto nopoll;
     }
 
-    WSAPoll = (ngx_wsapoll_pt) GetProcAddress(hmod, "WSAPoll");
+    WSAPoll = (ngx_wsapoll_pt) (void *) GetProcAddress(hmod, "WSAPoll");
     if (WSAPoll == NULL) {
         ngx_log_error(NGX_LOG_NOTICE, log, ngx_errno,
                       "GetProcAddress(\"WSAPoll\") failed");
