@@ -180,12 +180,11 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 
     case NGX_HTTP_REALIP_PROXY:
 
-        value = &r->connection->proxy_protocol_addr;
-
-        if (value->len == 0) {
+        if (r->connection->proxy_protocol == NULL) {
             return NGX_DECLINED;
         }
 
+        value = &r->connection->proxy_protocol->src_addr;
         xfwd = NULL;
 
         break;
@@ -238,7 +237,7 @@ found:
         != NGX_DECLINED)
     {
         if (rlcf->type == NGX_HTTP_REALIP_PROXY) {
-            ngx_inet_set_port(addr.sockaddr, c->proxy_protocol_port);
+            ngx_inet_set_port(addr.sockaddr, c->proxy_protocol->src_port);
         }
 
         return ngx_http_realip_set_addr(r, &addr);

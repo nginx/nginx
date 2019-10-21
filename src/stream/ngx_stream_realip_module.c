@@ -108,7 +108,7 @@ ngx_stream_realip_handler(ngx_stream_session_t *s)
 
     c = s->connection;
 
-    if (c->proxy_protocol_addr.len == 0) {
+    if (c->proxy_protocol == NULL) {
         return NGX_DECLINED;
     }
 
@@ -116,14 +116,14 @@ ngx_stream_realip_handler(ngx_stream_session_t *s)
         return NGX_DECLINED;
     }
 
-    if (ngx_parse_addr(c->pool, &addr, c->proxy_protocol_addr.data,
-                       c->proxy_protocol_addr.len)
+    if (ngx_parse_addr(c->pool, &addr, c->proxy_protocol->src_addr.data,
+                       c->proxy_protocol->src_addr.len)
         != NGX_OK)
     {
         return NGX_DECLINED;
     }
 
-    ngx_inet_set_port(addr.sockaddr, c->proxy_protocol_port);
+    ngx_inet_set_port(addr.sockaddr, c->proxy_protocol->src_port);
 
     return ngx_stream_realip_set_addr(s, &addr);
 }

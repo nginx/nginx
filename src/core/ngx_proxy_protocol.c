@@ -47,9 +47,10 @@ static u_char *ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf,
 u_char *
 ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
-    size_t     len;
-    u_char     ch, *p, *addr, *port;
-    ngx_int_t  n;
+    size_t                 len;
+    u_char                 ch, *p, *addr, *port;
+    ngx_int_t              n;
+    ngx_proxy_protocol_t  *pp;
 
     static const u_char signature[] = "\r\n\r\n\0\r\nQUIT\n";
 
@@ -105,15 +106,20 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
         }
     }
 
-    len = p - addr - 1;
-    c->proxy_protocol_addr.data = ngx_pnalloc(c->pool, len);
-
-    if (c->proxy_protocol_addr.data == NULL) {
+    pp = ngx_pcalloc(c->pool, sizeof(ngx_proxy_protocol_t));
+    if (pp == NULL) {
         return NULL;
     }
 
-    ngx_memcpy(c->proxy_protocol_addr.data, addr, len);
-    c->proxy_protocol_addr.len = len;
+    len = p - addr - 1;
+
+    pp->src_addr.data = ngx_pnalloc(c->pool, len);
+    if (pp->src_addr.data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(pp->src_addr.data, addr, len);
+    pp->src_addr.len = len;
 
     for ( ;; ) {
         if (p == last) {
@@ -145,11 +151,13 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
         goto invalid;
     }
 
-    c->proxy_protocol_port = (in_port_t) n;
+    pp->src_port = (in_port_t) n;
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol address: %V %d", &c->proxy_protocol_addr,
-                   c->proxy_protocol_port);
+                   "PROXY protocol address: %V %d", &pp->src_addr,
+                   pp->src_port);
+
+    c->proxy_protocol = pp;
 
 skip:
 
@@ -220,6 +228,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     socklen_t                           socklen;
     ngx_uint_t                          version, command, family, transport;
     ngx_sockaddr_t                      sockaddr;
+    ngx_proxy_protocol_t               *pp;
     ngx_proxy_protocol_header_t        *header;
     ngx_proxy_protocol_inet_addrs_t    *in;
 #if (NGX_HAVE_INET6)
@@ -266,6 +275,11 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         return end;
     }
 
+    pp = ngx_pcalloc(c->pool, sizeof(ngx_proxy_protocol_t));
+    if (pp == NULL) {
+        return NULL;
+    }
+
     family = header->family_transport >> 4;
 
     switch (family) {
@@ -282,7 +296,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         sockaddr.sockaddr_in.sin_port = 0;
         memcpy(&sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
 
-        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(in->src_port);
+        pp->src_port = ngx_proxy_protocol_parse_uint16(in->src_port);
 
         socklen = sizeof(struct sockaddr_in);
 
@@ -304,7 +318,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         sockaddr.sockaddr_in6.sin6_port = 0;
         memcpy(&sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
 
-        c->proxy_protocol_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
+        pp->src_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
 
         socklen = sizeof(struct sockaddr_in6);
 
@@ -321,23 +335,24 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         return end;
     }
 
-    c->proxy_protocol_addr.data = ngx_pnalloc(c->pool, NGX_SOCKADDR_STRLEN);
-    if (c->proxy_protocol_addr.data == NULL) {
+    pp->src_addr.data = ngx_pnalloc(c->pool, NGX_SOCKADDR_STRLEN);
+    if (pp->src_addr.data == NULL) {
         return NULL;
     }
 
-    c->proxy_protocol_addr.len = ngx_sock_ntop(&sockaddr.sockaddr, socklen,
-                                               c->proxy_protocol_addr.data,
-                                               NGX_SOCKADDR_STRLEN, 0);
+    pp->src_addr.len = ngx_sock_ntop(&sockaddr.sockaddr, socklen,
+                                     pp->src_addr.data, NGX_SOCKADDR_STRLEN, 0);
 
     ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol v2 address: %V %d", &c->proxy_protocol_addr,
-                   c->proxy_protocol_port);
+                   "PROXY protocol v2 address: %V %d", &pp->src_addr,
+                   pp->src_port);
 
     if (buf < end) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "PROXY protocol v2 %z bytes of tlv ignored", end - buf);
     }
+
+    c->proxy_protocol = pp;
 
     return end;
 }

@@ -1293,11 +1293,19 @@ static ngx_int_t
 ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    v->len = r->connection->proxy_protocol_addr.len;
+    ngx_proxy_protocol_t  *pp;
+
+    pp = r->connection->proxy_protocol;
+    if (pp == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = pp->src_addr.len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = r->connection->proxy_protocol_addr.data;
+    v->data = pp->src_addr.data;
 
     return NGX_OK;
 }
@@ -1307,7 +1315,14 @@ static ngx_int_t
 ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t  port;
+    ngx_uint_t             port;
+    ngx_proxy_protocol_t  *pp;
+
+    pp = r->connection->proxy_protocol;
+    if (pp == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
 
     v->len = 0;
     v->valid = 1;
@@ -1319,7 +1334,7 @@ ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    port = r->connection->proxy_protocol_port;
+    port = pp->src_port;
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;

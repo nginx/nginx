@@ -557,11 +557,19 @@ static ngx_int_t
 ngx_stream_variable_proxy_protocol_addr(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data)
 {
-    v->len = s->connection->proxy_protocol_addr.len;
+    ngx_proxy_protocol_t  *pp;
+
+    pp = s->connection->proxy_protocol;
+    if (pp == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = pp->src_addr.len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = s->connection->proxy_protocol_addr.data;
+    v->data = pp->src_addr.data;
 
     return NGX_OK;
 }
@@ -571,7 +579,14 @@ static ngx_int_t
 ngx_stream_variable_proxy_protocol_port(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t  port;
+    ngx_uint_t             port;
+    ngx_proxy_protocol_t  *pp;
+
+    pp = s->connection->proxy_protocol;
+    if (pp == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
 
     v->len = 0;
     v->valid = 1;
@@ -583,7 +598,7 @@ ngx_stream_variable_proxy_protocol_port(ngx_stream_session_t *s,
         return NGX_ERROR;
     }
 
-    port = s->connection->proxy_protocol_port;
+    port = pp->src_port;
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;

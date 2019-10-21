@@ -16,6 +16,12 @@
 #define NGX_PROXY_PROTOCOL_MAX_HEADER  107
 
 
+struct ngx_proxy_protocol_s {
+    ngx_str_t           src_addr;
+    in_port_t           src_port;
+};
+
+
 u_char *ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 u_char *ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf,
