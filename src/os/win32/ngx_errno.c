@@ -22,7 +22,7 @@ ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
     len = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
                         NULL, err, lang, (char *) errstr, size, NULL);
 
-    if (len == 0 && lang && GetLastError() == ERROR_RESOURCE_LANG_NOT_FOUND) {
+    if (len == 0 && lang) {
 
         /*
          * Try to use English messages first and fallback to a language,
