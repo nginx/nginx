@@ -199,10 +199,20 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("remote_port"), NULL, ngx_http_variable_remote_port, 0, 0, 0 },
 
     { ngx_string("proxy_protocol_addr"), NULL,
-      ngx_http_variable_proxy_protocol_addr, 0, 0, 0 },
+      ngx_http_variable_proxy_protocol_addr,
+      offsetof(ngx_proxy_protocol_t, src_addr), 0, 0 },
 
     { ngx_string("proxy_protocol_port"), NULL,
-      ngx_http_variable_proxy_protocol_port, 0, 0, 0 },
+      ngx_http_variable_proxy_protocol_port,
+      offsetof(ngx_proxy_protocol_t, src_port), 0, 0 },
+
+    { ngx_string("proxy_protocol_server_addr"), NULL,
+      ngx_http_variable_proxy_protocol_addr,
+      offsetof(ngx_proxy_protocol_t, dst_addr), 0, 0 },
+
+    { ngx_string("proxy_protocol_server_port"), NULL,
+      ngx_http_variable_proxy_protocol_port,
+      offsetof(ngx_proxy_protocol_t, dst_port), 0, 0 },
 
     { ngx_string("server_addr"), NULL, ngx_http_variable_server_addr, 0, 0, 0 },
 
@@ -1293,6 +1303,7 @@ static ngx_int_t
 ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    ngx_str_t             *addr;
     ngx_proxy_protocol_t  *pp;
 
     pp = r->connection->proxy_protocol;
@@ -1301,11 +1312,13 @@ ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    v->len = pp->src_addr.len;
+    addr = (ngx_str_t *) ((char *) pp + data);
+
+    v->len = addr->len;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = pp->src_addr.data;
+    v->data = addr->data;
 
     return NGX_OK;
 }
@@ -1334,7 +1347,7 @@ ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    port = pp->src_port;
+    port = *(in_port_t *) ((char *) pp + data);
 
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;

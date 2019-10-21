@@ -40,6 +40,10 @@ typedef struct {
 } ngx_proxy_protocol_inet6_addrs_t;
 
 
+static u_char *ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p,
+    u_char *last, ngx_str_t *addr);
+static u_char *ngx_proxy_protocol_read_port(u_char *p, u_char *last,
+    in_port_t *port, u_char sep);
 static u_char *ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 
@@ -48,8 +52,7 @@ u_char *
 ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     size_t                 len;
-    u_char                 ch, *p, *addr, *port;
-    ngx_int_t              n;
+    u_char                *p;
     ngx_proxy_protocol_t  *pp;
 
     static const u_char signature[] = "\r\n\r\n\0\r\nQUIT\n";
@@ -84,80 +87,47 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
     }
 
     p += 5;
-    addr = p;
-
-    for ( ;; ) {
-        if (p == last) {
-            goto invalid;
-        }
-
-        ch = *p++;
-
-        if (ch == ' ') {
-            break;
-        }
-
-        if (ch != ':' && ch != '.'
-            && (ch < 'a' || ch > 'f')
-            && (ch < 'A' || ch > 'F')
-            && (ch < '0' || ch > '9'))
-        {
-            goto invalid;
-        }
-    }
 
     pp = ngx_pcalloc(c->pool, sizeof(ngx_proxy_protocol_t));
     if (pp == NULL) {
         return NULL;
     }
 
-    len = p - addr - 1;
-
-    pp->src_addr.data = ngx_pnalloc(c->pool, len);
-    if (pp->src_addr.data == NULL) {
-        return NULL;
-    }
-
-    ngx_memcpy(pp->src_addr.data, addr, len);
-    pp->src_addr.len = len;
-
-    for ( ;; ) {
-        if (p == last) {
-            goto invalid;
-        }
-
-        if (*p++ == ' ') {
-            break;
-        }
-    }
-
-    port = p;
-
-    for ( ;; ) {
-        if (p == last) {
-            goto invalid;
-        }
-
-        if (*p++ == ' ') {
-            break;
-        }
-    }
-
-    len = p - port - 1;
-
-    n = ngx_atoi(port, len);
-
-    if (n < 0 || n > 65535) {
+    p = ngx_proxy_protocol_read_addr(c, p, last, &pp->src_addr);
+    if (p == NULL) {
         goto invalid;
     }
 
-    pp->src_port = (in_port_t) n;
+    p = ngx_proxy_protocol_read_addr(c, p, last, &pp->dst_addr);
+    if (p == NULL) {
+        goto invalid;
+    }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol address: %V %d", &pp->src_addr,
-                   pp->src_port);
+    p = ngx_proxy_protocol_read_port(p, last, &pp->src_port, ' ');
+    if (p == NULL) {
+        goto invalid;
+    }
+
+    p = ngx_proxy_protocol_read_port(p, last, &pp->dst_port, CR);
+    if (p == NULL) {
+        goto invalid;
+    }
+
+    if (p == last) {
+        goto invalid;
+    }
+
+    if (*p++ != LF) {
+        goto invalid;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_CORE, c->log, 0,
+                   "PROXY protocol src: %V %d, dst: %V %d",
+                   &pp->src_addr, pp->src_port, &pp->dst_addr, pp->dst_port);
 
     c->proxy_protocol = pp;
+
+    return p;
 
 skip:
 
@@ -173,6 +143,82 @@ invalid:
                   "broken header: \"%*s\"", (size_t) (last - buf), buf);
 
     return NULL;
+}
+
+
+static u_char *
+ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p, u_char *last,
+    ngx_str_t *addr)
+{
+    size_t  len;
+    u_char  ch, *pos;
+
+    pos = p;
+
+    for ( ;; ) {
+        if (p == last) {
+            return NULL;
+        }
+
+        ch = *p++;
+
+        if (ch == ' ') {
+            break;
+        }
+
+        if (ch != ':' && ch != '.'
+            && (ch < 'a' || ch > 'f')
+            && (ch < 'A' || ch > 'F')
+            && (ch < '0' || ch > '9'))
+        {
+            return NULL;
+        }
+    }
+
+    len = p - pos - 1;
+
+    addr->data = ngx_pnalloc(c->pool, len);
+    if (addr->data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(addr->data, pos, len);
+    addr->len = len;
+
+    return p;
+}
+
+
+static u_char *
+ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
+    u_char sep)
+{
+    size_t      len;
+    u_char     *pos;
+    ngx_int_t   n;
+
+    pos = p;
+
+    for ( ;; ) {
+        if (p == last) {
+            return NULL;
+        }
+
+        if (*p++ == sep) {
+            break;
+        }
+    }
+
+    len = p - pos - 1;
+
+    n = ngx_atoi(pos, len);
+    if (n < 0 || n > 65535) {
+        return NULL;
+    }
+
+    *port = (in_port_t) n;
+
+    return p;
 }
 
 
@@ -227,7 +273,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     size_t                              len;
     socklen_t                           socklen;
     ngx_uint_t                          version, command, family, transport;
-    ngx_sockaddr_t                      sockaddr;
+    ngx_sockaddr_t                      src_sockaddr, dst_sockaddr;
     ngx_proxy_protocol_t               *pp;
     ngx_proxy_protocol_header_t        *header;
     ngx_proxy_protocol_inet_addrs_t    *in;
@@ -292,11 +338,16 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         in = (ngx_proxy_protocol_inet_addrs_t *) buf;
 
-        sockaddr.sockaddr_in.sin_family = AF_INET;
-        sockaddr.sockaddr_in.sin_port = 0;
-        memcpy(&sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
+        src_sockaddr.sockaddr_in.sin_family = AF_INET;
+        src_sockaddr.sockaddr_in.sin_port = 0;
+        memcpy(&src_sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
+
+        dst_sockaddr.sockaddr_in.sin_family = AF_INET;
+        dst_sockaddr.sockaddr_in.sin_port = 0;
+        memcpy(&dst_sockaddr.sockaddr_in.sin_addr, in->dst_addr, 4);
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in->src_port);
+        pp->dst_port = ngx_proxy_protocol_parse_uint16(in->dst_port);
 
         socklen = sizeof(struct sockaddr_in);
 
@@ -314,11 +365,16 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         in6 = (ngx_proxy_protocol_inet6_addrs_t *) buf;
 
-        sockaddr.sockaddr_in6.sin6_family = AF_INET6;
-        sockaddr.sockaddr_in6.sin6_port = 0;
-        memcpy(&sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
+        src_sockaddr.sockaddr_in6.sin6_family = AF_INET6;
+        src_sockaddr.sockaddr_in6.sin6_port = 0;
+        memcpy(&src_sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
+
+        dst_sockaddr.sockaddr_in6.sin6_family = AF_INET6;
+        dst_sockaddr.sockaddr_in6.sin6_port = 0;
+        memcpy(&dst_sockaddr.sockaddr_in6.sin6_addr, in6->dst_addr, 16);
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
+        pp->dst_port = ngx_proxy_protocol_parse_uint16(in6->dst_port);
 
         socklen = sizeof(struct sockaddr_in6);
 
@@ -340,12 +396,20 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
         return NULL;
     }
 
-    pp->src_addr.len = ngx_sock_ntop(&sockaddr.sockaddr, socklen,
+    pp->src_addr.len = ngx_sock_ntop(&src_sockaddr.sockaddr, socklen,
                                      pp->src_addr.data, NGX_SOCKADDR_STRLEN, 0);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
-                   "PROXY protocol v2 address: %V %d", &pp->src_addr,
-                   pp->src_port);
+    pp->dst_addr.data = ngx_pnalloc(c->pool, NGX_SOCKADDR_STRLEN);
+    if (pp->dst_addr.data == NULL) {
+        return NULL;
+    }
+
+    pp->dst_addr.len = ngx_sock_ntop(&dst_sockaddr.sockaddr, socklen,
+                                     pp->dst_addr.data, NGX_SOCKADDR_STRLEN, 0);
+
+    ngx_log_debug4(NGX_LOG_DEBUG_CORE, c->log, 0,
+                   "PROXY protocol v2 src: %V %d, dst: %V %d",
+                   &pp->src_addr, pp->src_port, &pp->dst_addr, pp->dst_port);
 
     if (buf < end) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
