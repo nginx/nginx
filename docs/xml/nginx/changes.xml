@@ -5,6 +5,69 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.5" date="2019-10-22">
+
+<change type="feature">
+<para lang="ru">
+теперь nginx использует вызов ioctl(FIONREAD), если он доступен,
+чтобы избежать чтения из быстрого соединения в течение долгого времени.
+</para>
+<para lang="en">
+now nginx uses ioctl(FIONREAD), if available,
+to avoid reading from a fast connection for a long time.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неполные закодированные символы в конце URI запроса игнорировались.
+</para>
+<para lang="en">
+incomplete escaped characters at the end of the request URI were ignored.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+"/." и "/.." в конце URI запроса не нормализовывались.
+</para>
+<para lang="en">
+"/." and "/.." at the end of the request URI were not normalized.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве merge_slashes.
+</para>
+<para lang="en">
+in the "merge_slashes" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ignore_invalid_headers.<br/>
+Спасибо Alan Kemp.
+</para>
+<para lang="en">
+in the "ignore_invalid_headers" directive.<br/>
+Thanks to Alan Kemp.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с MinGW-w64 gcc 8.1 и новее.
+</para>
+<para lang="en">
+nginx could not be built with MinGW-w64 gcc 8.1 or newer.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.17.4" date="2019-09-24">
 
 <change type="change">
