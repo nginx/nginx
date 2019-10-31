@@ -35,6 +35,40 @@ static ngx_connection_t  dumb;
 /* STUB */
 
 
+void
+ngx_change_pid_core(ngx_cycle_t *cycle)
+{
+    ngx_pid_t           setpid;
+    ngx_cpuset_t        *setaffinity=NULL;    
+    setpid = ngx_getpid();    
+    {
+#if (NGX_HAVE_CPU_AFFINITY)
+        ngx_core_conf_t  *ccf;
+
+        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+        if (ccf->cpu_affinity == NULL) {
+            setaffinity = NULL;
+        }
+
+        if (ccf->cpu_affinity_auto) {
+           setaffinity = NULL;
+        }
+        
+        setaffinity = &ccf->cpu_affinity[0];
+
+#else
+
+        setaffinity = NULL;
+
+#endif
+    }
+
+    if (setaffinity)
+    	// set new mask 
+        sched_setaffinity(setpid, sizeof(ngx_cpuset_t), setaffinity);
+}
+
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
@@ -277,6 +311,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
+
+    ngx_change_pid_core(cycle);
 
     if (ngx_test_config && !ngx_quiet_mode) {
         ngx_log_stderr(0, "the configuration file %s syntax is ok",
