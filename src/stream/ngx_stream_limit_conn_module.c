@@ -16,35 +16,42 @@
 
 
 typedef struct {
-    u_char                       color;
-    u_char                       len;
-    u_short                      conn;
-    u_char                       data[1];
+    u_char                          color;
+    u_char                          len;
+    u_short                         conn;
+    u_char                          data[1];
 } ngx_stream_limit_conn_node_t;
 
 
 typedef struct {
-    ngx_shm_zone_t              *shm_zone;
-    ngx_rbtree_node_t           *node;
+    ngx_shm_zone_t                 *shm_zone;
+    ngx_rbtree_node_t              *node;
 } ngx_stream_limit_conn_cleanup_t;
 
 
 typedef struct {
-    ngx_rbtree_t                *rbtree;
-    ngx_stream_complex_value_t   key;
+    ngx_rbtree_t                    rbtree;
+    ngx_rbtree_node_t               sentinel;
+} ngx_stream_limit_conn_shctx_t;
+
+
+typedef struct {
+    ngx_stream_limit_conn_shctx_t  *sh;
+    ngx_slab_pool_t                *shpool;
+    ngx_stream_complex_value_t      key;
 } ngx_stream_limit_conn_ctx_t;
 
 
 typedef struct {
-    ngx_shm_zone_t              *shm_zone;
-    ngx_uint_t                   conn;
+    ngx_shm_zone_t                 *shm_zone;
+    ngx_uint_t                      conn;
 } ngx_stream_limit_conn_limit_t;
 
 
 typedef struct {
-    ngx_array_t                  limits;
-    ngx_uint_t                   log_level;
-    ngx_flag_t                   dry_run;
+    ngx_array_t                     limits;
+    ngx_uint_t                      log_level;
+    ngx_flag_t                      dry_run;
 } ngx_stream_limit_conn_conf_t;
 
 
@@ -160,7 +167,6 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
     uint32_t                          hash;
     ngx_str_t                         key;
     ngx_uint_t                        i;
-    ngx_slab_pool_t                  *shpool;
     ngx_rbtree_node_t                *node;
     ngx_pool_cleanup_t               *cln;
     ngx_stream_limit_conn_ctx_t      *ctx;
@@ -195,11 +201,9 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
 
         hash = ngx_crc32_short(key.data, key.len);
 
-        shpool = (ngx_slab_pool_t *) limits[i].shm_zone->shm.addr;
+        ngx_shmtx_lock(&ctx->shpool->mutex);
 
-        ngx_shmtx_lock(&shpool->mutex);
-
-        node = ngx_stream_limit_conn_lookup(ctx->rbtree, &key, hash);
+        node = ngx_stream_limit_conn_lookup(&ctx->sh->rbtree, &key, hash);
 
         if (node == NULL) {
 
@@ -207,10 +211,10 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
                 + offsetof(ngx_stream_limit_conn_node_t, data)
                 + key.len;
 
-            node = ngx_slab_alloc_locked(shpool, n);
+            node = ngx_slab_alloc_locked(ctx->shpool, n);
 
             if (node == NULL) {
-                ngx_shmtx_unlock(&shpool->mutex);
+                ngx_shmtx_unlock(&ctx->shpool->mutex);
                 ngx_stream_limit_conn_cleanup_all(s->connection->pool);
 
                 if (lccf->dry_run) {
@@ -231,7 +235,7 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
             lc->conn = 1;
             ngx_memcpy(lc->data, key.data, key.len);
 
-            ngx_rbtree_insert(ctx->rbtree, node);
+            ngx_rbtree_insert(&ctx->sh->rbtree, node);
 
         } else {
 
@@ -239,7 +243,7 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
 
             if ((ngx_uint_t) lc->conn >= limits[i].conn) {
 
-                ngx_shmtx_unlock(&shpool->mutex);
+                ngx_shmtx_unlock(&ctx->shpool->mutex);
 
                 ngx_log_error(lccf->log_level, s->connection->log, 0,
                               "limiting connections%s by zone \"%V\"",
@@ -265,7 +269,7 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
         ngx_log_debug2(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                        "limit conn: %08Xi %d", node->key, lc->conn);
 
-        ngx_shmtx_unlock(&shpool->mutex);
+        ngx_shmtx_unlock(&ctx->shpool->mutex);
 
         cln = ngx_pool_cleanup_add(s->connection->pool,
                                    sizeof(ngx_stream_limit_conn_cleanup_t));
@@ -370,17 +374,15 @@ ngx_stream_limit_conn_cleanup(void *data)
 {
     ngx_stream_limit_conn_cleanup_t  *lccln = data;
 
-    ngx_slab_pool_t               *shpool;
     ngx_rbtree_node_t             *node;
     ngx_stream_limit_conn_ctx_t   *ctx;
     ngx_stream_limit_conn_node_t  *lc;
 
     ctx = lccln->shm_zone->data;
-    shpool = (ngx_slab_pool_t *) lccln->shm_zone->shm.addr;
     node = lccln->node;
     lc = (ngx_stream_limit_conn_node_t *) &node->color;
 
-    ngx_shmtx_lock(&shpool->mutex);
+    ngx_shmtx_lock(&ctx->shpool->mutex);
 
     ngx_log_debug2(NGX_LOG_DEBUG_STREAM, lccln->shm_zone->shm.log, 0,
                    "limit conn cleanup: %08Xi %d", node->key, lc->conn);
@@ -388,11 +390,11 @@ ngx_stream_limit_conn_cleanup(void *data)
     lc->conn--;
 
     if (lc->conn == 0) {
-        ngx_rbtree_delete(ctx->rbtree, node);
-        ngx_slab_free_locked(shpool, node);
+        ngx_rbtree_delete(&ctx->sh->rbtree, node);
+        ngx_slab_free_locked(ctx->shpool, node);
     }
 
-    ngx_shmtx_unlock(&shpool->mutex);
+    ngx_shmtx_unlock(&ctx->shpool->mutex);
 }
 
 
@@ -418,8 +420,6 @@ ngx_stream_limit_conn_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     ngx_stream_limit_conn_ctx_t  *octx = data;
 
     size_t                        len;
-    ngx_slab_pool_t              *shpool;
-    ngx_rbtree_node_t            *sentinel;
     ngx_stream_limit_conn_ctx_t  *ctx;
 
     ctx = shm_zone->data;
@@ -438,42 +438,39 @@ ngx_stream_limit_conn_init_zone(ngx_shm_zone_t *shm_zone, void *data)
             return NGX_ERROR;
         }
 
-        ctx->rbtree = octx->rbtree;
+        ctx->sh = octx->sh;
+        ctx->shpool = octx->shpool;
 
         return NGX_OK;
     }
 
-    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    ctx->shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
     if (shm_zone->shm.exists) {
-        ctx->rbtree = shpool->data;
+        ctx->sh = ctx->shpool->data;
 
         return NGX_OK;
     }
 
-    ctx->rbtree = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_t));
-    if (ctx->rbtree == NULL) {
+    ctx->sh = ngx_slab_alloc(ctx->shpool,
+                             sizeof(ngx_stream_limit_conn_shctx_t));
+    if (ctx->sh == NULL) {
         return NGX_ERROR;
     }
 
-    shpool->data = ctx->rbtree;
+    ctx->shpool->data = ctx->sh;
 
-    sentinel = ngx_slab_alloc(shpool, sizeof(ngx_rbtree_node_t));
-    if (sentinel == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_rbtree_init(ctx->rbtree, sentinel,
+    ngx_rbtree_init(&ctx->sh->rbtree, &ctx->sh->sentinel,
                     ngx_stream_limit_conn_rbtree_insert_value);
 
     len = sizeof(" in limit_conn_zone \"\"") + shm_zone->shm.name.len;
 
-    shpool->log_ctx = ngx_slab_alloc(shpool, len);
-    if (shpool->log_ctx == NULL) {
+    ctx->shpool->log_ctx = ngx_slab_alloc(ctx->shpool, len);
+    if (ctx->shpool->log_ctx == NULL) {
         return NGX_ERROR;
     }
 
-    ngx_sprintf(shpool->log_ctx, " in limit_conn_zone \"%V\"%Z",
+    ngx_sprintf(ctx->shpool->log_ctx, " in limit_conn_zone \"%V\"%Z",
                 &shm_zone->shm.name);
 
     return NGX_OK;
