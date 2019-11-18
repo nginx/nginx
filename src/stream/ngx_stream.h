@@ -226,6 +226,8 @@ struct ngx_stream_session_s {
     unsigned                       stat_processing:1;
 
     unsigned                       health_check:1;
+
+    unsigned                       limit_conn_status:2;
 };
 
 

@@ -10,6 +10,11 @@
 #include <ngx_stream.h>
 
 
+#define NGX_STREAM_LIMIT_CONN_PASSED            1
+#define NGX_STREAM_LIMIT_CONN_REJECTED          2
+#define NGX_STREAM_LIMIT_CONN_REJECTED_DRY_RUN  3
+
+
 typedef struct {
     u_char                       color;
     u_char                       len;
@@ -48,6 +53,8 @@ static ngx_rbtree_node_t *ngx_stream_limit_conn_lookup(ngx_rbtree_t *rbtree,
 static void ngx_stream_limit_conn_cleanup(void *data);
 static ngx_inline void ngx_stream_limit_conn_cleanup_all(ngx_pool_t *pool);
 
+static ngx_int_t ngx_stream_limit_conn_status_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
 static void *ngx_stream_limit_conn_create_conf(ngx_conf_t *cf);
 static char *ngx_stream_limit_conn_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -55,6 +62,7 @@ static char *ngx_stream_limit_conn_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static ngx_int_t ngx_stream_limit_conn_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_stream_limit_conn_init(ngx_conf_t *cf);
 
 
@@ -102,7 +110,7 @@ static ngx_command_t  ngx_stream_limit_conn_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_limit_conn_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_stream_limit_conn_add_variables,   /* preconfiguration */
     ngx_stream_limit_conn_init,            /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -126,6 +134,22 @@ ngx_module_t  ngx_stream_limit_conn_module = {
     NULL,                                  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
+};
+
+
+static ngx_stream_variable_t  ngx_stream_limit_conn_vars[] = {
+
+    { ngx_string("limit_conn_status"), NULL,
+      ngx_stream_limit_conn_status_variable, 0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+      ngx_stream_null_variable
+};
+
+
+static ngx_str_t  ngx_stream_limit_conn_status[] = {
+    ngx_string("PASSED"),
+    ngx_string("REJECTED"),
+    ngx_string("REJECTED_DRY_RUN")
 };
 
 
@@ -167,6 +191,8 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
             continue;
         }
 
+        s->limit_conn_status = NGX_STREAM_LIMIT_CONN_PASSED;
+
         hash = ngx_crc32_short(key.data, key.len);
 
         shpool = (ngx_slab_pool_t *) limits[i].shm_zone->shm.addr;
@@ -188,8 +214,12 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
                 ngx_stream_limit_conn_cleanup_all(s->connection->pool);
 
                 if (lccf->dry_run) {
+                    s->limit_conn_status =
+                                        NGX_STREAM_LIMIT_CONN_REJECTED_DRY_RUN;
                     return NGX_DECLINED;
                 }
+
+                s->limit_conn_status = NGX_STREAM_LIMIT_CONN_REJECTED;
 
                 return NGX_STREAM_SERVICE_UNAVAILABLE;
             }
@@ -219,8 +249,12 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
                 ngx_stream_limit_conn_cleanup_all(s->connection->pool);
 
                 if (lccf->dry_run) {
+                    s->limit_conn_status =
+                                        NGX_STREAM_LIMIT_CONN_REJECTED_DRY_RUN;
                     return NGX_DECLINED;
                 }
+
+                s->limit_conn_status = NGX_STREAM_LIMIT_CONN_REJECTED;
 
                 return NGX_STREAM_SERVICE_UNAVAILABLE;
             }
@@ -446,6 +480,25 @@ ngx_stream_limit_conn_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 }
 
 
+static ngx_int_t
+ngx_stream_limit_conn_status_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    if (s->limit_conn_status == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->len = ngx_stream_limit_conn_status[s->limit_conn_status - 1].len;
+    v->data = ngx_stream_limit_conn_status[s->limit_conn_status - 1].data;
+
+    return NGX_OK;
+}
+
+
 static void *
 ngx_stream_limit_conn_create_conf(ngx_conf_t *cf)
 {
@@ -646,6 +699,25 @@ ngx_stream_limit_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     limit->shm_zone = shm_zone;
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_limit_conn_add_variables(ngx_conf_t *cf)
+{
+    ngx_stream_variable_t  *var, *v;
+
+    for (v = ngx_stream_limit_conn_vars; v->name.len; v++) {
+        var = ngx_stream_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
 }
 
 
