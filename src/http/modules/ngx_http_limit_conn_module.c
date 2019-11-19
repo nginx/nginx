@@ -40,6 +40,7 @@ typedef struct {
     ngx_array_t                limits;
     ngx_uint_t                 log_level;
     ngx_uint_t                 status_code;
+    ngx_flag_t                 dry_run;
 } ngx_http_limit_conn_conf_t;
 
 
@@ -101,6 +102,13 @@ static ngx_command_t  ngx_http_limit_conn_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_limit_conn_conf_t, status_code),
       &ngx_http_limit_conn_status_bounds },
+
+    { ngx_string("limit_conn_dry_run"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_limit_conn_conf_t, dry_run),
+      NULL },
 
       ngx_null_command
 };
@@ -200,6 +208,11 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
             if (node == NULL) {
                 ngx_shmtx_unlock(&shpool->mutex);
                 ngx_http_limit_conn_cleanup_all(r->pool);
+
+                if (lccf->dry_run) {
+                    return NGX_DECLINED;
+                }
+
                 return lccf->status_code;
             }
 
@@ -221,10 +234,16 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
                 ngx_shmtx_unlock(&shpool->mutex);
 
                 ngx_log_error(lccf->log_level, r->connection->log, 0,
-                              "limiting connections by zone \"%V\"",
+                              "limiting connections%s by zone \"%V\"",
+                              lccf->dry_run ? ", dry run," : "",
                               &limits[i].shm_zone->shm.name);
 
                 ngx_http_limit_conn_cleanup_all(r->pool);
+
+                if (lccf->dry_run) {
+                    return NGX_DECLINED;
+                }
+
                 return lccf->status_code;
             }
 
@@ -466,6 +485,7 @@ ngx_http_limit_conn_create_conf(ngx_conf_t *cf)
 
     conf->log_level = NGX_CONF_UNSET_UINT;
     conf->status_code = NGX_CONF_UNSET_UINT;
+    conf->dry_run = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -484,6 +504,8 @@ ngx_http_limit_conn_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->log_level, prev->log_level, NGX_LOG_ERR);
     ngx_conf_merge_uint_value(conf->status_code, prev->status_code,
                               NGX_HTTP_SERVICE_UNAVAILABLE);
+
+    ngx_conf_merge_value(conf->dry_run, prev->dry_run, 0);
 
     return NGX_CONF_OK;
 }
