@@ -5,6 +5,38 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.6" date="2019-11-19">
+
+<change type="feature">
+<para lang="ru">
+переменные $proxy_protocol_server_addr и $proxy_protocol_server_port.
+</para>
+<para lang="en">
+the $proxy_protocol_server_addr and $proxy_protocol_server_port variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива limit_conn_dry_run.
+</para>
+<para lang="en">
+the "limit_conn_dry_run" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $limit_req_status и $limit_conn_status.
+</para>
+<para lang="en">
+the $limit_req_status and $limit_conn_status variables.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.17.5" date="2019-10-22">
 
 <change type="feature">
