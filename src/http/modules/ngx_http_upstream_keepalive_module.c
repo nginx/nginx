@@ -275,6 +275,7 @@ found:
 
     c->idle = 0;
     c->sent = 0;
+    c->data = NULL;
     c->log = pc->log;
     c->read->log = pc->log;
     c->write->log = pc->log;
