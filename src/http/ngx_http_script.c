@@ -1470,7 +1470,14 @@ ngx_http_script_return_code(ngx_http_script_engine_t *e)
 void
 ngx_http_script_break_code(ngx_http_script_engine_t *e)
 {
-    e->request->uri_changed = 0;
+    ngx_http_request_t  *r;
+
+    r = e->request;
+
+    if (r->uri_changed) {
+        r->valid_location = 0;
+        r->uri_changed = 0;
+    }
 
     e->ip = ngx_http_script_exit;
 }
