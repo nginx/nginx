@@ -1843,7 +1843,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         }
     }
 
-    last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
+    last = ngx_copy(last, r->uri.data + alias, r->uri.len - alias);
+    *last = '\0';
 
     return last;
 }
