@@ -163,7 +163,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
 
             name = ngx_http_map_uri_to_path(r, &path, &root, reserve);
             if (name == NULL) {
-                return NGX_ERROR;
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
             allocated = path.data + path.len - name;
