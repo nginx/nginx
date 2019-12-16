@@ -157,8 +157,8 @@ ngx_http_static_handler(ngx_http_request_t *r)
 
         len = r->uri.len + 1;
 
-        if (!clcf->alias && clcf->root_lengths == NULL && r->args.len == 0) {
-            location = path.data + clcf->root.len;
+        if (!clcf->alias && r->args.len == 0) {
+            location = path.data + root;
 
             *last = '/';
 
