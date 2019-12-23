@@ -4288,8 +4288,9 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     fc = stream->request->connection;
 
     if (stream->queued) {
+        fc->error = 1;
         fc->write->handler = ngx_http_v2_close_stream_handler;
-        fc->read->handler = ngx_http_empty_handler;
+        fc->read->handler = ngx_http_v2_close_stream_handler;
         return;
     }
 
