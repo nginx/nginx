@@ -178,6 +178,7 @@ static void ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_terminate_stream(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream, ngx_uint_t status);
 static void ngx_http_v2_close_stream_handler(ngx_event_t *ev);
+static void ngx_http_v2_retry_close_stream_handler(ngx_event_t *ev);
 static void ngx_http_v2_handle_connection_handler(ngx_event_t *rev);
 static void ngx_http_v2_idle_handler(ngx_event_t *rev);
 static void ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
@@ -4289,8 +4290,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 
     if (stream->queued) {
         fc->error = 1;
-        fc->write->handler = ngx_http_v2_close_stream_handler;
-        fc->read->handler = ngx_http_v2_close_stream_handler;
+        fc->write->handler = ngx_http_v2_retry_close_stream_handler;
+        fc->read->handler = ngx_http_v2_retry_close_stream_handler;
         return;
     }
 
@@ -4407,6 +4408,22 @@ ngx_http_v2_close_stream_handler(ngx_event_t *ev)
         ngx_http_v2_close_stream(r->stream, NGX_HTTP_REQUEST_TIME_OUT);
         return;
     }
+
+    ngx_http_v2_close_stream(r->stream, 0);
+}
+
+
+static void
+ngx_http_v2_retry_close_stream_handler(ngx_event_t *ev)
+{
+    ngx_connection_t    *fc;
+    ngx_http_request_t  *r;
+
+    fc = ev->data;
+    r = fc->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 retry close stream handler");
 
     ngx_http_v2_close_stream(r->stream, 0);
 }
