@@ -312,7 +312,7 @@ ngx_http_dav_delete_handler(ngx_http_request_t *r)
     ngx_file_info_t           fi;
     ngx_http_dav_loc_conf_t  *dlcf;
 
-    if (r->headers_in.content_length_n > 0) {
+    if (r->headers_in.content_length_n > 0 || r->headers_in.chunked) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "DELETE with body is unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
@@ -495,7 +495,7 @@ ngx_http_dav_mkcol_handler(ngx_http_request_t *r, ngx_http_dav_loc_conf_t *dlcf)
     size_t     root;
     ngx_str_t  path;
 
-    if (r->headers_in.content_length_n > 0) {
+    if (r->headers_in.content_length_n > 0 || r->headers_in.chunked) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "MKCOL with body is unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
@@ -549,7 +549,9 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
     ngx_http_dav_copy_ctx_t   copy;
     ngx_http_dav_loc_conf_t  *dlcf;
 
-    if (r->headers_in.content_length_n > 0) {
+    if (r->headers_in.content_length_n > 0 || r->headers_in.chunked) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "COPY and MOVE with body are unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
 
