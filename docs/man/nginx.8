@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (C) 2010 Sergey A. Osokin
+.\" Copyright (C) 2010, 2019 Sergey A. Osokin
 .\" Copyright (C) Nginx, Inc.
 .\" All rights reserved.
 .\"
@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd June 16, 2015
+.Dd December 5, 2019
 .Dt NGINX 8
 .Os
 .Sh NAME
@@ -42,7 +42,8 @@
 .Nm
 (pronounced
 .Dq engine x )
-is an HTTP and reverse proxy server, as well as a mail proxy server.
+is an HTTP and reverse proxy server, a mail proxy server, and a generic
+TCP/UDP proxy server.
 It is known for its high performance, stability, rich feature set, simple
 configuration, and low resource consumption.
 .Pp
@@ -82,15 +83,15 @@ The following table shows the corresponding system signals:
 .It Cm reload
 .Dv SIGHUP
 .El
+.It Fl T
+Same as
+.Fl t ,
+but additionally dump configuration files to standard output.
 .It Fl t
 Do not run, just test the configuration file.
 .Nm
 checks the configuration file syntax and then tries to open files
 referenced in the configuration file.
-.It Fl T
-Same as
-.Fl t ,
-but additionally dump configuration files to standard output.
 .It Fl V
 Print the
 .Nm
