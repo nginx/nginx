@@ -5,6 +5,90 @@
 <change_log title="nginx">
 
 
+<changes ver="1.17.7" date="2019-12-24">
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации мог произойти segmentation fault,
+если в конфигурации использовалась
+директива rewrite с пустой строкой замены.
+</para>
+<para lang="en">
+a segmentation fault might occur on start or during reconfiguration
+if the "rewrite" directive with an empty replacement string
+was used in the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если директива break использовалась совместно с директивой alias
+или директивой proxy_pass с URI.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process 
+if the "break" directive was used with the "alias" directive
+or with the "proxy_pass" directive with a URI.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+строка Location заголовка ответа могла содержать мусор,
+если URI запроса был изменён на URI, содержащий нулевой символ.
+</para>
+<para lang="en">
+the "Location" response header line might contain garbage
+if the request URI was rewritten to the one containing a null character.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при возврате перенаправлений с помощью директивы error_page
+запросы с телом обрабатывались некорректно;
+ошибка появилась в 0.7.12.
+</para>
+<para lang="en">
+requests with bodies were handled incorrectly
+when returning redirections with the "error_page" directive;
+the bug had appeared in 0.7.12.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов при использовании HTTP/2.
+</para>
+<para lang="en">
+socket leak when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при обработке pipelined-запросов по SSL-соединению мог произойти таймаут;
+ошибка появилась в 1.17.5.
+</para>
+<para lang="en">
+a timeout might occur while handling pipelined requests in an SSL connection;
+the bug had appeared in 1.17.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_dav_module.
+</para>
+<para lang="en">
+in the ngx_http_dav_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.17.6" date="2019-11-19">
 
 <change type="feature">
