@@ -86,7 +86,6 @@ struct ngx_ssl_connection_s {
 
     ngx_event_handler_pt        saved_read_handler;
     ngx_event_handler_pt        saved_write_handler;
-    ngx_event_handler_pt        next_read_handler;
 
     u_char                      early_buf;
 
