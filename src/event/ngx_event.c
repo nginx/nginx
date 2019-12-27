@@ -238,6 +238,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     if (!ngx_queue_empty(&ngx_posted_next_events)) {
+        ngx_event_move_posted_next(cycle);
         timer = 0;
     }
 
@@ -261,7 +262,6 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     ngx_event_process_posted(cycle, &ngx_posted_events);
-    ngx_event_process_posted_next(cycle, &ngx_posted_next_events);
 }
 
 

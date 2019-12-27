@@ -39,7 +39,7 @@
 
 
 void ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted);
-void ngx_event_process_posted_next(ngx_cycle_t *cycle, ngx_queue_t *posted);
+void ngx_event_move_posted_next(ngx_cycle_t *cycle);
 
 
 extern ngx_queue_t  ngx_posted_accept_events;

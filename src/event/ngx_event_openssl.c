@@ -2017,6 +2017,10 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
                         c->read->available = 0;
                         c->read->ready = 0;
 
+                        if (c->read->posted) {
+                            ngx_delete_posted_event(c->read);
+                        }
+
                         ngx_post_event(c->read, &ngx_posted_next_events);
                     }
 
