@@ -27,7 +27,7 @@ was used in the configuration.
 или директивой proxy_pass с URI.
 </para>
 <para lang="en">
-a segmentation fault might occur in a worker process 
+a segmentation fault might occur in a worker process
 if the "break" directive was used with the "alias" directive
 or with the "proxy_pass" directive with a URI.
 </para>
