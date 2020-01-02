@@ -96,6 +96,9 @@ ngx_event_accept(ngx_event_t *ev)
             ngx_log_error(level, ev->log, err, "accept() failed");
 #endif
 
+            if (err == NGX_EUNATCH) {
+                ngx_close_connection(lc);
+            }
             if (err == NGX_ECONNABORTED) {
                 if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                     ev->available--;
