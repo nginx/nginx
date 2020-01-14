@@ -2466,10 +2466,6 @@ ngx_http_v2_connection_error(ngx_http_v2_connection_t *h2c,
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 state connection error");
 
-    if (err == NGX_HTTP_V2_INTERNAL_ERROR) {
-        ngx_debug_point();
-    }
-
     ngx_http_v2_finalize_connection(h2c, err);
 
     return NULL;
