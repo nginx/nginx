@@ -2667,43 +2667,41 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
     u_char *xff, size_t xfflen, ngx_array_t *proxies, int recursive)
 {
     u_char      *p;
-    ngx_int_t    rc;
     ngx_addr_t   paddr;
+    ngx_uint_t   found;
 
-    if (ngx_cidr_match(addr->sockaddr, proxies) != NGX_OK) {
-        return NGX_DECLINED;
-    }
+    found = 0;
 
-    for (p = xff + xfflen - 1; p > xff; p--, xfflen--) {
-        if (*p != ' ' && *p != ',') {
-            break;
-        }
-    }
+    do {
 
-    for ( /* void */ ; p > xff; p--) {
-        if (*p == ' ' || *p == ',') {
-            p++;
-            break;
-        }
-    }
-
-    if (ngx_parse_addr_port(r->pool, &paddr, p, xfflen - (p - xff)) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    *addr = paddr;
-
-    if (recursive && p > xff) {
-        rc = ngx_http_get_forwarded_addr_internal(r, addr, xff, p - 1 - xff,
-                                                  proxies, 1);
-
-        if (rc == NGX_DECLINED) {
-            return NGX_DONE;
+        if (ngx_cidr_match(addr->sockaddr, proxies) != NGX_OK) {
+            return found ? NGX_DONE : NGX_DECLINED;
         }
 
-        /* rc == NGX_OK || rc == NGX_DONE  */
-        return rc;
-    }
+        for (p = xff + xfflen - 1; p > xff; p--, xfflen--) {
+            if (*p != ' ' && *p != ',') {
+                break;
+            }
+        }
+
+        for ( /* void */ ; p > xff; p--) {
+            if (*p == ' ' || *p == ',') {
+                p++;
+                break;
+            }
+        }
+
+        if (ngx_parse_addr_port(r->pool, &paddr, p, xfflen - (p - xff))
+            != NGX_OK)
+        {
+            return found ? NGX_DONE : NGX_DECLINED;
+        }
+
+        *addr = paddr;
+        found = 1;
+        xfflen = p - 1 - xff;
+
+    } while (recursive && p > xff);
 
     return NGX_OK;
 }
