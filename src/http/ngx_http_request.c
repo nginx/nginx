@@ -1755,9 +1755,17 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_int_t  rc;
     ngx_str_t  host;
 
-    if (r->headers_in.host == NULL) {
-        r->headers_in.host = h;
+    if (r->headers_in.host) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate host header: \"%V: %V\", "
+                      "previous value: \"%V: %V\"",
+                      &h->key, &h->value, &r->headers_in.host->key,
+                      &r->headers_in.host->value);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
+
+    r->headers_in.host = h;
 
     host = h->value;
 
