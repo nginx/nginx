@@ -131,7 +131,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Transfer-Encoding"),
                  offsetof(ngx_http_headers_in_t, transfer_encoding),
-                 ngx_http_process_header_line },
+                 ngx_http_process_unique_header_line },
 
     { ngx_string("TE"),
                  offsetof(ngx_http_headers_in_t, te),
