@@ -120,6 +120,62 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
 
 
 ngx_int_t
+ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
+    ngx_str_t *prk, ngx_str_t *name, ngx_uint_t sender)
+{
+    uint8_t  *p;
+    size_t    hkdfl_len;
+    uint8_t   hkdfl[20];
+
+#if (NGX_DEBUG)
+    u_char    buf[512];
+    size_t    m;
+#endif
+
+    out->data = ngx_pnalloc(c->pool, out->len);
+    if (out->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    hkdfl_len = 2 + 1 + name->len + 1;
+
+    if (sender) {
+        hkdfl[0] = out->len / 256;
+        hkdfl[1] = out->len % 256;
+
+    } else {
+        hkdfl[0] = 0;
+        hkdfl[1] = out->len;
+    }
+
+    hkdfl[2] = name->len;
+    p = ngx_cpymem(&hkdfl[3], name->data, name->len);
+    *p = '\0';
+
+    if (ngx_hkdf_expand(out->data, out->len, digest,
+                        prk->data, prk->len, hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "ngx_hkdf_expand(%V) failed", name);
+        return NGX_ERROR;
+    }
+
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, out->data, out->len) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "%V: %*s, len: %uz", name, m, buf, out->len);
+
+        m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "%V hkdf: %*s, len: %uz", name, m, buf, hkdfl_len);
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
     const u_char *prk, size_t prk_len, const u_char *info, size_t info_len)
 {

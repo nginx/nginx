@@ -53,6 +53,9 @@ ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
     const EVP_MD *digest, const u_char *prk, size_t prk_len,
     const u_char *info, size_t info_len);
 
+ngx_int_t ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest,
+    ngx_str_t *out, ngx_str_t *prk, ngx_str_t *name, ngx_uint_t sender);
+
 ngx_int_t ngx_quic_tls_open(ngx_connection_t *c,
     const ngx_aead_cipher_t *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad);

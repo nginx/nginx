@@ -153,15 +153,6 @@ quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    size_t hkdfl_len, llen;
-    uint8_t hkdfl[20];
-    uint8_t *p;
-    const char *label;
-#if (NGX_DEBUG)
-    u_char                    buf[512];
-    size_t                    m;
-#endif
-
     ngx_str_t  *client_key, *client_iv, *client_hp;
     ngx_str_t  *server_key, *server_iv, *server_hp;
 
@@ -219,230 +210,59 @@ quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     ngx_memcpy(*wsec, write_secret, secret_len);
 
-    // client keys
-
 #ifdef OPENSSL_IS_BORINGSSL
     client_key->len = EVP_AEAD_key_length(evp);
-#else
-    client_key->len = EVP_CIPHER_key_length(evp);
-#endif
-    client_key->data = ngx_pnalloc(c->pool, client_key->len);
-    if (client_key->data == NULL) {
-        return 0;
-    }
-
-    label = "tls13 quic key";
-    llen = sizeof("tls13 quic key") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = client_key->len / 256;
-    hkdfl[1] = client_key->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(client_key->data, client_key->len,
-                        digest, *rsec, *rlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(client_key) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, client_key->data, client_key->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic client key: %*s, len: %uz, level: %d",
-                   m, buf, client_key->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
-
-
-#ifdef OPENSSL_IS_BORINGSSL
-    client_iv->len = EVP_AEAD_nonce_length(evp);
-#else
-    client_iv->len = EVP_CIPHER_iv_length(evp);
-#endif
-    client_iv->data = ngx_pnalloc(c->pool, client_iv->len);
-    if (client_iv->data == NULL) {
-        return 0;
-    }
-
-    label = "tls13 quic iv";
-    llen = sizeof("tls13 quic iv") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = client_iv->len / 256;
-    hkdfl[1] = client_iv->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(client_iv->data, client_iv->len,
-                        digest, *rsec, *rlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(client_iv) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, client_iv->data, client_iv->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic client iv: %*s, len: %uz, level: %d",
-                   m, buf, client_iv->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
-
-
-#ifdef OPENSSL_IS_BORINGSSL
-    client_hp->len = EVP_AEAD_key_length(evp);
-#else
-    client_hp->len = EVP_CIPHER_key_length(evp);
-#endif
-    client_hp->data = ngx_pnalloc(c->pool, client_hp->len);
-    if (client_hp->data == NULL) {
-        return 0;
-    }
-
-    label = "tls13 quic hp";
-    llen = sizeof("tls13 quic hp") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = client_hp->len / 256;
-    hkdfl[1] = client_hp->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(client_hp->data, client_hp->len,
-                        digest, *rsec, *rlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(client_hp) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, client_hp->data, client_hp->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic client hp: %*s, len: %uz, level: %d",
-                   m, buf, client_hp->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
-
-
-    // server keys
-
-#ifdef OPENSSL_IS_BORINGSSL
     server_key->len = EVP_AEAD_key_length(evp);
-#else
-    server_key->len = EVP_CIPHER_key_length(evp);
-#endif
-    server_key->data = ngx_pnalloc(c->pool, server_key->len);
-    if (server_key->data == NULL) {
-        return 0;
-    }
 
-    label = "tls13 quic key";
-    llen = sizeof("tls13 quic key") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = server_key->len / 256;
-    hkdfl[1] = server_key->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(server_key->data, server_key->len,
-                    digest, *wsec, *wlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(server_key) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, server_key->data, server_key->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic server key: %*s, len: %uz, level: %d",
-                   m, buf, server_key->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
-
-
-#ifdef OPENSSL_IS_BORINGSSL
+    client_iv->len = EVP_AEAD_nonce_length(evp);
     server_iv->len = EVP_AEAD_nonce_length(evp);
-#else
-    server_iv->len = EVP_CIPHER_iv_length(evp);
-#endif
-    server_iv->data = ngx_pnalloc(c->pool, server_iv->len);
-    if (server_iv->data == NULL) {
-        return 0;
-    }
 
-    label = "tls13 quic iv";
-    llen = sizeof("tls13 quic iv") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = server_iv->len / 256;
-    hkdfl[1] = server_iv->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(server_iv->data, server_iv->len,
-                        digest, *wsec, *wlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(server_iv) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, server_iv->data, server_iv->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic server iv: %*s, len: %uz, level: %d",
-                   m, buf, server_iv->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
-
-
-#ifdef OPENSSL_IS_BORINGSSL
+    client_hp->len = EVP_AEAD_key_length(evp);
     server_hp->len = EVP_AEAD_key_length(evp);
 #else
+    client_key->len = EVP_CIPHER_key_length(evp);
+    server_key->len = EVP_CIPHER_key_length(evp);
+
+    client_iv->len = EVP_CIPHER_iv_length(evp);
+    server_iv->len = EVP_CIPHER_iv_length(evp);
+
+    client_hp->len = EVP_CIPHER_key_length(evp);
     server_hp->len = EVP_CIPHER_key_length(evp);
 #endif
-    server_hp->data = ngx_pnalloc(c->pool, server_hp->len);
-    if (server_hp->data == NULL) {
-        return 0;
+
+    ngx_str_t rss = {
+        .data = *rsec,
+        .len = *rlen
+    };
+
+    ngx_str_t wss = {
+        .data = *wsec,
+        .len = *wlen
+    };
+
+    struct {
+        ngx_str_t   id;
+        ngx_str_t  *in;
+        ngx_str_t  *prk;
+    } seq[] = {
+        { ngx_string("tls13 quic key"), client_key, &rss },
+        { ngx_string("tls13 quic iv"),  client_iv,  &rss },
+        { ngx_string("tls13 quic hp"),  client_hp,  &rss },
+        { ngx_string("tls13 quic key"), server_key, &wss },
+        { ngx_string("tls13 quic iv"),  server_iv,  &wss },
+        { ngx_string("tls13 quic hp"),  server_hp,  &wss },
+    };
+
+    ngx_uint_t i;
+
+    for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
+
+        if (ngx_quic_hkdf_expand(c, digest, seq[i].in, seq[i].prk, &seq[i].id, 1)
+            != NGX_OK)
+        {
+            return 0;
+        }
     }
-
-    label = "tls13 quic hp";
-    llen = sizeof("tls13 quic hp") - 1;
-    hkdfl_len = 2 + 1 + llen + 1;
-    hkdfl[0] = server_hp->len / 256;
-    hkdfl[1] = server_hp->len % 256;
-    hkdfl[2] = llen;
-    p = ngx_cpymem(&hkdfl[3], label, llen);
-    *p = '\0';
-
-    if (ngx_hkdf_expand(server_hp->data, server_hp->len,
-                        digest, *wsec, *wlen, hkdfl, hkdfl_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(server_hp) failed");
-        return 0;
-    }
-
-    m = ngx_hex_dump(buf, server_hp->data, server_hp->len) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic server hp: %*s, len: %uz, level: %d",
-                   m, buf, server_hp->len, level);
-    m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "hkdf: %*s, len: %uz", m, buf, hkdfl_len);
 
     return 1;
 }
