@@ -748,6 +748,8 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                 return;
             }
 
+            ngx_reusable_connection(c, 0);
+
             rc = ngx_ssl_handshake(c);
 
             if (rc == NGX_AGAIN) {
@@ -755,8 +757,6 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
                 if (!rev->timer_set) {
                     ngx_add_timer(rev, c->listening->post_accept_timeout);
                 }
-
-                ngx_reusable_connection(c, 0);
 
                 c->ssl->handler = ngx_http_ssl_handshake_handler;
                 return;
