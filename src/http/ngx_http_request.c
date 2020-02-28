@@ -678,16 +678,6 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     hc = c->data;
     b = c->buffer;
 
-    qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
-    if (qc == NULL) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    c->quic = qc;
-
-    printf("buffer %p %p:%p:%p:%p \n", b, b->start, b->pos, b->last, b->end);
-
     if ((b->pos[0] & 0xf0) != 0xc0) {
         ngx_log_error(NGX_LOG_INFO, rev->log, 0, "invalid initial packet");
         ngx_http_close_connection(c);
@@ -712,6 +702,14 @@ ngx_http_quic_handshake(ngx_event_t *rev)
         ngx_http_close_connection(c);
         return;
     }
+
+    qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
+    if (qc == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    c->quic = qc;
 
     qc->dcid.len = *b->pos++;
     qc->dcid.data = ngx_pnalloc(c->pool, qc->dcid.len);
@@ -787,14 +785,14 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     uint8_t                   is[SHA256_DIGEST_LENGTH];
     ngx_uint_t                i;
     const EVP_MD             *digest;
-    const ngx_aead_cipher_t  *cipher;
+    const EVP_CIPHER         *cipher;
     static const uint8_t salt[20] =
         "\xc3\xee\xf7\x12\xc7\x2e\xbb\x5a\x11\xa7"
         "\xd2\x43\x2b\xb4\x63\x65\xbe\xf9\xf5\x02";
 
     /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
 
-    cipher = NGX_QUIC_INITIAL_CIPHER;
+    cipher = EVP_aes_128_gcm();
     digest = EVP_sha256();
 
     if (ngx_hkdf_extract(is, &is_len, digest, qc->dcid.data, qc->dcid.len,
@@ -826,16 +824,6 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     qc->client_in.secret.len = SHA256_DIGEST_LENGTH;
     qc->server_in.secret.len = SHA256_DIGEST_LENGTH;
 
-#ifdef OPENSSL_IS_BORINGSSL
-    qc->client_in.key.len = EVP_AEAD_key_length(cipher);
-    qc->server_in.key.len = EVP_AEAD_key_length(cipher);
-
-    qc->client_in.hp.len = EVP_AEAD_key_length(cipher);
-    qc->server_in.hp.len = EVP_AEAD_key_length(cipher);
-
-    qc->client_in.iv.len = EVP_AEAD_nonce_length(cipher);
-    qc->server_in.iv.len = EVP_AEAD_nonce_length(cipher);
-#else
     qc->client_in.key.len = EVP_CIPHER_key_length(cipher);
     qc->server_in.key.len = EVP_CIPHER_key_length(cipher);
 
@@ -844,19 +832,10 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
     qc->client_in.iv.len = EVP_CIPHER_iv_length(cipher);
     qc->server_in.iv.len = EVP_CIPHER_iv_length(cipher);
-#endif
-
-#ifdef OPENSSL_IS_BORINGSSL
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                   "quic EVP key:%d tag:%d nonce:%d",
-                   EVP_AEAD_key_length(cipher),
-                   EVP_AEAD_max_tag_len(cipher),
-                   EVP_AEAD_nonce_length(cipher));
-#endif
 
     struct {
-        ngx_str_t   id;
-        ngx_str_t  *in;
+        ngx_str_t   label;
+        ngx_str_t  *key;
         ngx_str_t  *prk;
     } seq[] = {
 
@@ -894,14 +873,15 @@ ngx_http_quic_handshake(ngx_event_t *rev)
            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
             &qc->server_in.hp,
-            &qc->server_in.secret
+            &qc->server_in.secret,
         },
 
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
 
-        if (ngx_quic_hkdf_expand(c, digest, seq[i].in, seq[i].prk, &seq[i].id, 0)
+        if (ngx_quic_hkdf_expand(c, digest, seq[i].key, &seq[i].label,
+                                 seq[i].prk->data, seq[i].prk->len)
             != NGX_OK)
         {
             ngx_http_close_connection(c);
@@ -973,7 +953,8 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
     ngx_str_t  out;
 
-    if (ngx_quic_tls_open(c, cipher, &qc->client_in, &out, nonce, &in, &ad)
+    if (ngx_quic_tls_open(c, EVP_aes_128_gcm(), &qc->client_in, &out, nonce,
+                          &in, &ad)
         != NGX_OK)
     {
         ngx_http_close_connection(c);
@@ -1090,7 +1071,9 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
 {
     size_t                  m;
     ssize_t                 n;
+    ngx_str_t               out;
     ngx_connection_t       *c;
+    const EVP_CIPHER       *cipher;
     ngx_quic_connection_t  *qc;
     u_char                  buf[4096], b[512], *p;
 
@@ -1249,8 +1232,6 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
     }
 #endif
 
-    const ngx_aead_cipher_t  *cipher;
-
     u_char *name = (u_char *) SSL_get_cipher(c->ssl->connection);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "quic ssl cipher: %s", name);
@@ -1258,26 +1239,16 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
     if (ngx_strcasecmp(name, (u_char *) "TLS_AES_128_GCM_SHA256") == 0
         || ngx_strcasecmp(name, (u_char *) "(NONE)") == 0)
     {
-#ifdef OPENSSL_IS_BORINGSSL
-        cipher = EVP_aead_aes_128_gcm();
-#else
         cipher = EVP_aes_128_gcm();
-#endif
 
     } else if (ngx_strcasecmp(name, (u_char *) "TLS_AES_256_GCM_SHA384") == 0) {
-#ifdef OPENSSL_IS_BORINGSSL
-        cipher = EVP_aead_aes_256_gcm();
-#else
         cipher = EVP_aes_256_gcm();
-#endif
 
     } else {
         ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "unexpected cipher");
         ngx_http_close_connection(c);
         return;
     }
-
-    ngx_str_t  out;
 
     if (ngx_quic_tls_open(c, cipher, &qc->client_hs, &out, nonce, &in, &ad)
         != NGX_OK)

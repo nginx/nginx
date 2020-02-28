@@ -706,7 +706,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-printf("ngx_ssl_create\n");
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -1156,7 +1155,6 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
         addr = port[p].addrs.elts;
         for (a = 0; a < port[p].addrs.nelts; a++) {
-printf("ssl %d http3 %d\n", addr[a].opt.ssl, addr[a].opt.http3);
 
             if (!addr[a].opt.ssl && !addr[a].opt.http3) {
                 continue;
@@ -1164,7 +1162,6 @@ printf("ssl %d http3 %d\n", addr[a].opt.ssl, addr[a].opt.http3);
 
             cscf = addr[a].default_server;
             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
-printf("sscf->protocols %lx\n", sscf->protocols);
 
             if (sscf->certificates == NULL) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,

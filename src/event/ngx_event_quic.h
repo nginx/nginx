@@ -11,15 +11,6 @@
 #include <ngx_event_openssl.h>
 
 
-#ifdef OPENSSL_IS_BORINGSSL
-#define ngx_aead_cipher_t        EVP_AEAD
-#define NGX_QUIC_INITIAL_CIPHER  EVP_aead_aes_128_gcm()
-#else
-#define ngx_aead_cipher_t        EVP_CIPHER
-#define NGX_QUIC_INITIAL_CIPHER  EVP_aes_128_gcm()
-#endif
-
-
 typedef struct {
     ngx_str_t          secret;
     ngx_str_t          key;
@@ -54,13 +45,13 @@ ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
     const u_char *info, size_t info_len);
 
 ngx_int_t ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest,
-    ngx_str_t *out, ngx_str_t *prk, ngx_str_t *name, ngx_uint_t sender);
+    ngx_str_t *out, ngx_str_t *label, const uint8_t *prk, size_t prk_len);
 
 ngx_int_t ngx_quic_tls_open(ngx_connection_t *c,
-    const ngx_aead_cipher_t *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
+    const EVP_CIPHER *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad);
 ngx_int_t ngx_quic_tls_seal(ngx_connection_t *c,
-    const ngx_aead_cipher_t *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
+    const EVP_CIPHER *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad);
 
 ngx_int_t

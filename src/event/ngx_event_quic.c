@@ -121,11 +121,11 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
 
 ngx_int_t
 ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
-    ngx_str_t *prk, ngx_str_t *name, ngx_uint_t sender)
+    ngx_str_t *label, const uint8_t *prk, size_t prk_len)
 {
     uint8_t  *p;
-    size_t    hkdfl_len;
-    uint8_t   hkdfl[20];
+    size_t    info_len;
+    uint8_t   info[20];
 
 #if (NGX_DEBUG)
     u_char    buf[512];
@@ -137,38 +137,31 @@ ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
         return NGX_ERROR;
     }
 
-    hkdfl_len = 2 + 1 + name->len + 1;
+    info_len = 2 + 1 + label->len + 1;
 
-    if (sender) {
-        hkdfl[0] = out->len / 256;
-        hkdfl[1] = out->len % 256;
-
-    } else {
-        hkdfl[0] = 0;
-        hkdfl[1] = out->len;
-    }
-
-    hkdfl[2] = name->len;
-    p = ngx_cpymem(&hkdfl[3], name->data, name->len);
+    info[0] = 0;
+    info[1] = out->len;
+    info[2] = label->len;
+    p = ngx_cpymem(&info[3], label->data, label->len);
     *p = '\0';
 
     if (ngx_hkdf_expand(out->data, out->len, digest,
-                        prk->data, prk->len, hkdfl, hkdfl_len)
+                        prk, prk_len, info, info_len)
         != NGX_OK)
     {
         ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(%V) failed", name);
+                      "ngx_hkdf_expand(%V) failed", label);
         return NGX_ERROR;
     }
 
     if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, info, info_len) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "%V info: %*s, len: %uz", label, m, buf, info_len);
+
         m = ngx_hex_dump(buf, out->data, out->len) - buf;
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "%V: %*s, len: %uz", name, m, buf, out->len);
-
-        m = ngx_hex_dump(buf, hkdfl, hkdfl_len) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "%V hkdf: %*s, len: %uz", name, m, buf, hkdfl_len);
+                       "%V key: %*s, len: %uz", label, m, buf, out->len);
     }
 
     return NGX_OK;
@@ -177,7 +170,7 @@ ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
 
 ngx_int_t
 ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
-    const u_char *prk, size_t prk_len, const u_char *info, size_t info_len)
+    const uint8_t *prk, size_t prk_len, const u_char *info, size_t info_len)
 {
 #ifdef OPENSSL_IS_BORINGSSL
     if (HKDF_expand(out_key, out_len, digest, prk, prk_len, info, info_len)
@@ -222,7 +215,7 @@ ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
 
 
 ngx_int_t
-ngx_quic_tls_open(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
+ngx_quic_tls_open(ngx_connection_t *c, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad)
 {
@@ -232,7 +225,7 @@ ngx_quic_tls_open(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
         return NGX_ERROR;
     }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef OPENSSL_IS_BORINGSSLL
     EVP_AEAD_CTX *ctx;
 
     ctx = EVP_AEAD_CTX_new(cipher, s->key.data, s->key.len,
@@ -327,7 +320,7 @@ ngx_quic_tls_open(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
 
 
 ngx_int_t
-ngx_quic_tls_seal(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
+ngx_quic_tls_seal(ngx_connection_t *c, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad)
 {
@@ -337,7 +330,7 @@ ngx_quic_tls_seal(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
         return NGX_ERROR;
     }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef OPENSSL_IS_BORINGSSLL
     EVP_AEAD_CTX *ctx;
 
     ctx = EVP_AEAD_CTX_new(cipher, s->key.data, s->key.len,
