@@ -168,34 +168,34 @@ quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     switch (level) {
 
     case ssl_encryption_handshake:
-        rlen = &c->quic->client_hs.len;
-        rsec = &c->quic->client_hs.data;
-        wlen = &c->quic->server_hs.len;
-        wsec = &c->quic->server_hs.data;
+        rlen = &c->quic->client_hs.secret.len;
+        rsec = &c->quic->client_hs.secret.data;
+        wlen = &c->quic->server_hs.secret.len;
+        wsec = &c->quic->server_hs.secret.data;
 
-        client_key = &c->quic->client_hs_key;
-        client_iv = &c->quic->client_hs_iv;
-        client_hp = &c->quic->client_hs_hp;
+        client_key = &c->quic->client_hs.key;
+        client_iv = &c->quic->client_hs.iv;
+        client_hp = &c->quic->client_hs.hp;
 
-        server_key = &c->quic->server_hs_key;
-        server_iv = &c->quic->server_hs_iv;
-        server_hp = &c->quic->server_hs_hp;
+        server_key = &c->quic->server_hs.key;
+        server_iv = &c->quic->server_hs.iv;
+        server_hp = &c->quic->server_hs.hp;
 
         break;
 
     case ssl_encryption_application:
-        rlen = &c->quic->client_ad.len;
-        rsec = &c->quic->client_ad.data;
-        wlen = &c->quic->server_ad.len;
-        wsec = &c->quic->server_ad.data;
+        rlen = &c->quic->client_ad.secret.len;
+        rsec = &c->quic->client_ad.secret.data;
+        wlen = &c->quic->server_ad.secret.len;
+        wsec = &c->quic->server_ad.secret.data;
 
-        client_key = &c->quic->client_ad_key;
-        client_iv = &c->quic->client_ad_iv;
-        client_hp = &c->quic->client_ad_hp;
+        client_key = &c->quic->client_ad.key;
+        client_iv = &c->quic->client_ad.iv;
+        client_hp = &c->quic->client_ad.hp;
 
-        server_key = &c->quic->server_ad_key;
-        server_iv = &c->quic->server_ad_iv;
-        server_hp = &c->quic->server_ad_hp;
+        server_key = &c->quic->server_ad.key;
+        server_iv = &c->quic->server_ad.iv;
+        server_hp = &c->quic->server_ad.hp;
 
         break;
 
@@ -474,15 +474,15 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     switch (level) {
 
     case ssl_encryption_initial:
-        server_key = &qc->server_in_key;
-        server_iv = &qc->server_in_iv;
-        server_hp = &qc->server_in_hp;
+        server_key = &qc->server_in.key;
+        server_iv = &qc->server_in.iv;
+        server_hp = &qc->server_in.hp;
         break;
 
     case ssl_encryption_handshake:
-        server_key = &qc->server_hs_key;
-        server_iv = &qc->server_hs_iv;
-        server_hp = &qc->server_hs_hp;
+        server_key = &qc->server_hs.key;
+        server_iv = &qc->server_hs.iv;
+        server_hp = &qc->server_hs.hp;
         break;
 
     default:

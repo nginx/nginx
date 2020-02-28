@@ -11,40 +11,25 @@
 #include <ngx_event_openssl.h>
 
 
+typedef struct {
+    ngx_str_t          secret;
+    ngx_str_t          key;
+    ngx_str_t          iv;
+    ngx_str_t          hp;
+} ngx_quic_secret_t;
+
+
 struct ngx_quic_connection_s {
-    ngx_str_t   scid;
-    ngx_str_t   dcid;
-    ngx_str_t   token;
+    ngx_str_t          scid;
+    ngx_str_t          dcid;
+    ngx_str_t          token;
 
-    ngx_str_t   client_in;
-    ngx_str_t   client_in_key;
-    ngx_str_t   client_in_iv;
-    ngx_str_t   client_in_hp;
-
-    ngx_str_t   server_in;
-    ngx_str_t   server_in_key;
-    ngx_str_t   server_in_iv;
-    ngx_str_t   server_in_hp;
-
-    ngx_str_t   client_hs;
-    ngx_str_t   client_hs_key;
-    ngx_str_t   client_hs_iv;
-    ngx_str_t   client_hs_hp;
-
-    ngx_str_t   server_hs;
-    ngx_str_t   server_hs_key;
-    ngx_str_t   server_hs_iv;
-    ngx_str_t   server_hs_hp;
-
-    ngx_str_t   client_ad;
-    ngx_str_t   client_ad_key;
-    ngx_str_t   client_ad_iv;
-    ngx_str_t   client_ad_hp;
-
-    ngx_str_t   server_ad;
-    ngx_str_t   server_ad_key;
-    ngx_str_t   server_ad_iv;
-    ngx_str_t   server_ad_hp;
+    ngx_quic_secret_t  client_in;
+    ngx_quic_secret_t  client_hs;
+    ngx_quic_secret_t  client_ad;
+    ngx_quic_secret_t  server_in;
+    ngx_quic_secret_t  server_hs;
+    ngx_quic_secret_t  server_ad;
 };
 
 
