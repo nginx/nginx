@@ -1358,6 +1358,17 @@ ngx_http_quic_handshake(ngx_event_t *rev)
         return;
     }
 
+    static const uint8_t params[12] = "\x00\x0a\x00\x3a\x00\x01\x00\x00\x09\x00\x01\x03";
+
+    if (SSL_set_quic_transport_params(c->ssl->connection, params,
+                                      sizeof(params)) == 0)
+    {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0,
+                      "SSL_set_quic_transport_params() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
     n = SSL_do_handshake(c->ssl->connection);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
@@ -1747,7 +1758,6 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
     }
 #endif
 
-    ngx_http_close_connection(c);
 }
 
 
