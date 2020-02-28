@@ -657,44 +657,6 @@ ngx_http_alloc_request(ngx_connection_t *c)
 
 #if (NGX_HTTP_SSL)
 
-static uint64_t
-ngx_quic_parse_int(u_char **pos)
-{
-    u_char      *p;
-    uint64_t     value;
-    ngx_uint_t   len;
-
-    p = *pos;
-    len = 1 << ((*p & 0xc0) >> 6);
-    value = *p++ & 0x3f;
-
-    while (--len) {
-        value = (value << 8) + *p++;
-    }
-
-    *pos = p;
-    return value;
-}
-
-
-static uint64_t
-ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask)
-{
-    u_char      *p;
-    uint64_t     value;
-
-    p = *pos;
-    value = *p++ ^ *mask++;
-
-    while (--len) {
-        value = (value << 8) + (*p++ ^ *mask++);
-    }
-
-    *pos = p;
-    return value;
-}
-
-
 static void
 ngx_http_quic_handshake(ngx_event_t *rev)
 {
@@ -1210,7 +1172,7 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
         m = ngx_hex_dump(buf, cleartext, ngx_min(cleartext_len, 256)) - buf;
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                       "quic packet: %*s%s, len: %uz",
+                       "quic packet payload: %*s%s, len: %uz",
                        m, buf, m < 512 ? "" : "...", cleartext_len);
     }
 #endif

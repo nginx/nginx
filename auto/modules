@@ -1245,7 +1245,8 @@ if [ $USE_OPENSSL = YES ]; then
     ngx_module_deps="src/event/ngx_event_openssl.h \
                      src/event/ngx_event_quic.h"
     ngx_module_srcs="src/event/ngx_event_openssl.c
-                     src/event/ngx_event_openssl_stapling.c"
+                     src/event/ngx_event_openssl_stapling.c
+                     src/event/ngx_event_quic.c"
     ngx_module_libs=
     ngx_module_link=YES
     ngx_module_order=

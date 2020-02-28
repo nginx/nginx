@@ -8,6 +8,9 @@
 #define _NGX_EVENT_QUIC_H_INCLUDED_
 
 
+#include <ngx_event_openssl.h>
+
+
 struct ngx_quic_connection_s {
     ngx_str_t   scid;
     ngx_str_t   dcid;
@@ -43,6 +46,11 @@ struct ngx_quic_connection_s {
     ngx_str_t   server_ad_iv;
     ngx_str_t   server_ad_hp;
 };
+
+
+uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask);
+uint64_t ngx_quic_parse_int(u_char **pos);
+void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */
