@@ -898,7 +898,7 @@ ngx_http_quic_handshake(ngx_event_t *rev)
                           "HKDF_expand(client_in_key) failed");
             ngx_http_close_connection(c);
             return;
-        }        
+        }
 
         qc->client_in_iv.len = EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm());
         qc->client_in_iv.data = ngx_pnalloc(c->pool, qc->client_in_iv.len);
@@ -958,18 +958,151 @@ ngx_http_quic_handshake(ngx_event_t *rev)
         m = ngx_hex_dump(buf, qc->client_in_key.data, qc->client_in_key.len)
             - buf;
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                       "quic key: %*s, len: %uz",
+                       "quic client key: %*s, len: %uz",
                        m, buf, qc->client_in_key.len);
 
         m = ngx_hex_dump(buf, qc->client_in_iv.data, qc->client_in_iv.len)
             - buf;
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                       "quic iv: %*s, len: %uz", m, buf, qc->client_in_iv.len);
+                       "quic client iv: %*s, len: %uz",
+                       m, buf, qc->client_in_iv.len);
 
         m = ngx_hex_dump(buf, qc->client_in_hp.data, qc->client_in_hp.len)
             - buf;
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                       "quic hp: %*s, len: %uz", m, buf, qc->client_in_hp.len);
+                       "quic client hp: %*s, len: %uz",
+                       m, buf, qc->client_in_hp.len);
+    }
+#endif
+
+// server initial
+
+        /* draft-ietf-quic-tls-23#section-5.2 */
+
+        qc->server_in.len = SHA256_DIGEST_LENGTH;
+        qc->server_in.data = ngx_pnalloc(c->pool, qc->server_in.len);
+        if (qc->server_in.data == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        hkdfl_len = 2 + 1 + sizeof("tls13 server in") - 1 + 1;
+        hkdfl[0] = 0;
+        hkdfl[1] = qc->server_in.len;
+        hkdfl[2] = sizeof("tls13 server in") - 1;
+        p = ngx_cpymem(&hkdfl[3], "tls13 server in",
+                       sizeof("tls13 server in") - 1);
+        *p = '\0';
+
+        if (HKDF_expand(qc->server_in.data, qc->server_in.len,
+                        digest, is, is_len, hkdfl, hkdfl_len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                          "HKDF_expand(server_in) failed");
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
+
+        qc->server_in_key.len = EVP_AEAD_key_length(EVP_aead_aes_128_gcm());
+        qc->server_in_key.data = ngx_pnalloc(c->pool, qc->server_in_key.len);
+        if (qc->server_in_key.data == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        hkdfl_len = 2 + 1 + sizeof("tls13 quic key") - 1 + 1;
+        hkdfl[1] = qc->server_in_key.len;
+        hkdfl[2] = sizeof("tls13 quic key") - 1;
+        p = ngx_cpymem(&hkdfl[3], "tls13 quic key",
+                       sizeof("tls13 quic key") - 1);
+        *p = '\0';
+
+        if (HKDF_expand(qc->server_in_key.data, qc->server_in_key.len,
+                        digest, qc->server_in.data, qc->server_in.len,
+                        hkdfl, hkdfl_len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                          "HKDF_expand(server_in_key) failed");
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        qc->server_in_iv.len = EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm());
+        qc->server_in_iv.data = ngx_pnalloc(c->pool, qc->server_in_iv.len);
+        if (qc->server_in_iv.data == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        hkdfl_len = 2 + 1 + sizeof("tls13 quic iv") - 1 + 1;
+        hkdfl[1] = qc->server_in_iv.len;
+        hkdfl[2] = sizeof("tls13 quic iv") - 1;
+        p = ngx_cpymem(&hkdfl[3], "tls13 quic iv", sizeof("tls13 quic iv") - 1);
+        *p = '\0';
+
+        if (HKDF_expand(qc->server_in_iv.data, qc->server_in_iv.len, digest,
+                        qc->server_in.data, qc->server_in.len, hkdfl, hkdfl_len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                          "HKDF_expand(server_in_iv) failed");
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
+
+        qc->server_in_hp.len = EVP_AEAD_key_length(EVP_aead_aes_128_gcm());
+        qc->server_in_hp.data = ngx_pnalloc(c->pool, qc->server_in_hp.len);
+        if (qc->server_in_hp.data == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        hkdfl_len = 2 + 1 + sizeof("tls13 quic hp") - 1 + 1;
+        hkdfl[1] = qc->server_in_hp.len;
+        hkdfl[2] = sizeof("tls13 quic hp") - 1;
+        p = ngx_cpymem(&hkdfl[3], "tls13 quic hp", sizeof("tls13 quic hp") - 1);
+        *p = '\0';
+
+        if (HKDF_expand(qc->server_in_hp.data, qc->server_in_hp.len, digest,
+                        qc->server_in.data, qc->server_in.len, hkdfl, hkdfl_len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                          "HKDF_expand(server_in_hp) failed");
+            ngx_http_close_connection(c);
+            return;
+        }
+
+#if (NGX_DEBUG)
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, qc->server_in.data, qc->server_in.len) - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic server initial secret: %*s, len: %uz",
+                       m, buf, qc->server_in.len);
+
+        m = ngx_hex_dump(buf, qc->server_in_key.data, qc->server_in_key.len)
+            - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic server key: %*s, len: %uz",
+                       m, buf, qc->server_in_key.len);
+
+        m = ngx_hex_dump(buf, qc->server_in_iv.data, qc->server_in_iv.len)
+            - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic server iv: %*s, len: %uz",
+                       m, buf, qc->server_in_iv.len);
+
+        m = ngx_hex_dump(buf, qc->server_in_hp.data, qc->server_in_hp.len)
+            - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic server hp: %*s, len: %uz",
+                       m, buf, qc->server_in_hp.len);
     }
 #endif
 
