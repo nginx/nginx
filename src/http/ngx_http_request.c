@@ -817,46 +817,46 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     }
 #endif
 
-        size_t hkdfl_len;
-        uint8_t hkdfl[20];
-        uint8_t *p;
+    size_t hkdfl_len;
+    uint8_t hkdfl[20];
+    uint8_t *p;
 
-        /* draft-ietf-quic-tls-23#section-5.2 */
+    /* draft-ietf-quic-tls-23#section-5.2 */
 
-        qc->client_in.len = SHA256_DIGEST_LENGTH;
-        qc->client_in.data = ngx_pnalloc(c->pool, qc->client_in.len);
-        if (qc->client_in.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->client_in.len = SHA256_DIGEST_LENGTH;
+    qc->client_in.data = ngx_pnalloc(c->pool, qc->client_in.len);
+    if (qc->client_in.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 client in") - 1 + 1;
-        bzero(hkdfl, sizeof(hkdfl));
-        hkdfl[0] = 0;
-        hkdfl[1] = qc->client_in.len;
-        hkdfl[2] = sizeof("tls13 client in") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 client in",
-                       sizeof("tls13 client in") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 client in") - 1 + 1;
+    bzero(hkdfl, sizeof(hkdfl));
+    hkdfl[0] = 0;
+    hkdfl[1] = qc->client_in.len;
+    hkdfl[2] = sizeof("tls13 client in") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 client in", sizeof("tls13 client in") - 1);
+    *p = '\0';
 
 #if 0
-        ngx_memcpy(hkdfl, "\x00\x20\x0f\x74\x6c\x73\x31\x33\x20\x63\x6c\x69\x65\x6e\x74\x20\x69\x6e\x00\x00", 20);
+    ngx_memcpy(hkdfl, "\x00\x20\x0f\x74\x6c\x73\x31\x33\x20\x63"
+                      "\x6c\x69\x65\x6e\x74\x20\x69\x6e\x00\x00", 20);
 
-        m = ngx_hex_dump(buf, hkdfl, sizeof(hkdfl)) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                       "quic initial secret hkdf: %*s, len: %uz",
-                       m, buf, sizeof(hkdfl));
+    m = ngx_hex_dump(buf, hkdfl, sizeof(hkdfl)) - buf;
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic initial secret hkdf: %*s, len: %uz",
+                   m, buf, sizeof(hkdfl));
 #endif
 
-        if (ngx_hkdf_expand(qc->client_in.data, qc->client_in.len,
-                            digest, is, is_len, hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(client_in) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->client_in.data, qc->client_in.len,
+                        digest, is, is_len, hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(client_in) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
 #ifdef OPENSSL_IS_BORINGSSL
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
@@ -868,91 +868,90 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
 
 #ifdef OPENSSL_IS_BORINGSSL
-        qc->client_in_key.len = EVP_AEAD_key_length(cipher);
+    qc->client_in_key.len = EVP_AEAD_key_length(cipher);
 #else
-        qc->client_in_key.len = EVP_CIPHER_key_length(cipher);
+    qc->client_in_key.len = EVP_CIPHER_key_length(cipher);
 #endif
-        qc->client_in_key.data = ngx_pnalloc(c->pool, qc->client_in_key.len);
-        if (qc->client_in_key.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->client_in_key.data = ngx_pnalloc(c->pool, qc->client_in_key.len);
+    if (qc->client_in_key.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic key") - 1 + 1;
-        hkdfl[1] = qc->client_in_key.len;
-        hkdfl[2] = sizeof("tls13 quic key") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic key",
-                       sizeof("tls13 quic key") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic key") - 1 + 1;
+    hkdfl[1] = qc->client_in_key.len;
+    hkdfl[2] = sizeof("tls13 quic key") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic key", sizeof("tls13 quic key") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->client_in_key.data, qc->client_in_key.len,
-                            digest, qc->client_in.data, qc->client_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(client_in_key) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->client_in_key.data, qc->client_in_key.len,
+                        digest, qc->client_in.data, qc->client_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(client_in_key) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
 #ifdef OPENSSL_IS_BORINGSSL
-        qc->client_in_iv.len = EVP_AEAD_nonce_length(cipher);
+    qc->client_in_iv.len = EVP_AEAD_nonce_length(cipher);
 #else
-        qc->client_in_iv.len = EVP_CIPHER_iv_length(cipher);
+    qc->client_in_iv.len = EVP_CIPHER_iv_length(cipher);
 #endif
-        qc->client_in_iv.data = ngx_pnalloc(c->pool, qc->client_in_iv.len);
-        if (qc->client_in_iv.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->client_in_iv.data = ngx_pnalloc(c->pool, qc->client_in_iv.len);
+    if (qc->client_in_iv.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic iv") - 1 + 1;
-        hkdfl[1] = qc->client_in_iv.len;
-        hkdfl[2] = sizeof("tls13 quic iv") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic iv", sizeof("tls13 quic iv") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic iv") - 1 + 1;
+    hkdfl[1] = qc->client_in_iv.len;
+    hkdfl[2] = sizeof("tls13 quic iv") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic iv", sizeof("tls13 quic iv") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->client_in_iv.data, qc->client_in_iv.len,
-                            digest, qc->client_in.data, qc->client_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(client_in_iv) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->client_in_iv.data, qc->client_in_iv.len,
+                        digest, qc->client_in.data, qc->client_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(client_in_iv) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
+    /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
 
 #ifdef OPENSSL_IS_BORINGSSL
-        qc->client_in_hp.len = EVP_AEAD_key_length(cipher);
+    qc->client_in_hp.len = EVP_AEAD_key_length(cipher);
 #else
-        qc->client_in_hp.len = EVP_CIPHER_key_length(cipher);
+    qc->client_in_hp.len = EVP_CIPHER_key_length(cipher);
 #endif
-        qc->client_in_hp.data = ngx_pnalloc(c->pool, qc->client_in_hp.len);
-        if (qc->client_in_hp.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->client_in_hp.data = ngx_pnalloc(c->pool, qc->client_in_hp.len);
+    if (qc->client_in_hp.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic hp") - 1 + 1;
-        hkdfl[1] = qc->client_in_hp.len;
-        hkdfl[2] = sizeof("tls13 quic hp") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic hp", sizeof("tls13 quic hp") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic hp") - 1 + 1;
+    hkdfl[1] = qc->client_in_hp.len;
+    hkdfl[2] = sizeof("tls13 quic hp") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic hp", sizeof("tls13 quic hp") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->client_in_hp.data, qc->client_in_hp.len,
-                            digest, qc->client_in.data, qc->client_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(client_in_hp) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->client_in_hp.data, qc->client_in_hp.len,
+                        digest, qc->client_in.data, qc->client_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(client_in_hp) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
 #if (NGX_DEBUG)
     if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
@@ -983,121 +982,119 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
 // server initial
 
-        /* draft-ietf-quic-tls-23#section-5.2 */
+    /* draft-ietf-quic-tls-23#section-5.2 */
 
-        qc->server_in.len = SHA256_DIGEST_LENGTH;
-        qc->server_in.data = ngx_pnalloc(c->pool, qc->server_in.len);
-        if (qc->server_in.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->server_in.len = SHA256_DIGEST_LENGTH;
+    qc->server_in.data = ngx_pnalloc(c->pool, qc->server_in.len);
+    if (qc->server_in.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 server in") - 1 + 1;
-        hkdfl[0] = 0;
-        hkdfl[1] = qc->server_in.len;
-        hkdfl[2] = sizeof("tls13 server in") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 server in",
-                       sizeof("tls13 server in") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 server in") - 1 + 1;
+    hkdfl[0] = 0;
+    hkdfl[1] = qc->server_in.len;
+    hkdfl[2] = sizeof("tls13 server in") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 server in", sizeof("tls13 server in") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->server_in.data, qc->server_in.len,
-                            digest, is, is_len, hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(server_in) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->server_in.data, qc->server_in.len,
+                        digest, is, is_len, hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(server_in) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
-
-#ifdef OPENSSL_IS_BORINGSSL
-        qc->server_in_key.len = EVP_AEAD_key_length(cipher);
-#else
-        qc->server_in_key.len = EVP_CIPHER_key_length(cipher);
-#endif
-        qc->server_in_key.data = ngx_pnalloc(c->pool, qc->server_in_key.len);
-        if (qc->server_in_key.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
-
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic key") - 1 + 1;
-        hkdfl[1] = qc->server_in_key.len;
-        hkdfl[2] = sizeof("tls13 quic key") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic key",
-                       sizeof("tls13 quic key") - 1);
-        *p = '\0';
-
-        if (ngx_hkdf_expand(qc->server_in_key.data, qc->server_in_key.len,
-                            digest, qc->server_in.data, qc->server_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(server_in_key) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
 
 #ifdef OPENSSL_IS_BORINGSSL
-        qc->server_in_iv.len = EVP_AEAD_nonce_length(cipher);
+    qc->server_in_key.len = EVP_AEAD_key_length(cipher);
 #else
-        qc->server_in_iv.len = EVP_CIPHER_iv_length(cipher);
+    qc->server_in_key.len = EVP_CIPHER_key_length(cipher);
 #endif
-        qc->server_in_iv.data = ngx_pnalloc(c->pool, qc->server_in_iv.len);
-        if (qc->server_in_iv.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->server_in_key.data = ngx_pnalloc(c->pool, qc->server_in_key.len);
+    if (qc->server_in_key.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic iv") - 1 + 1;
-        hkdfl[1] = qc->server_in_iv.len;
-        hkdfl[2] = sizeof("tls13 quic iv") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic iv", sizeof("tls13 quic iv") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic key") - 1 + 1;
+    hkdfl[1] = qc->server_in_key.len;
+    hkdfl[2] = sizeof("tls13 quic key") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic key", sizeof("tls13 quic key") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->server_in_iv.data, qc->server_in_iv.len,
-                            digest, qc->server_in.data, qc->server_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(server_in_iv) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
-
-        /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
+    if (ngx_hkdf_expand(qc->server_in_key.data, qc->server_in_key.len,
+                        digest, qc->server_in.data, qc->server_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(server_in_key) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
 #ifdef OPENSSL_IS_BORINGSSL
-        qc->server_in_hp.len = EVP_AEAD_key_length(cipher);
+    qc->server_in_iv.len = EVP_AEAD_nonce_length(cipher);
 #else
-        qc->server_in_hp.len = EVP_CIPHER_key_length(cipher);
+    qc->server_in_iv.len = EVP_CIPHER_iv_length(cipher);
 #endif
-        qc->server_in_hp.data = ngx_pnalloc(c->pool, qc->server_in_hp.len);
-        if (qc->server_in_hp.data == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
+    qc->server_in_iv.data = ngx_pnalloc(c->pool, qc->server_in_iv.len);
+    if (qc->server_in_iv.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
 
-        hkdfl_len = 2 + 1 + sizeof("tls13 quic hp") - 1 + 1;
-        hkdfl[1] = qc->server_in_hp.len;
-        hkdfl[2] = sizeof("tls13 quic hp") - 1;
-        p = ngx_cpymem(&hkdfl[3], "tls13 quic hp", sizeof("tls13 quic hp") - 1);
-        *p = '\0';
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic iv") - 1 + 1;
+    hkdfl[1] = qc->server_in_iv.len;
+    hkdfl[2] = sizeof("tls13 quic iv") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic iv", sizeof("tls13 quic iv") - 1);
+    *p = '\0';
 
-        if (ngx_hkdf_expand(qc->server_in_hp.data, qc->server_in_hp.len,
-                            digest, qc->server_in.data, qc->server_in.len,
-                            hkdfl, hkdfl_len)
-            != NGX_OK)
-        {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "ngx_hkdf_expand(server_in_hp) failed");
-            ngx_http_close_connection(c);
-            return;
-        }
+    if (ngx_hkdf_expand(qc->server_in_iv.data, qc->server_in_iv.len,
+                        digest, qc->server_in.data, qc->server_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(server_in_iv) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
+
+#ifdef OPENSSL_IS_BORINGSSL
+    qc->server_in_hp.len = EVP_AEAD_key_length(cipher);
+#else
+    qc->server_in_hp.len = EVP_CIPHER_key_length(cipher);
+#endif
+    qc->server_in_hp.data = ngx_pnalloc(c->pool, qc->server_in_hp.len);
+    if (qc->server_in_hp.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    hkdfl_len = 2 + 1 + sizeof("tls13 quic hp") - 1 + 1;
+    hkdfl[1] = qc->server_in_hp.len;
+    hkdfl[2] = sizeof("tls13 quic hp") - 1;
+    p = ngx_cpymem(&hkdfl[3], "tls13 quic hp", sizeof("tls13 quic hp") - 1);
+    *p = '\0';
+
+    if (ngx_hkdf_expand(qc->server_in_hp.data, qc->server_in_hp.len,
+                        digest, qc->server_in.data, qc->server_in.len,
+                        hkdfl, hkdfl_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "ngx_hkdf_expand(server_in_hp) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
 
 #if (NGX_DEBUG)
     if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
@@ -1214,8 +1211,7 @@ ngx_http_quic_handshake(ngx_event_t *rev)
                                           qc->client_in_key.len,
                                           EVP_AEAD_DEFAULT_TAG_LENGTH);
     if (aead == NULL) {
-        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                      "EVP_AEAD_CTX_new() failed");
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_AEAD_CTX_new() failed");
         ngx_http_close_connection(c);
         return;
     }
@@ -1342,7 +1338,8 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     uint64_t crypto_len = ngx_quic_parse_int(&crypto);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
-                   "quic initial packet CRYPTO length: %uL pp:%p:%p", crypto_len, cleartext, crypto);
+                   "quic initial packet CRYPTO length: %uL pp:%p:%p",
+                   crypto_len, cleartext, crypto);
 
     sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
@@ -1373,10 +1370,10 @@ ngx_http_quic_handshake(ngx_event_t *rev)
                                SSL_quic_read_level(c->ssl->connection),
                                crypto, crypto_len))
     {
-            ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                          "SSL_provide_quic_data() failed");
-            ngx_http_close_connection(c);
-            return;
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "SSL_provide_quic_data() failed");
+        ngx_http_close_connection(c);
+        return;
     }
 
     n = SSL_do_handshake(c->ssl->connection);
