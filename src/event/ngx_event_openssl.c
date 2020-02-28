@@ -534,7 +534,7 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     *p++ = 0xff;
     *p++ = 0x00;
     *p++ = 0x00;
-    *p++ = 0x17;
+    *p++ = 0x18;
     *p++ = qc->scid.len;
     p = ngx_cpymem(p, qc->scid.data, qc->scid.len);
     *p++ = qc->dcid.len;

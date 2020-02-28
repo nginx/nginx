@@ -64,6 +64,7 @@ static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
 
 static void ngx_http_quic_handshake(ngx_event_t *rev);
+static void ngx_http_quic_handshake_handler(ngx_event_t *rev);
 #endif
 
 
@@ -706,7 +707,7 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "quic flags:%xi version:%xD", flags, version);
 
-    if (version != 0xff000017) {
+    if (version != 0xff000018) {
         ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unsupported quic version");
         ngx_http_close_connection(c);
         return;
@@ -742,7 +743,14 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     ngx_memcpy(qc->token.data, b->pos, qc->token.len);
     b->pos += qc->token.len;
 
-    uint64_t plen = ngx_quic_parse_int(&b->pos);
+    ngx_int_t plen = ngx_quic_parse_int(&b->pos);
+
+    if (plen > b->last - b->pos) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "truncated initial packet");
+        ngx_http_close_connection(c);
+        return;
+    }
+
     /* draft-ietf-quic-tls-23#section-5.4.2:
      * the Packet Number field is assumed to be 4 bytes long
      * draft-ietf-quic-tls-23#section-5.4.[34]:
@@ -1396,8 +1404,350 @@ ngx_http_quic_handshake(ngx_event_t *rev)
                    (int) SSL_quic_read_level(c->ssl->connection),
                    (int) SSL_quic_write_level(c->ssl->connection));
 
-    ngx_http_close_connection(c);
+    if (!rev->timer_set) {
+        ngx_add_timer(rev, c->listening->post_accept_timeout);
+    }
+
+    rev->handler = ngx_http_quic_handshake_handler;
     return;
+}
+
+
+static void
+ngx_http_quic_handshake_handler(ngx_event_t *rev)
+{
+    size_t                  m;
+    ssize_t                 n;
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
+    u_char                  buf[4096], b[512], *p;
+
+    c = rev->data;
+    qc = c->quic;
+    p = b;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "quic handshake handler");
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (c->close) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    n = c->recv(c, b, sizeof(b));
+
+    if (n == NGX_AGAIN) {
+        return;
+    }
+
+    if (n == NGX_ERROR) {
+        c->read->eof = 1;
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    m = ngx_hex_dump(buf, b, n) - buf;
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic handshake handler: %*s, len: %uz", m, buf, n);
+
+    /* XXX bug-for-bug compat - assuming initial ack in handshake pkt */
+
+    if ((p[0] & 0xf0) != 0xe0) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "invalid packet type");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    ngx_int_t flags = *p++;
+    uint32_t version = ngx_http_v2_parse_uint32(p);
+    p += 4;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic flags:%xi version:%xD", flags, version);
+
+    if (version != 0xff000018) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unsupported quic version");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (*p++ != qc->dcid.len) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unexpected quic dcidl");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (ngx_memcmp(p, qc->dcid.data, qc->dcid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unexpected quic dcid");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    p += qc->dcid.len;
+
+    if (*p++ != qc->scid.len) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unexpected quic scidl");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (ngx_memcmp(p, qc->scid.data, qc->scid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unexpected quic scid");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    p += qc->scid.len;
+
+    ngx_int_t plen = ngx_quic_parse_int(&p);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic packet length: %d", plen);
+
+    if (plen > b + n - p) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0, "truncated handshake packet");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    u_char *sample = p + 4;
+
+    m = ngx_hex_dump(buf, sample, 16) - buf;
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0, "quic sample: %*s", m, buf);
+
+// header protection
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    uint8_t mask[16];
+    int outlen;
+
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL,
+                           qc->client_hs_hp.data, NULL)
+        != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "EVP_EncryptInit_ex() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (!EVP_EncryptUpdate(ctx, mask, &outlen, sample, 16)) {
+        EVP_CIPHER_CTX_free(ctx);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "EVP_EncryptUpdate() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    u_char  clearflags = flags ^ (mask[0] & 0x0f);
+    ngx_int_t  pnl = (clearflags & 0x03) + 1;
+    uint64_t  pn = ngx_quic_parse_pn(&p, pnl, &mask[1]);
+
+#if (NGX_DEBUG)
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, mask, 5) - buf;
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic mask: %*s", m, buf);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic clear flags: %xi", clearflags);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic packet number: %uL, len: %xi", pn, pnl);
+    }
+#endif
+
+// packet protection
+
+    ngx_str_t ciphertext;
+    ciphertext.data = p;
+    ciphertext.len = plen - pnl;
+
+    ngx_str_t ad;
+    ad.len = p - b;
+    ad.data = ngx_pnalloc(c->pool, ad.len);
+    if (ad.data == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    ngx_memcpy(ad.data, b, ad.len);
+    ad.data[0] = clearflags;
+    ad.data[ad.len - pnl] = (u_char)pn;
+
+    uint8_t *nonce = ngx_pstrdup(c->pool, &qc->client_hs_iv);
+    nonce[11] ^= pn;
+
+#if (NGX_DEBUG)
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, nonce, 12) - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic nonce: %*s, len: %uz", m, buf, 12);
+
+        m = ngx_hex_dump(buf, ad.data, ad.len) - buf;
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic ad: %*s, len: %uz", m, buf, ad.len);
+    }
+#endif
+
+#ifdef OPENSSL_IS_BORINGSSL
+    const EVP_AEAD         *cipher;
+#else
+    const EVP_CIPHER       *cipher;
+#endif
+
+    u_char *name = (u_char *) SSL_get_cipher(c->ssl->connection);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic ssl cipher: %s", name);
+
+    if (ngx_strcasecmp(name, (u_char *) "TLS_AES_128_GCM_SHA256") == 0
+        || ngx_strcasecmp(name, (u_char *) "(NONE)") == 0)
+    {
+#ifdef OPENSSL_IS_BORINGSSL
+        cipher = EVP_aead_aes_128_gcm();
+#else
+        cipher = EVP_aes_128_gcm();
+#endif
+
+    } else if (ngx_strcasecmp(name, (u_char *) "TLS_AES_256_GCM_SHA384") == 0) {
+#ifdef OPENSSL_IS_BORINGSSL
+        cipher = EVP_aead_aes_256_gcm();
+#else
+        cipher = EVP_aes_256_gcm();
+#endif
+
+    } else {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "unexpected cipher");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+
+    uint8_t cleartext[1600];
+    size_t cleartext_len;
+
+#ifdef OPENSSL_IS_BORINGSSL
+    EVP_AEAD_CTX *aead = EVP_AEAD_CTX_new(cipher,
+                                          qc->client_hs_key.data,
+                                          qc->client_hs_key.len,
+                                          EVP_AEAD_DEFAULT_TAG_LENGTH);
+    if (aead == NULL) {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_AEAD_CTX_new() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_AEAD_CTX_open(aead, cleartext, &cleartext_len, sizeof(cleartext),
+                          nonce, qc->client_hs_iv.len, ciphertext.data,
+                          ciphertext.len, ad.data, ad.len)
+        != 1)
+    {
+        EVP_AEAD_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "EVP_AEAD_CTX_open() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    EVP_AEAD_CTX_free(aead);
+#else
+    int              len;
+    u_char          *tag;
+    EVP_CIPHER_CTX  *aead;
+
+    aead = EVP_CIPHER_CTX_new();
+    if (aead == NULL) {
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_CIPHER_CTX_new() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_DecryptInit_ex(aead, cipher, NULL, NULL, NULL) != 1) {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_DecryptInit_ex() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_CIPHER_CTX_ctrl(aead, EVP_CTRL_GCM_SET_IVLEN, qc->client_hs_iv.len,
+                            NULL)
+        == 0)
+    {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_IVLEN) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_DecryptInit_ex(aead, NULL, NULL, qc->client_hs_key.data, nonce)
+        != 1)
+    {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_DecryptInit_ex() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_DecryptUpdate(aead, NULL, &len, ad.data, ad.len) != 1) {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_DecryptUpdate() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_DecryptUpdate(aead, cleartext, &len, ciphertext.data,
+                          ciphertext.len - EVP_GCM_TLS_TAG_LEN)
+        != 1)
+    {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_DecryptUpdate() failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    cleartext_len = len;
+    tag = ciphertext.data + ciphertext.len - EVP_GCM_TLS_TAG_LEN;
+
+    if (EVP_CIPHER_CTX_ctrl(aead, EVP_CTRL_GCM_SET_TAG, EVP_GCM_TLS_TAG_LEN,
+                            tag)
+        == 0)
+    {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (EVP_DecryptFinal_ex(aead, cleartext + len, &len) <= 0) {
+        EVP_CIPHER_CTX_free(aead);
+        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0, "EVP_DecryptFinal_ex failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    cleartext_len += len;
+
+    EVP_CIPHER_CTX_free(aead);
+#endif
+
+#if (NGX_DEBUG)
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, cleartext, ngx_min(cleartext_len, 256)) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                       "quic packet payload: %*s%s, len: %uz",
+                       m, buf, m < 512 ? "" : "...", cleartext_len);
+    }
+#endif
+
+    ngx_http_close_connection(c);
 }
 
 
