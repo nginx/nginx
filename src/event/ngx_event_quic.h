@@ -23,13 +23,25 @@ struct ngx_quic_connection_s {
     ngx_str_t   server_in_iv;
     ngx_str_t   server_in_hp;
 
-    size_t      handshake_secret_len;
-    uint8_t    *handshake_read_secret;
-    uint8_t    *handshake_write_secret;
+    ngx_str_t   client_hs;
+    ngx_str_t   client_hs_key;
+    ngx_str_t   client_hs_iv;
+    ngx_str_t   client_hs_hp;
 
-    size_t      application_secret_len;
-    uint8_t    *application_read_secret;
-    uint8_t    *application_write_secret;
+    ngx_str_t   server_hs;
+    ngx_str_t   server_hs_key;
+    ngx_str_t   server_hs_iv;
+    ngx_str_t   server_hs_hp;
+
+    ngx_str_t   client_ad;
+    ngx_str_t   client_ad_key;
+    ngx_str_t   client_ad_iv;
+    ngx_str_t   client_ad_hp;
+
+    ngx_str_t   server_ad;
+    ngx_str_t   server_ad_key;
+    ngx_str_t   server_ad_iv;
+    ngx_str_t   server_ad_hp;
 };
 
 

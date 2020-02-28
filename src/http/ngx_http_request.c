@@ -783,8 +783,8 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     uint64_t plen = ngx_quic_parse_int(&b->pos);
     /* draft-ietf-quic-tls-23#section-5.4.2:
      * the Packet Number field is assumed to be 4 bytes long
-     * draft-ietf-quic-tls-23#section-5.4.3:
-     * AES-Based header protection samples 16 bytes
+     * draft-ietf-quic-tls-23#section-5.4.[34]:
+     * AES-Based and ChaCha20-Based header protections sample 16 bytes
      */
     u_char *sample = b->pos + 4;
 

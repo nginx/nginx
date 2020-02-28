@@ -89,6 +89,7 @@ static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_openssl_exit(ngx_cycle_t *cycle);
 
+
 #if NGX_OPENSSL_QUIC
 
 static int
@@ -96,8 +97,11 @@ quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *read_secret,
     const uint8_t *write_secret, size_t secret_len)
 {
-    size_t             *len;
+    size_t             *rlen, *wlen;
     uint8_t           **rsec, **wsec;
+    const char         *name;
+    const EVP_MD       *digest;
+    const EVP_AEAD     *aead;
     ngx_connection_t   *c;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
@@ -111,49 +115,244 @@ quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
         m = ngx_hex_dump(buf, (u_char *) read_secret, secret_len) - buf;
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "set_encryption_secrets: %*s, len: %uz, level:%d",
+                       "set_encryption_secrets: read %*s, len: %uz, level:%d",
                        m, buf, secret_len, (int) level);
 
         m = ngx_hex_dump(buf, (u_char *) write_secret, secret_len) - buf;
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "set_encryption_secrets: %*s, len: %uz, level:%d",
+                       "set_encryption_secrets: write %*s, len: %uz, level:%d",
                        m, buf, secret_len, (int) level);
     }
 #endif
 
+    name = SSL_get_cipher(ssl_conn);
+
+    if (OPENSSL_strcasecmp(name, "TLS_AES_128_GCM_SHA256") == 0) {
+        aead = EVP_aead_aes_128_gcm();
+        digest = EVP_sha256();
+
+    } else if (OPENSSL_strcasecmp(name, "TLS_AES_256_GCM_SHA384") == 0) {
+        aead = EVP_aead_aes_256_gcm();
+        digest = EVP_sha384();
+
+    } else {
+        return 0;
+    }
+
+    size_t hkdfl_len;
+    uint8_t hkdfl[20];
+    uint8_t *p;
+    const char *label;
+
+    ngx_str_t  *client_key, *client_iv, *client_hp;
+    ngx_str_t  *server_key, *server_iv, *server_hp;
+
     switch (level) {
 
     case ssl_encryption_handshake:
-        len = &c->quic->handshake_secret_len;
-        rsec = &c->quic->handshake_read_secret;
-        wsec = &c->quic->handshake_write_secret;
+        rlen = &c->quic->client_hs.len;
+        rsec = &c->quic->client_hs.data;
+        wlen = &c->quic->server_hs.len;
+        wsec = &c->quic->server_hs.data;
+
+        client_key = &c->quic->client_hs_key;
+        client_iv = &c->quic->client_hs_iv;
+        client_hp = &c->quic->client_hs_hp;
+
+        server_key = &c->quic->server_hs_key;
+        server_iv = &c->quic->server_hs_iv;
+        server_hp = &c->quic->server_hs_hp;
+
         break;
 
     case ssl_encryption_application:
-        len = &c->quic->application_secret_len;
-        rsec = &c->quic->application_read_secret;
-        wsec = &c->quic->application_write_secret;
+        rlen = &c->quic->client_ad.len;
+        rsec = &c->quic->client_ad.data;
+        wlen = &c->quic->server_ad.len;
+        wsec = &c->quic->server_ad.data;
+
+        client_key = &c->quic->client_ad_key;
+        client_iv = &c->quic->client_ad_iv;
+        client_hp = &c->quic->client_ad_hp;
+
+        server_key = &c->quic->server_ad_key;
+        server_iv = &c->quic->server_ad_iv;
+        server_hp = &c->quic->server_ad_hp;
+
         break;
 
     default:
         return 0;
     }
 
-    *len = secret_len;
+    *rlen = *wlen = secret_len;
 
     *rsec = ngx_pnalloc(c->pool, secret_len);
     if (*rsec == NULL) {
-        return NGX_ERROR;
+        return 0;
     }
 
     ngx_memcpy(*rsec, read_secret, secret_len);
 
     *wsec = ngx_pnalloc(c->pool, secret_len);
     if (*wsec == NULL) {
-        return NGX_ERROR;
+        return 0;
     }
 
     ngx_memcpy(*wsec, write_secret, secret_len);
+
+    // client keys
+
+    client_key->len = EVP_AEAD_key_length(aead);
+    client_key->data = ngx_pnalloc(c->pool, client_key->len);
+    if (client_key->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic key";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = client_key->len / 256;
+    hkdfl[1] = client_key->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(client_key->data, client_key->len,
+                    digest, *rsec, *rlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(client_key) failed");
+        return 0;
+    }
+
+
+    client_iv->len = EVP_AEAD_nonce_length(aead);
+    client_iv->data = ngx_pnalloc(c->pool, client_iv->len);
+    if (client_iv->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic iv";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = client_iv->len / 256;
+    hkdfl[1] = client_iv->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(client_iv->data, client_iv->len,
+                    digest, *rsec, *rlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(client_iv) failed");
+        return 0;
+    }
+
+
+    client_hp->len = EVP_AEAD_key_length(aead);
+    client_hp->data = ngx_pnalloc(c->pool, client_hp->len);
+    if (client_hp->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic hp";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = client_hp->len / 256;
+    hkdfl[1] = client_hp->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(client_hp->data, client_hp->len,
+                    digest, *rsec, *rlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(client_hp) failed");
+        return 0;
+    }
+
+
+    // server keys
+
+    server_key->len = EVP_AEAD_key_length(aead);
+    server_key->data = ngx_pnalloc(c->pool, server_key->len);
+    if (server_key->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic key";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = server_key->len / 256;
+    hkdfl[1] = server_key->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(server_key->data, server_key->len,
+                    digest, *wsec, *wlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(server_key) failed");
+        return 0;
+    }
+
+
+    server_iv->len = EVP_AEAD_nonce_length(aead);
+    server_iv->data = ngx_pnalloc(c->pool, server_iv->len);
+    if (server_iv->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic iv";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = server_iv->len / 256;
+    hkdfl[1] = server_iv->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(server_iv->data, server_iv->len,
+                    digest, *wsec, *wlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(server_iv) failed");
+        return 0;
+    }
+
+
+    server_hp->len = EVP_AEAD_key_length(aead);
+    server_hp->data = ngx_pnalloc(c->pool, server_hp->len);
+    if (server_hp->data == NULL) {
+        return 0;
+    }
+
+    label = "tls13 quic hp";
+    hkdfl_len = 2 + 1 + sizeof(label) - 1 + 1;
+    hkdfl[0] = server_hp->len / 256;
+    hkdfl[1] = server_hp->len % 256;
+    hkdfl[2] = sizeof(label) - 1;
+    p = ngx_cpymem(&hkdfl[3], label, sizeof(label) - 1);
+    *p = '\0';
+
+    if (HKDF_expand(server_hp->data, server_hp->len,
+                    digest, *wsec, *wlen,
+                    hkdfl, hkdfl_len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "HKDF_expand(server_hp) failed");
+        return 0;
+    }
 
     return 1;
 }
