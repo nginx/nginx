@@ -249,6 +249,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, early_data),
       NULL },
 
+    { ngx_string("ssl_quic"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, quic),
+      NULL },
+
       ngx_null_command
 };
 
@@ -568,6 +575,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->enable = NGX_CONF_UNSET;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
     sscf->early_data = NGX_CONF_UNSET;
+    sscf->quic = NGX_CONF_UNSET;
     sscf->buffer_size = NGX_CONF_UNSET_SIZE;
     sscf->verify = NGX_CONF_UNSET_UINT;
     sscf->verify_depth = NGX_CONF_UNSET_UINT;
@@ -611,6 +619,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                          prev->prefer_server_ciphers, 0);
 
     ngx_conf_merge_value(conf->early_data, prev->early_data, 0);
+
+    ngx_conf_merge_value(conf->quic, prev->quic, 0);
 
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
                          (NGX_CONF_BITMASK_SET|NGX_SSL_TLSv1
@@ -696,6 +706,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
+printf("ngx_ssl_create\n");
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -854,6 +865,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (ngx_ssl_early_data(cf, &conf->ssl, conf->early_data) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_quic(cf, &conf->ssl, conf->quic) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -1141,18 +1156,28 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
         addr = port[p].addrs.elts;
         for (a = 0; a < port[p].addrs.nelts; a++) {
+printf("ssl %d http3 %d\n", addr[a].opt.ssl, addr[a].opt.http3);
 
-            if (!addr[a].opt.ssl) {
+            if (!addr[a].opt.ssl && !addr[a].opt.http3) {
                 continue;
             }
 
             cscf = addr[a].default_server;
             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+printf("sscf->protocols %lx\n", sscf->protocols);
 
             if (sscf->certificates == NULL) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
                               "the \"listen ... ssl\" directive in %s:%ui",
+                              cscf->file_name, cscf->line);
+                return NGX_ERROR;
+            }
+
+            if (addr[a].opt.http3 && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "\"ssl_protocols\" did not enable TLSv1.3 for "
+                              "the \"listen ... http3\" directive in %s:%ui",
                               cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }

@@ -323,6 +323,7 @@ typedef struct {
     ngx_chain_t                      *free;
 
     unsigned                          ssl:1;
+    unsigned                          quic:1;
     unsigned                          proxy_protocol:1;
 } ngx_http_connection_t;
 

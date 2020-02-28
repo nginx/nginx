@@ -89,6 +89,126 @@ static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_openssl_exit(ngx_cycle_t *cycle);
 
+#if NGX_OPENSSL_QUIC
+
+static int
+quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const uint8_t *read_secret,
+    const uint8_t *write_secret, size_t secret_len)
+{
+    size_t             *len;
+    uint8_t           **rsec, **wsec;
+    ngx_connection_t   *c;
+
+    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+    ngx_ssl_handshake_log(c);
+
+#if (NGX_DEBUG)
+    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
+        u_char  buf[64];
+        size_t  m;
+
+        m = ngx_hex_dump(buf, (u_char *) read_secret, secret_len) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "set_encryption_secrets: %*s, len: %uz, level:%d",
+                       m, buf, secret_len, (int) level);
+
+        m = ngx_hex_dump(buf, (u_char *) write_secret, secret_len) - buf;
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "set_encryption_secrets: %*s, len: %uz, level:%d",
+                       m, buf, secret_len, (int) level);
+    }
+#endif
+
+    switch (level) {
+
+    case ssl_encryption_handshake:
+        len = &c->quic->handshake_secret_len;
+        rsec = &c->quic->handshake_read_secret;
+        wsec = &c->quic->handshake_write_secret;
+        break;
+
+    case ssl_encryption_application:
+        len = &c->quic->application_secret_len;
+        rsec = &c->quic->application_read_secret;
+        wsec = &c->quic->application_write_secret;
+        break;
+
+    default:
+        return 0;
+    }
+
+    *len = secret_len;
+
+    *rsec = ngx_pnalloc(c->pool, secret_len);
+    if (*rsec == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(*rsec, read_secret, secret_len);
+
+    *wsec = ngx_pnalloc(c->pool, secret_len);
+    if (*wsec == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(*wsec, write_secret, secret_len);
+
+    return 1;
+}
+
+
+static int
+quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const uint8_t *data, size_t len)
+{
+    u_char             buf[512];
+    ngx_int_t          m;
+    ngx_connection_t  *c;
+
+    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+    m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 256)) - buf;
+    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic_add_handshake_data: %*s%s, len: %uz, level:%d",
+                   m, buf, len < 512 ? "" : "...", len, (int) level);
+
+    if (!(SSL_provide_quic_data(ssl_conn, level, data, len))) {
+        ERR_print_errors_fp(stderr);
+        return 0;
+    }
+
+    return 1;
+}
+
+
+static int
+quic_flush_flight(ngx_ssl_conn_t *ssl_conn)
+{
+    printf("quic_flush_flight()\n");
+    return 1;
+}
+
+
+static int
+quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
+    uint8_t alert)
+{
+    printf("quic_send_alert(), lvl=%d, alert=%d\n", level, alert);
+    return 1;
+}
+
+
+static SSL_QUIC_METHOD quic_method = {
+    quic_set_encryption_secrets,
+    quic_add_handshake_data,
+    quic_flush_flight,
+    quic_send_alert,
+};
+
+#endif
+
 
 static ngx_command_t  ngx_openssl_commands[] = {
 
@@ -1456,6 +1576,29 @@ ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 #endif
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_quic(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
+{
+    if (!enable) {
+        return NGX_OK;
+    }
+
+#if NGX_OPENSSL_QUIC
+
+    SSL_CTX_set_quic_method(ssl->ctx, &quic_method);
+printf("%s\n", __func__);
+    return NGX_OK;
+
+#else
+
+    ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
+                  "\"ssl_quic\" is not supported on this platform");
+    return NGX_ERROR;
+
+#endif
 }
 
 

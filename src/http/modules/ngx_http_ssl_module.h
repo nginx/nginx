@@ -21,6 +21,7 @@ typedef struct {
 
     ngx_flag_t                      prefer_server_ciphers;
     ngx_flag_t                      early_data;
+    ngx_flag_t                      quic;
 
     ngx_uint_t                      protocols;
 

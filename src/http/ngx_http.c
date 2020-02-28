@@ -1203,6 +1203,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #if (NGX_HTTP_V2)
     ngx_uint_t             http2;
 #endif
+#if (NGX_HTTP_SSL)
+    ngx_uint_t             http3;
+#endif
 
     /*
      * we cannot compare whole sockaddr struct's as kernel
@@ -1237,6 +1240,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 #if (NGX_HTTP_V2)
         http2 = lsopt->http2 || addr[i].opt.http2;
+#endif
+#if (NGX_HTTP_SSL)
+        http3 = lsopt->http3 || addr[i].opt.http3;
 #endif
 
         if (lsopt->set) {
@@ -1273,6 +1279,9 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 #if (NGX_HTTP_V2)
         addr[i].opt.http2 = http2;
+#endif
+#if (NGX_HTTP_SSL)
+        addr[i].opt.http3 = http3;
 #endif
 
         return NGX_OK;
@@ -1312,6 +1321,17 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "nginx was built with OpenSSL that lacks ALPN "
                            "and NPN support, HTTP/2 is not enabled for %V",
+                           &lsopt->addr_text);
+    }
+
+#endif
+
+#if (NGX_HTTP_SSL && !defined NGX_OPENSSL_QUIC)
+
+    if (lsopt->http3) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "nginx was built with OpenSSL that lacks QUIC "
+                           "support, HTTP/3 is not enabled for %V",
                            &lsopt->addr_text);
     }
 
@@ -1807,6 +1827,9 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 #if (NGX_HTTP_V2)
         addrs[i].conf.http2 = addr[i].opt.http2;
 #endif
+#if (NGX_HTTP_SSL)
+        addrs[i].conf.http3 = addr[i].opt.http3;
+#endif
         addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 
         if (addr[i].hash.buckets == NULL
@@ -1871,6 +1894,9 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 #endif
 #if (NGX_HTTP_V2)
         addrs6[i].conf.http2 = addr[i].opt.http2;
+#endif
+#if (NGX_HTTP_SSL)
+        addrs6[i].conf.http3 = addr[i].opt.http3;
 #endif
         addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 
