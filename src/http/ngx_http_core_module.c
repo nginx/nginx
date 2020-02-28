@@ -3800,6 +3800,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_memzero(&lsopt, sizeof(ngx_http_listen_opt_t));
 
     lsopt.backlog = NGX_LISTEN_BACKLOG;
+    lsopt.type = SOCK_STREAM;
     lsopt.rcvbuf = -1;
     lsopt.sndbuf = -1;
 #if (NGX_HAVE_SETFIB)
@@ -3818,6 +3819,11 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             || ngx_strcmp(value[n].data, "default") == 0)
         {
             lsopt.default_server = 1;
+            continue;
+        }
+
+        if (ngx_strcmp(value[n].data, "quic") == 0) {
+            lsopt.type = SOCK_DGRAM;
             continue;
         }
 

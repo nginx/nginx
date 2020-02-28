@@ -86,6 +86,7 @@ typedef struct {
     int                        backlog;
     int                        rcvbuf;
     int                        sndbuf;
+    int                        type;
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
 #endif
@@ -266,6 +267,7 @@ typedef struct {
 
 typedef struct {
     ngx_int_t                  family;
+    ngx_int_t                  type;
     in_port_t                  port;
     ngx_array_t                addrs;     /* array of ngx_http_conf_addr_t */
 } ngx_http_conf_port_t;

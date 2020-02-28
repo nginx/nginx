@@ -324,6 +324,10 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
 
+    if (c->shared) {
+        rev->ready = 1;
+    }
+
 #if (NGX_HTTP_V2)
     if (hc->addr_conf->http2) {
         rev->handler = ngx_http_v2_init;
@@ -385,6 +389,10 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     c = rev->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http wait request handler");
+
+    if (c->shared) {
+        goto request;
+    }
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -485,6 +493,8 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             return;
         }
     }
+
+request:
 
     c->log->action = "reading client request line";
 

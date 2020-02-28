@@ -1163,7 +1163,10 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     port = cmcf->ports->elts;
     for (i = 0; i < cmcf->ports->nelts; i++) {
 
-        if (p != port[i].port || sa->sa_family != port[i].family) {
+        if (p != port[i].port
+            || lsopt->type != port[i].type
+            || sa->sa_family != port[i].family)
+        {
             continue;
         }
 
@@ -1180,6 +1183,7 @@ ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     }
 
     port->family = sa->sa_family;
+    port->type = lsopt->type;
     port->port = p;
     port->addrs.elts = NULL;
 
@@ -1735,6 +1739,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     }
 #endif
 
+    ls->type = addr->opt.type;
     ls->backlog = addr->opt.backlog;
     ls->rcvbuf = addr->opt.rcvbuf;
     ls->sndbuf = addr->opt.sndbuf;
