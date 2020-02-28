@@ -1124,30 +1124,13 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
 // header protection
 
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     uint8_t mask[16];
-    int outlen;
-
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL,
-                           qc->client_in.hp.data, NULL)
-        != 1)
+    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), &qc->client_in, mask, sample)
+        != NGX_OK)
     {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                      "EVP_EncryptInit_ex() failed");
         ngx_http_close_connection(c);
         return;
     }
-
-    if (!EVP_EncryptUpdate(ctx, mask, &outlen, sample, 16)) {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                      "EVP_EncryptUpdate() failed");
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
 
     u_char  clearflags = flags ^ (mask[0] & 0x0f);
     ngx_int_t  pnl = (clearflags & 0x03) + 1;
@@ -1422,30 +1405,13 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
 
 // header protection
 
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     uint8_t mask[16];
-    int outlen;
-
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL,
-                           qc->client_hs.hp.data, NULL)
-        != 1)
+    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), &qc->client_hs, mask, sample)
+        != NGX_OK)
     {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                      "EVP_EncryptInit_ex() failed");
         ngx_http_close_connection(c);
         return;
     }
-
-    if (!EVP_EncryptUpdate(ctx, mask, &outlen, sample, 16)) {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
-                      "EVP_EncryptUpdate() failed");
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
 
     u_char  clearflags = flags ^ (mask[0] & 0x0f);
     ngx_int_t  pnl = (clearflags & 0x03) + 1;

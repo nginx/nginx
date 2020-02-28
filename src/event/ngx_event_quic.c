@@ -371,3 +371,37 @@ ngx_quic_tls_seal(ngx_connection_t *c, const ngx_aead_cipher_t *cipher,
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_quic_tls_hp(ngx_connection_t *c, const EVP_CIPHER *cipher,
+    ngx_quic_secret_t *s, u_char *out, u_char *in)
+{
+    int              outlen;
+    EVP_CIPHER_CTX  *ctx;
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (EVP_EncryptInit_ex(ctx, cipher, NULL, s->hp.data, NULL) != 1) {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "EVP_EncryptInit_ex() failed");
+        goto failed;
+    }
+
+    if (!EVP_EncryptUpdate(ctx, out, &outlen, in, 16)) {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "EVP_EncryptUpdate() failed");
+        goto failed;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return NGX_OK;
+
+failed:
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return NGX_ERROR;
+}

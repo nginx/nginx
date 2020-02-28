@@ -593,28 +593,11 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     u_char *sample = &out.data[3]; // pnl=0
     uint8_t mask[16];
-    int outlen;
-
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, secret->hp.data, NULL)
-        != 1)
-    {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "EVP_EncryptInit_ex() failed");
+    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), secret, mask, sample) != NGX_OK) {
         return 0;
     }
-
-    if (!EVP_EncryptUpdate(ctx, mask, &outlen, sample, 16)) {
-        EVP_CIPHER_CTX_free(ctx);
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "EVP_EncryptUpdate() failed");
-        return 0;
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
 
     m = ngx_hex_dump(buf, (u_char *) sample, 16) - buf;
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,

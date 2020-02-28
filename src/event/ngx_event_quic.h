@@ -60,5 +60,8 @@ ngx_int_t ngx_quic_tls_seal(ngx_connection_t *c,
     const ngx_aead_cipher_t *cipher, ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad);
 
+ngx_int_t
+ngx_quic_tls_hp(ngx_connection_t *c, const EVP_CIPHER *cipher,
+    ngx_quic_secret_t *s, u_char *out, u_char *in);
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */
