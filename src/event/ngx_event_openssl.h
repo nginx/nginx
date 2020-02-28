@@ -23,7 +23,11 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
+#ifdef OPENSSL_IS_BORINGSSL
 #include <openssl/hkdf.h>
+#else
+#include <openssl/kdf.h>
+#endif
 #include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
