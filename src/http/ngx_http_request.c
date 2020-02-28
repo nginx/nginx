@@ -1324,6 +1324,26 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     }
 #endif
 
+    if (cleartext[0] != 0x06) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0,
+                      "unexpected frame in initial packet");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (cleartext[1] != 0x00) {
+        ngx_log_error(NGX_LOG_INFO, rev->log, 0,
+                      "unexpected CRYPTO offset in initial packet");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    uint8_t *crypto = &cleartext[2];
+    uint64_t crypto_len = ngx_quic_parse_int(&crypto);
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                   "quic initial packet CRYPTO length: %uL pp:%p:%p", crypto_len, cleartext, crypto);
+
     sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
     if (ngx_ssl_create_connection(&sscf->ssl, c, NGX_SSL_BUFFER)
@@ -1351,7 +1371,7 @@ ngx_http_quic_handshake(ngx_event_t *rev)
 
     if (!SSL_provide_quic_data(c->ssl->connection,
                                SSL_quic_read_level(c->ssl->connection),
-                               &cleartext[4], cleartext_len - 4))
+                               crypto, crypto_len))
     {
             ngx_ssl_error(NGX_LOG_INFO, rev->log, 0,
                           "SSL_provide_quic_data() failed");

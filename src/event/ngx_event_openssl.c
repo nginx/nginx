@@ -452,7 +452,7 @@ static int
 quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *data, size_t len)
 {
-    u_char                  buf[512], *p, *ciphertext, *clear, *ad, *name;
+    u_char                  buf[2048], *p, *ciphertext, *clear, *ad, *name;
     size_t                  ad_len, clear_len;
     ngx_int_t               m;
     ngx_str_t              *server_key, *server_iv, *server_hp;
@@ -463,6 +463,7 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 #endif
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
+    static int pn = 0;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
@@ -488,10 +489,10 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 256)) - buf;
+    m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 1024)) - buf;
     ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic_add_handshake_data: %*s%s, len: %uz, level:%d",
-                   m, buf, len < 512 ? "" : "...", len, (int) level);
+                   m, buf, len < 2048 ? "" : "...", len, (int) level);
 
     clear = ngx_alloc(4 + len + 5 /*minimal ACK*/, c->log);
     if (clear == 0) {
@@ -504,14 +505,20 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     ngx_quic_build_int(&p, len);
     p = ngx_cpymem(p, data, len);
 
-    ngx_quic_build_int(&p, 2);	// ack frame
-    ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, 0);
+    if (level == ssl_encryption_initial) {
+        ngx_quic_build_int(&p, 2);	// ack frame
+        ngx_quic_build_int(&p, 0);
+        ngx_quic_build_int(&p, 0);
+        ngx_quic_build_int(&p, 0);
+        ngx_quic_build_int(&p, 0);
+    }
 
     clear_len = p - clear;
     size_t ciphertext_len = clear_len + 16 /*expansion*/;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic_add_handshake_data: clear_len:%uz, ciphertext_len:%uz",
+                   clear_len, ciphertext_len);
 
     ad = ngx_alloc(346 /*max header*/, c->log);
     if (ad == 0) {
@@ -537,7 +544,13 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     }
     ngx_quic_build_int(&p, ciphertext_len + 1); // length (inc. pnl)
     u_char *pnp = p;
-    *p++ = 0;	// packet number 0
+
+    if (level == ssl_encryption_initial) {
+        *p++ = 0;	// packet number 0
+
+    } else if (level == ssl_encryption_handshake) {
+        *p++ = pn++;
+    }
 
     ad_len = p - ad;
 
@@ -575,6 +588,21 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
+    uint8_t *nonce = ngx_pstrdup(c->pool, server_iv);
+    if (level == ssl_encryption_handshake) {
+        nonce[11] ^= (pn - 1);
+    }
+
+    m = ngx_hex_dump(buf, (u_char *) server_iv->data, 12) - buf;
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic_add_handshake_data sample: server_iv %*s",
+                   m, buf);
+    m = ngx_hex_dump(buf, (u_char *) nonce, 12) - buf;
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic_add_handshake_data sample: n=%d nonce %*s",
+                   pn - 1, m, buf);
+
+
 #ifdef OPENSSL_IS_BORINGSSL
     size_t out_len;
     EVP_AEAD_CTX *aead = EVP_AEAD_CTX_new(cipher,
@@ -583,7 +611,7 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                                           EVP_AEAD_DEFAULT_TAG_LENGTH);
 
     if (EVP_AEAD_CTX_seal(aead, ciphertext, &out_len, ciphertext_len,
-                          server_iv->data, server_iv->len,
+                          nonce, server_iv->len,
                           clear, clear_len, ad, ad_len)
         != 1)
     {
@@ -619,7 +647,7 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    if (EVP_EncryptInit_ex(aead, NULL, NULL, server_key->data, server_iv->data)
+    if (EVP_EncryptInit_ex(aead, NULL, NULL, server_key->data, nonce)
         != 1)
     {
         EVP_CIPHER_CTX_free(aead);
@@ -717,10 +745,10 @@ clear_len, ciphertext_len, (size_t) out_len, ad_len);
     p = ngx_cpymem(packet, ad, ad_len);
     p = ngx_cpymem(p, ciphertext, out_len);
 
-    m = ngx_hex_dump(buf, (u_char *) packet, ngx_min(256, p - packet)) - buf;
+    m = ngx_hex_dump(buf, (u_char *) packet, ngx_min(1024, p - packet)) - buf;
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic_add_handshake_data packet: %*s%s, len: %uz",
-                   m, buf, len < 512 ? "" : "...", p - packet);
+                   m, buf, len < 2048 ? "" : "...", p - packet);
 
     c->send(c, packet, p - packet);
 
