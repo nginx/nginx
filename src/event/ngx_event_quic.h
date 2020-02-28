@@ -10,6 +10,8 @@
 
 #include <ngx_event_openssl.h>
 
+#define quic_version 0xff000018
+
 
 typedef struct {
     ngx_str_t          secret;
@@ -57,5 +59,46 @@ ngx_int_t ngx_quic_tls_seal(ngx_connection_t *c,
 ngx_int_t
 ngx_quic_tls_hp(ngx_connection_t *c, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
+
+
+#if (NGX_HAVE_NONALIGNED)
+
+#define ngx_quic_parse_uint16(p)  ntohs(*(uint16_t *) (p))
+#define ngx_quic_parse_uint32(p)  ntohl(*(uint32_t *) (p))
+
+#else
+
+#define ngx_quic_parse_uint16(p)  ((p)[0] << 8 | (p)[1])
+#define ngx_quic_parse_uint32(p)                                              \
+    ((uint32_t) (p)[0] << 24 | (p)[1] << 16 | (p)[2] << 8 | (p)[3])
+
+#endif
+
+
+#define ngx_quic_write_uint16_aligned(p, s)                                   \
+    (*(uint16_t *) (p) = htons((uint16_t) (s)), (p) + sizeof(uint16_t))
+#define ngx_quic_write_uint32_aligned(p, s)                                   \
+    (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
+
+#if (NGX_HAVE_NONALIGNED)
+
+#define ngx_quic_write_uint16  ngx_quic_write_uint16_aligned
+#define ngx_quic_write_uint32  ngx_quic_write_uint32_aligned
+
+#else
+
+#define ngx_quic_write_uint16(p, s)                                           \
+    ((p)[0] = (u_char) ((s) >> 8),                                            \
+     (p)[1] = (u_char)  (s),                                                  \
+     (p) + sizeof(uint16_t))
+
+#define ngx_quic_write_uint32(p, s)                                           \
+    ((p)[0] = (u_char) ((s) >> 24),                                           \
+     (p)[1] = (u_char) ((s) >> 16),                                           \
+     (p)[2] = (u_char) ((s) >> 8),                                            \
+     (p)[3] = (u_char)  (s),                                                  \
+     (p) + sizeof(uint32_t))
+
+#endif
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

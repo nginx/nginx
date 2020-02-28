@@ -271,10 +271,7 @@ quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     } else if (level == ssl_encryption_handshake) {
         *p++ = 0xe0;	// handshake, packet number len
     }
-    *p++ = 0xff;
-    *p++ = 0x00;
-    *p++ = 0x00;
-    *p++ = 0x18;
+    p = ngx_quic_write_uint32(p, quic_version);
     *p++ = qc->scid.len;
     p = ngx_cpymem(p, qc->scid.data, qc->scid.len);
     *p++ = qc->dcid.len;

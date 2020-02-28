@@ -691,13 +691,13 @@ ngx_http_quic_handshake(ngx_event_t *rev)
     }
 
     ngx_int_t flags = *b->pos++;
-    uint32_t version = ngx_http_v2_parse_uint32(b->pos);
-    b->pos += 4;
+    uint32_t version = ngx_quic_parse_uint32(b->pos);
+    b->pos += sizeof(uint32_t);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "quic flags:%xi version:%xD", flags, version);
 
-    if (version != 0xff000018) {
+    if (version != quic_version) {
         ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unsupported quic version");
         ngx_http_close_connection(c);
         return;
@@ -1117,13 +1117,13 @@ ngx_http_quic_handshake_handler(ngx_event_t *rev)
     }
 
     ngx_int_t flags = *p++;
-    uint32_t version = ngx_http_v2_parse_uint32(p);
-    p += 4;
+    uint32_t version = ngx_quic_parse_uint32(p);
+    p += sizeof(uint32_t);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, rev->log, 0,
                    "quic flags:%xi version:%xD", flags, version);
 
-    if (version != 0xff000018) {
+    if (version != quic_version) {
         ngx_log_error(NGX_LOG_INFO, rev->log, 0, "unsupported quic version");
         ngx_http_close_connection(c);
         return;
