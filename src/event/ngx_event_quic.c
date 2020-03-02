@@ -47,6 +47,34 @@
     (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
 
 
+
+#if (NGX_DEBUG)
+
+#define ngx_quic_hexdump(log, fmt, data, len, ...)                            \
+do {                                                                          \
+    ngx_int_t  m;                                                             \
+    u_char     buf[2048];                                                     \
+                                                                              \
+    if (log->log_level & NGX_LOG_DEBUG_EVENT) {                               \
+        m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 1024)) - buf;     \
+        ngx_log_debug(NGX_LOG_DEBUG_EVENT, log, 0,                            \
+                   "%s: " fmt " %*s%s, len: %uz",                             \
+                   __FUNCTION__,  __VA_ARGS__, m, buf,                        \
+                   len < 2048 ? "" : "...", len);                             \
+    }                                                                         \
+} while (0)
+
+#else
+
+#define ngx_quic_hexdump(log, fmt, data, len, ...)
+
+#endif
+
+#define ngx_quic_hexdump0(log, fmt, data, len)                                \
+    ngx_quic_hexdump(log, fmt "%s", data, len, "")                            \
+
+
+
 /* TODO: real states, these are stubs */
 typedef enum  {
     NGX_QUIC_ST_INITIAL,
@@ -186,22 +214,8 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     //ngx_ssl_handshake_log(c); // TODO: enable again
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        u_char  buf[64];
-        size_t  m;
-
-        m = ngx_hex_dump(buf, (u_char *) read_secret, secret_len) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "set_encryption_secrets: read %*s, len: %uz, level:%d",
-                       m, buf, secret_len, (int) level);
-
-        m = ngx_hex_dump(buf, (u_char *) write_secret, secret_len) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "set_encryption_secrets: write %*s, len: %uz, level:%d",
-                       m, buf, secret_len, (int) level);
-    }
-#endif
+    ngx_quic_hexdump(c->log, "level:%d read", read_secret, secret_len, level);
+    ngx_quic_hexdump(c->log, "level:%d read", write_secret, secret_len, level);
 
     name = (u_char *) SSL_get_cipher(ssl_conn);
 
@@ -279,14 +293,13 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *data, size_t len)
 {
     u_char                   *p, *pnp, *name, *nonce, *sample;
-    ngx_int_t                 m;
     ngx_str_t                 in, out, ad;
     static int                pn;
     const EVP_CIPHER         *cipher;
     ngx_connection_t         *c;
     ngx_quic_secret_t        *secret;
     ngx_quic_connection_t    *qc;
-    u_char                    buf[2048], mask[16];
+    u_char                    mask[16];
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
     qc = c->quic;
@@ -307,10 +320,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 1024)) - buf;
-    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data: %*s%s, len: %uz, level:%d",
-                   m, buf, len < 2048 ? "" : "...", len, (int) level);
+    ngx_quic_hexdump(c->log, "level:%d read", data, len, level);
 
     in.data = ngx_alloc(4 + len + 5 /*minimal ACK*/, c->log);
     if (in.data == 0) {
@@ -369,11 +379,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     ad.len = p - ad.data;
 
-    m = ngx_hex_dump(buf, ad.data, ad.len) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data ad: %*s, len: %uz",
-                   m, buf, ad.len);
-
+    ngx_quic_hexdump0(c->log, "ad", data, len);
 
     name = (u_char *) SSL_get_cipher(ssl_conn);
 
@@ -394,14 +400,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         nonce[11] ^= (pn - 1);
     }
 
-    m = ngx_hex_dump(buf, (u_char *) secret->iv.data, 12) - buf;
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data sample: server_iv %*s",
-                   m, buf);
-    m = ngx_hex_dump(buf, (u_char *) nonce, 12) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data sample: n=%d nonce %*s",
-                   pn - 1, m, buf);
+    ngx_quic_hexdump0(c->log, "server_iv", secret->iv.data, 12);
+    ngx_quic_hexdump(c->log, "sample: n=%d nonce", nonce, 12, pn - 1);
 
     if (ngx_quic_tls_seal(c, cipher, secret, &out, nonce, &in, &ad) != NGX_OK)
     {
@@ -413,20 +413,9 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    m = ngx_hex_dump(buf, (u_char *) sample, 16) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data sample: %*s, len: %uz",
-                   m, buf, 16);
-
-    m = ngx_hex_dump(buf, (u_char *) mask, 16) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data mask: %*s, len: %uz",
-                   m, buf, 16);
-
-    m = ngx_hex_dump(buf, (u_char *) secret->hp.data, 16) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data hp_key: %*s, len: %uz",
-                   m, buf, 16);
+    ngx_quic_hexdump0(c->log, "sample", sample, 16);
+    ngx_quic_hexdump0(c->log, "mask", mask, 16);
+    ngx_quic_hexdump0(c->log, "hp_key", secret->hp.data, 16);
 
     // header protection, pnl = 0
     ad.data[0] ^= mask[0] & 0x0f;
@@ -440,10 +429,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     p = ngx_cpymem(packet, ad.data, ad.len);
     p = ngx_cpymem(p, out.data, out.len);
 
-    m = ngx_hex_dump(buf, (u_char *) packet, ngx_min(1024, p - packet)) - buf;
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_add_handshake_data packet: %*s%s, len: %uz",
-                   m, buf, len < 2048 ? "" : "...", p - packet);
+    ngx_quic_hexdump0(c->log, "packet", packet, p - packet);
 
     // TODO: save state of data to send into qc (push into queue)
 
@@ -490,13 +476,8 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 {
-    int             n, sslerr;
-#if (NGX_DEBUG)
-    u_char          buf[512];
-    size_t          m;
-#endif
-
-    ngx_quic_connection_t    *qc;
+    int                     n, sslerr;
+    ngx_quic_connection_t  *qc;
 
     if ((b->pos[0] & 0xf0) != 0xc0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "invalid initial packet");
@@ -568,28 +549,13 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
      */
     u_char *sample = b->pos + 4;
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, qc->dcid.data, qc->dcid.len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic DCID: %*s, len: %uz", m, buf, qc->dcid.len);
+    ngx_quic_hexdump0(c->log, "DCID", qc->dcid.data, qc->dcid.len);
+    ngx_quic_hexdump0(c->log, "SCID", qc->scid.data, qc->scid.len);
+    ngx_quic_hexdump0(c->log, "token", qc->token.data, qc->token.len);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet length: %d", plen);
+    ngx_quic_hexdump0(c->log, "sample", sample, 16);
 
-        m = ngx_hex_dump(buf, qc->scid.data, qc->scid.len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic SCID: %*s, len: %uz", m, buf, qc->scid.len);
-
-        m = ngx_hex_dump(buf, qc->token.data, qc->token.len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic token: %*s, len: %uz", m, buf, qc->token.len);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic packet length: %d", plen);
-
-        m = ngx_hex_dump(buf, sample, 16) - buf;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic sample: %*s", m, buf);
-    }
-#endif
 
 // initial secret
 
@@ -619,17 +585,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
         .len = is_len
     };
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, (uint8_t *) salt, sizeof(salt)) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic salt: %*s, len: %uz", m, buf, sizeof(salt));
-
-        m = ngx_hex_dump(buf, is, is_len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic initial secret: %*s, len: %uz", m, buf, is_len);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "salt", salt, sizeof(salt));
+    ngx_quic_hexdump0(c->log, "initial secret", is, is_len);
 
     /* draft-ietf-quic-tls-23#section-5.2 */
     qc->client_in.secret.len = SHA256_DIGEST_LENGTH;
@@ -712,20 +669,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
     ngx_int_t  pnl = (clearflags & 0x03) + 1;
     uint64_t  pn = ngx_quic_parse_pn(&b->pos, pnl, &mask[1]);
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, sample, 16) - buf;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic sample: %*s", m, buf);
-
-        m = ngx_hex_dump(buf, mask, 5) - buf;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic mask: %*s", m, buf);
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic packet number: %uL, len: %xi", pn, pnl);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "sample", sample, 16);
+    ngx_quic_hexdump0(c->log, "mask", mask, 5);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet number: %uL, len: %xi", pn, pnl);
 
 // packet protection
 
@@ -747,17 +694,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
     uint8_t *nonce = ngx_pstrdup(c->pool, &qc->client_in.iv);
     nonce[11] ^= pn;
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, nonce, 12) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic nonce: %*s, len: %uz", m, buf, 12);
-
-        m = ngx_hex_dump(buf, ad.data, ad.len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic ad: %*s, len: %uz", m, buf, ad.len);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "nonce", nonce, 12);
+    ngx_quic_hexdump0(c->log, "ad", ad.data, ad.len);
 
     ngx_str_t  out;
 
@@ -768,14 +706,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
         return NGX_ERROR;
     }
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, out.data, ngx_min(out.len, 256)) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic packet payload: %*s%s, len: %uz",
-                       m, buf, m < 512 ? "" : "...", out.len);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "packet payload", out.data, out.len);
 
     if (out.data[0] != 0x06) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -862,12 +793,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
 {
-    size_t                  m;
     ssize_t                 n;
     ngx_str_t               out;
     const EVP_CIPHER       *cipher;
     ngx_quic_connection_t  *qc;
-    u_char                  buf[4096], *p, *b;
+    u_char                  *p, *b;
 
     qc = c->quic;
 
@@ -875,9 +805,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
     p = bb->pos;
     b = bb->start;
 
-    m = ngx_hex_dump(buf, b, n) - buf;
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic handshake handler: %*s, len: %uz", m, buf, n);
+    ngx_quic_hexdump0(c->log, "input", buf, n);
 
     if ((p[0] & 0xf0) != 0xe0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "invalid packet type");
@@ -932,8 +860,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
 
     u_char *sample = p + 4;
 
-    m = ngx_hex_dump(buf, sample, 16) - buf;
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic sample: %*s", m, buf);
+    ngx_quic_hexdump0(c->log, "sample", sample, 16);
 
 // header protection
 
@@ -948,17 +875,11 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
     ngx_int_t  pnl = (clearflags & 0x03) + 1;
     uint64_t  pn = ngx_quic_parse_pn(&p, pnl, &mask[1]);
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, mask, 5) - buf;
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic mask: %*s", m, buf);
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic clear flags: %xi", clearflags);
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic packet number: %uL, len: %xi", pn, pnl);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "mask", mask, 5);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic clear flags: %xi", clearflags);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet number: %uL, len: %xi", pn, pnl);
 
 // packet protection
 
@@ -980,17 +901,8 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
     uint8_t *nonce = ngx_pstrdup(c->pool, &qc->client_hs.iv);
     nonce[11] ^= pn;
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, nonce, 12) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic nonce: %*s, len: %uz", m, buf, 12);
-
-        m = ngx_hex_dump(buf, ad.data, ad.len) - buf;
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic ad: %*s, len: %uz", m, buf, ad.len);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "nonce", nonce, 12);
+    ngx_quic_hexdump0(c->log, "ad", ad.data, ad.len);
 
     u_char *name = (u_char *) SSL_get_cipher(c->ssl->connection);
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1015,14 +927,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
         return NGX_ERROR;
     }
 
-#if (NGX_DEBUG)
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, out.data, ngx_min(out.len, 256)) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic packet payload: %*s%s, len: %uz",
-                       m, buf, m < 512 ? "" : "...", out.len);
-    }
-#endif
+    ngx_quic_hexdump0(c->log, "packet payload", out.data, out.len);
 
     return NGX_OK;
 }
@@ -1152,11 +1057,6 @@ ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
     size_t    info_len;
     uint8_t   info[20];
 
-#if (NGX_DEBUG)
-    u_char    buf[512];
-    size_t    m;
-#endif
-
     out->data = ngx_pnalloc(c->pool, out->len);
     if (out->data == NULL) {
         return NGX_ERROR;
@@ -1179,15 +1079,8 @@ ngx_quic_hkdf_expand(ngx_connection_t *c, const EVP_MD *digest, ngx_str_t *out,
         return NGX_ERROR;
     }
 
-    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, info, info_len) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "%V info: %*s, len: %uz", label, m, buf, info_len);
-
-        m = ngx_hex_dump(buf, out->data, out->len) - buf;
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "%V key: %*s, len: %uz", label, m, buf, out->len);
-    }
+    ngx_quic_hexdump(c->log, "%V info", info, info_len, label);
+    ngx_quic_hexdump(c->log, "%V key", out->data, out->len, label);
 
     return NGX_OK;
 }
