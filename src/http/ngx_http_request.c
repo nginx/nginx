@@ -2490,6 +2490,15 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     if (r != r->main) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+        if (r->buffered || r->postponed) {
+
+            if (ngx_http_set_write_handler(r) != NGX_OK) {
+                ngx_http_terminate_request(r, 0);
+            }
+
+            return;
+        }
+
         if (r->background) {
             if (!r->logged) {
                 if (clcf->log_subrequest) {
@@ -2506,15 +2515,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
             r->done = 1;
             ngx_http_finalize_connection(r);
-            return;
-        }
-
-        if (r->buffered || r->postponed) {
-
-            if (ngx_http_set_write_handler(r) != NGX_OK) {
-                ngx_http_terminate_request(r, 0);
-            }
-
             return;
         }
 
