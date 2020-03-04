@@ -1127,7 +1127,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
         return NGX_ERROR;
     }
 
-    static const uint8_t params[12] = "\x00\x0a\x00\x3a\x00\x01\x00\x00\x09\x00\x01\x03";
+    /* STUB: initial_max_streams_uni=3, active_connection_id_limit=5 */
+    static const uint8_t params[12] = "\x00\x0a\x00\x0e\x00\x01\x05\x00\x09\x00\x01\x03";
 
     if (SSL_set_quic_transport_params(c->ssl->connection, params,
                                       sizeof(params)) == 0)
