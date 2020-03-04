@@ -49,6 +49,8 @@
 #define ngx_quic_write_uint32_aligned(p, s)                                   \
     (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
 
+#define ngx_quic_varint_len(value)                                            \
+    ((value) <= 63 ? 1 : (value) <= 16383 ? 2 : (value) <= 1073741823 ?  4 : 8)
 
 
 #if (NGX_DEBUG)
@@ -349,12 +351,7 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     u_char  *start;
 
     if (p == NULL) {
-        if (crypto->len >= 64) {
-            return crypto->len + 4;
-
-        } else {
-            return crypto->len + 3;
-        } // TODO: proper calculation of varint
+        return 3 + ngx_quic_varint_len(crypto->len) + crypto->len;
     }
 
     start = p;
