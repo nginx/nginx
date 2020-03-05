@@ -994,13 +994,13 @@ ngx_quic_process_handshake_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_initial_secret(ngx_connection_t *c)
 {
-    ngx_quic_connection_t *qc = c->quic;
+    size_t                  is_len;
+    uint8_t                 is[SHA256_DIGEST_LENGTH];
+    ngx_uint_t              i;
+    const EVP_MD           *digest;
+    const EVP_CIPHER       *cipher;
+    ngx_quic_connection_t  *qc;
 
-    size_t                    is_len;
-    uint8_t                   is[SHA256_DIGEST_LENGTH];
-    ngx_uint_t                i;
-    const EVP_MD             *digest;
-    const EVP_CIPHER         *cipher;
     static const uint8_t salt[20] =
         "\xc3\xee\xf7\x12\xc7\x2e\xbb\x5a\x11\xa7"
         "\xd2\x43\x2b\xb4\x63\x65\xbe\xf9\xf5\x02";
@@ -1009,6 +1009,8 @@ ngx_quic_initial_secret(ngx_connection_t *c)
 
     cipher = EVP_aes_128_gcm();
     digest = EVP_sha256();
+
+    qc  = c->quic;
 
     if (ngx_hkdf_extract(is, &is_len, digest, qc->dcid.data, qc->dcid.len,
                          salt, sizeof(salt))
@@ -1264,7 +1266,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 
     out = pkt.payload;
 
-    if (out.data[0] != 0x06) {
+    if (out.data[0] != NGX_QUIC_FT_CRYPTO) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "unexpected frame in initial packet");
         return NGX_ERROR;
@@ -1407,7 +1409,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b)
 
     out = pkt.payload;
 
-    if (out.data[0] != 0x06) {
+    if (out.data[0] != NGX_QUIC_FT_CRYPTO) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "non-CRYPTO frame in HS packet, skipping");
         return NGX_OK;
