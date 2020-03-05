@@ -1217,7 +1217,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 
     if ((pkt.flags & 0xf0) != NGX_QUIC_PKT_INITIAL) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid initial packet: 0x%x", pkt.flags);
+                      "invalid initial packet: 0x%xi", pkt.flags);
         return NGX_ERROR;
     }
 
@@ -1393,7 +1393,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b)
 
     if ((pkt.flags & 0xf0) != NGX_QUIC_PKT_HANDSHAKE) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid packet type: 0x%x", pkt.flags);
+                      "invalid packet type: 0x%xi", pkt.flags);
         return NGX_ERROR;
     }
 
