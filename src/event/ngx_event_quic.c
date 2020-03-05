@@ -1191,13 +1191,15 @@ static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
 {
     int                     sslerr;
+    u_char                 *p, *b;
     ssize_t                 n;
     ngx_str_t               out;
+    ngx_ssl_conn_t         *ssl_conn;
     const EVP_CIPHER       *cipher;
     ngx_quic_connection_t  *qc;
-    u_char                 *p, *b;
 
     qc = c->quic;
+    ssl_conn = c->ssl->connection;
 
     n = bb->last - bb->pos;
     p = bb->pos;
@@ -1302,7 +1304,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
     ngx_quic_hexdump0(c->log, "nonce", nonce, 12);
     ngx_quic_hexdump0(c->log, "ad", ad.data, ad.len);
 
-    u_char *name = (u_char *) SSL_get_cipher(c->ssl->connection);
+    u_char *name = (u_char *) SSL_get_cipher(ssl_conn);
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ssl cipher: %s", name);
 
@@ -1348,11 +1350,10 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(c->ssl->connection),
-                   (int) SSL_quic_write_level(c->ssl->connection));
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
 
-    if (!SSL_provide_quic_data(c->ssl->connection,
-                               SSL_quic_read_level(c->ssl->connection),
+    if (!SSL_provide_quic_data(ssl_conn, SSL_quic_read_level(ssl_conn),
                                crypto, crypto_len))
     {
         ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
@@ -1360,12 +1361,12 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
         return NGX_ERROR;
     }
 
-    n = SSL_do_handshake(c->ssl->connection);
+    n = SSL_do_handshake(ssl_conn);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
     if (n == -1) {
-        sslerr = SSL_get_error(c->ssl->connection, n);
+        sslerr = SSL_get_error(ssl_conn, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
                        sslerr);
@@ -1377,8 +1378,8 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(c->ssl->connection),
-                   (int) SSL_quic_write_level(c->ssl->connection));
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
 
     // ACK Client Finished
 
