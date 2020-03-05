@@ -351,7 +351,7 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     u_char  *start;
 
     if (p == NULL) {
-        return 3 + ngx_quic_varint_len(crypto->len) + crypto->len;
+        return 2 + ngx_quic_varint_len(crypto->len) + crypto->len;
     }
 
     start = p;
