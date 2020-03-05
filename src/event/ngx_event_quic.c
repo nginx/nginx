@@ -595,7 +595,7 @@ ngx_quic_create_long_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 {
     u_char                 *p, *pnp, *nonce, *sample, *packet;
     ngx_str_t               ad, out;
-    const EVP_CIPHER       *cipher;
+    const EVP_CIPHER       *cipher, *hp;
     ngx_quic_connection_t  *qc;
 
     u_char                  mask[16];
@@ -639,10 +639,12 @@ ngx_quic_create_long_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 
         case NGX_AES_128_GCM_SHA256:
             cipher = EVP_aes_128_gcm();
+            hp = EVP_aes_128_ecb();
             break;
 
         case NGX_AES_256_GCM_SHA384:
             cipher = EVP_aes_256_gcm();
+            hp = EVP_aes_256_ecb();
             break;
 
         default:
@@ -651,6 +653,7 @@ ngx_quic_create_long_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 
     } else {
         cipher = EVP_aes_128_gcm();
+        hp = EVP_aes_128_ecb();
     }
 
     nonce = ngx_pstrdup(c->pool, &pkt->secret->iv);
@@ -666,7 +669,7 @@ ngx_quic_create_long_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
     }
 
     sample = &out.data[3]; // pnl=0
-    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), pkt->secret, mask, sample) != NGX_OK) {
+    if (ngx_quic_tls_hp(c, hp, pkt->secret, mask, sample) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -699,7 +702,7 @@ ngx_quic_create_short_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 {
     u_char                 *p, *pnp, *nonce, *sample, *packet;
     ngx_str_t               ad, out;
-    const EVP_CIPHER       *cipher;
+    const EVP_CIPHER       *cipher, *hp;
     ngx_quic_connection_t  *qc;
 
     u_char                  mask[16];
@@ -731,10 +734,12 @@ ngx_quic_create_short_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 
     case NGX_AES_128_GCM_SHA256:
         cipher = EVP_aes_128_gcm();
+        hp = EVP_aes_128_ecb();
         break;
 
     case NGX_AES_256_GCM_SHA384:
         cipher = EVP_aes_256_gcm();
+        hp = EVP_aes_256_ecb();
         break;
 
     default:
@@ -758,9 +763,7 @@ ngx_quic_create_short_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump0(c->log, "out", out.data, out.len);
 
     sample = &out.data[3]; // pnl=0
-    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), pkt->secret, mask, sample)
-        != NGX_OK)
-    {
+    if (ngx_quic_tls_hp(c, hp, pkt->secret, mask, sample) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1113,9 +1116,31 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_int_t   pnl, rc;
     ngx_str_t   in, ad;
 
-    const EVP_CIPHER       *cipher;
+    const EVP_CIPHER       *cipher, *hp;
 
     uint8_t     mask[16];
+
+    if (c->ssl) {
+        switch (SSL_CIPHER_get_id(SSL_get_current_cipher(c->ssl->connection)) & 0xffff) {
+
+        case NGX_AES_128_GCM_SHA256:
+            cipher = EVP_aes_128_gcm();
+            hp = EVP_aes_128_ecb();
+            break;
+        case NGX_AES_256_GCM_SHA384:
+            cipher = EVP_aes_256_gcm();
+            hp = EVP_aes_256_ecb();
+            break;
+        default:
+            ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
+            return NGX_ERROR;
+        }
+
+    } else {
+        /* initial packets */
+        cipher = EVP_aes_128_gcm();
+        hp = EVP_aes_128_ecb();
+    }
 
     p = pkt->pos;
 
@@ -1131,9 +1156,7 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     /* header protection */
 
-    if (ngx_quic_tls_hp(c, EVP_aes_128_ecb(), pkt->secret, mask, sample)
-        != NGX_OK)
-    {
+    if (ngx_quic_tls_hp(c, hp, pkt->secret, mask, sample) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1169,25 +1192,6 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ngx_quic_hexdump0(c->log, "nonce", nonce, 12);
     ngx_quic_hexdump0(c->log, "ad", ad.data, ad.len);
-
-    if (c->ssl) {
-        switch (SSL_CIPHER_get_id(SSL_get_current_cipher(c->ssl->connection)) & 0xffff) {
-
-        case NGX_AES_128_GCM_SHA256:
-            cipher = EVP_aes_128_gcm();
-            break;
-        case NGX_AES_256_GCM_SHA384:
-            cipher = EVP_aes_256_gcm();
-            break;
-        default:
-            ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
-            return NGX_ERROR;
-        }
-
-    } else {
-        /* initial packets */
-        cipher = EVP_aes_128_gcm();
-    }
 
     rc = ngx_quic_tls_open(c, cipher, pkt->secret, &pkt->payload,
                            nonce, &in, &ad);
