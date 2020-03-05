@@ -1203,7 +1203,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *bb)
     p = bb->pos;
     b = bb->start;
 
-    ngx_quic_hexdump0(c->log, "input", buf, n);
+    ngx_quic_hexdump0(c->log, "input", p, n);
 
     if ((p[0] & 0xf0) != NGX_QUIC_PKT_HANDSHAKE) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "invalid packet type");
