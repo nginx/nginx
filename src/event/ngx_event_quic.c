@@ -516,7 +516,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_quic_hexdump(c->log, "level:%d read", read_secret, secret_len, level);
-    ngx_quic_hexdump(c->log, "level:%d read", write_secret, secret_len, level);
+    ngx_quic_hexdump(c->log, "level:%d write", write_secret, secret_len, level);
 
     switch (SSL_CIPHER_get_id(SSL_get_current_cipher(ssl_conn)) & 0xffff) {
 
