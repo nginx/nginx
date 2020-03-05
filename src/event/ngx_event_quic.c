@@ -634,18 +634,23 @@ ngx_quic_create_long_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
 
     ngx_quic_hexdump0(c->log, "ad", ad.data, ad.len);
 
-    switch (SSL_CIPHER_get_id(SSL_get_current_cipher(ssl_conn)) & 0xffff) {
+    if (pkt->level != ssl_encryption_initial) {
+        switch (SSL_CIPHER_get_id(SSL_get_current_cipher(ssl_conn)) & 0xffff) {
 
-    case NGX_AES_128_GCM_SHA256:
+        case NGX_AES_128_GCM_SHA256:
+            cipher = EVP_aes_128_gcm();
+            break;
+
+        case NGX_AES_256_GCM_SHA384:
+            cipher = EVP_aes_256_gcm();
+            break;
+
+        default:
+            return NGX_ERROR;
+        }
+
+    } else {
         cipher = EVP_aes_128_gcm();
-        break;
-
-    case NGX_AES_256_GCM_SHA384:
-        cipher = EVP_aes_256_gcm();
-        break;
-
-    default:
-        return NGX_ERROR;
     }
 
     nonce = ngx_pstrdup(c->pool, &pkt->secret->iv);
