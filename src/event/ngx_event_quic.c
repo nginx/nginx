@@ -758,7 +758,9 @@ ngx_quic_create_short_packet(ngx_connection_t *c, ngx_ssl_conn_t *ssl_conn,
     }
 
     nonce = ngx_pstrdup(c->pool, &pkt->secret->iv);
-    if (pkt->level == ssl_encryption_handshake) {
+    if (pkt->level == ssl_encryption_handshake
+        || pkt->level == ssl_encryption_application)
+    {
         nonce[11] ^= (*pkt->number - 1);
     }
 
