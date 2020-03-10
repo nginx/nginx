@@ -12,6 +12,7 @@
 
 #define NGX_AES_128_GCM_SHA256        0x1301
 #define NGX_AES_256_GCM_SHA384        0x1302
+#define NGX_CHACHA20_POLY1305_SHA256  0x1303
 
 #define NGX_QUIC_IV_LEN               12
 
@@ -2119,6 +2120,19 @@ ngx_quic_ciphers(ngx_connection_t *c, ngx_quic_ciphers_t *ciphers,
 #endif
         ciphers->hp = EVP_aes_256_ctr();
         ciphers->d = EVP_sha384();
+        len = 32;
+        break;
+
+    case NGX_CHACHA20_POLY1305_SHA256:
+#ifdef OPENSSL_IS_BORINGSSL
+        ciphers->c = EVP_aead_chacha20_poly1305();
+#else
+        ciphers->c = EVP_chacha20_poly1305();
+#endif
+#ifndef OPENSSL_IS_BORINGSSL
+        ciphers->hp = EVP_chacha20();
+#endif
+        ciphers->d = EVP_sha256();
         len = 32;
         break;
 
