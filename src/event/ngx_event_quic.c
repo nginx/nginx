@@ -134,12 +134,23 @@ typedef enum ssl_encryption_level_t  ngx_quic_level_t;
 typedef struct ngx_quic_frame_s  ngx_quic_frame_t;
 
 typedef struct {
-    ngx_uint_t          pn;
-    // ngx_uint_t       nranges;
-    // ...
+    ngx_uint_t                  pn;
+
+    // input
+    uint64_t                    largest;
+    uint64_t                    delay;
+    uint64_t                    range_count;
+    uint64_t                    first_range;
+    uint64_t                    ranges[20];
+    /* ecn counts */
 } ngx_quic_ack_frame_t;
 
-typedef ngx_str_t  ngx_quic_crypto_frame_t;
+typedef struct {
+    size_t                      offset;
+    size_t                      len;
+    u_char                     *data;
+} ngx_quic_crypto_frame_t;
+
 
 struct ngx_quic_frame_s {
     ngx_uint_t                  type;
@@ -207,6 +218,7 @@ typedef struct {
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_buf_t *b);
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b);
+static ngx_int_t ngx_quic_app_input(ngx_connection_t *c, ngx_buf_t *b);
 
 static int ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *read_secret,
@@ -224,6 +236,8 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, uint8_t alert);
 
 static ngx_int_t ngx_quic_process_long_header(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_process_short_header(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_process_initial_header(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -276,19 +290,15 @@ ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 {
     if (c->quic == NULL) {
-        return ngx_quic_new_connection(c, ssl, b); //TODO: change state by results
+        return ngx_quic_new_connection(c, ssl, b);
     }
 
-    switch (c->quic->state) {
-    case NGX_QUIC_ST_INITIAL:
-    case NGX_QUIC_ST_HANDSHAKE:
+    if (b->start[0] & NGX_QUIC_PKT_LONG) {
+        // TODO: check current state
         return ngx_quic_handshake_input(c, b);
-    default:
-        /* application data */
-        break;
     }
 
-    return NGX_OK;
+    return ngx_quic_app_input(c, b);
 }
 
 static ngx_int_t
@@ -379,7 +389,7 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     start = p;
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_CRYPTO);
-    ngx_quic_build_int(&p, 0);
+    ngx_quic_build_int(&p, crypto->offset);
     ngx_quic_build_int(&p, crypto->len);
     p = ngx_cpymem(p, crypto->data, crypto->len);
 
@@ -452,6 +462,7 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
 
     return NGX_OK;
 }
+
 
 ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
@@ -802,8 +813,13 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
         return;
     }
 
-    for (f = qc->frames; f->next; f = f->next) { /* void */ }
+    for (f = qc->frames; f->next; f = f->next) {
+        if (f->next->level > frame->level) {
+            break;
+        }
+    }
 
+    frame->next = f->next;
     f->next = frame;
 }
 
@@ -844,19 +860,6 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     ngx_quic_queue_frame(qc, frame);
 
-    if (level == ssl_encryption_initial) {
-        frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
-        if (frame == NULL) {
-            return 0;
-        }
-        frame->level = level;
-        frame->type = NGX_QUIC_FT_ACK;
-        frame->u.ack.pn = 0;
-        ngx_sprintf(frame->info, "ACK for PN=0 at initial, added manually from add_handshake_data");
-
-        ngx_quic_queue_frame(qc, frame);
-    }
-
     return 1;
 }
 
@@ -869,10 +872,6 @@ ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn)
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "ngx_quic_flush_flight()");
-
-    if (ngx_quic_output(c) != NGX_OK) {
-        return 0;
-    }
 
     return 1;
 }
@@ -891,6 +890,40 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
                    (int) level, (int) alert);
 
     return 1;
+}
+
+
+/* TODO: stub for short packet header processing */
+static ngx_int_t
+ngx_quic_process_short_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    u_char  *p;
+
+    p = pkt->buf.data;
+
+    ngx_quic_hexdump0(c->log, "input", pkt->buf.data, pkt->buf.len);
+
+    if ((p[0] & NGX_QUIC_PKT_LONG)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "not a short packet");
+        return NGX_ERROR;
+    }
+
+    pkt->flags = *p++;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic flags:%xi", pkt->flags);
+
+    if (ngx_memcmp(p, c->quic->dcid.data, c->quic->dcid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcid");
+        return NGX_ERROR;
+    }
+
+    pkt->dcid.data = p;
+    p += c->quic->dcid.len;
+
+    pkt->pos = p;
+
+    return NGX_OK;
 }
 
 
@@ -1160,7 +1193,13 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    clearflags = pkt->flags ^ (mask[0] & 0x0f);
+    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+        clearflags = pkt->flags ^ (mask[0] & 0x0f);
+
+    } else {
+        clearflags = pkt->flags ^ (mask[0] & 0x1f);
+    }
+
     pnl = (clearflags & 0x03) + 1;
     pn = ngx_quic_parse_pn(&p, pnl, &mask[1]);
 
@@ -1175,9 +1214,15 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
     /* packet protection */
 
     in.data = p;
-    in.len = pkt->buf.len - pnl;
 
-    ad.len = p - pkt->buf.data;;
+    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+        in.len = pkt->buf.len - pnl;
+
+    } else {
+        in.len = pkt->buf.data + pkt->buf.len - p;
+    }
+
+    ad.len = p - pkt->buf.data;
     ad.data = ngx_pnalloc(c->pool, ad.len);
     if (ad.data == NULL) {
         return NGX_ERROR;
@@ -1199,15 +1244,278 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_hexdump0(c->log, "packet payload",
                       pkt->payload.data, pkt->payload.len);
 
+    pkt->pos = pkt->payload.data;
+
     return rc;
+}
+
+
+ngx_int_t
+ngx_quic_read_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
+    ngx_quic_frame_t *frame)
+{
+    u_char *p, *end;
+
+    size_t npad;
+
+    p = pkt->pos;
+    end = pkt->payload.data + pkt->payload.len;
+
+    frame->type = *p++;
+
+    switch (frame->type) {
+
+    case NGX_QUIC_FT_CRYPTO:
+        frame->u.crypto.offset = *p++;
+        frame->u.crypto.len = ngx_quic_parse_int(&p);
+        frame->u.crypto.data = p;
+        p += frame->u.crypto.len;
+
+        ngx_quic_hexdump0(c->log, "CRYPTO frame",
+                          frame->u.crypto.data, frame->u.crypto.len);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic CRYPTO frame length: %uL off:%uL pp:%p",
+                       frame->u.crypto.len, frame->u.crypto.offset,
+                       frame->u.crypto.data);
+        break;
+
+    case NGX_QUIC_FT_PADDING:
+        npad = 0;
+        while (p < end && *p == NGX_QUIC_FT_PADDING) { // XXX
+            p++; npad++;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "PADDING frame length %uL", npad);
+
+        break;
+
+    case NGX_QUIC_FT_ACK:
+    case NGX_QUIC_FT_ACK_ECN:
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "ACK frame");
+
+        frame->u.ack.largest = ngx_quic_parse_int(&p);
+        frame->u.ack.delay = ngx_quic_parse_int(&p);
+        frame->u.ack.range_count =ngx_quic_parse_int(&p);
+        frame->u.ack.first_range =ngx_quic_parse_int(&p);
+
+        if (frame->u.ack.range_count) {
+            frame->u.ack.ranges[0] = ngx_quic_parse_int(&p);
+        }
+
+        if (frame->type ==NGX_QUIC_FT_ACK_ECN) {
+            return NGX_ERROR;
+        }
+
+        break;
+
+    case NGX_QUIC_FT_PING:
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "PING frame");
+        p++;
+        break;
+    default:
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "unknown frame type %xi", frame->type);
+        return NGX_ERROR;
+    }
+
+    pkt->pos = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
+    ngx_quic_frame_t *frame)
+{
+    int             sslerr;
+    ssize_t         n;
+    ngx_ssl_conn_t *ssl_conn;
+
+    ssl_conn = c->ssl->connection;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
+
+
+    if (!SSL_provide_quic_data(ssl_conn, SSL_quic_read_level(ssl_conn),
+                               frame->u.crypto.data, frame->u.crypto.len))
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "SSL_provide_quic_data() failed");
+        return NGX_ERROR;
+    }
+
+    n = SSL_do_handshake(ssl_conn);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
+
+    if (n == -1) {
+        sslerr = SSL_get_error(ssl_conn, n);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
+                       sslerr);
+
+        if (sslerr == SSL_ERROR_SSL) {
+            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
+        }
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
+
+    return NGX_OK;
+}
+
+
+
+static ngx_int_t
+ngx_quic_init_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    int                     n, sslerr;
+    ngx_ssl_conn_t         *ssl_conn;
+    ngx_quic_connection_t  *qc;
+
+    /* STUB: initial_max_streams_uni=3, active_connection_id_limit=5 */
+    static const uint8_t params[12] = "\x00\x0a\x00\x0e\x00\x01\x05\x00\x09\x00\x01\x03";
+
+    qc = c->quic;
+
+    if (ngx_ssl_create_connection(qc->ssl, c, NGX_SSL_BUFFER) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ssl_conn = c->ssl->connection;
+
+    if (SSL_set_quic_transport_params(ssl_conn, params, sizeof(params)) == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "SSL_set_quic_transport_params() failed");
+        return NGX_ERROR;
+    }
+
+    n = SSL_do_handshake(ssl_conn);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
+
+    if (n == -1) {
+        sslerr = SSL_get_error(ssl_conn, n);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
+                       sslerr);
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
+
+    return NGX_OK;
+}
+
+
+/* process all payload from the current packet and generate ack if required */
+static ngx_int_t
+ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    u_char                 *end;
+    ngx_uint_t              ack_this;
+    ngx_quic_frame_t        frame, *ack_frame;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+    end = pkt->payload.data + pkt->payload.len;
+
+    ack_this = 0;
+
+    while (pkt->pos < end) {
+
+        if (ngx_quic_read_frame(c, pkt, &frame) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        switch (frame.type) {
+
+        case NGX_QUIC_FT_ACK:
+
+            // TODO: handle ack
+
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "ACK: { largest=%ui delay=%ui first=%ui count=%ui}",
+                           frame.u.ack.largest,
+                           frame.u.ack.delay,
+                           frame.u.ack.first_range,
+                           frame.u.ack.range_count);
+
+            break;
+
+        case NGX_QUIC_FT_CRYPTO:
+
+            if (frame.u.crypto.offset != 0x0) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "crypto frame with non-zero offset");
+                // TODO: support packet spanning with offsets
+                return NGX_ERROR;
+            }
+
+            if (ngx_quic_handle_crypto_frame(c, pkt, &frame) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            ack_this = 1;
+
+            continue;
+
+        case NGX_QUIC_FT_PADDING:
+            continue;
+
+        case NGX_QUIC_FT_PING:
+            ack_this = 1;
+            continue;
+
+        default:
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "unexpected frame type 0x%xd in packet", frame.type);
+            return NGX_ERROR;
+        }
+    }
+
+    if (ack_this == 0) {
+        /* do not ack packets with ACKs and PADDING */
+        return NGX_OK;
+    }
+
+    // packet processed, ACK it now if required
+    // TODO: if (ack_required) ...  - currently just ack each packet
+
+    ack_frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    if (ack_frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    ack_frame->level = pkt->level;
+    ack_frame->type = NGX_QUIC_FT_ACK;
+    ack_frame->u.ack.pn = pkt->pn;
+
+    ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler", pkt->pn);
+    ngx_quic_queue_frame(qc, ack_frame);
+
+    return ngx_quic_output(c);
 }
 
 
 static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
 {
-    int                     n, sslerr;
-    ngx_str_t               out;
     ngx_quic_connection_t  *qc;
 
     ngx_quic_header_t pkt = { 0 };
@@ -1240,6 +1548,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
     }
 
     c->quic = qc;
+    qc->ssl = ssl;
 
     qc->dcid.len = pkt.dcid.len;
     qc->dcid.data = ngx_pnalloc(c->pool, pkt.dcid.len);
@@ -1268,102 +1577,23 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_buf_t *b)
     }
 
     pkt.secret = &qc->client_in;
+    pkt.level = ssl_encryption_initial;
 
     if (ngx_quic_decrypt(c, &pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    out = pkt.payload;
-
-    if (out.data[0] != NGX_QUIC_FT_CRYPTO) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "unexpected frame in initial packet");
+    if (ngx_quic_init_connection(c, &pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    if (out.data[1] != 0x00) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "unexpected CRYPTO offset in initial packet");
-        return NGX_ERROR;
-    }
-
-    uint8_t *crypto = &out.data[2];
-    uint64_t crypto_len = ngx_quic_parse_int(&crypto);
-
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic initial packet CRYPTO length: %uL pp:%p:%p",
-                   crypto_len, out.data, crypto);
-
-    if (ngx_ssl_create_connection(ssl, c, NGX_SSL_BUFFER) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    /* STUB: initial_max_streams_uni=3, active_connection_id_limit=5 */
-    static const uint8_t params[12] = "\x00\x0a\x00\x0e\x00\x01\x05\x00\x09\x00\x01\x03";
-
-    if (SSL_set_quic_transport_params(c->ssl->connection, params,
-                                      sizeof(params)) == 0)
-    {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "SSL_set_quic_transport_params() failed");
-        return NGX_ERROR;
-    }
-
-    n = SSL_do_handshake(c->ssl->connection);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
-
-    if (n == -1) {
-        sslerr = SSL_get_error(c->ssl->connection, n);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
-                       sslerr);
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(c->ssl->connection),
-                   (int) SSL_quic_write_level(c->ssl->connection));
-
-    if (!SSL_provide_quic_data(c->ssl->connection,
-                               SSL_quic_read_level(c->ssl->connection),
-                               crypto, crypto_len))
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "SSL_provide_quic_data() failed");
-        return NGX_ERROR;
-    }
-
-    n = SSL_do_handshake(c->ssl->connection);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
-
-    if (n == -1) {
-        sslerr = SSL_get_error(c->ssl->connection, n);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
-                       sslerr);
-
-        if (sslerr == SSL_ERROR_SSL) {
-            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
-        }
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(c->ssl->connection),
-                   (int) SSL_quic_write_level(c->ssl->connection));
-
-    return NGX_OK;
+    return ngx_quic_payload_handler(c, &pkt);
 }
 
 
 static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b)
 {
-    int                     sslerr;
-    ssize_t                 n;
-    ngx_str_t               out;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
 
@@ -1411,89 +1641,42 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b)
     }
 
     pkt.secret = &qc->client_hs;
+    pkt.level = ssl_encryption_handshake;
 
     if (ngx_quic_decrypt(c, &pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    out = pkt.payload;
+    return ngx_quic_payload_handler(c, &pkt);
+}
 
-    if (out.data[0] != NGX_QUIC_FT_CRYPTO) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "non-CRYPTO frame in HS packet, skipping");
-        return NGX_OK;
-    }
 
-    if (out.data[1] != 0x00) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "not yet supported CRYPTO offset in initial packet");
+static ngx_int_t
+ngx_quic_app_input(ngx_connection_t *c, ngx_buf_t *b)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    /* TODO: this is a stub, untested */
+
+    ngx_quic_header_t pkt = { 0 };
+
+    pkt.buf.data = b->start;
+    pkt.buf.len = b->last - b->pos;
+
+    if (ngx_quic_process_short_header(c, &pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    uint8_t *crypto = &out.data[2];
-    uint64_t crypto_len = ngx_quic_parse_int(&crypto);
+    pkt.secret = &qc->client_ad;
+    pkt.level = ssl_encryption_application;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic Handshake packet CRYPTO length: %uL pp:%p:%p",
-                   crypto_len, out.data, crypto);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(ssl_conn),
-                   (int) SSL_quic_write_level(ssl_conn));
-
-    if (!SSL_provide_quic_data(ssl_conn, SSL_quic_read_level(ssl_conn),
-                               crypto, crypto_len))
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "SSL_provide_quic_data() failed");
+    if (ngx_quic_decrypt(c, &pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    n = SSL_do_handshake(ssl_conn);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
-
-    if (n == -1) {
-        sslerr = SSL_get_error(ssl_conn, n);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
-                       sslerr);
-
-        if (sslerr == SSL_ERROR_SSL) {
-            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
-        }
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(ssl_conn),
-                   (int) SSL_quic_write_level(ssl_conn));
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
-
-    // ACK Client Finished
-
-    ngx_quic_frame_t  *frame;
-
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
-    if (frame == NULL) {
-        return 0;
-    }
-
-    frame->level = ssl_encryption_handshake;
-    frame->type = NGX_QUIC_FT_ACK;
-    frame->u.ack.pn = pkt.pn;
-
-    ngx_sprintf(frame->info, "ACK for PN=%d at handshake level, in respond to client finished", pkt.pn);
-    ngx_quic_queue_frame(qc, frame);
-
-    if (ngx_quic_output(c) != NGX_OK) {
-        return 0;
-    }
-
-    return NGX_OK;
+    return ngx_quic_payload_handler(c, &pkt);
 }
 
 
