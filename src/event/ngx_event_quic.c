@@ -2053,6 +2053,17 @@ ngx_quic_tls_hp(ngx_connection_t *c, const EVP_CIPHER *cipher,
     EVP_CIPHER_CTX  *ctx;
     u_char           zero[5] = {0};
 
+#ifdef OPENSSL_IS_BORINGSSL
+    uint32_t counter;
+
+    ngx_memcpy(&counter, in, sizeof(uint32_t));
+
+    if (cipher == (const EVP_CIPHER *) EVP_aead_chacha20_poly1305()) {
+        CRYPTO_chacha_20(out, zero, 5, s->hp.data, &in[4], counter);
+        return NGX_OK;
+    }
+#endif
+
     ctx = EVP_CIPHER_CTX_new();
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -2129,7 +2140,9 @@ ngx_quic_ciphers(ngx_connection_t *c, ngx_quic_ciphers_t *ciphers,
 #else
         ciphers->c = EVP_chacha20_poly1305();
 #endif
-#ifndef OPENSSL_IS_BORINGSSL
+#ifdef OPENSSL_IS_BORINGSSL
+        ciphers->hp = (const EVP_CIPHER *) EVP_aead_chacha20_poly1305();
+#else
         ciphers->hp = EVP_chacha20();
 #endif
         ciphers->d = EVP_sha256();

@@ -25,6 +25,7 @@
 #include <openssl/evp.h>
 #ifdef OPENSSL_IS_BORINGSSL
 #include <openssl/hkdf.h>
+#include <openssl/chacha.h>
 #else
 #include <openssl/kdf.h>
 #endif
