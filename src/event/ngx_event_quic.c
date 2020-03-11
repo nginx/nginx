@@ -1491,8 +1491,15 @@ ngx_quic_init_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
 
-    /* STUB: initial_max_streams_uni=3, active_connection_id_limit=5 */
-    static const uint8_t params[12] = "\x00\x0a\x00\x0e\x00\x01\x05\x00\x09\x00\x01\x03";
+    static const uint8_t params[] =
+        "\x00\x29"                         /* parameters length: 41 bytes         */
+        "\x00\x0e\x00\x01\x05"             /* active connection id limit: 5       */
+        "\x00\x04\x00\x04\x80\x98\x96\x80" /* initial max data = 10000000         */
+        "\x00\x09\x00\x01\x03"             /* initial max streams uni: 3          */
+        "\x00\x08\x00\x01\x10"             /* initial max streams bidi: 16        */
+        "\x00\x05\x00\x02\x40\xff"         /* initial max stream bidi local: 255  */
+        "\x00\x06\x00\x02\x40\xff"         /* initial max stream bidi remote: 255 */
+        "\x00\x07\x00\x02\x40\xff";        /* initial max stream data uni: 255    */
 
     qc = c->quic;
 
@@ -1502,7 +1509,7 @@ ngx_quic_init_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ssl_conn = c->ssl->connection;
 
-    if (SSL_set_quic_transport_params(ssl_conn, params, sizeof(params)) == 0) {
+    if (SSL_set_quic_transport_params(ssl_conn, params, sizeof(params) - 1) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "SSL_set_quic_transport_params() failed");
         return NGX_ERROR;
