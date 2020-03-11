@@ -234,9 +234,18 @@ static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_app_input(ngx_connection_t *c, ngx_buf_t *b);
 
+#if BORINGSSL_API_VERSION >= 10
+static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    const uint8_t *secret, size_t secret_len);
+static int ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    const uint8_t *secret, size_t secret_len);
+#else
 static int ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *read_secret,
     const uint8_t *write_secret, size_t secret_len);
+#endif
 static int ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *data, size_t len);
 static ngx_int_t ngx_quic_create_long_packet(ngx_connection_t *c,
@@ -288,7 +297,12 @@ static ngx_int_t ngx_quic_ciphers(ngx_connection_t *c,
     ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
 
 static SSL_QUIC_METHOD quic_method = {
+#if BORINGSSL_API_VERSION >= 10
+    ngx_quic_set_read_secret,
+    ngx_quic_set_write_secret,
+#else
     ngx_quic_set_encryption_secrets,
+#endif
     ngx_quic_add_handshake_data,
     ngx_quic_flush_flight,
     ngx_quic_send_alert,
@@ -529,6 +543,137 @@ ngx_quic_output(ngx_connection_t *c)
 }
 
 
+#if BORINGSSL_API_VERSION >= 10
+
+static int
+ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    const uint8_t *secret, size_t secret_len)
+{
+    ngx_int_t            key_len;
+    ngx_uint_t           i;
+    ngx_connection_t    *c;
+    ngx_quic_secret_t   *client;
+    ngx_quic_ciphers_t   ciphers;
+
+    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+    ngx_quic_hexdump(c->log, "level:%d read", secret, secret_len, level);
+
+    key_len = ngx_quic_ciphers(c, &ciphers, level);
+
+    if (key_len == NGX_ERROR) {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
+        return 0;
+    }
+
+    switch (level) {
+
+    case ssl_encryption_handshake:
+        client = &c->quic->client_hs;
+        break;
+
+    case ssl_encryption_application:
+        client = &c->quic->client_ad;
+        break;
+
+    default:
+        return 0;
+    }
+
+    client->key.len = key_len;
+    client->iv.len = NGX_QUIC_IV_LEN;
+    client->hp.len = key_len;
+
+    struct {
+        ngx_str_t       label;
+        ngx_str_t      *key;
+        const uint8_t  *secret;
+    } seq[] = {
+        { ngx_string("tls13 quic key"), &client->key, secret },
+        { ngx_string("tls13 quic iv"),  &client->iv,  secret },
+        { ngx_string("tls13 quic hp"),  &client->hp,  secret },
+    };
+
+    for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
+
+        if (ngx_quic_hkdf_expand(c, ciphers.d, seq[i].key, &seq[i].label,
+                                 seq[i].secret, secret_len)
+            != NGX_OK)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+
+static int
+ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    const uint8_t *secret, size_t secret_len)
+{
+    ngx_int_t            key_len;
+    ngx_uint_t           i;
+    ngx_connection_t    *c;
+    ngx_quic_secret_t   *server;
+    ngx_quic_ciphers_t   ciphers;
+
+    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+    ngx_quic_hexdump(c->log, "level:%d write", secret, secret_len, level);
+
+    key_len = ngx_quic_ciphers(c, &ciphers, level);
+
+    if (key_len == NGX_ERROR) {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
+        return 0;
+    }
+
+    switch (level) {
+
+    case ssl_encryption_handshake:
+        server = &c->quic->server_hs;
+        break;
+
+    case ssl_encryption_application:
+        server = &c->quic->server_ad;
+        break;
+
+    default:
+        return 0;
+    }
+
+    server->key.len = key_len;
+    server->iv.len = NGX_QUIC_IV_LEN;
+    server->hp.len = key_len;
+
+    struct {
+        ngx_str_t       label;
+        ngx_str_t      *key;
+        const uint8_t  *secret;
+    } seq[] = {
+        { ngx_string("tls13 quic key"), &server->key, secret },
+        { ngx_string("tls13 quic iv"),  &server->iv,  secret },
+        { ngx_string("tls13 quic hp"),  &server->hp,  secret },
+    };
+
+    for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
+
+        if (ngx_quic_hkdf_expand(c, ciphers.d, seq[i].key, &seq[i].label,
+                                 seq[i].secret, secret_len)
+            != NGX_OK)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+#else
+
 static int
 ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *read_secret,
@@ -604,6 +749,8 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     return 1;
 }
+
+#endif
 
 
 static ngx_int_t
