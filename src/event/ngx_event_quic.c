@@ -104,7 +104,14 @@ do {                                                                          \
 #define NGX_QUIC_FT_STOP_SENDING           0x05
 #define NGX_QUIC_FT_CRYPTO                 0x06
 #define NGX_QUIC_FT_NEW_TOKEN              0x07
-#define NGX_QUIC_FT_STREAM                 0x08 // - 0x0f
+#define NGX_QUIC_FT_STREAM                 0x08
+#define NGX_QUIC_FT_STREAM1                0x09
+#define NGX_QUIC_FT_STREAM2                0x0A
+#define NGX_QUIC_FT_STREAM3                0x0B
+#define NGX_QUIC_FT_STREAM4                0x0C
+#define NGX_QUIC_FT_STREAM5                0x0D
+#define NGX_QUIC_FT_STREAM6                0x0E
+#define NGX_QUIC_FT_STREAM7                0x0F
 #define NGX_QUIC_FT_MAX_DATA               0x10
 #define NGX_QUIC_FT_MAX_STREAM_DATA        0x11
 #define NGX_QUIC_FT_MAX_STREAMS            0x12
@@ -175,6 +182,14 @@ typedef struct {
 } ngx_quic_ncid_t;
 
 
+typedef struct {
+    uint64_t                     stream_id;
+    uint64_t                     offset;
+    uint64_t                     length;
+    u_char                      *data;
+} ngx_quic_stream_frame_t;
+
+
 struct ngx_quic_frame_s {
     ngx_uint_t                  type;
     ngx_quic_level_t            level;
@@ -183,6 +198,7 @@ struct ngx_quic_frame_s {
         ngx_quic_crypto_frame_t crypto;
         ngx_quic_ack_frame_t    ack;
         ngx_quic_ncid_t         ncid;
+        ngx_quic_stream_frame_t stream;
         // more frames
     } u;
 
@@ -1485,6 +1501,37 @@ ngx_quic_read_frame(ngx_connection_t *c, u_char *start, u_char *end,
         return NGX_ERROR;
         break;
 
+    case NGX_QUIC_FT_STREAM:
+    case NGX_QUIC_FT_STREAM1:
+    case NGX_QUIC_FT_STREAM2:
+    case NGX_QUIC_FT_STREAM3:
+    case NGX_QUIC_FT_STREAM4:
+    case NGX_QUIC_FT_STREAM5:
+    case NGX_QUIC_FT_STREAM6:
+    case NGX_QUIC_FT_STREAM7:
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "STREAM frame, type: 0x%xi", frame->type);
+
+        frame->u.stream.stream_id = ngx_quic_parse_int(&p);
+        if (frame->type & 0x04) {
+            frame->u.stream.offset = ngx_quic_parse_int(&p);
+        } else {
+            frame->u.stream.offset = 0;
+        }
+
+        if (frame->type & 0x02) {
+            frame->u.stream.length = ngx_quic_parse_int(&p);
+        } else {
+            frame->u.stream.length = end - p; /* up to packet end */
+        }
+
+        frame->u.stream.data = p;
+
+        p += frame->u.stream.length;
+
+        break;
+
     default:
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "unknown frame type %xi", frame->type);
@@ -1671,6 +1718,26 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                            frame.u.ncid.retire,
                            frame.u.ncid.len);
             continue;
+
+        case NGX_QUIC_FT_STREAM:
+        case NGX_QUIC_FT_STREAM1:
+        case NGX_QUIC_FT_STREAM2:
+        case NGX_QUIC_FT_STREAM3:
+        case NGX_QUIC_FT_STREAM4:
+        case NGX_QUIC_FT_STREAM5:
+        case NGX_QUIC_FT_STREAM6:
+        case NGX_QUIC_FT_STREAM7:
+
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "STREAM frame 0x%xi id 0x%xi off 0x%xi len 0x%xi",
+                           frame.type,
+                           frame.u.stream.stream_id,
+                           frame.u.stream.offset,
+                           frame.u.stream.length);
+
+            ngx_quic_hexdump0(c->log, "STREAM.data",
+                              frame.u.stream.data, frame.u.stream.length);
+            break;
 
         default:
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
