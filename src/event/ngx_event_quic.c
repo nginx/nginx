@@ -591,8 +591,18 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
 static size_t
 ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 {
+    size_t  len;
+
+    /* minimal ACK packet */
+
     if (p == NULL) {
-        return 5; /* minimal ACK */
+        len = ngx_quic_varint_len(NGX_QUIC_FT_ACK);
+        len += ngx_quic_varint_len(ack->pn);
+        len += ngx_quic_varint_len(0);
+        len += ngx_quic_varint_len(0);
+        len += ngx_quic_varint_len(ack->pn);
+
+        return len;
     }
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_ACK);
@@ -608,10 +618,16 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 static size_t
 ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
 {
+    size_t   len;
     u_char  *start;
 
     if (p == NULL) {
-        return 2 + ngx_quic_varint_len(crypto->len) + crypto->len;
+        len = ngx_quic_varint_len(NGX_QUIC_FT_CRYPTO);
+        len += ngx_quic_varint_len(crypto->offset);
+        len += ngx_quic_varint_len(crypto->len);
+        len += crypto->len;
+
+        return len;
     }
 
     start = p;
