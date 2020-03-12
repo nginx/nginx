@@ -62,11 +62,9 @@ static u_char *ngx_http_log_error_handler(ngx_http_request_t *r,
 #if (NGX_HTTP_SSL)
 static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
-
-static void ngx_http_quic_handshake(ngx_event_t *rev);
-static void ngx_http_quic_handshake_handler(ngx_event_t *rev);
 #endif
 
+static void ngx_http_quic_stream_handler(ngx_connection_t *c);
 
 static char *ngx_http_client_errors[] = {
 
@@ -333,9 +331,15 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 #if (NGX_HTTP_SSL)
     if (hc->addr_conf->http3) {
+        ngx_http_ssl_srv_conf_t   *sscf;
+
         hc->quic = 1;
-        c->log->action = "QUIC handshaking";
-        rev->handler = ngx_http_quic_handshake;
+
+        sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
+
+        ngx_quic_run(c, &sscf->ssl, c->listening->post_accept_timeout,
+                     ngx_http_quic_stream_handler);
+        return;
     }
 #endif
 
@@ -387,6 +391,15 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 
 static void
+ngx_http_quic_stream_handler(ngx_connection_t *c)
+{
+    ngx_quic_stream_t *qs = c->qs;
+
+    printf("quic stream: 0x%lx\n", qs->id);
+}
+
+
+static void
 ngx_http_wait_request_handler(ngx_event_t *rev)
 {
     u_char                    *p;
@@ -400,10 +413,6 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     c = rev->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http wait request handler");
-
-    if (c->shared) {
-        goto request;
-    }
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -504,8 +513,6 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             return;
         }
     }
-
-request:
 
     c->log->action = "reading client request line";
 
@@ -657,82 +664,6 @@ ngx_http_alloc_request(ngx_connection_t *c)
 
 
 #if (NGX_HTTP_SSL)
-
-static void
-ngx_http_quic_handshake(ngx_event_t *rev)
-{
-    ngx_connection_t         *c;
-    ngx_http_connection_t    *hc;
-    ngx_http_ssl_srv_conf_t  *sscf;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "quic handshake");
-
-    c = rev->data;
-    hc = c->data;
-
-    sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
-
-    if (ngx_quic_input(c, &sscf->ssl, c->buffer) != NGX_OK) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    if (!rev->timer_set) {
-        ngx_add_timer(rev, c->listening->post_accept_timeout);
-    }
-
-    rev->handler = ngx_http_quic_handshake_handler;
-    return;
-}
-
-
-static void
-ngx_http_quic_handshake_handler(ngx_event_t *rev)
-{
-    ssize_t                 n;
-    ngx_connection_t       *c;
-    u_char                  buf[512];
-    ngx_buf_t               b;
-
-    b.start = buf;
-    b.end = buf + 512;
-    b.pos = b.last = b.start;
-
-    c = rev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "quic handshake handler");
-
-    if (rev->timedout) {
-        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    if (c->close) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    n = c->recv(c, b.start, b.end - b.start);
-
-    if (n == NGX_AGAIN) {
-        return;
-    }
-
-    if (n == NGX_ERROR) {
-        c->read->eof = 1;
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    b.last += n;
-
-    if (ngx_quic_input(c, NULL, &b) != NGX_OK) {
-        ngx_http_close_connection(c);
-        return;
-    }
-}
-
 
 static void
 ngx_http_ssl_handshake(ngx_event_t *rev)

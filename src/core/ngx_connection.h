@@ -151,6 +151,7 @@ struct ngx_connection_s {
 
 #if (NGX_SSL || NGX_COMPAT)
     ngx_quic_connection_t  *quic;
+    ngx_quic_stream_t      *qs;
     ngx_ssl_connection_t   *ssl;
 #endif
 
