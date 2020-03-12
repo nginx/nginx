@@ -395,7 +395,8 @@ ngx_http_quic_stream_handler(ngx_connection_t *c)
 {
     ngx_quic_stream_t *qs = c->qs;
 
-    printf("quic stream: 0x%lx\n", qs->id);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "quic stream: 0x%uXL", qs->id);
 }
 
 
