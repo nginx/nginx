@@ -144,6 +144,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         /* HTTP methods: GET, HEAD, POST */
         case sw_start:
             r->request_start = p;
+            r->method_start = p;
 
             if (ch == CR || ch == LF) {
                 break;
@@ -158,7 +159,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_method:
             if (ch == ' ') {
-                r->method_end = p - 1;
+                r->method_end = p;
                 m = r->request_start;
 
                 switch (p - m) {

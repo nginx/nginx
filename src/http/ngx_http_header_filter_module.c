@@ -179,6 +179,21 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+#if (NGX_HTTP_V3)
+
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        ngx_chain_t  *cl;
+
+        cl = ngx_http_v3_create_header(r);
+        if (cl == NULL) {
+            return NGX_ERROR;
+        }
+
+        return ngx_http_write_filter(r, cl);
+    }
+
+#endif
+
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
     }

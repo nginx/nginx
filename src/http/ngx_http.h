@@ -38,6 +38,9 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
 #if (NGX_HTTP_V2)
 #include <ngx_http_v2.h>
 #endif
+#if (NGX_HTTP_V3)
+#include <ngx_http_v3.h>
+#endif
 #if (NGX_HTTP_CACHE)
 #include <ngx_http_cache.h>
 #endif

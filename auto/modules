@@ -403,6 +403,27 @@ if [ $HTTP = YES ]; then
 
     ngx_module_type=HTTP
 
+    if [ $HTTP_V3 = YES ]; then
+        have=NGX_HTTP_V3 . auto/have
+        have=NGX_HTTP_HEADERS . auto/have
+
+        # XXX for Huffman
+        HTTP_V2=YES
+
+        ngx_module_name=ngx_http_v3_module
+        ngx_module_incs=src/http/v3
+        ngx_module_deps=src/http/v3/ngx_http_v3.h
+        ngx_module_srcs="src/http/v3/ngx_http_v3.c \
+                         src/http/v3/ngx_http_v3_tables.c \
+                         src/http/v3/ngx_http_v3_streams.c \
+                         src/http/v3/ngx_http_v3_request.c \
+                         src/http/v3/ngx_http_v3_module.c"
+        ngx_module_libs=
+        ngx_module_link=$HTTP_V3
+
+        . auto/module
+    fi
+
     if [ $HTTP_V2 = YES ]; then
         have=NGX_HTTP_V2 . auto/have
         have=NGX_HTTP_HEADERS . auto/have

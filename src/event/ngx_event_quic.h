@@ -14,6 +14,7 @@ struct ngx_quic_stream_s {
     uint64_t            id;
     ngx_uint_t          unidirectional:1;
     ngx_connection_t   *parent;
+    void               *data;
 };
 
 /* TODO: get rid somehow of ssl argument? */

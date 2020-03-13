@@ -7,8 +7,8 @@ echo "creating $NGX_MAKEFILE"
 
 mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/src/os/unix $NGX_OBJS/src/os/win32 \
-         $NGX_OBJS/src/http $NGX_OBJS/src/http/v2 $NGX_OBJS/src/http/modules \
-         $NGX_OBJS/src/http/modules/perl \
+         $NGX_OBJS/src/http $NGX_OBJS/src/http/v2 $NGX_OBJS/src/http/v3 \
+         $NGX_OBJS/src/http/modules $NGX_OBJS/src/http/modules/perl \
          $NGX_OBJS/src/mail \
          $NGX_OBJS/src/stream \
          $NGX_OBJS/src/misc

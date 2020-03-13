@@ -24,6 +24,7 @@
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001
 #define NGX_HTTP_VERSION_20                2000
+#define NGX_HTTP_VERSION_30                3000
 
 #define NGX_HTTP_UNKNOWN                   0x0001
 #define NGX_HTTP_GET                       0x0002
@@ -584,6 +585,7 @@ struct ngx_http_request_s {
     u_char                           *args_start;
     u_char                           *request_start;
     u_char                           *request_end;
+    u_char                           *method_start;
     u_char                           *method_end;
     u_char                           *schema_start;
     u_char                           *schema_end;
@@ -591,6 +593,17 @@ struct ngx_http_request_s {
     u_char                           *host_end;
     u_char                           *port_start;
     u_char                           *port_end;
+
+#if (NGX_HTTP_V3)
+    ngx_uint_t                        h3_length;
+    ngx_uint_t                        h3_index;
+    ngx_uint_t                        h3_insert_count;
+    ngx_uint_t                        h3_sign;
+    ngx_uint_t                        h3_delta_base;
+    ngx_uint_t                        h3_huffman;
+    ngx_uint_t                        h3_dynamic;
+    ngx_uint_t                        h3_offset;
+#endif
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;

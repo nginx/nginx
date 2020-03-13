@@ -64,7 +64,9 @@ static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
 #endif
 
+#if (NGX_HTTP_V3)
 static void ngx_http_quic_stream_handler(ngx_connection_t *c);
+#endif
 
 static char *ngx_http_client_errors[] = {
 
@@ -219,7 +221,15 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_http_in6_addr_t    *addr6;
 #endif
 
-    hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
+#if (NGX_HTTP_V3)
+    if (c->type == SOCK_DGRAM) {
+        hc = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
+        hc->quic = 1;
+
+    } else
+#endif
+        hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
+
     if (hc == NULL) {
         ngx_http_close_connection(c);
         return;
@@ -329,11 +339,9 @@ ngx_http_init_connection(ngx_connection_t *c)
         rev->ready = 1;
     }
 
-#if (NGX_HTTP_SSL)
-    if (hc->addr_conf->http3) {
-        ngx_http_ssl_srv_conf_t   *sscf;
-
-        hc->quic = 1;
+#if (NGX_HTTP_V3)
+    if (hc->quic) {
+        ngx_http_ssl_srv_conf_t  *sscf;
 
         sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
@@ -390,45 +398,62 @@ ngx_http_init_connection(ngx_connection_t *c)
 }
 
 
+#if (NGX_HTTP_V3)
+
 static void
 ngx_http_quic_stream_handler(ngx_connection_t *c)
 {
-    ngx_quic_stream_t *qs = c->qs;
+    ngx_event_t               *rev;
+    ngx_connection_t          *pc;
+    ngx_http_log_ctx_t        *ctx;
+    ngx_http_connection_t     *hc;
+    ngx_http_v3_connection_t  *h3c;
 
-    // STUB for stream read/write
+    pc = c->qs->parent;
+    h3c = pc->data;
+
+    if (c->qs->unidirectional) {
+        ngx_http_v3_handle_client_uni_stream(c);
+        return;
+    }
+
+    hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
+    if (hc == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    ngx_memcpy(hc, h3c, sizeof(ngx_http_connection_t));
+    c->data = hc;
+
+    ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
+    if (ctx == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    ctx->connection = c;
+    ctx->request = NULL;
+    ctx->current_request = NULL;
+
+    c->log->connection = c->number;
+    c->log->handler = ngx_http_log_error;
+    c->log->data = ctx;
+    c->log->action = "waiting for request";
+
+    c->log_error = NGX_ERROR_INFO;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic stream: 0x%uXL", qs->id);
-    ssize_t    n;
-    ngx_buf_t  b;
+                   "http3 new stream id:0x%uXL", c->qs->id);
 
-    u_char     buf[512];
+    rev = c->read;
+    rev->handler = ngx_http_wait_request_handler;
+    c->write->handler = ngx_http_empty_handler;
 
-    b.start = buf;
-    b.end = buf + 512;
-    b.pos = b.last = b.start;
-
-    n = c->recv(c, b.pos, b.end - b.start);
-    if (n < 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream read failed");
-        return;
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic stream: 0x%uXL %ui bytes read", qs->id, n);
-
-    b.last += n;
-
-    n = c->send(c, b.start, n);
-
-    if (n < 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream write failed");
-        return;
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "quic stream: 0x%uXL %ui bytes written", qs->id, n);
+    rev->handler(rev);
 }
+
+#endif
 
 
 static void
@@ -678,6 +703,13 @@ ngx_http_alloc_request(ngx_connection_t *c)
 
     r->method = NGX_HTTP_UNKNOWN;
     r->http_version = NGX_HTTP_VERSION_10;
+
+#if (NGX_HTTP_V3)
+    if (hc->quic) {
+        r->http_version = NGX_HTTP_VERSION_30;
+        r->filter_need_in_memory = 1;
+    }
+#endif
 
     r->headers_in.content_length_n = -1;
     r->headers_in.keep_alive_n = -1;
@@ -1128,7 +1160,16 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
         }
 
-        rc = ngx_http_parse_request_line(r, r->header_in);
+        switch (r->http_version) {
+#if (NGX_HTTP_V3)
+        case NGX_HTTP_VERSION_30:
+            rc = ngx_http_v3_parse_header(r, r->header_in, 1);
+            break;
+#endif
+
+        default: /* HTTP/1.x */
+            rc = ngx_http_parse_request_line(r, r->header_in);
+        }
 
         if (rc == NGX_OK) {
 
@@ -1141,8 +1182,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request line: \"%V\"", &r->request_line);
 
-            r->method_name.len = r->method_end - r->request_start + 1;
-            r->method_name.data = r->request_line.data;
+            r->method_name.len = r->method_end - r->method_start;
+            r->method_name.data = r->method_start;
 
             if (r->http_protocol.data) {
                 r->http_protocol.len = r->request_end - r->http_protocol.data;
@@ -1209,6 +1250,15 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             rev->handler = ngx_http_process_request_headers;
             ngx_http_process_request_headers(rev);
+
+            break;
+        }
+
+        if (rc == NGX_DONE) {
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
 
             break;
         }
@@ -1403,7 +1453,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    rc = NGX_AGAIN;
+    rc = NGX_OK;
 
     for ( ;; ) {
 
@@ -1457,11 +1507,21 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         /* the host header could change the server configuration context */
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-        rc = ngx_http_parse_header_line(r, r->header_in,
-                                        cscf->underscores_in_headers);
+        switch (r->http_version) {
+#if (NGX_HTTP_V3)
+        case NGX_HTTP_VERSION_30:
+            rc = ngx_http_v3_parse_header(r, r->header_in, 0);
+            break;
+#endif
+
+        default: /* HTTP/1.x */
+            rc = ngx_http_parse_header_line(r, r->header_in,
+                                            cscf->underscores_in_headers);
+        }
 
         if (rc == NGX_OK) {
 
+            /* XXX */
             r->request_length += r->header_in->pos - r->header_name_start;
 
             if (r->invalid_header && cscf->ignore_invalid_headers) {
@@ -1487,11 +1547,11 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             h->key.len = r->header_name_end - r->header_name_start;
             h->key.data = r->header_name_start;
-            h->key.data[h->key.len] = '\0';
+            //h->key.data[h->key.len] = '\0';
 
             h->value.len = r->header_end - r->header_start;
             h->value.data = r->header_start;
-            h->value.data[h->value.len] = '\0';
+            //h->value.data[h->value.len] = '\0';
 
             h->lowcase_key = ngx_pnalloc(r->pool, h->key.len);
             if (h->lowcase_key == NULL) {
@@ -1642,7 +1702,7 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    old = request_line ? r->request_start : r->header_name_start;
+    old = request_line ? r->request_start : r->header_name_start; /* XXX */
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -1721,45 +1781,59 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             r->request_end = new + (r->request_end - old);
         }
 
-        r->method_end = new + (r->method_end - old);
+        if (r->method_start >= old && r->method_start < r->header_in->pos) {
+            r->method_start = new + (r->method_start - old);
+            r->method_end = new + (r->method_end - old);
+        }
 
-        r->uri_start = new + (r->uri_start - old);
-        r->uri_end = new + (r->uri_end - old);
+        if (r->uri_start >= old && r->uri_start < r->header_in->pos) {
+            r->uri_start = new + (r->uri_start - old);
+            r->uri_end = new + (r->uri_end - old);
+        }
 
-        if (r->schema_start) {
+        if (r->schema_start >= old && r->schema_start < r->header_in->pos) {
             r->schema_start = new + (r->schema_start - old);
             r->schema_end = new + (r->schema_end - old);
         }
 
-        if (r->host_start) {
+        if (r->host_start >= old && r->host_start < r->header_in->pos) {
             r->host_start = new + (r->host_start - old);
             if (r->host_end) {
                 r->host_end = new + (r->host_end - old);
             }
         }
 
-        if (r->port_start) {
+        if (r->port_start >= old && r->port_start < r->header_in->pos) {
             r->port_start = new + (r->port_start - old);
             r->port_end = new + (r->port_end - old);
         }
 
-        if (r->uri_ext) {
+        if (r->uri_ext >= old && r->uri_ext < r->header_in->pos) {
             r->uri_ext = new + (r->uri_ext - old);
         }
 
-        if (r->args_start) {
+        if (r->args_start >= old && r->args_start < r->header_in->pos) {
             r->args_start = new + (r->args_start - old);
         }
 
-        if (r->http_protocol.data) {
+        if (r->http_protocol.data >= old
+            && r->http_protocol.data < r->header_in->pos)
+        {
             r->http_protocol.data = new + (r->http_protocol.data - old);
         }
 
     } else {
-        r->header_name_start = new;
-        r->header_name_end = new + (r->header_name_end - old);
-        r->header_start = new + (r->header_start - old);
-        r->header_end = new + (r->header_end - old);
+        if (r->header_name_start >= old
+            && r->header_name_start < r->header_in->pos)
+        {
+            r->header_name_start = new;
+            r->header_name_end = new + (r->header_name_end - old);
+        }
+
+        if (r->header_start >= old && r->header_start < r->header_in->pos) {
+            r->header_start = new + (r->header_start - old);
+            r->header_end = new + (r->header_end - old);
+        }
     }
 
     r->header_in = b;
@@ -1984,7 +2058,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.host == NULL && r->http_version > NGX_HTTP_VERSION_10) {
+    if (r->headers_in.host == NULL && r->http_version == NGX_HTTP_VERSION_11) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                    "client sent HTTP/1.1 request without \"Host\" header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);

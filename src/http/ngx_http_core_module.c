@@ -809,7 +809,7 @@ ngx_http_handler(ngx_http_request_t *r)
     if (!r->internal) {
         switch (r->headers_in.connection_type) {
         case 0:
-            r->keepalive = (r->http_version > NGX_HTTP_VERSION_10);
+            r->keepalive = (r->http_version == NGX_HTTP_VERSION_11);
             break;
 
         case NGX_HTTP_CONNECTION_CLOSE:
@@ -4000,14 +4000,14 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[n].data, "http3") == 0) {
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_V3)
             lsopt.http3 = 1;
             lsopt.type = SOCK_DGRAM;
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the \"http3\" parameter requires "
-                               "ngx_http_ssl_module");
+                               "ngx_http_v3_module");
             return NGX_CONF_ERROR;
 #endif
         }

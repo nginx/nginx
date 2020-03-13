@@ -1909,6 +1909,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     b = sn->b;
 
     if (b->last - b->pos == 0) {
+        c->read->ready = 0;
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic recv() not ready");
         return NGX_AGAIN; // ?
@@ -2029,6 +2030,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     u_char                  *end, *p;
     ssize_t                  len;
     ngx_buf_t               *b;
+    ngx_log_t               *log;
     ngx_uint_t               ack_this;
     ngx_pool_t              *pool;
     ngx_event_t             *rev, *wev;
@@ -2129,20 +2131,37 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                     return NGX_ERROR;
                 }
 
-                pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
-                if (pool == NULL) {
-                    return NGX_ERROR;
-                }
-
                 sn->c = ngx_get_connection(-1, c->log); // TODO: free on connection termination
                 if (sn->c == NULL) {
                     return NGX_ERROR;
                 }
 
+                pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
+                if (pool == NULL) {
+                    /* XXX free connection */
+                    return NGX_ERROR;
+                }
+
+                log = ngx_palloc(pool, sizeof(ngx_log_t));
+                if (log == NULL) {
+                    /* XXX free pool and connection */
+                    return NGX_ERROR;
+                }
+
+                *log = *c->log;
+                pool->log = log;
+
+                sn->c->log = log;
                 sn->c->pool = pool;
+
+                sn->c->listening = c->listening;
+                sn->c->sockaddr = c->sockaddr;
+                sn->c->local_sockaddr = c->local_sockaddr;
 
                 rev = sn->c->read;
                 wev = sn->c->write;
+
+                rev->ready = 1;
 
                 rev->log = c->log;
                 wev->log = c->log;
