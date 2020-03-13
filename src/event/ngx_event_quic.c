@@ -1989,7 +1989,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     ssize_t     n;
     ngx_buf_t  *b;
 
-    while (in) {
+    for ( /* void */; in; in = in->next) {
         b = in->buf;
 
         if (!ngx_buf_in_memory(b)) {
@@ -2016,8 +2016,6 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in,
             b->pos += n;
             return in;
         }
-
-        in = in->next;
     }
 
     return NULL;
