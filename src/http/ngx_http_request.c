@@ -395,8 +395,39 @@ ngx_http_quic_stream_handler(ngx_connection_t *c)
 {
     ngx_quic_stream_t *qs = c->qs;
 
+    // STUB for stream read/write
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "quic stream: 0x%uXL", qs->id);
+    ssize_t    n;
+    ngx_buf_t  b;
+
+    u_char     buf[512];
+
+    b.start = buf;
+    b.end = buf + 512;
+    b.pos = b.last = b.start;
+
+    n = c->recv(c, b.pos, b.end - b.start);
+    if (n < 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream read failed");
+        return;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "quic stream: 0x%uXL %ui bytes read", qs->id, n);
+
+    b.last += n;
+
+    n = c->send(c, b.start, n);
+
+    if (n < 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream write failed");
+        return;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "quic stream: 0x%uXL %ui bytes written", qs->id, n);
 }
 
 
