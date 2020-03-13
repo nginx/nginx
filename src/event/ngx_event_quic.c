@@ -1983,7 +1983,41 @@ static ngx_chain_t *
 ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     off_t limit)
 {
-    // TODO
+    size_t      len;
+    ssize_t     n;
+    ngx_buf_t  *b;
+
+    while (in) {
+        b = in->buf;
+
+        if (!ngx_buf_in_memory(b)) {
+            continue;
+        }
+
+        if (ngx_buf_size(b) == 0) {
+            continue;
+        }
+
+        len = b->last - b->pos;
+
+        n = ngx_quic_stream_send(c, b->pos, len);
+
+        if (n == NGX_ERROR) {
+            return NGX_CHAIN_ERROR;
+        }
+
+        if (n == NGX_AGAIN) {
+            return in;
+        }
+
+        if (n != (ssize_t) len) {
+            b->pos += n;
+            return in;
+        }
+
+        in = in->next;
+    }
+
     return NULL;
 }
 
