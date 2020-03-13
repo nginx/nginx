@@ -1934,6 +1934,7 @@ static ssize_t
 ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 {
     u_char                  *p;
+    ngx_connection_t        *pc;
     ngx_quic_frame_t        *frame;
     ngx_quic_stream_t       *qs;
     ngx_quic_connection_t   *qc;
@@ -1942,8 +1943,8 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send: %uz", size);
 
     qs = c->qs;
-    qc = qs->parent->quic;
-
+    pc = qs->parent;
+    qc = pc->quic;
 
     // XXX: get direct pointer from stream structure?
     sn = ngx_quic_stream_lookup(&qc->stree, qs->id);
@@ -1952,12 +1953,12 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
         return NGX_ERROR;
     }
 
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
     if (frame == NULL) {
         return 0;
     }
 
-    p = ngx_pnalloc(c->pool, size);
+    p = ngx_pnalloc(pc->pool, size);
     if (p == NULL) {
         return 0;
     }
