@@ -1962,13 +1962,15 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_memcpy(p, buf, size);
 
     frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_STREAM2; /* OFF=0 LEN=1 FIN=0 */
+    frame->type = NGX_QUIC_FT_STREAM6; /* OFF=1 LEN=1 FIN=0 */
 
     frame->u.stream.type = frame->type;
     frame->u.stream.stream_id = qs->id;
-    frame->u.stream.offset = 0;
+    frame->u.stream.offset = c->sent;
     frame->u.stream.length = size;
     frame->u.stream.data = p;
+
+    c->sent += size;
 
     ngx_sprintf(frame->info, "stream %xi len=%ui level=%d",
                 qs->id, size, frame->level);
