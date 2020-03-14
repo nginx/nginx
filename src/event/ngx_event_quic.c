@@ -1637,7 +1637,10 @@ ngx_quic_decrypt(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ngx_memcpy(ad.data, pkt->data, ad.len);
     ad.data[0] = clearflags;
-    ad.data[ad.len - pnl] = (u_char) pn;
+
+    do {
+        ad.data[ad.len - pnl] = pn >> (8 * (pnl - 1)) % 256;
+    } while (--pnl);
 
     nonce = ngx_pstrdup(c->pool, &pkt->secret->iv);
     nonce[11] ^= pn;
