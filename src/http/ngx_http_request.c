@@ -1547,11 +1547,11 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             h->key.len = r->header_name_end - r->header_name_start;
             h->key.data = r->header_name_start;
-            //h->key.data[h->key.len] = '\0';
+            h->key.data[h->key.len] = '\0';
 
             h->value.len = r->header_end - r->header_start;
             h->value.data = r->header_start;
-            //h->value.data[h->value.len] = '\0';
+            h->value.data[h->value.len] = '\0';
 
             h->lowcase_key = ngx_pnalloc(r->pool, h->key.len);
             if (h->lowcase_key == NULL) {

@@ -518,6 +518,18 @@ done:
         }
     }
 
+    /* XXX ugly reallocation for the trailing '\0' */
+
+    p = ngx_pnalloc(c->pool, name.len + value.len + 2);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(p, name.data, name.len);
+    name.data = p;
+    ngx_memcpy(p + name.len + 1, value.data, value.len);
+    value.data = p + name.len + 1;
+
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 header \"%V\":\"%V\"", &name, &value);
 
