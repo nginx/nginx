@@ -764,7 +764,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
-    ngx_quic_hexdump(c->log, "level:%d read", recret, secret_len, level);
+    ngx_quic_hexdump(c->log, "level:%d read", rsecret, secret_len, level);
     ngx_quic_hexdump(c->log, "level:%d write", wsecret, secret_len, level);
 
     rc = ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
