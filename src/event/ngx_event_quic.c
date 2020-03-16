@@ -129,11 +129,47 @@ do {                                                                          \
 #define NGX_QUIC_FT_CONNECTION_CLOSE2      0x1d // XXX
 #define NGX_QUIC_FT_HANDSHAKE_DONE         0x1e
 
-
 #define ngx_quic_stream_bit_off(val)  (((val) & 0x04) ? 1 : 0)
 #define ngx_quic_stream_bit_len(val)  (((val) & 0x02) ? 1 : 0)
 #define ngx_quic_stream_bit_fin(val)  (((val) & 0x01) ? 1 : 0)
 
+
+#define NGX_QUIC_ERR_NO_ERROR                   0x0
+#define NGX_QUIC_ERR_INTERNAL_ERROR             0x1
+#define NGX_QUIC_ERR_SERVER_BUSY                0x2
+#define NGX_QUIC_ERR_FLOW_CONTROL_ERROR         0x3
+#define NGX_QUIC_ERR_STREAM_LIMIT_ERROR         0x4
+#define NGX_QUIC_ERR_STREAM_STATE_ERROR         0x5
+#define NGX_QUIC_ERR_FINAL_SIZE_ERROR           0x6
+#define NGX_QUIC_ERR_FRAME_ENCODING_ERROR       0x7
+#define NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR  0x8
+#define NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR  0x9
+#define NGX_QUIC_ERR_PROTOCOL_VIOLATION         0xA
+#define NGX_QUIC_ERR_INVALID_TOKEN              0xB
+/* 0xC is not defined */
+#define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED     0xD
+#define NGX_QUIC_ERR_CRYPTO_ERROR               0x10
+
+#define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
+
+/* literal errors indexed by corresponding value */
+static char *ngx_quic_errors[] = {
+    "NO_ERROR",
+    "INTERNAL_ERROR",
+    "SERVER_BUSY",
+    "FLOW_CONTROL_ERROR",
+    "STREAM_LIMIT_ERROR",
+    "STREAM_STATE_ERROR",
+    "FINAL_SIZE_ERROR",
+    "FRAME_ENCODING_ERROR",
+    "TRANSPORT_PARAMETER_ERROR",
+    "CONNECTION_ID_LIMIT_ERROR",
+    "PROTOCOL_VIOLATION",
+    "INVALID_TOKEN",
+    "",
+    "CRYPTO_BUFFER_EXCEEDED",
+    "CRYPTO_ERROR",
+};
 
 
 /* TODO: real states, these are stubs */
@@ -198,6 +234,13 @@ typedef struct {
 } ngx_quic_stream_frame_t;
 
 
+typedef struct {
+    uint64_t                     error_code;
+    uint64_t                     frame_type;
+    ngx_str_t                    reason;
+} ngx_quic_close_frame_t;
+
+
 struct ngx_quic_frame_s {
     ngx_uint_t                  type;
     ngx_quic_level_t            level;
@@ -207,6 +250,7 @@ struct ngx_quic_frame_s {
         ngx_quic_ack_frame_t    ack;
         ngx_quic_ncid_t         ncid;
         ngx_quic_stream_frame_t stream;
+        ngx_quic_close_frame_t  close;
         // more frames
     } u;
 
@@ -1738,10 +1782,17 @@ ngx_quic_read_frame(ngx_connection_t *c, u_char *start, u_char *end,
         break;
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "connection close frame => NGX_ERROR");
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "connection close frame");
 
-        // TODO: parse connection close here
-        return NGX_ERROR;
+        frame->u.close.error_code = ngx_quic_parse_int(&p);
+        frame->u.close.frame_type = ngx_quic_parse_int(&p); // not in 0x1d CC
+        frame->u.close.reason.len = ngx_quic_parse_int(&p);
+        frame->u.close.reason.data = p;
+        p += frame->u.close.reason.len;
+
+        if (frame->u.close.error_code > NGX_QUIC_ERR_LAST) {
+            frame->u.close.error_code = NGX_QUIC_ERR_LAST;
+        }
         break;
 
     case NGX_QUIC_FT_STREAM0:
@@ -2037,7 +2088,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ssize_t                  len;
     ngx_buf_t               *b;
     ngx_log_t               *log;
-    ngx_uint_t               ack_this;
+    ngx_uint_t               ack_this, do_close;
     ngx_pool_t              *pool;
     ngx_event_t             *rev, *wev;
     ngx_quic_frame_t         frame, *ack_frame;
@@ -2050,6 +2101,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     end = p + pkt->payload.len;
 
     ack_this = 0;
+    do_close = 0;
 
     while (p < end) {
 
@@ -2107,6 +2159,17 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                            frame.u.ncid.retire,
                            frame.u.ncid.len);
             continue;
+
+        case NGX_QUIC_FT_CONNECTION_CLOSE:
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
+                           ngx_quic_errors[frame.u.close.error_code],
+                           frame.u.close.error_code,
+                           frame.u.close.frame_type,
+                           &frame.u.close.reason);
+
+            do_close = 1;
+            break;
 
         case NGX_QUIC_FT_STREAM0:
         case NGX_QUIC_FT_STREAM1:
@@ -2230,6 +2293,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
+    if (do_close) {
+        // TODO: handle stream close
+    }
 
     if (ack_this == 0) {
         /* do not ack packets with ACKs and PADDING */
