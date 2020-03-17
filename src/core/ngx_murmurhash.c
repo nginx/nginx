@@ -35,11 +35,14 @@ ngx_murmur_hash2(u_char *data, size_t len)
     switch (len) {
     case 3:
         h ^= data[2] << 16;
+        break;
     case 2:
         h ^= data[1] << 8;
+        break;
     case 1:
         h ^= data[0];
         h *= 0x5bd1e995;
+        break;
     }
 
     h ^= h >> 13;
