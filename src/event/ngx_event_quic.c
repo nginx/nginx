@@ -205,6 +205,8 @@ static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
 static void ngx_quic_handshake_handler(ngx_event_t *rev);
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 
@@ -389,6 +391,7 @@ static ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 {
     u_char             *p;
+    ngx_int_t           rc;
     ngx_quic_header_t   pkt;
 
     if (c->quic == NULL) {
@@ -405,16 +408,33 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.data = p;
         pkt.len = b->last - p;
 
-        if (p[0] & NGX_QUIC_PKT_LONG) {
-            // TODO: check current state
-            if (ngx_quic_handshake_input(c, &pkt) != NGX_OK) {
-                return NGX_ERROR;
-            }
-        } else {
+        if (p[0] == 0) {
+            /* XXX: no idea WTF is this, just ignore */
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0, "FIREFOX: ZEROES");
+            break;
+        }
 
-            if (ngx_quic_app_input(c, &pkt) != NGX_OK) {
+        // TODO: check current state
+        if (p[0] & NGX_QUIC_PKT_LONG) {
+
+            if ((p[0] & 0xf0) == NGX_QUIC_PKT_INITIAL) {
+                rc = ngx_quic_initial_input(c, &pkt);
+
+            } else if ((p[0] & 0xf0) == NGX_QUIC_PKT_HANDSHAKE) {
+                rc = ngx_quic_handshake_input(c, &pkt);
+
+            } else {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "BUG: unknown quic state");
                 return NGX_ERROR;
             }
+
+        } else {
+            rc = ngx_quic_app_input(c, &pkt);
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
         }
 
         /* b->pos is at header end, adjust by actual packet length */
@@ -1073,7 +1093,6 @@ ngx_quic_read_frame(ngx_connection_t *c, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_PING:
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "PING frame");
-        p++;
         break;
 
     case NGX_QUIC_FT_NEW_CONNECTION_ID:
@@ -1489,6 +1508,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_STREAM6:
         case NGX_QUIC_FT_STREAM7:
 
+            ack_this = 1;
+
             ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "STREAM frame 0x%xi id 0x%xi offset 0x%xi len 0x%xi bits:off=%d len=%d fin=%d",
                            frame.type,
@@ -1775,6 +1796,34 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
 
 static ngx_int_t
+ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    ngx_ssl_conn_t         *ssl_conn;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+    ssl_conn = c->ssl->connection;
+
+    if (ngx_quic_process_long_header(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_process_initial_header(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    pkt->secret = &qc->secrets.client.in;
+    pkt->level = ssl_encryption_initial;
+
+    if (ngx_quic_decrypt(c->pool, ssl_conn, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return ngx_quic_payload_handler(c, pkt);
+}
+
+
+static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_ssl_conn_t         *ssl_conn;
@@ -1836,7 +1885,11 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     qc = c->quic;
 
-    /* TODO: this is a stub, untested */
+    if (qc->secrets.client.ad.key.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "no read keys yet, packet ignored");
+        return NGX_DECLINED;
+    }
 
     if (ngx_quic_process_short_header(c, pkt) != NGX_OK) {
         return NGX_ERROR;

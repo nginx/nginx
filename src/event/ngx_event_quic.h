@@ -11,7 +11,8 @@
 #include <ngx_event_openssl.h>
 
 
-#define quic_version                       0xff000018  /* draft-24 */
+#define quic_version                       0xff000018  /* draft-24 (ngtcp2) */
+//#define quic_version                       0xff00001b  /* draft-27 (FFN 76) */
 
 /* 17.2.  Long Header Packets */
 
