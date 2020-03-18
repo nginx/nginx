@@ -1177,7 +1177,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
-            r->request_length = r->header_in->pos - r->request_start;
+            r->request_length = r->header_in->pos - r->request_start; /* XXX */
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request line: \"%V\"", &r->request_line);
@@ -1593,7 +1593,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http header done");
 
-            r->request_length += r->header_in->pos - r->header_name_start;
+            r->request_length += r->header_in->pos - r->header_name_start; /* XXX */
 
             r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
