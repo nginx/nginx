@@ -1460,28 +1460,6 @@ ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 
 
 ngx_int_t
-ngx_ssl_quic(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
-{
-    if (!enable) {
-        return NGX_OK;
-    }
-
-#if NGX_OPENSSL_QUIC
-
-    ngx_quic_init_ssl_methods(ssl->ctx);
-    return NGX_OK;
-
-#else
-
-    ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
-                  "\"ssl_quic\" is not supported on this platform");
-    return NGX_ERROR;
-
-#endif
-}
-
-
-ngx_int_t
 ngx_ssl_client_session_cache(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 {
     if (!enable) {

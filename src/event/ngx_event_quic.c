@@ -126,13 +126,6 @@ static SSL_QUIC_METHOD quic_method = {
 };
 
 
-void
-ngx_quic_init_ssl_methods(SSL_CTX* ctx)
-{
-    SSL_CTX_set_quic_method(ctx, &quic_method);
-}
-
-
 #if BORINGSSL_API_VERSION >= 10
 
 static int
@@ -409,6 +402,12 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
     ssl_conn = c->ssl->connection;
+
+    if (SSL_set_quic_method(ssl_conn, &quic_method) == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "SSL_set_quic_method() failed");
+        return NGX_ERROR;
+    }
 
     if (SSL_set_quic_transport_params(ssl_conn, params, sizeof(params) - 1) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
