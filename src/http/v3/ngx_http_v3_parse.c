@@ -208,7 +208,6 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
         if (--st->length == 0) {
             if (rc != NGX_DONE) {
-ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "XXX len");
                 return NGX_ERROR;
             }
 
