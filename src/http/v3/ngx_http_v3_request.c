@@ -83,9 +83,8 @@ ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b)
         break;
     }
 
-    for ( /* void */ ; b->pos < b->last; b->pos++) {
-
-        rc = ngx_http_v3_parse_headers(c, st, *b->pos);
+    while (b->pos < b->last) {
+        rc = ngx_http_v3_parse_headers(c, st, *b->pos++);
 
         if (rc == NGX_ERROR) {
             goto failed;
