@@ -321,7 +321,7 @@ ngx_http_v3_create_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     ngx_pool_cleanup_t        *cln;
     ngx_http_v3_uni_stream_t  *us;
 
-    sc = ngx_quic_create_uni_stream(c->qs->parent);
+    sc = ngx_quic_create_uni_stream(c);
     if (sc == NULL) {
         return NULL;
     }
@@ -369,8 +369,8 @@ ngx_http_v3_get_control(ngx_connection_t *c)
 
     h3c = c->qs->parent->data;
 
-    if (h3c->server_encoder == NULL) {
-        h3c->server_encoder = ngx_http_v3_create_uni_stream(c,
+    if (h3c->server_control == NULL) {
+        h3c->server_control = ngx_http_v3_create_uni_stream(c,
                                                    NGX_HTTP_V3_STREAM_CONTROL);
     }
 
@@ -401,8 +401,8 @@ ngx_http_v3_get_decoder(ngx_connection_t *c)
 
     h3c = c->qs->parent->data;
 
-    if (h3c->server_encoder == NULL) {
-        h3c->server_encoder = ngx_http_v3_create_uni_stream(c,
+    if (h3c->server_decoder == NULL) {
+        h3c->server_decoder = ngx_http_v3_create_uni_stream(c,
                                                    NGX_HTTP_V3_STREAM_DECODER);
     }
 
