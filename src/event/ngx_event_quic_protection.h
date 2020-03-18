@@ -8,12 +8,12 @@
 #define _NGX_EVENT_QUIC_PROTECTION_H_INCLUDED_
 
 
-struct ngx_quic_secret_s {
+typedef struct ngx_quic_secret_s {
     ngx_str_t                 secret;
     ngx_str_t                 key;
     ngx_str_t                 iv;
     ngx_str_t                 hp;
-};
+} ngx_quic_secret_t;
 
 
 typedef struct {

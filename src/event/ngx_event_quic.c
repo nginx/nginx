@@ -9,151 +9,12 @@
 #include <ngx_event.h>
 
 
-/* 12.4.  Frames and Frame Types */
-#define NGX_QUIC_FT_PADDING                0x00
-#define NGX_QUIC_FT_PING                   0x01
-#define NGX_QUIC_FT_ACK                    0x02
-#define NGX_QUIC_FT_ACK_ECN                0x03
-#define NGX_QUIC_FT_RESET_STREAM           0x04
-#define NGX_QUIC_FT_STOP_SENDING           0x05
-#define NGX_QUIC_FT_CRYPTO                 0x06
-#define NGX_QUIC_FT_NEW_TOKEN              0x07
-#define NGX_QUIC_FT_STREAM0                0x08
-#define NGX_QUIC_FT_STREAM1                0x09
-#define NGX_QUIC_FT_STREAM2                0x0A
-#define NGX_QUIC_FT_STREAM3                0x0B
-#define NGX_QUIC_FT_STREAM4                0x0C
-#define NGX_QUIC_FT_STREAM5                0x0D
-#define NGX_QUIC_FT_STREAM6                0x0E
-#define NGX_QUIC_FT_STREAM7                0x0F
-#define NGX_QUIC_FT_MAX_DATA               0x10
-#define NGX_QUIC_FT_MAX_STREAM_DATA        0x11
-#define NGX_QUIC_FT_MAX_STREAMS            0x12
-#define NGX_QUIC_FT_MAX_STREAMS2           0x13 // XXX
-#define NGX_QUIC_FT_DATA_BLOCKED           0x14
-#define NGX_QUIC_FT_STREAM_DATA_BLOCKED    0x15
-#define NGX_QUIC_FT_STREAMS_BLOCKED        0x16
-#define NGX_QUIC_FT_STREAMS_BLOCKED2       0x17 // XXX
-#define NGX_QUIC_FT_NEW_CONNECTION_ID      0x18
-#define NGX_QUIC_FT_RETIRE_CONNECTION_ID   0x19
-#define NGX_QUIC_FT_PATH_CHALLENGE         0x1a
-#define NGX_QUIC_FT_PATH_RESPONSE          0x1b
-#define NGX_QUIC_FT_CONNECTION_CLOSE       0x1c
-#define NGX_QUIC_FT_CONNECTION_CLOSE2      0x1d // XXX
-#define NGX_QUIC_FT_HANDSHAKE_DONE         0x1e
-
-#define ngx_quic_stream_bit_off(val)  (((val) & 0x04) ? 1 : 0)
-#define ngx_quic_stream_bit_len(val)  (((val) & 0x02) ? 1 : 0)
-#define ngx_quic_stream_bit_fin(val)  (((val) & 0x01) ? 1 : 0)
-
-
-#define NGX_QUIC_ERR_NO_ERROR                   0x0
-#define NGX_QUIC_ERR_INTERNAL_ERROR             0x1
-#define NGX_QUIC_ERR_SERVER_BUSY                0x2
-#define NGX_QUIC_ERR_FLOW_CONTROL_ERROR         0x3
-#define NGX_QUIC_ERR_STREAM_LIMIT_ERROR         0x4
-#define NGX_QUIC_ERR_STREAM_STATE_ERROR         0x5
-#define NGX_QUIC_ERR_FINAL_SIZE_ERROR           0x6
-#define NGX_QUIC_ERR_FRAME_ENCODING_ERROR       0x7
-#define NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR  0x8
-#define NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR  0x9
-#define NGX_QUIC_ERR_PROTOCOL_VIOLATION         0xA
-#define NGX_QUIC_ERR_INVALID_TOKEN              0xB
-/* 0xC is not defined */
-#define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED     0xD
-#define NGX_QUIC_ERR_CRYPTO_ERROR               0x10
-
-#define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
-
-/* literal errors indexed by corresponding value */
-static char *ngx_quic_errors[] = {
-    "NO_ERROR",
-    "INTERNAL_ERROR",
-    "SERVER_BUSY",
-    "FLOW_CONTROL_ERROR",
-    "STREAM_LIMIT_ERROR",
-    "STREAM_STATE_ERROR",
-    "FINAL_SIZE_ERROR",
-    "FRAME_ENCODING_ERROR",
-    "TRANSPORT_PARAMETER_ERROR",
-    "CONNECTION_ID_LIMIT_ERROR",
-    "PROTOCOL_VIOLATION",
-    "INVALID_TOKEN",
-    "",
-    "CRYPTO_BUFFER_EXCEEDED",
-    "CRYPTO_ERROR",
-};
-
-
 /* TODO: real states, these are stubs */
 typedef enum  {
     NGX_QUIC_ST_INITIAL,
     NGX_QUIC_ST_HANDSHAKE,
     NGX_QUIC_ST_APP_DATA
 } ngx_quic_state_t;
-
-
-typedef struct ngx_quic_frame_s  ngx_quic_frame_t;
-
-typedef struct {
-    ngx_uint_t                  pn;
-
-    // input
-    uint64_t                    largest;
-    uint64_t                    delay;
-    uint64_t                    range_count;
-    uint64_t                    first_range;
-    uint64_t                    ranges[20];
-    /* ecn counts */
-} ngx_quic_ack_frame_t;
-
-typedef struct {
-    size_t                      offset;
-    size_t                      len;
-    u_char                     *data;
-} ngx_quic_crypto_frame_t;
-
-
-typedef struct {
-    uint64_t                     seqnum;
-    uint64_t                     retire;
-    uint64_t                     len;
-    u_char                       cid[20];
-    u_char                       srt[16];
-} ngx_quic_ncid_t;
-
-
-typedef struct {
-    uint8_t                      type;
-    uint64_t                     stream_id;
-    uint64_t                     offset;
-    uint64_t                     length;
-    u_char                      *data;
-} ngx_quic_stream_frame_t;
-
-
-typedef struct {
-    uint64_t                     error_code;
-    uint64_t                     frame_type;
-    ngx_str_t                    reason;
-} ngx_quic_close_frame_t;
-
-
-struct ngx_quic_frame_s {
-    ngx_uint_t                  type;
-    ngx_quic_level_t            level;
-    ngx_quic_frame_t           *next;
-    union {
-        ngx_quic_crypto_frame_t crypto;
-        ngx_quic_ack_frame_t    ack;
-        ngx_quic_ncid_t         ncid;
-        ngx_quic_stream_frame_t stream;
-        ngx_quic_close_frame_t  close;
-        // more frames
-    } u;
-
-    u_char                      info[128]; // for debug purposes
-};
 
 
 struct ngx_quic_connection_s {
@@ -229,16 +90,6 @@ static int ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn);
 static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, uint8_t alert);
 
-static ngx_int_t ngx_quic_process_long_header(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_process_short_header(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_process_initial_header(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_process_handshake_header(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-
-static uint64_t ngx_quic_parse_int(u_char **pos);
 
 static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
@@ -282,6 +133,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_msec_t timeout,
 
     b = c->buffer;
 
+    pkt.log = c->log;
     pkt.raw = b;
     pkt.data = b->start;
     pkt.len = b->last - b->start;
@@ -407,6 +259,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.raw = b;
         pkt.data = p;
         pkt.len = b->last - p;
+        pkt.log = c->log;
 
         if (p[0] == 0) {
             /* XXX: no idea WTF is this, just ignore */
@@ -448,10 +301,12 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 
 static ngx_int_t
 ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
-    ngx_quic_level_t level, ngx_str_t *payload)
+    enum ssl_encryption_level_t level, ngx_str_t *payload)
 {
     ngx_str_t          res;
     ngx_quic_header_t  pkt;
+
+    pkt.log = c->log;
 
     static ngx_str_t  initial_token = ngx_null_string;
 
@@ -494,139 +349,12 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
 }
 
 
-static size_t
-ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
-{
-    size_t  len;
-
-    /* minimal ACK packet */
-
-    if (p == NULL) {
-        len = ngx_quic_varint_len(NGX_QUIC_FT_ACK);
-        len += ngx_quic_varint_len(ack->pn);
-        len += ngx_quic_varint_len(0);
-        len += ngx_quic_varint_len(0);
-        len += ngx_quic_varint_len(ack->pn);
-
-        return len;
-    }
-
-    ngx_quic_build_int(&p, NGX_QUIC_FT_ACK);
-    ngx_quic_build_int(&p, ack->pn);
-    ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, ack->pn);
-
-    return 5;
-}
-
-
-static size_t
-ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
-{
-    size_t   len;
-    u_char  *start;
-
-    if (p == NULL) {
-        len = ngx_quic_varint_len(NGX_QUIC_FT_CRYPTO);
-        len += ngx_quic_varint_len(crypto->offset);
-        len += ngx_quic_varint_len(crypto->len);
-        len += crypto->len;
-
-        return len;
-    }
-
-    start = p;
-
-    ngx_quic_build_int(&p, NGX_QUIC_FT_CRYPTO);
-    ngx_quic_build_int(&p, crypto->offset);
-    ngx_quic_build_int(&p, crypto->len);
-    p = ngx_cpymem(p, crypto->data, crypto->len);
-
-    return p - start;
-}
-
-
-static size_t
-ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf)
-{
-    size_t   len;
-    u_char  *start;
-
-    if (!ngx_quic_stream_bit_len(sf->type)) {
-#if 0
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "attempt to generate a stream frame without length");
-#endif
-        // XXX: handle error in caller
-        return NGX_ERROR;
-    }
-
-    if (p == NULL) {
-        len = ngx_quic_varint_len(sf->type);
-
-        if (ngx_quic_stream_bit_off(sf->type)) {
-            len += ngx_quic_varint_len(sf->offset);
-        }
-
-        len += ngx_quic_varint_len(sf->stream_id);
-
-        /* length is always present in generated frames */
-        len += ngx_quic_varint_len(sf->length);
-
-        len += sf->length;
-
-        return len;
-    }
-
-    start = p;
-
-    ngx_quic_build_int(&p, sf->type);
-    ngx_quic_build_int(&p, sf->stream_id);
-
-    if (ngx_quic_stream_bit_off(sf->type)) {
-        ngx_quic_build_int(&p, sf->offset);
-    }
-
-    /* length is always present in generated frames */
-    ngx_quic_build_int(&p, sf->length);
-
-    p = ngx_cpymem(p, sf->data, sf->length);
-
-    return p - start;
-}
-
-
-size_t
-ngx_quic_frame_len(ngx_quic_frame_t *frame)
-{
-     switch (frame->type) {
-        case NGX_QUIC_FT_ACK:
-            return ngx_quic_create_ack(NULL, &frame->u.ack);
-        case NGX_QUIC_FT_CRYPTO:
-            return ngx_quic_create_crypto(NULL, &frame->u.crypto);
-
-        case NGX_QUIC_FT_STREAM0:
-        case NGX_QUIC_FT_STREAM1:
-        case NGX_QUIC_FT_STREAM2:
-        case NGX_QUIC_FT_STREAM3:
-        case NGX_QUIC_FT_STREAM4:
-        case NGX_QUIC_FT_STREAM5:
-        case NGX_QUIC_FT_STREAM6:
-        case NGX_QUIC_FT_STREAM7:
-            return ngx_quic_create_stream(NULL, &frame->u.stream);
-        default:
-            /* BUG: unsupported frame type generated */
-            return 0;
-     }
-}
-
-
 /* pack a group of frames [start; end) into memory p and send as single packet */
 ngx_int_t
 ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
     ngx_quic_frame_t *end, size_t total)
 {
+    ssize_t            len;
     u_char            *p;
     ngx_str_t          out;
     ngx_quic_frame_t  *f;
@@ -645,30 +373,12 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "frame: %s", f->info);
 
-        switch (f->type) {
-        case NGX_QUIC_FT_ACK:
-            p += ngx_quic_create_ack(p, &f->u.ack);
-            break;
-
-        case NGX_QUIC_FT_CRYPTO:
-            p += ngx_quic_create_crypto(p, &f->u.crypto);
-            break;
-
-        case NGX_QUIC_FT_STREAM0:
-        case NGX_QUIC_FT_STREAM1:
-        case NGX_QUIC_FT_STREAM2:
-        case NGX_QUIC_FT_STREAM3:
-        case NGX_QUIC_FT_STREAM4:
-        case NGX_QUIC_FT_STREAM5:
-        case NGX_QUIC_FT_STREAM6:
-        case NGX_QUIC_FT_STREAM7:
-            p += ngx_quic_create_stream(p, &f->u.stream);
-            break;
-
-        default:
-            /* BUG: unsupported frame type generated */
+        len = ngx_quic_create_frame(p, p + total, f);
+        if (len == -1) {
             return NGX_ERROR;
         }
+
+        p += len;
     }
 
     out.len = p - out.data;
@@ -892,279 +602,6 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 }
 
 
-static ngx_int_t
-ngx_quic_process_short_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    u_char  *p;
-
-    p = pkt->data;
-
-    ngx_quic_hexdump0(c->log, "short input", pkt->data, pkt->len);
-
-    if ((p[0] & NGX_QUIC_PKT_LONG)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "not a short packet");
-        return NGX_ERROR;
-    }
-
-    pkt->flags = *p++;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic flags:%xi", pkt->flags);
-
-    if (ngx_memcmp(p, c->quic->dcid.data, c->quic->dcid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcid");
-        return NGX_ERROR;
-    }
-
-    pkt->dcid.len = c->quic->dcid.len;
-    pkt->dcid.data = p;
-    p += pkt->dcid.len;
-
-    pkt->raw->pos = p;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_process_long_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    u_char  *p;
-
-    p = pkt->data;
-
-    ngx_quic_hexdump0(c->log, "long input", pkt->data, pkt->len);
-
-    if (!(p[0] & NGX_QUIC_PKT_LONG)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "not a long packet");
-        return NGX_ERROR;
-    }
-
-    pkt->flags = *p++;
-
-    pkt->version = ngx_quic_parse_uint32(p);
-    p += sizeof(uint32_t);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic flags:%xi version:%xD", pkt->flags, pkt->version);
-
-    if (pkt->version != quic_version) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unsupported quic version");
-        return NGX_ERROR;
-    }
-
-    pkt->dcid.len = *p++;
-    pkt->dcid.data = p;
-    p += pkt->dcid.len;
-
-    pkt->scid.len = *p++;
-    pkt->scid.data = p;
-    p += pkt->scid.len;
-
-    pkt->raw->pos = p;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_process_initial_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    u_char     *p;
-    ngx_int_t   plen;
-
-    p = pkt->raw->pos;
-
-    pkt->token.len = ngx_quic_parse_int(&p);
-    pkt->token.data = p;
-
-    p += pkt->token.len;
-
-    plen = ngx_quic_parse_int(&p);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet length: %d", plen);
-
-    if (plen > pkt->data + pkt->len - p) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "truncated initial packet");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-    pkt->len = plen;
-
-    ngx_quic_hexdump0(c->log, "DCID", pkt->dcid.data, pkt->dcid.len);
-    ngx_quic_hexdump0(c->log, "SCID", pkt->scid.data, pkt->scid.len);
-    ngx_quic_hexdump0(c->log, "token", pkt->token.data, pkt->token.len);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet length: %d", plen);
-
-    return NGX_OK;
-}
-
-static ngx_int_t
-ngx_quic_process_handshake_header(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    u_char     *p;
-    ngx_int_t   plen;
-
-    p = pkt->raw->pos;
-
-    plen = ngx_quic_parse_int(&p);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet length: %d", plen);
-
-    if (plen > pkt->data + pkt->len - p) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "truncated handshake packet");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-    pkt->len = plen;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet length: %d", plen);
-
-    return NGX_OK;
-}
-
-
-ssize_t
-ngx_quic_read_frame(ngx_connection_t *c, u_char *start, u_char *end,
-    ngx_quic_frame_t *frame)
-{
-    u_char *p;
-
-    size_t npad;
-
-    p = start;
-
-    frame->type = *p++;  // TODO: check overflow (p < end)
-
-    switch (frame->type) {
-
-    case NGX_QUIC_FT_CRYPTO:
-        frame->u.crypto.offset = *p++;
-        frame->u.crypto.len = ngx_quic_parse_int(&p);
-        frame->u.crypto.data = p;
-        p += frame->u.crypto.len;
-
-        ngx_quic_hexdump0(c->log, "CRYPTO frame",
-                          frame->u.crypto.data, frame->u.crypto.len);
-
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic CRYPTO frame length: %uL off:%uL pp:%p",
-                       frame->u.crypto.len, frame->u.crypto.offset,
-                       frame->u.crypto.data);
-        break;
-
-    case NGX_QUIC_FT_PADDING:
-        npad = 0;
-        while (p < end && *p == NGX_QUIC_FT_PADDING) { // XXX
-            p++; npad++;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "PADDING frame length %uL", npad);
-
-        break;
-
-    case NGX_QUIC_FT_ACK:
-    case NGX_QUIC_FT_ACK_ECN:
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "ACK frame");
-
-        frame->u.ack.largest = ngx_quic_parse_int(&p);
-        frame->u.ack.delay = ngx_quic_parse_int(&p);
-        frame->u.ack.range_count =ngx_quic_parse_int(&p);
-        frame->u.ack.first_range =ngx_quic_parse_int(&p);
-
-        if (frame->u.ack.range_count) {
-            frame->u.ack.ranges[0] = ngx_quic_parse_int(&p);
-        }
-
-        if (frame->type ==NGX_QUIC_FT_ACK_ECN) {
-            return NGX_ERROR;
-        }
-
-        break;
-
-    case NGX_QUIC_FT_PING:
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "PING frame");
-        break;
-
-    case NGX_QUIC_FT_NEW_CONNECTION_ID:
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "NCID frame");
-
-        frame->u.ncid.seqnum = ngx_quic_parse_int(&p);
-        frame->u.ncid.retire = ngx_quic_parse_int(&p);
-        frame->u.ncid.len = *p++;
-        ngx_memcpy(frame->u.ncid.cid, p, frame->u.ncid.len);
-        p += frame->u.ncid.len;
-
-        ngx_memcpy(frame->u.ncid.srt, p, 16);
-        p += 16;
-
-        break;
-
-    case NGX_QUIC_FT_CONNECTION_CLOSE:
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "connection close frame");
-
-        frame->u.close.error_code = ngx_quic_parse_int(&p);
-        frame->u.close.frame_type = ngx_quic_parse_int(&p); // not in 0x1d CC
-        frame->u.close.reason.len = ngx_quic_parse_int(&p);
-        frame->u.close.reason.data = p;
-        p += frame->u.close.reason.len;
-
-        if (frame->u.close.error_code > NGX_QUIC_ERR_LAST) {
-            frame->u.close.error_code = NGX_QUIC_ERR_LAST;
-        }
-        break;
-
-    case NGX_QUIC_FT_STREAM0:
-    case NGX_QUIC_FT_STREAM1:
-    case NGX_QUIC_FT_STREAM2:
-    case NGX_QUIC_FT_STREAM3:
-    case NGX_QUIC_FT_STREAM4:
-    case NGX_QUIC_FT_STREAM5:
-    case NGX_QUIC_FT_STREAM6:
-    case NGX_QUIC_FT_STREAM7:
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "STREAM frame, type: 0x%xi", frame->type);
-
-        frame->u.stream.type = frame->type;
-
-        frame->u.stream.stream_id = ngx_quic_parse_int(&p);
-        if (frame->type & 0x04) {
-            frame->u.stream.offset = ngx_quic_parse_int(&p);
-        } else {
-            frame->u.stream.offset = 0;
-        }
-
-        if (frame->type & 0x02) {
-            frame->u.stream.length = ngx_quic_parse_int(&p);
-        } else {
-            frame->u.stream.length = end - p; /* up to packet end */
-        }
-
-        frame->u.stream.data = p;
-
-        p += frame->u.stream.length;
-
-        break;
-
-    default:
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "unknown frame type %xi", frame->type);
-        return NGX_ERROR;
-    }
-
-    return p - start;
-}
-
 
 static ngx_int_t
 ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
@@ -1349,6 +786,9 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_STREAM6; /* OFF=1 LEN=1 FIN=0 */
+    frame->u.stream.off = 1;
+    frame->u.stream.len = 1;
+    frame->u.stream.fin = 0;
 
     frame->u.stream.type = frame->type;
     frame->u.stream.stream_id = qs->id;
@@ -1433,8 +873,11 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     while (p < end) {
 
-        len = ngx_quic_read_frame(c, p, end, &frame);
+        len = ngx_quic_parse_frame(p, end, &frame);
         if (len < 0) {
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "unknown frame type %xi", frame.type);
+            // XXX: log here
             return NGX_ERROR;
         }
 
@@ -1456,6 +899,13 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_CRYPTO:
+            ngx_quic_hexdump0(c->log, "CRYPTO frame",
+                          frame.u.crypto.data, frame.u.crypto.len);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic CRYPTO frame length: %uL off:%uL pp:%p",
+                       frame.u.crypto.len, frame.u.crypto.offset,
+                       frame.u.crypto.data);
 
             if (frame.u.crypto.offset != 0x0) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1491,7 +941,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_CONNECTION_CLOSE:
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
-                           ngx_quic_errors[frame.u.close.error_code],
+                           ngx_quic_error_text(frame.u.close.error_code),
                            frame.u.close.error_code,
                            frame.u.close.frame_type,
                            &frame.u.close.reason);
@@ -1516,10 +966,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                            frame.u.stream.stream_id,
                            frame.u.stream.offset,
                            frame.u.stream.length,
-                           ngx_quic_stream_bit_off(frame.u.stream.type),
-                           ngx_quic_stream_bit_len(frame.u.stream.type),
-                           ngx_quic_stream_bit_fin(frame.u.stream.type));
-
+                           frame.u.stream.off,
+                           frame.u.stream.len,
+                           frame.u.stream.fin);
 
             sn = ngx_quic_stream_lookup(&qc->stree, frame.u.stream.stream_id);
             if (sn == NULL) {
@@ -1727,7 +1176,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_process_long_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1737,7 +1186,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_process_initial_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1804,11 +1253,11 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc = c->quic;
     ssl_conn = c->ssl->connection;
 
-    if (ngx_quic_process_long_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    if (ngx_quic_process_initial_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1833,7 +1282,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ssl_conn = c->ssl->connection;
 
     /* extract cleartext data into pkt */
-    if (ngx_quic_process_long_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1863,7 +1312,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (ngx_quic_process_handshake_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1891,7 +1340,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-    if (ngx_quic_process_short_header(c, pkt) != NGX_OK) {
+    if (ngx_quic_parse_short_header(pkt, &qc->dcid) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1905,53 +1354,4 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     return ngx_quic_payload_handler(c, pkt);
 }
 
-
-uint64_t
-ngx_quic_parse_int(u_char **pos)
-{
-    u_char      *p;
-    uint64_t     value;
-    ngx_uint_t   len;
-
-    p = *pos;
-    len = 1 << ((*p & 0xc0) >> 6);
-    value = *p++ & 0x3f;
-
-    while (--len) {
-        value = (value << 8) + *p++;
-    }
-
-    *pos = p;
-    return value;
-}
-
-
-void
-ngx_quic_build_int(u_char **pos, uint64_t value)
-{
-    u_char      *p;
-    ngx_uint_t   len;//, len2;
-
-    p = *pos;
-    len = 0;
-
-    while (value >> ((1 << len) * 8 - 2)) {
-        len++;
-    }
-
-    *p = len << 6;
-
-//    len2 =
-    len = (1 << len);
-    len--;
-    *p |= value >> (len * 8);
-    p++;
-
-    while (len) {
-        *p++ = value >> ((len-- - 1) * 8);
-    }
-
-    *pos = p;
-//    return len2;
-}
 

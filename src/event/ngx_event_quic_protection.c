@@ -702,30 +702,7 @@ ngx_quic_create_long_packet(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
         return NGX_ERROR;
     }
 
-    p = ad.data;
-
-    *p++ = pkt->flags;
-
-    p = ngx_quic_write_uint32(p, quic_version);
-
-    *p++ = pkt->scid.len;
-    p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
-
-    *p++ = pkt->dcid.len;
-    p = ngx_cpymem(p, pkt->dcid.data, pkt->dcid.len);
-
-    if (pkt->level == ssl_encryption_initial) {
-        ngx_quic_build_int(&p, pkt->token.len);
-    }
-
-    ngx_quic_build_int(&p, out.len + 1); // length (inc. pnl)
-    pnp = p;
-
-    pn = *pkt->number;
-
-    *p++ = pn;
-
-    ad.len = p - ad.data;
+    ad.len = ngx_quic_create_long_header(pkt, &ad, out.len, &pnp);
 
     ngx_quic_hexdump0(log, "ad", ad.data, ad.len);
 
@@ -734,9 +711,8 @@ ngx_quic_create_long_packet(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     }
 
     nonce = ngx_pstrdup(pool, &pkt->secret->iv);
-    if (pkt->level == ssl_encryption_handshake) {
-        nonce[11] ^= pn;
-    }
+    pn = *pkt->number;
+    nonce[11] ^= pn;
 
     ngx_quic_hexdump0(log, "server_iv", pkt->secret->iv.data, 12);
     ngx_quic_hexdump0(log, "nonce", nonce, 12);
