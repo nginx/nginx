@@ -58,6 +58,7 @@ static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
 static size_t ngx_quic_create_crypto(u_char *p,
     ngx_quic_crypto_frame_t *crypto);
 static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf);
+static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
 
 
 /* literal errors indexed by corresponding value */
@@ -464,6 +465,9 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_STREAM7:
         return ngx_quic_create_stream(p, &f->u.stream);
 
+    case NGX_QUIC_FT_CONNECTION_CLOSE:
+        return ngx_quic_create_close(p, &f->u.close);
+
     default:
         /* BUG: unsupported frame type generated */
         return NGX_ERROR;
@@ -489,6 +493,8 @@ ngx_quic_frame_len(ngx_quic_frame_t *frame)
         case NGX_QUIC_FT_STREAM6:
         case NGX_QUIC_FT_STREAM7:
             return ngx_quic_create_stream(NULL, &frame->u.stream);
+        case NGX_QUIC_FT_CONNECTION_CLOSE:
+            return ngx_quic_create_close(NULL, &frame->u.close);
         default:
             /* BUG: unsupported frame type generated */
             return 0;
@@ -594,6 +600,34 @@ ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf)
     ngx_quic_build_int(&p, sf->length);
 
     p = ngx_cpymem(p, sf->data, sf->length);
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_CONNECTION_CLOSE);
+        len += ngx_quic_varint_len(cl->error_code);
+        len += ngx_quic_varint_len(cl->frame_type);
+        len += ngx_quic_varint_len(cl->reason.len);
+        len += cl->reason.len;
+
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_CONNECTION_CLOSE);
+    ngx_quic_build_int(&p, cl->error_code);
+    ngx_quic_build_int(&p, cl->frame_type);
+    ngx_quic_build_int(&p, cl->reason.len);
+    p = ngx_cpymem(p, cl->reason.data, cl->reason.len);
 
     return p - start;
 }

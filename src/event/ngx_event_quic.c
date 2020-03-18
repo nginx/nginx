@@ -251,12 +251,28 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     uint8_t alert)
 {
     ngx_connection_t  *c;
+    ngx_quic_frame_t  *frame;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
+
+    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    if (frame == NULL) {
+        return 0;
+    }
+
+    frame->level = level;
+    frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
+    frame->u.close.error_code = 0x100 + alert;
+
+    ngx_quic_queue_frame(c->quic, frame);
+
+    if (ngx_quic_output(c) != NGX_OK) {
+        return 0;
+    }
 
     return 1;
 }
