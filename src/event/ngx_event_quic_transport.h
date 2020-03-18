@@ -116,6 +116,19 @@ typedef struct {
 } ngx_quic_close_frame_t;
 
 
+typedef struct {
+    uint64_t                                    id;
+    uint64_t                                    error_code;
+    uint64_t                                    final_size;
+} ngx_quic_reset_stream_frame_t;
+
+
+typedef struct {
+    uint64_t                                    id;
+    uint64_t                                    error_code;
+} ngx_quic_stop_sending_frame_t;
+
+
 typedef struct ngx_quic_frame_s                 ngx_quic_frame_t;
 
 struct ngx_quic_frame_s {
@@ -128,6 +141,8 @@ struct ngx_quic_frame_s {
         ngx_quic_new_conn_id_frame_t            ncid;
         ngx_quic_stream_frame_t                 stream;
         ngx_quic_close_frame_t                  close;
+        ngx_quic_reset_stream_frame_t           reset_stream;
+        ngx_quic_stop_sending_frame_t           stop_sending;
     } u;
     u_char                                      info[128]; // for debug
 };

@@ -808,6 +808,23 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             ack_this = 1;
             break;
 
+        case NGX_QUIC_FT_RESET_STREAM:
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "RESET STREAM frame"
+                           " { id 0x%xi error_code 0x%xi final_size 0x%xi }",
+                           frame.u.reset_stream.id,
+                           frame.u.reset_stream.error_code,
+                           frame.u.reset_stream.final_size);
+            break;
+
+        case NGX_QUIC_FT_STOP_SENDING:
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "STOP SENDING frame"
+                           " { id 0x%xi error_code 0x%xi}",
+                           frame.u.stop_sending.id,
+                           frame.u.stop_sending.error_code);
+            break;
+
         default:
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "unsupported frame type 0x%xd in packet", frame.type);
