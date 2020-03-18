@@ -110,6 +110,11 @@ typedef struct {
 
 
 typedef struct {
+    uint64_t                                    max_data;
+} ngx_quic_max_data_frame_t;
+
+
+typedef struct {
     uint64_t                                    error_code;
     uint64_t                                    frame_type;
     ngx_str_t                                   reason;
@@ -146,6 +151,7 @@ struct ngx_quic_frame_s {
         ngx_quic_crypto_frame_t                 crypto;
         ngx_quic_new_conn_id_frame_t            ncid;
         ngx_quic_stream_frame_t                 stream;
+        ngx_quic_max_data_frame_t               max_data;
         ngx_quic_close_frame_t                  close;
         ngx_quic_reset_stream_frame_t           reset_stream;
         ngx_quic_stop_sending_frame_t           stop_sending;

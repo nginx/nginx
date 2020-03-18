@@ -42,6 +42,7 @@ struct ngx_quic_connection_s {
     ngx_quic_frame_t                 *frames;
 
     ngx_quic_streams_t                streams;
+    ngx_uint_t                        max_data;
 };
 
 
@@ -820,6 +821,16 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
+            ack_this = 1;
+            break;
+
+        case NGX_QUIC_FT_MAX_DATA:
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "MAX_DATA frame"
+                           " { Maximum Data %ui }",
+                           frame.u.max_data.max_data);
+
+            c->quic->max_data = frame.u.max_data.max_data;
             ack_this = 1;
             break;
 

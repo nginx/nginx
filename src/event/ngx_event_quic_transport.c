@@ -424,6 +424,10 @@ ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
 
         break;
 
+    case NGX_QUIC_FT_MAX_DATA:
+        frame->u.max_data.max_data = ngx_quic_parse_int(&p);
+        break;
+
     case NGX_QUIC_FT_RESET_STREAM:
         frame->u.reset_stream.id = ngx_quic_parse_int(&p);
         frame->u.reset_stream.error_code = ngx_quic_parse_int(&p);
