@@ -10,42 +10,30 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_V3_CONTROL_STREAM  0x00
-#define NGX_HTTP_V3_PUSH_STREAM     0x01
-#define NGX_HTTP_V3_ENCODER_STREAM  0x02
-#define NGX_HTTP_V3_DECODER_STREAM  0x03
+typedef ngx_int_t (*ngx_http_v3_handler_pt)(ngx_connection_t *c, void *data,
+    u_char ch);
 
 
 typedef struct {
-    uint32_t    signature; /* QSTR */
-    u_char      buf[4];
+    uint32_t                        signature; /* QSTR */
 
-    ngx_uint_t  len;
-    ngx_uint_t  type;
-    ngx_uint_t  state;
-    ngx_uint_t  index;
-    ngx_uint_t  offset;
+    ngx_http_v3_handler_pt          handler;
+    void                           *data;
 
-    ngx_str_t   name;
-    ngx_str_t   value;
-
-    unsigned    client:1;
-    unsigned    dynamic:1;
-    unsigned    huffman:1;
+    ngx_uint_t                      type;
+    ngx_uint_t                      client;  /* unsigned  client:1; */
 } ngx_http_v3_uni_stream_t;
 
 
 static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
 static void ngx_http_v3_uni_stream_cleanup(void *data);
 static void ngx_http_v3_read_uni_stream_type(ngx_event_t *rev);
-static void ngx_http_v3_dummy_stream_handler(ngx_event_t *rev);
-static void ngx_http_v3_client_encoder_handler(ngx_event_t *rev);
-static void ngx_http_v3_client_decoder_handler(ngx_event_t *rev);
-
+static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static ngx_connection_t *ngx_http_v3_create_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);
-static ngx_connection_t *ngx_http_v3_get_server_encoder(ngx_connection_t *c);
-static ngx_connection_t *ngx_http_v3_get_server_decoder(ngx_connection_t *c);
+static ngx_connection_t *ngx_http_v3_get_control(ngx_connection_t *c);
+static ngx_connection_t *ngx_http_v3_get_encoder(ngx_connection_t *c);
+static ngx_connection_t *ngx_http_v3_get_decoder(ngx_connection_t *c);
 
 
 void
@@ -56,8 +44,13 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
 
     c->log->connection = c->number;
 
+    /* XXX */
+    (void) ngx_http_v3_get_control(c);
+    (void) ngx_http_v3_get_encoder(c);
+    (void) ngx_http_v3_get_decoder(c);
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 new uni stream id:0x%uXL", c->qs->id);
+                   "http3 new uni stream id:0x%uxL", c->qs->id);
 
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
@@ -81,7 +74,7 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
     cln->data = c;
 
     c->read->handler = ngx_http_v3_read_uni_stream_type;
-    c->read->handler(c->read);
+    ngx_http_v3_read_uni_stream_type(c->read);
 }
 
 
@@ -115,7 +108,7 @@ ngx_http_v3_uni_stream_cleanup(void *data)
 
     switch (us->type) {
 
-    case NGX_HTTP_V3_ENCODER_STREAM:
+    case NGX_HTTP_V3_STREAM_ENCODER:
 
         if (us->client) {
             h3c->client_encoder = NULL;
@@ -125,12 +118,22 @@ ngx_http_v3_uni_stream_cleanup(void *data)
 
         break;
 
-    case NGX_HTTP_V3_DECODER_STREAM:
+    case NGX_HTTP_V3_STREAM_DECODER:
 
         if (us->client) {
             h3c->client_decoder = NULL;
         } else {
             h3c->server_decoder = NULL;
+        }
+
+        break;
+
+    case NGX_HTTP_V3_STREAM_CONTROL:
+
+        if (us->client) {
+            h3c->client_control = NULL;
+        } else {
+            h3c->server_control = NULL;
         }
 
         break;
@@ -141,31 +144,129 @@ ngx_http_v3_uni_stream_cleanup(void *data)
 static void
 ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 {
-    u_char                    *p;
-    ssize_t                    n, len;
+    u_char                     ch;
+    ssize_t                    n;
     ngx_connection_t          *c;
     ngx_http_v3_connection_t  *h3c;
-    ngx_http_v3_uni_stream_t  *us;
+    ngx_http_v3_uni_stream_t  *st;
 
     c = rev->data;
-    us = c->data;
+    st = c->data;
     h3c = c->qs->parent->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read stream type");
 
     while (rev->ready) {
 
-        p = &us->buf[us->len];
-
-        if (us->len == 0) {
-            len = 1;
-        } else {
-            len = (us->buf[0] >> 6) + 1 - us->len;
-        }
-
-        n = c->recv(c, p, len);
+        n = c->recv(c, &ch, 1);
 
         if (n == NGX_ERROR) {
+            goto failed;
+        }
+
+        if (n == NGX_AGAIN || n != 1) {
+            break;
+        }
+
+        st->type = ch;
+
+        switch (st->type) {
+
+        case NGX_HTTP_V3_STREAM_ENCODER:
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 encoder stream");
+
+            if (h3c->client_encoder) {
+                goto failed;
+            }
+
+            h3c->client_encoder = c;
+            st->handler = ngx_http_v3_parse_encoder;
+            n = sizeof(ngx_http_v3_parse_encoder_t);
+
+            break;
+
+        case NGX_HTTP_V3_STREAM_DECODER:
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 decoder stream");
+
+            if (h3c->client_decoder) {
+                goto failed;
+            }
+
+            h3c->client_decoder = c;
+            st->handler = ngx_http_v3_parse_decoder;
+            n = sizeof(ngx_http_v3_parse_decoder_t);
+
+            break;
+
+        case NGX_HTTP_V3_STREAM_CONTROL:
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 control stream");
+
+            if (h3c->client_control) {
+                goto failed;
+            }
+
+            h3c->client_control = c;
+            st->handler = ngx_http_v3_parse_control;
+            n = sizeof(ngx_http_v3_parse_control_t);
+
+            break;
+
+        default:
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 stream 0x%02xi", st->type);
+            n = 0;
+        }
+
+        if (n) {
+            st->data = ngx_pcalloc(c->pool, n);
+            if (st->data == NULL) {
+                goto failed;
+            }
+        }
+
+        rev->handler = ngx_http_v3_uni_read_handler;
+        ngx_http_v3_uni_read_handler(rev);
+        return;
+    }
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    return;
+
+failed:
+
+    ngx_http_v3_close_uni_stream(c);
+}
+
+
+static void
+ngx_http_v3_uni_read_handler(ngx_event_t *rev)
+{
+    u_char                     buf[128];
+    ssize_t                    n;
+    ngx_int_t                  rc, i;
+    ngx_connection_t          *c;
+    ngx_http_v3_uni_stream_t  *st;
+
+    c = rev->data;
+    st = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read handler");
+
+    while (rev->ready) {
+
+        n = c->recv(c, buf, sizeof(buf));
+
+        if (n == NGX_ERROR || n == 0) {
             goto failed;
         }
 
@@ -173,49 +274,23 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
             break;
         }
 
-        us->len += n;
-
-        if (n != len) {
-            break;
+        if (st->handler == NULL) {
+            continue;
         }
 
-        if ((us->buf[0] >> 6) + 1 == us->len) {
-            us->type = ngx_http_v3_decode_varlen_int(us->buf);
+        for (i = 0; i < n; i++) {
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http3 stream type:%ui", us->type);
+            rc = st->handler(c, st->data, buf[i]);
 
-            switch (us->type) {
-
-            case NGX_HTTP_V3_ENCODER_STREAM:
-                if (h3c->client_encoder) {
-                    goto failed;
-                }
-
-                h3c->client_encoder = c;
-                rev->handler = ngx_http_v3_client_encoder_handler;
-                break;
-
-            case NGX_HTTP_V3_DECODER_STREAM:
-                if (h3c->client_decoder) {
-                    goto failed;
-                }
-
-                h3c->client_decoder = c;
-                rev->handler = ngx_http_v3_client_decoder_handler;
-                break;
-
-            case NGX_HTTP_V3_CONTROL_STREAM:
-            case NGX_HTTP_V3_PUSH_STREAM:
-
-                /* ignore these */
-
-            default:
-                rev->handler = ngx_http_v3_dummy_stream_handler;
+            if (rc == NGX_ERROR) {
+                goto failed;
             }
 
-            rev->handler(rev);
-            return;
+            if (rc == NGX_DONE) {
+                goto done;
+            }
+
+            /* rc == NGX_AGAIN */
         }
     }
 
@@ -225,556 +300,9 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 
     return;
 
-failed:
+done:
 
-    ngx_http_v3_close_uni_stream(c);
-}
-
-
-static void
-ngx_http_v3_dummy_stream_handler(ngx_event_t *rev)
-{
-    u_char             buf[128];
-    ngx_connection_t  *c;
-
-    /* read out and ignore */
-
-    c = rev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 dummy stream reader");
-
-    while (rev->ready) {
-        if (c->recv(c, buf, sizeof(buf)) == NGX_ERROR) {
-            goto failed;
-        }
-    }
-
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        goto failed;
-    }
-
-    return;
-
-failed:
-
-    ngx_http_v3_close_uni_stream(c);
-}
-
-
-static void
-ngx_http_v3_client_encoder_handler(ngx_event_t *rev)
-{
-    u_char                     v;
-    ssize_t                    n;
-    ngx_str_t                  name, value;
-    ngx_uint_t                 dynamic, huffman, index, offset;
-    ngx_connection_t          *c, *pc;
-    ngx_http_v3_uni_stream_t  *st;
-    enum {
-        sw_start = 0,
-        sw_inr_name_index,
-        sw_inr_value_length,
-        sw_inr_read_value_length,
-        sw_inr_value,
-        sw_iwnr_name_length,
-        sw_iwnr_name,
-        sw_iwnr_value_length,
-        sw_iwnr_read_value_length,
-        sw_iwnr_value,
-        sw_capacity,
-        sw_duplicate
-    } state;
-
-    c = rev->data;
-    st = c->data;
-    pc = c->qs->parent;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 client encoder");
-
-    state = st->state;
-    dynamic = st->dynamic;
-    huffman = st->huffman;
-    index = st->index;
-    offset = st->offset;
-    name = st->name;
-    value = st->value;
-
-    while (rev->ready) {
-
-        /* XXX limit checks */
-        /* XXX buffer input */
-
-        n = c->recv(c, &v, 1);
-
-        if (n == NGX_ERROR || n == 0) {
-            goto failed;
-        }
-
-        if (n != 1) {
-            break;
-        }
-
-        /* XXX v -> ch */
-
-        switch (state) {
-
-        case sw_start:
-
-            if (v & 0x80) {
-                /* Insert With Name Reference */
-
-                dynamic = (v & 0x40) ? 0 : 1;
-                index = v & 0x3f;
-
-                if (index != 0x3f) {
-                    state = sw_inr_value_length;
-                    break;
-                }
-
-                index = 0;
-                state = sw_inr_name_index;
-                break;
-            }
-
-            if (v & 0x40) {
-                /*  Insert Without Name Reference */
-
-                huffman = (v & 0x20) ? 1 : 0;
-                name.len = v & 0x1f;
-
-                if (name.len != 0x1f) {
-                    offset = 0;
-                    state = sw_iwnr_name;
-                    break;
-                }
-
-                name.len = 0;
-                state = sw_iwnr_name_length;
-                break;
-            }
-
-            if (v & 0x20) {
-                /*  Set Dynamic Table Capacity */
-
-                index = v & 0x1f;
-
-                if (index != 0x1f) {
-                    if (ngx_http_v3_set_capacity(c, index) != NGX_OK) {
-                        goto failed;
-                    }
-
-                    break;
-                }
-
-                index = 0;
-                state = sw_capacity;
-                break;
-            }
-
-            /* Duplicate */
-
-            index = v & 0x1f;
-
-            if (index != 0x1f) {
-                if (ngx_http_v3_duplicate(c, index) != NGX_OK) {
-                    goto failed;
-                }
-
-                break;
-            }
-
-            index = 0;
-            state = sw_duplicate;
-            break;
-
-        case sw_inr_name_index:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x3f;
-            state = sw_inr_value_length;
-            break;
-
-        case sw_inr_value_length:
-
-            huffman = (v & 0x80) ? 1 : 0;
-            value.len = v & 0x7f;
-
-            if (value.len == 0) {
-                value.data = NULL;
-
-                if (ngx_http_v3_ref_insert(c, dynamic, index, &value) != NGX_OK)
-                {
-                    goto failed;
-                }
-
-                state = sw_start;
-                break;
-            }
-
-            if (value.len != 0x7f) {
-                value.data = ngx_pnalloc(pc->pool, value.len);
-                if (value.data == NULL) {
-                    goto failed;
-                }
-
-                state = sw_inr_value;
-                offset = 0;
-                break;
-            }
-
-            value.len = 0;
-            state = sw_inr_read_value_length;
-            break;
-
-        case sw_inr_read_value_length:
-
-            value.len = (value.len << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            value.len += 0x7f;
-
-            value.data = ngx_pnalloc(pc->pool, value.len);
-            if (value.data == NULL) {
-                goto failed;
-            }
-
-            state = sw_inr_value;
-            offset = 0;
-            break;
-
-        case sw_inr_value:
-
-            value.data[offset++] = v;
-            if (offset != value.len) {
-                break;
-            }
-
-            if (huffman) {
-                if (ngx_http_v3_decode_huffman(pc, &value) != NGX_OK) {
-                    goto failed;
-                }
-            }
-
-            if (ngx_http_v3_ref_insert(c, dynamic, index, &value) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-
-        case sw_iwnr_name_length:
-
-            name.len = (name.len << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            name.len += 0x1f;
-
-            name.data = ngx_pnalloc(pc->pool, name.len);
-            if (name.data == NULL) {
-                goto failed;
-            }
-
-            offset = 0;
-            state = sw_iwnr_name;
-            break;
-
-        case sw_iwnr_name:
-
-            name.data[offset++] = v;
-            if (offset != name.len) {
-                break;
-            }
-
-            if (huffman) {
-                if (ngx_http_v3_decode_huffman(pc, &name) != NGX_OK) {
-                    goto failed;
-                }
-            }
-
-            state = sw_iwnr_value_length;
-            break;
-
-        case sw_iwnr_value_length:
-
-            huffman = (v & 0x80) ? 1 : 0;
-            value.len = v & 0x7f;
-
-            if (value.len == 0) {
-                value.data = NULL;
-
-                if (ngx_http_v3_insert(c, &name, &value) != NGX_OK) {
-                    goto failed;
-                }
-
-                state = sw_start;
-                break;
-            }
-
-            if (value.len != 0x7f) {
-                value.data = ngx_pnalloc(pc->pool, value.len);
-                if (value.data == NULL) {
-                    goto failed;
-                }
-
-                offset = 0;
-                state = sw_iwnr_value;
-                break;
-            }
-
-            state = sw_iwnr_read_value_length;
-            break;
-
-        case sw_iwnr_read_value_length:
-
-            value.len = (value.len << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            value.data = ngx_pnalloc(pc->pool, value.len);
-            if (value.data == NULL) {
-                goto failed;
-            }
-
-            offset = 0;
-            state = sw_iwnr_value;
-            break;
-
-        case sw_iwnr_value:
-
-            value.data[offset++] = v;
-            if (offset != value.len) {
-                break;
-            }
-
-            if (huffman) {
-                if (ngx_http_v3_decode_huffman(pc, &value) != NGX_OK) {
-                    goto failed;
-                }
-            }
-
-            if (ngx_http_v3_insert(c, &name, &value) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-
-
-        case sw_capacity:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x1f;
-
-            if (ngx_http_v3_set_capacity(c, index) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-
-        case sw_duplicate:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x1f;
-
-            if (ngx_http_v3_duplicate(c, index) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-        }
-    }
-
-    st->state = state;
-    st->dynamic = dynamic;
-    st->huffman = huffman;
-    st->index = index;
-    st->offset = offset;
-    st->name = name;
-    st->value = value;
-
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        goto failed;
-    }
-
-    return;
-
-failed:
-
-    ngx_http_v3_close_uni_stream(c);
-}
-
-
-static void
-ngx_http_v3_client_decoder_handler(ngx_event_t *rev)
-{
-    u_char                     v;
-    ssize_t                    n;
-    ngx_uint_t                 index;
-    ngx_connection_t          *c;
-    ngx_http_v3_uni_stream_t  *st;
-    enum {
-        sw_start = 0,
-        sw_ack_header,
-        sw_cancel_stream,
-        sw_inc_insert_count
-    } state;
-
-    c = rev->data;
-    st = c->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 client decoder");
-
-    state = st->state;
-    index = st->index;
-
-    while (rev->ready) {
-
-        /* XXX limit checks */
-        /* XXX buffer input */
-
-        n = c->recv(c, &v, 1);
-
-        if (n == NGX_ERROR || n == 0) {
-            goto failed;
-        }
-
-        if (n != 1) {
-            break;
-        }
-
-        switch (state) {
-
-        case sw_start:
-
-            if (v & 0x80) {
-                /* Header Acknowledgement */
-
-                index = v & 0x7f;
-
-                if (index != 0x7f) {
-                    if (ngx_http_v3_ack_header(c, index) != NGX_OK) {
-                        goto failed;
-                    }
-
-                    break;
-                }
-
-                index = 0;
-                state = sw_ack_header;
-                break;
-            }
-
-            if (v & 0x40) {
-                /*  Stream Cancellation */
-
-                index = v & 0x3f;
-
-                if (index != 0x3f) {
-                    if (ngx_http_v3_cancel_stream(c, index) != NGX_OK) {
-                        goto failed;
-                    }
-
-                    break;
-                }
-
-                index = 0;
-                state = sw_cancel_stream;
-                break;
-            }
-
-            /*  Insert Count Increment */
-
-            index = v & 0x3f;
-
-            if (index != 0x3f) {
-                if (ngx_http_v3_inc_insert_count(c, index) != NGX_OK) {
-                    goto failed;
-                }
-
-                break;
-            }
-
-            index = 0;
-            state = sw_inc_insert_count;
-            break;
-
-        case sw_ack_header:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x7f;
-
-            if (ngx_http_v3_ack_header(c, index) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-
-        case sw_cancel_stream:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x3f;
-
-            if (ngx_http_v3_cancel_stream(c, index) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-
-        case sw_inc_insert_count:
-
-            index = (index << 7) + (v & 0x7f);
-            if (v & 0x80) {
-                break;
-            }
-
-            index += 0x3f;
-
-            if (ngx_http_v3_inc_insert_count(c, index) != NGX_OK) {
-                goto failed;
-            }
-
-            state = sw_start;
-            break;
-        }
-    }
-
-    st->state = state;
-    st->index = index;
-
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        goto failed;
-    }
-
-    return;
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read done");
 
 failed:
 
@@ -835,7 +363,7 @@ failed:
 
 
 static ngx_connection_t *
-ngx_http_v3_get_server_encoder(ngx_connection_t *c)
+ngx_http_v3_get_control(ngx_connection_t *c)
 {
     ngx_http_v3_connection_t  *h3c;
 
@@ -843,7 +371,7 @@ ngx_http_v3_get_server_encoder(ngx_connection_t *c)
 
     if (h3c->server_encoder == NULL) {
         h3c->server_encoder = ngx_http_v3_create_uni_stream(c,
-                                                   NGX_HTTP_V3_ENCODER_STREAM);
+                                                   NGX_HTTP_V3_STREAM_CONTROL);
     }
 
     return h3c->server_encoder;
@@ -851,18 +379,34 @@ ngx_http_v3_get_server_encoder(ngx_connection_t *c)
 
 
 static ngx_connection_t *
-ngx_http_v3_get_server_decoder(ngx_connection_t *c)
+ngx_http_v3_get_encoder(ngx_connection_t *c)
 {
     ngx_http_v3_connection_t  *h3c;
 
     h3c = c->qs->parent->data;
 
-    if (h3c->server_decoder == NULL) {
-        h3c->server_decoder = ngx_http_v3_create_uni_stream(c,
-                                                   NGX_HTTP_V3_DECODER_STREAM);
+    if (h3c->server_encoder == NULL) {
+        h3c->server_encoder = ngx_http_v3_create_uni_stream(c,
+                                                   NGX_HTTP_V3_STREAM_ENCODER);
     }
 
-    return h3c->server_decoder;
+    return h3c->server_encoder;
+}
+
+
+static ngx_connection_t *
+ngx_http_v3_get_decoder(ngx_connection_t *c)
+{
+    ngx_http_v3_connection_t  *h3c;
+
+    h3c = c->qs->parent->data;
+
+    if (h3c->server_encoder == NULL) {
+        h3c->server_encoder = ngx_http_v3_create_uni_stream(c,
+                                                   NGX_HTTP_V3_STREAM_DECODER);
+    }
+
+    return h3c->server_encoder;
 }
 
 
@@ -878,7 +422,7 @@ ngx_http_v3_client_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
                    "http3 client ref insert, %s[%ui] \"%V\"",
                    dynamic ? "dynamic" : "static", index, value);
 
-    ec = ngx_http_v3_get_server_encoder(c);
+    ec = ngx_http_v3_get_encoder(c);
     if (ec == NULL) {
         return NGX_ERROR;
     }
@@ -923,7 +467,7 @@ ngx_http_v3_client_insert(ngx_connection_t *c, ngx_str_t *name,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client insert \"%V\":\"%V\"", name, value);
 
-    ec = ngx_http_v3_get_server_encoder(c);
+    ec = ngx_http_v3_get_encoder(c);
     if (ec == NULL) {
         return NGX_ERROR;
     }
@@ -972,7 +516,7 @@ ngx_http_v3_client_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client set capacity %ui", capacity);
 
-    ec = ngx_http_v3_get_server_encoder(c);
+    ec = ngx_http_v3_get_encoder(c);
     if (ec == NULL) {
         return NGX_ERROR;
     }
@@ -999,7 +543,7 @@ ngx_http_v3_client_duplicate(ngx_connection_t *c, ngx_uint_t index)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client duplicate %ui", index);
 
-    ec = ngx_http_v3_get_server_encoder(c);
+    ec = ngx_http_v3_get_encoder(c);
     if (ec == NULL) {
         return NGX_ERROR;
     }
@@ -1026,7 +570,7 @@ ngx_http_v3_client_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client ack header %ui", stream_id);
 
-    dc = ngx_http_v3_get_server_decoder(c);
+    dc = ngx_http_v3_get_decoder(c);
     if (dc == NULL) {
         return NGX_ERROR;
     }
@@ -1053,7 +597,7 @@ ngx_http_v3_client_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client cancel stream %ui", stream_id);
 
-    dc = ngx_http_v3_get_server_decoder(c);
+    dc = ngx_http_v3_get_decoder(c);
     if (dc == NULL) {
         return NGX_ERROR;
     }
@@ -1080,7 +624,7 @@ ngx_http_v3_client_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 client increment insert count %ui", inc);
 
-    dc = ngx_http_v3_get_server_decoder(c);
+    dc = ngx_http_v3_get_decoder(c);
     if (dc == NULL) {
         return NGX_ERROR;
     }

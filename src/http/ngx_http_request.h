@@ -595,14 +595,7 @@ struct ngx_http_request_s {
     u_char                           *port_end;
 
 #if (NGX_HTTP_V3)
-    ngx_uint_t                        h3_length;
-    ngx_uint_t                        h3_index;
-    ngx_uint_t                        h3_insert_count;
-    ngx_uint_t                        h3_sign;
-    ngx_uint_t                        h3_delta_base;
-    ngx_uint_t                        h3_huffman;
-    ngx_uint_t                        h3_dynamic;
-    ngx_uint_t                        h3_offset;
+    void                             *h3_parse;
 #endif
 
     unsigned                          http_minor:16;

@@ -10,15 +10,6 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_V3_FRAME_DATA          0x00
-#define NGX_HTTP_V3_FRAME_HEADERS       0x01
-#define NGX_HTTP_V3_FRAME_CANCEL_PUSH   0x03
-#define NGX_HTTP_V3_FRAME_SETTINGS      0x04
-#define NGX_HTTP_V3_FRAME_PUSH_PROMISE  0x05
-#define NGX_HTTP_V3_FRAME_GOAWAY        0x07
-#define NGX_HTTP_V3_FRAME_MAX_PUSH_ID   0x0d
-
-
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 
@@ -46,6 +37,110 @@ struct {
 };
 
 
+ngx_int_t
+ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b)
+{
+    ngx_int_t                     rc;
+    ngx_str_t                    *name, *value;
+    ngx_connection_t             *c;
+    ngx_http_v3_parse_headers_t  *st;
+    enum {
+        sw_start = 0,
+        sw_prev,
+        sw_headers,
+        sw_last,
+        sw_done
+    };
+
+    c = r->connection;
+    st = r->h3_parse;
+
+    if (st == NULL) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header");
+
+        st = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_headers_t));
+        if (st == NULL) {
+            goto failed;
+        }
+
+        r->h3_parse = st;
+    }
+
+    switch (r->state) {
+
+    case sw_prev:
+        r->state = sw_headers;
+        return NGX_OK;
+
+    case sw_done:
+        goto done;
+
+    case sw_last:
+        r->state = sw_done;
+        return NGX_OK;
+
+    default:
+        break;
+    }
+
+    for ( /* void */ ; b->pos < b->last; b->pos++) {
+
+        rc = ngx_http_v3_parse_headers(c, st, *b->pos);
+
+        if (rc == NGX_ERROR) {
+            goto failed;
+        }
+
+        if (rc == NGX_AGAIN) {
+            continue;
+        }
+
+        name = &st->header_rep.header.name;
+        value = &st->header_rep.header.value;
+
+        if (r->state == sw_start
+            && ngx_http_v3_process_pseudo_header(r, name, value) != NGX_OK)
+        {
+            if (rc == NGX_DONE) {
+                r->state = sw_last;
+            } else {
+                r->state = sw_prev;
+            }
+
+        } else if (rc == NGX_DONE) {
+            r->state = sw_done;
+        }
+
+        if (r->state == sw_start) {
+            continue;
+        }
+
+        r->header_name_start = name->data;
+        r->header_name_end = name->data + name->len;
+        r->header_start = value->data;
+        r->header_end = value->data + value->len;
+        r->header_hash = ngx_hash_key(name->data, name->len);
+
+        /* XXX r->lowcase_index = i; */
+
+        return NGX_OK;
+    }
+
+    return NGX_AGAIN;
+
+failed:
+
+    return r->state == sw_start ? NGX_HTTP_PARSE_INVALID_REQUEST
+                                : NGX_HTTP_PARSE_INVALID_HEADER;
+
+done:
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header done");
+
+    return NGX_HTTP_PARSE_HEADER_DONE;
+}
+
+#if 0
 ngx_int_t
 ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b, ngx_uint_t pseudo)
 {
@@ -167,11 +262,14 @@ again:
                 break;
             }
 
-            /* fall through */
+            length &= 0x3fffff;
+            state = sw_header_block;
+            break;
 
         case sw_length_3:
 
-            length &= 0x3fffff;
+            length = (length << 8) + ch;
+            length &= 0x3fffffff;
             state = sw_header_block;
             break;
 
@@ -567,6 +665,7 @@ failed:
 
     return NGX_HTTP_PARSE_INVALID_REQUEST;
 }
+#endif
 
 
 static ngx_int_t
@@ -575,6 +674,10 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
 {
     ngx_uint_t         i;
     ngx_connection_t  *c;
+
+    if (name->len == 0 || name->data[0] != ':') {
+        return NGX_DECLINED;
+    }
 
     c = r->connection;
 
@@ -635,14 +738,10 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_OK;
     }
 
-    if (name->len && name->data[0] == ':') {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 unknown pseudo header \"%V\" \"%V\"",
-                       name, value);
-        return NGX_OK;
-    }
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 unknown pseudo header \"%V\" \"%V\"", name, value);
 
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -789,7 +888,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
         b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 25, 4);
         *b->last = 0;
         b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 3, 7);
-        b->last = ngx_sprintf(b->last, "%03ui ", r->headers_out.status);
+        b->last = ngx_sprintf(b->last, "%03ui", r->headers_out.status);
     }
 
     if (r->headers_out.server == NULL) {

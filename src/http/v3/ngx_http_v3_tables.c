@@ -383,3 +383,33 @@ ngx_http_v3_new_header(ngx_connection_t *c)
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id, uint64_t value)
+{
+    switch (id) {
+
+    case NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY:
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 param QPACK_MAX_TABLE_CAPACITY:%uL", value);
+        break;
+
+    case NGX_HTTP_V3_PARAM_MAX_HEADER_LIST_SIZE:
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 param SETTINGS_MAX_HEADER_LIST_SIZE:%uL", value);
+        break;
+
+    case NGX_HTTP_V3_PARAM_BLOCKED_STREAMS:
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 param QPACK_BLOCKED_STREAMS:%uL", value);
+        break;
+
+    default:
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 param #%uL:%uL", id, value);
+    }
+
+    return NGX_OK;
+}
