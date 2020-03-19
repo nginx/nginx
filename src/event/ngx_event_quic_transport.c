@@ -427,7 +427,7 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet length: %d", varint);
+                   "quic packet length: %uL", varint);
 
     if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "truncated initial packet");
@@ -463,7 +463,7 @@ ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet length: %d", plen);
+                   "quic packet length: %uL", plen);
 
     if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "truncated handshake packet");
