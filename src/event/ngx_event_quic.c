@@ -110,6 +110,7 @@ static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
     size_t size);
+static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
 
@@ -1286,6 +1287,7 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
     ngx_log_t               *log;
     ngx_pool_t              *pool;
     ngx_event_t             *rev, *wev;
+    ngx_pool_cleanup_t      *cln;
     ngx_quic_connection_t   *qc;
     ngx_quic_stream_node_t  *sn;
 
@@ -1351,6 +1353,16 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
     sn->c->recv = ngx_quic_stream_recv;
     sn->c->send = ngx_quic_stream_send;
     sn->c->send_chain = ngx_quic_stream_send_chain;
+
+    cln = ngx_pool_cleanup_add(pool, 0);
+    if (cln == NULL) {
+        ngx_close_connection(sn->c);
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    cln->handler = ngx_quic_stream_cleanup_handler;
+    cln->data = sn->c;
 
     return sn;
 }
@@ -1454,6 +1466,58 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_quic_queue_frame(qc, frame);
 
     return size;
+}
+
+
+static void
+ngx_quic_stream_cleanup_handler(void *data)
+{
+    ngx_connection_t *c = data;
+
+    ngx_connection_t        *pc;
+    ngx_quic_frame_t        *frame;
+    ngx_quic_stream_t       *qs;
+    ngx_quic_connection_t   *qc;
+    ngx_quic_stream_node_t  *sn;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send fin");
+
+    qs = c->qs;
+    pc = qs->parent;
+    qc = pc->quic;
+
+    if ((qs->id & 0x03) == 0x02) {
+        /* do not send fin for client unidirectional streams */
+        return;
+    }
+
+    // XXX: get direct pointer from stream structure?
+    sn = ngx_quic_find_stream(&qc->streams.tree, qs->id);
+
+    if (sn == NULL) {
+        return;
+    }
+
+    frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
+    if (frame == NULL) {
+        return;
+    }
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_STREAM7; /* OFF=1 LEN=1 FIN=1 */
+    frame->u.stream.off = 1;
+    frame->u.stream.len = 1;
+    frame->u.stream.fin = 1;
+
+    frame->u.stream.type = frame->type;
+    frame->u.stream.stream_id = qs->id;
+    frame->u.stream.offset = c->sent;
+    frame->u.stream.length = 0;
+    frame->u.stream.data = NULL;
+
+    ngx_sprintf(frame->info, "stream %xi fin=1 level=%d", qs->id, frame->level);
+
+    ngx_quic_queue_frame(qc, frame);
 }
 
 
