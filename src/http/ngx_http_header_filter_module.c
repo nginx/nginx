@@ -179,6 +179,22 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    if (r->http_version < NGX_HTTP_VERSION_10) {
+        return NGX_OK;
+    }
+
+    if (r->method == NGX_HTTP_HEAD) {
+        r->header_only = 1;
+    }
+
+    if (r->headers_out.status_line.len == 0) {
+        if (r->headers_out.status == NGX_HTTP_NO_CONTENT
+            || r->headers_out.status == NGX_HTTP_NOT_MODIFIED)
+        {
+            r->header_only = 1;
+        }
+    }
+
 #if (NGX_HTTP_V3)
 
     if (r->http_version == NGX_HTTP_VERSION_30) {
@@ -193,14 +209,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
     }
 
 #endif
-
-    if (r->http_version < NGX_HTTP_VERSION_10) {
-        return NGX_OK;
-    }
-
-    if (r->method == NGX_HTTP_HEAD) {
-        r->header_only = 1;
-    }
 
     if (r->headers_out.last_modified_time != -1) {
         if (r->headers_out.status != NGX_HTTP_OK
@@ -235,7 +243,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
             /* 2XX */
 
             if (status == NGX_HTTP_NO_CONTENT) {
-                r->header_only = 1;
                 ngx_str_null(&r->headers_out.content_type);
                 r->headers_out.last_modified_time = -1;
                 r->headers_out.last_modified = NULL;
@@ -251,10 +258,6 @@ ngx_http_header_filter(ngx_http_request_t *r)
                    && status < NGX_HTTP_LAST_3XX)
         {
             /* 3XX */
-
-            if (status == NGX_HTTP_NOT_MODIFIED) {
-                r->header_only = 1;
-            }
 
             status = status - NGX_HTTP_MOVED_PERMANENTLY + NGX_HTTP_OFF_3XX;
             status_line = &ngx_http_status_lines[status];

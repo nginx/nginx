@@ -259,7 +259,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 create header");
 
     /* XXX support chunked body in the chunked filter */
-    if (r->headers_out.content_length_n == -1) {
+    if (!r->header_only && r->headers_out.content_length_n == -1) {
         return NULL;
     }
 
@@ -310,11 +310,11 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
                + ngx_http_v3_encode_prefix_int(NULL, n, 7) + n;
     }
 
-    if (r->headers_out.content_length_n == 0) {
-        len += ngx_http_v3_encode_prefix_int(NULL, 4, 6);
-
-    } else {
+    if (r->headers_out.content_length_n > 0) {
         len += ngx_http_v3_encode_prefix_int(NULL, 4, 4) + 1 + NGX_OFF_T_LEN;
+
+    } else if (r->headers_out.content_length_n == 0) {
+        len += ngx_http_v3_encode_prefix_int(NULL, 4, 6);
     }
 
     if (r->headers_out.last_modified == NULL
@@ -454,18 +454,18 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->headers_out.content_length_n == 0) {
-        /* content-length: 0 */
-        *b->last = 0xc0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 4, 6);
-
-    } else if (r->headers_out.content_length_n > 0) {
+    if (r->headers_out.content_length_n > 0) {
         /* content-length: 0 */
         *b->last = 0x70;
         b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 4, 4);
         p = b->last++;
         b->last = ngx_sprintf(b->last, "%O", r->headers_out.content_length_n);
         *p = b->last - p - 1;
+
+    } else if (r->headers_out.content_length_n == 0) {
+        /* content-length: 0 */
+        *b->last = 0xc0;
+        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 4, 6);
     }
 
     if (r->headers_out.last_modified == NULL
@@ -519,6 +519,10 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
                                                            header[i].value.len,
                                                            7);
         b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+    }
+
+    if (r->header_only) {
+        b->last_buf = 1;
     }
 
     cl = ngx_alloc_chain_link(c->pool);
