@@ -721,10 +721,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     while (p < end) {
 
-        len = ngx_quic_parse_frame(p, end, &frame);
+        len = ngx_quic_parse_frame(pkt, p, end, &frame);
         if (len < 0) {
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "failed to parse frame type 0x%xi", frame.type);
             return NGX_ERROR;
         }
 
@@ -733,14 +731,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         switch (frame.type) {
 
         case NGX_QUIC_FT_ACK:
-
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "ACK: { largest=%ui delay=%ui first=%ui count=%ui}",
-                           frame.u.ack.largest,
-                           frame.u.ack.delay,
-                           frame.u.ack.first_range,
-                           frame.u.ack.range_count);
-
             if (ngx_quic_handle_ack_frame(c, pkt, &frame.u.ack) != NGX_OK) {
                 return NGX_ERROR;
             }
@@ -748,15 +738,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_CRYPTO:
-
-            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic CRYPTO frame length: %uL off:%uL pp:%p",
-                       frame.u.crypto.len, frame.u.crypto.offset,
-                       frame.u.crypto.data);
-
-            ngx_quic_hexdump0(c->log, "CRYPTO frame contents",
-                          frame.u.crypto.data, frame.u.crypto.len);
-
 
             if (ngx_quic_handle_crypto_frame(c, pkt, &frame.u.crypto)
                 != NGX_OK)
@@ -776,20 +757,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
             ack_this = 1;
-            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "NCID: { seq=%ui retire=%ui len=%ui}",
-                           frame.u.ncid.seqnum,
-                           frame.u.ncid.retire,
-                           frame.u.ncid.len);
             break;
 
         case NGX_QUIC_FT_CONNECTION_CLOSE:
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
-                           ngx_quic_error_text(frame.u.close.error_code),
-                           frame.u.close.error_code,
-                           frame.u.close.frame_type,
-                           &frame.u.close.reason);
 
             do_close = 1;
             break;
@@ -803,19 +773,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_STREAM6:
         case NGX_QUIC_FT_STREAM7:
 
-            ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "STREAM frame { 0x%xi id 0x%xi offset 0x%xi len 0x%xi bits:off=%d len=%d fin=%d }",
-                           frame.type,
-                           frame.u.stream.stream_id,
-                           frame.u.stream.offset,
-                           frame.u.stream.length,
-                           frame.u.stream.off,
-                           frame.u.stream.len,
-                           frame.u.stream.fin);
-
-            ngx_quic_hexdump0(c->log, "STREAM frame contents",
-                              frame.u.stream.data, frame.u.stream.length);
-
             if (ngx_quic_handle_stream_frame(c, pkt, &frame.u.stream)
                 != NGX_OK)
             {
@@ -826,44 +783,24 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_MAX_DATA:
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "MAX_DATA frame"
-                           " { Maximum Data %ui }",
-                           frame.u.max_data.max_data);
-
             c->quic->max_data = frame.u.max_data.max_data;
             ack_this = 1;
             break;
 
         case NGX_QUIC_FT_RESET_STREAM:
-            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "RESET STREAM frame"
-                           " { id 0x%xi error_code 0x%xi final_size 0x%xi }",
-                           frame.u.reset_stream.id,
-                           frame.u.reset_stream.error_code,
-                           frame.u.reset_stream.final_size);
+            /* TODO: handle */
             break;
 
         case NGX_QUIC_FT_STOP_SENDING:
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "STOP SENDING frame"
-                           " { id 0x%xi error_code 0x%xi}",
-                           frame.u.stop_sending.id,
-                           frame.u.stop_sending.error_code);
+            /* TODO: handle; need ack ? */
             break;
 
         case NGX_QUIC_FT_STREAMS_BLOCKED:
         case NGX_QUIC_FT_STREAMS_BLOCKED2:
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "STREAMS BLOCKED frame"
-                           " { limit %i bidi: %d }",
-                           frame.u.streams_blocked.limit,
-                           frame.u.streams_blocked.bidi);
+            /* TODO: handle; need ack ? */
             break;
 
         default:
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "unsupported frame type 0x%xd in packet", frame.type);
             return NGX_ERROR;
         }
     }

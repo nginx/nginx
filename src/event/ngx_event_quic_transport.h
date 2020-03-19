@@ -82,8 +82,8 @@ typedef struct {
 
 
 typedef struct {
-    size_t                                      offset;
-    size_t                                      len;
+    uint64_t                                    offset;
+    uint64_t                                    len;
     u_char                                     *data;
 } ngx_quic_crypto_frame_t;
 
@@ -91,7 +91,7 @@ typedef struct {
 typedef struct {
     uint64_t                                    seqnum;
     uint64_t                                    retire;
-    uint64_t                                    len;
+    uint8_t                                     len;
     u_char                                      cid[20];
     u_char                                      srt[16];
 } ngx_quic_new_conn_id_frame_t;
@@ -166,8 +166,8 @@ typedef struct {
 
     struct ngx_quic_secret_s                   *secret;
     ngx_uint_t                                  type;
-    ngx_uint_t                                  *number;
-    ngx_uint_t                                  flags;
+    ngx_uint_t                                 *number;
+    uint8_t                                     flags;
     uint32_t                                    version;
     ngx_str_t                                   token;
     enum ssl_encryption_level_t                 level;
@@ -197,7 +197,7 @@ ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
 ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 
-ssize_t ngx_quic_parse_frame(u_char *start, u_char *end,
+ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f);
 size_t ngx_quic_frame_len(ngx_quic_frame_t *frame);

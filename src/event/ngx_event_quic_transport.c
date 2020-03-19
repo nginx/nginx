@@ -51,8 +51,16 @@
      : 8)
 
 
-static uint64_t ngx_quic_parse_int(u_char **pos);
+static u_char *ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out);
+static u_char *ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
+
+static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
+static u_char *ngx_quic_read_uint32(u_char *pos, u_char *end, uint32_t *value);
+static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
+    u_char **out);
+static u_char *ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len,
+    u_char *dst);
 
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
 static size_t ngx_quic_create_crypto(u_char *p,
@@ -81,23 +89,117 @@ static char *ngx_quic_errors[] = {
 };
 
 
-static uint64_t
-ngx_quic_parse_int(u_char **pos)
+static ngx_inline u_char *
+ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
 {
     u_char      *p;
     uint64_t     value;
     ngx_uint_t   len;
 
-    p = *pos;
+    if (pos >= end) {
+        printf("OOPS >=\n");
+        return NULL;
+    }
+
+    p = pos;
     len = 1 << ((*p & 0xc0) >> 6);
+
     value = *p++ & 0x3f;
+
+    if ((size_t)(end - p) < (len - 1)) {
+        printf("LEN TOO BIG: need %ld have %ld\n", len, end - p);
+        return NULL;
+    }
 
     while (--len) {
         value = (value << 8) + *p++;
     }
 
-    *pos = p;
-    return value;
+    *out = value;
+
+    return p;
+}
+
+
+static ngx_inline u_char *
+ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...)
+{
+    u_char    *p;
+    va_list    ap;
+    uint64_t  *item;
+
+    p = pos;
+
+    va_start(ap, end);
+
+    do {
+        item = va_arg(ap, uint64_t *);
+        if (item == NULL) {
+            break;
+        }
+
+        p = ngx_quic_parse_int(p, end, item);
+        if (p == NULL) {
+            return NULL;
+        }
+
+    } while (1);
+
+    va_end(ap);
+
+    return p;
+}
+
+
+static ngx_inline u_char *
+ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value)
+{
+    if ((size_t)(end - pos) < 1) {
+        return NULL;
+    }
+
+    *value = *pos;
+
+    return pos + 1;
+}
+
+
+static ngx_inline u_char *
+ngx_quic_read_uint32(u_char *pos, u_char *end, uint32_t *value)
+{
+    if ((size_t)(end - pos) < sizeof(uint32_t)) {
+        return NULL;
+    }
+
+    *value = ngx_quic_parse_uint32(pos);
+
+    return pos + sizeof(uint32_t);
+}
+
+
+static ngx_inline u_char *
+ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len, u_char **out)
+{
+    if ((size_t)(end - pos) < len) {
+        return NULL;
+    }
+
+    *out = pos;
+
+    return pos + len;
+}
+
+
+static u_char *
+ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len, u_char *dst)
+{
+    if ((size_t)(end - pos) < len) {
+        return NULL;
+    }
+
+    ngx_memcpy(dst, pos, len);
+
+    return pos + len;
 }
 
 
@@ -141,37 +243,72 @@ ngx_quic_error_text(uint64_t error_code)
 ngx_int_t
 ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
 {
-    u_char  *p;
+    u_char  *p, *end;
+    uint8_t  idlen;
 
     p = pkt->data;
+    end = pkt->data + pkt->len;
 
     ngx_quic_hexdump0(pkt->log, "long input", pkt->data, pkt->len);
 
-    if (!(p[0] & NGX_QUIC_PKT_LONG)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "not a long packet");
+    p = ngx_quic_read_uint8(p, end, &pkt->flags);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read flags");
         return NGX_ERROR;
     }
 
-    pkt->flags = *p++;
+    if (!(pkt->flags & NGX_QUIC_PKT_LONG)) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "not a long packet");
+        return NGX_ERROR;
+    }
 
-    pkt->version = ngx_quic_parse_uint32(p);
-    p += sizeof(uint32_t);
+    p = ngx_quic_read_uint32(p, end, &pkt->version);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read version");
+        return NGX_ERROR;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic flags:%xi version:%xD", pkt->flags, pkt->version);
 
     if (pkt->version != quic_version) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "unsupported quic version");
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "unsupported quic version");
         return NGX_ERROR;
     }
 
-    pkt->dcid.len = *p++;
-    pkt->dcid.data = p;
-    p += pkt->dcid.len;
+    p = ngx_quic_read_uint8(p, end, &idlen);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read dcid len");
+        return NGX_ERROR;
+    }
 
-    pkt->scid.len = *p++;
-    pkt->scid.data = p;
-    p += pkt->scid.len;
+    pkt->dcid.len = idlen;
+
+    p = ngx_quic_read_bytes(p, end, idlen, &pkt->dcid.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read dcid");
+        return NGX_ERROR;
+    }
+
+    p = ngx_quic_read_uint8(p, end, &idlen);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read scid len");
+        return NGX_ERROR;
+    }
+
+    pkt->scid.len = idlen;
+
+    p = ngx_quic_read_bytes(p, end, idlen, &pkt->scid.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read scid");
+        return NGX_ERROR;
+    }
 
     pkt->raw->pos = p;
 
@@ -214,30 +351,41 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, ngx_str_t *out,
 ngx_int_t
 ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 {
-    u_char  *p;
+    u_char  *p, *end;
 
     p = pkt->data;
+    end = pkt->data + pkt->len;
 
     ngx_quic_hexdump0(pkt->log, "short input", pkt->data, pkt->len);
 
-    if ((p[0] & NGX_QUIC_PKT_LONG)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "not a short packet");
+    p = ngx_quic_read_uint8(p, end, &pkt->flags);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read flags");
         return NGX_ERROR;
     }
 
-    pkt->flags = *p++;
+    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "not a short packet");
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic flags:%xi", pkt->flags);
 
     if (ngx_memcmp(p, dcid->data, dcid->len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "unexpected quic dcid");
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "unexpected quic dcid");
         return NGX_ERROR;
     }
 
     pkt->dcid.len = dcid->len;
-    pkt->dcid.data = p;
-    p += pkt->dcid.len;
+
+    p = ngx_quic_read_bytes(p, end, dcid->len, &pkt->dcid.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet is too short to read dcid");
+        return NGX_ERROR;
+    }
 
     pkt->raw->pos = p;
 
@@ -248,23 +396,39 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 ngx_int_t
 ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 {
-    u_char     *p;
-    ngx_int_t   plen;
+    u_char    *p, *end;
+    uint64_t   plen;
 
     p = pkt->raw->pos;
 
-    pkt->token.len = ngx_quic_parse_int(&p);
-    pkt->token.data = p;
+    end = pkt->raw->last;
 
-    p += pkt->token.len;
+    pkt->log->action = "parsing quic initial header";
 
-    plen = ngx_quic_parse_int(&p);
+    p = ngx_quic_parse_int(p, end, &pkt->token.len);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "failed to parse token length");
+        return NGX_ERROR;
+    }
+
+    p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "packet too short to read token data");
+        return NGX_ERROR;
+    }
+
+    p = ngx_quic_parse_int(p, end, &plen);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "bad packet length");
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic packet length: %d", plen);
 
-    if (plen > pkt->data + pkt->len - p) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "truncated initial packet");
+    if (plen > (uint64_t) ((pkt->data + pkt->len) - p)) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "truncated initial packet");
         return NGX_ERROR;
     }
 
@@ -275,9 +439,6 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
     ngx_quic_hexdump0(pkt->log, "SCID", pkt->scid.data, pkt->scid.len);
     ngx_quic_hexdump0(pkt->log, "token", pkt->token.data, pkt->token.len);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet length: %d", plen);
-
     return NGX_OK;
 }
 
@@ -285,26 +446,30 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 ngx_int_t
 ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
 {
-    u_char     *p;
-    ngx_int_t   plen;
+    u_char    *p, *end;
+    uint64_t   plen;
 
     p = pkt->raw->pos;
+    end = pkt->raw->last;
 
-    plen = ngx_quic_parse_int(&p);
+    pkt->log->action = "parsing quic handshake header";
+
+    p = ngx_quic_parse_int(p, end, &plen);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "bad packet length");
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic packet length: %d", plen);
 
-    if (plen > pkt->data + pkt->len - p) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "truncated handshake packet");
+    if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "truncated handshake packet");
         return NGX_ERROR;
     }
 
     pkt->raw->pos = p;
     pkt->len = plen;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet length: %d", plen);
 
     return NGX_OK;
 }
@@ -315,30 +480,59 @@ ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
 #define ngx_quic_stream_bit_fin(val)  (((val) & 0x01) ? 1 : 0)
 
 ssize_t
-ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
+ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
+    ngx_quic_frame_t *f)
 {
-    u_char *p;
-
-    size_t npad;
+    u_char  *p;
 
     p = start;
 
-    frame->type = *p++;  // TODO: check overflow (p < end)
+    /* TODO: add a check if frame is allowed in this type of packet */
 
-    switch (frame->type) {
+    p = ngx_quic_parse_int(p, end, &f->type);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                     "failed to obtain quic frame type");
+        return NGX_ERROR;
+    }
+
+    switch (f->type) {
 
     case NGX_QUIC_FT_CRYPTO:
-        frame->u.crypto.offset = *p++;
-        frame->u.crypto.len = ngx_quic_parse_int(&p);
-        frame->u.crypto.data = p;
-        p += frame->u.crypto.len;
 
+        p = ngx_quic_parse_int(p, end, &f->u.crypto.offset);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse crypto frame offset");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.crypto.len);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse crypto frame len");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_read_bytes(p, end, f->u.crypto.len, &f->u.crypto.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse crypto frame data");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "quic CRYPTO frame length: %uL off:%uL pp:%p",
+                       f->u.crypto.len, f->u.crypto.offset,
+                       f->u.crypto.data);
+
+        ngx_quic_hexdump0(pkt->log, "CRYPTO frame contents",
+                          f->u.crypto.data, f->u.crypto.len);
         break;
 
     case NGX_QUIC_FT_PADDING:
-        npad = 0;
-        while (p < end && *p == NGX_QUIC_FT_PADDING) { // XXX
-            p++; npad++;
+        while (p < end && *p == NGX_QUIC_FT_PADDING) {
+            p++;
         }
 
         break;
@@ -346,18 +540,37 @@ ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
     case NGX_QUIC_FT_ACK:
     case NGX_QUIC_FT_ACK_ECN:
 
-        frame->u.ack.largest = ngx_quic_parse_int(&p);
-        frame->u.ack.delay = ngx_quic_parse_int(&p);
-        frame->u.ack.range_count =ngx_quic_parse_int(&p);
-        frame->u.ack.first_range =ngx_quic_parse_int(&p);
-
-        if (frame->u.ack.range_count) {
-            frame->u.ack.ranges[0] = ngx_quic_parse_int(&p);
-        }
-
-        if (frame->type ==NGX_QUIC_FT_ACK_ECN) {
+        p = ngx_quic_parse_int_multi(p, end, &f->u.ack.largest,
+                                     &f->u.ack.delay, &f->u.ack.range_count,
+                                     &f->u.ack.first_range, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse ack frame");
             return NGX_ERROR;
         }
+
+        if (f->u.ack.range_count) {
+            p = ngx_quic_parse_int(p, end, &f->u.ack.ranges[0]);
+            if (p == NULL) {
+                ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                              "failed to parse ack frame first range");
+                return NGX_ERROR;
+            }
+        }
+
+        if (f->type == NGX_QUIC_FT_ACK_ECN) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "TODO: parse ECN ack frames");
+            /* TODO: add parsing of such frames */
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "ACK: { largest=%ui delay=%ui first=%ui count=%ui}",
+                       f->u.ack.largest,
+                       f->u.ack.delay,
+                       f->u.ack.first_range,
+                       f->u.ack.range_count);
 
         break;
 
@@ -366,28 +579,72 @@ ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
 
     case NGX_QUIC_FT_NEW_CONNECTION_ID:
 
-        frame->u.ncid.seqnum = ngx_quic_parse_int(&p);
-        frame->u.ncid.retire = ngx_quic_parse_int(&p);
-        frame->u.ncid.len = *p++;
-        ngx_memcpy(frame->u.ncid.cid, p, frame->u.ncid.len);
-        p += frame->u.ncid.len;
+        p = ngx_quic_parse_int_multi(p, end, &f->u.ncid.seqnum,
+                                     &f->u.ncid.retire, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse new connection id frame");
+            return NGX_ERROR;
+        }
 
-        ngx_memcpy(frame->u.ncid.srt, p, 16);
-        p += 16;
+        p = ngx_quic_read_uint8(p, end, &f->u.ncid.len);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse new connection id length");
+            return NGX_ERROR;
+        }
 
+        p = ngx_quic_copy_bytes(p, end, f->u.ncid.len, f->u.ncid.cid);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse new connection id cid");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_copy_bytes(p, end, 16, f->u.ncid.srt);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse new connection id srt");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "NCID: { seq=%ui retire=%ui len=%ui}",
+                       f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
 
-        frame->u.close.error_code = ngx_quic_parse_int(&p);
-        frame->u.close.frame_type = ngx_quic_parse_int(&p); // not in 0x1d CC
-        frame->u.close.reason.len = ngx_quic_parse_int(&p);
-        frame->u.close.reason.data = p;
-        p += frame->u.close.reason.len;
-
-        if (frame->u.close.error_code > NGX_QUIC_ERR_LAST) {
-            frame->u.close.error_code = NGX_QUIC_ERR_LAST;
+        p = ngx_quic_parse_int_multi(p, end, &f->u.close.error_code,
+                                     &f->u.close.frame_type,
+                                     &f->u.close.reason.len, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse close connection frame");
+            return NGX_ERROR;
         }
+
+        p = ngx_quic_read_bytes(p, end, f->u.close.reason.len,
+                                &f->u.close.reason.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse close reason");
+            return NGX_ERROR;
+        }
+
+        if (f->u.close.error_code > NGX_QUIC_ERR_LAST) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "unkown error code: %ui, truncated",
+                          f->u.close.error_code);
+            f->u.close.error_code = NGX_QUIC_ERR_LAST;
+        }
+
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
+                       ngx_quic_error_text(f->u.close.error_code),
+                       f->u.close.error_code, f->u.close.frame_type,
+                       &f->u.close.reason);
+
         break;
 
     case NGX_QUIC_FT_STREAM0:
@@ -399,57 +656,134 @@ ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
     case NGX_QUIC_FT_STREAM6:
     case NGX_QUIC_FT_STREAM7:
 
-        frame->u.stream.type = frame->type;
+        f->u.stream.type = f->type;
 
-        frame->u.stream.off = ngx_quic_stream_bit_off(frame->type);
-        frame->u.stream.len = ngx_quic_stream_bit_len(frame->type);
-        frame->u.stream.fin = ngx_quic_stream_bit_fin(frame->type);
+        f->u.stream.off = ngx_quic_stream_bit_off(f->type);
+        f->u.stream.len = ngx_quic_stream_bit_len(f->type);
+        f->u.stream.fin = ngx_quic_stream_bit_fin(f->type);
 
-        frame->u.stream.stream_id = ngx_quic_parse_int(&p);
-        if (frame->type & 0x04) {
-            frame->u.stream.offset = ngx_quic_parse_int(&p);
-        } else {
-            frame->u.stream.offset = 0;
+        p = ngx_quic_parse_int(p, end, &f->u.stream.stream_id);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse stream frame id");
+            return NGX_ERROR;
         }
 
-        if (frame->type & 0x02) {
-            frame->u.stream.length = ngx_quic_parse_int(&p);
+        if (f->type & 0x04) {
+            p = ngx_quic_parse_int(p, end, &f->u.stream.offset);
+            if (p == NULL) {
+                 ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                               "failed to parse stream frame offset");
+                return NGX_ERROR;
+            }
+
         } else {
-            frame->u.stream.length = end - p; /* up to packet end */
+            f->u.stream.offset = 0;
         }
 
-        frame->u.stream.data = p;
+        if (f->type & 0x02) {
+            p = ngx_quic_parse_int(p, end, &f->u.stream.length);
+            if (p == NULL) {
+                ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                              "failed to parse stream frame length");
+                return NGX_ERROR;
+            }
 
-        p += frame->u.stream.length;
+        } else {
+            f->u.stream.length = end - p; /* up to packet end */
+        }
 
+        p = ngx_quic_read_bytes(p, end, f->u.stream.length,
+                                &f->u.stream.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse stream frame data");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "STREAM frame { 0x%xi id 0x%xi offset 0x%xi "
+                       "len 0x%xi bits:off=%d len=%d fin=%d }",
+                       f->type, f->u.stream.stream_id, f->u.stream.offset,
+                       f->u.stream.length, f->u.stream.off, f->u.stream.len,
+                       f->u.stream.fin);
+
+            ngx_quic_hexdump0(pkt->log, "STREAM frame contents",
+                              f->u.stream.data, f->u.stream.length);
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
-        frame->u.max_data.max_data = ngx_quic_parse_int(&p);
+
+        p = ngx_quic_parse_int(p, end, &f->u.max_data.max_data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse max data frame");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "MAX_DATA frame { Maximum Data %ui }",
+                       f->u.max_data.max_data);
         break;
 
     case NGX_QUIC_FT_RESET_STREAM:
-        frame->u.reset_stream.id = ngx_quic_parse_int(&p);
-        frame->u.reset_stream.error_code = ngx_quic_parse_int(&p);
-        frame->u.reset_stream.final_size = ngx_quic_parse_int(&p);
+
+        p = ngx_quic_parse_int_multi(p, end, &f->u.reset_stream.id,
+                                     &f->u.reset_stream.error_code,
+                                     &f->u.reset_stream.final_size, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse reset stream frame");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "RESET STREAM frame"
+                       " { id 0x%xi error_code 0x%xi final_size 0x%xi }",
+                       f->u.reset_stream.id, f->u.reset_stream.error_code,
+                       f->u.reset_stream.final_size);
         break;
 
     case NGX_QUIC_FT_STOP_SENDING:
-        frame->u.stop_sending.id = ngx_quic_parse_int(&p);
-        frame->u.stop_sending.error_code = ngx_quic_parse_int(&p);
+
+        p = ngx_quic_parse_int_multi(p, end, &f->u.stop_sending.id,
+                                     &f->u.stop_sending.error_code, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse stop sending frame");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "STOP SENDING frame { id 0x%xi error_code 0x%xi}",
+                       f->u.stop_sending.id, f->u.stop_sending.error_code);
+
         break;
 
     case NGX_QUIC_FT_STREAMS_BLOCKED:
-        frame->u.streams_blocked.limit = ngx_quic_parse_int(&p);
-        frame->u.streams_blocked.bidi = 1;
-        break;
-
     case NGX_QUIC_FT_STREAMS_BLOCKED2:
-        frame->u.streams_blocked.limit = ngx_quic_parse_int(&p);
-        frame->u.streams_blocked.bidi = 0;
+
+        p = ngx_quic_parse_int(p, end, &f->u.streams_blocked.limit);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse streams blocked frame limit");
+            return NGX_ERROR;
+        }
+
+        f->u.streams_blocked.bidi =
+                              (f->type == NGX_QUIC_FT_STREAMS_BLOCKED) ? 1 : 0;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "STREAMS BLOCKED frame { limit %i bidi: %d }",
+                       f->u.streams_blocked.limit,
+                       f->u.streams_blocked.bidi);
+
         break;
 
     default:
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "unsupported frame type 0x%xd in packet", f->type);
+
         return NGX_ERROR;
     }
 
