@@ -478,6 +478,8 @@ ngx_quic_handshake_handler(ngx_event_t *rev)
         return;
     }
 
+    ngx_add_timer(rev, c->quic->streams.timeout);
+
     if (c->close) {
         ngx_quic_close_connection(c);
         return;
