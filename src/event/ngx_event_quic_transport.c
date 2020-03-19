@@ -823,33 +823,6 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
 }
 
 
-size_t
-ngx_quic_frame_len(ngx_quic_frame_t *frame)
-{
-     switch (frame->type) {
-        case NGX_QUIC_FT_ACK:
-            return ngx_quic_create_ack(NULL, &frame->u.ack);
-        case NGX_QUIC_FT_CRYPTO:
-            return ngx_quic_create_crypto(NULL, &frame->u.crypto);
-
-        case NGX_QUIC_FT_STREAM0:
-        case NGX_QUIC_FT_STREAM1:
-        case NGX_QUIC_FT_STREAM2:
-        case NGX_QUIC_FT_STREAM3:
-        case NGX_QUIC_FT_STREAM4:
-        case NGX_QUIC_FT_STREAM5:
-        case NGX_QUIC_FT_STREAM6:
-        case NGX_QUIC_FT_STREAM7:
-            return ngx_quic_create_stream(NULL, &frame->u.stream);
-        case NGX_QUIC_FT_CONNECTION_CLOSE:
-            return ngx_quic_create_close(NULL, &frame->u.close);
-        default:
-            /* BUG: unsupported frame type generated */
-            return 0;
-     }
-}
-
-
 static size_t
 ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 {

@@ -200,6 +200,5 @@ ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f);
-size_t ngx_quic_frame_len(ngx_quic_frame_t *frame);
 
 #endif /* _NGX_EVENT_QUIC_WIRE_H_INCLUDED_ */

@@ -997,7 +997,7 @@ ngx_quic_output(ngx_connection_t *c)
         do {
             /* process same-level group of frames */
 
-            len += ngx_quic_frame_len(f);// TODO: handle overflow, max size
+            len += ngx_quic_create_frame(NULL, NULL, f);// TODO: handle overflow, max size
 
             f = f->next;
         } while (f && f->level == lvl);
