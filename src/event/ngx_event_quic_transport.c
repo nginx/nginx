@@ -397,7 +397,7 @@ ngx_int_t
 ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 {
     u_char    *p, *end;
-    uint64_t   plen;
+    uint64_t   varint;
 
     p = pkt->raw->pos;
 
@@ -405,11 +405,13 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 
     pkt->log->action = "parsing quic initial header";
 
-    p = ngx_quic_parse_int(p, end, &pkt->token.len);
+    p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "failed to parse token length");
         return NGX_ERROR;
     }
+
+    pkt->token.len = varint;
 
     p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
     if (p == NULL) {
@@ -418,22 +420,22 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    p = ngx_quic_parse_int(p, end, &plen);
+    p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "bad packet length");
         return NGX_ERROR;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet length: %d", plen);
+                   "quic packet length: %d", varint);
 
-    if (plen > (uint64_t) ((pkt->data + pkt->len) - p)) {
+    if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "truncated initial packet");
         return NGX_ERROR;
     }
 
     pkt->raw->pos = p;
-    pkt->len = plen;
+    pkt->len = varint;
 
     ngx_quic_hexdump0(pkt->log, "DCID", pkt->dcid.data, pkt->dcid.len);
     ngx_quic_hexdump0(pkt->log, "SCID", pkt->scid.data, pkt->scid.len);
@@ -483,18 +485,21 @@ ssize_t
 ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *f)
 {
-    u_char  *p;
+    u_char    *p;
+    uint64_t   varint;
 
     p = start;
 
     /* TODO: add a check if frame is allowed in this type of packet */
 
-    p = ngx_quic_parse_int(p, end, &f->type);
+    p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
                      "failed to obtain quic frame type");
         return NGX_ERROR;
     }
+
+    f->type = varint;
 
     switch (f->type) {
 
