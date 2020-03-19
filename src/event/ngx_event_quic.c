@@ -722,7 +722,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         len = ngx_quic_parse_frame(p, end, &frame);
         if (len < 0) {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "failed to parse frame type %xi", frame.type);
+                       "failed to parse frame type 0x%xi", frame.type);
             return NGX_ERROR;
         }
 
@@ -838,6 +838,15 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                            " { id 0x%xi error_code 0x%xi}",
                            frame.u.stop_sending.id,
                            frame.u.stop_sending.error_code);
+            break;
+
+        case NGX_QUIC_FT_STREAMS_BLOCKED:
+        case NGX_QUIC_FT_STREAMS_BLOCKED2:
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "STREAMS BLOCKED frame"
+                           " { limit %i bidi: %d }",
+                           frame.u.streams_blocked.limit,
+                           frame.u.streams_blocked.bidi);
             break;
 
         default:

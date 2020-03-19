@@ -435,6 +435,16 @@ ngx_quic_parse_frame(u_char *start, u_char *end, ngx_quic_frame_t *frame)
         frame->u.stop_sending.error_code = ngx_quic_parse_int(&p);
         break;
 
+    case NGX_QUIC_FT_STREAMS_BLOCKED:
+        frame->u.streams_blocked.limit = ngx_quic_parse_int(&p);
+        frame->u.streams_blocked.bidi = 1;
+        break;
+
+    case NGX_QUIC_FT_STREAMS_BLOCKED2:
+        frame->u.streams_blocked.limit = ngx_quic_parse_int(&p);
+        frame->u.streams_blocked.bidi = 0;
+        break;
+
     default:
         return NGX_ERROR;
     }

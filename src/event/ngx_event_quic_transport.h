@@ -129,6 +129,12 @@ typedef struct {
 } ngx_quic_stop_sending_frame_t;
 
 
+typedef struct {
+    uint64_t                                    limit;
+    ngx_uint_t                                  bidi;  /* unsigned: bidi:1 */
+} ngx_quic_streams_blocked_frame_t;
+
+
 typedef struct ngx_quic_frame_s                 ngx_quic_frame_t;
 
 struct ngx_quic_frame_s {
@@ -143,6 +149,7 @@ struct ngx_quic_frame_s {
         ngx_quic_close_frame_t                  close;
         ngx_quic_reset_stream_frame_t           reset_stream;
         ngx_quic_stop_sending_frame_t           stop_sending;
+        ngx_quic_streams_blocked_frame_t        streams_blocked;
     } u;
     u_char                                      info[128]; // for debug
 };
