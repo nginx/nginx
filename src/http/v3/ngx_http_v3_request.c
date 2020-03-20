@@ -245,7 +245,7 @@ ngx_chain_t *
 ngx_http_v3_create_header(ngx_http_request_t *r)
 {
     u_char                    *p;
-    size_t                     len, hlen, n;
+    size_t                     len, n;
     ngx_buf_t                 *b;
     ngx_uint_t                 i, j;
     ngx_chain_t               *hl, *cl, *bl;
@@ -552,8 +552,6 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 
     hl->buf = b;
     hl->next = cl;
-
-    hlen = 1 + ngx_http_v3_encode_varlen_int(NULL, len);
 
     if (r->headers_out.content_length_n >= 0) {
         len = 1 + ngx_http_v3_encode_varlen_int(NULL,
