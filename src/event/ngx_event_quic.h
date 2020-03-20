@@ -15,6 +15,29 @@
 //#define quic_version      0xff00001b  /* draft-27 (FFN 76) */
 
 
+typedef struct {
+    /* configurable */
+    ngx_msec_t          max_idle_timeout;
+    ngx_msec_t          max_ack_delay;
+
+    ngx_uint_t          max_packet_size;
+    ngx_uint_t          initial_max_data;
+    ngx_uint_t          initial_max_stream_data_bidi_local;
+    ngx_uint_t          initial_max_stream_data_bidi_remote;
+    ngx_uint_t          initial_max_stream_data_uni;
+    ngx_uint_t          initial_max_streams_bidi;
+    ngx_uint_t          initial_max_streams_uni;
+    ngx_uint_t          ack_delay_exponent;
+    ngx_uint_t          disable_active_migration;
+    ngx_uint_t          active_connection_id_limit;
+
+    /* TODO */
+    ngx_uint_t          original_connection_id;
+    u_char              stateless_reset_token[16];
+    void               *preferred_address;
+} ngx_quic_tp_t;
+
+
 struct ngx_quic_stream_s {
     uint64_t            id;
     ngx_uint_t          unidirectional:1;
@@ -25,8 +48,8 @@ struct ngx_quic_stream_s {
 
 void ngx_quic_init_ssl_methods(SSL_CTX* ctx);
 
-void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_msec_t timeout,
-    ngx_connection_handler_pt handler);
+void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
+    ngx_msec_t timeout, ngx_connection_handler_pt handler);
 ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
 
 

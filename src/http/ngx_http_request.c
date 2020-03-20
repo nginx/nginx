@@ -341,11 +341,14 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 #if (NGX_HTTP_V3)
     if (hc->quic) {
+        ngx_http_v3_srv_conf_t   *v3cf;
         ngx_http_ssl_srv_conf_t  *sscf;
 
+        v3cf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
         sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
-        ngx_quic_run(c, &sscf->ssl, c->listening->post_accept_timeout,
+        ngx_quic_run(c, &sscf->ssl, &v3cf->quic,
+                     c->listening->post_accept_timeout,
                      ngx_http_quic_stream_handler);
         return;
     }

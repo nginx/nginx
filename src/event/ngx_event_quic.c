@@ -32,6 +32,8 @@ struct ngx_quic_connection_s {
     ngx_str_t                         dcid;
     ngx_str_t                         token;
 
+    ngx_quic_tp_t                     tp;
+
     /* current packet numbers  for each namespace */
     ngx_uint_t                        initial_pn;
     ngx_uint_t                        handshake_pn;
@@ -67,7 +69,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_header_t *pkt);
+    ngx_quic_tp_t *tp, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_handshake_handler(ngx_event_t *rev);
 static void ngx_quic_close_connection(ngx_connection_t *c);
@@ -283,8 +285,8 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
 
 void
-ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_msec_t timeout,
-    ngx_connection_handler_pt handler)
+ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
+    ngx_msec_t timeout, ngx_connection_handler_pt handler)
 {
     ngx_buf_t          *b;
     ngx_quic_header_t   pkt;
@@ -302,7 +304,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_msec_t timeout,
     pkt.data = b->start;
     pkt.len = b->last - b->start;
 
-    if (ngx_quic_new_connection(c, ssl, &pkt) != NGX_OK) {
+    if (ngx_quic_new_connection(c, ssl, tp, &pkt) != NGX_OK) {
         ngx_quic_close_connection(c);
         return;
     }
@@ -320,7 +322,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_msec_t timeout,
 
 
 static ngx_int_t
-ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
+ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_quic_header_t *pkt)
 {
     ngx_quic_connection_t  *qc;
@@ -354,6 +356,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
     c->quic = qc;
     qc->ssl = ssl;
+    qc->tp = *tp;
 
     qc->dcid.len = pkt->dcid.len;
     qc->dcid.data = ngx_pnalloc(c->pool, pkt->dcid.len);
@@ -402,18 +405,10 @@ static ngx_int_t
 ngx_quic_init_connection(ngx_connection_t *c)
 {
     int                     n, sslerr;
+    u_char                 *p;
+    ssize_t                 len;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
-
-    static const uint8_t params[] =
-        "\x00\x29"                         /* parameters length: 41 bytes         */
-        "\x00\x0e\x00\x01\x05"             /* active connection id limit: 5       */
-        "\x00\x04\x00\x04\x80\x98\x96\x80" /* initial max data = 10000000         */
-        "\x00\x09\x00\x01\x03"             /* initial max streams uni: 3          */
-        "\x00\x08\x00\x01\x10"             /* initial max streams bidi: 16        */
-        "\x00\x05\x00\x02\x40\xff"         /* initial max stream bidi local: 255  */
-        "\x00\x06\x00\x02\x40\xff"         /* initial max stream bidi remote: 255 */
-        "\x00\x07\x00\x02\x40\xff";        /* initial max stream data uni: 255    */
 
     qc = c->quic;
 
@@ -429,7 +424,20 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (SSL_set_quic_transport_params(ssl_conn, params, sizeof(params) - 1) == 0) {
+    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp);
+    /* always succeeds */
+
+    p = ngx_pnalloc(c->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    len = ngx_quic_create_transport_params(p, p + len, &qc->tp);
+    if (len < 0) {
+        return NGX_ERROR;
+    }
+
+    if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "SSL_set_quic_transport_params() failed");
         return NGX_ERROR;

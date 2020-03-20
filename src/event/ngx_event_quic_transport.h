@@ -65,9 +65,27 @@
 #define NGX_QUIC_ERR_INVALID_TOKEN              0x0B
 /* 0xC is not defined */
 #define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED     0x0D
+/* 0xE is not defined */
 #define NGX_QUIC_ERR_CRYPTO_ERROR               0x10
 
 #define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
+
+/* Transport parameters */
+#define NGX_QUIC_TP_ORIGINAL_CONNECTION_ID               0x00
+#define NGX_QUIC_TP_MAX_IDLE_TIMEOUT                     0x01
+#define NGX_QUIC_TP_STATELESS_RESET_TOKEN                0x02
+#define NGX_QUIC_TP_MAX_PACKET_SIZE                      0x03
+#define NGX_QUIC_TP_INITIAL_MAX_DATA                     0x04
+#define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL   0x05
+#define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE  0x06
+#define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI          0x07
+#define NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI             0x08
+#define NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI              0x09
+#define NGX_QUIC_TP_ACK_DELAY_EXPONENT                   0x0a
+#define NGX_QUIC_TP_MAX_ACK_DELAY                        0x0b
+#define NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION             0x0c
+#define NGX_QUIC_TP_PREFERRED_ADDRESS                    0x0d
+#define NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT           0x0e
 
 
 typedef struct {
@@ -207,5 +225,8 @@ ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f);
+
+ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
+    ngx_quic_tp_t *tp);
 
 #endif /* _NGX_EVENT_QUIC_WIRE_H_INCLUDED_ */

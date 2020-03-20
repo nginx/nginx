@@ -40,6 +40,11 @@
 
 
 typedef struct {
+    ngx_quic_tp_t           quic;
+} ngx_http_v3_srv_conf_t;
+
+
+typedef struct {
     ngx_http_connection_t   hc;
 
     ngx_array_t            *dynamic;

@@ -87,6 +87,7 @@ static char *ngx_quic_errors[] = {
     "INVALID_TOKEN",
     "",
     "CRYPTO_BUFFER_EXCEEDED",
+    "",
     "CRYPTO_ERROR",
 };
 
@@ -639,11 +640,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             return NGX_ERROR;
         }
 
-        if (f->u.close.error_code > NGX_QUIC_ERR_LAST) {
+        if (f->u.close.error_code >= NGX_QUIC_ERR_LAST) {
             ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
                           "unkown error code: %ui, truncated",
                           f->u.close.error_code);
-            f->u.close.error_code = NGX_QUIC_ERR_LAST;
+            f->u.close.error_code = NGX_QUIC_ERR_LAST - 1;
         }
 
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
@@ -960,6 +961,105 @@ ngx_quic_create_max_streams(u_char *p, ngx_quic_max_streams_frame_t *ms)
     ngx_quic_build_int(&p, ms->limit);
 
     return p - start;
+}
+
+
+ssize_t
+ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
+{
+    u_char  *p;
+    size_t   len;
+
+#if (quic_version < 0xff00001b)
+
+/* older drafts with static transport parameters encoding */
+
+#define ngx_quic_tp_len(id, value)                                            \
+    4 + ngx_quic_varint_len(value)
+
+#define ngx_quic_tp_vint(id, value)                                           \
+    do {                                                                      \
+        p = ngx_quic_write_uint16(p, id);                                     \
+        p = ngx_quic_write_uint16(p, ngx_quic_varint_len(value));             \
+        ngx_quic_build_int(&p, value);                                        \
+    } while (0)
+
+#else
+
+/* recent drafts with variable integer transport parameters encoding */
+
+#define ngx_quic_tp_len(id, value)                                            \
+    ngx_quic_varint_len(id)                                                   \
+    + ngx_quic_varint_len(value)                                              \
+    + ngx_quic_varint_len(ngx_quic_varint_len(value))
+
+#define ngx_quic_tp_vint(id, value)                                           \
+    do {                                                                      \
+        ngx_quic_build_int(&p, id);                                           \
+        ngx_quic_build_int(&p, ngx_quic_varint_len(value));                   \
+        ngx_quic_build_int(&p, value);                                        \
+    } while (0)
+
+#endif
+
+    p = pos;
+
+    len = ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
+                          tp->active_connection_id_limit);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_DATA,tp->initial_max_data);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI,
+                           tp->initial_max_streams_uni);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI,
+                           tp->initial_max_streams_bidi);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL,
+                           tp->initial_max_stream_data_bidi_local);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE,
+                           tp->initial_max_stream_data_bidi_remote);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI,
+                           tp->initial_max_stream_data_uni);
+
+    if (pos == NULL) {
+#if (quic_version < 0xff00001b)
+        len += ngx_quic_varint_len(len);
+#endif
+        return len;
+    }
+
+#if (quic_version < 0xff00001b)
+    /* TLS extension length */
+    p = ngx_quic_write_uint16(p, len);
+#endif
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
+                     tp->active_connection_id_limit);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_DATA,
+                     tp->initial_max_data);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI,
+                     tp->initial_max_streams_uni);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI,
+                     tp->initial_max_streams_bidi);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL,
+                     tp->initial_max_stream_data_bidi_local);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE,
+                     tp->initial_max_stream_data_bidi_remote);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI,
+                     tp->initial_max_stream_data_uni);
+
+    ngx_quic_hexdump0(ngx_cycle->log, "transport parameters", pos, p - pos);
+
+    return p - pos;
 }
 
 
