@@ -624,12 +624,24 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE2:
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.close.error_code,
-                                     &f->u.close.frame_type,
-                                     &f->u.close.reason.len, NULL);
+        p = ngx_quic_parse_int(p, end, &f->u.close.error_code);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
-                          "failed to parse close connection frame");
+                          "failed to parse close connection frame error code");
+            return NGX_ERROR;
+        }
+
+        if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
+            p = ngx_quic_parse_int(p, end, &f->u.close.frame_type);
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse close connection frame type");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.close.reason.len);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse close reason length");
             return NGX_ERROR;
         }
 
@@ -657,10 +669,9 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                            &f->u.close.reason);
         } else {
 
-            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                          "CONN.CLOSE2: { (0x%xi) type=0x%xi reason '%V'}",
-                           f->u.close.error_code, f->u.close.frame_type,
-                           &f->u.close.reason);
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                          "CONN.CLOSE2: { (0x%xi) reason '%V'}",
+                           f->u.close.error_code, &f->u.close.reason);
         }
 
         break;
