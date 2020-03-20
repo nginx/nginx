@@ -47,7 +47,7 @@
 #define NGX_QUIC_FT_PATH_CHALLENGE              0x1A
 #define NGX_QUIC_FT_PATH_RESPONSE               0x1B
 #define NGX_QUIC_FT_CONNECTION_CLOSE            0x1C
-#define NGX_QUIC_FT_CONNECTION_CLOSE2           0x1D // XXX
+#define NGX_QUIC_FT_CONNECTION_CLOSE2           0x1D
 #define NGX_QUIC_FT_HANDSHAKE_DONE              0x1E
 
 /* 22.4.  QUIC Transport Error Codes Registry */

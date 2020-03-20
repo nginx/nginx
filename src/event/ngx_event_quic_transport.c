@@ -622,6 +622,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         break;
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
+    case NGX_QUIC_FT_CONNECTION_CLOSE2:
 
         p = ngx_quic_parse_int_multi(p, end, &f->u.close.error_code,
                                      &f->u.close.frame_type,
@@ -640,18 +641,27 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             return NGX_ERROR;
         }
 
-        if (f->u.close.error_code >= NGX_QUIC_ERR_LAST) {
-            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
-                          "unkown error code: %ui, truncated",
-                          f->u.close.error_code);
-            f->u.close.error_code = NGX_QUIC_ERR_LAST - 1;
-        }
+        if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
 
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
-                       ngx_quic_error_text(f->u.close.error_code),
-                       f->u.close.error_code, f->u.close.frame_type,
-                       &f->u.close.reason);
+            if (f->u.close.error_code >= NGX_QUIC_ERR_LAST) {
+                ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                              "unkown error code: %ui, truncated",
+                              f->u.close.error_code);
+                f->u.close.error_code = NGX_QUIC_ERR_LAST - 1;
+            }
+
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                          "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
+                           ngx_quic_error_text(f->u.close.error_code),
+                           f->u.close.error_code, f->u.close.frame_type,
+                           &f->u.close.reason);
+        } else {
+
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                          "CONN.CLOSE2: { (0x%xi) type=0x%xi reason '%V'}",
+                           f->u.close.error_code, f->u.close.frame_type,
+                           &f->u.close.reason);
+        }
 
         break;
 
