@@ -635,11 +635,9 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
-    ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
-    ssl_conn = c->ssl->connection;
 
     /* extract cleartext data into pkt */
     if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
