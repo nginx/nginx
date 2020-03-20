@@ -88,6 +88,8 @@ static ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_crypto_frame_t *frame);
 static ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_frame_t *frame);
+static ngx_int_t ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_streams_blocked_frame_t *f);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
     ngx_quic_frame_t *frame);
@@ -797,7 +799,15 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_STREAMS_BLOCKED:
         case NGX_QUIC_FT_STREAMS_BLOCKED2:
-            /* TODO: handle; need ack ? */
+
+            if (ngx_quic_handle_streams_blocked_frame(c, pkt,
+                                                      &frame.u.streams_blocked)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            ack_this = 1;
             break;
 
         default:
@@ -947,6 +957,33 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c,
     b->last = b->start + f->length;
 
     qc->streams.handler(sn->c);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_streams_blocked_frame_t *f)
+{
+    ngx_quic_frame_t  *frame;
+
+    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = pkt->level;
+    frame->type = NGX_QUIC_FT_MAX_STREAMS;
+    frame->u.max_streams.limit = f->limit * 2;
+    frame->u.max_streams.bidi = f->bidi;
+
+    ngx_sprintf(frame->info, "MAX_STREAMS limit:%d bidi:%d level=%d",
+                (int) frame->u.max_streams.limit,
+                (int) frame->u.max_streams.bidi,
+                frame->level);
+
+    ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
 }
