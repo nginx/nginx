@@ -11,62 +11,70 @@
 #include <ngx_event_openssl.h>
 
 
-/* 17.2.  Long Header Packets */
-#define NGX_QUIC_PKT_LONG                       0x80
+#define ngx_quic_long_pkt(flags)  ((flags) & 0x80)            /* 17.2   */
+#define ngx_quic_short_pkt(flags) (((flags) & 0x80) == 0)     /* 17.3   */
 
-#define NGX_QUIC_PKT_INITIAL                    0xC0
-#define NGX_QUIC_PKT_HANDSHAKE                  0xE0
+/* Long packet types */
+#define NGX_QUIC_PKT_INITIAL                             0xC0 /* 17.2.2 */
+#define NGX_QUIC_PKT_ZRTT                                0xD0 /* 17.2.3 */
+#define NGX_QUIC_PKT_HANDSHAKE                           0xE0 /* 17.2.4 */
+#define NGX_QUIC_PKT_RETRY                               0xF0 /* 17.2.5 */
+
+#define ngx_quic_pkt_in(flags)     (((flags) & 0xF0) == NGX_QUIC_PKT_INITIAL)
+#define ngx_quic_pkt_zrtt(flags)   (((flags) & 0xF0) == NGX_QUIC_PKT_ZRTT)
+#define ngx_quic_pkt_hs(flags)     (((flags) & 0xF0) == NGX_QUIC_PKT_HANDSHAKE)
+#define ngx_quic_pkt_retry(flags)  (((flags) & 0xF0) == NGX_QUIC_PKT_RETRY)
 
 /* 12.4.  Frames and Frame Types */
-#define NGX_QUIC_FT_PADDING                     0x00
-#define NGX_QUIC_FT_PING                        0x01
-#define NGX_QUIC_FT_ACK                         0x02
-#define NGX_QUIC_FT_ACK_ECN                     0x03
-#define NGX_QUIC_FT_RESET_STREAM                0x04
-#define NGX_QUIC_FT_STOP_SENDING                0x05
-#define NGX_QUIC_FT_CRYPTO                      0x06
-#define NGX_QUIC_FT_NEW_TOKEN                   0x07
-#define NGX_QUIC_FT_STREAM0                     0x08
-#define NGX_QUIC_FT_STREAM1                     0x09
-#define NGX_QUIC_FT_STREAM2                     0x0A
-#define NGX_QUIC_FT_STREAM3                     0x0B
-#define NGX_QUIC_FT_STREAM4                     0x0C
-#define NGX_QUIC_FT_STREAM5                     0x0D
-#define NGX_QUIC_FT_STREAM6                     0x0E
-#define NGX_QUIC_FT_STREAM7                     0x0F
-#define NGX_QUIC_FT_MAX_DATA                    0x10
-#define NGX_QUIC_FT_MAX_STREAM_DATA             0x11
-#define NGX_QUIC_FT_MAX_STREAMS                 0x12
-#define NGX_QUIC_FT_MAX_STREAMS2                0x13 // XXX
-#define NGX_QUIC_FT_DATA_BLOCKED                0x14
-#define NGX_QUIC_FT_STREAM_DATA_BLOCKED         0x15
-#define NGX_QUIC_FT_STREAMS_BLOCKED             0x16
-#define NGX_QUIC_FT_STREAMS_BLOCKED2            0x17 // XXX
-#define NGX_QUIC_FT_NEW_CONNECTION_ID           0x18
-#define NGX_QUIC_FT_RETIRE_CONNECTION_ID        0x19
-#define NGX_QUIC_FT_PATH_CHALLENGE              0x1A
-#define NGX_QUIC_FT_PATH_RESPONSE               0x1B
-#define NGX_QUIC_FT_CONNECTION_CLOSE            0x1C
-#define NGX_QUIC_FT_CONNECTION_CLOSE2           0x1D
-#define NGX_QUIC_FT_HANDSHAKE_DONE              0x1E
+#define NGX_QUIC_FT_PADDING                              0x00
+#define NGX_QUIC_FT_PING                                 0x01
+#define NGX_QUIC_FT_ACK                                  0x02
+#define NGX_QUIC_FT_ACK_ECN                              0x03
+#define NGX_QUIC_FT_RESET_STREAM                         0x04
+#define NGX_QUIC_FT_STOP_SENDING                         0x05
+#define NGX_QUIC_FT_CRYPTO                               0x06
+#define NGX_QUIC_FT_NEW_TOKEN                            0x07
+#define NGX_QUIC_FT_STREAM0                              0x08
+#define NGX_QUIC_FT_STREAM1                              0x09
+#define NGX_QUIC_FT_STREAM2                              0x0A
+#define NGX_QUIC_FT_STREAM3                              0x0B
+#define NGX_QUIC_FT_STREAM4                              0x0C
+#define NGX_QUIC_FT_STREAM5                              0x0D
+#define NGX_QUIC_FT_STREAM6                              0x0E
+#define NGX_QUIC_FT_STREAM7                              0x0F
+#define NGX_QUIC_FT_MAX_DATA                             0x10
+#define NGX_QUIC_FT_MAX_STREAM_DATA                      0x11
+#define NGX_QUIC_FT_MAX_STREAMS                          0x12
+#define NGX_QUIC_FT_MAX_STREAMS2                         0x13
+#define NGX_QUIC_FT_DATA_BLOCKED                         0x14
+#define NGX_QUIC_FT_STREAM_DATA_BLOCKED                  0x15
+#define NGX_QUIC_FT_STREAMS_BLOCKED                      0x16
+#define NGX_QUIC_FT_STREAMS_BLOCKED2                     0x17
+#define NGX_QUIC_FT_NEW_CONNECTION_ID                    0x18
+#define NGX_QUIC_FT_RETIRE_CONNECTION_ID                 0x19
+#define NGX_QUIC_FT_PATH_CHALLENGE                       0x1A
+#define NGX_QUIC_FT_PATH_RESPONSE                        0x1B
+#define NGX_QUIC_FT_CONNECTION_CLOSE                     0x1C
+#define NGX_QUIC_FT_CONNECTION_CLOSE2                    0x1D
+#define NGX_QUIC_FT_HANDSHAKE_DONE                       0x1E
 
 /* 22.4.  QUIC Transport Error Codes Registry */
-#define NGX_QUIC_ERR_NO_ERROR                   0x00
-#define NGX_QUIC_ERR_INTERNAL_ERROR             0x01
-#define NGX_QUIC_ERR_SERVER_BUSY                0x02
-#define NGX_QUIC_ERR_FLOW_CONTROL_ERROR         0x03
-#define NGX_QUIC_ERR_STREAM_LIMIT_ERROR         0x04
-#define NGX_QUIC_ERR_STREAM_STATE_ERROR         0x05
-#define NGX_QUIC_ERR_FINAL_SIZE_ERROR           0x06
-#define NGX_QUIC_ERR_FRAME_ENCODING_ERROR       0x07
-#define NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR  0x08
-#define NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR  0x09
-#define NGX_QUIC_ERR_PROTOCOL_VIOLATION         0x0A
-#define NGX_QUIC_ERR_INVALID_TOKEN              0x0B
+#define NGX_QUIC_ERR_NO_ERROR                            0x00
+#define NGX_QUIC_ERR_INTERNAL_ERROR                      0x01
+#define NGX_QUIC_ERR_SERVER_BUSY                         0x02
+#define NGX_QUIC_ERR_FLOW_CONTROL_ERROR                  0x03
+#define NGX_QUIC_ERR_STREAM_LIMIT_ERROR                  0x04
+#define NGX_QUIC_ERR_STREAM_STATE_ERROR                  0x05
+#define NGX_QUIC_ERR_FINAL_SIZE_ERROR                    0x06
+#define NGX_QUIC_ERR_FRAME_ENCODING_ERROR                0x07
+#define NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR           0x08
+#define NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR           0x09
+#define NGX_QUIC_ERR_PROTOCOL_VIOLATION                  0x0A
+#define NGX_QUIC_ERR_INVALID_TOKEN                       0x0B
 /* 0xC is not defined */
-#define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED     0x0D
+#define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED              0x0D
 /* 0xE is not defined */
-#define NGX_QUIC_ERR_CRYPTO_ERROR               0x10
+#define NGX_QUIC_ERR_CRYPTO_ERROR                        0x10
 
 #define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
 
@@ -81,11 +89,11 @@
 #define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI          0x07
 #define NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI             0x08
 #define NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI              0x09
-#define NGX_QUIC_TP_ACK_DELAY_EXPONENT                   0x0a
-#define NGX_QUIC_TP_MAX_ACK_DELAY                        0x0b
-#define NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION             0x0c
-#define NGX_QUIC_TP_PREFERRED_ADDRESS                    0x0d
-#define NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT           0x0e
+#define NGX_QUIC_TP_ACK_DELAY_EXPONENT                   0x0A
+#define NGX_QUIC_TP_MAX_ACK_DELAY                        0x0B
+#define NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION             0x0C
+#define NGX_QUIC_TP_PREFERRED_ADDRESS                    0x0D
+#define NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT           0x0E
 
 
 typedef struct {

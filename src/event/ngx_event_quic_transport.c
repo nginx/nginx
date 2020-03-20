@@ -261,7 +261,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (!(pkt->flags & NGX_QUIC_PKT_LONG)) {
+    if (!ngx_quic_long_pkt(pkt->flags)) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "not a long packet");
         return NGX_ERROR;
     }
@@ -368,7 +368,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
         return NGX_ERROR;
     }
 
-    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+    if (!ngx_quic_short_pkt(pkt->flags)) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "not a short packet");
         return NGX_ERROR;
     }
@@ -489,11 +489,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *f)
 {
     u_char    *p;
+    uint8_t    flags;
     uint64_t   varint;
 
+    flags = pkt->flags;
     p = start;
-
-    /* TODO: add a check if frame is allowed in this type of packet */
 
     p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
@@ -507,6 +507,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     switch (f->type) {
 
     case NGX_QUIC_FT_CRYPTO:
+
+        if (ngx_quic_pkt_zrtt(flags)) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int(p, end, &f->u.crypto.offset);
         if (p == NULL) {
@@ -539,6 +543,9 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         break;
 
     case NGX_QUIC_FT_PADDING:
+
+        /* allowed in any packet type */
+
         while (p < end && *p == NGX_QUIC_FT_PADDING) {
             p++;
         }
@@ -547,6 +554,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_ACK:
     case NGX_QUIC_FT_ACK_ECN:
+
+        if (ngx_quic_pkt_zrtt(flags)) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int_multi(p, end, &f->u.ack.largest,
                                      &f->u.ack.delay, &f->u.ack.range_count,
@@ -583,9 +594,16 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         break;
 
     case NGX_QUIC_FT_PING:
+
+        /* allowed in any packet type */
+
         break;
 
     case NGX_QUIC_FT_NEW_CONNECTION_ID:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int_multi(p, end, &f->u.ncid.seqnum,
                                      &f->u.ncid.retire, NULL);
@@ -621,8 +639,19 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
-    case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE2:
+
+        if (!ngx_quic_short_pkt(flags)) {
+            goto not_allowed;
+        }
+
+        /* fall through */
+
+    case NGX_QUIC_FT_CONNECTION_CLOSE:
+
+        if (ngx_quic_pkt_zrtt(flags)) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int(p, end, &f->u.close.error_code);
         if (p == NULL) {
@@ -685,6 +714,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     case NGX_QUIC_FT_STREAM6:
     case NGX_QUIC_FT_STREAM7:
 
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
         f->u.stream.type = f->type;
 
         f->u.stream.off = ngx_quic_stream_bit_off(f->type);
@@ -743,6 +776,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_MAX_DATA:
 
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
         p = ngx_quic_parse_int(p, end, &f->u.max_data.max_data);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
@@ -756,6 +793,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         break;
 
     case NGX_QUIC_FT_RESET_STREAM:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int_multi(p, end, &f->u.reset_stream.id,
                                      &f->u.reset_stream.error_code,
@@ -775,6 +816,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_STOP_SENDING:
 
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
         p = ngx_quic_parse_int_multi(p, end, &f->u.stop_sending.id,
                                      &f->u.stop_sending.error_code, NULL);
         if (p == NULL) {
@@ -791,6 +836,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_STREAMS_BLOCKED:
     case NGX_QUIC_FT_STREAMS_BLOCKED2:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
 
         p = ngx_quic_parse_int(p, end, &f->u.streams_blocked.limit);
         if (p == NULL) {
@@ -809,14 +858,52 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         break;
 
+    /* TODO: implement parsing for all frames below */
+    case NGX_QUIC_FT_NEW_TOKEN:
+    case NGX_QUIC_FT_HANDSHAKE_DONE:
+
+        if (!ngx_quic_short_pkt(flags)) {
+            goto not_allowed;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "unimplemented frame type 0x%xi in packet", f->type);
+
+        break;
+
+    case NGX_QUIC_FT_MAX_STREAMS:
+    case NGX_QUIC_FT_MAX_STREAMS2:
+    case NGX_QUIC_FT_MAX_STREAM_DATA:
+    case NGX_QUIC_FT_DATA_BLOCKED:
+    case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
+    case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+    case NGX_QUIC_FT_PATH_CHALLENGE:
+    case NGX_QUIC_FT_PATH_RESPONSE:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "unimplemented frame type 0x%xi in packet", f->type);
+        break;
+
     default:
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
-                      "unsupported frame type 0x%xd in packet", f->type);
+                      "unknown frame type 0x%xi in packet", f->type);
 
         return NGX_ERROR;
     }
 
     return p - start;
+
+not_allowed:
+
+    ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                  "frame type 0x%xi is not allowed in packet with flags 0x%xi",
+                  f->type, pkt->flags);
+
+    return NGX_DECLINED;
 }
 
 

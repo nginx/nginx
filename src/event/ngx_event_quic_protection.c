@@ -904,7 +904,7 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
         return NGX_ERROR;
     }
 
-    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+    if (ngx_quic_long_pkt(pkt->flags)) {
         clearflags = pkt->flags ^ (mask[0] & 0x0f);
 
     } else {
@@ -926,7 +926,7 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     in.data = p;
 
-    if (pkt->flags & NGX_QUIC_PKT_LONG) {
+    if (ngx_quic_long_pkt(pkt->flags)) {
         in.len = pkt->len - pnl;
 
     } else {

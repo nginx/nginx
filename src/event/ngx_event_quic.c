@@ -336,7 +336,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
-    if ((pkt->flags & 0xf0) != NGX_QUIC_PKT_INITIAL) {
+    if (!ngx_quic_pkt_in(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "invalid initial packet: 0x%xi", pkt->flags);
         return NGX_ERROR;
@@ -563,20 +563,21 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.data = p;
         pkt.len = b->last - p;
         pkt.log = c->log;
+        pkt.flags = p[0];
 
-        if (p[0] == 0) {
+        if (pkt.flags == 0) {
             /* XXX: no idea WTF is this, just ignore */
             ngx_log_error(NGX_LOG_ALERT, c->log, 0, "FIREFOX: ZEROES");
             break;
         }
 
         // TODO: check current state
-        if (p[0] & NGX_QUIC_PKT_LONG) {
+        if (ngx_quic_long_pkt(pkt.flags)) {
 
-            if ((p[0] & 0xf0) == NGX_QUIC_PKT_INITIAL) {
+            if (ngx_quic_pkt_in(pkt.flags)) {
                 rc = ngx_quic_initial_input(c, &pkt);
 
-            } else if ((p[0] & 0xf0) == NGX_QUIC_PKT_HANDSHAKE) {
+            } else if (ngx_quic_pkt_hs(pkt.flags)) {
                 rc = ngx_quic_handshake_input(c, &pkt);
 
             } else {
@@ -665,7 +666,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if ((pkt->flags & 0xf0) != NGX_QUIC_PKT_HANDSHAKE) {
+    if (!ngx_quic_pkt_hs(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "invalid packet type: 0x%xi", pkt->flags);
         return NGX_ERROR;
@@ -734,6 +735,14 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     while (p < end) {
 
         len = ngx_quic_parse_frame(pkt, p, end, &frame);
+
+        if (len == NGX_DECLINED) {
+            /* TODO: handle protocol violation:
+             *       such frame not allowed in this packet
+             */
+            return NGX_ERROR;
+        }
+
         if (len < 0) {
             return NGX_ERROR;
         }
