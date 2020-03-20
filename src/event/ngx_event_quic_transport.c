@@ -831,7 +831,8 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
 static size_t
 ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 {
-    size_t  len;
+    size_t   len;
+    u_char  *start;
 
     /* minimal ACK packet */
 
@@ -845,13 +846,15 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
         return len;
     }
 
+    start = p;
+
     ngx_quic_build_int(&p, NGX_QUIC_FT_ACK);
     ngx_quic_build_int(&p, ack->pn);
     ngx_quic_build_int(&p, 0);
     ngx_quic_build_int(&p, 0);
     ngx_quic_build_int(&p, ack->pn);
 
-    return 5;
+    return p - start;
 }
 
 
