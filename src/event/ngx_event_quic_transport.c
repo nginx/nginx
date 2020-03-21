@@ -667,12 +667,14 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             return NGX_ERROR;
         }
 
-        p = ngx_quic_parse_int(p, end, &f->u.close.reason.len);
+        p = ngx_quic_parse_int(p, end, &varint);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
                           "failed to parse close reason length");
             return NGX_ERROR;
         }
+
+        f->u.close.reason.len = varint;
 
         p = ngx_quic_read_bytes(p, end, f->u.close.reason.len,
                                 &f->u.close.reason.data);
