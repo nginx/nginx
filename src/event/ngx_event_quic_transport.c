@@ -56,6 +56,7 @@ static u_char *ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
+/*static*/ u_char *ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value); // usage depends on quic_version
 static u_char *ngx_quic_read_uint32(u_char *pos, u_char *end, uint32_t *value);
 static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
     u_char **out);
@@ -69,6 +70,9 @@ static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf);
 static size_t ngx_quic_create_max_streams(u_char *p,
     ngx_quic_max_streams_frame_t *ms);
 static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
+
+static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
+    uint16_t id, ngx_quic_tp_t *dst);
 
 
 /* literal errors indexed by corresponding value */
@@ -164,6 +168,19 @@ ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value)
     *value = *pos;
 
     return pos + 1;
+}
+
+
+/*static*/ ngx_inline u_char *
+ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value)
+{
+    if ((size_t)(end - pos) < sizeof(uint16_t)) {
+        return NULL;
+    }
+
+    *value = ngx_quic_parse_uint16(pos);
+
+    return pos + sizeof(uint16_t);
 }
 
 
@@ -1195,6 +1212,234 @@ ngx_quic_create_max_streams(u_char *p, ngx_quic_max_streams_frame_t *ms)
     ngx_quic_build_int(&p, ms->limit);
 
     return p - start;
+}
+
+
+static ngx_int_t
+ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
+    ngx_quic_tp_t *dst)
+{
+    uint64_t   varint;
+
+    switch (id) {
+    case NGX_QUIC_TP_ORIGINAL_CONNECTION_ID:
+    case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
+    case NGX_QUIC_TP_PREFERRED_ADDRESS:
+        // TODO
+        return NGX_ERROR;
+    }
+
+    switch (id) {
+
+    case NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION:
+        /* zero-length option */
+        if (end - p != 0) {
+            return NGX_ERROR;
+        }
+        dst->disable_active_migration = 1;
+        return NGX_OK;
+
+    case NGX_QUIC_TP_MAX_IDLE_TIMEOUT:
+    case NGX_QUIC_TP_MAX_PACKET_SIZE:
+    case NGX_QUIC_TP_INITIAL_MAX_DATA:
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL:
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE:
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI:
+    case NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI:
+    case NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI:
+    case NGX_QUIC_TP_ACK_DELAY_EXPONENT:
+    case NGX_QUIC_TP_MAX_ACK_DELAY:
+    case NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT:
+
+        p = ngx_quic_parse_int(p, end, &varint);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+        break;
+
+    default:
+        return NGX_ERROR;
+    }
+
+    switch (id) {
+
+    case NGX_QUIC_TP_MAX_IDLE_TIMEOUT:
+        dst->max_idle_timeout = varint;
+        break;
+
+    case NGX_QUIC_TP_MAX_PACKET_SIZE:
+        dst->max_packet_size = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_DATA:
+        dst->initial_max_data = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL:
+        dst->initial_max_stream_data_bidi_local = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE:
+        dst->initial_max_stream_data_bidi_remote = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI:
+        dst->initial_max_stream_data_uni = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_STREAMS_BIDI:
+        dst->initial_max_streams_bidi = varint;
+        break;
+
+    case NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI:
+        dst->initial_max_streams_uni = varint;
+        break;
+
+    case NGX_QUIC_TP_ACK_DELAY_EXPONENT:
+        dst->ack_delay_exponent = varint;
+        break;
+
+    case NGX_QUIC_TP_MAX_ACK_DELAY:
+        dst->max_ack_delay = varint;
+        break;
+
+    case NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT:
+        dst->active_connection_id_limit = varint;
+        break;
+
+    default:
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
+    ngx_log_t *log)
+{
+
+#if (quic_version < 0xff00001b)
+
+    uint16_t  id, len, tp_len;
+
+    p = ngx_quic_read_uint16(p, end, &tp_len);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "failed to parse total transport params length");
+        return NGX_ERROR;
+    }
+
+    while (p < end) {
+
+        p = ngx_quic_read_uint16(p, end, &id);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "failed to parse transport param id");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_read_uint16(p, end, &len);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                         "failed to parse transport param id 0x%xi length", id);
+            return NGX_ERROR;
+        }
+
+        if (ngx_quic_parse_transport_param(p, p + len, id, tp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "failed to parse transport param id 0x%xi data", id);
+            return NGX_ERROR;
+        }
+
+        p += len;
+    };
+
+#else
+
+    uint64_t  id, len;
+
+    while (p < end) {
+        p = ngx_quic_parse_int(p, end, &id);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "failed to parse transport param id");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &len);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                         "failed to parse transport param id 0x%xi length", id);
+            return NGX_ERROR;
+        }
+
+        if (ngx_quic_parse_transport_param(p, p + len, id, tp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "failed to parse transport param id 0x%xi data", id);
+            return NGX_ERROR;
+        }
+
+        p += len;
+
+    }
+
+#endif
+
+    if (p != end) {
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "trailing garbage in transport parameters: %ui bytes",
+                      end - p);
+        return NGX_ERROR;
+    }
+
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "client transport parameters parsed successfully");
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "disable active migration: %ui",
+                   tp->disable_active_migration);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "idle timeout: %ui",
+                   tp->max_idle_timeout);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "max packet size: %ui",
+                   tp->max_packet_size);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "max data: %ui",
+                   tp->initial_max_data);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "max stream data bidi local: %ui",
+                   tp->initial_max_stream_data_bidi_local);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "max stream data bidi remote: %ui",
+                   tp->initial_max_stream_data_bidi_remote);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "max stream data uni: %ui",
+                   tp->initial_max_stream_data_uni);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "initial max streams bidi: %ui",
+                   tp->initial_max_streams_bidi);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "initial max streams uni: %ui",
+                   tp->initial_max_streams_uni);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "ack delay exponent: %ui",
+                   tp->ack_delay_exponent);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "max ack delay: %ui",
+                   tp->max_ack_delay);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "active connection id limit: %ui",
+                   tp->active_connection_id_limit);
+
+    return NGX_OK;
 }
 
 

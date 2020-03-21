@@ -32,6 +32,7 @@ struct ngx_quic_connection_s {
     ngx_str_t                         dcid;
     ngx_str_t                         token;
 
+    ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
 
     /* current packet numbers  for each namespace */
@@ -206,7 +207,10 @@ static int
 ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *data, size_t len)
 {
-    u_char                 *p;
+    u_char                 *p, *end;
+    size_t                  client_params_len;
+    const uint8_t          *client_params;
+    ngx_quic_tp_t           ctp;
     ngx_quic_frame_t       *frame;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
@@ -216,6 +220,33 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ngx_quic_add_handshake_data");
+
+    /* XXX: obtain client parameters after the handshake? */
+    if (!qc->client_tp_done) {
+
+        SSL_get_peer_quic_transport_params(ssl_conn, &client_params,
+                                           &client_params_len);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "SSL_get_peer_quic_transport_params(): params_len %ui",
+                       client_params_len);
+
+        if (client_params_len != 0) {
+            p = (u_char *) client_params;
+            end = p + client_params_len;
+
+            ngx_memzero(&ctp, sizeof(ngx_quic_tp_t));
+
+            if (ngx_quic_parse_transport_params(p, end, &ctp, c->log) != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            /* TODO: save/use obtained client parameters: merge with ours? */
+
+            qc->client_tp_done = 1;
+        }
+    }
 
     frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
     if (frame == NULL) {

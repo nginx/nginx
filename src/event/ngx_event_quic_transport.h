@@ -267,6 +267,8 @@ ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f);
 
+ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
+    ngx_quic_tp_t *tp, ngx_log_t *log);
 ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp);
 
