@@ -1136,7 +1136,7 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 
     if (pos == NULL) {
 #if (quic_version < 0xff00001b)
-        len += ngx_quic_varint_len(len);
+        len += 2;
 #endif
         return len;
     }
