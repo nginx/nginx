@@ -662,9 +662,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
             p = ngx_quic_parse_int(p, end, &f->u.close.frame_type);
-            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
-                          "failed to parse close connection frame type");
-            return NGX_ERROR;
+            if (p == NULL) {
+                ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                              "failed to parse close connection frame type");
+                return NGX_ERROR;
+            }
         }
 
         p = ngx_quic_parse_int(p, end, &varint);
