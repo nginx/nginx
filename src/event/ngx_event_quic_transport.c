@@ -856,7 +856,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                               (f->type == NGX_QUIC_FT_STREAMS_BLOCKED) ? 1 : 0;
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "STREAMS BLOCKED frame { limit %i bidi: %d }",
+                       "STREAMS BLOCKED frame { limit %ui bidi: %d }",
                        f->u.streams_blocked.limit,
                        f->u.streams_blocked.bidi);
 
@@ -877,19 +877,141 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_MAX_STREAMS:
     case NGX_QUIC_FT_MAX_STREAMS2:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.max_streams.limit);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse max streams frame limit");
+            return NGX_ERROR;
+        }
+
+        f->u.max_streams.bidi = (f->type == NGX_QUIC_FT_MAX_STREAMS) ? 1 : 0;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "MAX STREAMS frame { limit %ui bidi: %d }",
+                       f->u.max_streams.limit,
+                       f->u.max_streams.bidi);
+        break;
+
     case NGX_QUIC_FT_MAX_STREAM_DATA:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_parse_int_multi(p, end, &f->u.max_stream_data.id,
+                                     &f->u.max_stream_data.limit, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse max stream data frame");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "MAX STREAM DATA frame { id: %ui limit: %ui }",
+                       f->u.max_stream_data.id,
+                       f->u.max_stream_data.limit);
+        break;
+
     case NGX_QUIC_FT_DATA_BLOCKED:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.data_blocked.limit);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse data blocked frame limit");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "DATA BLOCKED frame { limit %ui }",
+                       f->u.data_blocked.limit);
+        break;
+
     case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_parse_int_multi(p, end, &f->u.stream_data_blocked.id,
+                                     &f->u.stream_data_blocked.limit, NULL);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse tream data blocked frame");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "STREAM DATA BLOCKED frame { id: %ui limit: %ui }",
+                       f->u.stream_data_blocked.id,
+                       f->u.stream_data_blocked.limit);
+        break;
+
     case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.retire_cid.sequence_number);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to parse retire connection id"
+                          " frame sequence number");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "RETIRE CONNECTION ID frame { sequence_number %ui }",
+                       f->u.retire_cid.sequence_number);
+        break;
+
     case NGX_QUIC_FT_PATH_CHALLENGE:
+
+        if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
+            goto not_allowed;
+        }
+
+        p = ngx_quic_copy_bytes(p, end, 8, f->u.path_challenge.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to get path challenge frame data");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "PATH CHALLENGE frame");
+
+        ngx_quic_hexdump0(pkt->log, "path challenge data",
+                          f->u.path_challenge.data, 8);
+        break;
+
     case NGX_QUIC_FT_PATH_RESPONSE:
 
         if (!(ngx_quic_short_pkt(flags) || ngx_quic_pkt_zrtt(flags))) {
             goto not_allowed;
         }
 
-        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
-                      "unimplemented frame type 0x%xi in packet", f->type);
+        p = ngx_quic_copy_bytes(p, end, 8, f->u.path_response.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                          "failed to get path response frame data");
+            return NGX_ERROR;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "PATH RESPONSE frame");
+
+        ngx_quic_hexdump0(pkt->log, "path response data",
+                          f->u.path_response.data, 8);
         break;
 
     default:

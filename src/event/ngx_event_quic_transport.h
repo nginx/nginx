@@ -172,6 +172,33 @@ typedef struct {
 } ngx_quic_max_streams_frame_t;
 
 
+typedef struct {
+    uint64_t                                    id;
+    uint64_t                                    limit;
+} ngx_quic_max_stream_data_frame_t;
+
+
+typedef struct {
+    uint64_t                                    limit;
+} ngx_quic_data_blocked_frame_t;
+
+
+typedef struct {
+    uint64_t                                    id;
+    uint64_t                                    limit;
+} ngx_quic_stream_data_blocked_frame_t;
+
+
+typedef struct {
+    uint64_t                                    sequence_number;
+} ngx_quic_retire_cid_frame_t;
+
+
+typedef struct {
+    u_char                                      data[8];
+} ngx_quic_path_challenge_frame_t;
+
+
 typedef struct ngx_quic_frame_s                 ngx_quic_frame_t;
 
 struct ngx_quic_frame_s {
@@ -189,6 +216,12 @@ struct ngx_quic_frame_s {
         ngx_quic_stop_sending_frame_t           stop_sending;
         ngx_quic_streams_blocked_frame_t        streams_blocked;
         ngx_quic_max_streams_frame_t            max_streams;
+        ngx_quic_max_stream_data_frame_t        max_stream_data;
+        ngx_quic_data_blocked_frame_t           data_blocked;
+        ngx_quic_stream_data_blocked_frame_t    stream_data_blocked;
+        ngx_quic_retire_cid_frame_t             retire_cid;
+        ngx_quic_path_challenge_frame_t         path_challenge;
+        ngx_quic_path_challenge_frame_t         path_response;
     } u;
     u_char                                      info[128]; // for debug
 };
