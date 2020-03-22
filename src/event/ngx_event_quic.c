@@ -779,6 +779,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_CONNECTION_CLOSE:
+        case NGX_QUIC_FT_CONNECTION_CLOSE2:
 
             do_close = 1;
             break;
@@ -839,7 +840,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (do_close) {
-        // TODO: handle stream close
+        ngx_quic_close_connection(c);
+        return NGX_OK;
     }
 
     if (ack_this == 0) {
