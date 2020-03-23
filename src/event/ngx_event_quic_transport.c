@@ -294,7 +294,8 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
                    "quic flags:%xi version:%xD", pkt->flags, pkt->version);
 
     if (pkt->version != quic_version) {
-        ngx_log_error(NGX_LOG_ERR, pkt->log, 0, "unsupported quic version");
+        ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
+                      "unsupported quic version: 0x%xi", pkt->version);
         return NGX_ERROR;
     }
 
