@@ -603,11 +603,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         }
 
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "ACK: { largest=%ui delay=%ui first=%ui count=%ui}",
+                       "ACK: { largest=%ui delay=%ui count=%ui first=%ui}",
                        f->u.ack.largest,
                        f->u.ack.delay,
-                       f->u.ack.first_range,
-                       f->u.ack.range_count);
+                       f->u.ack.range_count,
+                       f->u.ack.first_range);
 
         break;
 
