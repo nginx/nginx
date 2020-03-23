@@ -697,7 +697,7 @@ ngx_quic_create_long_packet(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     out.len = payload->len + EVP_GCM_TLS_TAG_LEN;
 
-    ad.data = ngx_alloc(346 /*max header*/, log);
+    ad.data = ngx_alloc(NGX_QUIC_MAX_LONG_HEADER, log);
     if (ad.data == 0) {
         return NGX_ERROR;
     }
@@ -766,7 +766,7 @@ ngx_quic_create_short_packet(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     out.len = payload->len + EVP_GCM_TLS_TAG_LEN;
 
-    ad.data = ngx_alloc(25 /*max header*/, log);
+    ad.data = ngx_alloc(NGX_QUIC_MAX_SHORT_HEADER, log);
     if (ad.data == 0) {
         return NGX_ERROR;
     }

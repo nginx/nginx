@@ -14,6 +14,13 @@
 #define quic_version        0xff000018  /* draft-24 (ngtcp2) */
 //#define quic_version      0xff00001b  /* draft-27 (FFN 76) */
 
+#define NGX_QUIC_MAX_SHORT_HEADER            25
+#define NGX_QUIC_MAX_LONG_HEADER             346
+
+#define NGX_QUIC_DEFAULT_MAX_PACKET_SIZE     65527
+#define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
+#define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
+
 
 typedef struct {
     /* configurable */

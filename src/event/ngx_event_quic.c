@@ -41,6 +41,7 @@ struct ngx_quic_connection_s {
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
+    ngx_quic_tp_t                     ctp;
 
     ngx_quic_state_t                  state;
 
@@ -219,7 +220,6 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     u_char                 *p, *end;
     size_t                  client_params_len;
     const uint8_t          *client_params;
-    ngx_quic_tp_t           ctp;
     ngx_quic_frame_t       *frame;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
@@ -244,14 +244,11 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             p = (u_char *) client_params;
             end = p + client_params_len;
 
-            ngx_memzero(&ctp, sizeof(ngx_quic_tp_t));
-
-            if (ngx_quic_parse_transport_params(p, end, &ctp, c->log) != NGX_OK)
+            if (ngx_quic_parse_transport_params(p, end, &qc->ctp, c->log)
+                != NGX_OK)
             {
                 return NGX_ERROR;
             }
-
-            /* TODO: save/use obtained client parameters: merge with ours? */
 
             qc->client_tp_done = 1;
         }
@@ -371,6 +368,7 @@ static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_quic_header_t *pkt)
 {
+    ngx_quic_tp_t          *ctp;
     ngx_quic_connection_t  *qc;
 
     if (ngx_buf_size(pkt->raw) < 1200) {
@@ -405,6 +403,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     c->quic = qc;
     qc->ssl = ssl;
     qc->tp = *tp;
+
+    ctp = &qc->ctp;
+    ctp->max_packet_size = NGX_QUIC_DEFAULT_MAX_PACKET_SIZE;
+    ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
+    ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
 
     qc->dcid.len = pkt->dcid.len;
     qc->dcid.data = ngx_pnalloc(c->pool, pkt->dcid.len);
@@ -520,10 +523,10 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_buf_t          b;
     ngx_connection_t  *c;
 
-    u_char             buf[512];
+    static u_char      buf[65535];
 
     b.start = buf;
-    b.end = buf + 512;
+    b.end = buf + sizeof(buf);
     b.pos = b.last = b.start;
 
     c = rev->data;
@@ -1092,7 +1095,7 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
 static ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
 {
-    size_t                  len;
+    size_t                  len, hlen, n;
     ngx_uint_t              lvl;
     ngx_quic_frame_t       *f, *start;
     ngx_quic_connection_t  *qc;
@@ -1110,10 +1113,19 @@ ngx_quic_output(ngx_connection_t *c)
     do {
         len = 0;
 
+        hlen = (lvl == ssl_encryption_application) ? NGX_QUIC_MAX_SHORT_HEADER
+                                                   : NGX_QUIC_MAX_LONG_HEADER;
+
         do {
             /* process same-level group of frames */
 
-            len += ngx_quic_create_frame(NULL, NULL, f);// TODO: handle overflow, max size
+            n = ngx_quic_create_frame(NULL, NULL, f);
+
+            if (len && hlen + len + n > qc->ctp.max_packet_size) {
+                break;
+            }
+
+            len += n;
 
             f = f->next;
         } while (f && f->level == lvl);

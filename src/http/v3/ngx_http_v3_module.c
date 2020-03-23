@@ -233,11 +233,13 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     // > 2 ^ 14 is invalid
     ngx_conf_merge_msec_value(conf->quic.max_ack_delay,
-                              prev->quic.max_ack_delay, 25);
+                              prev->quic.max_ack_delay,
+                              NGX_QUIC_DEFAULT_MAX_ACK_DELAY);
 
     // < 1200 is invalid
     ngx_conf_merge_uint_value(conf->quic.max_packet_size,
-                              prev->quic.max_packet_size, 65527);
+                              prev->quic.max_packet_size,
+                              NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_data,
                               prev->quic.initial_max_data, 10000000);
@@ -261,7 +263,8 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     // > 20 is invalid
     ngx_conf_merge_uint_value(conf->quic.ack_delay_exponent,
-                              prev->quic.ack_delay_exponent, 3);
+                              prev->quic.ack_delay_exponent,
+                              NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT);
 
     ngx_conf_merge_uint_value(conf->quic.disable_active_migration,
                               prev->quic.disable_active_migration, 1);
