@@ -1104,7 +1104,7 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
         len += ngx_quic_varint_len(ack->pn);
         len += ngx_quic_varint_len(0);
         len += ngx_quic_varint_len(0);
-        len += ngx_quic_varint_len(ack->pn);
+        len += ngx_quic_varint_len(0);
 
         return len;
     }
@@ -1115,7 +1115,7 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
     ngx_quic_build_int(&p, ack->pn);
     ngx_quic_build_int(&p, 0);
     ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, ack->pn);
+    ngx_quic_build_int(&p, 0);
 
     return p - start;
 }
