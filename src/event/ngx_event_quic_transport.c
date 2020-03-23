@@ -1227,7 +1227,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
     case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
     case NGX_QUIC_TP_PREFERRED_ADDRESS:
         // TODO
-        return NGX_ERROR;
+        return NGX_DECLINED;
     }
 
     switch (id) {
@@ -1259,7 +1259,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
         break;
 
     default:
-        return NGX_ERROR;
+        return NGX_DECLINED;
     }
 
     switch (id) {
@@ -1320,6 +1320,7 @@ ngx_int_t
 ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
     ngx_log_t *log)
 {
+    ngx_int_t  rc;
 
 #if (quic_version < 0xff00001b)
 
@@ -1348,10 +1349,17 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
             return NGX_ERROR;
         }
 
-        if (ngx_quic_parse_transport_param(p, p + len, id, tp) != NGX_OK) {
+        rc = ngx_quic_parse_transport_param(p, p + len, id, tp);
+
+        if (rc == NGX_ERROR) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
                           "failed to parse transport param id 0x%xi data", id);
             return NGX_ERROR;
+        }
+
+        if (rc == NGX_DECLINED) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "unknown transport param id 0x%xi, skipped", id);
         }
 
         p += len;
@@ -1376,10 +1384,17 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
             return NGX_ERROR;
         }
 
-        if (ngx_quic_parse_transport_param(p, p + len, id, tp) != NGX_OK) {
+        rc = ngx_quic_parse_transport_param(p, p + len, id, tp);
+
+        if (rc == NGX_ERROR) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
                           "failed to parse transport param id 0x%xi data", id);
             return NGX_ERROR;
+        }
+
+        if (rc == NGX_DECLINED) {
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "unknown transport param id 0x%xi,skipped", id);
         }
 
         p += len;
