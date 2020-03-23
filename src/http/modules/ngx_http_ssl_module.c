@@ -371,7 +371,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
 #if (NGX_DEBUG)
     unsigned int            i;
 #endif
-#if (NGX_HTTP_V2)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
     ngx_http_connection_t  *hc;
 #endif
 #if (NGX_HTTP_V2 || NGX_DEBUG)
@@ -388,14 +388,22 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     }
 #endif
 
-#if (NGX_HTTP_V2)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
     hc = c->data;
+#endif
 
+#if (NGX_HTTP_V2)
     if (hc->addr_conf->http2) {
         srv =
            (unsigned char *) NGX_HTTP_V2_ALPN_ADVERTISE NGX_HTTP_NPN_ADVERTISE;
         srvlen = sizeof(NGX_HTTP_V2_ALPN_ADVERTISE NGX_HTTP_NPN_ADVERTISE) - 1;
 
+    } else
+#endif
+#if (NGX_HTTP_V3)
+    if (hc->addr_conf->http3) {
+        srv = (unsigned char *) NGX_HTTP_V3_ALPN_ADVERTISE;
+        srvlen = sizeof(NGX_HTTP_V3_ALPN_ADVERTISE) - 1;
     } else
 #endif
     {

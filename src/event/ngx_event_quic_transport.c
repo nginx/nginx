@@ -56,7 +56,7 @@ static u_char *ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
-/*static*/ u_char *ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value); // usage depends on quic_version
+/*static*/ u_char *ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value); // usage depends on NGX_QUIC_VERSION
 static u_char *ngx_quic_read_uint32(u_char *pos, u_char *end, uint32_t *value);
 static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
     u_char **out);
@@ -295,7 +295,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic flags:%xi version:%xD", pkt->flags, pkt->version);
 
-    if (pkt->version != quic_version) {
+    if (pkt->version != NGX_QUIC_VERSION) {
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
                       "unsupported quic version: 0x%xi", pkt->version);
         return NGX_ERROR;
@@ -349,7 +349,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, ngx_str_t *out,
 
     *p++ = pkt->flags;
 
-    p = ngx_quic_write_uint32(p, quic_version);
+    p = ngx_quic_write_uint32(p, NGX_QUIC_VERSION);
 
     *p++ = pkt->scid.len;
     p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
@@ -1327,7 +1327,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
 {
     ngx_int_t  rc;
 
-#if (quic_version < 0xff00001b)
+#if (NGX_QUIC_DRAFT_VERSION < 27)
 
     uint16_t  id, len, tp_len;
 
@@ -1493,7 +1493,7 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     u_char  *p;
     size_t   len;
 
-#if (quic_version < 0xff00001b)
+#if (NGX_QUIC_DRAFT_VERSION < 27)
 
 /* older drafts with static transport parameters encoding */
 
@@ -1548,13 +1548,13 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
                            tp->initial_max_stream_data_uni);
 
     if (pos == NULL) {
-#if (quic_version < 0xff00001b)
+#if (NGX_QUIC_DRAFT_VERSION < 27)
         len += 2;
 #endif
         return len;
     }
 
-#if (quic_version < 0xff00001b)
+#if (NGX_QUIC_DRAFT_VERSION < 27)
     /* TLS extension length */
     p = ngx_quic_write_uint16(p, len);
 #endif

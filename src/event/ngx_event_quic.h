@@ -11,8 +11,8 @@
 #include <ngx_event_openssl.h>
 
 
-#define quic_version        0xff000018  /* draft-24 (ngtcp2) */
-//#define quic_version      0xff00001b  /* draft-27 (FFN 76) */
+#define NGX_QUIC_DRAFT_VERSION               24
+#define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
 #define NGX_QUIC_MAX_SHORT_HEADER            25
 #define NGX_QUIC_MAX_LONG_HEADER             346
