@@ -9,6 +9,13 @@
 #include <ngx_event.h>
 
 
+typedef enum {
+    NGX_QUIC_ST_INITIAL,     /* connection just created */
+    NGX_QUIC_ST_HANDSHAKE,   /* handshake started */
+    NGX_QUIC_ST_APPLICATION  /* handshake complete */
+} ngx_quic_state_t;
+
+
 typedef struct {
     ngx_rbtree_node_t                  node;
     ngx_buf_t                         *b;
@@ -34,6 +41,8 @@ struct ngx_quic_connection_s {
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
+
+    ngx_quic_state_t                  state;
 
     /* current packet numbers  for each namespace */
     ngx_uint_t                        initial_pn;
@@ -75,7 +84,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_tp_t *tp, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
-static void ngx_quic_handshake_handler(ngx_event_t *rev);
+static void ngx_quic_input_handler(ngx_event_t *rev);
 static void ngx_quic_close_connection(ngx_connection_t *c);
 
 static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
@@ -328,9 +337,9 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_buf_t          *b;
     ngx_quic_header_t   pkt;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic handshake");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run");
 
-    c->log->action = "QUIC handshaking";
+    c->log->action = "QUIC initialization";
 
     ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
 
@@ -352,7 +361,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     ngx_add_timer(c->read, timeout);
 
-    c->read->handler = ngx_quic_handshake_handler;
+    c->read->handler = ngx_quic_input_handler;
 
     return;
 }
@@ -387,6 +396,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     if (qc == NULL) {
         return NGX_ERROR;
     }
+
+    qc->state = NGX_QUIC_ST_INITIAL;
 
     ngx_rbtree_init(&qc->streams.tree, &qc->streams.sentinel,
                     ngx_quic_rbtree_insert_stream);
@@ -480,6 +491,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    qc->state = NGX_QUIC_ST_HANDSHAKE;
+
     n = SSL_do_handshake(ssl_conn);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
@@ -501,7 +514,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
 
 static void
-ngx_quic_handshake_handler(ngx_event_t *rev)
+ngx_quic_input_handler(ngx_event_t *rev)
 {
     ssize_t            n;
     ngx_buf_t          b;
@@ -515,7 +528,7 @@ ngx_quic_handshake_handler(ngx_event_t *rev)
 
     c = rev->data;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic handshake handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -586,15 +599,11 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
     ngx_int_t           rc;
     ngx_quic_header_t   pkt;
 
-    if (c->quic == NULL) {
-        // XXX: possible?
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "BUG: no QUIC in connection");
-        return NGX_ERROR;
-    }
-
     p = b->start;
 
     do {
+        c->log->action = "processing quic packet";
+
         ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
         pkt.raw = b;
         pkt.data = p;
@@ -647,6 +656,8 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
 
+    c->log->action = "processing initial quic packet";
+
     qc = c->quic;
     ssl_conn = c->ssl->connection;
 
@@ -673,6 +684,8 @@ static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_connection_t  *qc;
+
+    c->log->action = "processing handshake quic packet";
 
     qc = c->quic;
 
@@ -727,6 +740,8 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_connection_t  *qc;
 
+    c->log->action = "processing application data quic packet";
+
     qc = c->quic;
 
     if (qc->secrets.client.ad.key.len == 0) {
@@ -758,6 +773,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_uint_t              ack_this, do_close;
     ngx_quic_frame_t        frame, *ack_frame;
     ngx_quic_connection_t  *qc;
+
+    c->log->action = "processing quic payload";
 
     qc = c->quic;
 
@@ -957,10 +974,16 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         if (sslerr == SSL_ERROR_SSL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
         }
-    }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+    } else if (n == 1) {
+        c->quic->state = NGX_QUIC_ST_APPLICATION;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                        "handshake completed successfully");
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "SSL_quic_read_level: %d, SSL_quic_write_level: %d",
