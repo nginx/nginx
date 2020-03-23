@@ -644,8 +644,8 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             rc = ngx_quic_app_input(c, &pkt);
         }
 
-        if (rc == NGX_ERROR) {
-            return NGX_ERROR;
+        if (rc != NGX_OK) {
+            return rc;
         }
 
         /* b->pos is at header end, adjust by actual packet length */
@@ -914,8 +914,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (do_close) {
-        ngx_quic_close_connection(c);
-        return NGX_OK;
+        return NGX_DONE;
     }
 
     if (ack_this == 0) {
