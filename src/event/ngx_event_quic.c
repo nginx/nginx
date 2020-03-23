@@ -1470,6 +1470,7 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
     sn->c->sockaddr = c->sockaddr;
     sn->c->local_sockaddr = c->local_sockaddr;
     sn->c->addr_text = c->addr_text;
+    sn->c->ssl = c->ssl;
 
     rev = sn->c->read;
     wev = sn->c->write;

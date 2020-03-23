@@ -225,6 +225,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     if (c->type == SOCK_DGRAM) {
         hc = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
         hc->quic = 1;
+        hc->ssl = 1;
 
     } else
 #endif

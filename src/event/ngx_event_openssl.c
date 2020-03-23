@@ -2735,6 +2735,11 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     int        n, sslerr, mode;
     ngx_err_t  err;
 
+    if (c->qs) {
+        /* QUIC streams inherit SSL object */
+        return NGX_OK;
+    }
+
     if (SSL_in_init(c->ssl->connection)) {
         /*
          * OpenSSL 1.0.2f complains if SSL_shutdown() is called during
