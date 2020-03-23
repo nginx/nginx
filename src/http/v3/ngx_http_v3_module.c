@@ -229,7 +229,7 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v3_srv_conf_t *conf = child;
 
     ngx_conf_merge_msec_value(conf->quic.max_idle_timeout,
-                              prev->quic.max_idle_timeout, 10000);
+                              prev->quic.max_idle_timeout, 60000);
 
     // > 2 ^ 14 is invalid
     ngx_conf_merge_msec_value(conf->quic.max_ack_delay,

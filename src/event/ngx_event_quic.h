@@ -54,7 +54,7 @@ struct ngx_quic_stream_s {
 
 
 void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
-    ngx_msec_t timeout, ngx_connection_handler_pt handler);
+    ngx_connection_handler_pt handler);
 ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
 
 

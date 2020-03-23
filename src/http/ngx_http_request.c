@@ -347,9 +347,7 @@ ngx_http_init_connection(ngx_connection_t *c)
         v3cf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
         sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
 
-        ngx_quic_run(c, &sscf->ssl, &v3cf->quic,
-                     c->listening->post_accept_timeout,
-                     ngx_http_quic_stream_handler);
+        ngx_quic_run(c, &sscf->ssl, &v3cf->quic, ngx_http_quic_stream_handler);
         return;
     }
 #endif

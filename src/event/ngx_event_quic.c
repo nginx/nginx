@@ -30,7 +30,6 @@ typedef struct {
 typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
-    ngx_msec_t                        timeout;
     ngx_connection_handler_pt         handler;
 
     ngx_uint_t                        id_counter;
@@ -59,6 +58,8 @@ struct ngx_quic_connection_s {
 
     ngx_quic_streams_t                streams;
     ngx_uint_t                        max_data;
+    ngx_uint_t                        send_timer_set;
+                                              /* unsigned  send_timer_set:1 */
 
 #define SSL_ECRYPTION_LAST ((ssl_encryption_application) + 1)
     uint64_t                          crypto_offset[SSL_ECRYPTION_LAST];
@@ -255,6 +256,12 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 return NGX_ERROR;
             }
 
+            if (qc->ctp.max_idle_timeout > 0
+                && qc->ctp.max_idle_timeout < qc->tp.max_idle_timeout)
+            {
+                qc->tp.max_idle_timeout = qc->ctp.max_idle_timeout;
+            }
+
             qc->client_tp_done = 1;
         }
     }
@@ -334,7 +341,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
 void
 ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
-    ngx_msec_t timeout, ngx_connection_handler_pt handler)
+    ngx_connection_handler_pt handler)
 {
     ngx_buf_t          *b;
     ngx_quic_header_t   pkt;
@@ -359,9 +366,8 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     // we don't need stream handler for initial packet processing
     c->quic->streams.handler = handler;
-    c->quic->streams.timeout = timeout;
 
-    ngx_add_timer(c->read, timeout);
+    ngx_add_timer(c->read, c->quic->tp.max_idle_timeout);
 
     c->read->handler = ngx_quic_input_handler;
 
@@ -524,9 +530,10 @@ ngx_quic_init_connection(ngx_connection_t *c)
 static void
 ngx_quic_input_handler(ngx_event_t *rev)
 {
-    ssize_t            n;
-    ngx_buf_t          b;
-    ngx_connection_t  *c;
+    ssize_t                 n;
+    ngx_buf_t               b;
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
 
     static u_char      buf[65535];
 
@@ -543,8 +550,6 @@ ngx_quic_input_handler(ngx_event_t *rev)
         ngx_quic_close_connection(c);
         return;
     }
-
-    ngx_add_timer(rev, c->quic->streams.timeout);
 
     if (c->close) {
         ngx_quic_close_connection(c);
@@ -569,6 +574,11 @@ ngx_quic_input_handler(ngx_event_t *rev)
         ngx_quic_close_connection(c);
         return;
     }
+
+    qc = c->quic;
+
+    qc->send_timer_set = 0;
+    ngx_add_timer(rev, qc->tp.max_idle_timeout);
 }
 
 
@@ -1208,6 +1218,11 @@ ngx_quic_output(ngx_connection_t *c)
     } while (1);
 
     qc->frames = NULL;
+
+    if (!qc->send_timer_set) {
+        qc->send_timer_set = 1;
+        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+    }
 
     return NGX_OK;
 }
