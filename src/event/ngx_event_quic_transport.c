@@ -69,6 +69,8 @@ static size_t ngx_quic_create_crypto(u_char *p,
 static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf);
 static size_t ngx_quic_create_max_streams(u_char *p,
     ngx_quic_max_streams_frame_t *ms);
+static size_t ngx_quic_create_max_stream_data(u_char *p,
+    ngx_quic_max_stream_data_frame_t *ms);
 static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
 
 static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
@@ -1079,6 +1081,9 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_MAX_STREAMS:
         return ngx_quic_create_max_streams(p, &f->u.max_streams);
 
+    case NGX_QUIC_FT_MAX_STREAM_DATA:
+        return ngx_quic_create_max_stream_data(p, &f->u.max_stream_data);
+
     default:
         /* BUG: unsupported frame type generated */
         return NGX_ERROR;
@@ -1456,6 +1461,29 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
                    tp->active_connection_id_limit);
 
     return NGX_OK;
+}
+
+
+static size_t
+ngx_quic_create_max_stream_data(u_char *p, ngx_quic_max_stream_data_frame_t *ms)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_MAX_STREAM_DATA);
+        len += ngx_quic_varint_len(ms->id);
+        len += ngx_quic_varint_len(ms->limit);
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_MAX_STREAM_DATA);
+    ngx_quic_build_int(&p, ms->id);
+    ngx_quic_build_int(&p, ms->limit);
+
+    return p - start;
 }
 
 
