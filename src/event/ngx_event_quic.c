@@ -1142,21 +1142,16 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
 static void
 ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
 {
-    ngx_quic_frame_t *f;
+    ngx_quic_frame_t  **f;
 
-    if (qc->frames == NULL) {
-        qc->frames = frame;
-        return;
-    }
-
-    for (f = qc->frames; f->next; f = f->next) {
-        if (f->next->level > frame->level) {
+    for (f = &qc->frames; *f; f = &(*f)->next) {
+        if ((*f)->level > frame->level) {
             break;
         }
     }
 
-    frame->next = f->next;
-    f->next = frame;
+    frame->next = *f;
+    *f = frame;
 }
 
 
