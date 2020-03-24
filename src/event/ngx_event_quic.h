@@ -21,6 +21,9 @@
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 
+#define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
+#define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
+
 
 typedef struct {
     /* configurable */
@@ -46,10 +49,11 @@ typedef struct {
 
 
 struct ngx_quic_stream_s {
-    uint64_t            id;
-    ngx_uint_t          unidirectional:1;
+    ngx_rbtree_node_t   node;
     ngx_connection_t   *parent;
-    void               *data;
+    ngx_connection_t   *c;
+    uint64_t            id;
+    ngx_buf_t          *b;
 };
 
 

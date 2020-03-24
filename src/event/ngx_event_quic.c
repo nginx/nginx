@@ -20,14 +20,6 @@ typedef enum {
 
 
 typedef struct {
-    ngx_rbtree_node_t                  node;
-    ngx_buf_t                         *b;
-    ngx_connection_t                  *c;
-    ngx_quic_stream_t                  s;
-} ngx_quic_stream_node_t;
-
-
-typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
     ngx_connection_handler_pt         handler;
@@ -126,9 +118,9 @@ static ngx_int_t ngx_quic_send_packet(ngx_connection_t *c,
 
 static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
-static ngx_quic_stream_node_t *ngx_quic_find_stream(ngx_rbtree_t *rbtree,
+static ngx_quic_stream_t *ngx_quic_find_stream(ngx_rbtree_t *rbtree,
     ngx_uint_t key);
-static ngx_quic_stream_node_t *ngx_quic_create_stream(ngx_connection_t *c,
+static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
     ngx_uint_t id);
 static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
@@ -1051,10 +1043,10 @@ static ngx_int_t
 ngx_quic_handle_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_frame_t *f)
 {
-    ngx_buf_t               *b;
-    ngx_event_t             *rev;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    ngx_buf_t              *b;
+    ngx_event_t            *rev;
+    ngx_quic_stream_t      *sn;
+    ngx_quic_connection_t  *qc;
 
     qc = c->quic;
 
@@ -1139,11 +1131,11 @@ static ngx_int_t
 ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_data_blocked_frame_t *f)
 {
-    size_t                   n;
-    ngx_buf_t               *b;
-    ngx_quic_frame_t        *frame;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    size_t                  n;
+    ngx_buf_t              *b;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *sn;
+    ngx_quic_connection_t  *qc;
 
     qc = c->quic;
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
@@ -1357,21 +1349,16 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
 ngx_connection_t *
 ngx_quic_create_uni_stream(ngx_connection_t *c)
 {
-    ngx_uint_t               id;
-    ngx_quic_stream_t       *qs;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    ngx_uint_t              id;
+    ngx_quic_stream_t      *qs, *sn;
+    ngx_quic_connection_t  *qc;
 
     qs = c->qs;
     qc = qs->parent->quic;
 
-    /*
-     * A stream ID is a 62-bit integer that is unique for all streams
-     * on a connection.
-     *
-     * 0x3  | Server-Initiated, Unidirectional
-     */
-    id = (qc->streams.id_counter << 2) | 0x3;
+    id = (qc->streams.id_counter << 2)
+         | NGX_QUIC_STREAM_SERVER_INITIATED
+         | NGX_QUIC_STREAM_UNIDIRECTIONAL;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "creating server uni stream #%ui id %ui",
@@ -1392,8 +1379,8 @@ static void
 ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    ngx_rbtree_node_t       **p;
-    ngx_quic_stream_node_t   *qn, *qnt;
+    ngx_rbtree_node_t  **p;
+    ngx_quic_stream_t   *qn, *qnt;
 
     for ( ;; ) {
 
@@ -1407,8 +1394,8 @@ ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
 
         } else { /* node->key == temp->key */
 
-            qn = (ngx_quic_stream_node_t *) &node->color;
-            qnt = (ngx_quic_stream_node_t *) &temp->color;
+            qn = (ngx_quic_stream_t *) &node->color;
+            qnt = (ngx_quic_stream_t *) &temp->color;
 
             if (qn->c < qnt->c) {
                 p = &temp->left;
@@ -1432,7 +1419,7 @@ ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
 }
 
 
-static ngx_quic_stream_node_t *
+static ngx_quic_stream_t *
 ngx_quic_find_stream(ngx_rbtree_t *rbtree, ngx_uint_t key)
 {
     ngx_rbtree_node_t  *node, *sentinel;
@@ -1443,7 +1430,7 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, ngx_uint_t key)
     while (node != sentinel) {
 
         if (key == node->key) {
-            return (ngx_quic_stream_node_t *) node;
+            return (ngx_quic_stream_t *) node;
         }
 
         node = (key < node->key) ? node->left : node->right;
@@ -1453,20 +1440,20 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, ngx_uint_t key)
 }
 
 
-static ngx_quic_stream_node_t *
+static ngx_quic_stream_t *
 ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
 {
-    size_t                   n;
-    ngx_log_t               *log;
-    ngx_pool_t              *pool;
-    ngx_event_t             *rev, *wev;
-    ngx_pool_cleanup_t      *cln;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    size_t                  n;
+    ngx_log_t              *log;
+    ngx_pool_t             *pool;
+    ngx_event_t            *rev, *wev;
+    ngx_quic_stream_t      *sn;
+    ngx_pool_cleanup_t     *cln;
+    ngx_quic_connection_t  *qc;
 
     qc = c->quic;
 
-    sn = ngx_pcalloc(c->pool, sizeof(ngx_quic_stream_node_t));
+    sn = ngx_pcalloc(c->pool, sizeof(ngx_quic_stream_t));
     if (sn == NULL) {
         return NULL;
     }
@@ -1522,10 +1509,9 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
 
     ngx_rbtree_insert(&qc->streams.tree, &sn->node);
 
-    sn->s.id = id;
-    sn->s.unidirectional = (sn->s.id & 0x02) ? 1 : 0;
-    sn->s.parent = c;
-    sn->c->qs = &sn->s;
+    sn->id = id;
+    sn->parent = c;
+    sn->c->qs = sn;
 
     sn->c->recv = ngx_quic_stream_recv;
     sn->c->send = ngx_quic_stream_send;
@@ -1548,26 +1534,14 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
 static ssize_t
 ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
-    ssize_t                  len;
-    ngx_buf_t               *b;
-    ngx_event_t             *rev;
-    ngx_quic_stream_t       *qs;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    ssize_t             len;
+    ngx_buf_t          *b;
+    ngx_event_t        *rev;
+    ngx_quic_stream_t  *qs;
 
     qs = c->qs;
-    qc = qs->parent->quic;
-
-    // XXX: get direct pointer from stream structure?
-    sn = ngx_quic_find_stream(&qc->streams.tree, qs->id);
-
-    if (sn == NULL) {
-        return NGX_ERROR;
-    }
-
+    b = qs->b;
     rev = c->read;
-
-    b = sn->b;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic recv: eof:%d, avail:%z",
@@ -1607,25 +1581,17 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
 static ssize_t
 ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 {
-    u_char                  *p;
-    ngx_connection_t        *pc;
-    ngx_quic_frame_t        *frame;
-    ngx_quic_stream_t       *qs;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
+    u_char                 *p;
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send: %uz", size);
 
     qs = c->qs;
     pc = qs->parent;
     qc = pc->quic;
-
-    // XXX: get direct pointer from stream structure?
-    sn = ngx_quic_find_stream(&qc->streams.tree, qs->id);
-
-    if (sn == NULL) {
-        return NGX_ERROR;
-    }
 
     frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
     if (frame == NULL) {
@@ -1667,29 +1633,21 @@ ngx_quic_stream_cleanup_handler(void *data)
 {
     ngx_connection_t *c = data;
 
-    ngx_connection_t        *pc;
-    ngx_quic_frame_t        *frame;
-    ngx_quic_stream_t       *qs;
-    ngx_quic_connection_t   *qc;
-    ngx_quic_stream_node_t  *sn;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send fin");
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
 
     qs = c->qs;
     pc = qs->parent;
     qc = pc->quic;
 
-    if ((qs->id & 0x03) == 0x02) {
+    if ((qs->id & 0x03) == NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         /* do not send fin for client unidirectional streams */
         return;
     }
 
-    // XXX: get direct pointer from stream structure?
-    sn = ngx_quic_find_stream(&qc->streams.tree, qs->id);
-
-    if (sn == NULL) {
-        return;
-    }
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send fin");
 
     frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
     if (frame == NULL) {

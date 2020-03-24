@@ -414,7 +414,7 @@ ngx_http_quic_stream_handler(ngx_connection_t *c)
     pc = c->qs->parent;
     h3c = pc->data;
 
-    if (c->qs->unidirectional) {
+    if (c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         ngx_http_v3_handle_client_uni_stream(c);
         return;
     }
