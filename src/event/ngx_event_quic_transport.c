@@ -66,6 +66,7 @@ static u_char *ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len,
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
 static size_t ngx_quic_create_crypto(u_char *p,
     ngx_quic_crypto_frame_t *crypto);
+static size_t ngx_quic_create_hs_done(u_char *p);
 static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf);
 static size_t ngx_quic_create_max_streams(u_char *p,
     ngx_quic_max_streams_frame_t *ms);
@@ -882,13 +883,17 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         break;
 
-    /* TODO: implement parsing for all frames below */
-    case NGX_QUIC_FT_NEW_TOKEN:
     case NGX_QUIC_FT_HANDSHAKE_DONE:
+        /* only sent by server, not by client */
+        goto not_allowed;
+
+    case NGX_QUIC_FT_NEW_TOKEN:
 
         if (!ngx_quic_short_pkt(flags)) {
             goto not_allowed;
         }
+
+        /* TODO: implement */
 
         ngx_log_error(NGX_LOG_ERR, pkt->log, 0,
                       "unimplemented frame type 0x%xi in packet", f->type);
@@ -1065,6 +1070,9 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_CRYPTO:
         return ngx_quic_create_crypto(p, &f->u.crypto);
 
+    case NGX_QUIC_FT_HANDSHAKE_DONE:
+        return ngx_quic_create_hs_done(p);
+
     case NGX_QUIC_FT_STREAM0:
     case NGX_QUIC_FT_STREAM1:
     case NGX_QUIC_FT_STREAM2:
@@ -1142,6 +1150,23 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     ngx_quic_build_int(&p, crypto->offset);
     ngx_quic_build_int(&p, crypto->len);
     p = ngx_cpymem(p, crypto->data, crypto->len);
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_hs_done(u_char *p)
+{
+    u_char  *start;
+
+    if (p == NULL) {
+        return ngx_quic_varint_len(NGX_QUIC_FT_HANDSHAKE_DONE);
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_HANDSHAKE_DONE);
 
     return p - start;
 }

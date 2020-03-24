@@ -964,9 +964,10 @@ static ngx_int_t
 ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_crypto_frame_t *f)
 {
-    int              sslerr;
-    ssize_t          n;
-    ngx_ssl_conn_t  *ssl_conn;
+    int                sslerr;
+    ssize_t            n;
+    ngx_ssl_conn_t    *ssl_conn;
+    ngx_quic_frame_t  *frame;
 
     if (f->offset != 0x0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1012,6 +1013,17 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                         "handshake completed successfully");
+
+        frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+        if (frame == NULL) {
+            return NGX_ERROR;
+        }
+
+        /* 12.4 Frames and frame types, figure 8 */
+        frame->level = ssl_encryption_application;
+        frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
+        ngx_sprintf(frame->info, "HANDSHAKE DONE on handshake completed");
+        ngx_quic_queue_frame(c->quic, frame);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
