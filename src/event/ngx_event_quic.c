@@ -1079,6 +1079,10 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c,
         rev = sn->c->read;
         rev->ready = 1;
 
+        if (f->fin) {
+            rev->pending_eof = 1;
+        }
+
         if (rev->active) {
             rev->handler(rev);
         }
@@ -1546,6 +1550,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     ssize_t                  len;
     ngx_buf_t               *b;
+    ngx_event_t             *rev;
     ngx_quic_stream_t       *qs;
     ngx_quic_connection_t   *qc;
     ngx_quic_stream_node_t  *sn;
@@ -1560,12 +1565,22 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         return NGX_ERROR;
     }
 
-    // XXX: how to return EOF?
+    rev = c->read;
 
     b = sn->b;
 
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic recv: eof:%d, avail:%z",
+                   rev->pending_eof, b->last - b->pos);
+
     if (b->pos == b->last) {
-        c->read->ready = 0;
+        rev->ready = 0;
+
+        if (rev->pending_eof) {
+            rev->eof = 1;
+            return 0;
+        }
+
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic recv() not ready");
         return NGX_AGAIN;
     }
@@ -1579,10 +1594,11 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     if (b->pos == b->last) {
         b->pos = b->start;
         b->last = b->start;
+        rev->ready = 0;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                  "quic recv: %z of %uz", len, size);
+                   "quic recv: %z of %uz", len, size);
 
     return len;
 }
