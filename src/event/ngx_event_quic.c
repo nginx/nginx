@@ -401,6 +401,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
+    c->log->action = "creating new quic connection";
+
     qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
     if (qc == NULL) {
         return NGX_ERROR;
@@ -792,7 +794,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_frame_t        frame, *ack_frame;
     ngx_quic_connection_t  *qc;
 
-    c->log->action = "processing quic payload";
 
     qc = c->quic;
 
@@ -803,6 +804,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     do_close = 0;
 
     while (p < end) {
+
+        c->log->action = "parsing frames";
 
         len = ngx_quic_parse_frame(pkt, p, end, &frame);
 
@@ -816,6 +819,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (len < 0) {
             return NGX_ERROR;
         }
+
+        c->log->action = "handling frames";
 
         p += len;
 
@@ -931,6 +936,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         /* do not ack packets with ACKs and PADDING */
         return NGX_OK;
     }
+
+    c->log->action = "generating acknowledgment";
 
     // packet processed, ACK it now if required
     // TODO: if (ack_required) ...  - currently just ack each packet
@@ -1195,6 +1202,8 @@ ngx_quic_output(ngx_connection_t *c)
     if (qc->frames == NULL) {
         return NGX_OK;
     }
+
+    c->log->action = "sending frames";
 
     lvl = qc->frames->level;
     start = qc->frames;
