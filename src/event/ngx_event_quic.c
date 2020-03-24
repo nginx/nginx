@@ -50,8 +50,9 @@ struct ngx_quic_connection_s {
 
     ngx_quic_streams_t                streams;
     ngx_uint_t                        max_data;
-    ngx_uint_t                        send_timer_set;
-                                              /* unsigned  send_timer_set:1 */
+
+    unsigned                          send_timer_set:1;
+    unsigned                          closing:1;
 
 #define SSL_ECRYPTION_LAST ((ssl_encryption_application) + 1)
     uint64_t                          crypto_offset[SSL_ECRYPTION_LAST];
@@ -308,6 +309,10 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
+    if (c->quic->closing) {
+        return 1;
+    }
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
@@ -536,8 +541,14 @@ ngx_quic_input_handler(ngx_event_t *rev)
     b.pos = b.last = b.start;
 
     c = rev->data;
+    qc = c->quic;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
+
+    if (qc->closing) {
+        ngx_quic_close_connection(c);
+        return;
+    }
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -569,8 +580,6 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    qc = c->quic;
-
     qc->send_timer_set = 0;
     ngx_add_timer(rev, qc->tp.max_idle_timeout);
 }
@@ -579,12 +588,56 @@ ngx_quic_input_handler(ngx_event_t *rev)
 static void
 ngx_quic_close_connection(ngx_connection_t *c)
 {
-    ngx_pool_t  *pool;
+#if (NGX_DEBUG)
+    ngx_uint_t              ns;
+#endif
+    ngx_pool_t             *pool;
+    ngx_event_t            *rev;
+    ngx_rbtree_t           *tree;
+    ngx_rbtree_node_t      *node;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
 
-    /* XXX wait for all streams to close */
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "close quic connection");
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "close quic connection: %d", c->fd);
+    qc = c->quic;
+
+    if (qc) {
+        tree = &qc->streams.tree;
+
+        if (tree->root != tree->sentinel) {
+            if (c->read->timer_set) {
+                ngx_del_timer(c->read);
+            }
+
+#if (NGX_DEBUG)
+            ns = 0;
+#endif
+
+            for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+                 node;
+                 node = ngx_rbtree_next(tree, node))
+            {
+                qs = (ngx_quic_stream_t *) node;
+
+                rev = qs->c->read;
+                rev->ready = 1;
+                rev->pending_eof = 1;
+
+                ngx_post_event(rev, &ngx_posted_events);
+
+#if (NGX_DEBUG)
+                ns++;
+#endif
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic connection has %ui active streams", ns);
+
+            qc->closing = 1;
+            return;
+        }
+    }
 
     if (c->ssl) {
         (void) ngx_ssl_shutdown(c);
@@ -1587,11 +1640,15 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send: %uz", size);
-
     qs = c->qs;
     pc = qs->parent;
     qc = pc->quic;
+
+    if (qc->closing) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send: %uz", size);
 
     frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
     if (frame == NULL) {
@@ -1641,6 +1698,15 @@ ngx_quic_stream_cleanup_handler(void *data)
     qs = c->qs;
     pc = qs->parent;
     qc = pc->quic;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic stream cleanup");
+
+    ngx_rbtree_delete(&qc->streams.tree, &qs->node);
+
+    if (qc->closing) {
+        ngx_post_event(pc->read, &ngx_posted_events);
+        return;
+    }
 
     if ((qs->id & 0x03) == NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         /* do not send fin for client unidirectional streams */

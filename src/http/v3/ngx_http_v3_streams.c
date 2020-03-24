@@ -29,6 +29,7 @@ static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
 static void ngx_http_v3_uni_stream_cleanup(void *data);
 static void ngx_http_v3_read_uni_stream_type(ngx_event_t *rev);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
+static void ngx_http_v3_dummy_write_handler(ngx_event_t *wev);
 static ngx_connection_t *ngx_http_v3_create_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);
 static ngx_connection_t *ngx_http_v3_get_control(ngx_connection_t *c);
@@ -74,6 +75,8 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
     cln->data = c;
 
     c->read->handler = ngx_http_v3_read_uni_stream_type;
+    c->write->handler = ngx_http_v3_dummy_write_handler;
+
     ngx_http_v3_read_uni_stream_type(c->read);
 }
 
@@ -310,6 +313,21 @@ failed:
 }
 
 
+static void
+ngx_http_v3_dummy_write_handler(ngx_event_t *wev)
+{
+    ngx_connection_t  *c;
+
+    c = wev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 dummy write handler");
+
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        ngx_http_v3_close_uni_stream(c);
+    }
+}
+
+
 /* XXX async & buffered stream writes */
 
 static ngx_connection_t *
@@ -337,6 +355,9 @@ ngx_http_v3_create_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     us->signature = NGX_HTTP_V3_STREAM;
     us->type = type;
     sc->data = us;
+
+    sc->read->handler = ngx_http_v3_uni_read_handler;
+    sc->write->handler = ngx_http_v3_dummy_write_handler;
 
     cln = ngx_pool_cleanup_add(sc->pool, 0);
     if (cln == NULL) {
