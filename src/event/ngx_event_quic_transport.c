@@ -1573,6 +1573,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI,
                            tp->initial_max_stream_data_uni);
 
+    len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
+                           tp->max_idle_timeout);
+
     if (pos == NULL) {
 #if (NGX_QUIC_DRAFT_VERSION < 27)
         len += 2;
@@ -1605,6 +1608,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 
     ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_UNI,
                      tp->initial_max_stream_data_uni);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
+                     tp->max_idle_timeout);
 
     ngx_quic_hexdump0(ngx_cycle->log, "transport parameters", pos, p - pos);
 
