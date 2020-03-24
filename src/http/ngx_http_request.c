@@ -709,7 +709,6 @@ ngx_http_alloc_request(ngx_connection_t *c)
 #if (NGX_HTTP_V3)
     if (hc->quic) {
         r->http_version = NGX_HTTP_VERSION_30;
-        r->filter_need_in_memory = 1;
     }
 #endif
 
