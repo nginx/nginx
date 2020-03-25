@@ -1308,13 +1308,12 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_str_t         res;
     ngx_quic_header_t pkt;
 
-    pkt.log = c->log;
-
     static ngx_str_t  initial_token = ngx_null_string;
 
     ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
     ngx_quic_hexdump0(c->log, "payload", payload->data, payload->len);
 
+    pkt.log = c->log;
     pkt.level = level;
     pkt.dcid = qc->dcid;
     pkt.scid = qc->scid;
