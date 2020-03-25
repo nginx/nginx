@@ -15,8 +15,6 @@
 #include <ngx_http_v3_parse.h>
 
 
-#define NGX_HTTP_V3_STREAM             0x48335354   /* "H3ST" */
-
 #define NGX_HTTP_V3_ALPN(s)         NGX_HTTP_V3_ALPN_DRAFT(s)
 #define NGX_HTTP_V3_ALPN_DRAFT(s)   "\x05h3-" #s
 #define NGX_HTTP_V3_ALPN_ADVERTISE  NGX_HTTP_V3_ALPN(NGX_QUIC_DRAFT_VERSION)
@@ -41,6 +39,14 @@
 #define NGX_HTTP_V3_PARAM_MAX_HEADER_LIST_SIZE     0x06
 #define NGX_HTTP_V3_PARAM_BLOCKED_STREAMS          0x07
 
+#define NGX_HTTP_V3_STREAM_CLIENT_CONTROL          0
+#define NGX_HTTP_V3_STREAM_SERVER_CONTROL          1
+#define NGX_HTTP_V3_STREAM_CLIENT_ENCODER          2
+#define NGX_HTTP_V3_STREAM_SERVER_ENCODER          3
+#define NGX_HTTP_V3_STREAM_CLIENT_DECODER          4
+#define NGX_HTTP_V3_STREAM_SERVER_DECODER          5
+#define NGX_HTTP_V3_MAX_KNOWN_STREAM               6
+
 
 typedef struct {
     ngx_quic_tp_t           quic;
@@ -51,14 +57,7 @@ typedef struct {
     ngx_http_connection_t   hc;
 
     ngx_array_t            *dynamic;
-
-    ngx_connection_t       *client_encoder;
-    ngx_connection_t       *client_decoder;
-    ngx_connection_t       *client_control;
-
-    ngx_connection_t       *server_encoder;
-    ngx_connection_t       *server_decoder;
-    ngx_connection_t       *server_control;
+    ngx_connection_t       *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
 } ngx_http_v3_connection_t;
 
 
