@@ -205,6 +205,7 @@ struct ngx_quic_frame_s {
     ngx_uint_t                                  type;
     enum ssl_encryption_level_t                 level;
     ngx_quic_frame_t                           *next;
+    u_char                                     *data;
     union {
         ngx_quic_ack_frame_t                    ack;
         ngx_quic_crypto_frame_t                 crypto;

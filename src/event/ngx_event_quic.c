@@ -44,6 +44,11 @@ struct ngx_quic_connection_s {
     ngx_quic_secrets_t                secrets;
     ngx_ssl_t                        *ssl;
     ngx_quic_frame_t                 *frames;
+    ngx_quic_frame_t                 *free_frames;
+
+#if (NGX_DEBUG)
+    ngx_uint_t                        nframes;
+#endif
 
     ngx_quic_streams_t                streams;
     ngx_uint_t                        max_data;
@@ -127,6 +132,8 @@ static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
 static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
+static ngx_quic_frame_t *ngx_quic_alloc_frame(ngx_connection_t *c, size_t size);
+static void ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame);
 
 
 static SSL_QUIC_METHOD quic_method = {
@@ -256,23 +263,18 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         }
     }
 
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(c, len);
     if (frame == NULL) {
         return 0;
     }
 
-    p = ngx_pnalloc(c->pool, len);
-    if (p == NULL) {
-        return 0;
-    }
-
-    ngx_memcpy(p, data, len);
+    ngx_memcpy(frame->data, data, len);
 
     frame->level = level;
     frame->type = NGX_QUIC_FT_CRYPTO;
     frame->u.crypto.offset += qc->crypto_offset[level];
     frame->u.crypto.len = len;
-    frame->u.crypto.data = p;
+    frame->u.crypto.data = frame->data;
 
     qc->crypto_offset[level] += len;
 
@@ -314,7 +316,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
                    "ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
 
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(c, 0);
     if (frame == NULL) {
         return 0;
     }
@@ -984,7 +986,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     // packet processed, ACK it now if required
     // TODO: if (ack_required) ...  - currently just ack each packet
 
-    ack_frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    ack_frame = ngx_quic_alloc_frame(c, 0);
     if (ack_frame == NULL) {
         return NGX_ERROR;
     }
@@ -1066,7 +1068,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         {
         ngx_quic_frame_t  *frame;
 
-        frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+        frame = ngx_quic_alloc_frame(c, 0);
         if (frame == NULL) {
             return NGX_ERROR;
         }
@@ -1170,7 +1172,7 @@ ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
 {
     ngx_quic_frame_t  *frame;
 
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(c, 0);
     if (frame == NULL) {
         return NGX_ERROR;
     }
@@ -1212,7 +1214,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     b = sn->b;
     n = (b->pos - b->start) + (b->end - b->last);
 
-    frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(c, 0);
     if (frame == NULL) {
         return NGX_ERROR;
     }
@@ -1254,7 +1256,7 @@ ngx_quic_output(ngx_connection_t *c)
 {
     size_t                  len, hlen, n;
     ngx_uint_t              lvl;
-    ngx_quic_frame_t       *f, *start;
+    ngx_quic_frame_t       *f, *start, *next;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
@@ -1294,12 +1296,17 @@ ngx_quic_output(ngx_connection_t *c)
             return NGX_ERROR;
         }
 
+        while (start != f) {
+            next = start->next;
+            ngx_quic_free_frame(c, start);
+            start = next;
+        }
+
         if (f == NULL) {
             break;
         }
 
         lvl = f->level; // TODO: must not decrease (ever, also between calls)
-        start = f;
 
     } while (1);
 
@@ -1621,7 +1628,6 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
 static ssize_t
 ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 {
-    u_char                 *p;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
@@ -1637,17 +1643,12 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send: %uz", size);
 
-    frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(pc, size);
     if (frame == NULL) {
         return 0;
     }
 
-    p = ngx_pnalloc(pc->pool, size);
-    if (p == NULL) {
-        return 0;
-    }
-
-    ngx_memcpy(p, buf, size);
+    ngx_memcpy(frame->data, buf, size);
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_STREAM6; /* OFF=1 LEN=1 FIN=0 */
@@ -1659,7 +1660,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     frame->u.stream.stream_id = qs->id;
     frame->u.stream.offset = c->sent;
     frame->u.stream.length = size;
-    frame->u.stream.data = p;
+    frame->u.stream.data = frame->data;
 
     c->sent += size;
 
@@ -1702,7 +1703,7 @@ ngx_quic_stream_cleanup_handler(void *data)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic send fin");
 
-    frame = ngx_pcalloc(pc->pool, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(pc, 0);
     if (frame == NULL) {
         return;
     }
@@ -1763,4 +1764,72 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in,
     }
 
     return NULL;
+}
+
+
+static ngx_quic_frame_t *
+ngx_quic_alloc_frame(ngx_connection_t *c, size_t size)
+{
+    u_char                 *p;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    if (size) {
+        p = ngx_alloc(size, c->log);
+        if (p == NULL) {
+            return NULL;
+        }
+
+    } else {
+        p = NULL;
+    }
+
+    qc = c->quic;
+    frame = qc->free_frames;
+
+    if (frame) {
+        qc->free_frames = frame->next;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "reuse quic frame n:%ui", qc->nframes);
+
+    } else {
+        frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+        if (frame == NULL) {
+            ngx_free(p);
+            return NULL;
+        }
+
+#if (NGX_DEBUG)
+        ++qc->nframes;
+#endif
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "alloc quic frame n:%ui", qc->nframes);
+    }
+
+    ngx_memzero(frame, sizeof(ngx_quic_frame_t));
+
+    frame->data = p;
+
+    return frame;
+}
+
+
+static void
+ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    if (frame->data) {
+        ngx_free(frame->data);
+    }
+
+    frame->next = qc->free_frames;
+    qc->free_frames = frame;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "free quic frame n:%ui", qc->nframes);
 }
