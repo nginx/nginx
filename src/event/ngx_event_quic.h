@@ -24,6 +24,8 @@
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
+#define NGX_QUIC_STREAM_BUFSIZE              16384
+
 
 typedef struct {
     /* configurable */

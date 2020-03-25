@@ -16,9 +16,6 @@ typedef enum {
 } ngx_quic_state_t;
 
 
-#define NGX_QUIC_STREAM_BUFSIZE        16384
-
-
 typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
@@ -122,7 +119,7 @@ static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
 static ngx_quic_stream_t *ngx_quic_find_stream(ngx_rbtree_t *rbtree,
     ngx_uint_t key);
 static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
-    ngx_uint_t id);
+    uint64_t id, size_t rcvbuf_size);
 static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
@@ -1096,6 +1093,7 @@ static ngx_int_t
 ngx_quic_handle_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_frame_t *f)
 {
+    size_t                  n;
     ngx_buf_t              *b;
     ngx_event_t            *rev;
     ngx_quic_stream_t      *sn;
@@ -1137,15 +1135,28 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c,
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "stream is new");
 
-    sn = ngx_quic_create_stream(c, f->stream_id);
+    n = (f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        ? qc->tp.initial_max_stream_data_uni
+        : qc->tp.initial_max_stream_data_bidi_remote;
+
+    if (n < NGX_QUIC_STREAM_BUFSIZE) {
+        n = NGX_QUIC_STREAM_BUFSIZE;
+    }
+
+    if (n < f->length) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "no space in stream buffer");
+        return NGX_ERROR;
+    }
+
+    sn = ngx_quic_create_stream(c, f->stream_id, n);
     if (sn == NULL) {
         return NGX_ERROR;
     }
 
     b = sn->b;
+    b->last = ngx_cpymem(b->last, f->data, f->length);
 
-    ngx_memcpy(b->start, f->data, f->length);
-    b->last = b->start + f->length;
+    sn->c->read->ready = 1;
 
     qc->streams.handler(sn->c);
 
@@ -1419,7 +1430,7 @@ ngx_quic_create_uni_stream(ngx_connection_t *c)
 
     qc->streams.id_counter++;
 
-    sn = ngx_quic_create_stream(qs->parent, id);
+    sn = ngx_quic_create_stream(qs->parent, id, 0);
     if (sn == NULL) {
         return NULL;
     }
@@ -1494,81 +1505,64 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, ngx_uint_t key)
 
 
 static ngx_quic_stream_t *
-ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
+ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
 {
-    size_t                  n;
-    ngx_log_t              *log;
-    ngx_pool_t             *pool;
-    ngx_event_t            *rev, *wev;
-    ngx_quic_stream_t      *sn;
-    ngx_pool_cleanup_t     *cln;
-    ngx_quic_connection_t  *qc;
-
-    qc = c->quic;
-
-    sn = ngx_pcalloc(c->pool, sizeof(ngx_quic_stream_t));
-    if (sn == NULL) {
-        return NULL;
-    }
-
-    sn->c = ngx_get_connection(-1, c->log); // TODO: free on connection termination
-    if (sn->c == NULL) {
-        return NULL;
-    }
+    ngx_log_t           *log;
+    ngx_pool_t          *pool;
+    ngx_quic_stream_t   *sn;
+    ngx_pool_cleanup_t  *cln;
 
     pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
     if (pool == NULL) {
-        /* XXX free connection */
-        // TODO: add pool cleanup handdler
+        return NULL;
+    }
+
+    sn = ngx_pcalloc(pool, sizeof(ngx_quic_stream_t));
+    if (sn == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    sn->node.key = id;
+    sn->parent = c;
+    sn->id = id;
+
+    sn->b = ngx_create_temp_buf(pool, rcvbuf_size);
+    if (sn->b == NULL) {
+        ngx_destroy_pool(pool);
         return NULL;
     }
 
     log = ngx_palloc(pool, sizeof(ngx_log_t));
     if (log == NULL) {
-        /* XXX free pool and connection */
+        ngx_destroy_pool(pool);
         return NULL;
     }
 
     *log = *c->log;
     pool->log = log;
 
-    sn->c->log = log;
-    sn->c->pool = pool;
-
-    sn->c->listening = c->listening;
-    sn->c->sockaddr = c->sockaddr;
-    sn->c->local_sockaddr = c->local_sockaddr;
-    sn->c->addr_text = c->addr_text;
-    sn->c->ssl = c->ssl;
-
-    rev = sn->c->read;
-    wev = sn->c->write;
-
-    rev->ready = 1;
-
-    rev->log = c->log;
-    wev->log = c->log;
-
-    sn->c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-
-    n = ngx_max(NGX_QUIC_STREAM_BUFSIZE,
-                qc->tp.initial_max_stream_data_bidi_remote);
-
-    sn->node.key =id;
-    sn->b = ngx_create_temp_buf(pool, n);
-    if (sn->b == NULL) {
+    sn->c = ngx_get_connection(-1, log);
+    if (sn->c == NULL) {
+        ngx_destroy_pool(pool);
         return NULL;
     }
 
-    ngx_rbtree_insert(&qc->streams.tree, &sn->node);
-
-    sn->id = id;
-    sn->parent = c;
     sn->c->qs = sn;
+    sn->c->pool = pool;
+    sn->c->ssl = c->ssl;
+    sn->c->sockaddr = c->sockaddr;
+    sn->c->listening = c->listening;
+    sn->c->addr_text = c->addr_text;
+    sn->c->local_sockaddr = c->local_sockaddr;
+    sn->c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
     sn->c->recv = ngx_quic_stream_recv;
     sn->c->send = ngx_quic_stream_send;
     sn->c->send_chain = ngx_quic_stream_send_chain;
+
+    sn->c->read->log = c->log;
+    sn->c->write->log = c->log;
 
     cln = ngx_pool_cleanup_add(pool, 0);
     if (cln == NULL) {
@@ -1579,6 +1573,8 @@ ngx_quic_create_stream(ngx_connection_t *c, ngx_uint_t id)
 
     cln->handler = ngx_quic_stream_cleanup_handler;
     cln->data = sn->c;
+
+    ngx_rbtree_insert(&c->quic->streams.tree, &sn->node);
 
     return sn;
 }
