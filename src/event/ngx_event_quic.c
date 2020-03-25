@@ -117,7 +117,7 @@ static ngx_int_t ngx_quic_send_packet(ngx_connection_t *c,
 static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 static ngx_quic_stream_t *ngx_quic_find_stream(ngx_rbtree_t *rbtree,
-    ngx_uint_t key);
+    uint64_t id);
 static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
     uint64_t id, size_t rcvbuf_size);
 static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
@@ -1447,26 +1447,10 @@ ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_quic_stream_t   *qn, *qnt;
 
     for ( ;; ) {
+        qn = (ngx_quic_stream_t *) node;
+        qnt = (ngx_quic_stream_t *) temp;
 
-        if (node->key < temp->key) {
-
-            p = &temp->left;
-
-        } else if (node->key > temp->key) {
-
-            p = &temp->right;
-
-        } else { /* node->key == temp->key */
-
-            qn = (ngx_quic_stream_t *) &node->color;
-            qnt = (ngx_quic_stream_t *) &temp->color;
-
-            if (qn->c < qnt->c) {
-                p = &temp->left;
-            } else {
-                p = &temp->right;
-            }
-        }
+        p = (qn->id < qnt->id) ? &temp->left : &temp->right;
 
         if (*p == sentinel) {
             break;
@@ -1484,20 +1468,22 @@ ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
 
 
 static ngx_quic_stream_t *
-ngx_quic_find_stream(ngx_rbtree_t *rbtree, ngx_uint_t key)
+ngx_quic_find_stream(ngx_rbtree_t *rbtree, uint64_t id)
 {
     ngx_rbtree_node_t  *node, *sentinel;
+    ngx_quic_stream_t  *qn;
 
     node = rbtree->root;
     sentinel = rbtree->sentinel;
 
     while (node != sentinel) {
+        qn = (ngx_quic_stream_t *) node;
 
-        if (key == node->key) {
-            return (ngx_quic_stream_t *) node;
+        if (id == qn->id) {
+            return qn;
         }
 
-        node = (key < node->key) ? node->left : node->right;
+        node = (id < qn->id) ? node->left : node->right;
     }
 
     return NULL;
