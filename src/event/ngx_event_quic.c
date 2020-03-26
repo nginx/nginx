@@ -114,10 +114,6 @@ static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
 static ngx_int_t ngx_quic_output(ngx_connection_t *c);
 ngx_int_t ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
     ngx_quic_frame_t *end, size_t total);
-static ngx_int_t ngx_quic_send_packet(ngx_connection_t *c,
-    ngx_quic_connection_t *qc, enum ssl_encryption_level_t level,
-    ngx_str_t *payload);
-
 
 static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
@@ -1283,6 +1279,7 @@ ngx_quic_output(ngx_connection_t *c)
 
         hlen = (lvl == ssl_encryption_application) ? NGX_QUIC_MAX_SHORT_HEADER
                                                    : NGX_QUIC_MAX_LONG_HEADER;
+        hlen += EVP_GCM_TLS_TAG_LEN;
 
         do {
             /* process same-level group of frames */
@@ -1333,20 +1330,23 @@ ngx_int_t
 ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
     ngx_quic_frame_t *end, size_t total)
 {
-    ssize_t            len;
-    u_char            *p;
-    ngx_str_t          out;
-    ngx_quic_frame_t  *f;
+    ssize_t                 len;
+    u_char                 *p;
+    ngx_str_t               out, res;
+    ngx_quic_frame_t       *f;
+    ngx_quic_header_t       pkt;
+    ngx_quic_connection_t  *qc;
+    static ngx_str_t        initial_token = ngx_null_string;
+    static u_char           src[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           dst[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "sending frames %p...%p", start, end);
 
-    p = ngx_pnalloc(c->pool, total);
-    if (p == NULL) {
-        return NGX_ERROR;
-    }
+    ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
 
-    out.data = p;
+    p = src;
+    out.data = src;
 
     for (f = start; f != end; f = f->next) {
 
@@ -1366,41 +1366,15 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
                    "packet ready: %ui bytes at level %d",
                    out.len, start->level);
 
-    // IOVEC/sendmsg_chain ?
-    if (ngx_quic_send_packet(c, c->quic, start->level, &out) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    qc = c->quic;
 
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
-    enum ssl_encryption_level_t level, ngx_str_t *payload)
-{
-    ngx_str_t          res;
-    ngx_quic_header_t  pkt;
-    static u_char      buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
-
-    static ngx_str_t  initial_token = ngx_null_string;
-
-    ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
-    ngx_quic_hexdump0(c->log, "payload", payload->data, payload->len);
-
-    pkt.log = c->log;
-    pkt.level = level;
-    pkt.dcid = qc->dcid;
-    pkt.scid = qc->scid;
-    pkt.payload = *payload;
-
-    if (level == ssl_encryption_initial) {
+    if (start->level == ssl_encryption_initial) {
         pkt.number = &qc->initial_pn;
         pkt.flags = NGX_QUIC_PKT_INITIAL;
         pkt.secret = &qc->secrets.server.in;
         pkt.token = initial_token;
 
-    } else if (level == ssl_encryption_handshake) {
+    } else if (start->level == ssl_encryption_handshake) {
         pkt.number = &qc->handshake_pn;
         pkt.flags = NGX_QUIC_PKT_HANDSHAKE;
         pkt.secret = &qc->secrets.server.hs;
@@ -1410,10 +1384,13 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
         pkt.secret = &qc->secrets.server.ad;
     }
 
-    // TODO: ensure header size + payload.len + crypto tail fits into packet
-    //       (i.e. limit payload while pushing frames to < 65k)
+    pkt.log = c->log;
+    pkt.level = start->level;
+    pkt.dcid = qc->dcid;
+    pkt.scid = qc->scid;
+    pkt.payload = out;
 
-    res.data = buf;
+    res.data = dst;
 
     if (ngx_quic_encrypt(&pkt, c->ssl->connection, &res) != NGX_OK) {
         return NGX_ERROR;
