@@ -42,7 +42,7 @@ static ngx_int_t ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn,
 
 static ngx_int_t ngx_quic_tls_open(ngx_pool_t *pool, const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
-    ngx_str_t *ad);
+    ngx_str_t *ad, ngx_log_t *log);
 static ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad, ngx_log_t *log);
@@ -358,12 +358,8 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
 static ngx_int_t
 ngx_quic_tls_open(ngx_pool_t *pool, const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
-    ngx_str_t *ad)
+    ngx_str_t *ad, ngx_log_t *log)
 {
-    ngx_log_t  *log;
-
-    log = pool->log; // TODO: pass log ?
-
     out->len = in->len - EVP_GCM_TLS_TAG_LEN;
     out->data = ngx_pnalloc(pool, out->len);
     if (out->data == NULL) {
@@ -829,13 +825,10 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     u_char               clearflags, *p, *sample;
     uint8_t             *nonce;
     uint64_t             pn;
-    ngx_log_t           *log;
     ngx_int_t            pnl, rc;
     ngx_str_t            in, ad;
     ngx_quic_ciphers_t   ciphers;
     uint8_t              mask[16];
-
-    log = pool->log;
 
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
         return NGX_ERROR;
@@ -851,11 +844,13 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     sample = p + 4;
 
-    ngx_quic_hexdump0(log, "sample", sample, 16);
+    ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
 
     /* header protection */
 
-    if (ngx_quic_tls_hp(log, ciphers.hp, pkt->secret, mask, sample) != NGX_OK) {
+    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
@@ -871,10 +866,10 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     pkt->pn = pn;
 
-    ngx_quic_hexdump0(log, "mask", mask, 5);
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic clear flags: %xi", clearflags);
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic packet number: %uL, len: %xi", pn, pnl);
 
     /* packet protection */
@@ -904,13 +899,13 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     nonce = ngx_pstrdup(pool, &pkt->secret->iv);
     nonce[11] ^= pn;
 
-    ngx_quic_hexdump0(log, "nonce", nonce, 12);
-    ngx_quic_hexdump0(log, "ad", ad.data, ad.len);
+    ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
+    ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
 
     rc = ngx_quic_tls_open(pool, ciphers.c, pkt->secret, &pkt->payload,
-                           nonce, &in, &ad);
+                           nonce, &in, &ad, pkt->log);
 
-    ngx_quic_hexdump0(log, "packet payload",
+    ngx_quic_hexdump0(pkt->log, "packet payload",
                       pkt->payload.data, pkt->payload.len);
 
     return rc;
