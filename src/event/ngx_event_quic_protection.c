@@ -40,7 +40,7 @@ static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask);
 static ngx_int_t ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn,
     ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
 
-static ngx_int_t ngx_quic_tls_open(ngx_pool_t *pool, const ngx_quic_cipher_t *cipher,
+static ngx_int_t ngx_quic_tls_open(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad, ngx_log_t *log);
 static ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
@@ -356,15 +356,10 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
 
 
 static ngx_int_t
-ngx_quic_tls_open(ngx_pool_t *pool, const ngx_quic_cipher_t *cipher,
-    ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
-    ngx_str_t *ad, ngx_log_t *log)
+ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
+    ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad,
+    ngx_log_t *log)
 {
-    out->len = in->len - EVP_GCM_TLS_TAG_LEN;
-    out->data = ngx_pnalloc(pool, out->len);
-    if (out->data == NULL) {
-        return NGX_ERROR;
-    }
 
 #ifdef OPENSSL_IS_BORINGSSL
     EVP_AEAD_CTX  *ctx;
@@ -819,16 +814,14 @@ ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
 
 ngx_int_t
-ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
-    ngx_quic_header_t *pkt)
+ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn)
 {
     u_char               clearflags, *p, *sample;
-    uint8_t             *nonce;
     uint64_t             pn;
     ngx_int_t            pnl, rc;
     ngx_str_t            in, ad;
     ngx_quic_ciphers_t   ciphers;
-    uint8_t              mask[16];
+    uint8_t              mask[16], nonce[12];
 
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
         return NGX_ERROR;
@@ -884,10 +877,7 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     }
 
     ad.len = p - pkt->data;
-    ad.data = ngx_pnalloc(pool, ad.len);
-    if (ad.data == NULL) {
-        return NGX_ERROR;
-    }
+    ad.data = pkt->plaintext;
 
     ngx_memcpy(ad.data, pkt->data, ad.len);
     ad.data[0] = clearflags;
@@ -896,13 +886,21 @@ ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
         ad.data[ad.len - pnl] = pn >> (8 * (pnl - 1)) % 256;
     } while (--pnl);
 
-    nonce = ngx_pstrdup(pool, &pkt->secret->iv);
+    ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
     nonce[11] ^= pn;
 
     ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
     ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
 
-    rc = ngx_quic_tls_open(pool, ciphers.c, pkt->secret, &pkt->payload,
+    pkt->payload.len = in.len - EVP_GCM_TLS_TAG_LEN;
+
+    if (NGX_QUIC_DEFAULT_MAX_PACKET_SIZE - ad.len < pkt->payload.len) {
+        return NGX_ERROR;
+    }
+
+    pkt->payload.data = pkt->plaintext + ad.len;
+
+    rc = ngx_quic_tls_open(ciphers.c, pkt->secret, &pkt->payload,
                            nonce, &in, &ad, pkt->log);
 
     ngx_quic_hexdump0(pkt->log, "packet payload",

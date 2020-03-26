@@ -39,8 +39,7 @@ int ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 ssize_t ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
      ngx_str_t *res);
 
-ngx_int_t ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
-    ngx_quic_header_t *pkt);
+ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn);
 
 
 #endif /* _NGX_EVENT_QUIC_PROTECTION_H_INCLUDED_ */

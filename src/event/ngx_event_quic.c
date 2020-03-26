@@ -377,6 +377,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 {
     ngx_quic_tp_t          *ctp;
     ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     if (ngx_buf_size(pkt->raw) < 1200) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "too small UDP datagram");
@@ -448,8 +449,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     pkt->secret = &qc->secrets.client.in;
     pkt->level = ssl_encryption_initial;
+    pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(c->pool, NULL, pkt) != NGX_OK) {
+    if (ngx_quic_decrypt(pkt, NULL) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -532,8 +534,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_buf_t               b;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
-
-    static u_char      buf[65535];
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     b.start = buf;
     b.end = buf + sizeof(buf);
@@ -719,6 +720,7 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     c->log->action = "processing initial quic packet";
 
@@ -735,8 +737,9 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->secret = &qc->secrets.client.in;
     pkt->level = ssl_encryption_initial;
+    pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(c->pool, ssl_conn, pkt) != NGX_OK) {
+    if (ngx_quic_decrypt(pkt, ssl_conn) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -748,6 +751,7 @@ static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     c->log->action = "processing handshake quic packet";
 
@@ -790,8 +794,9 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->secret = &qc->secrets.client.hs;
     pkt->level = ssl_encryption_handshake;
+    pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(c->pool, c->ssl->connection, pkt) != NGX_OK) {
+    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -803,6 +808,7 @@ static ngx_int_t
 ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     c->log->action = "processing application data quic packet";
 
@@ -820,8 +826,9 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->secret = &qc->secrets.client.ad;
     pkt->level = ssl_encryption_application;
+    pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(c->pool, c->ssl->connection, pkt) != NGX_OK) {
+    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1374,7 +1381,7 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
 {
     ngx_str_t          res;
     ngx_quic_header_t  pkt;
-    static u_char      buf[65535];
+    static u_char      buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     static ngx_str_t  initial_token = ngx_null_string;
 

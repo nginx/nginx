@@ -249,7 +249,8 @@ typedef struct {
     ngx_str_t                                   dcid;
     ngx_str_t                                   scid;
     uint64_t                                    pn;
-    ngx_str_t                                   payload;  /* decrypted */
+    u_char                                     *plaintext;
+    ngx_str_t                                   payload; /* decrypted data */
 } ngx_quic_header_t;
 
 
