@@ -341,12 +341,12 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
 
 
 size_t
-ngx_quic_create_long_header(ngx_quic_header_t *pkt, ngx_str_t *out,
+ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp)
 {
-    u_char    *p, *start;
+    u_char  *p, *start;
 
-    p = start = out->data;
+    p = start = out;
 
     *p++ = pkt->flags;
 
@@ -367,6 +367,26 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, ngx_str_t *out,
     *pnp = p;
 
     *p++ = (uint64_t) (*pkt->number);
+
+    return p - start;
+}
+
+
+size_t
+ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
+    size_t pkt_len, u_char **pnp)
+{
+    u_char  *p, *start;
+
+    p = start = out;
+
+    *p++ = 0x40;
+
+    p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
+
+    *pnp = p;
+
+    *p++ = (*pkt->number);
 
     return p - start;
 }

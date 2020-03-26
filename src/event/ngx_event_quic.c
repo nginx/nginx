@@ -1365,8 +1365,9 @@ static ngx_int_t
 ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
     enum ssl_encryption_level_t level, ngx_str_t *payload)
 {
-    ngx_str_t         res;
-    ngx_quic_header_t pkt;
+    ngx_str_t          res;
+    ngx_quic_header_t  pkt;
+    static u_char      buf[65535];
 
     static ngx_str_t  initial_token = ngx_null_string;
 
@@ -1377,6 +1378,7 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
     pkt.level = level;
     pkt.dcid = qc->dcid;
     pkt.scid = qc->scid;
+    pkt.payload = *payload;
 
     if (level == ssl_encryption_initial) {
         pkt.number = &qc->initial_pn;
@@ -1394,9 +1396,12 @@ ngx_quic_send_packet(ngx_connection_t *c, ngx_quic_connection_t *qc,
         pkt.secret = &qc->secrets.server.ad;
     }
 
-    if (ngx_quic_encrypt(c->pool, c->ssl->connection, &pkt, payload, &res)
-        != NGX_OK)
-    {
+    // TODO: ensure header size + payload.len + crypto tail fits into packet
+    //       (i.e. limit payload while pushing frames to < 65k)
+
+    res.data = buf;
+
+    if (ngx_quic_encrypt(&pkt, c->ssl->connection, &res) != NGX_OK) {
         return NGX_ERROR;
     }
 

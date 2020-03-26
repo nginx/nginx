@@ -36,8 +36,8 @@ int ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *secret, size_t secret_len,
     ngx_quic_peer_secrets_t *qsec);
 
-ngx_int_t ngx_quic_encrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
-    ngx_quic_header_t *pkt, ngx_str_t *payload, ngx_str_t *res);
+ssize_t ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
+     ngx_str_t *res);
 
 ngx_int_t ngx_quic_decrypt(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_header_t *pkt);

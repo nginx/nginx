@@ -255,11 +255,14 @@ typedef struct {
 u_char *ngx_quic_error_text(uint64_t error_code);
 
 ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
-size_t ngx_quic_create_long_header(ngx_quic_header_t *pkt, ngx_str_t *out,
+size_t ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp);
 
 ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
     ngx_str_t *dcid);
+size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
+    size_t pkt_len, u_char **pnp);
+
 ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 
