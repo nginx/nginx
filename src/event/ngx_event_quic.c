@@ -1649,6 +1649,8 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 
     ngx_quic_queue_frame(qc, frame);
 
+    ngx_quic_output(pc);
+
     return size;
 }
 
@@ -1703,6 +1705,8 @@ ngx_quic_stream_cleanup_handler(void *data)
     ngx_sprintf(frame->info, "stream %xi fin=1 level=%d", qs->id, frame->level);
 
     ngx_quic_queue_frame(qc, frame);
+
+    (void) ngx_quic_output(pc);
 }
 
 
