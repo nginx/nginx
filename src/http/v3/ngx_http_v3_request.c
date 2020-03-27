@@ -263,7 +263,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
         return NULL;
     }
 
-    len = 0;
+    len = 2;
 
     if (r->headers_out.status == NGX_HTTP_OK) {
         len += ngx_http_v3_encode_prefix_int(NULL, 25, 6);
