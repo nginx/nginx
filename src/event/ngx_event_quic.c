@@ -304,10 +304,6 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
-    if (c->quic->closing) {
-        return 1;
-    }
-
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
