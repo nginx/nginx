@@ -63,6 +63,9 @@ struct ngx_http_chunked_s {
     ngx_uint_t           state;
     off_t                size;
     off_t                length;
+#if (NGX_HTTP_V3)
+    void                *h3_parse;
+#endif
 };
 
 

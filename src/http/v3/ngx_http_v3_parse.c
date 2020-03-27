@@ -1421,3 +1421,61 @@ done:
     st->state = sw_start;
     return NGX_DONE;
 }
+
+
+ngx_int_t
+ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
+    u_char ch)
+{
+    enum {
+        sw_start = 0,
+        sw_type,
+        sw_length
+    };
+
+    switch (st->state) {
+
+    case sw_start:
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse data");
+
+        st->state = sw_type;
+
+        /* fall through */
+
+    case sw_type:
+
+        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
+            break;
+        }
+
+        if (st->vlint.value != NGX_HTTP_V3_FRAME_DATA) {
+            return NGX_ERROR;
+        }
+
+        st->state = sw_length;
+        break;
+
+    case sw_length:
+
+        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
+            break;
+        }
+
+        st->length = st->vlint.value;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 parse data frame len:%ui", st->length);
+
+        goto done;
+    }
+
+    return NGX_AGAIN;
+
+done:
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse data done");
+
+    st->state = sw_start;
+    return NGX_DONE;
+}

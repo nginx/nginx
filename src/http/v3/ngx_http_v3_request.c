@@ -241,6 +241,69 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
 }
 
 
+ngx_int_t
+ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
+    ngx_http_chunked_t *ctx)
+{
+    ngx_int_t                  rc;
+    ngx_connection_t          *c;
+    ngx_http_v3_parse_data_t  *st;
+
+    c = r->connection;
+    st = ctx->h3_parse;
+
+    if (st == NULL) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 parse request body");
+
+        st = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_data_t));
+        if (st == NULL) {
+            goto failed;
+        }
+
+        r->h3_parse = st;
+    }
+
+    if (ctx->size) {
+        return NGX_OK;
+    }
+
+    while (b->pos < b->last) {
+        rc = ngx_http_v3_parse_data(c, st, *b->pos++);
+
+        if (rc == NGX_ERROR) {
+            goto failed;
+        }
+
+        if (rc == NGX_AGAIN) {
+            continue;
+        }
+
+        /* rc == NGX_DONE */
+
+        ctx->size = st->length;
+        return NGX_OK;
+    }
+
+    if (!b->last_buf) {
+        ctx->length = 1;
+        return NGX_AGAIN;
+    }
+
+    if (st->state) {
+        goto failed;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header done");
+
+    return NGX_DONE;
+
+failed:
+
+    return NGX_ERROR;
+}
+
+
 ngx_chain_t *
 ngx_http_v3_create_header(ngx_http_request_t *r)
 {
