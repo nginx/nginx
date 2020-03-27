@@ -258,11 +258,6 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 create header");
 
-    /* XXX support chunked body in the chunked filter */
-    if (!r->header_only && r->headers_out.content_length_n == -1) {
-        return NULL;
-    }
-
     len = 2;
 
     if (r->headers_out.status == NGX_HTTP_OK) {
@@ -577,4 +572,34 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     }
 
     return hl;
+}
+
+
+ngx_chain_t *
+ngx_http_v3_create_trailers(ngx_http_request_t *r)
+{
+    ngx_buf_t    *b;
+    ngx_chain_t  *cl;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http3 create trailers");
+
+    /* XXX */
+
+    b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
+        return NULL;
+    }
+
+    b->last_buf = 1;
+
+    cl = ngx_alloc_chain_link(r->pool);
+    if (cl == NULL) {
+        return NULL;
+    }
+
+    cl->buf = b;
+    cl->next = NULL;
+
+    return cl;
 }
