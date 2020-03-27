@@ -1157,7 +1157,12 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c,
     b = sn->b;
     b->last = ngx_cpymem(b->last, f->data, f->length);
 
-    sn->c->read->ready = 1;
+    rev = sn->c->read;
+    rev->ready = 1;
+
+    if (f->fin) {
+        rev->pending_eof = 1;
+    }
 
     qc->streams.handler(sn->c);
 
@@ -1595,7 +1600,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     if (b->pos == b->last) {
         b->pos = b->start;
         b->last = b->start;
-        rev->ready = 0;
+        rev->ready = rev->pending_eof;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
