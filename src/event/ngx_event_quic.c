@@ -69,6 +69,7 @@ struct ngx_quic_connection_s {
 
     ngx_ssl_t                        *ssl;
 
+    ngx_event_t                       push;
     ngx_event_t                       retry;
     ngx_queue_t                       free_frames;
 
@@ -145,6 +146,7 @@ static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames);
 static void ngx_quic_retransmit_handler(ngx_event_t *ev);
 static ngx_int_t ngx_quic_retransmit_ns(ngx_connection_t *c,
     ngx_quic_namespace_t *ns, ngx_msec_t *waitp);
+static void ngx_quic_push_handler(ngx_event_t *ev);
 
 static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
@@ -464,6 +466,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->retry.handler = ngx_quic_retransmit_handler;
     qc->retry.cancelable = 1;
 
+    qc->push.log = c->log;
+    qc->push.data = c;
+    qc->push.handler = ngx_quic_push_handler;
+    qc->push.cancelable = 1;
+
     c->quic = qc;
     qc->ssl = ssl;
     qc->tp = *tp;
@@ -711,6 +718,10 @@ ngx_quic_close_connection(ngx_connection_t *c)
 
             qc->closing = 1;
             return;
+        }
+
+        if (qc->push.timer_set) {
+            ngx_del_timer(&qc->push);
         }
 
         if (qc->retry.timer_set) {
@@ -1163,7 +1174,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler level=%d", pkt->pn, ack_frame->level);
     ngx_quic_queue_frame(qc, ack_frame);
 
-    return ngx_quic_output(c);
+    // TODO: call output() after processing some special frames?
+    return NGX_OK;
 }
 
 
@@ -1471,6 +1483,12 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
     ns = &qc->ns[ngx_quic_ns(frame->level)];
 
     ngx_queue_insert_tail(&ns->frames, &frame->queue);
+
+    /* TODO: check PUSH flag on stream and call output */
+
+    if (!qc->push.timer_set && !qc->closing) {
+        ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
+    }
 }
 
 
@@ -1739,6 +1757,26 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
     if (wait > 0) {
         ngx_add_timer(&qc->retry, wait);
     }
+}
+
+
+static void
+ngx_quic_push_handler(ngx_event_t *ev)
+{
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "push timer");
+
+    c = ev->data;
+    qc = c->quic;
+
+    if (ngx_quic_output(c) != NGX_OK) {
+        ngx_quic_close_connection(c);
+        return;
+    }
+
+    ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
 }
 
 
@@ -2059,8 +2097,6 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
                 qs->id, size, frame->level);
 
     ngx_quic_queue_frame(qc, frame);
-
-    ngx_quic_output(pc);
 
     return size;
 }
