@@ -118,8 +118,8 @@ ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn, ngx_quic_ciphers_t *ciphers,
 
 
 ngx_int_t
-ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secrets_t *qsec,
-    ngx_str_t *secret)
+ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
+    ngx_quic_secret_t *server, ngx_str_t *secret)
 {
     size_t             is_len;
     uint8_t            is[SHA256_DIGEST_LENGTH];
@@ -152,17 +152,17 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secrets_t *qsec,
     ngx_quic_hexdump0(pool->log, "initial secret", is, is_len);
 
     /* draft-ietf-quic-tls-23#section-5.2 */
-    qsec->client.in.secret.len = SHA256_DIGEST_LENGTH;
-    qsec->server.in.secret.len = SHA256_DIGEST_LENGTH;
+    client->secret.len = SHA256_DIGEST_LENGTH;
+    server->secret.len = SHA256_DIGEST_LENGTH;
 
-    qsec->client.in.key.len = EVP_CIPHER_key_length(cipher);
-    qsec->server.in.key.len = EVP_CIPHER_key_length(cipher);
+    client->key.len = EVP_CIPHER_key_length(cipher);
+    server->key.len = EVP_CIPHER_key_length(cipher);
 
-    qsec->client.in.hp.len = EVP_CIPHER_key_length(cipher);
-    qsec->server.in.hp.len = EVP_CIPHER_key_length(cipher);
+    client->hp.len = EVP_CIPHER_key_length(cipher);
+    server->hp.len = EVP_CIPHER_key_length(cipher);
 
-    qsec->client.in.iv.len = EVP_CIPHER_iv_length(cipher);
-    qsec->server.in.iv.len = EVP_CIPHER_iv_length(cipher);
+    client->iv.len = EVP_CIPHER_iv_length(cipher);
+    server->iv.len = EVP_CIPHER_iv_length(cipher);
 
     struct {
         ngx_str_t   label;
@@ -171,40 +171,40 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secrets_t *qsec,
     } seq[] = {
 
         /* draft-ietf-quic-tls-23#section-5.2 */
-        { ngx_string("tls13 client in"), &qsec->client.in.secret, &iss },
+        { ngx_string("tls13 client in"), &client->secret, &iss },
         {
             ngx_string("tls13 quic key"),
-            &qsec->client.in.key,
-            &qsec->client.in.secret,
+            &client->key,
+            &client->secret,
         },
         {
             ngx_string("tls13 quic iv"),
-            &qsec->client.in.iv,
-            &qsec->client.in.secret,
+            &client->iv,
+            &client->secret,
         },
         {
             /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
-            &qsec->client.in.hp,
-            &qsec->client.in.secret,
+            &client->hp,
+            &client->secret,
         },
-        { ngx_string("tls13 server in"), &qsec->server.in.secret, &iss },
+        { ngx_string("tls13 server in"), &server->secret, &iss },
         {
             /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
             ngx_string("tls13 quic key"),
-            &qsec->server.in.key,
-            &qsec->server.in.secret,
+            &server->key,
+            &server->secret,
         },
         {
             ngx_string("tls13 quic iv"),
-            &qsec->server.in.iv,
-            &qsec->server.in.secret,
+            &server->iv,
+            &server->secret,
         },
         {
            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
-            &qsec->server.in.hp,
-            &qsec->server.in.secret,
+            &server->hp,
+            &server->secret,
         },
 
     };
@@ -604,12 +604,11 @@ failed:
 int
 ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *secret,
-    size_t secret_len, ngx_quic_peer_secrets_t *qsec)
+    size_t secret_len, ngx_quic_secret_t *peer_secret)
 {
-    ngx_int_t            key_len;
-    ngx_uint_t           i;
-    ngx_quic_secret_t   *peer_secret;
-    ngx_quic_ciphers_t   ciphers;
+    ngx_int_t           key_len;
+    ngx_uint_t          i;
+    ngx_quic_ciphers_t  ciphers;
 
     key_len = ngx_quic_ciphers(ssl_conn, &ciphers, level);
 
@@ -618,21 +617,7 @@ ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    switch (level) {
-
-    case ssl_encryption_early_data:
-        peer_secret = &qsec->ed;
-        break;
-
-    case ssl_encryption_handshake:
-        peer_secret = &qsec->hs;
-        break;
-
-    case ssl_encryption_application:
-        peer_secret = &qsec->ad;
-        break;
-
-    default:
+    if (level == ssl_encryption_initial) {
         return 0;
     }
 
