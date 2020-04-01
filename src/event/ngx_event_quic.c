@@ -12,6 +12,7 @@
 typedef enum {
     NGX_QUIC_ST_INITIAL,     /* connection just created */
     NGX_QUIC_ST_HANDSHAKE,   /* handshake started */
+    NGX_QUIC_ST_EARLY_DATA,  /* handshake in progress */
     NGX_QUIC_ST_APPLICATION  /* handshake complete */
 } ngx_quic_state_t;
 
@@ -82,7 +83,8 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_tp_t *tp, ngx_quic_header_t *pkt);
+    ngx_quic_tp_t *tp, ngx_quic_header_t *pkt,
+    ngx_connection_handler_pt handler);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 static void ngx_quic_close_connection(ngx_connection_t *c);
@@ -91,6 +93,8 @@ static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_early_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -159,6 +163,10 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump(c->log, "level:%d read secret",
                      rsecret, secret_len, level);
 
+    if (level == ssl_encryption_early_data) {
+        c->quic->state = NGX_QUIC_ST_EARLY_DATA;
+    }
+
     return ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
                                           rsecret, secret_len,
                                           &c->quic->secrets.client);
@@ -204,6 +212,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
     if (level == ssl_encryption_early_data) {
+        c->quic->state = NGX_QUIC_ST_EARLY_DATA;
         return 1;
     }
 
@@ -352,13 +361,10 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     pkt.data = b->start;
     pkt.len = b->last - b->start;
 
-    if (ngx_quic_new_connection(c, ssl, tp, &pkt) != NGX_OK) {
+    if (ngx_quic_new_connection(c, ssl, tp, &pkt, handler) != NGX_OK) {
         ngx_quic_close_connection(c);
         return;
     }
-
-    // we don't need stream handler for initial packet processing
-    c->quic->streams.handler = handler;
 
     ngx_add_timer(c->read, c->quic->tp.max_idle_timeout);
 
@@ -370,7 +376,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
 static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
-    ngx_quic_header_t *pkt)
+    ngx_quic_header_t *pkt, ngx_connection_handler_pt handler)
 {
     ngx_quic_tp_t          *ctp;
     ngx_quic_connection_t  *qc;
@@ -410,6 +416,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     c->quic = qc;
     qc->ssl = ssl;
     qc->tp = *tp;
+    qc->streams.handler = handler;
 
     ctp = &qc->ctp;
     ctp->max_packet_size = NGX_QUIC_DEFAULT_MAX_PACKET_SIZE;
@@ -456,7 +463,14 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
-    return ngx_quic_payload_handler(c, pkt);
+    if (ngx_quic_payload_handler(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    /* pos is at header end, adjust by actual packet length */
+    pkt->raw->pos += pkt->len;
+
+    return ngx_quic_input(c, pkt->raw);
 }
 
 
@@ -482,6 +496,12 @@ ngx_quic_init_connection(ngx_connection_t *c)
                       "SSL_set_quic_method() failed");
         return NGX_ERROR;
     }
+
+#ifdef SSL_READ_EARLY_DATA_SUCCESS
+    if (SSL_CTX_get_max_early_data(qc->ssl->ctx)) {
+        SSL_set_quic_early_data_enabled(ssl_conn, 1);
+    }
+#endif
 
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp);
     /* always succeeds */
@@ -666,9 +686,9 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
     ngx_int_t           rc;
     ngx_quic_header_t   pkt;
 
-    p = b->start;
+    p = b->pos;
 
-    do {
+    while (p < b->last) {
         c->log->action = "processing quic packet";
 
         ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
@@ -693,6 +713,9 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             } else if (ngx_quic_pkt_hs(pkt.flags)) {
                 rc = ngx_quic_handshake_input(c, &pkt);
 
+            } else if (ngx_quic_pkt_zrtt(pkt.flags)) {
+                rc = ngx_quic_early_input(c, &pkt);
+
             } else {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "BUG: unknown quic state");
@@ -710,8 +733,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         /* b->pos is at header end, adjust by actual packet length */
         p = b->pos + pkt.len;
         b->pos = p;       /* reset b->pos to the next packet start */
-
-    } while (p < b->last);
+    }
 
     return NGX_OK;
 }
@@ -796,6 +818,68 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->secret = &qc->secrets.client.hs;
     pkt->level = ssl_encryption_handshake;
+    pkt->plaintext = buf;
+
+    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return ngx_quic_payload_handler(c, pkt);
+}
+
+
+static ngx_int_t
+ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+
+    c->log->action = "processing early data quic packet";
+
+    qc = c->quic;
+
+    /* extract cleartext data into pkt */
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (pkt->dcid.len != qc->dcid.len) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcidl");
+        return NGX_ERROR;
+    }
+
+    if (ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcid");
+        return NGX_ERROR;
+    }
+
+    if (pkt->scid.len != qc->scid.len) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scidl");
+        return NGX_ERROR;
+    }
+
+    if (ngx_memcmp(pkt->scid.data, qc->scid.data, qc->scid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scid");
+        return NGX_ERROR;
+    }
+
+    if (!ngx_quic_pkt_zrtt(pkt->flags)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "invalid packet type: 0x%xi", pkt->flags);
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (c->quic->state != NGX_QUIC_ST_EARLY_DATA) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected 0-RTT packet");
+        return NGX_OK;
+    }
+
+    pkt->secret = &qc->secrets.client.ed;
+    pkt->level = ssl_encryption_early_data;
     pkt->plaintext = buf;
 
     if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
@@ -1000,7 +1084,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    ack_frame->level = pkt->level;
+    ack_frame->level = (pkt->level == ssl_encryption_early_data)
+                       ? ssl_encryption_application
+                       : pkt->level;
     ack_frame->type = NGX_QUIC_FT_ACK;
     ack_frame->u.ack.pn = pkt->pn;
 
