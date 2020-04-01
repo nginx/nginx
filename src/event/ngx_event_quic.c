@@ -330,6 +330,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     frame->level = level;
     frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
     frame->u.close.error_code = 0x100 + alert;
+    ngx_sprintf(frame->info, "cc from send_alert level=%d", frame->level);
 
     ngx_quic_queue_frame(c->quic, frame);
 
