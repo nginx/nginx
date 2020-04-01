@@ -1369,6 +1369,11 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
 
     out.len = p - out.data;
 
+    while (out.len < 4) {
+        *p++ = NGX_QUIC_FT_PADDING;
+        out.len++;
+    }
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "packet ready: %ui bytes at level %d",
                    out.len, start->level);
