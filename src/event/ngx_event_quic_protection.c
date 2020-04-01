@@ -620,6 +620,10 @@ ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 
     switch (level) {
 
+    case ssl_encryption_early_data:
+        peer_secret = &qsec->ed;
+        break;
+
     case ssl_encryption_handshake:
         peer_secret = &qsec->hs;
         break;

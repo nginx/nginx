@@ -18,6 +18,7 @@ typedef struct ngx_quic_secret_s {
 
 typedef struct {
     ngx_quic_secret_t         in;
+    ngx_quic_secret_t         ed;
     ngx_quic_secret_t         hs;
     ngx_quic_secret_t         ad;
 } ngx_quic_peer_secrets_t;

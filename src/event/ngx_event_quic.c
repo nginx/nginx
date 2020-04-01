@@ -195,7 +195,6 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_quic_hexdump(c->log, "level:%d read", rsecret, secret_len, level);
-    ngx_quic_hexdump(c->log, "level:%d write", wsecret, secret_len, level);
 
     rc = ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
                                         rsecret, secret_len,
@@ -203,6 +202,12 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     if (rc != 1) {
         return rc;
     }
+
+    if (level == ssl_encryption_early_data) {
+        return 1;
+    }
+
+    ngx_quic_hexdump(c->log, "level:%d write", wsecret, secret_len, level);
 
     return ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
                                           wsecret, secret_len,
