@@ -1080,12 +1080,19 @@ not_allowed:
 
 
 ssize_t
-ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
+ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
 {
-    // TODO: handle end arg
+    /*
+     *  QUIC-recovery, section 2:
+     *
+     *  Ack-eliciting Frames:  All frames other than ACK, PADDING, and
+     *  CONNECTION_CLOSE are considered ack-eliciting.
+     */
+    f->need_ack = 1;
 
     switch (f->type) {
     case NGX_QUIC_FT_ACK:
+        f->need_ack = 0;
         return ngx_quic_create_ack(p, &f->u.ack);
 
     case NGX_QUIC_FT_CRYPTO:
@@ -1105,6 +1112,7 @@ ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f)
         return ngx_quic_create_stream(p, &f->u.stream);
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
+        f->need_ack = 0;
         return ngx_quic_create_close(p, &f->u.close);
 
     case NGX_QUIC_FT_MAX_STREAMS:
@@ -1130,10 +1138,10 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_ACK);
-        len += ngx_quic_varint_len(ack->pn);
+        len += ngx_quic_varint_len(ack->largest);
         len += ngx_quic_varint_len(0);
         len += ngx_quic_varint_len(0);
-        len += ngx_quic_varint_len(0);
+        len += ngx_quic_varint_len(ack->first_range);
 
         return len;
     }
@@ -1141,10 +1149,10 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
     start = p;
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_ACK);
-    ngx_quic_build_int(&p, ack->pn);
+    ngx_quic_build_int(&p, ack->largest);
     ngx_quic_build_int(&p, 0);
     ngx_quic_build_int(&p, 0);
-    ngx_quic_build_int(&p, 0);
+    ngx_quic_build_int(&p, ack->first_range);
 
     return p - start;
 }

@@ -97,7 +97,6 @@
 
 
 typedef struct {
-    ngx_uint_t                                  pn;
     uint64_t                                    largest;
     uint64_t                                    delay;
     uint64_t                                    range_count;
@@ -204,7 +203,13 @@ typedef struct ngx_quic_frame_s                 ngx_quic_frame_t;
 struct ngx_quic_frame_s {
     ngx_uint_t                                  type;
     enum ssl_encryption_level_t                 level;
-    ngx_quic_frame_t                           *next;
+    ngx_queue_t                                 queue;
+    uint64_t                                    pnum;
+    ngx_msec_t                                  first;
+    ngx_msec_t                                  last;
+    ngx_uint_t                                  need_ack;
+                                                    /* unsigned need_ack:1; */
+
     u_char                                     *data;
     union {
         ngx_quic_ack_frame_t                    ack;
@@ -250,6 +255,9 @@ typedef struct {
     uint64_t                                    pn;
     u_char                                     *plaintext;
     ngx_str_t                                   payload; /* decrypted data */
+
+    ngx_uint_t                                  need_ack;
+                                                   /* unsigned need_ack:1; */
 } ngx_quic_header_t;
 
 
@@ -269,7 +277,7 @@ ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
-ssize_t ngx_quic_create_frame(u_char *p, u_char *end, ngx_quic_frame_t *f);
+ssize_t ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f);
 
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, ngx_log_t *log);
