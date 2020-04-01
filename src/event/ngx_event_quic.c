@@ -1058,10 +1058,10 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         c->quic->state = NGX_QUIC_ST_APPLICATION;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
+                       "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                        "handshake completed successfully");
+                       "handshake completed successfully");
 
 #if (NGX_QUIC_DRAFT_VERSION >= 27)
         {

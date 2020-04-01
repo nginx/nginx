@@ -53,9 +53,8 @@ static ngx_int_t ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest,
 
 static ssize_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
     ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
-
 static ssize_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
-    ngx_ssl_conn_t *ssl_conn,  ngx_str_t *res);
+    ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
 
 
 static ngx_int_t
@@ -622,7 +621,7 @@ ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
     switch (level) {
 
     case ssl_encryption_handshake:
-        peer_secret= &qsec->hs;
+        peer_secret = &qsec->hs;
         break;
 
     case ssl_encryption_application:
