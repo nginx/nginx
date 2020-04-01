@@ -1060,7 +1060,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             return NGX_ERROR;
         }
 
-    } else if (n == 1) {
+    } else if (n == 1 && !SSL_in_init(ssl_conn)) {
         c->quic->state = NGX_QUIC_ST_APPLICATION;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
