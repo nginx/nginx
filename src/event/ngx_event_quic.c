@@ -9,6 +9,20 @@
 #include <ngx_event.h>
 
 
+/*  0-RTT and 1-RTT data exist in the same packet number space,
+ *  so we have 3 packet number spaces:
+ *
+ *  0 - Initial
+ *  1 - Handshake
+ *  2 - 0-RTT and 1-RTT
+ */
+#define ngx_quic_ns(level)                                                    \
+    ((level) == ssl_encryption_initial) ? 0                                   \
+        : (((level) == ssl_encryption_handshake) ? 1 : 2)
+
+#define NGX_QUIC_NAMESPACE_LAST  (NGX_QUIC_ENCRYPTION_LAST - 1)
+
+
 typedef enum {
     NGX_QUIC_ST_INITIAL,     /* connection just created */
     NGX_QUIC_ST_HANDSHAKE,   /* handshake started */
@@ -26,6 +40,14 @@ typedef struct {
 } ngx_quic_streams_t;
 
 
+typedef struct {
+    ngx_quic_secret_t                 client_secret;
+    ngx_quic_secret_t                 server_secret;
+
+    ngx_uint_t                        pnum;
+} ngx_quic_namespace_t;
+
+
 struct ngx_quic_connection_s {
     ngx_str_t                         scid;
     ngx_str_t                         dcid;
@@ -37,11 +59,7 @@ struct ngx_quic_connection_s {
 
     ngx_quic_state_t                  state;
 
-    /* current packet numbers  for each namespace */
-    ngx_uint_t                        initial_pn;
-    ngx_uint_t                        handshake_pn;
-    ngx_uint_t                        appdata_pn;
-
+    ngx_quic_namespace_t              ns[NGX_QUIC_NAMESPACE_LAST];
     ngx_quic_secrets_t                keys[NGX_QUIC_ENCRYPTION_LAST];
     uint64_t                          crypto_offset[NGX_QUIC_ENCRYPTION_LAST];
 
@@ -1106,11 +1124,14 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    ack_frame->level = pkt->level;
+    ack_frame->level = (pkt->level == ssl_encryption_early_data)
+                       ? ssl_encryption_application
+                       : pkt->level;
+
     ack_frame->type = NGX_QUIC_FT_ACK;
     ack_frame->u.ack.pn = pkt->pn;
 
-    ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler level=%d", pkt->pn, pkt->level);
+    ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler level=%d", pkt->pn, ack_frame->level);
     ngx_quic_queue_frame(qc, ack_frame);
 
     return ngx_quic_output(c);
@@ -1454,6 +1475,7 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
     ngx_quic_frame_t       *f;
     ngx_quic_header_t       pkt;
     ngx_quic_secrets_t     *keys;
+    ngx_quic_namespace_t   *ns;
     ngx_quic_connection_t  *qc;
     static ngx_str_t        initial_token = ngx_null_string;
     static u_char           src[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
@@ -1493,20 +1515,17 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
     qc = c->quic;
 
     keys = &c->quic->keys[start->level];
+    ns = &c->quic->ns[ngx_quic_ns(start->level)];
 
     pkt.secret = &keys->server;
+    pkt.number = ns->pnum;
 
     if (start->level == ssl_encryption_initial) {
-        pkt.number = &qc->initial_pn;
         pkt.flags = NGX_QUIC_PKT_INITIAL;
         pkt.token = initial_token;
 
     } else if (start->level == ssl_encryption_handshake) {
-        pkt.number = &qc->handshake_pn;
         pkt.flags = NGX_QUIC_PKT_HANDSHAKE;
-
-    } else {
-        pkt.number = &qc->appdata_pn;
     }
 
     pkt.log = c->log;
@@ -1525,7 +1544,7 @@ ngx_quic_frames_send(ngx_connection_t *c, ngx_quic_frame_t *start,
 
     c->send(c, res.data, res.len); // TODO: err handling
 
-    (*pkt.number)++;
+    ns->pnum++;
 
     return NGX_OK;
 }

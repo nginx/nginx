@@ -673,7 +673,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
-    pn = *pkt->number;
+    pn = pkt->number;
     nonce[11] ^= pn;
 
     ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
@@ -731,7 +731,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     if (pkt->level == ssl_encryption_handshake
         || pkt->level == ssl_encryption_application)
     {
-        nonce[11] ^= *pkt->number;
+        nonce[11] ^= pkt->number;
     }
 
     ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);

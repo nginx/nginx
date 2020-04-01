@@ -232,7 +232,7 @@ typedef struct {
     ngx_log_t                                  *log;
 
     struct ngx_quic_secret_s                   *secret;
-    ngx_uint_t                                 *number;
+    uint64_t                                    number;
     uint8_t                                     flags;
     uint32_t                                    version;
     ngx_str_t                                   token;

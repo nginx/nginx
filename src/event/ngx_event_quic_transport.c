@@ -366,7 +366,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
 
     *pnp = p;
 
-    *p++ = (uint64_t) (*pkt->number);
+    *p++ = pkt->number; // XXX: uint64
 
     return p - start;
 }
@@ -386,7 +386,7 @@ ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
 
     *pnp = p;
 
-    *p++ = (*pkt->number);
+    *p++ = pkt->number; // XXX: uint64
 
     return p - start;
 }
