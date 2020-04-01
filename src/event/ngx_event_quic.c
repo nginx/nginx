@@ -508,6 +508,11 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
                        sslerr);
+
+        if (sslerr != SSL_ERROR_WANT_READ) {
+            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
+            return NGX_ERROR;
+        }
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1050,8 +1055,9 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
                        sslerr);
 
-        if (sslerr == SSL_ERROR_SSL) {
+        if (sslerr != SSL_ERROR_WANT_READ) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
+            return NGX_ERROR;
         }
 
     } else if (n == 1) {
