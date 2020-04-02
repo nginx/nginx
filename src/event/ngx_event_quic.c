@@ -1764,19 +1764,15 @@ static void
 ngx_quic_push_handler(ngx_event_t *ev)
 {
     ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "push timer");
 
     c = ev->data;
-    qc = c->quic;
 
     if (ngx_quic_output(c) != NGX_OK) {
         ngx_quic_close_connection(c);
         return;
     }
-
-    ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
 }
 
 
