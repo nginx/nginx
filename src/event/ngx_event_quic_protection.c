@@ -37,6 +37,7 @@ static ngx_int_t ngx_hkdf_extract(u_char *out_key, size_t *out_len,
     const u_char *salt, size_t salt_len);
 
 static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask);
+static void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
 static ngx_int_t ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn,
     ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
 
@@ -654,7 +655,6 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_str_t *res)
 {
     u_char              *pnp, *sample;
-    uint64_t             pn;
     ngx_str_t            ad, out;
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[12], mask[16];
@@ -673,8 +673,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
-    pn = pkt->number;
-    nonce[11] ^= pn;
+    ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
     ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
     ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
@@ -728,11 +727,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
-    if (pkt->level == ssl_encryption_handshake
-        || pkt->level == ssl_encryption_application)
-    {
-        nonce[11] ^= pkt->number;
-    }
+    ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
     ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
     ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
@@ -786,6 +781,16 @@ ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask)
 
     *pos = p;
     return value;
+}
+
+
+static void
+ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
+{
+    nonce[len - 4] ^= pn & 0xff000000;
+    nonce[len - 3] ^= pn & 0x00ff0000;
+    nonce[len - 2] ^= pn & 0x0000ff00;
+    nonce[len - 1] ^= pn & 0x000000ff;
 }
 
 
@@ -875,7 +880,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn)
     } while (--pnl);
 
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
-    nonce[11] ^= pn;
+    ngx_quic_compute_nonce(nonce, sizeof(nonce), pn);
 
     ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
     ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
