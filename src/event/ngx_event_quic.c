@@ -1657,6 +1657,10 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
             return NGX_ERROR;
         }
 
+        if (f->need_ack) {
+            pkt.need_ack = 1;
+        }
+
         p += len;
         f->pnum = ns->pnum;
     }
