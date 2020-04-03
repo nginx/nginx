@@ -656,6 +656,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 {
     u_char              *pnp, *sample;
     ngx_str_t            ad, out;
+    ngx_uint_t           i;
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[12], mask[16];
 
@@ -685,7 +686,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         return NGX_ERROR;
     }
 
-    sample = &out.data[3]; // pnl=0
+    sample = &out.data[4 - pkt->num_len];
     if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
         != NGX_OK)
     {
@@ -696,9 +697,12 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump0(pkt->log, "mask", mask, 16);
     ngx_quic_hexdump0(pkt->log, "hp_key", pkt->secret->hp.data, 16);
 
-    // header protection, pnl = 0
+    /* quic-tls: 5.4.1.  Header Protection Application */
     ad.data[0] ^= mask[0] & 0x0f;
-    *pnp ^= mask[1];
+
+    for (i = 0; i < pkt->num_len; i++) {
+        pnp[i] ^= mask[i + 1];
+    }
 
     res->len = ad.len + out.len;
 
@@ -712,6 +716,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 {
     u_char              *pnp, *sample;
     ngx_str_t            ad, out;
+    ngx_uint_t           i;
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[12], mask[16];
 
@@ -743,7 +748,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
     ngx_quic_hexdump0(pkt->log, "out", out.data, out.len);
 
-    sample = &out.data[3]; // pnl=0
+    sample = &out.data[4 - pkt->num_len];
     if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
         != NGX_OK)
     {
@@ -754,9 +759,12 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump0(pkt->log, "mask", mask, 16);
     ngx_quic_hexdump0(pkt->log, "hp_key", pkt->secret->hp.data, 16);
 
-    // header protection, pnl = 0
+    /* quic-tls: 5.4.1.  Header Protection Application */
     ad.data[0] ^= mask[0] & 0x1f;
-    *pnp ^= mask[1];
+
+    for (i = 0; i < pkt->num_len; i++) {
+        pnp[i] ^= mask[i + 1];
+    }
 
     res->len = ad.len + out.len;
 

@@ -48,7 +48,7 @@ typedef struct {
     ngx_quic_secret_t                 server_secret;
 
     uint64_t                          pnum;
-    uint64_t                          largest;
+    uint64_t                          largest; /* number received from peer */
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
@@ -150,6 +150,9 @@ static ngx_int_t ngx_quic_output_ns(ngx_connection_t *c,
     ngx_quic_namespace_t *ns, ngx_uint_t nsi);
 static void ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames);
 static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames);
+
+static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
+    ngx_quic_namespace_t *ns);
 static void ngx_quic_retransmit_handler(ngx_event_t *ev);
 static ngx_int_t ngx_quic_retransmit_ns(ngx_connection_t *c,
     ngx_quic_namespace_t *ns, ngx_msec_t *waitp);
@@ -1235,7 +1238,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         if (ack->largest <= ns->pnum) {
             /* duplicate ACK or ACK for non-ack-eliciting frame */
-            return NGX_OK;
+            goto done;
         }
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1244,9 +1247,13 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
+done:
+
     /* 13.2.3.  Receiver Tracking of ACK Frames */
     if (ns->largest < ack->largest) {
-        ack->largest = ns->largest;
+        ns->largest = ack->largest;
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "updated largest received: %ui", ns->largest);
     }
 
     return NGX_OK;
@@ -1740,7 +1747,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     keys = &c->quic->keys[start->level];
 
     pkt.secret = &keys->server;
-    pkt.number = ns->pnum;
 
     if (start->level == ssl_encryption_initial) {
         pkt.flags = NGX_QUIC_PKT_INITIAL;
@@ -1748,7 +1754,12 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
     } else if (start->level == ssl_encryption_handshake) {
         pkt.flags = NGX_QUIC_PKT_HANDSHAKE;
+
+    } else {
+        pkt.flags = 0x40; // TODO: macro, set FIXED bit
     }
+
+    ngx_quic_set_packet_number(&pkt, ns);
 
     pkt.log = c->log;
     pkt.level = start->level;
@@ -1776,6 +1787,36 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     start->last = now;
 
     return pkt.need_ack ? NGX_OK : NGX_DONE;
+}
+
+
+static void
+ngx_quic_set_packet_number(ngx_quic_header_t *pkt, ngx_quic_namespace_t *ns)
+{
+    uint64_t  delta;
+
+    delta = ns->pnum - ns->largest;
+    pkt->number = ns->pnum;
+
+    if (delta <= 0x7F) {
+        pkt->num_len = 1;
+        pkt->trunc = ns->pnum & 0xff;
+
+    } else if (delta <= 0x7FFF) {
+        pkt->num_len = 2;
+        pkt->flags |= 0x1;
+        pkt->trunc = ns->pnum & 0xffff;
+
+    } else if (delta <= 0x7FFFFF) {
+        pkt->num_len = 3;
+        pkt->flags |= 0x2;
+        pkt->trunc = ns->pnum & 0xffffff;
+
+    } else {
+        pkt->num_len = 4;
+        pkt->flags |= 0x3;
+        pkt->trunc = ns->pnum & 0xffffffff;
+    }
 }
 
 

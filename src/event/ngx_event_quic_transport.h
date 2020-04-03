@@ -238,6 +238,8 @@ typedef struct {
 
     struct ngx_quic_secret_s                   *secret;
     uint64_t                                    number;
+    uint8_t                                     num_len;
+    uint32_t                                    trunc;
     uint8_t                                     flags;
     uint32_t                                    version;
     ngx_str_t                                   token;

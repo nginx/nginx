@@ -37,6 +37,11 @@
 
 #endif
 
+#define ngx_quic_write_uint24(p, s)                                           \
+    ((p)[0] = (u_char) ((s) >> 16),                                           \
+     (p)[1] = (u_char) ((s) >> 8),                                            \
+     (p)[2] = (u_char)  (s),                                                  \
+     (p) + 3)
 
 #define ngx_quic_write_uint16_aligned(p, s)                                   \
     (*(uint16_t *) (p) = htons((uint16_t) (s)), (p) + sizeof(uint16_t))
@@ -362,11 +367,24 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
         ngx_quic_build_int(&p, pkt->token.len);
     }
 
-    ngx_quic_build_int(&p, pkt_len + 1); // length (inc. pnl)
+    ngx_quic_build_int(&p, pkt_len + pkt->num_len);
 
     *pnp = p;
 
-    *p++ = pkt->number; // XXX: uint64
+    switch (pkt->num_len) {
+    case 1:
+        *p++ = pkt->trunc;
+        break;
+    case 2:
+        p = ngx_quic_write_uint16(p, pkt->trunc);
+        break;
+    case 3:
+        p = ngx_quic_write_uint24(p, pkt->trunc);
+        break;
+    case 4:
+        p = ngx_quic_write_uint32(p, pkt->trunc);
+        break;
+    }
 
     return p - start;
 }
@@ -380,13 +398,26 @@ ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
 
     p = start = out;
 
-    *p++ = 0x40;
+    *p++ = pkt->flags;
 
     p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
 
     *pnp = p;
 
-    *p++ = pkt->number; // XXX: uint64
+    switch (pkt->num_len) {
+    case 1:
+        *p++ = pkt->trunc;
+        break;
+    case 2:
+        p = ngx_quic_write_uint16(p, pkt->trunc);
+        break;
+    case 3:
+        p = ngx_quic_write_uint24(p, pkt->trunc);
+        break;
+    case 4:
+        p = ngx_quic_write_uint32(p, pkt->trunc);
+        break;
+    }
 
     return p - start;
 }
