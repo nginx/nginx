@@ -1574,7 +1574,7 @@ ngx_quic_output(ngx_connection_t *c)
     }
 
     if (!qc->retry.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->retry, qc->tp.max_ack_delay * 1000);
+        ngx_add_timer(&qc->retry, qc->tp.max_ack_delay);
     }
 
     return NGX_OK;
