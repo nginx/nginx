@@ -787,10 +787,10 @@ ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask)
 static void
 ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
 {
-    nonce[len - 4] ^= pn & 0xff000000;
-    nonce[len - 3] ^= pn & 0x00ff0000;
-    nonce[len - 2] ^= pn & 0x0000ff00;
-    nonce[len - 1] ^= pn & 0x000000ff;
+    nonce[len - 4] ^= (pn & 0xff000000) >> 24;
+    nonce[len - 3] ^= (pn & 0x00ff0000) >> 16;
+    nonce[len - 2] ^= (pn & 0x0000ff00) >> 8;
+    nonce[len - 1] ^= (pn & 0x000000ff);
 }
 
 
