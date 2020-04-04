@@ -704,6 +704,7 @@ ngx_quic_close_connection(ngx_connection_t *c)
     qc = c->quic;
 
     if (qc) {
+        qc->closing = 1;
         tree = &qc->streams.tree;
 
         if (tree->root != tree->sentinel) {
@@ -727,6 +728,10 @@ ngx_quic_close_connection(ngx_connection_t *c)
 
                 ngx_post_event(rev, &ngx_posted_events);
 
+                if (rev->timer_set) {
+                    ngx_del_timer(rev);
+                }
+
 #if (NGX_DEBUG)
                 ns++;
 #endif
@@ -735,7 +740,6 @@ ngx_quic_close_connection(ngx_connection_t *c)
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic connection has %ui active streams", ns);
 
-            qc->closing = 1;
             return;
         }
 
@@ -1622,7 +1626,7 @@ ngx_quic_output(ngx_connection_t *c)
         }
     }
 
-    if (!qc->send_timer_set) {
+    if (!qc->send_timer_set && !qc->closing) {
         qc->send_timer_set = 1;
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
