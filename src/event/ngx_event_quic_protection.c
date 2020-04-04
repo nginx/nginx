@@ -698,8 +698,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
-    ngx_quic_hexdump0(pkt->log, "mask", mask, 16);
-    ngx_quic_hexdump0(pkt->log, "hp_key", pkt->secret->hp.data, 16);
+    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
 
     /* quic-tls: 5.4.1.  Header Protection Application */
     ad.data[0] ^= mask[0] & 0x0f;
@@ -729,6 +728,8 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ad.data = res->data;
     ad.len = ngx_quic_create_short_header(pkt, ad.data, out.len, &pnp);
 
+    out.data = res->data + ad.len;
+
     ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
 
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
@@ -745,16 +746,12 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
     ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
 
-    out.data = res->data + ad.len;
-
-    if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out, nonce, &pkt->payload,
-                          &ad, pkt->log)
+    if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out,
+                          nonce, &pkt->payload, &ad, pkt->log)
         != NGX_OK)
     {
         return NGX_ERROR;
     }
-
-    ngx_quic_hexdump0(pkt->log, "out", out.data, out.len);
 
     sample = &out.data[4 - pkt->num_len];
     if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
@@ -764,8 +761,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
-    ngx_quic_hexdump0(pkt->log, "mask", mask, 16);
-    ngx_quic_hexdump0(pkt->log, "hp_key", pkt->secret->hp.data, 16);
+    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
 
     /* quic-tls: 5.4.1.  Header Protection Application */
     ad.data[0] ^= mask[0] & 0x1f;
@@ -775,8 +771,6 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     res->len = ad.len + out.len;
-
-    ngx_quic_hexdump0(pkt->log, "packet", res->data, res->len);
 
     return NGX_OK;
 }
