@@ -673,6 +673,10 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         return NGX_ERROR;
     }
 
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "ngx_quic_create_long_packet: number %L, encoded %d:0x%xD",
+                   pkt->number, (int) pkt->num_len, pkt->trunc);
+
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
@@ -730,6 +734,10 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "ngx_quic_create_short_packet: number %L, encoded %d:0x%xD",
+                   pkt->number, (int) pkt->num_len, pkt->trunc);
 
     ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
