@@ -62,13 +62,19 @@ static ngx_int_t
 ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn, ngx_quic_ciphers_t *ciphers,
     enum ssl_encryption_level_t level)
 {
-    ngx_int_t  id, len;
+    ngx_int_t          id, len;
+    const SSL_CIPHER  *cipher;
 
     if (level == ssl_encryption_initial) {
         id = NGX_AES_128_GCM_SHA256;
 
     } else {
-        id = SSL_CIPHER_get_id(SSL_get_current_cipher(ssl_conn)) & 0xffff;
+        cipher = SSL_get_current_cipher(ssl_conn);
+        if (cipher == NULL) {
+            return NGX_ERROR;
+        }
+
+        id = SSL_CIPHER_get_id(cipher) & 0xffff;
     }
 
     switch (id) {
