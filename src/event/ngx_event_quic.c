@@ -531,6 +531,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
+    if (pkt->pn != 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "invalid initial packet number %L", pkt->pn);
+        return NGX_ERROR;
+    }
+
     if (ngx_quic_init_connection(c) != NGX_OK) {
         return NGX_ERROR;
     }
