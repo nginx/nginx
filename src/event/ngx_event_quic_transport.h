@@ -102,8 +102,11 @@ typedef struct {
     uint64_t                                    delay;
     uint64_t                                    range_count;
     uint64_t                                    first_range;
-    uint64_t                                    ranges[20];
-    /* TODO: ecn counts */
+    uint64_t                                    ect0;
+    uint64_t                                    ect1;
+    uint64_t                                    ce;
+    u_char                                      *ranges_start;
+    u_char                                      *ranges_end;
 } ngx_quic_ack_frame_t;
 
 
@@ -283,6 +286,9 @@ ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f);
+
+ssize_t ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start,
+    u_char *end, uint64_t *gap, uint64_t *range);
 
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, ngx_log_t *log);

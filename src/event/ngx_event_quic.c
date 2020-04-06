@@ -134,6 +134,8 @@ static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
 
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_ack_frame_t *f);
+static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
+    ngx_quic_namespace_t *ns, uint64_t min, uint64_t max);
 static ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_crypto_frame_t *frame);
 static ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
@@ -1242,9 +1244,10 @@ static ngx_int_t
 ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_ack_frame_t *ack)
 {
-    ngx_uint_t             found, min;
-    ngx_queue_t           *q, range;
-    ngx_quic_frame_t      *f;
+    ssize_t                n;
+    u_char                *pos, *end;
+    uint64_t               gap, range;
+    ngx_uint_t             i, min, max;
     ngx_quic_namespace_t  *ns;
 
     ns = &c->quic->ns[ngx_quic_ns(pkt->level)];
@@ -1253,6 +1256,12 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
                    "ngx_quic_handle_ack_frame in namespace %d",
                    ngx_quic_ns(pkt->level));
 
+    /*
+     * TODO: If any computed packet number is negative, an endpoint MUST
+     *       generate a connection error of type FRAME_ENCODING_ERROR.
+     *       (19.3.1)
+     */
+
     if (ack->first_range > ack->largest) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "invalid first range in ack frame");
@@ -1260,6 +1269,62 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     min = ack->largest - ack->first_range;
+    max = ack->largest;
+
+    if (ngx_quic_handle_ack_frame_range(c, ns, min, max) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    /* 13.2.3.  Receiver Tracking of ACK Frames */
+    if (ns->largest < max) {
+        ns->largest = max;
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "updated largest received: %ui", max);
+    }
+
+    pos = ack->ranges_start;
+    end = ack->ranges_end;
+
+    for (i = 0; i < ack->range_count; i++) {
+
+        n = ngx_quic_parse_ack_range(pkt, pos, end, &gap, &range);
+        if (n == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+        pos += n;
+
+        if (gap >= min) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                         "invalid range %ui in ack frame", i);
+            return NGX_ERROR;
+        }
+
+        max = min - 1 - gap;
+
+        if (range > max + 1) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                         "invalid range %ui in ack frame", i);
+            return NGX_ERROR;
+        }
+
+        min = max - range + 1;
+
+        if (ngx_quic_handle_ack_frame_range(c, ns, min, max) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_namespace_t *ns,
+    uint64_t min, uint64_t max)
+{
+    ngx_uint_t         found;
+    ngx_queue_t       *q, range;
+    ngx_quic_frame_t  *f;
 
     found = 0;
 
@@ -1271,7 +1336,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (f->pnum >= min && f->pnum <= ack->largest) {
+        if (f->pnum >= min && f->pnum <= max) {
             q = ngx_queue_next(q);
             ngx_queue_remove(&f->queue);
             ngx_quic_free_frame(c, f);
@@ -1284,24 +1349,15 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     if (!found) {
 
-        if (ack->largest <= ns->pnum) {
+        if (max <= ns->pnum) {
             /* duplicate ACK or ACK for non-ack-eliciting frame */
-            goto done;
+            return NGX_OK;
         }
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "ACK for the packet not in sent queue ");
         // TODO: handle error properly: PROTOCOL VIOLATION?
         return NGX_ERROR;
-    }
-
-done:
-
-    /* 13.2.3.  Receiver Tracking of ACK Frames */
-    if (ns->largest < ack->largest) {
-        ns->largest = ack->largest;
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "updated largest received: %ui", ns->largest);
     }
 
     return NGX_OK;

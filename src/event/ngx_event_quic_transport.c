@@ -561,9 +561,10 @@ ssize_t
 ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *f)
 {
-    u_char    *p;
-    uint8_t    flags;
-    uint64_t   varint;
+    u_char      *p;
+    uint8_t      flags;
+    uint64_t     varint;
+    ngx_uint_t   i;
 
     flags = pkt->flags;
     p = start;
@@ -641,21 +642,19 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             return NGX_ERROR;
         }
 
-        if (f->u.ack.range_count) {
-            p = ngx_quic_parse_int(p, end, &f->u.ack.ranges[0]);
+        f->u.ack.ranges_start = p;
+
+        /* process all ranges to get bounds, values are ignored */
+        for (i = 0; i < f->u.ack.range_count; i++) {
+            p = ngx_quic_parse_int_multi(p, end, &varint, &varint, NULL);
             if (p == NULL) {
                 ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                              "failed to parse ack frame first range");
+                              "failed to parse ack frame range %ui", i);
                 return NGX_ERROR;
             }
         }
 
-        if (f->type == NGX_QUIC_FT_ACK_ECN) {
-            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "TODO: parse ECN ack frames");
-            /* TODO: add parsing of such frames */
-            return NGX_ERROR;
-        }
+        f->u.ack.ranges_end = p;
 
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                        "ACK: { largest=%ui delay=%ui count=%ui first=%ui}",
@@ -663,6 +662,21 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.ack.delay,
                        f->u.ack.range_count,
                        f->u.ack.first_range);
+
+        if (f->type == NGX_QUIC_FT_ACK_ECN) {
+
+            p = ngx_quic_parse_int_multi(p, end, &f->u.ack.ect0,
+                                         &f->u.ack.ect1, &f->u.ack.ce, NULL);
+            if (p == NULL) {
+                ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                              "failed to parse ack frame ECT counts", i);
+                return NGX_ERROR;
+            }
+
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                           "ACK ECN counters: %ui %ui %ui",
+                           f->u.ack.ect0, f->u.ack.ect1, f->u.ack.ce);
+        }
 
         break;
 
@@ -1108,6 +1122,35 @@ not_allowed:
                   f->type, pkt->flags);
 
     return NGX_DECLINED;
+}
+
+
+ssize_t
+ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start, u_char *end,
+    uint64_t *gap, uint64_t *range)
+{
+    u_char  *p;
+
+    p = start;
+
+    p = ngx_quic_parse_int(p, end, gap);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "failed to parse ack frame gap");
+        return NGX_ERROR;
+    }
+
+    p = ngx_quic_parse_int(p, end, range);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "failed to parse ack frame range");
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "ACK range: gap %ui range %ui", *gap, *range);
+
+    return p - start;
 }
 
 
