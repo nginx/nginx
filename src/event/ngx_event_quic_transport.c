@@ -836,7 +836,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                                 &f->u.stream.data);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "failed to parse stream frame data");
+                          "failed to parse stream frame data len=%ui "
+                          "offset=%ui", f->u.stream.length, f->u.stream.offset);
             return NGX_ERROR;
         }
 
