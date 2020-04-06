@@ -870,6 +870,14 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     qc = c->quic;
 
+    keys = &c->quic->keys[ssl_encryption_handshake];
+
+    if (keys->client.key.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "no read keys yet, packet ignored");
+        return NGX_DECLINED;
+    }
+
     /* extract cleartext data into pkt */
     if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
         return NGX_ERROR;
@@ -904,8 +912,6 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    keys = &c->quic->keys[ssl_encryption_handshake];
 
     pkt->secret = &keys->client;
     pkt->level = ssl_encryption_handshake;
