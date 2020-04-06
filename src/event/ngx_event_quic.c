@@ -1117,19 +1117,15 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_PADDING:
+            /* no action required */
             break;
 
         case NGX_QUIC_FT_PING:
             ack_this = 1;
             break;
 
-        case NGX_QUIC_FT_NEW_CONNECTION_ID:
-            ack_this = 1;
-            break;
-
         case NGX_QUIC_FT_CONNECTION_CLOSE:
         case NGX_QUIC_FT_CONNECTION_CLOSE2:
-
             do_close = 1;
             break;
 
@@ -1156,14 +1152,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             ack_this = 1;
             break;
 
-        case NGX_QUIC_FT_RESET_STREAM:
-            /* TODO: handle */
-            break;
-
-        case NGX_QUIC_FT_STOP_SENDING:
-            /* TODO: handle; need ack ? */
-            break;
-
         case NGX_QUIC_FT_STREAMS_BLOCKED:
         case NGX_QUIC_FT_STREAMS_BLOCKED2:
 
@@ -1186,6 +1174,20 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
+            ack_this = 1;
+            break;
+
+        case NGX_QUIC_FT_NEW_CONNECTION_ID:
+        case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+        case NGX_QUIC_FT_NEW_TOKEN:
+        case NGX_QUIC_FT_RESET_STREAM:
+        case NGX_QUIC_FT_STOP_SENDING:
+        case NGX_QUIC_FT_PATH_CHALLENGE:
+        case NGX_QUIC_FT_PATH_RESPONSE:
+
+            /* TODO: handle */
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "frame handler not implemented");
             ack_this = 1;
             break;
 
