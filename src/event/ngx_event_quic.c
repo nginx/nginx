@@ -68,6 +68,7 @@ struct ngx_quic_connection_s {
 
     ngx_quic_namespace_t              ns[NGX_QUIC_NAMESPACE_LAST];
     ngx_quic_secrets_t                keys[NGX_QUIC_ENCRYPTION_LAST];
+    ngx_quic_secrets_t                next_key;
     uint64_t                          crypto_offset[NGX_QUIC_ENCRYPTION_LAST];
 
     ngx_ssl_t                        *ssl;
@@ -88,6 +89,7 @@ struct ngx_quic_connection_s {
 
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
+    unsigned                          key_phase:1;
 };
 
 
@@ -979,7 +981,8 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
-    ngx_quic_secrets_t     *keys;
+    ngx_int_t               rc;
+    ngx_quic_secrets_t     *keys, *next, tmp;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
@@ -988,6 +991,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc = c->quic;
 
     keys = &c->quic->keys[ssl_encryption_application];
+    next = &c->quic->next_key;
 
     if (keys->client.key.len == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1000,6 +1004,8 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     pkt->secret = &keys->client;
+    pkt->next = &next->client;
+    pkt->key_phase = c->quic->key_phase;
     pkt->level = ssl_encryption_application;
     pkt->plaintext = buf;
 
@@ -1007,7 +1013,31 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    return ngx_quic_payload_handler(c, pkt);
+    /* switch keys on Key Phase change */
+
+    if (pkt->key_update) {
+        c->quic->key_phase ^= 1;
+
+        tmp = *keys;
+        *keys = *next;
+        *next = tmp;
+    }
+
+    rc = ngx_quic_payload_handler(c, pkt);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    /* generate next keys */
+
+    if (pkt->key_update) {
+        if (ngx_quic_key_update(c, keys, next) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return rc;
 }
 
 
@@ -1330,6 +1360,18 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         ngx_quic_queue_frame(c->quic, frame);
         }
 #endif
+
+        /*
+         * Generating next keys before a key update is received.
+         * See quic-tls 9.4 Header Protection Timing Side-Channels.
+         */
+
+        if (ngx_quic_key_update(c, &c->quic->keys[ssl_encryption_application],
+                                &c->quic->next_key)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1756,7 +1798,8 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
         pkt.flags = NGX_QUIC_PKT_HANDSHAKE;
 
     } else {
-        pkt.flags = 0x40; // TODO: macro, set FIXED bit
+        // TODO: macro, set FIXED bit
+        pkt.flags = 0x40 | (c->quic->key_phase ? NGX_QUIC_PKT_KPHASE : 0);
     }
 
     ngx_quic_set_packet_number(&pkt, ns);

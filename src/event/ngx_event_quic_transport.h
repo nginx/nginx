@@ -19,6 +19,7 @@
 #define NGX_QUIC_PKT_ZRTT                                0xD0 /* 17.2.3 */
 #define NGX_QUIC_PKT_HANDSHAKE                           0xE0 /* 17.2.4 */
 #define NGX_QUIC_PKT_RETRY                               0xF0 /* 17.2.5 */
+#define NGX_QUIC_PKT_KPHASE                              0x04 /* 17.3   */
 
 #define ngx_quic_pkt_in(flags)     (((flags) & 0xF0) == NGX_QUIC_PKT_INITIAL)
 #define ngx_quic_pkt_zrtt(flags)   (((flags) & 0xF0) == NGX_QUIC_PKT_ZRTT)
@@ -237,6 +238,7 @@ typedef struct {
     ngx_log_t                                  *log;
 
     struct ngx_quic_secret_s                   *secret;
+    struct ngx_quic_secret_s                   *next;
     uint64_t                                    number;
     uint8_t                                     num_len;
     uint32_t                                    trunc;
@@ -258,8 +260,9 @@ typedef struct {
     u_char                                     *plaintext;
     ngx_str_t                                   payload; /* decrypted data */
 
-    ngx_uint_t                                  need_ack;
-                                                   /* unsigned need_ack:1; */
+    unsigned                                    need_ack:1;
+    unsigned                                    key_phase:1;
+    unsigned                                    key_update:1;
 } ngx_quic_header_t;
 
 
