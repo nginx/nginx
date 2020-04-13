@@ -265,7 +265,8 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
     }
 
     if (ctx->size) {
-        return NGX_OK;
+        ctx->length = ctx->size + 1;
+        return (b->pos == b->last) ? NGX_AGAIN : NGX_OK;
     }
 
     while (b->pos < b->last) {
