@@ -161,7 +161,7 @@ static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
 
 static ngx_int_t ngx_quic_output(ngx_connection_t *c);
 static ngx_int_t ngx_quic_output_frames(ngx_connection_t *c,
-    ngx_quic_send_ctx_t *ctx, ngx_uint_t nsi);
+    ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames);
 static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames);
 
@@ -1693,7 +1693,7 @@ ngx_quic_output(ngx_connection_t *c)
     qc = c->quic;
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-        if (ngx_quic_output_frames(c, &qc->send_ctx[i], i) != NGX_OK) {
+        if (ngx_quic_output_frames(c, &qc->send_ctx[i]) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -1712,8 +1712,7 @@ ngx_quic_output(ngx_connection_t *c)
 
 
 static ngx_int_t
-ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    ngx_uint_t nsi)
+ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
     size_t                  len, hlen, n;
     ngx_int_t               rc;
@@ -1727,12 +1726,13 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         return NGX_OK;
     }
 
-    hlen = (nsi == 2) ? NGX_QUIC_MAX_SHORT_HEADER
-                      : NGX_QUIC_MAX_LONG_HEADER;
-
-    hlen += EVP_GCM_TLS_TAG_LEN;
-
     q = ngx_queue_head(&ctx->frames);
+    f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+    /* all frames in same send_ctx share same level */
+    hlen = (f->level == ssl_encryption_application) ? NGX_QUIC_MAX_SHORT_HEADER
+                                                    : NGX_QUIC_MAX_LONG_HEADER;
+    hlen += EVP_GCM_TLS_TAG_LEN;
 
     do {
         len = 0;
