@@ -111,13 +111,6 @@ typedef struct {
 
 
 typedef struct {
-    uint64_t                                    offset;
-    uint64_t                                    len;
-    u_char                                     *data;
-} ngx_quic_crypto_frame_t;
-
-
-typedef struct {
     uint64_t                                    seqnum;
     uint64_t                                    retire;
     uint8_t                                     len;
@@ -126,15 +119,31 @@ typedef struct {
 } ngx_quic_new_conn_id_frame_t;
 
 
+/*
+ * common layout for CRYPTO and STREAM frames;
+ * conceptually, CRYPTO frame is also a stream
+ * frame lacking some properties
+ */
 typedef struct {
-    uint8_t                                     type;
-    uint64_t                                    stream_id;
     uint64_t                                    offset;
     uint64_t                                    length;
+    u_char                                     *data;
+} ngx_quic_ordered_frame_t;
+
+typedef ngx_quic_ordered_frame_t  ngx_quic_crypto_frame_t;
+
+
+typedef struct {
+    /* initial fields same as in ngx_quic_ordered_frame_t */
+    uint64_t                                    offset;
+    uint64_t                                    length;
+    u_char                                     *data;
+
+    uint8_t                                     type;
+    uint64_t                                    stream_id;
     unsigned                                    off:1;
     unsigned                                    len:1;
     unsigned                                    fin:1;
-    u_char                                     *data;
 } ngx_quic_stream_frame_t;
 
 
@@ -218,6 +227,7 @@ struct ngx_quic_frame_s {
     union {
         ngx_quic_ack_frame_t                    ack;
         ngx_quic_crypto_frame_t                 crypto;
+        ngx_quic_ordered_frame_t                ord;
         ngx_quic_new_conn_id_frame_t            ncid;
         ngx_quic_stream_frame_t                 stream;
         ngx_quic_max_data_frame_t               max_data;

@@ -593,14 +593,14 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             return NGX_ERROR;
         }
 
-        p = ngx_quic_parse_int(p, end, &f->u.crypto.len);
+        p = ngx_quic_parse_int(p, end, &f->u.crypto.length);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                           "failed to parse crypto frame len");
             return NGX_ERROR;
         }
 
-        p = ngx_quic_read_bytes(p, end, f->u.crypto.len, &f->u.crypto.data);
+        p = ngx_quic_read_bytes(p, end, f->u.crypto.length, &f->u.crypto.data);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                           "failed to parse crypto frame data");
@@ -609,11 +609,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                        "quic CRYPTO frame length: %uL off:%uL pp:%p",
-                       f->u.crypto.len, f->u.crypto.offset,
+                       f->u.crypto.length, f->u.crypto.offset,
                        f->u.crypto.data);
 
         ngx_quic_hexdump0(pkt->log, "CRYPTO frame contents",
-                          f->u.crypto.data, f->u.crypto.len);
+                          f->u.crypto.data, f->u.crypto.length);
         break;
 
     case NGX_QUIC_FT_PADDING:
@@ -1242,8 +1242,8 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_CRYPTO);
         len += ngx_quic_varint_len(crypto->offset);
-        len += ngx_quic_varint_len(crypto->len);
-        len += crypto->len;
+        len += ngx_quic_varint_len(crypto->length);
+        len += crypto->length;
 
         return len;
     }
@@ -1252,8 +1252,8 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_CRYPTO);
     ngx_quic_build_int(&p, crypto->offset);
-    ngx_quic_build_int(&p, crypto->len);
-    p = ngx_cpymem(p, crypto->data, crypto->len);
+    ngx_quic_build_int(&p, crypto->length);
+    p = ngx_cpymem(p, crypto->data, crypto->length);
 
     return p - start;
 }
