@@ -367,6 +367,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_msec_t    lingering_time;          /* lingering_time */
     ngx_msec_t    lingering_timeout;       /* lingering_timeout */
     ngx_msec_t    resolver_timeout;        /* resolver_timeout */
+    ngx_msec_t    auth_delay;              /* auth_delay */
 
     ngx_resolver_t  *resolver;             /* resolver */
 
