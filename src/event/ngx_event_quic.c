@@ -108,6 +108,10 @@ struct ngx_quic_connection_s {
 };
 
 
+typedef ngx_int_t (*ngx_quic_frame_handler_pt)(ngx_connection_t *c,
+    ngx_quic_frame_t *frame);
+
+
 #if BORINGSSL_API_VERSION >= 10
 static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
@@ -151,20 +155,17 @@ static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_ack_frame_t *f);
 static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t min, uint64_t max);
-static ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
+
+static ngx_int_t ngx_quic_handle_ordered_frame(ngx_connection_t *c,
+    ngx_quic_frames_stream_t *fs, ngx_quic_frame_t *frame,
+    ngx_quic_frame_handler_pt handler);
 static ngx_int_t ngx_quic_adjust_frame_offset(ngx_connection_t *c,
     ngx_quic_frame_t *f, uint64_t offset_in);
 static ngx_int_t ngx_quic_buffer_frame(ngx_connection_t *c,
     ngx_quic_frames_stream_t *stream, ngx_quic_frame_t *f);
 
-typedef ngx_int_t (*ngx_quic_frame_handler_pt)(ngx_connection_t *c,
-    ngx_quic_frame_t *frame);
-
-static ngx_int_t ngx_quic_handle_ordered_frame(ngx_connection_t *c,
-    ngx_quic_frames_stream_t *fs, ngx_quic_frame_t *frame,
-    ngx_quic_frame_handler_pt handler);
-
+static ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c,
     ngx_quic_frame_t *frame);
 static ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
@@ -1421,20 +1422,6 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
 
 static ngx_int_t
-ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
-    ngx_quic_frame_t *frame)
-{
-    ngx_quic_connection_t     *qc;
-    ngx_quic_frames_stream_t  *fs;
-
-    qc = c->quic;
-    fs = &qc->crypto[pkt->level];
-
-    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input);
-}
-
-
-static ngx_int_t
 ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     ngx_quic_frame_t *frame, ngx_quic_frame_handler_pt handler)
 {
@@ -1641,6 +1628,20 @@ ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     ngx_queue_insert_after(&fs->frames, &dst->queue);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
+    ngx_quic_frame_t *frame)
+{
+    ngx_quic_connection_t     *qc;
+    ngx_quic_frames_stream_t  *fs;
+
+    qc = c->quic;
+    fs = &qc->crypto[pkt->level];
+
+    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input);
 }
 
 
