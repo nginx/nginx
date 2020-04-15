@@ -750,10 +750,6 @@ ngx_quic_close_connection(ngx_connection_t *c)
 
     if (qc) {
 
-        for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
-            ngx_quic_free_frames(c, &qc->crypto[i].frames);
-        }
-
         qc->closing = 1;
         tree = &qc->streams.tree;
 
@@ -791,6 +787,15 @@ ngx_quic_close_connection(ngx_connection_t *c)
                            "quic connection has %ui active streams", ns);
 
             return;
+        }
+
+        for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
+            ngx_quic_free_frames(c, &qc->crypto[i].frames);
+        }
+
+        for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+            ngx_quic_free_frames(c, &qc->send_ctx[i].frames);
+            ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
         }
 
         if (qc->push.timer_set) {
