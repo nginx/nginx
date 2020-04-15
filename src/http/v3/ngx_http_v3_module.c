@@ -266,18 +266,20 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_data,
-                              prev->quic.initial_max_data, 10000000);
+                              prev->quic.initial_max_data,
+                              16 * NGX_QUIC_STREAM_BUFSIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_stream_data_bidi_local,
                               prev->quic.initial_max_stream_data_bidi_local,
-                              255);
+                              NGX_QUIC_STREAM_BUFSIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_stream_data_bidi_remote,
                               prev->quic.initial_max_stream_data_bidi_remote,
-                              255);
+                              NGX_QUIC_STREAM_BUFSIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_stream_data_uni,
-                              prev->quic.initial_max_stream_data_uni, 255);
+                              prev->quic.initial_max_stream_data_uni,
+                              NGX_QUIC_STREAM_BUFSIZE);
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_streams_bidi,
                               prev->quic.initial_max_streams_bidi, 16);
