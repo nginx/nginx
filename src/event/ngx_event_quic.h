@@ -29,33 +29,42 @@
 
 typedef struct {
     /* configurable */
-    ngx_msec_t          max_idle_timeout;
-    ngx_msec_t          max_ack_delay;
+    ngx_msec_t                 max_idle_timeout;
+    ngx_msec_t                 max_ack_delay;
 
-    ngx_uint_t          max_packet_size;
-    ngx_uint_t          initial_max_data;
-    ngx_uint_t          initial_max_stream_data_bidi_local;
-    ngx_uint_t          initial_max_stream_data_bidi_remote;
-    ngx_uint_t          initial_max_stream_data_uni;
-    ngx_uint_t          initial_max_streams_bidi;
-    ngx_uint_t          initial_max_streams_uni;
-    ngx_uint_t          ack_delay_exponent;
-    ngx_uint_t          disable_active_migration;
-    ngx_uint_t          active_connection_id_limit;
+    ngx_uint_t                 max_packet_size;
+    ngx_uint_t                 initial_max_data;
+    ngx_uint_t                 initial_max_stream_data_bidi_local;
+    ngx_uint_t                 initial_max_stream_data_bidi_remote;
+    ngx_uint_t                 initial_max_stream_data_uni;
+    ngx_uint_t                 initial_max_streams_bidi;
+    ngx_uint_t                 initial_max_streams_uni;
+    ngx_uint_t                 ack_delay_exponent;
+    ngx_uint_t                 disable_active_migration;
+    ngx_uint_t                 active_connection_id_limit;
 
     /* TODO */
-    ngx_uint_t          original_connection_id;
-    u_char              stateless_reset_token[16];
-    void               *preferred_address;
+    ngx_uint_t                 original_connection_id;
+    u_char                     stateless_reset_token[16];
+    void                      *preferred_address;
 } ngx_quic_tp_t;
 
 
+typedef struct {
+    uint64_t                   sent;
+    uint64_t                   received;
+    ngx_queue_t                frames;   /* reorder queue */
+    size_t                     total;    /* size of buffered data */
+} ngx_quic_frames_stream_t;
+
+
 struct ngx_quic_stream_s {
-    ngx_rbtree_node_t   node;
-    ngx_connection_t   *parent;
-    ngx_connection_t   *c;
-    uint64_t            id;
-    ngx_buf_t          *b;
+    ngx_rbtree_node_t          node;
+    ngx_connection_t          *parent;
+    ngx_connection_t          *c;
+    uint64_t                   id;
+    ngx_buf_t                 *b;
+    ngx_quic_frames_stream_t   fs;
 };
 
 
