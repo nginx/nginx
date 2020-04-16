@@ -75,6 +75,7 @@
 /* 0xC is not defined */
 #define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED              0x0D
 /* 0xE is not defined */
+/* 0xF is not defined */
 #define NGX_QUIC_ERR_CRYPTO_ERROR                        0x10
 
 #define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR

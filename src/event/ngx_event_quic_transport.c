@@ -99,9 +99,10 @@ static char *ngx_quic_errors[] = {
     "CONNECTION_ID_LIMIT_ERROR",
     "PROTOCOL_VIOLATION",
     "INVALID_TOKEN",
-    "",
+    "unknown error 0xC",
     "CRYPTO_BUFFER_EXCEEDED",
-    "",
+    "unknown error 0xE",
+    "unknown error 0xF",
     "CRYPTO_ERROR",
 };
 
@@ -266,6 +267,11 @@ ngx_quic_build_int(u_char **pos, uint64_t value)
 u_char *
 ngx_quic_error_text(uint64_t error_code)
 {
+
+    if (error_code >= NGX_QUIC_ERR_LAST) {
+        return (u_char *) "unknown error";
+    }
+
     return (u_char *) ngx_quic_errors[error_code];
 }
 
@@ -776,13 +782,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         }
 
         if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
-
-            if (f->u.close.error_code >= NGX_QUIC_ERR_LAST) {
-                ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                              "unkown error code: %ui, truncated",
-                              f->u.close.error_code);
-                f->u.close.error_code = NGX_QUIC_ERR_LAST - 1;
-            }
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                           "CONN.CLOSE: { %s (0x%xi) type=0x%xi reason='%V'}",
