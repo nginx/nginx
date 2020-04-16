@@ -1320,7 +1320,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler level=%d", pkt->pn, ack_frame->level);
     ngx_quic_queue_frame(qc, ack_frame);
 
-    // TODO: call output() after processing some special frames?
     return NGX_OK;
 }
 
