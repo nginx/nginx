@@ -255,15 +255,29 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->quic.max_idle_timeout,
                               prev->quic.max_idle_timeout, 60000);
 
-    // > 2 ^ 14 is invalid
     ngx_conf_merge_msec_value(conf->quic.max_ack_delay,
                               prev->quic.max_ack_delay,
                               NGX_QUIC_DEFAULT_MAX_ACK_DELAY);
 
-    // < 1200 is invalid
+    if (conf->quic.max_ack_delay > 16384) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_max_ack_delay\" greater than"
+                           " 16384 is invalid");
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_uint_value(conf->quic.max_packet_size,
                               prev->quic.max_packet_size,
                               NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
+
+    if (conf->quic.max_packet_size < 1200
+        || conf->quic.max_packet_size > 65527)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_max_packet_size\" less than"
+                           " 1200 or greater than 65527 is invalid");
+        return NGX_CONF_ERROR;
+    }
 
     ngx_conf_merge_uint_value(conf->quic.initial_max_data,
                               prev->quic.initial_max_data,
@@ -287,17 +301,29 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->quic.initial_max_streams_uni,
                               prev->quic.initial_max_streams_uni, 16);
 
-    // > 20 is invalid
     ngx_conf_merge_uint_value(conf->quic.ack_delay_exponent,
                               prev->quic.ack_delay_exponent,
                               NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT);
 
+    if (conf->quic.ack_delay_exponent > 20) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_ack_delay_exponent\" greater than"
+                           " 20 is invalid");
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_uint_value(conf->quic.disable_active_migration,
                               prev->quic.disable_active_migration, 1);
 
-    // < 2 is invalid
     ngx_conf_merge_uint_value(conf->quic.active_connection_id_limit,
                               prev->quic.active_connection_id_limit, 2);
+
+    if (conf->quic.active_connection_id_limit < 2) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_active_connection_id_limit\" less than"
+                           " 2 is invalid");
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 }
