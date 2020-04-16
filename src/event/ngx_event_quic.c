@@ -65,8 +65,9 @@ typedef struct {
     ngx_quic_secret_t                 client_secret;
     ngx_quic_secret_t                 server_secret;
 
-    uint64_t                          pnum;
+    uint64_t                          pnum;        /* packet number to send     */
     uint64_t                          largest_ack; /* number received from peer */
+    uint64_t                          largest_pn;  /* number received from peer */
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
@@ -473,6 +474,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
     ngx_quic_secrets_t     *keys;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
@@ -510,6 +512,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         ngx_queue_init(&qc->send_ctx[i].frames);
         ngx_queue_init(&qc->send_ctx[i].sent);
+        qc->send_ctx[i].largest_pn = (uint64_t) -1;
     }
 
     for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
@@ -574,7 +577,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     pkt->level = ssl_encryption_initial;
     pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(pkt, NULL) != NGX_OK) {
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -907,9 +912,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 static ngx_int_t
 ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
-    ngx_ssl_conn_t      *ssl_conn;
-    ngx_quic_secrets_t  *keys;
-    static u_char        buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    ngx_ssl_conn_t       *ssl_conn;
+    ngx_quic_secrets_t   *keys;
+    ngx_quic_send_ctx_t  *ctx;
+    static u_char         buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     c->log->action = "processing initial quic packet";
 
@@ -929,7 +935,9 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     pkt->level = ssl_encryption_initial;
     pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(pkt, ssl_conn) != NGX_OK) {
+    ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, ssl_conn, &ctx->largest_pn) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -941,6 +949,7 @@ static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_secrets_t     *keys;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
@@ -995,7 +1004,9 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     pkt->level = ssl_encryption_handshake;
     pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1007,6 +1018,7 @@ static ngx_int_t
 ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_quic_secrets_t     *keys;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
@@ -1060,7 +1072,9 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     pkt->level = ssl_encryption_early_data;
     pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1073,6 +1087,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
     ngx_quic_secrets_t     *keys, *next, tmp;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
@@ -1099,7 +1114,9 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     pkt->level = ssl_encryption_application;
     pkt->plaintext = buf;
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection) != NGX_OK) {
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
         return NGX_ERROR;
     }
 

@@ -39,7 +39,8 @@ ngx_int_t ngx_quic_key_update(ngx_connection_t *c,
 ssize_t ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
      ngx_str_t *res);
 
-ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn);
+ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
+     uint64_t *largest_pn);
 
 
 #endif /* _NGX_EVENT_QUIC_PROTECTION_H_INCLUDED_ */

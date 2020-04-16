@@ -36,7 +36,8 @@ static ngx_int_t ngx_hkdf_extract(u_char *out_key, size_t *out_len,
     const EVP_MD *digest, const u_char *secret, size_t secret_len,
     const u_char *salt, size_t salt_len);
 
-static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask);
+static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
+    uint64_t *largest_pn);
 static void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
 static ngx_int_t ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn,
     ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
@@ -870,20 +871,45 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
 
 static uint64_t
-ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask)
+ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
+    uint64_t *largest_pn)
 {
     u_char    *p;
-    uint64_t   value;
+    uint64_t   truncated_pn, expected_pn, candidate_pn;
+    uint64_t   pn_nbits, pn_win, pn_hwin, pn_mask;
+
+    pn_nbits = ngx_min(len * 8, 62);
 
     p = *pos;
-    value = *p++ ^ *mask++;
+    truncated_pn = *p++ ^ *mask++;
 
     while (--len) {
-        value = (value << 8) + (*p++ ^ *mask++);
+        truncated_pn = (truncated_pn << 8) + (*p++ ^ *mask++);
     }
 
     *pos = p;
-    return value;
+
+    expected_pn = *largest_pn + 1;
+    pn_win = 1 << pn_nbits;
+    pn_hwin = pn_win / 2;
+    pn_mask = pn_win - 1;
+
+    candidate_pn = (expected_pn & ~pn_mask) | truncated_pn;
+
+    if ((int64_t) candidate_pn <= (int64_t) (expected_pn - pn_hwin)
+        && candidate_pn < (1ULL << 62) - pn_win)
+    {
+        candidate_pn += pn_win;
+
+    } else if (candidate_pn > expected_pn + pn_hwin
+               && candidate_pn >= pn_win)
+    {
+        candidate_pn -= pn_win;
+    }
+
+    *largest_pn = ngx_max((int64_t) *largest_pn, (int64_t) candidate_pn);
+
+    return candidate_pn;
 }
 
 
@@ -910,7 +936,8 @@ ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
 
 ngx_int_t
-ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn)
+ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
+    uint64_t *largest_pn)
 {
     u_char               clearflags, *p, *sample;
     uint64_t             pn;
@@ -960,7 +987,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn)
     }
 
     pnl = (clearflags & 0x03) + 1;
-    pn = ngx_quic_parse_pn(&p, pnl, &mask[1]);
+    pn = ngx_quic_parse_pn(&p, pnl, &mask[1], largest_pn);
 
     pkt->pn = pn;
 
