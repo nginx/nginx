@@ -2233,8 +2233,8 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
     pkt.log = c->log;
     pkt.level = start->level;
-    pkt.dcid = qc->dcid;
-    pkt.scid = qc->scid;
+    pkt.dcid = qc->scid;
+    pkt.scid = qc->dcid;
     pkt.payload = out;
 
     res.data = dst;
