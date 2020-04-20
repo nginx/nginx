@@ -2779,13 +2779,12 @@ ngx_quic_stream_cleanup_handler(void *data)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic stream cleanup");
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
+    ngx_quic_free_frames(pc, &qs->fs.frames);
 
     if (qc->closing) {
         ngx_post_event(pc->read, &ngx_posted_events);
         return;
     }
-
-    ngx_quic_free_frames(pc, &qs->fs.frames);
 
     if ((qs->id & 0x03) == NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         /* do not send fin for client unidirectional streams */
