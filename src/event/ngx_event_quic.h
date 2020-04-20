@@ -14,12 +14,15 @@
 #define NGX_QUIC_DRAFT_VERSION               27
 #define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
-#define NGX_QUIC_MAX_SHORT_HEADER            25
-#define NGX_QUIC_MAX_LONG_HEADER             346
+#define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
+#define NGX_QUIC_MAX_LONG_HEADER             56
+    /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
 
 #define NGX_QUIC_DEFAULT_MAX_PACKET_SIZE     65527
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
+
+#define NGX_QUIC_MIN_INITIAL_SIZE            1200
 
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
