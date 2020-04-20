@@ -1290,6 +1290,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_STOP_SENDING:
         case NGX_QUIC_FT_PATH_CHALLENGE:
         case NGX_QUIC_FT_PATH_RESPONSE:
+        case NGX_QUIC_FT_MAX_STREAM_DATA:
 
             /* TODO: handle */
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1298,6 +1299,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         default:
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "missing frame handler");
             return NGX_ERROR;
         }
     }
