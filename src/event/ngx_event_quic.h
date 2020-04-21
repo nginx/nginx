@@ -8,7 +8,8 @@
 #define _NGX_EVENT_QUIC_H_INCLUDED_
 
 
-#include <ngx_event_openssl.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 
 
 #define NGX_QUIC_DRAFT_VERSION               27

@@ -8,6 +8,10 @@
 #define _NGX_EVENT_QUIC_PROTECTION_H_INCLUDED_
 
 
+#include <ngx_config.h>
+#include <ngx_core.h>
+
+
 #define NGX_QUIC_ENCRYPTION_LAST  ((ssl_encryption_application) + 1)
 
 

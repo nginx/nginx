@@ -8,7 +8,8 @@
 #define _NGX_EVENT_QUIC_WIRE_H_INCLUDED_
 
 
-#include <ngx_event_openssl.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
 
 
 #define ngx_quic_long_pkt(flags)  ((flags) & 0x80)            /* 17.2   */
