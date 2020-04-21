@@ -2849,8 +2849,9 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in,
             return in;
         }
 
+        b->pos += n;
+
         if (n != (ssize_t) len) {
-            b->pos += n;
             return in;
         }
     }
