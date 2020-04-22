@@ -36,11 +36,11 @@ typedef struct {
     ngx_msec_t                 max_idle_timeout;
     ngx_msec_t                 max_ack_delay;
 
-    ngx_uint_t                 max_packet_size;
-    ngx_uint_t                 initial_max_data;
-    ngx_uint_t                 initial_max_stream_data_bidi_local;
-    ngx_uint_t                 initial_max_stream_data_bidi_remote;
-    ngx_uint_t                 initial_max_stream_data_uni;
+    size_t                     max_packet_size;
+    size_t                     initial_max_data;
+    size_t                     initial_max_stream_data_bidi_local;
+    size_t                     initial_max_stream_data_bidi_remote;
+    size_t                     initial_max_stream_data_uni;
     ngx_uint_t                 initial_max_streams_bidi;
     ngx_uint_t                 initial_max_streams_uni;
     ngx_uint_t                 ack_delay_exponent;
