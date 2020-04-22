@@ -10,6 +10,21 @@
 #include <ngx_http.h>
 
 
+static char *ngx_http_v3_max_ack_delay(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_v3_max_packet_size(ngx_conf_t *cf, void *post,
+    void *data);
+
+
+static ngx_conf_post_t  ngx_http_v3_max_ack_delay_post =
+    { ngx_http_v3_max_ack_delay };
+static ngx_conf_post_t  ngx_http_v3_max_packet_size_post =
+    { ngx_http_v3_max_packet_size };
+static ngx_conf_num_bounds_t  ngx_http_v3_ack_delay_exponent_bounds =
+    { ngx_conf_check_num_bounds, 0, 20 };
+static ngx_conf_num_bounds_t  ngx_http_v3_active_connection_id_limit_bounds =
+    { ngx_conf_check_num_bounds, 2, -1 };
+
+
 static ngx_command_t  ngx_http_v3_commands[] = {
 
     { ngx_string("quic_max_idle_timeout"),
@@ -24,14 +39,14 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.max_ack_delay),
-      NULL },
+      &ngx_http_v3_max_ack_delay_post },
 
     { ngx_string("quic_max_packet_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.max_packet_size),
-      NULL },
+      &ngx_http_v3_max_packet_size_post },
 
     { ngx_string("quic_initial_max_data"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -80,7 +95,7 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       ngx_conf_set_num_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.ack_delay_exponent),
-      NULL },
+      &ngx_http_v3_ack_delay_exponent_bounds },
 
     { ngx_string("quic_active_migration"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -94,7 +109,7 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       ngx_conf_set_num_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.active_connection_id_limit),
-      NULL },
+      &ngx_http_v3_active_connection_id_limit_bounds },
 
       ngx_null_command
 };
@@ -259,25 +274,9 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->quic.max_ack_delay,
                               NGX_QUIC_DEFAULT_MAX_ACK_DELAY);
 
-    if (conf->quic.max_ack_delay > 16384) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_max_ack_delay\" greater than"
-                           " 16384 is invalid");
-        return NGX_CONF_ERROR;
-    }
-
     ngx_conf_merge_size_value(conf->quic.max_packet_size,
                               prev->quic.max_packet_size,
                               NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
-
-    if (conf->quic.max_packet_size < 1200
-        || conf->quic.max_packet_size > 65527)
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_max_packet_size\" less than"
-                           " 1200 or greater than 65527 is invalid");
-        return NGX_CONF_ERROR;
-    }
 
     ngx_conf_merge_size_value(conf->quic.initial_max_data,
                               prev->quic.initial_max_data,
@@ -305,26 +304,47 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->quic.ack_delay_exponent,
                               NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT);
 
-    if (conf->quic.ack_delay_exponent > 20) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_ack_delay_exponent\" greater than"
-                           " 20 is invalid");
-        return NGX_CONF_ERROR;
-    }
-
     ngx_conf_merge_uint_value(conf->quic.disable_active_migration,
                               prev->quic.disable_active_migration, 1);
 
     ngx_conf_merge_uint_value(conf->quic.active_connection_id_limit,
                               prev->quic.active_connection_id_limit, 2);
 
-    if (conf->quic.active_connection_id_limit < 2) {
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_v3_max_ack_delay(ngx_conf_t *cf, void *post, void *data)
+{
+    ngx_msec_t *sp = data;
+
+    if (*sp > 16384) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_active_connection_id_limit\" less than"
-                           " 2 is invalid");
+                           "\"quic_max_ack_delay\" must be less than 16384");
+
         return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
 }
 
+
+static char *
+ngx_http_v3_max_packet_size(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp < NGX_QUIC_MIN_INITIAL_SIZE
+        || *sp > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_max_packet_size\" must be between %d and %d",
+                           NGX_QUIC_MIN_INITIAL_SIZE,
+                           NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
+
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
