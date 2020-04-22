@@ -238,29 +238,23 @@ static void
 ngx_quic_build_int(u_char **pos, uint64_t value)
 {
     u_char      *p;
-    ngx_uint_t   len;//, len2;
+    ngx_uint_t   bits, len;
 
     p = *pos;
-    len = 0;
+    bits = 0;
 
-    while (value >> ((1 << len) * 8 - 2)) {
-        len++;
+    while (value >> ((8 << bits) - 2)) {
+        bits++;
     }
 
-    *p = len << 6;
+    len = (1 << bits);
 
-//    len2 =
-    len = (1 << len);
-    len--;
-    *p |= value >> (len * 8);
-    p++;
-
-    while (len) {
-        *p++ = value >> ((len-- - 1) * 8);
+    while (len--) {
+        *p++ = value >> (len * 8);
     }
 
+    **pos |= bits << 6;
     *pos = p;
-//    return len2;
 }
 
 
