@@ -61,7 +61,6 @@ static u_char *ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
-/*static*/ u_char *ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value); // usage depends on NGX_QUIC_VERSION
 static u_char *ngx_quic_read_uint32(u_char *pos, u_char *end, uint32_t *value);
 static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
     u_char **out);
@@ -179,19 +178,6 @@ ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value)
     *value = *pos;
 
     return pos + 1;
-}
-
-
-/*static*/ ngx_inline u_char *
-ngx_quic_read_uint16(u_char *pos, u_char *end, uint16_t *value)
-{
-    if ((size_t)(end - pos) < sizeof(uint16_t)) {
-        return NULL;
-    }
-
-    *value = ngx_quic_parse_uint16(pos);
-
-    return pos + sizeof(uint16_t);
 }
 
 
@@ -1452,54 +1438,8 @@ ngx_int_t
 ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
     ngx_log_t *log)
 {
+    uint64_t   id, len;
     ngx_int_t  rc;
-
-#if (NGX_QUIC_DRAFT_VERSION < 27)
-
-    uint16_t  id, len, tp_len;
-
-    p = ngx_quic_read_uint16(p, end, &tp_len);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "failed to parse total transport params length");
-        return NGX_ERROR;
-    }
-
-    while (p < end) {
-
-        p = ngx_quic_read_uint16(p, end, &id);
-        if (p == NULL) {
-            ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "failed to parse transport param id");
-            return NGX_ERROR;
-        }
-
-        p = ngx_quic_read_uint16(p, end, &len);
-        if (p == NULL) {
-            ngx_log_error(NGX_LOG_INFO, log, 0,
-                         "failed to parse transport param id 0x%xi length", id);
-            return NGX_ERROR;
-        }
-
-        rc = ngx_quic_parse_transport_param(p, p + len, id, tp);
-
-        if (rc == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "failed to parse transport param id 0x%xi data", id);
-            return NGX_ERROR;
-        }
-
-        if (rc == NGX_DECLINED) {
-            ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "unknown transport param id 0x%xi, skipped", id);
-        }
-
-        p += len;
-    };
-
-#else
-
-    uint64_t  id, len;
 
     while (p < end) {
         p = ngx_quic_parse_int(p, end, &id);
@@ -1530,10 +1470,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         }
 
         p += len;
-
     }
-
-#endif
 
     if (p != end) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
@@ -1541,7 +1478,6 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
                       end - p);
         return NGX_ERROR;
     }
-
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,
                    "client transport parameters parsed successfully");
@@ -1641,22 +1577,6 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     u_char  *p;
     size_t   len;
 
-#if (NGX_QUIC_DRAFT_VERSION < 27)
-
-/* older drafts with static transport parameters encoding */
-
-#define ngx_quic_tp_len(id, value)                                            \
-    4 + ngx_quic_varint_len(value)
-
-#define ngx_quic_tp_vint(id, value)                                           \
-    do {                                                                      \
-        p = ngx_quic_write_uint16(p, id);                                     \
-        p = ngx_quic_write_uint16(p, ngx_quic_varint_len(value));             \
-        ngx_quic_build_int(&p, value);                                        \
-    } while (0)
-
-#else
-
 /* recent drafts with variable integer transport parameters encoding */
 
 #define ngx_quic_tp_len(id, value)                                            \
@@ -1670,8 +1590,6 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
         ngx_quic_build_int(&p, ngx_quic_varint_len(value));                   \
         ngx_quic_build_int(&p, value);                                        \
     } while (0)
-
-#endif
 
     p = pos;
 
@@ -1699,16 +1617,8 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
                            tp->max_idle_timeout);
 
     if (pos == NULL) {
-#if (NGX_QUIC_DRAFT_VERSION < 27)
-        len += 2;
-#endif
         return len;
     }
-
-#if (NGX_QUIC_DRAFT_VERSION < 27)
-    /* TLS extension length */
-    p = ngx_quic_write_uint16(p, len);
-#endif
 
     ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
                      tp->active_connection_id_limit);

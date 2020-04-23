@@ -1903,10 +1903,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "handshake completed successfully");
 
-#if (NGX_QUIC_DRAFT_VERSION >= 27)
-        {
-        ngx_quic_frame_t  *frame;
-
         frame = ngx_quic_alloc_frame(c, 0);
         if (frame == NULL) {
             return NGX_ERROR;
@@ -1917,8 +1913,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
         frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
         ngx_sprintf(frame->info, "HANDSHAKE DONE on handshake completed");
         ngx_quic_queue_frame(c->quic, frame);
-        }
-#endif
 
         /*
          * Generating next keys before a key update is received.
