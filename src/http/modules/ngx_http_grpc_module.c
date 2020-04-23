@@ -120,6 +120,7 @@ typedef struct {
     unsigned                   end_stream:1;
     unsigned                   done:1;
     unsigned                   status:1;
+    unsigned                   rst:1;
 
     ngx_http_request_t        *request;
 
@@ -1205,6 +1206,7 @@ ngx_http_grpc_reinit_request(ngx_http_request_t *r)
     ctx->end_stream = 0;
     ctx->done = 0;
     ctx->status = 0;
+    ctx->rst = 0;
     ctx->connection = NULL;
 
     return NGX_OK;
@@ -2088,7 +2090,9 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                 return NGX_ERROR;
             }
 
-            if (ctx->stream_id && ctx->done) {
+            if (ctx->stream_id && ctx->done
+                && ctx->type != NGX_HTTP_V2_RST_STREAM_FRAME)
+            {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent frame for closed stream %ui",
                               ctx->stream_id);
@@ -2131,11 +2135,21 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                 return NGX_ERROR;
             }
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream rejected request with error %ui",
-                          ctx->error);
+            if (ctx->error || !ctx->done) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream rejected request with error %ui",
+                              ctx->error);
+                return NGX_ERROR;
+            }
 
-            return NGX_ERROR;
+            if (ctx->rst) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent frame for closed stream %ui",
+                              ctx->stream_id);
+                return NGX_ERROR;
+            }
+
+            ctx->rst = 1;
         }
 
         if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
