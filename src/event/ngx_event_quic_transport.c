@@ -1267,15 +1267,6 @@ ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf)
     size_t   len;
     u_char  *start;
 
-    if (!sf->len) {
-#if 0
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "attempt to generate a stream frame without length");
-#endif
-        // XXX: handle error in caller
-        return NGX_ERROR;
-    }
-
     if (p == NULL) {
         len = ngx_quic_varint_len(sf->type);
 
@@ -1345,7 +1336,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
     case NGX_QUIC_TP_ORIGINAL_CONNECTION_ID:
     case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
     case NGX_QUIC_TP_PREFERRED_ADDRESS:
-        // TODO
+        /* TODO: implement */
         return NGX_DECLINED;
     }
 
