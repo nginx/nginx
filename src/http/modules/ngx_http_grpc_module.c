@@ -2091,7 +2091,8 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             }
 
             if (ctx->stream_id && ctx->done
-                && ctx->type != NGX_HTTP_V2_RST_STREAM_FRAME)
+                && ctx->type != NGX_HTTP_V2_RST_STREAM_FRAME
+                && ctx->type != NGX_HTTP_V2_WINDOW_UPDATE_FRAME)
             {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent frame for closed stream %ui",
