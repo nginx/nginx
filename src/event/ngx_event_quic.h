@@ -23,6 +23,9 @@
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 
+#define NGX_QUIC_HARDCODED_PTO               1000 /* 1s, TODO: collect */
+#define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
+
 #define NGX_QUIC_MIN_INITIAL_SIZE            1200
 
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01

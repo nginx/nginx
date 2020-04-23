@@ -94,7 +94,9 @@ struct ngx_quic_connection_s {
 
     ngx_event_t                       push;
     ngx_event_t                       retry;
+    ngx_event_t                       close;
     ngx_queue_t                       free_frames;
+    ngx_msec_t                        last_cc;
 
 #if (NGX_DEBUG)
     ngx_uint_t                        nframes;
@@ -108,6 +110,7 @@ struct ngx_quic_connection_s {
 
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
+    unsigned                          draining:1;
     unsigned                          key_phase:1;
 };
 
@@ -142,8 +145,9 @@ static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
-static void ngx_quic_close_connection(ngx_connection_t *c);
-static ngx_int_t ngx_quic_close_quic(ngx_connection_t *c);
+static void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
+static ngx_int_t ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc);
+static void ngx_quic_close_timer_handler(ngx_event_t *ev);
 static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
@@ -158,6 +162,8 @@ static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c,
+    enum ssl_encryption_level_t level, ngx_uint_t err);
 
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_ack_frame_t *f);
@@ -435,7 +441,6 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     uint8_t alert)
 {
     ngx_connection_t  *c;
-    ngx_quic_frame_t  *frame;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
@@ -443,19 +448,11 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
                    "ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
 
-    frame = ngx_quic_alloc_frame(c, 0);
-    if (frame == NULL) {
-        return 0;
+    if (c->quic == NULL) {
+        return 1;
     }
 
-    frame->level = level;
-    frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
-    frame->u.close.error_code = 0x100 + alert;
-    ngx_sprintf(frame->info, "cc from send_alert level=%d", frame->level);
-
-    ngx_quic_queue_frame(c->quic, frame);
-
-    if (ngx_quic_output(c) != NGX_OK) {
+    if (ngx_quic_send_cc(c, level, 0x100 + alert) != NGX_OK) {
         return 0;
     }
 
@@ -484,7 +481,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     pkt.len = b->last - b->start;
 
     if (ngx_quic_new_connection(c, ssl, tp, &pkt, handler) != NGX_OK) {
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
@@ -721,38 +718,36 @@ ngx_quic_input_handler(ngx_event_t *rev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
 
-    if (qc->closing) {
-        ngx_quic_close_connection(c);
-        return;
-    }
-
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_DONE);
         return;
     }
 
     if (c->close) {
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
     n = c->recv(c, b.start, b.end - b.start);
 
     if (n == NGX_AGAIN) {
+        if (qc->closing) {
+            ngx_quic_close_connection(c, NGX_OK);
+        }
         return;
     }
 
     if (n == NGX_ERROR) {
         c->read->eof = 1;
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
     b.last += n;
 
     if (ngx_quic_input(c, &b) != NGX_OK) {
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
@@ -762,13 +757,18 @@ ngx_quic_input_handler(ngx_event_t *rev)
 
 
 static void
-ngx_quic_close_connection(ngx_connection_t *c)
+ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 {
     ngx_pool_t  *pool;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "close quic connection");
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "close quic connection, rc: %i", rc);
 
-    if (c->quic && ngx_quic_close_quic(c) == NGX_AGAIN) {
+    if (!c->quic) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "close quic connection: early error");
+
+    } else if (ngx_quic_close_quic(c, rc) == NGX_AGAIN) {
         return;
     }
 
@@ -795,16 +795,82 @@ ngx_quic_close_connection(ngx_connection_t *c)
 
 
 static ngx_int_t
-ngx_quic_close_quic(ngx_connection_t *c)
+ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
-    ngx_uint_t              i;
-    ngx_quic_connection_t  *qc;
+    ngx_uint_t                    i;
+    ngx_quic_connection_t        *qc;
+    enum ssl_encryption_level_t   level;
 
     qc = c->quic;
 
-    qc->closing = 1;
+    if (!qc->closing) {
+
+        if (rc == NGX_OK) {
+
+            /*
+             * 10.3.  Immediate Close
+             *
+             *  An endpoint sends a CONNECTION_CLOSE frame (Section 19.19) to
+             *  terminate the connection immediately.
+             */
+             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                            "quic immediate close, drain = %d", qc->draining);
+
+             switch (qc->state) {
+             case NGX_QUIC_ST_INITIAL:
+                 level = ssl_encryption_initial;
+                 break;
+
+             case NGX_QUIC_ST_HANDSHAKE:
+                 level = ssl_encryption_handshake;
+                 break;
+
+             default: /* NGX_QUIC_ST_APPLICATION/EARLY_DATA */
+                level = ssl_encryption_application;
+                break;
+             }
+
+            if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_NO_ERROR) == NGX_OK) {
+
+                qc->close.log = c->log;
+                qc->close.data = c;
+                qc->close.handler = ngx_quic_close_timer_handler;
+                qc->close.cancelable = 1;
+
+                ngx_add_timer(&qc->close, 3 * NGX_QUIC_HARDCODED_PTO);
+            }
+
+        } else if (rc == NGX_DONE) {
+
+            /*
+             *  10.2.  Idle Timeout
+             *
+             *  If the idle timeout is enabled by either peer, a connection is
+             *  silently closed and its state is discarded when it remains idle
+             */
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic closing %s connection",
+                           qc->draining ? "drained" : "idle");
+
+        } else {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic immediate close due to fatal error");
+        }
+
+        qc->closing = 1;
+    }
+
+    if (rc == NGX_ERROR && qc->close.timer_set) {
+        /* do not wait for timer in case of fatal error */
+        ngx_del_timer(&qc->close);
+    }
 
     if (ngx_quic_close_streams(c, qc) == NGX_AGAIN) {
+        return NGX_AGAIN;
+    }
+
+    if (qc->close.timer_set) {
         return NGX_AGAIN;
     }
 
@@ -825,7 +891,25 @@ ngx_quic_close_quic(ngx_connection_t *c)
         ngx_del_timer(&qc->retry);
     }
 
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic part of connection is terminated");
+
+    /* may be tested from SSL callback during SSL shutdown */
+    c->quic = NULL;
+
     return NGX_OK;
+}
+
+
+static void
+ngx_quic_close_timer_handler(ngx_event_t *ev)
+{
+    ngx_connection_t  *c;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "close timer");
+
+    c = ev->data;
+    ngx_quic_close_connection(c, NGX_DONE);
 }
 
 
@@ -1203,8 +1287,19 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_frame_t        frame, *ack_frame;
     ngx_quic_connection_t  *qc;
 
-
     qc = c->quic;
+
+    if (qc->closing) {
+        /*
+         * 10.1  Closing and Draining Connection States
+         * ... delayed or reordered packets are properly discarded.
+         *
+         *  An endpoint retains only enough information to generate
+         *  a packet containing a CONNECTION_CLOSE frame and to identify
+         *  packets as belonging to the connection.
+         */
+        return ngx_quic_send_cc(c, pkt->level, NGX_QUIC_ERR_NO_ERROR);
+    }
 
     p = pkt->payload.data;
     end = p + pkt->payload.len;
@@ -1339,7 +1434,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (do_close) {
-        return NGX_DONE;
+        qc->draining = 1;
+        ngx_quic_close_connection(c, NGX_OK);
+        return NGX_OK;
     }
 
     if (ack_this == 0) {
@@ -1370,6 +1467,45 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_queue_frame(qc, ack_frame);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
+    ngx_uint_t err)
+{
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    if (qc->draining) {
+        return NGX_OK;
+    }
+
+    if (qc->closing
+        && ngx_current_msec - qc->last_cc < NGX_QUIC_CC_MIN_INTERVAL)
+    {
+        /* dot not send CC too often */
+        return NGX_OK;
+    }
+
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = level;
+    frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
+    frame->u.close.error_code = err;
+    ngx_sprintf(frame->info, "cc from send_cc err=%ui level=%d", err,
+                frame->level);
+
+    ngx_quic_queue_frame(c->quic, frame);
+
+    qc->last_cc = ngx_current_msec;
+
+    return ngx_quic_output(c);
 }
 
 
@@ -2157,7 +2293,13 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
              * frames are moved into the sent queue
              * to wait for ack/be retransmitted
             */
-            ngx_queue_add(&ctx->sent, &range);
+            if (qc->closing) {
+                /* if we are closing, any ack will be discarded */
+                ngx_quic_free_frames(c, &range);
+
+            } else {
+                ngx_queue_add(&ctx->sent, &range);
+            }
 
         } else if (rc == NGX_DONE) {
 
@@ -2363,7 +2505,7 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         if (ngx_quic_retransmit(c, &qc->send_ctx[i], &nswait) != NGX_OK) {
-            ngx_quic_close_connection(c);
+            ngx_quic_close_connection(c, NGX_ERROR);
             return;
         }
 
@@ -2391,7 +2533,7 @@ ngx_quic_push_handler(ngx_event_t *ev)
     c = ev->data;
 
     if (ngx_quic_output(c) != NGX_OK) {
-        ngx_quic_close_connection(c);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 }
@@ -2809,6 +2951,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     ngx_quic_free_frames(pc, &qs->fs.frames);
 
     if (qc->closing) {
+        /* schedule handler call to continue ngx_quic_close_connection() */
         ngx_post_event(pc->read, &ngx_posted_events);
         return;
     }
