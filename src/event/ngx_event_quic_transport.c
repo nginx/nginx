@@ -57,7 +57,6 @@
 
 
 static u_char *ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out);
-static u_char *ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
@@ -133,36 +132,6 @@ ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
     }
 
     *out = value;
-
-    return p;
-}
-
-
-static ngx_inline u_char *
-ngx_quic_parse_int_multi(u_char *pos, u_char *end, ...)
-{
-    u_char    *p;
-    va_list    ap;
-    uint64_t  *item;
-
-    p = pos;
-
-    va_start(ap, end);
-
-    do {
-        item = va_arg(ap, uint64_t *);
-        if (item == NULL) {
-            break;
-        }
-
-        p = ngx_quic_parse_int(p, end, item);
-        if (p == NULL) {
-            return NULL;
-        }
-
-    } while (1);
-
-    va_end(ap);
 
     return p;
 }
@@ -621,10 +590,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.ack.largest,
-                                     &f->u.ack.delay, &f->u.ack.range_count,
-                                     &f->u.ack.first_range, NULL);
-        if (p == NULL) {
+        if (!((p = ngx_quic_parse_int(p, end, &f->u.ack.largest))
+              && (p = ngx_quic_parse_int(p, end, &f->u.ack.delay))
+              && (p = ngx_quic_parse_int(p, end, &f->u.ack.range_count))
+              && (p = ngx_quic_parse_int(p, end, &f->u.ack.first_range))))
+        {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                           "failed to parse ack frame");
             return NGX_ERROR;
@@ -634,7 +604,12 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         /* process all ranges to get bounds, values are ignored */
         for (i = 0; i < f->u.ack.range_count; i++) {
-            p = ngx_quic_parse_int_multi(p, end, &varint, &varint, NULL);
+
+            p = ngx_quic_parse_int(p, end, &varint);
+            if (p) {
+                p = ngx_quic_parse_int(p, end, &varint);
+            }
+
             if (p == NULL) {
                 ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                               "failed to parse ack frame range %ui", i);
@@ -653,9 +628,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
 
-            p = ngx_quic_parse_int_multi(p, end, &f->u.ack.ect0,
-                                         &f->u.ack.ect1, &f->u.ack.ce, NULL);
-            if (p == NULL) {
+            if (!((p = ngx_quic_parse_int(p, end, &f->u.ack.ect0))
+                  && (p = ngx_quic_parse_int(p, end, &f->u.ack.ect1))
+                  && (p = ngx_quic_parse_int(p, end, &f->u.ack.ce))))
+            {
                 ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                               "failed to parse ack frame ECT counts", i);
                 return NGX_ERROR;
@@ -680,11 +656,17 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.ncid.seqnum,
-                                     &f->u.ncid.retire, NULL);
+        p = ngx_quic_parse_int(p, end, &f->u.ncid.seqnum);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "failed to parse new connection id frame");
+                          "failed to parse new connection id frame seqnum");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.ncid.retire);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "failed to parse new connection id frame retire");
             return NGX_ERROR;
         }
 
@@ -871,10 +853,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.reset_stream.id,
-                                     &f->u.reset_stream.error_code,
-                                     &f->u.reset_stream.final_size, NULL);
-        if (p == NULL) {
+        if (!((p = ngx_quic_parse_int(p, end, &f->u.reset_stream.id))
+              && (p = ngx_quic_parse_int(p, end, &f->u.reset_stream.error_code))
+              && (p = ngx_quic_parse_int(p, end,
+                                         &f->u.reset_stream.final_size))))
+        {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                           "failed to parse reset stream frame");
             return NGX_ERROR;
@@ -893,11 +876,17 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.stop_sending.id,
-                                     &f->u.stop_sending.error_code, NULL);
+        p = ngx_quic_parse_int(p, end, &f->u.stop_sending.id);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "failed to parse stop sending frame");
+                          "failed to parse stop sending frame id");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.stop_sending.error_code);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "failed to parse stop sending frame error code");
             return NGX_ERROR;
         }
 
@@ -976,11 +965,17 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.max_stream_data.id,
-                                     &f->u.max_stream_data.limit, NULL);
+        p = ngx_quic_parse_int(p, end, &f->u.max_stream_data.id);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "failed to parse max stream data frame");
+                          "failed to parse max stream data frame data id");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end,  &f->u.max_stream_data.limit);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "failed to parse max stream data frame data limit");
             return NGX_ERROR;
         }
 
@@ -1014,11 +1009,17 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto not_allowed;
         }
 
-        p = ngx_quic_parse_int_multi(p, end, &f->u.stream_data_blocked.id,
-                                     &f->u.stream_data_blocked.limit, NULL);
+        p = ngx_quic_parse_int(p, end, &f->u.stream_data_blocked.id);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "failed to parse tream data blocked frame");
+                          "failed to parse tream data blocked frame id");
+            return NGX_ERROR;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.stream_data_blocked.limit);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "failed to parse tream data blocked frame limit");
             return NGX_ERROR;
         }
 
