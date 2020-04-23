@@ -141,7 +141,11 @@ static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_connection_handler_pt handler);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
+
 static void ngx_quic_close_connection(ngx_connection_t *c);
+static ngx_int_t ngx_quic_close_quic(ngx_connection_t *c);
+static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
+    ngx_quic_connection_t *qc);
 
 static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
@@ -760,82 +764,20 @@ ngx_quic_input_handler(ngx_event_t *rev)
 static void
 ngx_quic_close_connection(ngx_connection_t *c)
 {
-#if (NGX_DEBUG)
-    ngx_uint_t              ns;
-#endif
-    ngx_uint_t              i;
-    ngx_pool_t             *pool;
-    ngx_event_t            *rev;
-    ngx_rbtree_t           *tree;
-    ngx_rbtree_node_t      *node;
-    ngx_quic_stream_t      *qs;
-    ngx_quic_connection_t  *qc;
+    ngx_pool_t  *pool;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "close quic connection");
 
-    qc = c->quic;
-
-    if (qc) {
-
-        qc->closing = 1;
-        tree = &qc->streams.tree;
-
-        if (tree->root != tree->sentinel) {
-            if (c->read->timer_set) {
-                ngx_del_timer(c->read);
-            }
-
-#if (NGX_DEBUG)
-            ns = 0;
-#endif
-
-            for (node = ngx_rbtree_min(tree->root, tree->sentinel);
-                 node;
-                 node = ngx_rbtree_next(tree, node))
-            {
-                qs = (ngx_quic_stream_t *) node;
-
-                rev = qs->c->read;
-                rev->ready = 1;
-                rev->pending_eof = 1;
-
-                ngx_post_event(rev, &ngx_posted_events);
-
-                if (rev->timer_set) {
-                    ngx_del_timer(rev);
-                }
-
-#if (NGX_DEBUG)
-                ns++;
-#endif
-            }
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic connection has %ui active streams", ns);
-
-            return;
-        }
-
-        for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
-            ngx_quic_free_frames(c, &qc->crypto[i].frames);
-        }
-
-        for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-            ngx_quic_free_frames(c, &qc->send_ctx[i].frames);
-            ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
-        }
-
-        if (qc->push.timer_set) {
-            ngx_del_timer(&qc->push);
-        }
-
-        if (qc->retry.timer_set) {
-            ngx_del_timer(&qc->retry);
-        }
+    if (c->quic && ngx_quic_close_quic(c) == NGX_AGAIN) {
+        return;
     }
 
     if (c->ssl) {
         (void) ngx_ssl_shutdown(c);
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
     }
 
 #if (NGX_STAT_STUB)
@@ -849,6 +791,91 @@ ngx_quic_close_connection(ngx_connection_t *c)
     ngx_close_connection(c);
 
     ngx_destroy_pool(pool);
+}
+
+
+static ngx_int_t
+ngx_quic_close_quic(ngx_connection_t *c)
+{
+    ngx_uint_t              i;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    qc->closing = 1;
+
+    if (ngx_quic_close_streams(c, qc) == NGX_AGAIN) {
+        return NGX_AGAIN;
+    }
+
+    for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
+        ngx_quic_free_frames(c, &qc->crypto[i].frames);
+    }
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ngx_quic_free_frames(c, &qc->send_ctx[i].frames);
+        ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
+    }
+
+    if (qc->push.timer_set) {
+        ngx_del_timer(&qc->push);
+    }
+
+    if (qc->retry.timer_set) {
+        ngx_del_timer(&qc->retry);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
+{
+    ngx_event_t        *rev;
+    ngx_rbtree_t       *tree;
+    ngx_rbtree_node_t  *node;
+    ngx_quic_stream_t  *qs;
+
+#if (NGX_DEBUG)
+    ngx_uint_t          ns;
+#endif
+
+    tree = &qc->streams.tree;
+
+    if (tree->root == tree->sentinel) {
+        return NGX_OK;
+    }
+
+#if (NGX_DEBUG)
+    ns = 0;
+#endif
+
+    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+         node;
+         node = ngx_rbtree_next(tree, node))
+    {
+        qs = (ngx_quic_stream_t *) node;
+
+        rev = qs->c->read;
+        rev->ready = 1;
+        rev->pending_eof = 1;
+
+        ngx_post_event(rev, &ngx_posted_events);
+
+        if (rev->timer_set) {
+            ngx_del_timer(rev);
+        }
+
+#if (NGX_DEBUG)
+        ns++;
+#endif
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic connection has %ui active streams", ns);
+
+    return NGX_AGAIN;
 }
 
 
