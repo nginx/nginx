@@ -2778,6 +2778,8 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     sn->c->read->log = c->log;
     sn->c->write->log = c->log;
 
+    log->connection = sn->c->number;
+
     cln = ngx_pool_cleanup_add(pool, 0);
     if (cln == NULL) {
         ngx_close_connection(sn->c);

@@ -438,7 +438,6 @@ ngx_http_quic_stream_handler(ngx_connection_t *c)
     ctx->request = NULL;
     ctx->current_request = NULL;
 
-    c->log->connection = c->number;
     c->log->handler = ngx_http_log_error;
     c->log->data = ctx;
     c->log->action = "waiting for request";

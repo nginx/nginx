@@ -34,8 +34,6 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
 {
     ngx_http_v3_uni_stream_t  *us;
 
-    c->log->connection = c->number;
-
     ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
     ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_ENCODER);
     ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
