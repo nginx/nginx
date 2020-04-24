@@ -2586,11 +2586,18 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     q = ngx_queue_head(&ctx->sent);
-    start = ngx_queue_data(q, ngx_quic_frame_t, queue);
-    pn = start->pnum;
-    f = start;
 
     do {
+        start = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        wait = start->last + qc->tp.max_ack_delay - now;
+
+        if ((ngx_msec_int_t) wait > 0) {
+            break;
+        }
+
+        pn = start->pnum;
+
         ngx_queue_init(&range);
 
         /* send frames with same packet number to the wire */
@@ -2613,12 +2620,6 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
             ngx_queue_insert_tail(&range, &f->queue);
 
         } while (q != ngx_queue_sentinel(&ctx->sent));
-
-        wait = start->last + qc->tp.max_ack_delay - now;
-
-        if ((ngx_msec_int_t) wait > 0) {
-            break;
-        }
 
         /* NGX_DONE is impossible here, such frames don't get into this queue */
         if (ngx_quic_send_frames(c, &range) != NGX_OK) {
