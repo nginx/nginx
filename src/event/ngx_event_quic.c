@@ -252,8 +252,9 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "level:%d read secret",
-                     rsecret, secret_len, level);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_set_read_secret() level:%d", level);
+    ngx_quic_hexdump(c->log, "quic read secret", rsecret, secret_len);
 #endif
 
     keys = &c->quic->keys[level];
@@ -279,8 +280,9 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "level:%d write secret",
-                     wsecret, secret_len, level);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_set_write_secret() level:%d", level);
+    ngx_quic_hexdump(c->log, "quic write secret", wsecret, secret_len);
 #endif
 
     keys = &c->quic->keys[level];
@@ -304,7 +306,9 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "level:%d read", rsecret, secret_len, level);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_set_encryption_secrets() level:%d", level);
+    ngx_quic_hexdump(c->log, "quic read", rsecret, secret_len);
 #endif
 
     keys = &c->quic->keys[level];
@@ -322,7 +326,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "level:%d write", wsecret, secret_len, level);
+    ngx_quic_hexdump(c->log, "quic write", wsecret, secret_len);
 #endif
 
     return ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
@@ -434,13 +438,14 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 static int
 ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn)
 {
+#if (NGX_DEBUG)
     ngx_connection_t  *c;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_flush_flight()");
-
+#endif
     return 1;
 }
 
@@ -676,7 +681,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump0(c->log, "quic transport parameters", p, len);
+    ngx_quic_hexdump(c->log, "quic transport parameters", p, len);
 #endif
 
     if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
@@ -2456,7 +2461,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     }
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump0(c->log, "packet to send", res.data, res.len);
+    ngx_quic_hexdump(c->log, "quic packet to send", res.data, res.len);
 #endif
 
     len = c->send(c, res.data, res.len);

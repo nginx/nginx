@@ -87,31 +87,25 @@ ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
 //#define NGX_QUIC_DEBUG_FRAMES_ALLOC  /* log frames alloc/reuse/free */
 //#define NGX_QUIC_DEBUG_CRYPTO
 
-
 #if (NGX_DEBUG)
 
-#define ngx_quic_hexdump(log, fmt, data, len, ...)                            \
+#define ngx_quic_hexdump(log, label, data, len)                               \
 do {                                                                          \
     ngx_int_t  m;                                                             \
     u_char     buf[2048];                                                     \
                                                                               \
     if (log->log_level & NGX_LOG_DEBUG_EVENT) {                               \
         m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 1024)) - buf;     \
-        ngx_log_debug(NGX_LOG_DEBUG_EVENT, log, 0,                            \
-                   "%s: " fmt " %*s%s, len: %uz",                             \
-                   __FUNCTION__,  __VA_ARGS__, m, buf,                        \
-                   len < 2048 ? "" : "...", len);                             \
+        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,                           \
+                      label " len:%uz data:%*s%s",                            \
+                      len, m, buf, len < 2048 ? "" : "...");                  \
     }                                                                         \
 } while (0)
 
 #else
 
-#define ngx_quic_hexdump(log, fmt, data, len, ...)
+#define ngx_quic_hexdump(log, fmt, data, len)
 
 #endif
-
-#define ngx_quic_hexdump0(log, fmt, data, len)                                \
-    ngx_quic_hexdump(log, fmt "%s", data, len, "")                            \
-
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

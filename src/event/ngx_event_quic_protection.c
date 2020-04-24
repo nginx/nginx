@@ -157,8 +157,10 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
     };
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pool->log, "salt", salt, sizeof(salt));
-    ngx_quic_hexdump0(pool->log, "initial secret", is, is_len);
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                  "quic ngx_quic_set_initial_secret");
+    ngx_quic_hexdump(pool->log, "quic salt", salt, sizeof(salt));
+    ngx_quic_hexdump(pool->log, "quic initial secret", is, is_len);
 #endif
 
     /* draft-ietf-quic-tls-23#section-5.2 */
@@ -266,8 +268,10 @@ ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest, ngx_str_t *out,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pool->log, "%V info", info, info_len, label);
-    ngx_quic_hexdump(pool->log, "%V key", out->data, out->len, label);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "quic ngx_quic_hkdf_expand %V keys", label);
+    ngx_quic_hexdump(pool->log, "quic info", info, info_len);
+    ngx_quic_hexdump(pool->log, "quic key", out->data, out->len);
 #endif
 
     return NGX_OK;
@@ -678,7 +682,7 @@ ngx_quic_key_update(ngx_connection_t *c, ngx_quic_secrets_t *current,
     ngx_uint_t          i;
     ngx_quic_ciphers_t  ciphers;
 
-    ngx_log_debug(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic key update");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic key update");
 
     if (ngx_quic_ciphers(c->ssl->connection, &ciphers,
                          ssl_encryption_application)
@@ -766,7 +770,9 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic ngx_quic_create_long_packet");
+    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
 #endif
 
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
@@ -777,8 +783,8 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
-    ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
+    ngx_quic_hexdump(pkt->log, "quic server_iv", pkt->secret->iv.data, 12);
+    ngx_quic_hexdump(pkt->log, "quic nonce", nonce, 12);
 #endif
 
     if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out,
@@ -796,8 +802,8 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
-    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
+    ngx_quic_hexdump(pkt->log, "quic sample", sample, 16);
+    ngx_quic_hexdump(pkt->log, "quic mask", mask, 5);
 #endif
 
     /* quic-tls: 5.4.1.  Header Protection Application */
@@ -831,7 +837,9 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic ngx_quic_create_short_packet");
+    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
 #endif
 
     if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
@@ -847,8 +855,8 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "server_iv", pkt->secret->iv.data, 12);
-    ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
+    ngx_quic_hexdump(pkt->log, "quic server_iv", pkt->secret->iv.data, 12);
+    ngx_quic_hexdump(pkt->log, "quic nonce", nonce, 12);
 #endif
 
     if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out,
@@ -866,8 +874,8 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
-    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
+    ngx_quic_hexdump(pkt->log, "quic sample", sample, 16);
+    ngx_quic_hexdump(pkt->log, "quic mask", mask, 5);
 #endif
 
     /* quic-tls: 5.4.1.  Header Protection Application */
@@ -977,7 +985,9 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     sample = p + 4;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "sample", sample, 16);
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic ngx_quic_decrypt()");
+    ngx_quic_hexdump(pkt->log, "quic sample", sample, 16);
 #endif
 
     /* header protection */
@@ -1007,7 +1017,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     pkt->pn = pn;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "mask", mask, 5);
+    ngx_quic_hexdump(pkt->log, "quic mask", mask, 5);
 #endif
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
@@ -1040,8 +1050,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pn);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump0(pkt->log, "nonce", nonce, 12);
-    ngx_quic_hexdump0(pkt->log, "ad", ad.data, ad.len);
+    ngx_quic_hexdump(pkt->log, "quic nonce", nonce, 12);
+    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
 #endif
 
     pkt->payload.len = in.len - EVP_GCM_TLS_TAG_LEN;
@@ -1056,8 +1066,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
                            nonce, &in, &ad, pkt->log);
 
 #if defined(NGX_QUIC_DEBUG_CRYPTO) && defined(NGX_QUIC_DEBUG_PACKETS)
-    ngx_quic_hexdump0(pkt->log, "packet payload",
-                      pkt->payload.data, pkt->payload.len);
+    ngx_quic_hexdump(pkt->log, "quic packet payload",
+                     pkt->payload.data, pkt->payload.len);
 #endif
 
     return rc;

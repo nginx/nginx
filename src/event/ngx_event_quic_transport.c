@@ -235,7 +235,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     end = pkt->data + pkt->len;
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump0(pkt->log, "long input", pkt->data, pkt->len);
+    ngx_quic_hexdump(pkt->log, "quic long packet in", pkt->data, pkt->len);
 #endif
 
     p = ngx_quic_read_uint8(p, end, &pkt->flags);
@@ -392,7 +392,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
     end = pkt->data + pkt->len;
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump0(pkt->log, "short input", pkt->data, pkt->len);
+    ngx_quic_hexdump(pkt->log, "quic short packet in", pkt->data, pkt->len);
 #endif
 
     p = ngx_quic_read_uint8(p, end, &pkt->flags);
@@ -476,9 +476,9 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
     pkt->len = varint;
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump0(pkt->log, "DCID", pkt->dcid.data, pkt->dcid.len);
-    ngx_quic_hexdump0(pkt->log, "SCID", pkt->scid.data, pkt->scid.len);
-    ngx_quic_hexdump0(pkt->log, "token", pkt->token.data, pkt->token.len);
+    ngx_quic_hexdump(pkt->log, "quic DCID", pkt->dcid.data, pkt->dcid.len);
+    ngx_quic_hexdump(pkt->log, "quic SCID", pkt->scid.data, pkt->scid.len);
+    ngx_quic_hexdump(pkt->log, "quic token", pkt->token.data, pkt->token.len);
 #endif
 
     return NGX_OK;
@@ -577,8 +577,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.crypto.data);
 
 #ifdef NGX_QUIC_DEBUG_FRAMES
-        ngx_quic_hexdump0(pkt->log, "CRYPTO frame contents",
-                          f->u.crypto.data, f->u.crypto.length);
+        ngx_quic_hexdump(pkt->log, "quic CRYPTO frame",
+                         f->u.crypto.data, f->u.crypto.length);
 #endif
         break;
 
@@ -837,8 +837,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.stream.fin);
 
 #ifdef NGX_QUIC_DEBUG_FRAMES
-            ngx_quic_hexdump0(pkt->log, "STREAM frame contents",
-                              f->u.stream.data, f->u.stream.length);
+            ngx_quic_hexdump(pkt->log, "quic STREAM frame",
+                             f->u.stream.data, f->u.stream.length);
 #endif
         break;
 
@@ -1080,8 +1080,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        "quic frame in: PATH_CHALLENGE");
 
 #ifdef NGX_QUIC_DEBUG_FRAMES
-        ngx_quic_hexdump0(pkt->log, "path challenge data",
-                          f->u.path_challenge.data, 8);
+        ngx_quic_hexdump(pkt->log, "quic PATH_CHALLENGE frame data",
+                         f->u.path_challenge.data, 8);
 #endif
         break;
 
@@ -1102,8 +1102,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        "quic frame in: PATH_RESPONSE");
 
 #ifdef NGX_QUIC_DEBUG_FRAMES
-        ngx_quic_hexdump0(pkt->log, "path response data",
-                          f->u.path_response.data, 8);
+        ngx_quic_hexdump(pkt->log, "quic PATH_RESPONSE frame data",
+                         f->u.path_response.data, 8);
 #endif
         break;
 
