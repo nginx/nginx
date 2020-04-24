@@ -158,6 +158,8 @@ static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_early_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_check_peer(ngx_quic_connection_t *qc,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
@@ -385,7 +387,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 || qc->ctp.max_packet_size > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
             {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "maximum packet size is invalid");
+                              "quic maximum packet size is invalid");
                 return NGX_ERROR;
             }
 
@@ -519,7 +521,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "too small UDP datagram");
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic UDP datagram is too small for initial packet");
         return NGX_ERROR;
     }
 
@@ -529,7 +532,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     if (!ngx_quic_pkt_in(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid initial packet: 0x%xi", pkt->flags);
+                      "quic invalid initial packet: 0x%xi", pkt->flags);
         return NGX_ERROR;
     }
 
@@ -657,7 +660,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     if (SSL_set_quic_method(ssl_conn, &quic_method) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "SSL_set_quic_method() failed");
+                      "quic SSL_set_quic_method() failed");
         return NGX_ERROR;
     }
 
@@ -686,7 +689,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "SSL_set_quic_transport_params() failed");
+                      "quic SSL_set_quic_transport_params() failed");
         return NGX_ERROR;
     }
 
@@ -738,7 +741,8 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
 
     if (rev->timedout) {
-        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                      "quic client timed out");
         ngx_quic_close_connection(c, NGX_DONE);
         return;
     }
@@ -1003,7 +1007,9 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 
         if (pkt.flags == 0) {
             /* XXX: no idea WTF is this, just ignore */
-            ngx_log_error(NGX_LOG_ALERT, c->log, 0, "FIREFOX: ZEROES");
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "quic packet with zero flags, presumably"
+                          " firefox padding, ignored");
             break;
         }
 
@@ -1021,7 +1027,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 
             } else {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "BUG: unknown quic state");
+                              "quic unknown long packet type");
                 return NGX_ERROR;
             }
 
@@ -1110,7 +1116,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (keys->client.key.len == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "no read keys yet, packet ignored");
+                      "quic no read keys yet, packet ignored");
         return NGX_DECLINED;
     }
 
@@ -1119,29 +1125,13 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (pkt->dcid.len != qc->dcid.len) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcidl");
-        return NGX_ERROR;
-    }
-
-    if (ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcid");
-        return NGX_ERROR;
-    }
-
-    if (pkt->scid.len != qc->scid.len) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scidl");
-        return NGX_ERROR;
-    }
-
-    if (ngx_memcmp(pkt->scid.data, qc->scid.data, qc->scid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scid");
+    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
     if (!ngx_quic_pkt_hs(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid packet type: 0x%xi", pkt->flags);
+                      "quic invalid packet type: 0x%xi", pkt->flags);
         return NGX_ERROR;
     }
 
@@ -1180,29 +1170,13 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (pkt->dcid.len != qc->dcid.len) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcidl");
-        return NGX_ERROR;
-    }
-
-    if (ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic dcid");
-        return NGX_ERROR;
-    }
-
-    if (pkt->scid.len != qc->scid.len) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scidl");
-        return NGX_ERROR;
-    }
-
-    if (ngx_memcmp(pkt->scid.data, qc->scid.data, qc->scid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected quic scid");
+    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
         return NGX_ERROR;
     }
 
     if (!ngx_quic_pkt_zrtt(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid packet type: 0x%xi", pkt->flags);
+                      "quic invalid packet type: 0x%xi", pkt->flags);
         return NGX_ERROR;
     }
 
@@ -1211,7 +1185,7 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (c->quic->state != NGX_QUIC_ST_EARLY_DATA) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unexpected 0-RTT packet");
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic unexpected 0-RTT packet");
         return NGX_OK;
     }
 
@@ -1228,6 +1202,33 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     return ngx_quic_payload_handler(c, pkt);
+}
+
+
+static ngx_int_t
+ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
+{
+    if (pkt->dcid.len != qc->dcid.len) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcidl");
+        return NGX_ERROR;
+    }
+
+    if (ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcid");
+        return NGX_ERROR;
+    }
+
+    if (pkt->scid.len != qc->scid.len) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scidl");
+        return NGX_ERROR;
+    }
+
+    if (ngx_memcmp(pkt->scid.data, qc->scid.data, qc->scid.len) != 0) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -1249,7 +1250,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (keys->client.key.len == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "no read keys yet, packet ignored");
+                      "quic no read keys yet, packet ignored");
         return NGX_DECLINED;
     }
 
@@ -1448,7 +1449,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (p != end) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "trailing garbage in payload: %ui bytes", end - p);
+                      "quic trailing garbage in payload: %ui bytes", end - p);
         return NGX_ERROR;
     }
 
@@ -1551,7 +1552,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     if (ack->first_range > ack->largest) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "invalid first range in ack frame");
+                      "quic invalid first range in ack frame");
         return NGX_ERROR;
     }
 
@@ -1582,7 +1583,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         if (gap >= min) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                         "invalid range %ui in ack frame", i);
+                         "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
         }
 
@@ -1590,7 +1591,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         if (range > max + 1) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                         "invalid range %ui in ack frame", i);
+                         "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
         }
 
@@ -1640,7 +1641,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         }
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "ACK for the packet not in sent queue ");
+                      "quic ACK for the packet not in sent queue ");
         // TODO: handle error properly: PROTOCOL VIOLATION?
         return NGX_ERROR;
     }
@@ -1811,7 +1812,7 @@ ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     /* check limit on total size used by all buffered frames, not actual data */
     if (NGX_QUIC_MAX_BUFFERED - fs->total < f->length) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "ordered input buffer limit exceeded");
+                      "quic ordered input buffer limit exceeded");
         return NGX_ERROR;
     }
 
@@ -1987,7 +1988,8 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
 
         if (n < f->length) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "no space in stream buffer");
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic no space in stream buffer");
             return NGX_ERROR;
         }
 
@@ -2069,7 +2071,8 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
     b = sn->b;
 
     if ((size_t) ((b->pos - b->start) + (b->end - b->last)) < f->length) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "no space in stream buffer");
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic no space in stream buffer");
         return NGX_ERROR;
     }
 
@@ -2180,7 +2183,8 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
     if (sn == NULL) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unknown stream id:%uL", f->id);
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic unknown stream id:%uL", f->id);
         return NGX_ERROR;
     }
 
@@ -2595,7 +2599,7 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
             if (start->first + qc->tp.max_idle_timeout < now) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                              "retransmission timeout");
+                              "quic retransmission timeout");
                 return NGX_DECLINED;
             }
 
