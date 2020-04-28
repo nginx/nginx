@@ -152,6 +152,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_tp_t *tp, ngx_quic_header_t *pkt,
     ngx_connection_handler_pt handler);
+static ngx_int_t ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *sid);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
@@ -612,12 +613,13 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->congestion.ssthresh = NGX_MAX_SIZE_T_VALUE;
     qc->congestion.recovery_start = ngx_current_msec;
 
-    qc->dcid.len = pkt->dcid.len;
-    qc->dcid.data = ngx_pnalloc(c->pool, pkt->dcid.len);
-    if (qc->dcid.data == NULL) {
+    if (ngx_quic_new_cid(c->pool, &qc->dcid) != NGX_OK) {
         return NGX_ERROR;
     }
-    ngx_memcpy(qc->dcid.data, pkt->dcid.data, qc->dcid.len);
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
+#endif
 
     qc->scid.len = pkt->scid.len;
     qc->scid.data = ngx_pnalloc(c->pool, qc->scid.len);
@@ -636,7 +638,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     keys = &c->quic->keys[ssl_encryption_initial];
 
     if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
-                                    &qc->dcid)
+                                    &pkt->dcid)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -664,6 +666,31 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     pkt->raw->pos += pkt->len;
 
     return ngx_quic_input(c, pkt->raw);
+}
+
+
+static ngx_int_t
+ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *cid)
+{
+    uint8_t len;
+
+    if (RAND_bytes(&len, sizeof(len)) != 1) {
+        return NGX_ERROR;
+    }
+
+    len = len % 10 + 10;
+
+    cid->len = len;
+    cid->data = ngx_pnalloc(pool, len);
+    if (cid->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (RAND_bytes(cid->data, len) != 1) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
