@@ -31,7 +31,7 @@
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
-#define NGX_QUIC_STREAM_BUFSIZE              16384
+#define NGX_QUIC_STREAM_BUFSIZE              65536
 
 
 typedef struct {
@@ -70,6 +70,7 @@ struct ngx_quic_stream_s {
     ngx_connection_t          *parent;
     ngx_connection_t          *c;
     uint64_t                   id;
+    uint64_t                   acked;
     ngx_buf_t                 *b;
     ngx_quic_frames_stream_t   fs;
 };
