@@ -71,6 +71,7 @@ struct ngx_quic_stream_s {
     ngx_connection_t          *c;
     uint64_t                   id;
     uint64_t                   acked;
+    uint64_t                   send_max_data;
     ngx_buf_t                 *b;
     ngx_quic_frames_stream_t   fs;
 };
