@@ -1,0 +1,222 @@
+Experimental QUIC support for nginx
+-----------------------------------
+
+1. Introduction
+2. Installing
+3. Configuration
+4. Clients
+5. Troubleshooting
+6. Links
+
+1. Introduction
+
+    This is an experimental QUIC [1] / HTTP/3 [2] support for nginx.
+
+    The code is developed in a separate "quic" branch available
+    at https://hg.nginx.org/nginx-quic.  Currently it is based
+    on nginx mainline 1.17.10. We are planning to merge new nginx
+    releases into this branch regularly.
+
+    The project code base is under the same BSD license as nginx.
+
+    The code is at an early alpha level of quality and should not
+    be used in production.
+
+    We are working on improving HTTP/3 support with the goal of
+    integrating it to the main NGINX codebase.  Expect frequent
+    updates of this code and don't rely on it for whatever purpose.
+
+    We'll be grateful for any feedback and code submissions however
+    we don't bear any responsibilities for any issues with this code.
+
+    You can always contact us via nginx-devel mailing list [3].
+
+    What works now:
+
+    Currently we support IETF-QUIC draft 27
+    Earlier drafts are NOT supported as they have incompatible wire format;
+
+    nginx should be able to respond to simple HTTP/3 requests over QUIC and
+    it should be possible to upload and download big files without errors.
+
+    + The handshake completes successfully
+    + One endpoint can update keys and its peer responds correctly
+    + 00-RTT data is being received and acted on
+    + Connection is established using TLS Resume Ticket
+    + Stream data is being exchanged and ACK'ed
+    + An H3 transaction succeeded
+    + One or both endpoints insert entries into dynamic table and
+      subsequently reference them from header blocks
+
+     Not (yet) supported features:
+
+    - Version negotiation
+    - Stateless Retry
+    - ECN, Congestion control and friends as specified in quic-recovery [5]
+    - A connection with the spin bit succeeds and the bit is spinning
+    - Structured Logging
+    - QUIC recovery (proper congestion and flow control)
+    - NAT Rebinding
+    - Address Mobility
+    - Server push
+    - HTTP/3 trailers
+
+    Since the code is experimental and still under development,
+    a lot of things may not work as expected, for example:
+
+    - Protocol error messages are not implemented, in case of error connection
+      closes silently for peer
+
+    - ACK handling is basic: every received ack-eliciting packet
+      is acknowledged, no ack ranges are used
+
+    - Flow control mechanism is basic and intended to avoid CPU hog and make
+      simple interactions possible
+
+    - Not all draft requirements are strictly followed; some of checks are
+      omitted for the sake of simplicity of initial implementation
+
+2. Installing
+
+    You will need a BoringSSL [4] library that provides QUIC support
+
+    $ hg clone https://hg.nginx.org/nginx-quic
+    $ cd nginx-quic
+    $ ./auto/configure --with-debug --with-cc-opt="-I../boringssl/include"   \
+                                    --with-ld-opt="-L../boringssl/build/ssl  \
+                                                   -L../boringssl/build/crypto"
+    $ make
+
+3. Configuration
+
+    The "listen" directive got a new option: "http3"
+    which enables HTTP/3 over QUIC on the specified port.
+
+    Along with "http3", you also have to specify "reuseport" option [6]
+    to make it work properly with multiple workers.
+
+    A number of directives were added that specify transport parameter values:
+
+        quic_max_idle_timeout
+        quic_max_ack_delay
+        quic_max_packet_size
+        quic_initial_max_data
+        quic_initial_max_stream_data_bidi_local
+        quic_initial_max_stream_data_bidi_remote
+        quic_initial_max_stream_data_uni
+        quic_initial_max_streams_bidi
+        quic_initial_max_streams_uni
+        quic_ack_delay_exponent
+        quic_active_migration
+        quic_active_connection_id_limit
+
+    Two additional variables are available: $quic and $http3.
+    The value of $quic is "quic" if QUIC connection is used,
+    and empty string otherwise. The value of $http3 is a string
+    "h3-xx" where "xx" is the supported draft number.
+
+Example configuration:
+
+    http {
+        log_format quic '$remote_addr - $remote_user [$time_local] '
+                        '"$request" $status $body_bytes_sent '
+                        '"$http_referer" "$http_user_agent" "$quic" "$http3"';
+
+        access_log logs/access.log quic;
+
+        server {
+            # for better compatibility it's recommended
+            # to use the same port for quic and https
+            listen 8443 http3 reuseport;
+            listen 8443 ssl;
+
+            ssl_certificate     certs/example.com.crt;
+            ssl_certificate_key certs/example.com.key;
+            ssl_protocols       TLSv1.3;
+
+            location / {
+                # required for browsers to direct them into quic port
+                add_header Alt-Svc $http3=":8443";
+            }
+        }
+    }
+
+4. Clients
+
+    * Browsers
+
+        Known to work: Firefox 75+ and Chrome 83+
+
+        Beware of strange issues: sometimes browser may decide to ignore QUIC
+        Cache clearing/restart might help.  Always check access.log and
+        error.log to make sure you are using HTTP/3 and not TCP https.
+
+        + to enable QUIC in Firefox, set the following in 'about:config':
+          network.http.http3.enabled = true
+
+        + to enable QUIC in Chrome, enable it on command line and force it
+          on your site:
+
+        $ ./chrome --enable-quic --quic-version=h3-27 \
+                       --origin-to-force-quic-on=example.com:8443
+
+    * Console clients
+
+        Known to work: ngtcp2, firefox's neqo and chromium's console clients:
+
+        $ examples/client 127.0.0.1 8443 https://example.com:8443/index.html
+
+        $ ./neqo-client https://127.0.0.1:8443/
+
+        $ chromium-build/out/my_build/quic_client http://example.com:8443 \
+                  --quic_version=h3-27 \
+                  --allow_unknown_root_cert \
+                  --disable_certificate_verification
+
+
+   If you've got it right, in the access log you should see something like:
+
+   127.0.0.1 - - [24/Apr/2020:11:27:29 +0300] "GET / HTTP/3" 200 805 "-"
+                                         "nghttp3/ngtcp2 client" "quic" "h3-27"
+
+
+5. Troubleshooting
+
+    Here are some tips that may help you to identify problems:
+
+    + Ensure you are building with proper SSL library that
+      implements draft 27
+
+    + Ensure you are using the proper SSL library in runtime
+      (`nginx -V` will show you what you are using)
+
+    + Ensure your client is actually sending QUIC requests
+      (see "Clients" section about browsers and cache)
+
+      We recommend to start with simple console client like ngtcp2
+      to ensure you've got server configured properly before trying
+      with real browsers that may be very peaky with certificates,
+      for example.
+
+    + Build nginx with debug support [7] and check your debug log.
+      It should contain all details about connection and why it
+      failed. All related messages contain "quic " prefix and can
+      be easily filtered out.
+
+    + If you want to investigate deeper, you may want to enable
+      additional debugging in src/event/ngx_event_quic.h:
+
+        #define NGX_QUIC_DEBUG_PACKETS
+        #define NGX_QUIC_DEBUG_FRAMES
+        #define NGX_QUIC_DEBUG_FRAMES_ALLOC
+        #define NGX_QUIC_DEBUG_CRYPTO
+
+6. Links
+
+    [1] https://tools.ietf.org/html/draft-ietf-quic-transport-27
+    [2] https://tools.ietf.org/html/draft-ietf-quic-http-27
+    [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
+    [4] https://boringssl.googlesource.com/boringssl/
+    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery-27
+    [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
+    [7] https://nginx.org/en/docs/debugging_log.html
