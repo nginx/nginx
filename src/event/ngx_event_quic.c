@@ -174,6 +174,7 @@ static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c,
     enum ssl_encryption_level_t level, ngx_uint_t err);
 
@@ -1328,8 +1329,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     u_char                 *end, *p;
     ssize_t                 len;
-    ngx_uint_t              ack_this, do_close;
-    ngx_quic_frame_t        frame, *ack_frame;
+    ngx_uint_t              ack_sent, do_close;
+    ngx_quic_frame_t        frame;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
@@ -1349,7 +1350,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     p = pkt->payload.data;
     end = p + pkt->payload.len;
 
-    ack_this = 0;
+    ack_sent = 0;
     do_close = 0;
 
     while (p < end) {
@@ -1380,7 +1381,29 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            break;
+            continue;
+
+        case NGX_QUIC_FT_PADDING:
+            /* no action required */
+            continue;
+
+        case NGX_QUIC_FT_CONNECTION_CLOSE:
+        case NGX_QUIC_FT_CONNECTION_CLOSE2:
+            do_close = 1;
+            continue;
+        }
+
+        /* got there with ack-eliciting packet */
+
+        if (!ack_sent) {
+            if (ngx_quic_send_ack(c, pkt) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            ack_sent = 1;
+        }
+
+        switch (frame.type) {
 
         case NGX_QUIC_FT_CRYPTO:
 
@@ -1388,20 +1411,9 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
-            break;
-
-        case NGX_QUIC_FT_PADDING:
-            /* no action required */
             break;
 
         case NGX_QUIC_FT_PING:
-            ack_this = 1;
-            break;
-
-        case NGX_QUIC_FT_CONNECTION_CLOSE:
-        case NGX_QUIC_FT_CONNECTION_CLOSE2:
-            do_close = 1;
             break;
 
         case NGX_QUIC_FT_STREAM0:
@@ -1417,7 +1429,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
             break;
 
         case NGX_QUIC_FT_MAX_DATA:
@@ -1427,7 +1438,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
             break;
 
         case NGX_QUIC_FT_STREAMS_BLOCKED:
@@ -1440,7 +1450,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
             break;
 
         case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
@@ -1452,7 +1461,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
             break;
 
         case NGX_QUIC_FT_MAX_STREAM_DATA:
@@ -1464,7 +1472,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            ack_this = 1;
             break;
 
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
@@ -1478,7 +1485,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             /* TODO: handle */
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic frame handler not implemented");
-            ack_this = 1;
             break;
 
         default:
@@ -1497,35 +1503,36 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (do_close) {
         qc->draining = 1;
         ngx_quic_close_connection(c, NGX_OK);
-        return NGX_OK;
     }
 
-    if (ack_this == 0) {
-        /* do not ack packets with ACKs and PADDING */
-        return NGX_OK;
-    }
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    ngx_quic_frame_t  *frame;
 
     c->log->action = "generating acknowledgment";
 
-    // packet processed, ACK it now if required
-    // TODO: if (ack_required) ...  - currently just ack each packet
+    /* every ACK-eliciting packet is acknowledged, TODO ACK Ranges */
 
-    ack_frame = ngx_quic_alloc_frame(c, 0);
-    if (ack_frame == NULL) {
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
         return NGX_ERROR;
     }
 
-    ack_frame->level = (pkt->level == ssl_encryption_early_data)
-                       ? ssl_encryption_application
-                       : pkt->level;
+    frame->level = (pkt->level == ssl_encryption_early_data)
+                   ? ssl_encryption_application
+                   : pkt->level;
 
-    ack_frame->type = NGX_QUIC_FT_ACK;
-    ack_frame->u.ack.largest = pkt->pn;
-    /* only ack immediate packet ]*/
-    ack_frame->u.ack.first_range = 0;
+    frame->type = NGX_QUIC_FT_ACK;
+    frame->u.ack.largest = pkt->pn;
 
-    ngx_sprintf(ack_frame->info, "ACK for PN=%d from frame handler level=%d", pkt->pn, ack_frame->level);
-    ngx_quic_queue_frame(qc, ack_frame);
+    ngx_sprintf(frame->info, "ACK for PN=%d from frame handler level=%d",
+                pkt->pn, frame->level);
+    ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
 }
