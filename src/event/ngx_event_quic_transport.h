@@ -256,7 +256,7 @@ struct ngx_quic_frame_s {
         ngx_quic_path_challenge_frame_t         path_challenge;
         ngx_quic_path_challenge_frame_t         path_response;
     } u;
-    u_char                                      info[128]; // for debug
+    u_char                                      info[128]; /* for debug */
 };
 
 

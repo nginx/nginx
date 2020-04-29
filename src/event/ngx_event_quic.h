@@ -84,10 +84,10 @@ ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
 
 /********************************* DEBUG *************************************/
 
-//#define NGX_QUIC_DEBUG_PACKETS       /* dump packet contents */
-//#define NGX_QUIC_DEBUG_FRAMES        /* dump frames contents */
-//#define NGX_QUIC_DEBUG_FRAMES_ALLOC  /* log frames alloc/reuse/free */
-//#define NGX_QUIC_DEBUG_CRYPTO
+/* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
+/* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
+/* #define NGX_QUIC_DEBUG_FRAMES_ALLOC */ /* log frames alloc/reuse/free */
+/* #define NGX_QUIC_DEBUG_CRYPTO */
 
 #if (NGX_DEBUG)
 

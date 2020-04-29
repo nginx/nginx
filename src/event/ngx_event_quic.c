@@ -379,7 +379,6 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_add_handshake_data");
 
-    /* XXX: obtain client parameters after the handshake? */
     if (!qc->client_tp_done) {
 
         SSL_get_peer_quic_transport_params(ssl_conn, &client_params,
@@ -1066,7 +1065,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             break;
         }
 
-        // TODO: check current state
+        /* TODO: check current state */
         if (ngx_quic_long_pkt(pkt.flags)) {
 
             if (ngx_quic_pkt_in(pkt.flags)) {
@@ -1724,7 +1723,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic ACK for the packet not in sent queue ");
-        // TODO: handle error properly: PROTOCOL VIOLATION?
+        /* TODO: handle error properly: PROTOCOL VIOLATION */
         return NGX_ERROR;
     }
 
@@ -2578,7 +2577,6 @@ ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames)
 }
 
 
-/* pack a group of frames [start; end) into memory p and send as single packet */
 static ngx_int_t
 ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 {
