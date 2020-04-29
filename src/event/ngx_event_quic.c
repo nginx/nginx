@@ -103,7 +103,7 @@ struct ngx_quic_connection_s {
     ngx_ssl_t                        *ssl;
 
     ngx_event_t                       push;
-    ngx_event_t                       retry;
+    ngx_event_t                       retransmit;
     ngx_event_t                       close;
     ngx_queue_t                       free_frames;
     ngx_msec_t                        last_cc;
@@ -586,10 +586,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     ngx_queue_init(&qc->free_frames);
 
-    qc->retry.log = c->log;
-    qc->retry.data = c;
-    qc->retry.handler = ngx_quic_retransmit_handler;
-    qc->retry.cancelable = 1;
+    qc->retransmit.log = c->log;
+    qc->retransmit.data = c;
+    qc->retransmit.handler = ngx_quic_retransmit_handler;
+    qc->retransmit.cancelable = 1;
 
     qc->push.log = c->log;
     qc->push.data = c;
@@ -963,8 +963,8 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         ngx_del_timer(&qc->push);
     }
 
-    if (qc->retry.timer_set) {
-        ngx_del_timer(&qc->retry);
+    if (qc->retransmit.timer_set) {
+        ngx_del_timer(&qc->retransmit);
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -2449,8 +2449,8 @@ ngx_quic_output(ngx_connection_t *c)
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
 
-    if (!qc->retry.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->retry, qc->tp.max_ack_delay);
+    if (!qc->retransmit.timer_set && !qc->closing) {
+        ngx_add_timer(&qc->retransmit, qc->tp.max_ack_delay);
     }
 
     return NGX_OK;
@@ -2764,7 +2764,7 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
     }
 
     if (wait > 0) {
-        ngx_add_timer(&qc->retry, wait);
+        ngx_add_timer(&qc->retransmit, wait);
     }
 }
 
