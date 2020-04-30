@@ -948,7 +948,7 @@ ssize_t
 ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_str_t *res)
 {
-    if (pkt->level == ssl_encryption_application) {
+    if (ngx_quic_short_pkt(pkt->flags)) {
         return ngx_quic_create_short_packet(pkt, ssl_conn, res);
     }
 

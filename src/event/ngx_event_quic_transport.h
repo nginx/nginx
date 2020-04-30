@@ -12,20 +12,31 @@
 #include <ngx_core.h>
 
 
-#define ngx_quic_long_pkt(flags)  ((flags) & 0x80)            /* 17.2   */
-#define ngx_quic_short_pkt(flags) (((flags) & 0x80) == 0)     /* 17.3   */
+/* QUIC flags in first byte, see quic-transport 17.2 and 17.3 */
+
+#define NGX_QUIC_PKT_LONG       0x80  /* header form */
+#define NGX_QUIC_PKT_FIXED_BIT  0x40
+#define NGX_QUIC_PKT_TYPE       0x30  /* in long packet */
+#define NGX_QUIC_PKT_KPHASE     0x04  /* in short packet */
+
+#define ngx_quic_long_pkt(flags)  ((flags) & NGX_QUIC_PKT_LONG)
+#define ngx_quic_short_pkt(flags)  (((flags) & NGX_QUIC_PKT_LONG) == 0)
 
 /* Long packet types */
-#define NGX_QUIC_PKT_INITIAL                             0xC0 /* 17.2.2 */
-#define NGX_QUIC_PKT_ZRTT                                0xD0 /* 17.2.3 */
-#define NGX_QUIC_PKT_HANDSHAKE                           0xE0 /* 17.2.4 */
-#define NGX_QUIC_PKT_RETRY                               0xF0 /* 17.2.5 */
-#define NGX_QUIC_PKT_KPHASE                              0x04 /* 17.3   */
+#define NGX_QUIC_PKT_INITIAL    0x00
+#define NGX_QUIC_PKT_ZRTT       0x10
+#define NGX_QUIC_PKT_HANDSHAKE  0x20
+#define NGX_QUIC_PKT_RETRY      0x30
 
-#define ngx_quic_pkt_in(flags)     (((flags) & 0xF0) == NGX_QUIC_PKT_INITIAL)
-#define ngx_quic_pkt_zrtt(flags)   (((flags) & 0xF0) == NGX_QUIC_PKT_ZRTT)
-#define ngx_quic_pkt_hs(flags)     (((flags) & 0xF0) == NGX_QUIC_PKT_HANDSHAKE)
-#define ngx_quic_pkt_retry(flags)  (((flags) & 0xF0) == NGX_QUIC_PKT_RETRY)
+#define ngx_quic_pkt_in(flags)                                                \
+    (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_INITIAL)
+#define ngx_quic_pkt_zrtt(flags)                                              \
+    (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_ZRTT)
+#define ngx_quic_pkt_hs(flags)                                                \
+    (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_HANDSHAKE)
+#define ngx_quic_pkt_retry(flags)                                             \
+    (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_RETRY)
+
 
 /* 12.4.  Frames and Frame Types */
 #define NGX_QUIC_FT_PADDING                              0x00

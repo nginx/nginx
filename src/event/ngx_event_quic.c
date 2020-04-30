@@ -2655,16 +2655,19 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
     pkt.secret = &keys->server;
 
+    pkt.flags = NGX_QUIC_PKT_FIXED_BIT;
+
     if (start->level == ssl_encryption_initial) {
-        pkt.flags = NGX_QUIC_PKT_INITIAL;
+        pkt.flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_INITIAL;
         pkt.token = initial_token;
 
     } else if (start->level == ssl_encryption_handshake) {
-        pkt.flags = NGX_QUIC_PKT_HANDSHAKE;
+        pkt.flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_HANDSHAKE;
 
     } else {
-        // TODO: macro, set FIXED bit
-        pkt.flags = 0x40 | (c->quic->key_phase ? NGX_QUIC_PKT_KPHASE : 0);
+        if (c->quic->key_phase) {
+            pkt.flags |= NGX_QUIC_PKT_KPHASE;
+        }
     }
 
     ngx_quic_set_packet_number(&pkt, ctx);
