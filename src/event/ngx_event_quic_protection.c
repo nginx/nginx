@@ -1015,6 +1015,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     pn = ngx_quic_parse_pn(&p, pnl, &mask[1], largest_pn);
 
     pkt->pn = pn;
+    pkt->flags = clearflags;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(pkt->log, "quic mask", mask, 5);
