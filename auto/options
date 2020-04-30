@@ -59,7 +59,7 @@ HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
 HTTP_V2=NO
-HTTP_V3=YES
+HTTP_V3=NO
 HTTP_SSI=YES
 HTTP_REALIP=NO
 HTTP_XSLT=NO
@@ -146,6 +146,7 @@ PCRE_CONF_OPT=
 PCRE_JIT=NO
 
 USE_OPENSSL=NO
+USE_OPENSSL_QUIC=NO
 OPENSSL=NONE
 
 USE_ZLIB=NO
@@ -225,6 +226,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --with-http_v2_module)           HTTP_V2=YES                ;;
+        --with-http_v3_module)           HTTP_V3=YES                ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
@@ -440,6 +442,7 @@ cat << END
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_v2_module              enable ngx_http_v2_module
+  --with-http_v3_module              enable ngx_http_v3_module
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module

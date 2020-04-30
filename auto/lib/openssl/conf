@@ -141,11 +141,29 @@ END
 
 fi
 
-ngx_feature="OpenSSL QUIC support"
-ngx_feature_name="NGX_OPENSSL_QUIC"
-ngx_feature_run=no
-ngx_feature_incs="#include <openssl/ssl.h>"
-ngx_feature_path=
-ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL"
-ngx_feature_test="SSL_CTX_set_quic_method(NULL, NULL)"
-. auto/feature
+
+if [ $USE_OPENSSL_QUIC = YES ]; then
+
+    ngx_feature="OpenSSL QUIC support"
+    ngx_feature_name="NGX_OPENSSL_QUIC"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <openssl/ssl.h>"
+    ngx_feature_path=
+    ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL"
+    ngx_feature_test="SSL_CTX_set_quic_method(NULL, NULL)"
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+
+cat << END
+
+$0: error: certain modules require OpenSSL QUIC support.
+You can either do not enable the modules, or install the OpenSSL library
+into the system, or build the OpenSSL library statically from the source
+with nginx by using --with-openssl=<path> option.
+
+END
+        exit 1
+    fi
+
+fi

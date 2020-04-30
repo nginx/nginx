@@ -84,9 +84,11 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_resolver.h>
 #if (NGX_OPENSSL)
 #include <ngx_event_openssl.h>
+#if (NGX_OPENSSL_QUIC)
 #include <ngx_event_quic.h>
 #include <ngx_event_quic_transport.h>
 #include <ngx_event_quic_protection.h>
+#endif
 #endif
 #include <ngx_process_cycle.h>
 #include <ngx_conf_file.h>

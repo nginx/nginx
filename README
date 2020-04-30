@@ -82,9 +82,10 @@ Experimental QUIC support for nginx
 
     $ hg clone https://hg.nginx.org/nginx-quic
     $ cd nginx-quic
-    $ ./auto/configure --with-debug --with-cc-opt="-I../boringssl/include"   \
-                                    --with-ld-opt="-L../boringssl/build/ssl  \
-                                                   -L../boringssl/build/crypto"
+    $ ./auto/configure --with-debug --with-http_v3_module       \
+                       --with-cc-opt="-I../boringssl/include"   \
+                       --with-ld-opt="-L../boringssl/build/ssl  \
+                                      -L../boringssl/build/crypto"
     $ make
 
 3. Configuration
