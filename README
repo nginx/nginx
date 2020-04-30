@@ -80,7 +80,7 @@ Experimental QUIC support for nginx
 
     You will need a BoringSSL [4] library that provides QUIC support
 
-    $ hg clone https://hg.nginx.org/nginx-quic
+    $ hg clone -b quic https://hg.nginx.org/nginx-quic
     $ cd nginx-quic
     $ ./auto/configure --with-debug --with-http_v3_module       \
                        --with-cc-opt="-I../boringssl/include"   \
