@@ -53,9 +53,9 @@ static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
 static ngx_int_t ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest,
     ngx_str_t *out, ngx_str_t *label, const uint8_t *prk, size_t prk_len);
 
-static ssize_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
+static ngx_int_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
     ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
-static ssize_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
+static ngx_int_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
     ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
 
 
@@ -752,7 +752,7 @@ ngx_quic_key_update(ngx_connection_t *c, ngx_quic_secrets_t *current,
 }
 
 
-static ssize_t
+static ngx_int_t
 ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_str_t *res)
 {
@@ -819,7 +819,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 }
 
 
-static ssize_t
+static ngx_int_t
 ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_str_t *res)
 {
@@ -944,7 +944,7 @@ ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
 }
 
 
-ssize_t
+ngx_int_t
 ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_str_t *res)
 {
