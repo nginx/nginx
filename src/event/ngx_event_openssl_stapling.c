@@ -44,8 +44,13 @@ typedef struct {
 typedef struct ngx_ssl_ocsp_ctx_s  ngx_ssl_ocsp_ctx_t;
 
 struct ngx_ssl_ocsp_ctx_s {
+    SSL_CTX                     *ssl_ctx;
+
     X509                        *cert;
     X509                        *issuer;
+
+    int                          status;
+    time_t                       valid;
 
     u_char                      *name;
 
@@ -74,7 +79,7 @@ struct ngx_ssl_ocsp_ctx_s {
 
     ngx_uint_t                   code;
     ngx_uint_t                   count;
-
+    ngx_uint_t                   flags;
     ngx_uint_t                   done;
 
     u_char                      *header_name_start;
@@ -120,6 +125,7 @@ static ngx_int_t ngx_ssl_ocsp_parse_status_line(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_process_headers(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_process_body(ngx_ssl_ocsp_ctx_t *ctx);
+static ngx_int_t ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx);
 
 static u_char *ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
@@ -564,9 +570,11 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
         return;
     }
 
+    ctx->ssl_ctx = staple->ssl_ctx;
     ctx->cert = staple->cert;
     ctx->issuer = staple->issuer;
     ctx->name = staple->name;
+    ctx->flags = (staple->verify ? OCSP_TRUSTOTHER : OCSP_NOVERIFY);
 
     ctx->addrs = staple->addrs;
     ctx->host = staple->host;
@@ -589,137 +597,27 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
 static void
 ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
 {
-    int                    n;
-    size_t                 len;
-    time_t                 now, valid;
-    ngx_str_t              response;
-    X509_STORE            *store;
-    const u_char          *p;
-    STACK_OF(X509)        *chain;
-    OCSP_CERTID           *id;
-    OCSP_RESPONSE         *ocsp;
-    OCSP_BASICRESP        *basic;
-    ngx_ssl_stapling_t    *staple;
-    ASN1_GENERALIZEDTIME  *thisupdate, *nextupdate;
+    time_t               now;
+    ngx_str_t            response;
+    ngx_ssl_stapling_t  *staple;
 
     staple = ctx->data;
     now = ngx_time();
-    ocsp = NULL;
-    basic = NULL;
-    id = NULL;
 
-    if (ctx->code != 200) {
+    if (ngx_ssl_ocsp_verify(ctx) != NGX_OK) {
         goto error;
     }
 
-    /* check the response */
-
-    len = ctx->response->last - ctx->response->pos;
-    p = ctx->response->pos;
-
-    ocsp = d2i_OCSP_RESPONSE(NULL, &p, len);
-    if (ocsp == NULL) {
-        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
-                      "d2i_OCSP_RESPONSE() failed");
-        goto error;
-    }
-
-    n = OCSP_response_status(ocsp);
-
-    if (n != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
-                      "OCSP response not successful (%d: %s)",
-                      n, OCSP_response_status_str(n));
-        goto error;
-    }
-
-    basic = OCSP_response_get1_basic(ocsp);
-    if (basic == NULL) {
-        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
-                      "OCSP_response_get1_basic() failed");
-        goto error;
-    }
-
-    store = SSL_CTX_get_cert_store(staple->ssl_ctx);
-    if (store == NULL) {
-        ngx_ssl_error(NGX_LOG_CRIT, ctx->log, 0,
-                      "SSL_CTX_get_cert_store() failed");
-        goto error;
-    }
-
-#ifdef SSL_CTRL_SELECT_CURRENT_CERT
-    /* OpenSSL 1.0.2+ */
-    SSL_CTX_select_current_cert(staple->ssl_ctx, ctx->cert);
-#endif
-
-#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
-    /* OpenSSL 1.0.1+ */
-    SSL_CTX_get_extra_chain_certs(staple->ssl_ctx, &chain);
-#else
-    chain = staple->ssl_ctx->extra_certs;
-#endif
-
-    if (OCSP_basic_verify(basic, chain, store,
-                          staple->verify ? OCSP_TRUSTOTHER : OCSP_NOVERIFY)
-        != 1)
-    {
-        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
-                      "OCSP_basic_verify() failed");
-        goto error;
-    }
-
-    id = OCSP_cert_to_id(NULL, ctx->cert, ctx->issuer);
-    if (id == NULL) {
-        ngx_ssl_error(NGX_LOG_CRIT, ctx->log, 0,
-                      "OCSP_cert_to_id() failed");
-        goto error;
-    }
-
-    if (OCSP_resp_find_status(basic, id, &n, NULL, NULL,
-                              &thisupdate, &nextupdate)
-        != 1)
-    {
-        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
-                      "certificate status not found in the OCSP response");
-        goto error;
-    }
-
-    if (n != V_OCSP_CERTSTATUS_GOOD) {
+    if (ctx->status != V_OCSP_CERTSTATUS_GOOD) {
         ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
                       "certificate status \"%s\" in the OCSP response",
-                      OCSP_cert_status_str(n));
+                      OCSP_cert_status_str(ctx->status));
         goto error;
     }
-
-    if (OCSP_check_validity(thisupdate, nextupdate, 300, -1) != 1) {
-        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
-                      "OCSP_check_validity() failed");
-        goto error;
-    }
-
-    if (nextupdate) {
-        valid = ngx_ssl_stapling_time(nextupdate);
-        if (valid == (time_t) NGX_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
-                          "invalid nextUpdate time in certificate status");
-            goto error;
-        }
-
-    } else {
-        valid = NGX_MAX_TIME_T_VALUE;
-    }
-
-    OCSP_CERTID_free(id);
-    OCSP_BASICRESP_free(basic);
-    OCSP_RESPONSE_free(ocsp);
-
-    id = NULL;
-    basic = NULL;
-    ocsp = NULL;
 
     /* copy the response to memory not in ctx->pool */
 
-    response.len = len;
+    response.len = ctx->response->last - ctx->response->pos;
     response.data = ngx_alloc(response.len, ctx->log);
 
     if (response.data == NULL) {
@@ -728,16 +626,12 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
 
     ngx_memcpy(response.data, ctx->response->pos, response.len);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
-                   "ssl ocsp response, %s, %uz",
-                   OCSP_cert_status_str(n), response.len);
-
     if (staple->staple.data) {
         ngx_free(staple->staple.data);
     }
 
     staple->staple = response;
-    staple->valid = valid;
+    staple->valid = ctx->valid;
 
     /*
      * refresh before the response expires,
@@ -745,7 +639,7 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
      */
 
     staple->loading = 0;
-    staple->refresh = ngx_max(ngx_min(valid - 300, now + 3600), now + 300);
+    staple->refresh = ngx_max(ngx_min(ctx->valid - 300, now + 3600), now + 300);
 
     ngx_ssl_ocsp_done(ctx);
     return;
@@ -754,18 +648,6 @@ error:
 
     staple->loading = 0;
     staple->refresh = now + 300;
-
-    if (id) {
-        OCSP_CERTID_free(id);
-    }
-
-    if (basic) {
-        OCSP_BASICRESP_free(basic);
-    }
-
-    if (ocsp) {
-        OCSP_RESPONSE_free(ocsp);
-    }
 
     ngx_ssl_ocsp_done(ctx);
 }
@@ -1828,6 +1710,142 @@ ngx_ssl_ocsp_process_body(ngx_ssl_ocsp_ctx_t *ctx)
     }
 
     return NGX_AGAIN;
+}
+
+
+static ngx_int_t
+ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx)
+{
+    int                    n;
+    size_t                 len;
+    X509_STORE            *store;
+    const u_char          *p;
+    STACK_OF(X509)        *chain;
+    OCSP_CERTID           *id;
+    OCSP_RESPONSE         *ocsp;
+    OCSP_BASICRESP        *basic;
+    ASN1_GENERALIZEDTIME  *thisupdate, *nextupdate;
+
+    ocsp = NULL;
+    basic = NULL;
+    id = NULL;
+
+    if (ctx->code != 200) {
+        goto error;
+    }
+
+    /* check the response */
+
+    len = ctx->response->last - ctx->response->pos;
+    p = ctx->response->pos;
+
+    ocsp = d2i_OCSP_RESPONSE(NULL, &p, len);
+    if (ocsp == NULL) {
+        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
+                      "d2i_OCSP_RESPONSE() failed");
+        goto error;
+    }
+
+    n = OCSP_response_status(ocsp);
+
+    if (n != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                      "OCSP response not successful (%d: %s)",
+                      n, OCSP_response_status_str(n));
+        goto error;
+    }
+
+    basic = OCSP_response_get1_basic(ocsp);
+    if (basic == NULL) {
+        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
+                      "OCSP_response_get1_basic() failed");
+        goto error;
+    }
+
+    store = SSL_CTX_get_cert_store(ctx->ssl_ctx);
+    if (store == NULL) {
+        ngx_ssl_error(NGX_LOG_CRIT, ctx->log, 0,
+                      "SSL_CTX_get_cert_store() failed");
+        goto error;
+    }
+
+#ifdef SSL_CTRL_SELECT_CURRENT_CERT
+    /* OpenSSL 1.0.2+ */
+    SSL_CTX_select_current_cert(ctx->ssl_ctx, ctx->cert);
+#endif
+
+#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
+    /* OpenSSL 1.0.1+ */
+    SSL_CTX_get_extra_chain_certs(ctx->ssl_ctx, &chain);
+#else
+    chain = ctx->ssl_ctx->extra_certs;
+#endif
+
+    if (OCSP_basic_verify(basic, chain, store, ctx->flags) != 1) {
+        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
+                      "OCSP_basic_verify() failed");
+        goto error;
+    }
+
+    id = OCSP_cert_to_id(NULL, ctx->cert, ctx->issuer);
+    if (id == NULL) {
+        ngx_ssl_error(NGX_LOG_CRIT, ctx->log, 0,
+                      "OCSP_cert_to_id() failed");
+        goto error;
+    }
+
+    if (OCSP_resp_find_status(basic, id, &ctx->status, NULL, NULL,
+                              &thisupdate, &nextupdate)
+        != 1)
+    {
+        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                      "certificate status not found in the OCSP response");
+        goto error;
+    }
+
+    if (OCSP_check_validity(thisupdate, nextupdate, 300, -1) != 1) {
+        ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
+                      "OCSP_check_validity() failed");
+        goto error;
+    }
+
+    if (nextupdate) {
+        ctx->valid = ngx_ssl_stapling_time(nextupdate);
+        if (ctx->valid == (time_t) NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                          "invalid nextUpdate time in certificate status");
+            goto error;
+        }
+
+    } else {
+        ctx->valid = NGX_MAX_TIME_T_VALUE;
+    }
+
+    OCSP_CERTID_free(id);
+    OCSP_BASICRESP_free(basic);
+    OCSP_RESPONSE_free(ocsp);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                   "ssl ocsp response, %s, %uz",
+                   OCSP_cert_status_str(ctx->status), len);
+
+    return NGX_OK;
+
+error:
+
+    if (id) {
+        OCSP_CERTID_free(id);
+    }
+
+    if (basic) {
+        OCSP_BASICRESP_free(basic);
+    }
+
+    if (ocsp) {
+        OCSP_RESPONSE_free(ocsp);
+    }
+
+    return NGX_ERROR;
 }
 
 
