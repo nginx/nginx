@@ -1036,6 +1036,7 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
         len = ngx_snprintf(pid, NGX_INT64_LEN + 2, "%P%N", ngx_pid) - pid;
 
         if (ngx_write_file(&file, pid, len, 0) == NGX_ERROR) {
+            ngx_close_file(file.fd);
             return NGX_ERROR;
         }
     }
