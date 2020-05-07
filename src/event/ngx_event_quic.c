@@ -163,6 +163,7 @@ static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
 static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
+static ngx_inline u_char *ngx_quic_skip_zero_padding(ngx_buf_t *b);
 static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
@@ -664,6 +665,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     /* pos is at header end, adjust by actual packet length */
     pkt->raw->pos += pkt->len;
 
+    (void) ngx_quic_skip_zero_padding(pkt->raw);
+
     return ngx_quic_input(c, pkt->raw);
 }
 
@@ -1057,14 +1060,6 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.log = c->log;
         pkt.flags = p[0];
 
-        if (pkt.flags == 0) {
-            /* XXX: no idea WTF is this, just ignore */
-            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "quic packet with zero flags, presumably"
-                          " firefox padding, ignored");
-            break;
-        }
-
         /* TODO: check current state */
         if (ngx_quic_long_pkt(pkt.flags)) {
 
@@ -1108,11 +1103,23 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
          */
 
         /* b->pos is at header end, adjust by actual packet length */
-        p = b->pos + pkt.len;
-        b->pos = p;       /* reset b->pos to the next packet start */
+        b->pos += pkt.len;
+        p = ngx_quic_skip_zero_padding(b);
     }
 
     return NGX_OK;
+}
+
+
+/* firefox workaround: skip zero padding at the end of quic packet */
+static ngx_inline u_char *
+ngx_quic_skip_zero_padding(ngx_buf_t *b)
+{
+    while (b->pos < b->last && *(b->pos) == 0) {
+        b->pos++;
+    }
+
+    return b->pos;
 }
 
 
