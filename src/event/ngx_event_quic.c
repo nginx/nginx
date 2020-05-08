@@ -126,7 +126,7 @@ struct ngx_quic_connection_s {
 
 
 typedef ngx_int_t (*ngx_quic_frame_handler_pt)(ngx_connection_t *c,
-    ngx_quic_frame_t *frame);
+    ngx_quic_frame_t *frame, void *data);
 
 
 #if BORINGSSL_API_VERSION >= 10
@@ -189,7 +189,7 @@ static void ngx_quic_handle_stream_ack(ngx_connection_t *c,
 
 static ngx_int_t ngx_quic_handle_ordered_frame(ngx_connection_t *c,
     ngx_quic_frames_stream_t *fs, ngx_quic_frame_t *frame,
-    ngx_quic_frame_handler_pt handler);
+    ngx_quic_frame_handler_pt handler, void *data);
 static ngx_int_t ngx_quic_adjust_frame_offset(ngx_connection_t *c,
     ngx_quic_frame_t *f, uint64_t offset_in);
 static ngx_int_t ngx_quic_buffer_frame(ngx_connection_t *c,
@@ -198,11 +198,11 @@ static ngx_int_t ngx_quic_buffer_frame(ngx_connection_t *c,
 static ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c,
-    ngx_quic_frame_t *frame);
+    ngx_quic_frame_t *frame, void *data);
 static ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
 static ngx_int_t ngx_quic_stream_input(ngx_connection_t *c,
-    ngx_quic_frame_t *frame);
+    ngx_quic_frame_t *frame, void *data);
 
 static ngx_int_t ngx_quic_handle_max_streams(ngx_connection_t *c);
 static ngx_int_t ngx_quic_handle_max_data_frame(ngx_connection_t *c,
@@ -1780,7 +1780,7 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 
 static ngx_int_t
 ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
-    ngx_quic_frame_t *frame, ngx_quic_frame_handler_pt handler)
+    ngx_quic_frame_t *frame, ngx_quic_frame_handler_pt handler, void *data)
 {
     size_t                     full_len;
     ngx_int_t                  rc;
@@ -1811,7 +1811,7 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
 
     /* f->offset == fs->received */
 
-    rc = handler(c, frame);
+    rc = handler(c, frame, data);
     if (rc == NGX_ERROR) {
         return NGX_ERROR;
 
@@ -1863,7 +1863,7 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
 
         /* f->offset == fs->received */
 
-        rc = handler(c, frame);
+        rc = handler(c, frame, data);
 
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
@@ -2000,12 +2000,13 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     qc = c->quic;
     fs = &qc->crypto[pkt->level];
 
-    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input);
+    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input,
+                                         NULL);
 }
 
 
 static ngx_int_t
-ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
+ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
     int                       sslerr;
     ssize_t                   n;
@@ -2091,8 +2092,8 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
     size_t                     n;
-    ngx_buf_t                *b;
-    ngx_event_t              *rev;
+    ngx_buf_t                 *b;
+    ngx_event_t               *rev;
     ngx_quic_stream_t         *sn;
     ngx_quic_connection_t     *qc;
     ngx_quic_stream_frame_t   *f;
@@ -2170,12 +2171,13 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     fs = &sn->fs;
 
-    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input);
+    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input,
+                                         sn);
 }
 
 
 static ngx_int_t
-ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
+ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
     ngx_buf_t                *b;
     ngx_event_t              *rev;
@@ -2184,15 +2186,9 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame)
     ngx_quic_stream_frame_t  *f;
 
     qc = c->quic;
+    sn = data;
 
     f = &frame->u.stream;
-
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->stream_id);
-    if (sn == NULL) {
-        // TODO: possible?
-        // stream was deleted while in reordering queue ?
-        return NGX_ERROR;
-    }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic existing stream");
 
