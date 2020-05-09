@@ -699,7 +699,6 @@ ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *cid)
 static ngx_int_t
 ngx_quic_init_connection(ngx_connection_t *c)
 {
-    int                     n, sslerr;
     u_char                 *p;
     ssize_t                 len;
     ngx_ssl_conn_t         *ssl_conn;
@@ -750,28 +749,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     qc->max_streams = qc->tp.initial_max_streams_bidi;
     qc->state = NGX_QUIC_ST_HANDSHAKE;
-
-    n = SSL_do_handshake(ssl_conn);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic SSL_do_handshake: %d", n);
-
-    if (n == -1) {
-        sslerr = SSL_get_error(ssl_conn, n);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic SSL_get_error: %d", sslerr);
-
-        if (sslerr != SSL_ERROR_WANT_READ) {
-            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
-            return NGX_ERROR;
-        }
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic SSL_quic_read_level: %d, SSL_quic_write_level: %d",
-                   (int) SSL_quic_read_level(ssl_conn),
-                   (int) SSL_quic_write_level(ssl_conn));
 
     return NGX_OK;
 }
