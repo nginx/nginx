@@ -1165,12 +1165,6 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (!ngx_quic_pkt_hs(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid packet type: 0x%xi", pkt->flags);
-        return NGX_ERROR;
-    }
-
     if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -1207,12 +1201,6 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (!ngx_quic_pkt_zrtt(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid packet type: 0x%xi", pkt->flags);
         return NGX_ERROR;
     }
 
