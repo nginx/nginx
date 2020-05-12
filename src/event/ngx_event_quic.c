@@ -87,6 +87,7 @@ typedef struct {
 struct ngx_quic_connection_s {
     ngx_str_t                         scid;
     ngx_str_t                         dcid;
+    ngx_str_t                         odcid;
     ngx_str_t                         token;
 
     ngx_uint_t                        client_tp_done;
@@ -621,6 +622,13 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
 #endif
 
+    qc->odcid.len = pkt->dcid.len;
+    qc->odcid.data = ngx_pnalloc(c->pool, qc->odcid.len);
+    if (qc->odcid.data == NULL) {
+        return NGX_ERROR;
+    }
+    ngx_memcpy(qc->odcid.data, pkt->dcid.data, qc->odcid.len);
+
     qc->scid.len = pkt->scid.len;
     qc->scid.data = ngx_pnalloc(c->pool, qc->scid.len);
     if (qc->scid.data == NULL) {
@@ -638,7 +646,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     keys = &c->quic->keys[ssl_encryption_initial];
 
     if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
-                                    &pkt->dcid)
+                                    &qc->odcid)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -1232,12 +1240,16 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
-    if (pkt->dcid.len != qc->dcid.len) {
+    ngx_str_t  *dcid;
+
+    dcid = ngx_quic_pkt_zrtt(pkt->flags) ? &qc->odcid : &qc->dcid;
+
+    if (pkt->dcid.len != dcid->len) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcidl");
         return NGX_ERROR;
     }
 
-    if (ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) != 0) {
+    if (ngx_memcmp(pkt->dcid.data, dcid->data, dcid->len) != 0) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcid");
         return NGX_ERROR;
     }
