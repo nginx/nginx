@@ -3262,7 +3262,7 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         do {
             f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-            if (start->first + qc->tp.max_idle_timeout < now) {
+            if (now - start->first > qc->tp.max_idle_timeout) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
                               "quic retransmission timeout");
                 return NGX_DECLINED;
