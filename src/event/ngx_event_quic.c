@@ -153,7 +153,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_tp_t *tp, ngx_quic_header_t *pkt,
     ngx_connection_handler_pt handler);
-static ngx_int_t ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *sid);
+static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
@@ -614,20 +614,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->congestion.ssthresh = NGX_MAX_SIZE_T_VALUE;
     qc->congestion.recovery_start = ngx_current_msec;
 
-    if (ngx_quic_new_cid(c->pool, &qc->dcid) != NGX_OK) {
+    if (ngx_quic_new_dcid(c, &pkt->dcid) != NGX_OK) {
         return NGX_ERROR;
     }
-
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
-#endif
-
-    qc->odcid.len = pkt->dcid.len;
-    qc->odcid.data = ngx_pnalloc(c->pool, qc->odcid.len);
-    if (qc->odcid.data == NULL) {
-        return NGX_ERROR;
-    }
-    ngx_memcpy(qc->odcid.data, pkt->dcid.data, qc->odcid.len);
 
     qc->scid.len = pkt->scid.len;
     qc->scid.data = ngx_pnalloc(c->pool, qc->scid.len);
@@ -680,9 +669,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
 
 static ngx_int_t
-ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *cid)
+ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid)
 {
-    uint8_t len;
+    uint8_t                 len;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
 
     if (RAND_bytes(&len, sizeof(len)) != 1) {
         return NGX_ERROR;
@@ -690,13 +682,23 @@ ngx_quic_new_cid(ngx_pool_t *pool, ngx_str_t *cid)
 
     len = len % 10 + 10;
 
-    cid->len = len;
-    cid->data = ngx_pnalloc(pool, len);
-    if (cid->data == NULL) {
+    qc->dcid.len = len;
+    qc->dcid.data = ngx_pnalloc(c->pool, len);
+    if (qc->dcid.data == NULL) {
         return NGX_ERROR;
     }
 
-    if (RAND_bytes(cid->data, len) != 1) {
+    if (RAND_bytes(qc->dcid.data, len) != 1) {
+        return NGX_ERROR;
+    }
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
+#endif
+
+    qc->odcid.len = odcid->len;
+    qc->odcid.data = ngx_pstrdup(c->pool, odcid);
+    if (qc->odcid.data == NULL) {
         return NGX_ERROR;
     }
 
