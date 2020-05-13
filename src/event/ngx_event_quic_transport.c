@@ -265,6 +265,11 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
                    "quic long packet flags:%xi version:%xD",
                    pkt->flags, pkt->version);
 
+    if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
+        return NGX_DECLINED;
+    }
+
     if (pkt->version != NGX_QUIC_VERSION) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                       "quic unsupported version: 0x%xi", pkt->version);
@@ -442,6 +447,11 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic short packet flags:%xi", pkt->flags);
+
+    if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
+        return NGX_DECLINED;
+    }
 
     if (ngx_memcmp(p, dcid->data, dcid->len) != 0) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "unexpected quic dcid");

@@ -564,8 +564,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_long_header(pkt);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (!ngx_quic_pkt_in(pkt->flags)) {
@@ -676,6 +677,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
+        qc->error = pkt->error;
         return NGX_ERROR;
     }
 
@@ -1420,6 +1422,7 @@ ngx_quic_skip_zero_padding(ngx_buf_t *b)
 static ngx_int_t
 ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1435,8 +1438,9 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_OK;
     }
 
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_long_header(pkt);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (ngx_quic_pkt_zrtt(pkt->flags)) {
@@ -1484,6 +1488,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
+        qc->error = pkt->error;
         return NGX_ERROR;
     }
 
@@ -1507,6 +1512,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t             rc;
     ngx_ssl_conn_t       *ssl_conn;
     ngx_quic_secrets_t   *keys;
     ngx_quic_send_ctx_t  *ctx;
@@ -1516,8 +1522,9 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ssl_conn = c->ssl->connection;
 
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_long_header(pkt);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
@@ -1533,6 +1540,7 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
 
     if (ngx_quic_decrypt(pkt, ssl_conn, &ctx->largest_pn) != NGX_OK) {
+        c->quic->error = pkt->error;
         return NGX_ERROR;
     }
 
@@ -1543,6 +1551,7 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1561,8 +1570,9 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     /* extract cleartext data into pkt */
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_long_header(pkt);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
@@ -1580,6 +1590,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+        qc->error = pkt->error;
         return NGX_ERROR;
     }
 
@@ -1590,6 +1601,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1600,8 +1612,9 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc = c->quic;
 
     /* extract cleartext data into pkt */
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_long_header(pkt);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
@@ -1626,6 +1639,7 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+        qc->error = pkt->error;
         return NGX_ERROR;
     }
 
@@ -1686,8 +1700,9 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-    if (ngx_quic_parse_short_header(pkt, &qc->dcid) != NGX_OK) {
-        return NGX_ERROR;
+    rc = ngx_quic_parse_short_header(pkt, &qc->dcid);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     pkt->secret = &keys->client;
@@ -1699,6 +1714,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+        qc->error = pkt->error;
         return NGX_ERROR;
     }
 

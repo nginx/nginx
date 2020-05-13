@@ -19,6 +19,9 @@
 #define NGX_QUIC_PKT_TYPE       0x30  /* in long packet */
 #define NGX_QUIC_PKT_KPHASE     0x04  /* in short packet */
 
+#define NGX_QUIC_PKT_LONG_RESERVED_BIT   0x0C
+#define NGX_QUIC_PKT_SHORT_RESERVED_BIT  0x18
+
 #define ngx_quic_long_pkt(flags)  ((flags) & NGX_QUIC_PKT_LONG)
 #define ngx_quic_short_pkt(flags)  (((flags) & NGX_QUIC_PKT_LONG) == 0)
 

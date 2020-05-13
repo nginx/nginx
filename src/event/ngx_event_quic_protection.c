@@ -1014,6 +1014,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     uint64_t *largest_pn)
 {
     u_char               clearflags, *p, *sample;
+    uint8_t              badflags;
     uint64_t             pn;
     ngx_int_t            pnl, rc, key_phase;
     ngx_str_t            in, ad;
@@ -1048,6 +1049,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
+        pkt->error = NGX_QUIC_ERR_CRYPTO_ERROR;
         return NGX_ERROR;
     }
 
@@ -1085,9 +1087,11 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
     if (ngx_quic_long_pkt(pkt->flags)) {
         in.len = pkt->len - pnl;
+        badflags = clearflags & NGX_QUIC_PKT_LONG_RESERVED_BIT;
 
     } else {
         in.len = pkt->data + pkt->len - p;
+        badflags = clearflags & NGX_QUIC_PKT_SHORT_RESERVED_BIT;
     }
 
     ad.len = p - pkt->data;
@@ -1124,6 +1128,24 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
                      pkt->payload.data, pkt->payload.len);
 #endif
 
-    return rc;
+    if (rc != NGX_OK) {
+        pkt->error = NGX_QUIC_ERR_CRYPTO_ERROR;
+        return rc;
+    }
+
+    if (badflags) {
+        /*
+         * An endpoint MUST treat receipt of a packet that has
+         * a non-zero value for these bits, after removing both
+         * packet and header protection, as a connection error
+         * of type PROTOCOL_VIOLATION.
+         */
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic reserved bit set in packet");
+        pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
