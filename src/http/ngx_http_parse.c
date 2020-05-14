@@ -2185,12 +2185,6 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
         sw_trailer_header_almost_done
     } state;
 
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
-        return ngx_http_v3_parse_request_body(r, b, ctx);
-    }
-#endif
-
     state = ctx->state;
 
     if (state == sw_chunk_data && ctx->size == 0) {
