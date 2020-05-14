@@ -149,11 +149,14 @@ ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)
 {
     ngx_array_t           *dt;
+    ngx_connection_t      *pc;
     ngx_http_v3_header_t  *ref, *h;
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 ref insert %s[$ui] \"%V\"",
                    dynamic ? "dynamic" : "static", index, value);
+
+    pc = c->qs->parent;
 
     ref = ngx_http_v3_lookup_table(c, dynamic, index);
     if (ref == NULL) {
@@ -171,7 +174,14 @@ ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     }
 
     h->name = ref->name;
-    h->value = *value;
+
+    h->value.data = ngx_pstrdup(pc->pool, value);
+    if (h->value.data == NULL) {
+        h->value.len = 0;
+        return NGX_ERROR;
+    }
+
+    h->value.len = value->len;
 
     if (ngx_http_v3_new_header(c) != NGX_OK) {
         return NGX_ERROR;
@@ -186,10 +196,13 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value)
 {
     ngx_array_t           *dt;
+    ngx_connection_t      *pc;
     ngx_http_v3_header_t  *h;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 insert \"%V\":\"%V\"", name, value);
+
+    pc = c->qs->parent;
 
     dt = ngx_http_v3_get_dynamic_table(c);
     if (dt == NULL) {
@@ -201,8 +214,22 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
         return NGX_ERROR;
     }
 
-    h->name = *name;
-    h->value = *value;
+    h->name.data = ngx_pstrdup(pc->pool, name);
+    if (h->name.data == NULL) {
+        h->name.len = 0;
+        h->value.len = 0;
+        return NGX_ERROR;
+    }
+
+    h->name.len = name->len;
+
+    h->value.data = ngx_pstrdup(pc->pool, value);
+    if (h->value.data == NULL) {
+        h->value.len = 0;
+        return NGX_ERROR;
+    }
+
+    h->value.len = value->len;
 
     if (ngx_http_v3_new_header(c) != NGX_OK) {
         return NGX_ERROR;
