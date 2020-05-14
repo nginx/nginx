@@ -117,7 +117,6 @@ ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
     ngx_uint_t   len;
 
     if (pos >= end) {
-        printf("OOPS >=\n");
         return NULL;
     }
 
@@ -127,7 +126,6 @@ ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
     value = *p++ & 0x3f;
 
     if ((size_t)(end - p) < (len - 1)) {
-        printf("LEN TOO BIG: need %ld have %ld\n", len, end - p);
         return NULL;
     }
 
