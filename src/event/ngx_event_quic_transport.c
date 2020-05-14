@@ -283,6 +283,12 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
+    if (idlen > NGX_QUIC_CID_LEN_MAX) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic packet dcid is too long");
+        return NGX_ERROR;
+    }
+
     pkt->dcid.len = idlen;
 
     p = ngx_quic_read_bytes(p, end, idlen, &pkt->dcid.data);
@@ -296,6 +302,12 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                       "quic packet is too small to read scid len");
+        return NGX_ERROR;
+    }
+
+    if (idlen > NGX_QUIC_CID_LEN_MAX) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic packet scid is too long");
         return NGX_ERROR;
     }
 

@@ -579,6 +579,14 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
+    if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
+        /* 7.2.  Negotiating Connection IDs */
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic too short dcid in initial packet: length %i",
+                      pkt->dcid.len);
+        return NGX_ERROR;
+    }
+
     c->log->action = "creating new quic connection";
 
     qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));

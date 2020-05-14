@@ -112,6 +112,9 @@
 #define NGX_QUIC_TP_PREFERRED_ADDRESS                    0x0D
 #define NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT           0x0E
 
+#define NGX_QUIC_CID_LEN_MIN                                8
+#define NGX_QUIC_CID_LEN_MAX                               20
+
 
 typedef struct {
     uint64_t                                    largest;
@@ -130,7 +133,7 @@ typedef struct {
     uint64_t                                    seqnum;
     uint64_t                                    retire;
     uint8_t                                     len;
-    u_char                                      cid[20];
+    u_char                                      cid[NGX_QUIC_CID_LEN_MAX];
     u_char                                      srt[16];
 } ngx_quic_new_conn_id_frame_t;
 
