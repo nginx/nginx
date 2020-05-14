@@ -280,6 +280,7 @@ typedef struct {
     size_t                                      len;
 
     /* cleartext fields */
+    ngx_str_t                                   odcid; /* retry packet tag */
     ngx_str_t                                   dcid;
     ngx_str_t                                   scid;
     uint64_t                                    pn;
@@ -302,6 +303,9 @@ ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
     ngx_str_t *dcid);
 size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp);
+
+size_t ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
+    u_char **start);
 
 ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);

@@ -57,6 +57,8 @@ static ngx_int_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
     ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
 static ngx_int_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
     ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
+static ngx_int_t ngx_quic_create_retry_packet(ngx_quic_header_t *pkt,
+    ngx_str_t *res);
 
 
 static ngx_int_t
@@ -891,6 +893,53 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 }
 
 
+static ngx_int_t
+ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
+{
+    u_char              *start;
+    ngx_str_t            ad, itag;
+    ngx_quic_secret_t    secret;
+    ngx_quic_ciphers_t   ciphers;
+
+    /* 5.8.  Retry Packet Integrity */
+    static u_char     key[16] =
+        "\x4d\x32\xec\xdb\x2a\x21\x33\xc8"
+        "\x41\xe4\x04\x3d\xf2\x7d\x44\x30";
+    static u_char     nonce[12] =
+        "\x4d\x16\x11\xd0\x55\x13"
+        "\xa5\x52\xc5\x87\xd5\x75";
+    static ngx_str_t  in = ngx_string("");
+
+    ad.data = res->data;
+    ad.len = ngx_quic_create_retry_itag(pkt, ad.data, &start);
+
+    itag.data = ad.data + ad.len;
+
+#ifdef NGX_QUIC_DEBUG_CRYPTO
+    ngx_quic_hexdump(pkt->log, "quic retry itag", ad.data, ad.len);
+#endif
+
+    if (ngx_quic_ciphers(NULL, &ciphers, pkt->level) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    secret.key.len = sizeof(key);
+    secret.key.data = key;
+    secret.iv.len = sizeof(nonce);
+
+    if (ngx_quic_tls_seal(ciphers.c, &secret, &itag, nonce, &in, &ad, pkt->log)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    res->len = itag.data + itag.len - start;
+    res->data = start;
+
+    return NGX_OK;
+}
+
+
 static uint64_t
 ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn)
@@ -950,6 +999,10 @@ ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 {
     if (ngx_quic_short_pkt(pkt->flags)) {
         return ngx_quic_create_short_packet(pkt, ssl_conn, res);
+    }
+
+    if (ngx_quic_pkt_retry(pkt->flags)) {
+        return ngx_quic_create_retry_packet(pkt, res);
     }
 
     return ngx_quic_create_long_packet(pkt, ssl_conn, res);

@@ -111,6 +111,13 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, quic.active_connection_id_limit),
       &ngx_http_v3_active_connection_id_limit_bounds },
 
+    { ngx_string("quic_retry"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.retry),
+      NULL },
+
       ngx_null_command
 };
 
@@ -257,6 +264,8 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     v3cf->quic.disable_active_migration = NGX_CONF_UNSET_UINT;
     v3cf->quic.active_connection_id_limit = NGX_CONF_UNSET_UINT;
 
+    v3cf->quic.retry = NGX_CONF_UNSET;
+
     return v3cf;
 }
 
@@ -309,6 +318,15 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->quic.active_connection_id_limit,
                               prev->quic.active_connection_id_limit, 2);
+
+    ngx_conf_merge_value(conf->quic.retry, prev->quic.retry, 0);
+
+    if (conf->quic.retry) {
+        if (RAND_bytes(conf->quic.token_key, sizeof(conf->quic.token_key)) <= 0) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
 
     return NGX_CONF_OK;
 }

@@ -23,6 +23,13 @@
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 
+#define NGX_QUIC_RETRY_TIMEOUT               3000
+#define NGX_QUIC_RETRY_LIFETIME              30000
+#define NGX_QUIC_RETRY_BUFFER_SIZE           128
+    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(44) */
+#define NGX_QUIC_MAX_TOKEN_SIZE              32
+    /* sizeof(struct in6_addr) + sizeof(ngx_msec_t) up to AES-256 block size */
+
 #define NGX_QUIC_HARDCODED_PTO               1000 /* 1s, TODO: collect */
 #define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
 
@@ -49,9 +56,12 @@ typedef struct {
     ngx_uint_t                 ack_delay_exponent;
     ngx_uint_t                 disable_active_migration;
     ngx_uint_t                 active_connection_id_limit;
+    ngx_str_t                  original_connection_id;
+
+    ngx_flag_t                 retry;
+    u_char                     token_key[32]; /* AES 256 */
 
     /* TODO */
-    ngx_uint_t                 original_connection_id;
     u_char                     stateless_reset_token[16];
     void                      *preferred_address;
 } ngx_quic_tp_t;

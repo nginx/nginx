@@ -123,6 +123,7 @@ struct ngx_quic_connection_s {
     unsigned                          closing:1;
     unsigned                          draining:1;
     unsigned                          key_phase:1;
+    unsigned                          in_retry:1;
 };
 
 
@@ -154,6 +155,10 @@ static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_tp_t *tp, ngx_quic_header_t *pkt,
     ngx_connection_handler_pt handler);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
+static ngx_int_t ngx_quic_retry(ngx_connection_t *c);
+static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
+static ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
@@ -165,6 +170,8 @@ static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
 
 static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_inline u_char *ngx_quic_skip_zero_padding(ngx_buf_t *b);
+static ngx_int_t ngx_quic_retry_input(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
@@ -524,7 +531,8 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return;
     }
 
-    ngx_add_timer(c->read, c->quic->tp.max_idle_timeout);
+    ngx_add_timer(c->read, c->quic->in_retry ? NGX_QUIC_RETRY_TIMEOUT
+                                             : c->quic->tp.max_idle_timeout);
 
     c->read->handler = ngx_quic_input_handler;
 
@@ -625,13 +633,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     }
     ngx_memcpy(qc->scid.data, pkt->scid.data, qc->scid.len);
 
-    qc->token.len = pkt->token.len;
-    qc->token.data = ngx_pnalloc(c->pool, qc->token.len);
-    if (qc->token.data == NULL) {
-        return NGX_ERROR;
-    }
-    ngx_memcpy(qc->token.data, pkt->token.data, qc->token.len);
-
     keys = &c->quic->keys[ssl_encryption_initial];
 
     if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
@@ -639,6 +640,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         != NGX_OK)
     {
         return NGX_ERROR;
+    }
+
+    if (tp->retry) {
+        return ngx_quic_retry(c);
     }
 
     pkt->secret = &keys->client;
@@ -700,6 +705,270 @@ ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid)
     qc->odcid.data = ngx_pstrdup(c->pool, odcid);
     if (qc->odcid.data == NULL) {
         return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_retry(ngx_connection_t *c)
+{
+    ssize_t            len;
+    ngx_str_t          res, token;
+    ngx_quic_header_t  pkt;
+    u_char             buf[NGX_QUIC_RETRY_BUFFER_SIZE];
+
+    if (ngx_quic_new_token(c, &token) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
+    pkt.flags = NGX_QUIC_PKT_FIXED_BIT | NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_RETRY;
+    pkt.log = c->log;
+    pkt.odcid = c->quic->odcid;
+    pkt.dcid = c->quic->scid;
+    pkt.scid = c->quic->dcid;
+    pkt.token = token;
+
+    res.data = buf;
+
+    if (ngx_quic_encrypt(&pkt, NULL, &res) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(c->log, "quic packet to send", res.data, res.len);
+#endif
+
+    len = c->send(c, res.data, res.len);
+    if (len == NGX_ERROR || (size_t) len != res.len) {
+        return NGX_ERROR;
+    }
+
+    c->quic->token = token;
+    c->quic->tp.original_connection_id = c->quic->odcid;
+    c->quic->in_retry = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token)
+{
+    int                   len, iv_len;
+    u_char               *data, *p, *key, *iv;
+    ngx_msec_t            now;
+    EVP_CIPHER_CTX       *ctx;
+    const EVP_CIPHER     *cipher;
+    struct sockaddr_in   *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6  *sin6;
+#endif
+    u_char                in[NGX_QUIC_MAX_TOKEN_SIZE];
+
+    switch (c->sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) c->sockaddr;
+
+        len = sizeof(struct in6_addr);
+        data = sin6->sin6_addr.s6_addr;
+
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+
+        len = ngx_min(c->addr_text.len, NGX_QUIC_MAX_TOKEN_SIZE - sizeof(now));
+        data = c->addr_text.data;
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) c->sockaddr;
+
+        len = sizeof(in_addr_t);
+        data = (u_char *) &sin->sin_addr;
+
+        break;
+    }
+
+    p = ngx_cpymem(in, data, len);
+
+    now = ngx_current_msec;
+    len += sizeof(now);
+    ngx_memcpy(p, &now, sizeof(now));
+
+    cipher = EVP_aes_256_cbc();
+    iv_len = EVP_CIPHER_iv_length(cipher);
+
+    token->len = iv_len + len + EVP_CIPHER_block_size(cipher);
+    token->data = ngx_pnalloc(c->pool, token->len);
+    if (token->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    key = c->quic->tp.token_key;
+    iv = token->data;
+
+    if (RAND_bytes(iv, iv_len) <= 0
+        || !EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv))
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    token->len = iv_len;
+
+    if (EVP_EncryptUpdate(ctx, token->data + token->len, &len, in, len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    token->len += len;
+
+    if (EVP_EncryptFinal_ex(ctx, token->data + token->len, &len) <= 0) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    token->len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(c->log, "quic new token", token->data, token->len);
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    int                     len, tlen, iv_len;
+    u_char                 *key, *iv, *p, *data;
+    ngx_msec_t              msec;
+    EVP_CIPHER_CTX         *ctx;
+    const EVP_CIPHER       *cipher;
+    struct sockaddr_in     *sin;
+#if (NGX_HAVE_INET6)
+    struct sockaddr_in6    *sin6;
+#endif
+    ngx_quic_connection_t  *qc;
+    u_char                  tdec[NGX_QUIC_MAX_TOKEN_SIZE];
+
+    if (pkt->token.len == 0) {
+        return NGX_ERROR;
+    }
+
+    qc = c->quic;
+
+    /* Retry token */
+
+    if (qc->token.len) {
+        if (pkt->token.len != qc->token.len) {
+            return NGX_ERROR;
+        }
+
+        if (ngx_memcmp(pkt->token.data, qc->token.data, pkt->token.len) != 0) {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
+    }
+
+    /* NEW_TOKEN in a previous connection */
+
+    cipher = EVP_aes_256_cbc();
+    key = c->quic->tp.token_key;
+    iv = pkt->token.data;
+    iv_len = EVP_CIPHER_iv_length(cipher);
+
+    /* sanity checks */
+
+    if (pkt->token.len < (size_t) iv_len + EVP_CIPHER_block_size(cipher)) {
+        return NGX_ERROR;
+    }
+
+    if (pkt->token.len > (size_t) iv_len + NGX_QUIC_MAX_TOKEN_SIZE) {
+        return NGX_ERROR;
+    }
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (!EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv)) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    p = pkt->token.data + iv_len;
+    len = pkt->token.len - iv_len;
+
+    if (EVP_DecryptUpdate(ctx, tdec, &len, p, len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    if (EVP_DecryptFinal_ex(ctx, tdec + len, &tlen) <= 0) {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    switch (c->sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+    case AF_INET6:
+        sin6 = (struct sockaddr_in6 *) c->sockaddr;
+
+        len = sizeof(struct in6_addr);
+        data = sin6->sin6_addr.s6_addr;
+
+        break;
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+    case AF_UNIX:
+
+        len = ngx_min(c->addr_text.len, NGX_QUIC_MAX_TOKEN_SIZE - sizeof(msec));
+        data = c->addr_text.data;
+
+        break;
+#endif
+
+    default: /* AF_INET */
+        sin = (struct sockaddr_in *) c->sockaddr;
+
+        len = sizeof(in_addr_t);
+        data = (u_char *) &sin->sin_addr;
+
+        break;
+    }
+
+    if (ngx_memcmp(tdec, data, len) != 0) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(&msec, tdec + len, sizeof(msec));
+
+    if (ngx_current_msec - msec > NGX_QUIC_RETRY_LIFETIME) {
+        return NGX_DECLINED;
     }
 
     return NGX_OK;
@@ -776,6 +1045,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     b.start = buf;
     b.end = buf + sizeof(buf);
     b.pos = b.last = b.start;
+    b.memory = 1;
 
     c = rev->data;
     qc = c->quic;
@@ -1047,6 +1317,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.log = c->log;
         pkt.flags = p[0];
 
+        if (c->quic->in_retry) {
+            return ngx_quic_retry_input(c, &pkt);
+        }
+
         /* TODO: check current state */
         if (ngx_quic_long_pkt(pkt.flags)) {
 
@@ -1107,6 +1381,93 @@ ngx_quic_skip_zero_padding(ngx_buf_t *b)
     }
 
     return b->pos;
+}
+
+
+static ngx_int_t
+ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    ngx_quic_secrets_t     *keys;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+
+    c->log->action = "retrying quic connection";
+
+    qc = c->quic;
+
+    if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic UDP datagram is too small for initial packet");
+        return NGX_OK;
+    }
+
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_pkt_zrtt(pkt->flags)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic discard inflight 0-RTT packet");
+        return NGX_OK;
+    }
+
+    if (!ngx_quic_pkt_in(pkt->flags)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic invalid initial packet: 0x%xi", pkt->flags);
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_new_dcid(c, &pkt->dcid) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    qc = c->quic;
+
+    keys = &c->quic->keys[ssl_encryption_initial];
+
+    if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
+                                    &qc->odcid)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    c->quic->in_retry = 0;
+
+    if (ngx_quic_validate_token(c, pkt) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
+        return NGX_ERROR;
+    }
+
+    pkt->secret = &keys->client;
+    pkt->level = ssl_encryption_initial;
+    pkt->plaintext = buf;
+
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_init_connection(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_payload_handler(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    /* pos is at header end, adjust by actual packet length */
+    pkt->raw->pos += pkt->len;
+
+    (void) ngx_quic_skip_zero_padding(pkt->raw);
+
+    return ngx_quic_input(c, pkt->raw);
 }
 
 

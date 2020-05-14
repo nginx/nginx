@@ -385,6 +385,35 @@ ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
 }
 
 
+size_t
+ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
+    u_char **start)
+{
+    u_char  *p;
+
+    p = out;
+
+    *p++ = pkt->odcid.len;
+    p = ngx_cpymem(p, pkt->odcid.data, pkt->odcid.len);
+
+    *start = p;
+
+    *p++ = 0xff;
+
+    p = ngx_quic_write_uint32(p, NGX_QUIC_VERSION);
+
+    *p++ = pkt->dcid.len;
+    p = ngx_cpymem(p, pkt->dcid.data, pkt->dcid.len);
+
+    *p++ = pkt->scid.len;
+    p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
+
+    p = ngx_cpymem(p, pkt->token.data, pkt->token.len);
+
+    return p - out;
+}
+
+
 ngx_int_t
 ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 {
@@ -1553,6 +1582,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                            tp->max_idle_timeout);
 
+    if (tp->retry) {
+        len += ngx_quic_varint_len(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID);
+        len += ngx_quic_varint_len(tp->original_connection_id.len);
+        len += tp->original_connection_id.len;
+    }
+
     if (pos == NULL) {
         return len;
     }
@@ -1580,6 +1615,13 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 
     ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                      tp->max_idle_timeout);
+
+    if (tp->retry) {
+        ngx_quic_build_int(&p, NGX_QUIC_TP_ORIGINAL_CONNECTION_ID);
+        ngx_quic_build_int(&p, tp->original_connection_id.len);
+        p = ngx_cpymem(p, tp->original_connection_id.data,
+                       tp->original_connection_id.len);
+    }
 
     return p - pos;
 }
