@@ -43,6 +43,7 @@ Experimental QUIC support for nginx
     + One endpoint can update keys and its peer responds correctly
     + 00-RTT data is being received and acted on
     + Connection is established using TLS Resume Ticket
+    + A handshake that includes a Retry packet completes successfully
     + Stream data is being exchanged and ACK'ed
     + An H3 transaction succeeded
     + One or both endpoints insert entries into dynamic table and
@@ -51,7 +52,6 @@ Experimental QUIC support for nginx
      Not (yet) supported features:
 
     - Version negotiation
-    - Stateless Retry
     - ECN, Congestion control and friends as specified in quic-recovery [5]
     - A connection with the spin bit succeeds and the bit is spinning
     - Structured Logging
@@ -63,9 +63,6 @@ Experimental QUIC support for nginx
 
     Since the code is experimental and still under development,
     a lot of things may not work as expected, for example:
-
-    - Protocol error messages are not implemented, in case of error connection
-      closes silently for peer
 
     - ACK handling is basic: every received ack-eliciting packet
       is acknowledged, no ack ranges are used
