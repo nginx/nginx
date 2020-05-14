@@ -132,6 +132,11 @@ typedef struct {
 } ngx_quic_new_conn_id_frame_t;
 
 
+typedef struct {
+    uint64_t                                    length;
+    u_char                                     *data;
+} ngx_quic_new_token_frame_t;
+
 /*
  * common layout for CRYPTO and STREAM frames;
  * conceptually, CRYPTO frame is also a stream
@@ -242,6 +247,7 @@ struct ngx_quic_frame_s {
         ngx_quic_crypto_frame_t                 crypto;
         ngx_quic_ordered_frame_t                ord;
         ngx_quic_new_conn_id_frame_t            ncid;
+        ngx_quic_new_token_frame_t              token;
         ngx_quic_stream_frame_t                 stream;
         ngx_quic_max_data_frame_t               max_data;
         ngx_quic_close_frame_t                  close;

@@ -187,6 +187,7 @@ static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c,
     enum ssl_encryption_level_t level, ngx_uint_t err);
+static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_ack_frame_t *f);
@@ -544,6 +545,7 @@ static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_quic_header_t *pkt, ngx_connection_handler_pt handler)
 {
+    ngx_int_t               rc;
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
     ngx_quic_secrets_t     *keys;
@@ -642,7 +644,22 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
-    if (tp->retry) {
+    if (pkt->token.len) {
+        rc = ngx_quic_validate_token(c, pkt);
+
+        if (rc == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_DECLINED) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic expired token");
+            return ngx_quic_retry(c);
+        }
+
+        /* NGX_OK */
+
+    } else if (tp->retry) {
         return ngx_quic_retry(c);
     }
 
@@ -1951,6 +1968,35 @@ ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
 
 
 static ngx_int_t
+ngx_quic_send_new_token(ngx_connection_t *c)
+{
+    ngx_str_t          token;
+    ngx_quic_frame_t  *frame;
+
+    if (!c->quic->tp.retry) {
+        return NGX_OK;
+    }
+
+    if (ngx_quic_new_token(c, &token) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_NEW_TOKEN;
+    frame->u.token.length = token.len;
+    frame->u.token.data = token.data;
+    ngx_sprintf(frame->info, "NEW_TOKEN");
+    ngx_quic_queue_frame(c->quic, frame);
+
+    return NGX_OK;
+}
+
+static ngx_int_t
 ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_ack_frame_t *ack)
 {
@@ -2404,6 +2450,10 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
         frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
         ngx_sprintf(frame->info, "HANDSHAKE DONE on handshake completed");
         ngx_quic_queue_frame(c->quic, frame);
+
+        if (ngx_quic_send_new_token(c) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
         /*
          * Generating next keys before a key update is received.
