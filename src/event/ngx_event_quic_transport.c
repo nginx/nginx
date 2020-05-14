@@ -568,6 +568,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
+        pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                      "quic failed to obtain quic frame type");
         return NGX_ERROR;
@@ -576,7 +577,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     f->type = varint;
 
     if (ngx_quic_frame_allowed(pkt, f->type) != NGX_OK) {
-        return NGX_DECLINED;
+        pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        return NGX_ERROR;
     }
 
     switch (f->type) {
@@ -1002,6 +1004,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     return p - start;
 
 error:
+
+    pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
 
     ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                   "quic failed to parse frame type 0x%xi", f->type);

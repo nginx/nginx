@@ -278,6 +278,7 @@ typedef struct {
     uint32_t                                    version;
     ngx_str_t                                   token;
     enum ssl_encryption_level_t                 level;
+    ngx_uint_t                                  error;
 
     /* filled in by parser */
     ngx_buf_t                                  *raw;   /* udp datagram */

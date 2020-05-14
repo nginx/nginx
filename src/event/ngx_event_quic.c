@@ -34,6 +34,7 @@
 
 
 typedef enum {
+    NGX_QUIC_ST_UNAVAIL,     /* connection not ready */
     NGX_QUIC_ST_INITIAL,     /* connection just created */
     NGX_QUIC_ST_HANDSHAKE,   /* handshake started */
     NGX_QUIC_ST_EARLY_DATA,  /* handshake in progress */
@@ -118,6 +119,8 @@ struct ngx_quic_connection_s {
 
     uint64_t                          cur_streams;
     uint64_t                          max_streams;
+
+    ngx_uint_t                        error;
 
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
@@ -405,6 +408,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             if (ngx_quic_parse_transport_params(p, end, &qc->ctp, c->log)
                 != NGX_OK)
             {
+                qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
                 return NGX_ERROR;
             }
 
@@ -417,6 +421,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             if (qc->ctp.max_packet_size < NGX_QUIC_MIN_INITIAL_SIZE
                 || qc->ctp.max_packet_size > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
             {
+                qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic maximum packet size is invalid");
                 return NGX_ERROR;
@@ -580,8 +585,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
-    qc->state = NGX_QUIC_ST_INITIAL;
-
     ngx_rbtree_init(&qc->streams.tree, &qc->streams.sentinel,
                     ngx_quic_rbtree_insert_stream);
 
@@ -608,6 +611,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->push.cancelable = 1;
 
     c->quic = qc;
+    qc->state = NGX_QUIC_ST_UNAVAIL;
     qc->ssl = ssl;
     qc->tp = *tp;
     qc->streams.handler = handler;
@@ -643,6 +647,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     {
         return NGX_ERROR;
     }
+
+    qc->state = NGX_QUIC_ST_INITIAL;
 
     if (pkt->token.len) {
         rc = ngx_quic_validate_token(c, pkt);
@@ -896,10 +902,12 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (qc->token.len) {
         if (pkt->token.len != qc->token.len) {
+            qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
             return NGX_ERROR;
         }
 
         if (ngx_memcmp(pkt->token.data, qc->token.data, pkt->token.len) != 0) {
+            qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
             return NGX_ERROR;
         }
 
@@ -916,6 +924,7 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     /* sanity checks */
 
     if (pkt->token.len < (size_t) iv_len + EVP_CIPHER_block_size(cipher)) {
+        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
         return NGX_ERROR;
     }
 
@@ -938,11 +947,13 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (EVP_DecryptUpdate(ctx, tdec, &len, p, len) != 1) {
         EVP_CIPHER_CTX_free(ctx);
+        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
         return NGX_ERROR;
     }
 
     if (EVP_DecryptFinal_ex(ctx, tdec + len, &tlen) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
+        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
         return NGX_ERROR;
     }
 
@@ -979,6 +990,7 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (ngx_memcmp(tdec, data, len) != 0) {
+        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
         return NGX_ERROR;
     }
 
@@ -1116,7 +1128,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_close_connection, rc: %i", rc);
 
-    if (!c->quic) {
+    if (!c->quic || c->quic->state == NGX_QUIC_ST_UNAVAIL) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                       "quic close connection early error");
 
@@ -1149,13 +1161,27 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 static ngx_int_t
 ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
-    ngx_uint_t                    i;
+    ngx_uint_t                    i, err;
     ngx_quic_connection_t        *qc;
     enum ssl_encryption_level_t   level;
 
     qc = c->quic;
 
     if (!qc->closing) {
+
+        switch (qc->state) {
+        case NGX_QUIC_ST_INITIAL:
+            level = ssl_encryption_initial;
+            break;
+
+        case NGX_QUIC_ST_HANDSHAKE:
+            level = ssl_encryption_handshake;
+            break;
+
+        default: /* NGX_QUIC_ST_APPLICATION/EARLY_DATA */
+            level = ssl_encryption_application;
+            break;
+        }
 
         if (rc == NGX_OK) {
 
@@ -1167,20 +1193,6 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
              */
              ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                             "quic immediate close, drain = %d", qc->draining);
-
-             switch (qc->state) {
-             case NGX_QUIC_ST_INITIAL:
-                 level = ssl_encryption_initial;
-                 break;
-
-             case NGX_QUIC_ST_HANDSHAKE:
-                 level = ssl_encryption_handshake;
-                 break;
-
-             default: /* NGX_QUIC_ST_APPLICATION/EARLY_DATA */
-                level = ssl_encryption_application;
-                break;
-             }
 
             if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_NO_ERROR) == NGX_OK) {
 
@@ -1206,8 +1218,12 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                            qc->draining ? "drained" : "idle");
 
         } else {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic immediate close due to fatal error");
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic immediate close due to fatal error: %ui",
+                           qc->error);
+
+            err = qc->error ? qc->error : NGX_QUIC_ERR_INTERNAL_ERROR;
+            (void) ngx_quic_send_cc(c, level, err);
         }
 
         qc->closing = 1;
@@ -1749,14 +1765,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         len = ngx_quic_parse_frame(pkt, p, end, &frame);
 
-        if (len == NGX_DECLINED) {
-            /* TODO: handle protocol violation:
-             *       such frame not allowed in this packet
-             */
-            return NGX_ERROR;
-        }
-
         if (len < 0) {
+            qc->error = pkt->error;
             return NGX_ERROR;
         }
 
@@ -1887,6 +1897,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (p != end) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic trailing garbage in payload: %ui bytes", end - p);
+
+        qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         return NGX_ERROR;
     }
 
@@ -2012,12 +2024,13 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
                    "quic ngx_quic_handle_ack_frame level %d", pkt->level);
 
     /*
-     * TODO: If any computed packet number is negative, an endpoint MUST
-     *       generate a connection error of type FRAME_ENCODING_ERROR.
-     *       (19.3.1)
+     *  If any computed packet number is negative, an endpoint MUST
+     *  generate a connection error of type FRAME_ENCODING_ERROR.
+     *  (19.3.1)
      */
 
     if (ack->first_range > ack->largest) {
+        c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic invalid first range in ack frame");
         return NGX_ERROR;
@@ -2049,6 +2062,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         pos += n;
 
         if (gap >= min) {
+            c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
@@ -2057,6 +2071,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         max = min - 1 - gap;
 
         if (range > max + 1) {
+            c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
@@ -2116,7 +2131,9 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic ACK for the packet not in sent queue ");
-        /* TODO: handle error properly: PROTOCOL VIOLATION */
+
+        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+
         return NGX_ERROR;
     }
 
@@ -2978,6 +2995,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     ngx_msec_t              now;
     ngx_str_t               out, res;
     ngx_queue_t            *q;
+    ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_frame_t       *f, *start;
     ngx_quic_header_t       pkt;
     ngx_quic_secrets_t     *keys;
@@ -2989,6 +3007,8 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_send_frames");
+
+    ssl_conn = c->ssl ? c->ssl->connection : NULL;
 
     q = ngx_queue_head(frames);
     start = ngx_queue_data(q, ngx_quic_frame_t, queue);
@@ -3077,7 +3097,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
                    out.len, start->level, pkt.need_ack, pkt.number,
                    pkt.num_len, pkt.trunc);
 
-    if (ngx_quic_encrypt(&pkt, c->ssl->connection, &res) != NGX_OK) {
+    if (ngx_quic_encrypt(&pkt, ssl_conn, &res) != NGX_OK) {
         return NGX_ERROR;
     }
 
