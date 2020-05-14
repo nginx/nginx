@@ -41,7 +41,7 @@ Experimental QUIC support for nginx
 
     + The handshake completes successfully
     + One endpoint can update keys and its peer responds correctly
-    + 00-RTT data is being received and acted on
+    + 0-RTT data is being received and acted on
     + Connection is established using TLS Resume Ticket
     + A handshake that includes a Retry packet completes successfully
     + Stream data is being exchanged and ACK'ed
