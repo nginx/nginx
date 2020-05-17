@@ -30,6 +30,7 @@ typedef struct {
 
     X509                        *cert;
     X509                        *issuer;
+    STACK_OF(X509)              *chain;
 
     u_char                      *name;
 
@@ -48,6 +49,7 @@ struct ngx_ssl_ocsp_ctx_s {
 
     X509                        *cert;
     X509                        *issuer;
+    STACK_OF(X509)              *chain;
 
     int                          status;
     time_t                       valid;
@@ -179,6 +181,18 @@ ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
         return NGX_ERROR;
     }
 
+#ifdef SSL_CTRL_SELECT_CURRENT_CERT
+    /* OpenSSL 1.0.2+ */
+    SSL_CTX_select_current_cert(ssl->ctx, cert);
+#endif
+
+#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
+    /* OpenSSL 1.0.1+ */
+    SSL_CTX_get_extra_chain_certs(ssl->ctx, &staple->chain);
+#else
+    staple->chain = ssl->ctx->extra_certs;
+#endif
+
     staple->ssl_ctx = ssl->ctx;
     staple->timeout = 60000;
     staple->verify = verify;
@@ -295,29 +309,16 @@ ngx_ssl_stapling_issuer(ngx_conf_t *cf, ngx_ssl_t *ssl,
     X509            *cert, *issuer;
     X509_STORE      *store;
     X509_STORE_CTX  *store_ctx;
-    STACK_OF(X509)  *chain;
 
     cert = staple->cert;
 
-#ifdef SSL_CTRL_SELECT_CURRENT_CERT
-    /* OpenSSL 1.0.2+ */
-    SSL_CTX_select_current_cert(ssl->ctx, cert);
-#endif
-
-#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
-    /* OpenSSL 1.0.1+ */
-    SSL_CTX_get_extra_chain_certs(ssl->ctx, &chain);
-#else
-    chain = ssl->ctx->extra_certs;
-#endif
-
-    n = sk_X509_num(chain);
+    n = sk_X509_num(staple->chain);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ssl->log, 0,
                    "SSL get issuer: %d extra certs", n);
 
     for (i = 0; i < n; i++) {
-        issuer = sk_X509_value(chain, i);
+        issuer = sk_X509_value(staple->chain, i);
         if (X509_check_issued(issuer, cert) == X509_V_OK) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100001L
             X509_up_ref(issuer);
@@ -573,6 +574,7 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
     ctx->ssl_ctx = staple->ssl_ctx;
     ctx->cert = staple->cert;
     ctx->issuer = staple->issuer;
+    ctx->chain = staple->chain;
     ctx->name = staple->name;
     ctx->flags = (staple->verify ? OCSP_TRUSTOTHER : OCSP_NOVERIFY);
 
@@ -1720,7 +1722,6 @@ ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx)
     size_t                 len;
     X509_STORE            *store;
     const u_char          *p;
-    STACK_OF(X509)        *chain;
     OCSP_CERTID           *id;
     OCSP_RESPONSE         *ocsp;
     OCSP_BASICRESP        *basic;
@@ -1769,19 +1770,7 @@ ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx)
         goto error;
     }
 
-#ifdef SSL_CTRL_SELECT_CURRENT_CERT
-    /* OpenSSL 1.0.2+ */
-    SSL_CTX_select_current_cert(ctx->ssl_ctx, ctx->cert);
-#endif
-
-#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
-    /* OpenSSL 1.0.1+ */
-    SSL_CTX_get_extra_chain_certs(ctx->ssl_ctx, &chain);
-#else
-    chain = ctx->ssl_ctx->extra_certs;
-#endif
-
-    if (OCSP_basic_verify(basic, chain, store, ctx->flags) != 1) {
+    if (OCSP_basic_verify(basic, ctx->chain, store, ctx->flags) != 1) {
         ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
                       "OCSP_basic_verify() failed");
         goto error;
