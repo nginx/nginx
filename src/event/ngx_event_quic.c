@@ -1602,6 +1602,13 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
+    /*
+     * 4.10.1. The successful use of Handshake packets indicates
+     * that no more Initial packets need to be exchanged
+     */
+    ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_initial);
+    ngx_quic_free_frames(c, &ctx->sent);
+
     return ngx_quic_payload_handler(c, pkt);
 }
 
@@ -2438,6 +2445,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
     int                       sslerr;
     ssize_t                   n;
     ngx_ssl_conn_t           *ssl_conn;
+    ngx_quic_send_ctx_t      *ctx;
     ngx_quic_crypto_frame_t  *f;
 
     f = &frame->u.crypto;
@@ -2507,6 +2515,13 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
         {
             return NGX_ERROR;
         }
+
+        /*
+         * 4.10.2 An endpoint MUST discard its handshake keys
+         * when the TLS handshake is confirmed
+         */
+        ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_handshake);
+        ngx_quic_free_frames(c, &ctx->sent);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -3067,14 +3082,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
         p += len;
         f->pnum = ctx->pnum;
         f->last = now;
-    }
-
-    if (start->level == ssl_encryption_initial) {
-        /* ack will not be sent in initial packets due to initial keys being
-         * discarded when handshake start.
-         * Thus consider initial packets as non-ack-eliciting
-         */
-        pkt.need_ack = 0;
     }
 
     out.len = p - out.data;
