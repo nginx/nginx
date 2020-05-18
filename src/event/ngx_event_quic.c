@@ -3196,7 +3196,7 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
         if (i == 0) {
             wait = nswait;
 
-        } else if (nswait > 0 && nswait < wait) {
+        } else if (nswait > 0 && (wait == 0 || wait > nswait)) {
             wait = nswait;
         }
     }
@@ -3288,6 +3288,8 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         /* move frames group to the end of queue */
         ngx_queue_add(&ctx->sent, &range);
+
+        wait = qc->tp.max_ack_delay;
 
     } while (q != ngx_queue_sentinel(&ctx->sent));
 
