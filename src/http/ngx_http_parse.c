@@ -143,6 +143,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* HTTP methods: GET, HEAD, POST */
         case sw_start:
+            r->parse_start = p;
             r->request_start = p;
             r->method_start = p;
 
@@ -883,6 +884,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* first char */
         case sw_start:
+            r->parse_start = p;
             r->header_name_start = p;
             r->invalid_header = 0;
 

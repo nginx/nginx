@@ -579,6 +579,7 @@ struct ngx_http_request_s {
      * via ngx_http_ephemeral_t
      */
 
+    u_char                           *parse_start;
     u_char                           *uri_start;
     u_char                           *uri_end;
     u_char                           *uri_ext;

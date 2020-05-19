@@ -1178,7 +1178,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
             r->request_line.len = r->request_end - r->request_start;
             r->request_line.data = r->request_start;
-            r->request_length = r->header_in->pos - r->request_start; /* XXX */
+            r->request_length = r->header_in->pos - r->parse_start;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request line: \"%V\"", &r->request_line);
@@ -1293,8 +1293,8 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
 
             if (rv == NGX_DECLINED) {
-                r->request_line.len = r->header_in->end - r->request_start;
-                r->request_line.data = r->request_start;
+                r->request_line.len = r->header_in->end - r->parse_start;
+                r->request_line.data = r->parse_start;
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client sent too long URI");
@@ -1470,7 +1470,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 }
 
                 if (rv == NGX_DECLINED) {
-                    p = r->header_name_start;
+                    p = r->parse_start;
 
                     r->lingering_close = 1;
 
@@ -1490,7 +1490,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
                                 "client sent too long header line: \"%*s...\"",
-                                len, r->header_name_start);
+                                len, r->parse_start);
 
                     ngx_http_finalize_request(r,
                                             NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
@@ -1523,8 +1523,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
         if (rc == NGX_OK) {
 
-            /* XXX */
-            r->request_length += r->header_in->pos - r->header_name_start;
+            r->request_length += r->header_in->pos - r->parse_start;
 
             if (r->invalid_header && cscf->ignore_invalid_headers) {
 
@@ -1596,7 +1595,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http header done");
 
-            r->request_length += r->header_in->pos - r->header_name_start; /* XXX */
+            r->request_length += r->header_in->pos - r->parse_start;
 
             r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
@@ -1711,7 +1710,7 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    old = request_line ? r->request_start : r->header_name_start; /* XXX */
+    old = r->parse_start;
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -1782,6 +1781,8 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     b->pos = new + (r->header_in->pos - old);
     b->last = new + (r->header_in->pos - old);
+
+    r->parse_start = new;
 
     if (request_line) {
         r->request_start = new;
@@ -3892,15 +3893,15 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
     len -= p - buf;
     buf = p;
 
-    if (r->request_line.data == NULL && r->request_start) {
-        for (p = r->request_start; p < r->header_in->last; p++) {
+    if (r->request_line.data == NULL && r->parse_start) {
+        for (p = r->parse_start; p < r->header_in->last; p++) {
             if (*p == CR || *p == LF) {
                 break;
             }
         }
 
-        r->request_line.len = p - r->request_start;
-        r->request_line.data = r->request_start;
+        r->request_line.len = p - r->parse_start;
+        r->request_line.data = r->parse_start;
     }
 
     if (r->request_line.len) {

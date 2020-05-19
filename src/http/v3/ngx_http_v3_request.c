@@ -59,6 +59,7 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
         }
 
         r->h3_parse = st;
+        r->parse_start = b->pos;
     }
 
     while (b->pos < b->last) {
@@ -130,6 +131,7 @@ ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
     st = r->h3_parse;
 
     if (st->header_rep.state == 0) {
+        r->parse_start = b->pos;
         r->invalid_header = 0;
     }
 
