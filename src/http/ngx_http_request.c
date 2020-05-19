@@ -1164,7 +1164,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
         switch (r->http_version) {
 #if (NGX_HTTP_V3)
         case NGX_HTTP_VERSION_30:
-            rc = ngx_http_v3_parse_header(r, r->header_in);
+            rc = ngx_http_v3_parse_request(r, r->header_in);
             break;
 #endif
 

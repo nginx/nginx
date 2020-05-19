@@ -67,6 +67,7 @@ typedef struct {
 } ngx_http_v3_header_t;
 
 
+ngx_int_t ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx);
