@@ -1784,6 +1784,12 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     r->parse_start = new;
 
+    r->header_in = b;
+
+    if (r->http_version > NGX_HTTP_VERSION_11) {
+        return NGX_OK;
+    }
+
     if (request_line) {
         r->request_start = new;
 
@@ -1791,62 +1797,46 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             r->request_end = new + (r->request_end - old);
         }
 
-        if (r->method_start >= old && r->method_start < r->header_in->pos) {
-            r->method_start = new + (r->method_start - old);
-            r->method_end = new + (r->method_end - old);
-        }
+        r->method_end = new + (r->method_end - old);
 
-        if (r->uri_start >= old && r->uri_start < r->header_in->pos) {
-            r->uri_start = new + (r->uri_start - old);
-            r->uri_end = new + (r->uri_end - old);
-        }
+        r->uri_start = new + (r->uri_start - old);
+        r->uri_end = new + (r->uri_end - old);
 
-        if (r->schema_start >= old && r->schema_start < r->header_in->pos) {
+        if (r->schema_start) {
             r->schema_start = new + (r->schema_start - old);
             r->schema_end = new + (r->schema_end - old);
         }
 
-        if (r->host_start >= old && r->host_start < r->header_in->pos) {
+        if (r->host_start) {
             r->host_start = new + (r->host_start - old);
             if (r->host_end) {
                 r->host_end = new + (r->host_end - old);
             }
         }
 
-        if (r->port_start >= old && r->port_start < r->header_in->pos) {
+        if (r->port_start) {
             r->port_start = new + (r->port_start - old);
             r->port_end = new + (r->port_end - old);
         }
 
-        if (r->uri_ext >= old && r->uri_ext < r->header_in->pos) {
+        if (r->uri_ext) {
             r->uri_ext = new + (r->uri_ext - old);
         }
 
-        if (r->args_start >= old && r->args_start < r->header_in->pos) {
+        if (r->args_start) {
             r->args_start = new + (r->args_start - old);
         }
 
-        if (r->http_protocol.data >= old
-            && r->http_protocol.data < r->header_in->pos)
-        {
+        if (r->http_protocol.data) {
             r->http_protocol.data = new + (r->http_protocol.data - old);
         }
 
     } else {
-        if (r->header_name_start >= old
-            && r->header_name_start < r->header_in->pos)
-        {
-            r->header_name_start = new;
-            r->header_name_end = new + (r->header_name_end - old);
-        }
-
-        if (r->header_start >= old && r->header_start < r->header_in->pos) {
-            r->header_start = new + (r->header_start - old);
-            r->header_end = new + (r->header_end - old);
-        }
+        r->header_name_start = new;
+        r->header_name_end = new + (r->header_name_end - old);
+        r->header_start = new + (r->header_start - old);
+        r->header_end = new + (r->header_end - old);
     }
-
-    r->header_in = b;
 
     return NGX_OK;
 }

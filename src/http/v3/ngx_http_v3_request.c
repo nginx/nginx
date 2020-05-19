@@ -60,6 +60,7 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
 
         r->h3_parse = st;
         r->parse_start = b->pos;
+        r->state = 1;
     }
 
     while (b->pos < b->last) {
