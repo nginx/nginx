@@ -320,7 +320,9 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     sc->read->handler = ngx_http_v3_uni_read_handler;
     sc->write->handler = ngx_http_v3_dummy_write_handler;
 
-    h3c->known_streams[index] = sc;
+    if (index >= 0) {
+        h3c->known_streams[index] = sc;
+    }
 
     n = (u_char *) ngx_http_v3_encode_varlen_int(buf, type) - buf;
 
