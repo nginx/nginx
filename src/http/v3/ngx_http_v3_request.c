@@ -116,15 +116,22 @@ failed:
 
 
 ngx_int_t
-ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b)
+ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
+    ngx_uint_t allow_underscores)
 {
+    u_char                        ch;
     ngx_int_t                     rc;
     ngx_str_t                    *name, *value;
+    ngx_uint_t                    hash, i, n;
     ngx_connection_t             *c;
     ngx_http_v3_parse_headers_t  *st;
 
     c = r->connection;
     st = r->h3_parse;
+
+    if (st->header_rep.state == 0) {
+        r->invalid_header = 0;
+    }
 
     if (st->state == 0) {
         if (r->header_name_start == NULL) {
@@ -164,9 +171,45 @@ done:
     r->header_name_end = name->data + name->len;
     r->header_start = value->data;
     r->header_end = value->data + value->len;
-    r->header_hash = ngx_hash_key(name->data, name->len);
 
-    /* XXX r->lowcase_index = i; */
+    hash = 0;
+    i = 0;
+
+    for (n = 0; n < name->len; n++) {
+        ch = name->data[n];
+
+        if (ch >= 'A' && ch <= 'Z') {
+            /*
+             * A request or response containing uppercase
+             * header field names MUST be treated as malformed
+             */
+            return NGX_HTTP_PARSE_INVALID_HEADER;
+        }
+
+        if (ch == '\0') {
+            return NGX_HTTP_PARSE_INVALID_HEADER;
+        }
+
+        if (ch == '_' && !allow_underscores) {
+            r->invalid_header = 1;
+            continue;
+        }
+
+        if ((ch < 'a' || ch > 'z')
+            && (ch < '0' || ch > '9')
+            && ch != '-' && ch != '_')
+        {
+            r->invalid_header = 1;
+            continue;
+        }
+
+        hash = ngx_hash(hash, ch);
+        r->lowcase_header[i++] = ch;
+        i &= (NGX_HTTP_LC_HEADER_LEN - 1);
+    }
+
+    r->header_hash = hash;
+    r->lowcase_index = i;
 
     return NGX_OK;
 }

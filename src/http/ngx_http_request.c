@@ -1511,7 +1511,8 @@ ngx_http_process_request_headers(ngx_event_t *rev)
         switch (r->http_version) {
 #if (NGX_HTTP_V3)
         case NGX_HTTP_VERSION_30:
-            rc = ngx_http_v3_parse_header(r, r->header_in);
+            rc = ngx_http_v3_parse_header(r, r->header_in,
+                                          cscf->underscores_in_headers);
             break;
 #endif
 
@@ -1530,9 +1531,10 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                 /* there was error while a header line parsing */
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent invalid header line: \"%*s\"",
-                              r->header_end - r->header_name_start,
-                              r->header_name_start);
+                              "client sent invalid header line: \"%*s: %*s\"",
+                              r->header_name_end - r->header_name_start,
+                              r->header_name_start,
+                              r->header_end - r->header_start, r->header_start);
                 continue;
             }
 
