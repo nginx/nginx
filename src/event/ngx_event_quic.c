@@ -1081,6 +1081,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
+    ngx_memzero(&b, sizeof(ngx_buf_t));
     b.start = buf;
     b.end = buf + sizeof(buf);
     b.pos = b.last = b.start;
@@ -1437,8 +1438,6 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
 
     c->log->action = "retrying quic connection";
-
-    qc = c->quic;
 
     if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -3243,7 +3242,6 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     qc = c->quic;
 
     now = ngx_current_msec;
-    wait = 0;
 
     if (ngx_queue_empty(&ctx->sent)) {
         *waitp = 0;
@@ -3949,6 +3947,7 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
 
     if (frame->data) {
         ngx_free(frame->data);
+        frame->data = NULL;
     }
 
     ngx_queue_insert_head(&qc->free_frames, &frame->queue);

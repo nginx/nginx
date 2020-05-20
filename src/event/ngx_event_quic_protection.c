@@ -914,6 +914,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ad.len = ngx_quic_create_retry_itag(pkt, ad.data, &start);
 
     itag.data = ad.data + ad.len;
+    itag.len = EVP_GCM_TLS_TAG_LEN;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(pkt->log, "quic retry itag", ad.data, ad.len);
@@ -960,7 +961,7 @@ ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     *pos = p;
 
     expected_pn = *largest_pn + 1;
-    pn_win = 1 << pn_nbits;
+    pn_win = 1ULL << pn_nbits;
     pn_hwin = pn_win / 2;
     pn_mask = pn_win - 1;
 

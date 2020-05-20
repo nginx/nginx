@@ -618,7 +618,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 
         b = ngx_create_temp_buf(c->pool, len);
         if (b == NULL) {
-            NULL;
+            return NULL;
         }
 
         *b->last++ = NGX_HTTP_V3_FRAME_DATA;
