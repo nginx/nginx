@@ -67,9 +67,9 @@ typedef struct {
     ngx_quic_secret_t                 client_secret;
     ngx_quic_secret_t                 server_secret;
 
-    uint64_t                          pnum;        /* packet number to send     */
-    uint64_t                          largest_ack; /* number received from peer */
-    uint64_t                          largest_pn;  /* number received from peer */
+    uint64_t                          pnum;        /* to be sent */
+    uint64_t                          largest_ack; /* received from peer */
+    uint64_t                          largest_pn;  /* received from peer */
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
@@ -2180,7 +2180,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         }
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic ACK for the packet not in sent queue ");
+                      "quic ACK for the packet not sent");
 
         qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         qc->error_ftype = NGX_QUIC_FT_ACK;
