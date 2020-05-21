@@ -1165,12 +1165,19 @@ static ngx_int_t
 ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
     ngx_uint_t                    i, err;
+    ngx_quic_send_ctx_t          *ctx;
     ngx_quic_connection_t        *qc;
     enum ssl_encryption_level_t   level;
 
     qc = c->quic;
 
     if (!qc->closing) {
+
+        /* drop packets from retransmit queues, no ack is expected */
+        for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+            ctx = ngx_quic_get_send_ctx(qc, i);
+            ngx_quic_free_frames(c, &ctx->sent);
+        }
 
         level = (qc->state == ssl_encryption_early_data)
                 ? ssl_encryption_application
