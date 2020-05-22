@@ -50,6 +50,8 @@ static char *ngx_http_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
 
@@ -234,6 +236,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, ocsp_responder),
+      NULL },
+
+    { ngx_string("ssl_ocsp_cache"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_http_ssl_ocsp_cache,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("ssl_stapling"),
@@ -602,6 +611,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->session_tickets = NGX_CONF_UNSET;
     sscf->session_ticket_keys = NGX_CONF_UNSET_PTR;
     sscf->ocsp = NGX_CONF_UNSET_UINT;
+    sscf->ocsp_cache_zone = NGX_CONF_UNSET_PTR;
     sscf->stapling = NGX_CONF_UNSET;
     sscf->stapling_verify = NGX_CONF_UNSET;
 
@@ -667,6 +677,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
     ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
+    ngx_conf_merge_ptr_value(conf->ocsp_cache_zone,
+                         prev->ocsp_cache_zone, NULL);
 
     ngx_conf_merge_value(conf->stapling, prev->stapling, 0);
     ngx_conf_merge_value(conf->stapling_verify, prev->stapling_verify, 0);
@@ -838,7 +850,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
-        if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp)
+        if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp,
+                         conf->ocsp_cache_zone)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
@@ -1138,6 +1151,85 @@ invalid:
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "invalid session cache \"%V\"", &value[i]);
+
+    return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_ssl_srv_conf_t *sscf = conf;
+
+    size_t       len;
+    ngx_int_t    n;
+    ngx_str_t   *value, name, size;
+    ngx_uint_t   j;
+
+    if (sscf->ocsp_cache_zone != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        sscf->ocsp_cache_zone = NULL;
+        return NGX_CONF_OK;
+    }
+
+    if (value[1].len <= sizeof("shared:") - 1
+        || ngx_strncmp(value[1].data, "shared:", sizeof("shared:") - 1) != 0)
+    {
+        goto invalid;
+    }
+
+    len = 0;
+
+    for (j = sizeof("shared:") - 1; j < value[1].len; j++) {
+        if (value[1].data[j] == ':') {
+            break;
+        }
+
+        len++;
+    }
+
+    if (len == 0) {
+        goto invalid;
+    }
+
+    name.len = len;
+    name.data = value[1].data + sizeof("shared:") - 1;
+
+    size.len = value[1].len - j - 1;
+    size.data = name.data + len + 1;
+
+    n = ngx_parse_size(&size);
+
+    if (n == NGX_ERROR) {
+        goto invalid;
+    }
+
+    if (n < (ngx_int_t) (8 * ngx_pagesize)) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "OCSP cache \"%V\" is too small", &value[1]);
+
+        return NGX_CONF_ERROR;
+    }
+
+    sscf->ocsp_cache_zone = ngx_shared_memory_add(cf, &name, n,
+                                                  &ngx_http_ssl_module_ctx);
+    if (sscf->ocsp_cache_zone == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    sscf->ocsp_cache_zone->init = ngx_ssl_ocsp_cache_init;
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid OCSP cache \"%V\"", &value[1]);
 
     return NGX_CONF_ERROR;
 }

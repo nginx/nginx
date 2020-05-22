@@ -52,9 +52,26 @@ typedef struct {
     in_port_t                    port;
     ngx_uint_t                   depth;
 
+    ngx_shm_zone_t              *shm_zone;
+
     ngx_resolver_t              *resolver;
     ngx_msec_t                   resolver_timeout;
 } ngx_ssl_ocsp_conf_t;
+
+
+typedef struct {
+    ngx_rbtree_t                 rbtree;
+    ngx_rbtree_node_t            sentinel;
+    ngx_queue_t                  expire_queue;
+} ngx_ssl_ocsp_cache_t;
+
+
+typedef struct {
+    ngx_str_node_t               node;
+    ngx_queue_t                  queue;
+    int                          status;
+    time_t                       valid;
+} ngx_ssl_ocsp_cache_node_t;
 
 
 typedef struct ngx_ssl_ocsp_ctx_s  ngx_ssl_ocsp_ctx_t;
@@ -100,9 +117,12 @@ struct ngx_ssl_ocsp_ctx_s {
     void                       (*handler)(ngx_ssl_ocsp_ctx_t *ctx);
     void                        *data;
 
+    ngx_str_t                    key;
     ngx_buf_t                   *request;
     ngx_buf_t                   *response;
     ngx_peer_connection_t        peer;
+
+    ngx_shm_zone_t              *shm_zone;
 
     ngx_int_t                  (*process)(ngx_ssl_ocsp_ctx_t *ctx);
 
@@ -163,6 +183,10 @@ static ngx_int_t ngx_ssl_ocsp_process_headers(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_process_body(ngx_ssl_ocsp_ctx_t *ctx);
 static ngx_int_t ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx);
+
+static ngx_int_t ngx_ssl_ocsp_cache_lookup(ngx_ssl_ocsp_ctx_t *ctx);
+static ngx_int_t ngx_ssl_ocsp_cache_store(ngx_ssl_ocsp_ctx_t *ctx);
+static ngx_int_t ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx);
 
 static u_char *ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len);
 
@@ -743,7 +767,7 @@ ngx_ssl_stapling_cleanup(void *data)
 
 ngx_int_t
 ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
-    ngx_uint_t depth)
+    ngx_uint_t depth, ngx_shm_zone_t *shm_zone)
 {
     ngx_url_t             u;
     ngx_ssl_ocsp_conf_t  *ocf;
@@ -754,6 +778,7 @@ ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
     }
 
     ocf->depth = depth;
+    ocf->shm_zone = shm_zone;
 
     if (responder->len) {
         ngx_memzero(&u, sizeof(ngx_url_t));
@@ -939,6 +964,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
 static void
 ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
 {
+    ngx_int_t             rc;
     ngx_uint_t            n;
     ngx_ssl_ocsp_t       *ocsp;
     ngx_ssl_ocsp_ctx_t   *ctx;
@@ -978,6 +1004,8 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
         ctx->handler = ngx_ssl_ocsp_handler;
         ctx->data = c;
 
+        ctx->shm_zone = ocf->shm_zone;
+
         ctx->addrs = ocf->addrs;
         ctx->naddrs = ocf->naddrs;
         ctx->host = ocf->host;
@@ -994,7 +1022,28 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
 
         ocsp->ncert++;
 
-        break;
+        rc = ngx_ssl_ocsp_cache_lookup(ctx);
+
+        if (rc == NGX_ERROR) {
+            goto failed;
+        }
+
+        if (rc == NGX_DECLINED) {
+            break;
+        }
+
+        /* rc == NGX_OK */
+
+        if (ctx->status != V_OCSP_CERTSTATUS_GOOD) {
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                           "ssl ocsp cached status \"%s\"",
+                           OCSP_cert_status_str(ctx->status));
+            ocsp->cert_status = ctx->status;
+            goto done;
+        }
+
+        ocsp->ctx = NULL;
+        ngx_ssl_ocsp_done(ctx);
     }
 
     ngx_ssl_ocsp_request(ctx);
@@ -1023,6 +1072,13 @@ ngx_ssl_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
     ocsp->ctx = NULL;
 
     rc = ngx_ssl_ocsp_verify(ctx);
+    if (rc != NGX_OK) {
+        ocsp->status = rc;
+        ngx_ssl_ocsp_done(ctx);
+        goto done;
+    }
+
+    rc = ngx_ssl_ocsp_cache_store(ctx);
     if (rc != NGX_OK) {
         ocsp->status = rc;
         ngx_ssl_ocsp_done(ctx);
@@ -2374,6 +2430,245 @@ error:
 }
 
 
+ngx_int_t
+ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data)
+{
+    size_t                 len;
+    ngx_slab_pool_t       *shpool;
+    ngx_ssl_ocsp_cache_t  *cache;
+
+    if (data) {
+        shm_zone->data = data;
+        return NGX_OK;
+    }
+
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    if (shm_zone->shm.exists) {
+        shm_zone->data = shpool->data;
+        return NGX_OK;
+    }
+
+    cache = ngx_slab_alloc(shpool, sizeof(ngx_ssl_ocsp_cache_t));
+    if (cache == NULL) {
+        return NGX_ERROR;
+    }
+
+    shpool->data = cache;
+    shm_zone->data = cache;
+
+    ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
+                    ngx_str_rbtree_insert_value);
+
+    ngx_queue_init(&cache->expire_queue);
+
+    len = sizeof(" in OCSP cache \"\"") + shm_zone->shm.name.len;
+
+    shpool->log_ctx = ngx_slab_alloc(shpool, len);
+    if (shpool->log_ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_sprintf(shpool->log_ctx, " in OCSP cache \"%V\"%Z",
+                &shm_zone->shm.name);
+
+    shpool->log_nomem = 0;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_ocsp_cache_lookup(ngx_ssl_ocsp_ctx_t *ctx)
+{
+    uint32_t                    hash;
+    ngx_shm_zone_t             *shm_zone;
+    ngx_slab_pool_t            *shpool;
+    ngx_ssl_ocsp_cache_t       *cache;
+    ngx_ssl_ocsp_cache_node_t  *node;
+
+    shm_zone = ctx->shm_zone;
+
+    if (shm_zone == NULL) {
+        return NGX_DECLINED;
+    }
+
+    if (ngx_ssl_ocsp_create_key(ctx) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0, "ssl ocsp cache lookup");
+
+    cache = shm_zone->data;
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    hash = ngx_hash_key(ctx->key.data, ctx->key.len);
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    node = (ngx_ssl_ocsp_cache_node_t *)
+               ngx_str_rbtree_lookup(&cache->rbtree, &ctx->key, hash);
+
+    if (node) {
+        if (node->valid > ngx_time()) {
+            ctx->status = node->status;
+            ngx_shmtx_unlock(&shpool->mutex);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                           "ssl ocsp cache hit, %s",
+                           OCSP_cert_status_str(ctx->status));
+
+            return NGX_OK;
+        }
+
+        ngx_queue_remove(&node->queue);
+        ngx_rbtree_delete(&cache->rbtree, &node->node.node);
+        ngx_slab_free_locked(shpool, node);
+
+        ngx_shmtx_unlock(&shpool->mutex);
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                       "ssl ocsp cache expired");
+
+        return NGX_DECLINED;
+    }
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0, "ssl ocsp cache miss");
+
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_ssl_ocsp_cache_store(ngx_ssl_ocsp_ctx_t *ctx)
+{
+    time_t                      now, valid;
+    uint32_t                    hash;
+    ngx_queue_t                *q;
+    ngx_shm_zone_t             *shm_zone;
+    ngx_slab_pool_t            *shpool;
+    ngx_ssl_ocsp_cache_t       *cache;
+    ngx_ssl_ocsp_cache_node_t  *node;
+
+    shm_zone = ctx->shm_zone;
+
+    if (shm_zone == NULL) {
+        return NGX_OK;
+    }
+
+    valid = ctx->valid;
+
+    now = ngx_time();
+
+    if (valid < now) {
+        return NGX_OK;
+    }
+
+    if (valid == NGX_MAX_TIME_T_VALUE) {
+        valid = now + 3600;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                   "ssl ocsp cache store, valid:%T", valid - now);
+
+    cache = shm_zone->data;
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+    hash = ngx_hash_key(ctx->key.data, ctx->key.len);
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    node = ngx_slab_calloc_locked(shpool,
+                             sizeof(ngx_ssl_ocsp_cache_node_t) + ctx->key.len);
+    if (node == NULL) {
+
+        if (!ngx_queue_empty(&cache->expire_queue)) {
+            q = ngx_queue_last(&cache->expire_queue);
+            node = ngx_queue_data(q, ngx_ssl_ocsp_cache_node_t, queue);
+
+            ngx_rbtree_delete(&cache->rbtree, &node->node.node);
+            ngx_queue_remove(q);
+            ngx_slab_free_locked(shpool, node);
+
+            node = ngx_slab_alloc_locked(shpool,
+                             sizeof(ngx_ssl_ocsp_cache_node_t) + ctx->key.len);
+        }
+
+        if (node == NULL) {
+            ngx_shmtx_unlock(&shpool->mutex);
+            ngx_log_error(NGX_LOG_ALERT, ctx->log, 0,
+                          "could not allocate new entry%s", shpool->log_ctx);
+            return NGX_ERROR;
+        }
+    }
+
+    node->node.str.len = ctx->key.len;
+    node->node.str.data = (u_char *) node + sizeof(ngx_ssl_ocsp_cache_node_t);
+    ngx_memcpy(node->node.str.data, ctx->key.data, ctx->key.len);
+    node->node.node.key = hash;
+    node->status = ctx->status;
+    node->valid = valid;
+
+    ngx_rbtree_insert(&cache->rbtree, &node->node.node);
+    ngx_queue_insert_head(&cache->expire_queue, &node->queue);
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
+{
+    u_char        *p;
+    X509_NAME     *name;
+    ASN1_INTEGER  *serial;
+
+    p = ngx_pnalloc(ctx->pool, 60);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ctx->key.data = p;
+    ctx->key.len = 60;
+
+    name = X509_get_subject_name(ctx->issuer);
+    if (X509_NAME_digest(name, EVP_sha1(), p, NULL) == 0) {
+        return NGX_ERROR;
+    }
+
+    p += 20;
+
+    if (X509_pubkey_digest(ctx->issuer, EVP_sha1(), p, NULL) == 0) {
+        return NGX_ERROR;
+    }
+
+    p += 20;
+
+    serial = X509_get_serialNumber(ctx->cert);
+    if (serial->length > 20) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_cpymem(p, serial->data, serial->length);
+    ngx_memzero(p, 20 - serial->length);
+
+#if (NGX_DEBUG)
+    {
+        u_char  buf[120];
+
+        ngx_hex_dump(buf, ctx->key.data, ctx->key.len);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                       "ssl ocsp key %*s", 120, buf);
+    }
+#endif
+
+    return NGX_OK;
+}
+
+
 static u_char *
 ngx_ssl_ocsp_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
@@ -2436,7 +2731,7 @@ ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
 ngx_int_t
 ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
-    ngx_uint_t depth)
+    ngx_uint_t depth, ngx_shm_zone_t *shm_zone)
 {
     ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
                   "\"ssl_ocsp\" is not supported on this platform");
@@ -2470,6 +2765,13 @@ ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s)
 void
 ngx_ssl_ocsp_cleanup(ngx_connection_t *c)
 {
+}
+
+
+ngx_int_t
+ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data)
+{
+    return NGX_OK;
 }
 
 
