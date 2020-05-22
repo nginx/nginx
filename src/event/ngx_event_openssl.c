@@ -130,6 +130,7 @@ int  ngx_ssl_connection_index;
 int  ngx_ssl_server_conf_index;
 int  ngx_ssl_session_cache_index;
 int  ngx_ssl_session_ticket_keys_index;
+int  ngx_ssl_ocsp_index;
 int  ngx_ssl_certificate_index;
 int  ngx_ssl_next_certificate_index;
 int  ngx_ssl_certificate_name_index;
@@ -208,6 +209,13 @@ ngx_ssl_init(ngx_log_t *log)
     ngx_ssl_session_ticket_keys_index = SSL_CTX_get_ex_new_index(0, NULL, NULL,
                                                                  NULL, NULL);
     if (ngx_ssl_session_ticket_keys_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
+                      "SSL_CTX_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_ocsp_index = SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+    if (ngx_ssl_ocsp_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0,
                       "SSL_CTX_get_ex_new_index() failed");
         return NGX_ERROR;
@@ -1594,12 +1602,17 @@ ngx_ssl_handshake(ngx_connection_t *c)
 {
     int        n, sslerr;
     ngx_err_t  err;
+    ngx_int_t  rc;
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (c->ssl->try_early_data) {
         return ngx_ssl_try_early_data(c);
     }
 #endif
+
+    if (c->ssl->in_ocsp) {
+        return ngx_ssl_ocsp_validate(c);
+    }
 
     ngx_ssl_clear_error(c->log);
 
@@ -1621,8 +1634,6 @@ ngx_ssl_handshake(ngx_connection_t *c)
         ngx_ssl_handshake_log(c);
 #endif
 
-        c->ssl->handshaked = 1;
-
         c->recv = ngx_ssl_recv;
         c->send = ngx_ssl_write;
         c->recv_chain = ngx_ssl_recv_chain;
@@ -1640,6 +1651,20 @@ ngx_ssl_handshake(ngx_connection_t *c)
 #endif
 #endif
 #endif
+
+        rc = ngx_ssl_ocsp_validate(c);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_AGAIN) {
+            c->read->handler = ngx_ssl_handshake_handler;
+            c->write->handler = ngx_ssl_handshake_handler;
+            return NGX_AGAIN;
+        }
+
+        c->ssl->handshaked = 1;
 
         return NGX_OK;
     }
@@ -1710,6 +1735,7 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
     u_char     buf;
     size_t     readbytes;
     ngx_err_t  err;
+    ngx_int_t  rc;
 
     ngx_ssl_clear_error(c->log);
 
@@ -1744,13 +1770,26 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
         c->ssl->early_buf = buf;
         c->ssl->early_preread = 1;
 
-        c->ssl->handshaked = 1;
         c->ssl->in_early = 1;
 
         c->recv = ngx_ssl_recv;
         c->send = ngx_ssl_write;
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
+
+        rc = ngx_ssl_ocsp_validate(c);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_AGAIN) {
+            c->read->handler = ngx_ssl_handshake_handler;
+            c->write->handler = ngx_ssl_handshake_handler;
+            return NGX_AGAIN;
+        }
+
+        c->ssl->handshaked = 1;
 
         return NGX_OK;
     }
@@ -2734,6 +2773,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 {
     int        n, sslerr, mode;
     ngx_err_t  err;
+
+    ngx_ssl_ocsp_cleanup(c);
 
     if (SSL_in_init(c->ssl->connection)) {
         /*
@@ -4894,11 +4935,14 @@ ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     rc = SSL_get_verify_result(c->ssl->connection);
 
     if (rc == X509_V_OK) {
-        ngx_str_set(s, "SUCCESS");
-        return NGX_OK;
-    }
+        if (ngx_ssl_ocsp_get_status(c, &str) == NGX_OK) {
+            ngx_str_set(s, "SUCCESS");
+            return NGX_OK;
+        }
 
-    str = X509_verify_cert_error_string(rc);
+    } else {
+        str = X509_verify_cert_error_string(rc);
+    }
 
     s->data = ngx_pnalloc(pool, sizeof("FAILED:") - 1 + ngx_strlen(str));
     if (s->data == NULL) {

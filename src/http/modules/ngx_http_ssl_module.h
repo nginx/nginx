@@ -54,6 +54,9 @@ typedef struct {
     ngx_flag_t                      session_tickets;
     ngx_array_t                    *session_ticket_keys;
 
+    ngx_uint_t                      ocsp;
+    ngx_str_t                       ocsp_responder;
+
     ngx_flag_t                      stapling;
     ngx_flag_t                      stapling_verify;
     ngx_str_t                       stapling_file;

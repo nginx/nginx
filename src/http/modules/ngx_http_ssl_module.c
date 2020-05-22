@@ -74,6 +74,14 @@ static ngx_conf_enum_t  ngx_http_ssl_verify[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_http_ssl_ocsp[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_string("leaf"), 2 },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_conf_deprecated_t  ngx_http_ssl_deprecated = {
     ngx_conf_deprecated, "ssl", "listen ... ssl"
 };
@@ -212,6 +220,20 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, crl),
+      NULL },
+
+    { ngx_string("ssl_ocsp"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, ocsp),
+      &ngx_http_ssl_ocsp },
+
+    { ngx_string("ssl_ocsp_responder"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, ocsp_responder),
       NULL },
 
     { ngx_string("ssl_stapling"),
@@ -561,6 +583,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->crl = { 0, NULL };
      *     sscf->ciphers = { 0, NULL };
      *     sscf->shm_zone = NULL;
+     *     sscf->ocsp_responder = { 0, NULL };
      *     sscf->stapling_file = { 0, NULL };
      *     sscf->stapling_responder = { 0, NULL };
      */
@@ -578,6 +601,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->session_tickets = NGX_CONF_UNSET;
     sscf->session_ticket_keys = NGX_CONF_UNSET_PTR;
+    sscf->ocsp = NGX_CONF_UNSET_UINT;
     sscf->stapling = NGX_CONF_UNSET;
     sscf->stapling_verify = NGX_CONF_UNSET;
 
@@ -640,6 +664,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                          NGX_DEFAULT_ECDH_CURVE);
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
+
+    ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
+    ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
 
     ngx_conf_merge_value(conf->stapling, prev->stapling, 0);
     ngx_conf_merge_value(conf->stapling_verify, prev->stapling_verify, 0);
@@ -800,6 +827,22 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->ocsp) {
+
+        if (conf->verify == 3) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "\"ssl_ocsp\" is incompatible with "
+                          "\"ssl_verify_client optional_no_ca\"");
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
@@ -1118,17 +1161,28 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
         sscf = cscfp[s]->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
-        if (sscf->ssl.ctx == NULL || !sscf->stapling) {
+        if (sscf->ssl.ctx == NULL) {
             continue;
         }
 
         clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
 
-        if (ngx_ssl_stapling_resolver(cf, &sscf->ssl, clcf->resolver,
+        if (sscf->stapling) {
+            if (ngx_ssl_stapling_resolver(cf, &sscf->ssl, clcf->resolver,
+                                          clcf->resolver_timeout)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+        }
+
+        if (sscf->ocsp) {
+            if (ngx_ssl_ocsp_resolver(cf, &sscf->ssl, clcf->resolver,
                                       clcf->resolver_timeout)
-            != NGX_OK)
-        {
-            return NGX_ERROR;
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
         }
     }
 
