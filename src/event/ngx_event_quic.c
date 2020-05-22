@@ -112,6 +112,8 @@ struct ngx_quic_connection_s {
     uint64_t                          max_streams;
 
     ngx_uint_t                        error;
+    ngx_uint_t                        error_ftype;
+    const char                       *error_reason;
 
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
@@ -181,7 +183,8 @@ static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c,
-    enum ssl_encryption_level_t level, ngx_uint_t err);
+    enum ssl_encryption_level_t level, ngx_uint_t err, ngx_uint_t frame_type,
+    const char *reason);
 static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
@@ -401,6 +404,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 != NGX_OK)
             {
                 qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+                qc->error_reason = "failed to process transport parameters";
+
                 return NGX_ERROR;
             }
 
@@ -414,6 +419,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 || qc->ctp.max_packet_size > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
             {
                 qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+                qc->error_reason = "invalid maximum packet size";
+
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic maximum packet size is invalid");
                 return NGX_ERROR;
@@ -496,7 +503,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
         return 1;
     }
 
-    if (ngx_quic_send_cc(c, level, 0x100 + alert) != NGX_OK) {
+    if (ngx_quic_send_cc(c, level, 0x100 + alert, 0, "TLS alert") != NGX_OK) {
         return 0;
     }
 
@@ -678,6 +685,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
         qc->error = pkt->error;
+        qc->error_reason = "failed to decrypt packet";
+
         return NGX_ERROR;
     }
 
@@ -904,13 +913,11 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (qc->token.len) {
         if (pkt->token.len != qc->token.len) {
-            qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-            return NGX_ERROR;
+            goto bad_token;
         }
 
         if (ngx_memcmp(pkt->token.data, qc->token.data, pkt->token.len) != 0) {
-            qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-            return NGX_ERROR;
+            goto bad_token;
         }
 
         return NGX_OK;
@@ -926,12 +933,11 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     /* sanity checks */
 
     if (pkt->token.len < (size_t) iv_len + EVP_CIPHER_block_size(cipher)) {
-        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-        return NGX_ERROR;
+        goto bad_token;
     }
 
     if (pkt->token.len > (size_t) iv_len + NGX_QUIC_MAX_TOKEN_SIZE) {
-        return NGX_ERROR;
+        goto bad_token;
     }
 
     ctx = EVP_CIPHER_CTX_new();
@@ -949,14 +955,12 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (EVP_DecryptUpdate(ctx, tdec, &len, p, len) != 1) {
         EVP_CIPHER_CTX_free(ctx);
-        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-        return NGX_ERROR;
+        goto bad_token;
     }
 
     if (EVP_DecryptFinal_ex(ctx, tdec + len, &tlen) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
-        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-        return NGX_ERROR;
+        goto bad_token;
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -992,8 +996,7 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (ngx_memcmp(tdec, data, len) != 0) {
-        qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
-        return NGX_ERROR;
+        goto bad_token;
     }
 
     ngx_memcpy(&msec, tdec + len, sizeof(msec));
@@ -1003,6 +1006,13 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     return NGX_OK;
+
+bad_token:
+
+    qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
+    qc->error_reason = "invalid_token";
+
+    return NGX_ERROR;
 }
 
 
@@ -1194,7 +1204,9 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
              ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                             "quic immediate close, drain = %d", qc->draining);
 
-            if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_NO_ERROR) == NGX_OK) {
+            if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_NO_ERROR, 0, NULL)
+                == NGX_OK)
+            {
 
                 qc->close.log = c->log;
                 qc->close.data = c;
@@ -1223,7 +1235,8 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                            qc->error);
 
             err = qc->error ? qc->error : NGX_QUIC_ERR_INTERNAL_ERROR;
-            (void) ngx_quic_send_cc(c, level, err);
+            (void) ngx_quic_send_cc(c, level, err, qc->error_ftype,
+                                    qc->error_reason);
         }
 
         qc->closing = 1;
@@ -1769,7 +1782,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
          *  a packet containing a CONNECTION_CLOSE frame and to identify
          *  packets as belonging to the connection.
          */
-        return ngx_quic_send_cc(c, pkt->level, NGX_QUIC_ERR_NO_ERROR);
+        return ngx_quic_send_cc(c, pkt->level, NGX_QUIC_ERR_NO_ERROR, 0,
+                                "connection is closing, packet discarded");
     }
 
     p = pkt->payload.data;
@@ -1961,7 +1975,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 static ngx_int_t
 ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
-    ngx_uint_t err)
+    ngx_uint_t err, ngx_uint_t frame_type, const char *reason)
 {
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -1987,8 +2001,16 @@ ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
     frame->level = level;
     frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
     frame->u.close.error_code = err;
-    ngx_sprintf(frame->info, "cc from send_cc err=%ui level=%d", err,
-                frame->level);
+    frame->u.close.frame_type = frame_type;
+
+    if (reason) {
+        frame->u.close.reason.len = ngx_strlen(reason);
+        frame->u.close.reason.data = (u_char *) reason;
+    }
+
+    ngx_snprintf(frame->info, sizeof(frame->info) - 1,
+                 "cc from send_cc err=%ui level=%d ft=%ui reason \"%s\"",
+                 err, level, frame_type, reason ? reason : "-");
 
     ngx_quic_queue_frame(c->quic, frame);
 
@@ -2152,6 +2174,8 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                       "quic ACK for the packet not in sent queue ");
 
         qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        qc->error_ftype = NGX_QUIC_FT_ACK;
+        qc->error_reason = "unknown packet number";
 
         return NGX_ERROR;
     }
