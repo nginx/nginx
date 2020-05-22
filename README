@@ -193,7 +193,7 @@ Example configuration:
 
       We recommend to start with simple console client like ngtcp2
       to ensure you've got server configured properly before trying
-      with real browsers that may be very peaky with certificates,
+      with real browsers that may be very picky with certificates,
       for example.
 
     + Build nginx with debug support [7] and check your debug log.
