@@ -1189,34 +1189,7 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
             ngx_quic_free_frames(c, &ctx->sent);
         }
 
-        level = (qc->state == ssl_encryption_early_data)
-                ? ssl_encryption_application
-                : qc->state;
-
-        if (rc == NGX_OK) {
-
-            /*
-             * 10.3.  Immediate Close
-             *
-             *  An endpoint sends a CONNECTION_CLOSE frame (Section 19.19) to
-             *  terminate the connection immediately.
-             */
-             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                            "quic immediate close, drain = %d", qc->draining);
-
-            if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_NO_ERROR, 0, NULL)
-                == NGX_OK)
-            {
-
-                qc->close.log = c->log;
-                qc->close.data = c;
-                qc->close.handler = ngx_quic_close_timer_handler;
-                qc->close.cancelable = 1;
-
-                ngx_add_timer(&qc->close, 3 * NGX_QUIC_HARDCODED_PTO);
-            }
-
-        } else if (rc == NGX_DONE) {
+        if (rc == NGX_DONE) {
 
             /*
              *  10.2.  Idle Timeout
@@ -1230,13 +1203,49 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                            qc->draining ? "drained" : "idle");
 
         } else {
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic immediate close due to fatal error: %ui",
-                           qc->error);
 
-            err = qc->error ? qc->error : NGX_QUIC_ERR_INTERNAL_ERROR;
+            /*
+             * 10.3.  Immediate Close
+             *
+             *  An endpoint sends a CONNECTION_CLOSE frame (Section 19.19)
+             *  to terminate the connection immediately.
+             */
+
+            if (rc == NGX_OK) {
+                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                "quic immediate close, drain = %d",
+                                qc->draining);
+
+                qc->close.log = c->log;
+                qc->close.data = c;
+                qc->close.handler = ngx_quic_close_timer_handler;
+                qc->close.cancelable = 1;
+
+                ngx_add_timer(&qc->close, 3 * NGX_QUIC_HARDCODED_PTO);
+
+                err = NGX_QUIC_ERR_NO_ERROR;
+
+            } else {
+                err = qc->error ? qc->error : NGX_QUIC_ERR_INTERNAL_ERROR;
+
+                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "quic immediate close due to error: %ui %s",
+                               qc->error,
+                               qc->error_reason ? qc->error_reason : "");
+            }
+
+            level = (qc->state == ssl_encryption_early_data)
+                    ? ssl_encryption_handshake
+                    : qc->state;
+
             (void) ngx_quic_send_cc(c, level, err, qc->error_ftype,
                                     qc->error_reason);
+
+            if (level == ssl_encryption_handshake) {
+                /* for clients that might not have handshake keys */
+                (void) ngx_quic_send_cc(c, ssl_encryption_initial, err,
+                                        qc->error_ftype, qc->error_reason);
+            }
         }
 
         qc->closing = 1;
