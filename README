@@ -134,7 +134,7 @@ Example configuration:
 
             location / {
                 # required for browsers to direct them into quic port
-                add_header Alt-Svc $http3=":8443";
+                add_header Alt-Svc '$http3=":8443"; ma=86400';
             }
         }
     }
