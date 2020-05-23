@@ -948,7 +948,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ssl ocsp validate, certs:%i", sk_X509_num(ocsp->certs));
+                   "ssl ocsp validate, certs:%d", sk_X509_num(ocsp->certs));
 
     ngx_ssl_ocsp_validate_next(c);
 
@@ -2661,7 +2661,7 @@ ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
         ngx_hex_dump(buf, ctx->key.data, ctx->key.len);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
-                       "ssl ocsp key %*s", 120, buf);
+                       "ssl ocsp key %*s", sizeof(buf), buf);
     }
 #endif
 
