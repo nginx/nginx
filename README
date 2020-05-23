@@ -108,6 +108,18 @@ Experimental QUIC support for nginx
         quic_active_migration
         quic_active_connection_id_limit
 
+    To enable address validation:
+
+        quic_retry on;
+
+    To enable 0-RTT:
+
+        ssl_early_data on;
+
+    Make sure that TLS 1.3 is configured which is required for QUIC:
+
+        ssl_protocols TLSv1.3;
+
     Two additional variables are available: $quic and $http3.
     The value of $quic is "quic" if QUIC connection is used,
     and empty string otherwise. The value of $http3 is a string
