@@ -6,7 +6,8 @@ Experimental QUIC support for nginx
 3. Configuration
 4. Clients
 5. Troubleshooting
-6. Links
+6. Contributing
+7. Links
 
 1. Introduction
 
@@ -35,6 +36,10 @@ Experimental QUIC support for nginx
 
     Currently we support IETF-QUIC draft 27
     Earlier drafts are NOT supported as they have incompatible wire format;
+
+    Newer drafts development (draft-28 at the time of writing) is in progress.
+    You may look at src/event/ngx_event_quic.h for alternative values of the
+    NGX_QUIC_DRAFT_VERSION macro used to select IETF draft version number.
 
     nginx should be able to respond to simple HTTP/3 requests over QUIC and
     it should be possible to upload and download big files without errors.
@@ -221,7 +226,12 @@ Example configuration:
         #define NGX_QUIC_DEBUG_FRAMES_ALLOC
         #define NGX_QUIC_DEBUG_CRYPTO
 
-6. Links
+6. Contributing
+
+    If you are willing to contribute, please refer to
+    http://nginx.org/en/docs/contributing_changes.html
+
+7. Links
 
     [1] https://tools.ietf.org/html/draft-ietf-quic-transport-27
     [2] https://tools.ietf.org/html/draft-ietf-quic-http-27
