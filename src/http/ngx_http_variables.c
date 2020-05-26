@@ -714,7 +714,7 @@ ngx_http_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_uint_t key)
     n = cmcf->prefix_variables.nelts;
 
     for (i = 0; i < cmcf->prefix_variables.nelts; i++) {
-        if (name->len >= v[i].name.len && name->len > len
+        if (name->len >= v[i].name.len && v[i].name.len > len
             && ngx_strncmp(name->data, v[i].name.data, v[i].name.len) == 0)
         {
             len = v[i].name.len;
