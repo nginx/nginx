@@ -15,7 +15,7 @@ Experimental QUIC support for nginx
 
     The code is developed in a separate "quic" branch available
     at https://hg.nginx.org/nginx-quic.  Currently it is based
-    on nginx mainline 1.17.10. We are planning to merge new nginx
+    on nginx mainline 1.19.x. We are planning to merge new nginx
     releases into this branch regularly.
 
     The project code base is under the same BSD license as nginx.
