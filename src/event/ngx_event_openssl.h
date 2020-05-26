@@ -71,6 +71,9 @@
 #endif
 
 
+typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
+
+
 struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
@@ -94,6 +97,8 @@ struct ngx_ssl_connection_s {
     ngx_event_handler_pt        saved_read_handler;
     ngx_event_handler_pt        saved_write_handler;
 
+    ngx_ssl_ocsp_t             *ocsp;
+
     u_char                      early_buf;
 
     unsigned                    handshaked:1;
@@ -104,6 +109,7 @@ struct ngx_ssl_connection_s {
     unsigned                    handshake_buffer_set:1;
     unsigned                    try_early_data:1;
     unsigned                    in_early:1;
+    unsigned                    in_ocsp:1;
     unsigned                    early_preread:1;
     unsigned                    write_blocked:1;
 };
@@ -187,6 +193,14 @@ ngx_int_t ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *file, ngx_str_t *responder, ngx_uint_t verify);
 ngx_int_t ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_resolver_t *resolver, ngx_msec_t resolver_timeout);
+ngx_int_t ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
+    ngx_uint_t depth, ngx_shm_zone_t *shm_zone);
+ngx_int_t ngx_ssl_ocsp_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_resolver_t *resolver, ngx_msec_t resolver_timeout);
+ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
+ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
+void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
+ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 RSA *ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
     int key_length);
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
@@ -288,6 +302,7 @@ extern int  ngx_ssl_connection_index;
 extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
 extern int  ngx_ssl_session_ticket_keys_index;
+extern int  ngx_ssl_ocsp_index;
 extern int  ngx_ssl_certificate_index;
 extern int  ngx_ssl_next_certificate_index;
 extern int  ngx_ssl_certificate_name_index;

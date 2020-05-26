@@ -731,9 +731,8 @@ ngx_http_v2_state_preface(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (ngx_memcmp(pos, preface, sizeof(preface) - 1) != 0) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                       "invalid http2 connection preface \"%*s\"",
-                       sizeof(preface) - 1, pos);
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "invalid connection preface");
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
@@ -754,9 +753,8 @@ ngx_http_v2_state_preface_end(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     if (ngx_memcmp(pos, preface, sizeof(preface) - 1) != 0) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                       "invalid http2 connection preface \"%*s\"",
-                       sizeof(preface) - 1, pos);
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "invalid connection preface");
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }

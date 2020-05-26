@@ -1075,7 +1075,7 @@ ngx_http_variable_argument(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     len = name->len - (sizeof("arg_") - 1);
     arg = name->data + sizeof("arg_") - 1;
 
-    if (ngx_http_arg(r, arg, len, &value) != NGX_OK) {
+    if (len == 0 || ngx_http_arg(r, arg, len, &value) != NGX_OK) {
         v->not_found = 1;
         return NGX_OK;
     }

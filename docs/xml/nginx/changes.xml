@@ -5,6 +5,51 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.0" date="2020-05-26">
+
+<change type="feature">
+<para lang="ru">
+проверка клиентских сертификатов с помощью OCSP.
+</para>
+<para lang="en">
+client certificate validation with OCSP.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работе с gRPC-бэкендами
+могли возникать ошибки "upstream sent frame for closed stream".
+</para>
+<para lang="en">
+"upstream sent frame for closed stream" errors might occur
+when working with gRPC backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+OCSP stapling мог не работать,
+если не была указана директива resolver.
+</para>
+<para lang="en">
+OCSP stapling might not work
+if the "resolver" directive was not specified.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения с некорректным HTTP/2 preface не логгировались.
+</para>
+<para lang="en">
+connections with incorrect HTTP/2 preface were not logged.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.17.10" date="2020-04-14">
 
 <change type="feature">
