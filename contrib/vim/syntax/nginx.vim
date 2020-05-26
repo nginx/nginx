@@ -141,6 +141,7 @@ syn keyword ngxDirective contained ancient_browser_value
 syn keyword ngxDirective contained api
 syn keyword ngxDirective contained auth_basic
 syn keyword ngxDirective contained auth_basic_user_file
+syn keyword ngxDirective contained auth_delay
 syn keyword ngxDirective contained auth_http
 syn keyword ngxDirective contained auth_http_header
 syn keyword ngxDirective contained auth_http_pass_client_cert
@@ -332,6 +333,7 @@ syn keyword ngxDirective contained ip_hash
 syn keyword ngxDirective contained js_access
 syn keyword ngxDirective contained js_content
 syn keyword ngxDirective contained js_filter
+syn keyword ngxDirective contained js_import
 syn keyword ngxDirective contained js_include
 syn keyword ngxDirective contained js_path
 syn keyword ngxDirective contained js_preread
@@ -348,6 +350,7 @@ syn keyword ngxDirective contained large_client_header_buffers
 syn keyword ngxDirective contained least_conn
 syn keyword ngxDirective contained least_time
 syn keyword ngxDirective contained limit_conn
+syn keyword ngxDirective contained limit_conn_dry_run
 syn keyword ngxDirective contained limit_conn_log_level
 syn keyword ngxDirective contained limit_conn_status
 syn keyword ngxDirective contained limit_conn_zone
@@ -595,6 +598,9 @@ syn keyword ngxDirective contained ssl_early_data
 syn keyword ngxDirective contained ssl_ecdh_curve
 syn keyword ngxDirective contained ssl_engine
 syn keyword ngxDirective contained ssl_handshake_timeout
+syn keyword ngxDirective contained ssl_ocsp
+syn keyword ngxDirective contained ssl_ocsp_cache
+syn keyword ngxDirective contained ssl_ocsp_responder
 syn keyword ngxDirective contained ssl_password_file
 syn keyword ngxDirective contained ssl_prefer_server_ciphers
 syn keyword ngxDirective contained ssl_preread
@@ -770,6 +776,7 @@ syn keyword ngxDirectiveThirdParty contained auth_gss_authorized_principal
 syn keyword ngxDirectiveThirdParty contained auth_gss_force_realm
 syn keyword ngxDirectiveThirdParty contained auth_gss_format_full
 syn keyword ngxDirectiveThirdParty contained auth_gss_keytab
+syn keyword ngxDirectiveThirdParty contained auth_gss_map_to_local
 syn keyword ngxDirectiveThirdParty contained auth_gss_realm
 syn keyword ngxDirectiveThirdParty contained auth_gss_service_name
 
@@ -791,8 +798,8 @@ syn keyword ngxDirectiveThirdParty contained auth_pam_set_pam_env
 
 " AJP protocol proxy
 " https://github.com/yaoweibin/nginx_ajp_module
-syn keyword ngxDirectiveThirdParty contained ajp_buffer_size
 syn keyword ngxDirectiveThirdParty contained ajp_buffers
+syn keyword ngxDirectiveThirdParty contained ajp_buffer_size
 syn keyword ngxDirectiveThirdParty contained ajp_busy_buffers_size
 syn keyword ngxDirectiveThirdParty contained ajp_cache
 syn keyword ngxDirectiveThirdParty contained ajp_cache_key
@@ -818,6 +825,7 @@ syn keyword ngxDirectiveThirdParty contained ajp_pass_header
 syn keyword ngxDirectiveThirdParty contained ajp_pass_request_body
 syn keyword ngxDirectiveThirdParty contained ajp_pass_request_headers
 syn keyword ngxDirectiveThirdParty contained ajp_read_timeout
+syn keyword ngxDirectiveThirdParty contained ajp_secret
 syn keyword ngxDirectiveThirdParty contained ajp_send_lowat
 syn keyword ngxDirectiveThirdParty contained ajp_send_timeout
 syn keyword ngxDirectiveThirdParty contained ajp_store
@@ -854,8 +862,8 @@ syn keyword ngxDirectiveThirdParty contained content_handler_property
 syn keyword ngxDirectiveThirdParty contained content_handler_type
 syn keyword ngxDirectiveThirdParty contained handler_code
 syn keyword ngxDirectiveThirdParty contained handler_name
-syn keyword ngxDirectiveThirdParty contained handler_type
 syn keyword ngxDirectiveThirdParty contained handlers_lazy_init
+syn keyword ngxDirectiveThirdParty contained handler_type
 syn keyword ngxDirectiveThirdParty contained header_filter_code
 syn keyword ngxDirectiveThirdParty contained header_filter_name
 syn keyword ngxDirectiveThirdParty contained header_filter_property
@@ -871,6 +879,10 @@ syn keyword ngxDirectiveThirdParty contained jvm_options
 syn keyword ngxDirectiveThirdParty contained jvm_path
 syn keyword ngxDirectiveThirdParty contained jvm_var
 syn keyword ngxDirectiveThirdParty contained jvm_workers
+syn keyword ngxDirectiveThirdParty contained log_handler_code
+syn keyword ngxDirectiveThirdParty contained log_handler_name
+syn keyword ngxDirectiveThirdParty contained log_handler_property
+syn keyword ngxDirectiveThirdParty contained log_handler_type
 syn keyword ngxDirectiveThirdParty contained max_balanced_tcp_connections
 syn keyword ngxDirectiveThirdParty contained rewrite_handler_code
 syn keyword ngxDirectiveThirdParty contained rewrite_handler_name
@@ -878,6 +890,7 @@ syn keyword ngxDirectiveThirdParty contained rewrite_handler_property
 syn keyword ngxDirectiveThirdParty contained rewrite_handler_type
 syn keyword ngxDirectiveThirdParty contained shared_map
 syn keyword ngxDirectiveThirdParty contained write_page_size
+
 
 " Certificate Transparency
 " https://github.com/grahamedgecombe/nginx-ct
@@ -942,6 +955,7 @@ syn keyword ngxDirectiveThirdParty contained fancyindex_hide_symlinks
 syn keyword ngxDirectiveThirdParty contained fancyindex_ignore
 syn keyword ngxDirectiveThirdParty contained fancyindex_localtime
 syn keyword ngxDirectiveThirdParty contained fancyindex_name_length
+syn keyword ngxDirectiveThirdParty contained fancyindex_show_dotfiles
 syn keyword ngxDirectiveThirdParty contained fancyindex_show_path
 syn keyword ngxDirectiveThirdParty contained fancyindex_time_format
 
@@ -991,8 +1005,8 @@ syn keyword ngxDirectiveThirdParty contained nchan_benchmark_publisher_distribut
 syn keyword ngxDirectiveThirdParty contained nchan_benchmark_subscriber_distribution
 syn keyword ngxDirectiveThirdParty contained nchan_benchmark_subscribers_per_channel
 syn keyword ngxDirectiveThirdParty contained nchan_benchmark_time
-syn keyword ngxDirectiveThirdParty contained nchan_channel_event_string
 syn keyword ngxDirectiveThirdParty contained nchan_channel_events_channel_id
+syn keyword ngxDirectiveThirdParty contained nchan_channel_event_string
 syn keyword ngxDirectiveThirdParty contained nchan_channel_group
 syn keyword ngxDirectiveThirdParty contained nchan_channel_group_accounting
 syn keyword ngxDirectiveThirdParty contained nchan_channel_id
@@ -1000,6 +1014,10 @@ syn keyword ngxDirectiveThirdParty contained nchan_channel_id_split_delimiter
 syn keyword ngxDirectiveThirdParty contained nchan_channel_timeout
 syn keyword ngxDirectiveThirdParty contained nchan_deflate_message_for_websocket
 syn keyword ngxDirectiveThirdParty contained nchan_eventsource_event
+syn keyword ngxDirectiveThirdParty contained nchan_eventsource_ping_comment
+syn keyword ngxDirectiveThirdParty contained nchan_eventsource_ping_data
+syn keyword ngxDirectiveThirdParty contained nchan_eventsource_ping_event
+syn keyword ngxDirectiveThirdParty contained nchan_eventsource_ping_interval
 syn keyword ngxDirectiveThirdParty contained nchan_group_location
 syn keyword ngxDirectiveThirdParty contained nchan_group_max_channels
 syn keyword ngxDirectiveThirdParty contained nchan_group_max_messages
@@ -1047,10 +1065,10 @@ syn keyword ngxDirectiveThirdParty contained nchan_store_messages
 syn keyword ngxDirectiveThirdParty contained nchan_stub_status
 syn keyword ngxDirectiveThirdParty contained nchan_sub_channel_id
 syn keyword ngxDirectiveThirdParty contained nchan_subscribe_existing_channels_only
-syn keyword ngxDirectiveThirdParty contained nchan_subscribe_request
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_channel_id
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_compound_etag_message_id
+syn keyword ngxDirectiveThirdParty contained nchan_subscribe_request
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_first_message
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_http_raw_stream_separator
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_last_message_id
@@ -1987,11 +2005,7 @@ syn keyword ngxDirectiveThirdParty contained concat_unique
 " update upstreams' config by restful interface
 " https://github.com/yzprofile/ngx_http_dyups_module
 syn keyword ngxDirectiveThirdParty contained dyups_interface
-syn keyword ngxDirectiveThirdParty contained dyups_read_msg_log
-syn keyword ngxDirectiveThirdParty contained dyups_read_msg_timeout
 syn keyword ngxDirectiveThirdParty contained dyups_shm_zone_size
-syn keyword ngxDirectiveThirdParty contained dyups_trylock
-syn keyword ngxDirectiveThirdParty contained dyups_upstream_conf
 
 " add given content to the end of the response according to the condition specified
 " https://github.com/flygoast/ngx_http_footer_if_filter
@@ -2308,6 +2322,62 @@ syn keyword ngxDirectiveThirdParty contained user_agent
 " https://github.com/flygoast/ngx_http_upstream_ketama_chash
 syn keyword ngxDirectiveThirdParty contained ketama_chash
 
+" nginx-sticky-module-ng
+" https://github.com/ayty-adrianomartins/nginx-sticky-module-ng
+syn keyword ngxDirectiveThirdParty contained sticky_no_fallback
+
+" dynamic linking and call the function of your application
+" https://github.com/Taymindis/nginx-link-function
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_add_prop
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_add_req_header
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_ca_cert
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_call
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_download_link_lib
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_lib
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_shm_size
+syn keyword ngxDirectiveThirdParty contained ngx_link_func_subrequest
+
+" purge content from FastCGI, proxy, SCGI and uWSGI caches
+" https://github.com/torden/ngx_cache_purge
+syn keyword ngxDirectiveThirdParty contained cache_purge_response_type
+
+" set the flags "HttpOnly", "secure" and "SameSite" for cookies
+" https://github.com/AirisX/nginx_cookie_flag_module
+syn keyword ngxDirectiveThirdParty contained set_cookie_flag
+
+" Embed websockify into Nginx (convert any tcp connection into websocket)
+" https://github.com/tg123/websockify-nginx-module
+syn keyword ngxDirectiveThirdParty contained websockify_buffer_size
+syn keyword ngxDirectiveThirdParty contained websockify_connect_timeout
+syn keyword ngxDirectiveThirdParty contained websockify_pass
+syn keyword ngxDirectiveThirdParty contained websockify_read_timeout
+syn keyword ngxDirectiveThirdParty contained websockify_send_timeout
+
+" IP2Location Nginx
+" https://github.com/ip2location/ip2location-nginx
+syn keyword ngxDirectiveThirdParty contained ip2location
+syn keyword ngxDirectiveThirdParty contained ip2location_access_type
+syn keyword ngxDirectiveThirdParty contained ip2location_proxy
+syn keyword ngxDirectiveThirdParty contained ip2location_proxy_recursive
+
+" IP2Proxy module for Nginx
+" https://github.com/ip2location/ip2proxy-nginx
+syn keyword ngxDirectiveThirdParty contained ip2proxy
+syn keyword ngxDirectiveThirdParty contained ip2proxy_access_type
+syn keyword ngxDirectiveThirdParty contained ip2proxy_as
+syn keyword ngxDirectiveThirdParty contained ip2proxy_asn
+syn keyword ngxDirectiveThirdParty contained ip2proxy_city
+syn keyword ngxDirectiveThirdParty contained ip2proxy_country_long
+syn keyword ngxDirectiveThirdParty contained ip2proxy_country_short
+syn keyword ngxDirectiveThirdParty contained ip2proxy_database
+syn keyword ngxDirectiveThirdParty contained ip2proxy_domain
+syn keyword ngxDirectiveThirdParty contained ip2proxy_is_proxy
+syn keyword ngxDirectiveThirdParty contained ip2proxy_isp
+syn keyword ngxDirectiveThirdParty contained ip2proxy_last_seen
+syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy_type
+syn keyword ngxDirectiveThirdParty contained ip2proxy_region
+syn keyword ngxDirectiveThirdParty contained ip2proxy_reverse_proxy
+syn keyword ngxDirectiveThirdParty contained ip2proxy_usage_type
 
 
 
