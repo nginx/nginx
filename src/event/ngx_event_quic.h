@@ -13,7 +13,9 @@
 
 
 /* Supported drafts: 27, 28 */
+#ifndef NGX_QUIC_DRAFT_VERSION
 #define NGX_QUIC_DRAFT_VERSION               27
+#endif
 #define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
 #define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
