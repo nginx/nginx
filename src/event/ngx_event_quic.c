@@ -426,6 +426,17 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 return 0;
             }
 
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+            if (qc->scid.len != qc->ctp.initial_scid.len
+                || ngx_memcmp(qc->scid.data, qc->ctp.initial_scid.data,
+                              qc->scid.len) != 0)
+            {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic client initial_source_connection_id mismatch");
+                return 0;
+            }
+#endif
+
             qc->client_tp_done = 1;
         }
     }
@@ -641,6 +652,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
+    qc->tp.original_dcid = c->quic->odcid;
+    qc->tp.initial_scid = c->quic->dcid;
+
     qc->scid.len = pkt->scid.len;
     qc->scid.data = ngx_pnalloc(c->pool, qc->scid.len);
     if (qc->scid.data == NULL) {
@@ -782,7 +796,7 @@ ngx_quic_retry(ngx_connection_t *c)
     }
 
     c->quic->token = token;
-    c->quic->tp.original_connection_id = c->quic->odcid;
+    c->quic->tp.retry_scid = c->quic->dcid;
     c->quic->in_retry = 1;
 
     return NGX_OK;
@@ -1483,6 +1497,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     qc = c->quic;
+    qc->tp.initial_scid = c->quic->dcid;
 
     keys = &c->quic->keys[ssl_encryption_initial];
 

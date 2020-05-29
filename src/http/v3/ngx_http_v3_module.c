@@ -245,7 +245,9 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
 
     /*
      * set by ngx_pcalloc():
-     *  v3cf->quic.original_connection_id = 0;
+     *  v3cf->quic.original_dcid = { 0, NULL };
+     *  v3cf->quic.initial_scid = { 0, NULL };
+     *  v3cf->quic.retry_scid = { 0, NULL };
      *  v3cf->quic.stateless_reset_token = { 0 }
      *  conf->quic.preferred_address = NULL
      */

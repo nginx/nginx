@@ -1354,6 +1354,10 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
     ngx_quic_tp_t *dst)
 {
     uint64_t   varint;
+    ngx_str_t  str;
+
+    varint = 0;
+    ngx_str_null(&str);
 
     switch (id) {
 
@@ -1381,6 +1385,12 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
         if (p == NULL) {
             return NGX_ERROR;
         }
+        break;
+
+    case NGX_QUIC_TP_INITIAL_SCID:
+
+        str.len = end - p;
+        p = ngx_quic_read_bytes(p, end, str.len, &str.data);
         break;
 
     default:
@@ -1433,6 +1443,10 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
         dst->active_connection_id_limit = varint;
         break;
 
+    case NGX_QUIC_TP_INITIAL_SCID:
+        dst->initial_scid = str;
+        break;
+
     default:
         return NGX_ERROR;
     }
@@ -1457,8 +1471,9 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         }
 
         switch (id) {
-        case NGX_QUIC_TP_ORIGINAL_CONNECTION_ID:
+        case NGX_QUIC_TP_ORIGINAL_DCID:
         case NGX_QUIC_TP_PREFERRED_ADDRESS:
+        case NGX_QUIC_TP_RETRY_SCID:
         case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
             ngx_log_error(NGX_LOG_INFO, log, 0,
                           "quic client sent forbidden transport param"
@@ -1546,6 +1561,11 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic tp active_connection_id_limit: %ui",
                    tp->active_connection_id_limit);
+
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    ngx_quic_hexdump(log, "quic tp initial_source_connection_id:",
+                     tp->initial_scid.data, tp->initial_scid.len);
+#endif
 
     return NGX_OK;
 }
@@ -1650,9 +1670,17 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                            tp->max_idle_timeout);
 
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+    len += ngx_quic_tp_strlen(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
+#endif
+
     if (tp->retry) {
-        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID,
-                                  tp->original_connection_id);
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+        len += ngx_quic_tp_strlen(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
+#else
+        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+#endif
     }
 
     if (pos == NULL) {
@@ -1683,9 +1711,17 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                      tp->max_idle_timeout);
 
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+    ngx_quic_tp_str(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
+#endif
+
     if (tp->retry) {
-        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID,
-                        tp->original_connection_id);
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+        ngx_quic_tp_str(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
+#else
+        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+#endif
     }
 
     return p - pos;

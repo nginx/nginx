@@ -12,6 +12,7 @@
 #include <ngx_core.h>
 
 
+/* Supported drafts: 27, 28 */
 #define NGX_QUIC_DRAFT_VERSION               27
 #define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
@@ -56,7 +57,9 @@ typedef struct {
     ngx_uint_t                 ack_delay_exponent;
     ngx_uint_t                 disable_active_migration;
     ngx_uint_t                 active_connection_id_limit;
-    ngx_str_t                  original_connection_id;
+    ngx_str_t                  original_dcid;
+    ngx_str_t                  initial_scid;
+    ngx_str_t                  retry_scid;
 
     ngx_flag_t                 retry;
     u_char                     token_key[32]; /* AES 256 */

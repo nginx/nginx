@@ -96,7 +96,7 @@
 #define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
 
 /* Transport parameters */
-#define NGX_QUIC_TP_ORIGINAL_CONNECTION_ID               0x00
+#define NGX_QUIC_TP_ORIGINAL_DCID                        0x00
 #define NGX_QUIC_TP_MAX_IDLE_TIMEOUT                     0x01
 #define NGX_QUIC_TP_STATELESS_RESET_TOKEN                0x02
 #define NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE                 0x03
@@ -111,6 +111,8 @@
 #define NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION             0x0C
 #define NGX_QUIC_TP_PREFERRED_ADDRESS                    0x0D
 #define NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT           0x0E
+#define NGX_QUIC_TP_INITIAL_SCID                         0x0F
+#define NGX_QUIC_TP_RETRY_SCID                           0x10
 
 #define NGX_QUIC_CID_LEN_MIN                                8
 #define NGX_QUIC_CID_LEN_MAX                               20
