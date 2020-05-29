@@ -19,7 +19,7 @@
 #define NGX_QUIC_MAX_LONG_HEADER             56
     /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
 
-#define NGX_QUIC_DEFAULT_MAX_PACKET_SIZE     65527
+#define NGX_QUIC_MAX_UDP_PAYLOAD_SIZE        65527
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 
@@ -46,7 +46,7 @@ typedef struct {
     ngx_msec_t                 max_idle_timeout;
     ngx_msec_t                 max_ack_delay;
 
-    size_t                     max_packet_size;
+    size_t                     max_udp_payload_size;
     size_t                     initial_max_data;
     size_t                     initial_max_stream_data_bidi_local;
     size_t                     initial_max_stream_data_bidi_remote;

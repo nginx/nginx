@@ -415,8 +415,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 qc->tp.max_idle_timeout = qc->ctp.max_idle_timeout;
             }
 
-            if (qc->ctp.max_packet_size < NGX_QUIC_MIN_INITIAL_SIZE
-                || qc->ctp.max_packet_size > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
+            if (qc->ctp.max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
+                || qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
             {
                 qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
                 qc->error_reason = "invalid maximum packet size";
@@ -434,7 +434,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
      * we need to fit at least 1 frame into a packet, thus account head/tail;
      * 17 = 1 + 8x2 is max header for CRYPTO frame, with 1 byte for frame type
      */
-    limit = qc->ctp.max_packet_size - NGX_QUIC_MAX_LONG_HEADER - 17
+    limit = qc->ctp.max_udp_payload_size - NGX_QUIC_MAX_LONG_HEADER - 17
             - EVP_GCM_TLS_TAG_LEN;
 
     fs = &qc->crypto[level];
@@ -555,7 +555,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -625,14 +625,15 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->streams.handler = handler;
 
     ctp = &qc->ctp;
-    ctp->max_packet_size = NGX_QUIC_DEFAULT_MAX_PACKET_SIZE;
+    ctp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_SIZE;
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
 
     qc->streams.recv_max_data = qc->tp.initial_max_data;
 
-    qc->congestion.window = ngx_min(10 * qc->tp.max_packet_size,
-                                    ngx_max(2 * qc->tp.max_packet_size, 14720));
+    qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,
+                                    ngx_max(2 * qc->tp.max_udp_payload_size,
+                                            14720));
     qc->congestion.ssthresh = NGX_MAX_SIZE_T_VALUE;
     qc->congestion.recovery_start = ngx_current_msec;
 
@@ -1081,7 +1082,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_buf_t               b;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     ngx_memzero(&b, sizeof(ngx_buf_t));
     b.start = buf;
@@ -1446,7 +1447,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "retrying quic connection";
 
@@ -1534,7 +1535,7 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_ssl_conn_t       *ssl_conn;
     ngx_quic_secrets_t   *keys;
     ngx_quic_send_ctx_t  *ctx;
-    static u_char         buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char         buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "processing initial quic packet";
 
@@ -1573,7 +1574,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "processing handshake quic packet";
 
@@ -1630,7 +1631,7 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "processing early data quic packet";
 
@@ -1710,7 +1711,7 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_secrets_t     *keys, *next, tmp;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "processing application data quic packet";
 
@@ -2963,7 +2964,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
             n = ngx_quic_create_frame(NULL, f);
 
-            if (len && hlen + len + n > qc->ctp.max_packet_size) {
+            if (len && hlen + len + n > qc->ctp.max_udp_payload_size) {
                 break;
             }
 
@@ -3062,8 +3063,8 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static ngx_str_t        initial_token = ngx_null_string;
-    static u_char           src[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
-    static u_char           dst[NGX_QUIC_DEFAULT_MAX_PACKET_SIZE];
+    static u_char           src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+    static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_send_frames");
@@ -3632,7 +3633,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
      * we need to fit at least 1 frame into a packet, thus account head/tail;
      * 25 = 1 + 8x3 is max header for STREAM frame, with 1 byte for frame type
      */
-    limit = qc->ctp.max_packet_size - NGX_QUIC_MAX_SHORT_HEADER - 25
+    limit = qc->ctp.max_udp_payload_size - NGX_QUIC_MAX_SHORT_HEADER - 25
             - EVP_GCM_TLS_TAG_LEN;
 
     len = size;
@@ -3912,7 +3913,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
                        cg->window, cg->ssthresh, cg->in_flight);
 
     } else {
-        cg->window += qc->tp.max_packet_size * n / cg->window;
+        cg->window += qc->tp.max_udp_payload_size * n / cg->window;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic congestion avoidance win:%uz, ss:%uz, if:%uz",
@@ -3948,8 +3949,8 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_msec_t sent)
     cg->recovery_start = ngx_current_msec;
     cg->window /= 2;
 
-    if (cg->window < qc->tp.max_packet_size * 2) {
-        cg->window = qc->tp.max_packet_size * 2;
+    if (cg->window < qc->tp.max_udp_payload_size * 2) {
+        cg->window = qc->tp.max_udp_payload_size * 2;
     }
 
     cg->ssthresh = cg->window;

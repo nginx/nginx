@@ -11,14 +11,14 @@
 
 
 static char *ngx_http_v3_max_ack_delay(ngx_conf_t *cf, void *post, void *data);
-static char *ngx_http_v3_max_packet_size(ngx_conf_t *cf, void *post,
+static char *ngx_http_v3_max_udp_payload_size(ngx_conf_t *cf, void *post,
     void *data);
 
 
 static ngx_conf_post_t  ngx_http_v3_max_ack_delay_post =
     { ngx_http_v3_max_ack_delay };
-static ngx_conf_post_t  ngx_http_v3_max_packet_size_post =
-    { ngx_http_v3_max_packet_size };
+static ngx_conf_post_t  ngx_http_v3_max_udp_payload_size_post =
+    { ngx_http_v3_max_udp_payload_size };
 static ngx_conf_num_bounds_t  ngx_http_v3_ack_delay_exponent_bounds =
     { ngx_conf_check_num_bounds, 0, 20 };
 static ngx_conf_num_bounds_t  ngx_http_v3_active_connection_id_limit_bounds =
@@ -41,12 +41,12 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, quic.max_ack_delay),
       &ngx_http_v3_max_ack_delay_post },
 
-    { ngx_string("quic_max_packet_size"),
+    { ngx_string("quic_max_udp_payload_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v3_srv_conf_t, quic.max_packet_size),
-      &ngx_http_v3_max_packet_size_post },
+      offsetof(ngx_http_v3_srv_conf_t, quic.max_udp_payload_size),
+      &ngx_http_v3_max_udp_payload_size_post },
 
     { ngx_string("quic_initial_max_data"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -253,7 +253,7 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     v3cf->quic.max_idle_timeout = NGX_CONF_UNSET_MSEC;
     v3cf->quic.max_ack_delay = NGX_CONF_UNSET_MSEC;
 
-    v3cf->quic.max_packet_size = NGX_CONF_UNSET_SIZE;
+    v3cf->quic.max_udp_payload_size = NGX_CONF_UNSET_SIZE;
     v3cf->quic.initial_max_data = NGX_CONF_UNSET_SIZE;
     v3cf->quic.initial_max_stream_data_bidi_local = NGX_CONF_UNSET_SIZE;
     v3cf->quic.initial_max_stream_data_bidi_remote = NGX_CONF_UNSET_SIZE;
@@ -283,9 +283,9 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->quic.max_ack_delay,
                               NGX_QUIC_DEFAULT_MAX_ACK_DELAY);
 
-    ngx_conf_merge_size_value(conf->quic.max_packet_size,
-                              prev->quic.max_packet_size,
-                              NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
+    ngx_conf_merge_size_value(conf->quic.max_udp_payload_size,
+                              prev->quic.max_udp_payload_size,
+                              NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
     ngx_conf_merge_size_value(conf->quic.initial_max_data,
                               prev->quic.initial_max_data,
@@ -349,17 +349,18 @@ ngx_http_v3_max_ack_delay(ngx_conf_t *cf, void *post, void *data)
 
 
 static char *
-ngx_http_v3_max_packet_size(ngx_conf_t *cf, void *post, void *data)
+ngx_http_v3_max_udp_payload_size(ngx_conf_t *cf, void *post, void *data)
 {
     size_t *sp = data;
 
     if (*sp < NGX_QUIC_MIN_INITIAL_SIZE
-        || *sp > NGX_QUIC_DEFAULT_MAX_PACKET_SIZE)
+        || *sp > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_max_packet_size\" must be between %d and %d",
+                           "\"quic_max_udp_payload_size\" must be between "
+                           "%d and %d",
                            NGX_QUIC_MIN_INITIAL_SIZE,
-                           NGX_QUIC_DEFAULT_MAX_PACKET_SIZE);
+                           NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
         return NGX_CONF_ERROR;
     }

@@ -1366,7 +1366,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
         return NGX_OK;
 
     case NGX_QUIC_TP_MAX_IDLE_TIMEOUT:
-    case NGX_QUIC_TP_MAX_PACKET_SIZE:
+    case NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE:
     case NGX_QUIC_TP_INITIAL_MAX_DATA:
     case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL:
     case NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE:
@@ -1393,8 +1393,8 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
         dst->max_idle_timeout = varint;
         break;
 
-    case NGX_QUIC_TP_MAX_PACKET_SIZE:
-        dst->max_packet_size = varint;
+    case NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE:
+        dst->max_udp_payload_size = varint;
         break;
 
     case NGX_QUIC_TP_INITIAL_MAX_DATA:
@@ -1509,8 +1509,9 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "quic tp idle_timeout: %ui",
                    tp->max_idle_timeout);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "quic tp max_packet_size: %ui",
-                   tp->max_packet_size);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "quic tp max_udp_payload_size: %ui",
+                   tp->max_udp_payload_size);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0, "quic tp max_data: %ui",
                    tp->initial_max_data);

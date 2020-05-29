@@ -99,7 +99,7 @@
 #define NGX_QUIC_TP_ORIGINAL_CONNECTION_ID               0x00
 #define NGX_QUIC_TP_MAX_IDLE_TIMEOUT                     0x01
 #define NGX_QUIC_TP_STATELESS_RESET_TOKEN                0x02
-#define NGX_QUIC_TP_MAX_PACKET_SIZE                      0x03
+#define NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE                 0x03
 #define NGX_QUIC_TP_INITIAL_MAX_DATA                     0x04
 #define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL   0x05
 #define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_REMOTE  0x06

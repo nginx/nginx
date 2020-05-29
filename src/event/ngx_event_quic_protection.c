@@ -1115,7 +1115,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
     pkt->payload.len = in.len - EVP_GCM_TLS_TAG_LEN;
 
-    if (NGX_QUIC_DEFAULT_MAX_PACKET_SIZE - ad.len < pkt->payload.len) {
+    if (NGX_QUIC_MAX_UDP_PAYLOAD_SIZE - ad.len < pkt->payload.len) {
         return NGX_ERROR;
     }
 
