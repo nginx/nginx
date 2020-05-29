@@ -1356,14 +1356,6 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
     uint64_t   varint;
 
     switch (id) {
-    case NGX_QUIC_TP_ORIGINAL_CONNECTION_ID:
-    case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
-    case NGX_QUIC_TP_PREFERRED_ADDRESS:
-        /* TODO: implement */
-        return NGX_DECLINED;
-    }
-
-    switch (id) {
 
     case NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION:
         /* zero-length option */
@@ -1461,6 +1453,16 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
                           "quic failed to parse transport param id");
+            return NGX_ERROR;
+        }
+
+        switch (id) {
+        case NGX_QUIC_TP_ORIGINAL_CONNECTION_ID:
+        case NGX_QUIC_TP_PREFERRED_ADDRESS:
+        case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
+            ngx_log_error(NGX_LOG_INFO, log, 0,
+                          "quic client sent forbidden transport param"
+                          " id 0x%xi", id);
             return NGX_ERROR;
         }
 
