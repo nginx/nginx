@@ -1613,6 +1613,18 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
         ngx_quic_build_int(&p, value);                                        \
     } while (0)
 
+#define ngx_quic_tp_strlen(id, value)                                         \
+    ngx_quic_varint_len(id)                                                   \
+    + ngx_quic_varint_len(value.len)                                          \
+    + value.len
+
+#define ngx_quic_tp_str(id, value)                                            \
+    do {                                                                      \
+        ngx_quic_build_int(&p, id);                                           \
+        ngx_quic_build_int(&p, value.len);                                    \
+        p = ngx_cpymem(p, value.data, value.len);                             \
+    } while (0)
+
     p = pos;
 
     len = ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
@@ -1639,9 +1651,8 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
                            tp->max_idle_timeout);
 
     if (tp->retry) {
-        len += ngx_quic_varint_len(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID);
-        len += ngx_quic_varint_len(tp->original_connection_id.len);
-        len += tp->original_connection_id.len;
+        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID,
+                                  tp->original_connection_id);
     }
 
     if (pos == NULL) {
@@ -1673,10 +1684,8 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
                      tp->max_idle_timeout);
 
     if (tp->retry) {
-        ngx_quic_build_int(&p, NGX_QUIC_TP_ORIGINAL_CONNECTION_ID);
-        ngx_quic_build_int(&p, tp->original_connection_id.len);
-        p = ngx_cpymem(p, tp->original_connection_id.data,
-                       tp->original_connection_id.len);
+        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_CONNECTION_ID,
+                        tp->original_connection_id);
     }
 
     return p - pos;
