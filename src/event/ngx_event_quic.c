@@ -406,7 +406,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
                 qc->error_reason = "failed to process transport parameters";
 
-                return NGX_ERROR;
+                return 0;
             }
 
             if (qc->ctp.max_idle_timeout > 0
@@ -423,7 +423,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic maximum packet size is invalid");
-                return NGX_ERROR;
+                return 0;
             }
 
             qc->client_tp_done = 1;
