@@ -1616,7 +1616,8 @@ ngx_quic_create_max_data(u_char *p, ngx_quic_max_data_frame_t *md)
 
 
 ssize_t
-ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
+ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
+    size_t *clen)
 {
     u_char  *p;
     size_t   len;
@@ -1647,10 +1648,7 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 
     p = pos;
 
-    len = ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
-                          tp->active_connection_id_limit);
-
-    len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_DATA,tp->initial_max_data);
+    len = ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_DATA, tp->initial_max_data);
 
     len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI,
                            tp->initial_max_streams_uni);
@@ -1670,6 +1668,13 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                            tp->max_idle_timeout);
 
+    if (clen) {
+        *clen = len;
+    }
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
+                           tp->active_connection_id_limit);
+
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
@@ -1686,9 +1691,6 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
     if (pos == NULL) {
         return len;
     }
-
-    ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
-                     tp->active_connection_id_limit);
 
     ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_DATA,
                      tp->initial_max_data);
@@ -1710,6 +1712,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 
     ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                      tp->max_idle_timeout);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
+                     tp->active_connection_id_limit);
 
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);

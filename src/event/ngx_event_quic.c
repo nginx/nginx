@@ -1040,6 +1040,7 @@ static ngx_int_t
 ngx_quic_init_connection(ngx_connection_t *c)
 {
     u_char                 *p;
+    size_t                  clen;
     ssize_t                 len;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_connection_t  *qc;
@@ -1064,7 +1065,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp);
+    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
     /* always succeeds */
 
     p = ngx_pnalloc(c->pool, len);
@@ -1072,7 +1073,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    len = ngx_quic_create_transport_params(p, p + len, &qc->tp);
+    len = ngx_quic_create_transport_params(p, p + len, &qc->tp, NULL);
     if (len < 0) {
         return NGX_ERROR;
     }
@@ -1086,6 +1087,14 @@ ngx_quic_init_connection(ngx_connection_t *c)
                       "quic SSL_set_quic_transport_params() failed");
         return NGX_ERROR;
     }
+
+#if NGX_OPENSSL_QUIC_ZRTT_CTX
+    if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic SSL_set_quic_early_data_context() failed");
+        return NGX_ERROR;
+    }
+#endif
 
     qc->max_streams = qc->tp.initial_max_streams_bidi;
     qc->state = ssl_encryption_handshake;

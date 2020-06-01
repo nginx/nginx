@@ -335,6 +335,6 @@ ssize_t ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start,
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, ngx_log_t *log);
 ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
-    ngx_quic_tp_t *tp);
+    ngx_quic_tp_t *tp, size_t *clen);
 
 #endif /* _NGX_EVENT_QUIC_WIRE_H_INCLUDED_ */

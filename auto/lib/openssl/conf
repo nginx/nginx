@@ -167,3 +167,15 @@ END
     fi
 
 fi
+
+
+if [ $USE_OPENSSL_QUIC = YES ]; then
+    ngx_feature="OpenSSL QUIC 0-RTT context"
+    ngx_feature_name="NGX_OPENSSL_QUIC_ZRTT_CTX"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <openssl/ssl.h>"
+    ngx_feature_path=
+    ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL $NGX_LIBPTHREAD"
+    ngx_feature_test="SSL_set_quic_early_data_context(NULL, NULL, 0)"
+    . auto/feature
+fi
