@@ -652,7 +652,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         return NGX_ERROR;
     }
 
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
     qc->tp.original_dcid = c->quic->odcid;
+#endif
     qc->tp.initial_scid = c->quic->dcid;
 
     qc->scid.len = pkt->scid.len;
@@ -796,6 +798,9 @@ ngx_quic_retry(ngx_connection_t *c)
     }
 
     c->quic->token = token;
+#if (NGX_QUIC_DRAFT_VERSION < 28)
+    c->quic->tp.original_dcid = c->quic->odcid;
+#endif
     c->quic->tp.retry_scid = c->quic->dcid;
     c->quic->in_retry = 1;
 

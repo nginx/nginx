@@ -1673,15 +1673,15 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
-#endif
 
-    if (tp->retry) {
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    if (tp->retry_scid.len) {
         len += ngx_quic_tp_strlen(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
-#else
-        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
-#endif
     }
+#else
+    if (tp->original_dcid.len) {
+        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+    }
+#endif
 
     if (pos == NULL) {
         return len;
@@ -1714,15 +1714,15 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp)
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     ngx_quic_tp_str(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
-#endif
 
-    if (tp->retry) {
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    if (tp->retry_scid.len) {
         ngx_quic_tp_str(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
-#else
-        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
-#endif
     }
+#else
+    if (tp->original_dcid.len) {
+        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
+    }
+#endif
 
     return p - pos;
 }
