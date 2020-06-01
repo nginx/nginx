@@ -520,6 +520,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                     == NGX_OK)
                 {
                     nls[n].fd = ls[i].fd;
+                    nls[n].inherited = ls[i].inherited;
                     nls[n].previous = &ls[i];
                     ls[i].remain = 1;
 
