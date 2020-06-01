@@ -492,6 +492,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
             ngx_memzero(ls, sizeof(ngx_listening_t));
 
             ls->fd = (ngx_socket_t) s;
+            ls->inherited = 1;
         }
     }
 
