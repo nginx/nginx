@@ -2065,10 +2065,18 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->http_version >= NGX_HTTP_VERSION_20) {
+    if (r->headers_in.host == NULL && r->http_version == NGX_HTTP_VERSION_20) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent HTTP/2 request without "
+                      "\":authority\" or \"Host\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    if (r->http_version == NGX_HTTP_VERSION_30) {
         if (r->headers_in.server.len == 0) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent HTTP request without "
+                          "client sent HTTP/3 request without "
                           "\":authority\" or \"Host\" header");
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             return NGX_ERROR;
@@ -2082,7 +2090,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
                    != 0)
             {
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent HTTP request with different "
+                              "client sent HTTP/3 request with different "
                               "values of \":authority\" and \"Host\" headers");
                 ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                 return NGX_ERROR;
