@@ -920,6 +920,8 @@ ngx_int_t
 ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_int_t depth)
 {
+    SSL_CTX_set_verify(ssl->ctx, SSL_VERIFY_PEER, ngx_ssl_verify_callback);
+
     SSL_CTX_set_verify_depth(ssl->ctx, depth);
 
     if (cert->len == 0) {
