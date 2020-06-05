@@ -220,6 +220,10 @@ static ngx_int_t ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_data_blocked_frame_t *f);
 static ngx_int_t ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_stream_data_frame_t *f);
+static ngx_int_t ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f);
+static ngx_int_t ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
     ngx_quic_frame_t *frame);
@@ -1946,10 +1950,30 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
             break;
 
+        case NGX_QUIC_FT_RESET_STREAM:
+
+            if (ngx_quic_handle_reset_stream_frame(c, pkt,
+                                                   &frame.u.reset_stream)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
+        case NGX_QUIC_FT_STOP_SENDING:
+
+            if (ngx_quic_handle_stop_sending_frame(c, pkt,
+                                                   &frame.u.stop_sending)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
-        case NGX_QUIC_FT_RESET_STREAM:
-        case NGX_QUIC_FT_STOP_SENDING:
         case NGX_QUIC_FT_PATH_CHALLENGE:
         case NGX_QUIC_FT_PATH_RESPONSE:
 
@@ -2916,6 +2940,59 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     }
 
     sn->send_max_data = f->limit;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f)
+{
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic frame handler not implemented");
+
+    if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
+    {
+        c->quic->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f)
+{
+    ngx_quic_stream_t      *sn;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic frame handler not implemented");
+
+    qc = c->quic;
+
+    if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
+    {
+        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        return NGX_ERROR;
+    }
+
+    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+
+    if (sn == NULL) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic stream id 0x%xi is new", f->id);
+
+        if (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+            return NGX_ERROR;
+        }
+    }
 
     return NGX_OK;
 }
