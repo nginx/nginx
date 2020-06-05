@@ -2598,11 +2598,23 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     qc = c->quic;
     f = &frame->u.stream;
 
+    if ((f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        && (f->stream_id & NGX_QUIC_STREAM_SERVER_INITIATED))
+    {
+        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        return NGX_ERROR;
+    }
+
     sn = ngx_quic_find_stream(&qc->streams.tree, f->stream_id);
 
     if (sn == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic stream id 0x%xi is new", f->stream_id);
+
+        if (f->stream_id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+            return NGX_ERROR;
+        }
 
         n = (f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
             ? qc->tp.initial_max_stream_data_uni
