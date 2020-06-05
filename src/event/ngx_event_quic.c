@@ -1948,7 +1948,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
-        case NGX_QUIC_FT_NEW_TOKEN:
         case NGX_QUIC_FT_RESET_STREAM:
         case NGX_QUIC_FT_STOP_SENDING:
         case NGX_QUIC_FT_PATH_CHALLENGE:

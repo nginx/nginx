@@ -1048,7 +1048,7 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
          /* RESET_STREAM */          0x3,
          /* STOP_SENDING */          0x3,
          /* CRYPTO */                0xD,
-         /* NEW_TOKEN */             0x1,
+         /* NEW_TOKEN */             0x0, /* only sent by server */
          /* STREAM0 */               0x3,
          /* STREAM1 */               0x3,
          /* STREAM2 */               0x3,
