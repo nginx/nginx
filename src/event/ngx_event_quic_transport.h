@@ -87,7 +87,7 @@
 #define NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR           0x09
 #define NGX_QUIC_ERR_PROTOCOL_VIOLATION                  0x0A
 #define NGX_QUIC_ERR_INVALID_TOKEN                       0x0B
-/* 0xC is not defined */
+#define NGX_QUIC_ERR_APPLICATION_ERROR                   0x0C
 #define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED              0x0D
 /* 0xE is not defined */
 /* 0xF is not defined */

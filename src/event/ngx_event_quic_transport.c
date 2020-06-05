@@ -101,7 +101,7 @@ static char *ngx_quic_errors[] = {
     "CONNECTION_ID_LIMIT_ERROR",
     "PROTOCOL_VIOLATION",
     "INVALID_TOKEN",
-    "unknown error 0xC",
+    "APPLICATION_ERROR",
     "CRYPTO_BUFFER_EXCEEDED",
     "unknown error 0xE",
     "unknown error 0xF",
