@@ -1069,8 +1069,13 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
          /* RETIRE_CONNECTION_ID */  0x3,
          /* PATH_CHALLENGE */        0x3,
          /* PATH_RESPONSE */         0x3,
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+         /* CONNECTION_CLOSE */      0xF,
+         /* CONNECTION_CLOSE2 */     0x3,
+#else
          /* CONNECTION_CLOSE */      0xD,
          /* CONNECTION_CLOSE2 */     0x1,
+#endif
          /* HANDSHAKE_DONE */        0x0, /* only sent by server */
     };
 
