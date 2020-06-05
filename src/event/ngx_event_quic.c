@@ -2875,6 +2875,14 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
+
+    if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
+    {
+        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        return NGX_ERROR;
+    }
+
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
     if (sn == NULL) {
@@ -2917,10 +2925,23 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
+
+    if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
+    {
+        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        return NGX_ERROR;
+    }
+
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
     if (sn == NULL) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "unknown stream id:%uL", f->id);
+
+        if (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        }
+
         return NGX_ERROR;
     }
 
