@@ -189,6 +189,13 @@ ngx_udp_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in, ngx_log_t *log)
         return cl;
     }
 
+    /* zero-sized datagram; pretend to have at least 1 iov */
+    if (n == 0) {
+        iov = &vec->iovs[n++];
+        iov->iov_base = NULL;
+        iov->iov_len = 0;
+    }
+
     vec->count = n;
     vec->size = total;
 
