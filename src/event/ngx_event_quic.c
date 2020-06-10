@@ -442,7 +442,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                               qc->scid.len) != 0)
             {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic client initial_source_connection_id mismatch");
+                              "quic client initial_source_connection_id "
+                              "mismatch");
                 return 0;
             }
 #endif
