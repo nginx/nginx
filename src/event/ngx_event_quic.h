@@ -23,6 +23,8 @@
     /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
 
 #define NGX_QUIC_MAX_UDP_PAYLOAD_SIZE        65527
+#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT         1300  /* TODO */
+
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 

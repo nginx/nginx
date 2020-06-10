@@ -430,6 +430,12 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                 return 0;
             }
 
+            if (qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_OUT) {
+                qc->ctp.max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                              "quic client maximum packet size truncated");
+            }
+
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
             if (qc->scid.len != qc->ctp.initial_scid.len
                 || ngx_memcmp(qc->scid.data, qc->ctp.initial_scid.data,
@@ -640,7 +646,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->streams.handler = handler;
 
     ctp = &qc->ctp;
-    ctp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_SIZE;
+    ctp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
 
