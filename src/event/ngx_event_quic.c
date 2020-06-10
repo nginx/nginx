@@ -3058,7 +3058,8 @@ ngx_quic_output(ngx_connection_t *c)
     }
 
     if (!qc->retransmit.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->retransmit, qc->ctp.max_ack_delay);
+        ngx_add_timer(&qc->retransmit,
+                              qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO);
     }
 
     return NGX_OK;
@@ -3414,7 +3415,8 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     do {
         start = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        wait = start->last + qc->ctp.max_ack_delay - now;
+        wait = start->last + qc->ctp.max_ack_delay
+               + NGX_QUIC_HARDCODED_PTO - now;
 
         if ((ngx_msec_int_t) wait > 0) {
             break;
@@ -3455,7 +3457,7 @@ ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         /* move frames group to the end of queue */
         ngx_queue_add(&ctx->sent, &range);
 
-        wait = qc->tp.max_ack_delay;
+        wait = qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO;
 
     } while (q != ngx_queue_sentinel(&ctx->sent));
 
