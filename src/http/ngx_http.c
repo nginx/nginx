@@ -1469,14 +1469,14 @@ ngx_http_server_names(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
                                   NGX_HASH_WILDCARD_KEY);
 
             if (rc == NGX_ERROR) {
-                return NGX_ERROR;
+                goto failed;
             }
 
             if (rc == NGX_DECLINED) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "invalid server name or wildcard \"%V\" on %V",
                               &name[n].name, &addr->opt.addr_text);
-                return NGX_ERROR;
+                goto failed;
             }
 
             if (rc == NGX_BUSY) {
