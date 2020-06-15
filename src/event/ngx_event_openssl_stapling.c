@@ -980,6 +980,7 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
         if (ocsp->ncert == n - 1 || (ocf->depth == 2 && ocsp->ncert == 1)) {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "ssl ocsp validated, certs:%ui", ocsp->ncert);
+            rc = NGX_OK;
             goto done;
         }
 
@@ -988,7 +989,8 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
 
         ctx = ngx_ssl_ocsp_start(c->log);
         if (ctx == NULL) {
-            goto failed;
+            rc = NGX_ERROR;
+            goto done;
         }
 
         ocsp->ctx = ctx;
@@ -1012,8 +1014,9 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
         ctx->uri = ocf->uri;
         ctx->port = ocf->port;
 
-        if (ngx_ssl_ocsp_responder(c, ctx) != NGX_OK) {
-            goto failed;
+        rc = ngx_ssl_ocsp_responder(c, ctx);
+        if (rc != NGX_OK) {
+            goto done;
         }
 
         if (ctx->uri.len == 0) {
@@ -1025,7 +1028,7 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
         rc = ngx_ssl_ocsp_cache_lookup(ctx);
 
         if (rc == NGX_ERROR) {
-            goto failed;
+            goto done;
         }
 
         if (rc == NGX_DECLINED) {
@@ -1051,12 +1054,12 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
 
 done:
 
-    ocsp->status = NGX_OK;
-    return;
+    ocsp->status = rc;
 
-failed:
-
-    ocsp->status = NGX_ERROR;
+    if (c->ssl->in_ocsp) {
+        c->ssl->handshaked = 1;
+        c->ssl->handler(c);
+    }
 }
 
 
@@ -1073,22 +1076,16 @@ ngx_ssl_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
 
     rc = ngx_ssl_ocsp_verify(ctx);
     if (rc != NGX_OK) {
-        ocsp->status = rc;
-        ngx_ssl_ocsp_done(ctx);
         goto done;
     }
 
     rc = ngx_ssl_ocsp_cache_store(ctx);
     if (rc != NGX_OK) {
-        ocsp->status = rc;
-        ngx_ssl_ocsp_done(ctx);
         goto done;
     }
 
     if (ctx->status != V_OCSP_CERTSTATUS_GOOD) {
         ocsp->cert_status = ctx->status;
-        ocsp->status = NGX_OK;
-        ngx_ssl_ocsp_done(ctx);
         goto done;
     }
 
@@ -1096,15 +1093,17 @@ ngx_ssl_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
 
     ngx_ssl_ocsp_validate_next(c);
 
+    return;
+
 done:
 
-    if (ocsp->status == NGX_AGAIN || !c->ssl->in_ocsp) {
-        return;
+    ocsp->status = rc;
+    ngx_ssl_ocsp_done(ctx);
+
+    if (c->ssl->in_ocsp) {
+        c->ssl->handshaked = 1;
+        c->ssl->handler(c);
     }
-
-    c->ssl->handshaked = 1;
-
-    c->ssl->handler(c);
 }
 
 
