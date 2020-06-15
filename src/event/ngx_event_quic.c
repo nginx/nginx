@@ -1321,6 +1321,10 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         ngx_del_timer(&qc->retransmit);
     }
 
+    if (qc->push.posted) {
+        ngx_delete_posted_event(&qc->push);
+    }
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic part of connection is terminated");
 
