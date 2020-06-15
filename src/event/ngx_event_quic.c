@@ -400,56 +400,64 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                        "quic SSL_get_peer_quic_transport_params():"
                        " params_len %ui", client_params_len);
 
-        if (client_params_len != 0) {
-            p = (u_char *) client_params;
-            end = p + client_params_len;
+        if (client_params_len == 0) {
+            /* quic-tls 8.2 */
+            qc->error = 0x100 + SSL_AD_MISSING_EXTENSION;
+            qc->error_reason = "missing transport parameters";
 
-            if (ngx_quic_parse_transport_params(p, end, &qc->ctp, c->log)
-                != NGX_OK)
-            {
-                qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-                qc->error_reason = "failed to process transport parameters";
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "missing transport parameters");
+            return 0;
+        }
 
-                return 0;
-            }
+        p = (u_char *) client_params;
+        end = p + client_params_len;
 
-            if (qc->ctp.max_idle_timeout > 0
-                && qc->ctp.max_idle_timeout < qc->tp.max_idle_timeout)
-            {
-                qc->tp.max_idle_timeout = qc->ctp.max_idle_timeout;
-            }
+        if (ngx_quic_parse_transport_params(p, end, &qc->ctp, c->log)
+            != NGX_OK)
+        {
+            qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+            qc->error_reason = "failed to process transport parameters";
 
-            if (qc->ctp.max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
-                || qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
-            {
-                qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-                qc->error_reason = "invalid maximum packet size";
+            return 0;
+        }
 
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic maximum packet size is invalid");
-                return 0;
-            }
+        if (qc->ctp.max_idle_timeout > 0
+            && qc->ctp.max_idle_timeout < qc->tp.max_idle_timeout)
+        {
+            qc->tp.max_idle_timeout = qc->ctp.max_idle_timeout;
+        }
 
-            if (qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_OUT) {
-                qc->ctp.max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                              "quic client maximum packet size truncated");
-            }
+        if (qc->ctp.max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
+            || qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
+        {
+            qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+            qc->error_reason = "invalid maximum packet size";
+
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic maximum packet size is invalid");
+            return 0;
+        }
+
+        if (qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_OUT) {
+            qc->ctp.max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                          "quic client maximum packet size truncated");
+        }
 
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
-            if (qc->scid.len != qc->ctp.initial_scid.len
-                || ngx_memcmp(qc->scid.data, qc->ctp.initial_scid.data,
-                              qc->scid.len) != 0)
-            {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic client initial_source_connection_id "
-                              "mismatch");
-                return 0;
-            }
+        if (qc->scid.len != qc->ctp.initial_scid.len
+            || ngx_memcmp(qc->scid.data, qc->ctp.initial_scid.data,
+                          qc->scid.len) != 0)
+        {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic client initial_source_connection_id "
+                          "mismatch");
+            return 0;
+        }
 #endif
 
-            qc->client_tp_done = 1;
-        }
+        qc->client_tp_done = 1;
     }
 
     /*
