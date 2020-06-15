@@ -4776,6 +4776,10 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         return NGX_OK;
     }
 
+    if (r->cached == 1) {
+        return NGX_OK;
+    }
+
     len = h->value.len;
     p = h->value.data;
 
