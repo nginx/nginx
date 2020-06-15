@@ -1141,6 +1141,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         r->upstream->request_bufs = cl;
     }
 
+    b->flush = 1;
     cl->next = NULL;
 
     return NGX_OK;
