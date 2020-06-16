@@ -157,6 +157,7 @@ static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
 static ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
+static ngx_inline size_t ngx_quic_max_udp_payload(ngx_connection_t *c);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
 static void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
@@ -439,8 +440,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             return 0;
         }
 
-        if (qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_OUT) {
-            qc->ctp.max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
+        if (qc->ctp.max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
+            qc->ctp.max_udp_payload_size = ngx_quic_max_udp_payload(c);
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                           "quic client maximum packet size truncated");
         }
@@ -655,7 +656,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->streams.handler = handler;
 
     ctp = &qc->ctp;
-    ctp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
+    ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
 
@@ -1119,6 +1120,21 @@ ngx_quic_init_connection(ngx_connection_t *c)
     qc->state = ssl_encryption_handshake;
 
     return NGX_OK;
+}
+
+
+static ngx_inline size_t
+ngx_quic_max_udp_payload(ngx_connection_t *c)
+{
+    /* TODO: path MTU discovery */
+
+#if (NGX_HAVE_INET6)
+    if (c->sockaddr->sa_family == AF_INET6) {
+        return NGX_QUIC_MAX_UDP_PAYLOAD_OUT6;
+    }
+#endif
+
+    return NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
 }
 
 
