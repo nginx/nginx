@@ -86,8 +86,6 @@ struct ngx_quic_connection_s {
     ngx_quic_tp_t                     tp;
     ngx_quic_tp_t                     ctp;
 
-    enum ssl_encryption_level_t       state;
-
     ngx_quic_send_ctx_t               send_ctx[NGX_QUIC_SEND_CTX_LAST];
     ngx_quic_secrets_t                keys[NGX_QUIC_ENCRYPTION_LAST];
     ngx_quic_secrets_t                next_key;
@@ -296,10 +294,6 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
 
     keys = &c->quic->keys[level];
 
-    if (level == ssl_encryption_early_data) {
-        c->quic->state = ssl_encryption_early_data;
-    }
-
     return ngx_quic_set_encryption_secret(c->pool, ssl_conn, level,
                                           rsecret, secret_len,
                                           &keys->client);
@@ -358,7 +352,6 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
     if (level == ssl_encryption_early_data) {
-        c->quic->state = ssl_encryption_early_data;
         return 1;
     }
 
@@ -675,7 +668,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     qc->push.cancelable = 1;
 
     c->quic = qc;
-    qc->state = ssl_encryption_initial;
     qc->ssl = ssl;
     qc->tp = *tp;
     qc->streams.handler = handler;
@@ -1142,7 +1134,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
 #endif
 
     qc->max_streams = qc->tp.initial_max_streams_bidi;
-    qc->state = ssl_encryption_handshake;
 
     return NGX_OK;
 }
@@ -1743,12 +1734,14 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (c->quic->state != ssl_encryption_early_data) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic unexpected 0-RTT packet");
-        return NGX_OK;
+    keys = &c->quic->keys[ssl_encryption_early_data];
+
+    if (keys->client.key.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic no 0-RTT keys yet, packet ignored");
+        return NGX_DECLINED;
     }
 
-    keys = &c->quic->keys[ssl_encryption_early_data];
 
     pkt->secret = &keys->client;
     pkt->level = ssl_encryption_early_data;
@@ -2614,7 +2607,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
         }
 
     } else if (n == 1 && !SSL_in_init(ssl_conn)) {
-        c->quic->state = ssl_encryption_application;
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic ssl cipher: %s", SSL_get_cipher(ssl_conn));
