@@ -393,6 +393,31 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                    "quic ngx_quic_add_handshake_data");
 
     if (!qc->client_tp_done) {
+        /*
+         * things to do once during handshake: check ALPN and transport
+         * parameters; we want to break handshake if something is wrong
+         * here;
+         */
+
+#if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
+        {
+        unsigned int          len;
+        const unsigned char  *data;
+
+        SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
+
+        if (len != NGX_QUIC_ALPN_LEN
+            || ngx_strncmp(data, NGX_QUIC_ALPN_STR, NGX_QUIC_ALPN_LEN) != 0)
+        {
+            qc->error = 0x100 + SSL_AD_NO_APPLICATION_PROTOCOL;
+            qc->error_reason = "unsupported protocol in ALPN extension";
+
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic unsupported protocol in ALPN extension");
+            return 0;
+        }
+        }
+#endif
 
         SSL_get_peer_quic_transport_params(ssl_conn, &client_params,
                                            &client_params_len);
@@ -1298,9 +1323,8 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                                qc->error_reason ? qc->error_reason : "");
             }
 
-            level = (qc->state == ssl_encryption_early_data)
-                    ? ssl_encryption_handshake
-                    : qc->state;
+            level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
+                           : ssl_encryption_initial;
 
             (void) ngx_quic_send_cc(c, level, err, qc->error_ftype,
                                     qc->error_reason);

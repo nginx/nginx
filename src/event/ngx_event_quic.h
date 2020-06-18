@@ -18,6 +18,11 @@
 #endif
 #define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
+#define NGX_QUIC_ALPN(s)         NGX_QUIC_ALPN_DRAFT(s)
+#define NGX_QUIC_ALPN_DRAFT(s)   "h3-" #s
+#define NGX_QUIC_ALPN_STR        NGX_QUIC_ALPN(NGX_QUIC_DRAFT_VERSION)
+#define NGX_QUIC_ALPN_LEN        (sizeof(NGX_QUIC_ALPN_STR) - 1)
+
 #define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
 #define NGX_QUIC_MAX_LONG_HEADER             56
     /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
