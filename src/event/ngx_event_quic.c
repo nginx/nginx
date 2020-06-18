@@ -2262,7 +2262,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     if (!found) {
 
-        if (max <= ctx->pnum) {
+        if (max < ctx->pnum) {
             /* duplicate ACK or ACK for non-ack-eliciting frame */
             return NGX_OK;
         }
