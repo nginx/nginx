@@ -2173,6 +2173,7 @@ ngx_quic_send_new_token(ngx_connection_t *c)
     return NGX_OK;
 }
 
+
 static ngx_int_t
 ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_ack_frame_t *ack)
