@@ -349,6 +349,7 @@ ngx_int_t ngx_directio_off(ngx_fd_t fd);
 #endif
 
 size_t ngx_fs_bsize(u_char *name);
+off_t ngx_fs_available(u_char *name);
 
 
 #if (NGX_HAVE_OPENAT)
