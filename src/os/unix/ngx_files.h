@@ -185,7 +185,10 @@ ngx_int_t ngx_set_file_time(u_char *name, ngx_fd_t fd, time_t s);
 #define ngx_is_exec(sb)          (((sb)->st_mode & S_IXUSR) == S_IXUSR)
 #define ngx_file_access(sb)      ((sb)->st_mode & 0777)
 #define ngx_file_size(sb)        (sb)->st_size
-#define ngx_file_fs_size(sb)     ngx_max((sb)->st_size, (sb)->st_blocks * 512)
+#define ngx_file_fs_size(sb)                                                 \
+    (((sb)->st_blocks * 512 > (sb)->st_size                                  \
+     && (sb)->st_blocks * 512 < (sb)->st_size + 8 * (sb)->st_blksize)        \
+     ? (sb)->st_blocks * 512 : (sb)->st_size)
 #define ngx_file_mtime(sb)       (sb)->st_mtime
 #define ngx_file_uniq(sb)        (sb)->st_ino
 
