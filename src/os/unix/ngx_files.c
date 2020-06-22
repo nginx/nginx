@@ -875,6 +875,12 @@ ngx_fs_bsize(u_char *name)
         return 512;
     }
 
+#if (NGX_LINUX)
+    if ((size_t) fs.f_bsize > ngx_pagesize) {
+        return 512;
+    }
+#endif
+
     return (size_t) fs.f_bsize;
 }
 
@@ -892,6 +898,12 @@ ngx_fs_bsize(u_char *name)
     if ((fs.f_frsize % 512) != 0) {
         return 512;
     }
+
+#if (NGX_LINUX)
+    if ((size_t) fs.f_frsize > ngx_pagesize) {
+        return 512;
+    }
+#endif
 
     return (size_t) fs.f_frsize;
 }
