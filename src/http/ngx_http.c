@@ -1797,6 +1797,10 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
     ls->wildcard = addr->opt.wildcard;
 
+#if (NGX_HTTP_SSL)
+    ls->quic = addr->opt.http3;
+#endif
+
     return ls;
 }
 

@@ -75,6 +75,7 @@ struct ngx_listening_s {
     unsigned            reuseport:1;
     unsigned            add_reuseport:1;
     unsigned            keepalive:2;
+    unsigned            quic:1;
 
     unsigned            deferred_accept:1;
     unsigned            delete_deferred:1;
