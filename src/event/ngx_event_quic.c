@@ -712,6 +712,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     qc->initialized = 1;
 
+    if (ngx_terminate || ngx_exiting) {
+        qc->error = NGX_QUIC_ERR_CONNECTION_REFUSED;
+        return NGX_ERROR;
+    }
+
     if (pkt->token.len) {
         rc = ngx_quic_validate_token(c, pkt);
 
