@@ -1182,7 +1182,8 @@ ngx_quic_input_handler(ngx_event_t *rev)
     }
 
     if (c->close) {
-        ngx_quic_close_connection(c, NGX_ERROR);
+        qc->error_reason = "graceful shutdown";
+        ngx_quic_close_connection(c, NGX_OK);
         return;
     }
 
