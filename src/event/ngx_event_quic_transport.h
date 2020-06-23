@@ -77,7 +77,7 @@
 /* 22.4.  QUIC Transport Error Codes Registry */
 #define NGX_QUIC_ERR_NO_ERROR                            0x00
 #define NGX_QUIC_ERR_INTERNAL_ERROR                      0x01
-#define NGX_QUIC_ERR_SERVER_BUSY                         0x02
+#define NGX_QUIC_ERR_CONNECTION_REFUSED                  0x02
 #define NGX_QUIC_ERR_FLOW_CONTROL_ERROR                  0x03
 #define NGX_QUIC_ERR_STREAM_LIMIT_ERROR                  0x04
 #define NGX_QUIC_ERR_STREAM_STATE_ERROR                  0x05

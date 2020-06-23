@@ -91,7 +91,7 @@ static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
 static char *ngx_quic_errors[] = {
     "NO_ERROR",
     "INTERNAL_ERROR",
-    "SERVER_BUSY",
+    "CONNECTION_REFUSED",
     "FLOW_CONTROL_ERROR",
     "STREAM_LIMIT_ERROR",
     "STREAM_STATE_ERROR",
