@@ -34,10 +34,9 @@ Experimental QUIC support for nginx
 
     What works now:
 
-    Currently we support IETF-QUIC draft 27
-    Earlier drafts are NOT supported as they have incompatible wire format;
+    Currently we support IETF-QUIC draft-27, draft-28, draft-29.
+    Earlier drafts are NOT supported as they have incompatible wire format.
 
-    Newer drafts development (draft-28 at the time of writing) is in progress.
     You may look at src/event/ngx_event_quic.h for alternative values of the
     NGX_QUIC_DRAFT_VERSION macro used to select IETF draft version number.
 
