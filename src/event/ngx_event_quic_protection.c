@@ -1050,7 +1050,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
-        pkt->error = NGX_QUIC_ERR_CRYPTO_ERROR;
+        pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }
 
@@ -1130,7 +1130,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 #endif
 
     if (rc != NGX_OK) {
-        pkt->error = NGX_QUIC_ERR_CRYPTO_ERROR;
+        pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return rc;
     }
 
