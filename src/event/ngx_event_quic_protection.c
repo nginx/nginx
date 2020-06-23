@@ -138,8 +138,13 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
     const EVP_CIPHER  *cipher;
 
     static const uint8_t salt[20] =
+#if (NGX_QUIC_DRAFT_VERSION >= 29)
+        "\xaf\xbf\xec\x28\x99\x93\xd2\x4c\x9e\x97"
+        "\x86\xf1\x9c\x61\x11\xe0\x43\x90\xa8\x99";
+#else
         "\xc3\xee\xf7\x12\xc7\x2e\xbb\x5a\x11\xa7"
         "\xd2\x43\x2b\xb4\x63\x65\xbe\xf9\xf5\x02";
+#endif
 
     /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
 
@@ -903,11 +908,17 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 
     /* 5.8.  Retry Packet Integrity */
     static u_char     key[16] =
-        "\x4d\x32\xec\xdb\x2a\x21\x33\xc8"
-        "\x41\xe4\x04\x3d\xf2\x7d\x44\x30";
+#if (NGX_QUIC_DRAFT_VERSION >= 29)
+        "\xcc\xce\x18\x7e\xd0\x9a\x09\xd0\x57\x28\x15\x5a\x6c\xb9\x6b\xe1";
+#else
+        "\x4d\x32\xec\xdb\x2a\x21\x33\xc8\x41\xe4\x04\x3d\xf2\x7d\x44\x30";
+#endif
     static u_char     nonce[12] =
-        "\x4d\x16\x11\xd0\x55\x13"
-        "\xa5\x52\xc5\x87\xd5\x75";
+#if (NGX_QUIC_DRAFT_VERSION >= 29)
+        "\xe5\x49\x30\xf9\x7f\x21\x36\xf0\x53\x0a\x8c\x1c";
+#else
+        "\x4d\x16\x11\xd0\x55\x13\xa5\x52\xc5\x87\xd5\x75";
+#endif
     static ngx_str_t  in = ngx_string("");
 
     ad.data = res->data;
