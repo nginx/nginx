@@ -1830,9 +1830,11 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
+
+    if (rc != NGX_OK) {
         qc->error = pkt->error;
-        return NGX_ERROR;
+        return rc;
     }
 
     /* switch keys on Key Phase change */

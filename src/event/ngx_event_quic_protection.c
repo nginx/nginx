@@ -1051,7 +1051,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         != NGX_OK)
     {
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        return NGX_ERROR;
+        return NGX_DECLINED;
     }
 
     if (ngx_quic_long_pkt(pkt->flags)) {
@@ -1131,7 +1131,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
     if (rc != NGX_OK) {
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        return rc;
+        return NGX_DECLINED;
     }
 
     if (badflags) {
