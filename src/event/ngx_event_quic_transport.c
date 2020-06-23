@@ -104,8 +104,6 @@ static char *ngx_quic_errors[] = {
     "APPLICATION_ERROR",
     "CRYPTO_BUFFER_EXCEEDED",
     "KEY_UPDATE_ERROR",
-    "unknown error 0xF",
-    "CRYPTO_ERROR",
 };
 
 
@@ -218,6 +216,9 @@ ngx_quic_build_int(u_char **pos, uint64_t value)
 u_char *
 ngx_quic_error_text(uint64_t error_code)
 {
+    if (error_code >= NGX_QUIC_ERR_CRYPTO_ERROR) {
+        return (u_char *) "handshake error";
+    }
 
     if (error_code >= NGX_QUIC_ERR_LAST) {
         return (u_char *) "unknown error";

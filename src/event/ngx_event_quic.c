@@ -421,7 +421,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
         if (client_params_len == 0) {
             /* quic-tls 8.2 */
-            qc->error = 0x100 + SSL_AD_MISSING_EXTENSION;
+            qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
             qc->error_reason = "missing transport parameters";
 
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -552,7 +552,9 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
         return 1;
     }
 
-    if (ngx_quic_send_cc(c, level, 0x100 + alert, 0, "TLS alert") != NGX_OK) {
+    if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_CRYPTO(alert), 0, "TLS alert")
+        != NGX_OK)
+    {
         return 0;
     }
 

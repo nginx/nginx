@@ -75,6 +75,7 @@
 #define NGX_QUIC_FT_HANDSHAKE_DONE                       0x1E
 
 /* 22.4.  QUIC Transport Error Codes Registry */
+/* Keep in sync with ngx_quic_errors[] */
 #define NGX_QUIC_ERR_NO_ERROR                            0x00
 #define NGX_QUIC_ERR_INTERNAL_ERROR                      0x01
 #define NGX_QUIC_ERR_CONNECTION_REFUSED                  0x02
@@ -90,10 +91,12 @@
 #define NGX_QUIC_ERR_APPLICATION_ERROR                   0x0C
 #define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED              0x0D
 #define NGX_QUIC_ERR_KEY_UPDATE_ERROR                    0x0E
-/* 0xF is not defined */
-#define NGX_QUIC_ERR_CRYPTO_ERROR                        0x10
 
-#define NGX_QUIC_ERR_LAST  NGX_QUIC_ERR_CRYPTO_ERROR
+#define NGX_QUIC_ERR_LAST                                0x0F
+#define NGX_QUIC_ERR_CRYPTO_ERROR                       0x100
+
+#define NGX_QUIC_ERR_CRYPTO(e)  (NGX_QUIC_ERR_CRYPTO_ERROR + (e))
+
 
 /* Transport parameters */
 #define NGX_QUIC_TP_ORIGINAL_DCID                        0x00
