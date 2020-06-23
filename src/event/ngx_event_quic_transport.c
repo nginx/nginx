@@ -103,7 +103,7 @@ static char *ngx_quic_errors[] = {
     "INVALID_TOKEN",
     "APPLICATION_ERROR",
     "CRYPTO_BUFFER_EXCEEDED",
-    "unknown error 0xE",
+    "KEY_UPDATE_ERROR",
     "unknown error 0xF",
     "CRYPTO_ERROR",
 };
