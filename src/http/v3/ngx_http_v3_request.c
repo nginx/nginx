@@ -666,7 +666,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     hl->buf = b;
     hl->next = cl;
 
-    if (r->headers_out.content_length_n >= 0) {
+    if (r->headers_out.content_length_n >= 0 && !r->header_only) {
         len = 1 + ngx_http_v3_encode_varlen_int(NULL,
                                               r->headers_out.content_length_n);
 
