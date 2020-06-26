@@ -61,6 +61,12 @@ typedef struct {
 } ngx_http_v3_connection_t;
 
 
+#define ngx_http_v3_get_module_srv_conf(c, module)                            \
+    ngx_http_get_module_srv_conf(                                             \
+             ((ngx_http_v3_connection_t *) c->qs->parent->data)->hc.conf_ctx, \
+             module)
+
+
 typedef struct {
     ngx_str_t               name;
     ngx_str_t               value;
