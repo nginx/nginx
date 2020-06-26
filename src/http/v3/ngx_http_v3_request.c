@@ -105,6 +105,7 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
         p = ngx_cpymem(p, "HTTP/3", sizeof("HTTP/3") - 1);
 
         r->request_end = p;
+        r->state = 0;
 
         return NGX_OK;
     }
@@ -127,28 +128,47 @@ ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_uint_t                    hash, i, n;
     ngx_connection_t             *c;
     ngx_http_v3_parse_headers_t  *st;
+    enum {
+        sw_start = 0,
+        sw_done,
+        sw_next,
+        sw_header
+    };
 
     c = r->connection;
     st = r->h3_parse;
 
-    if (st->header_rep.state == 0) {
+    switch (r->state) {
+
+    case sw_start:
         r->parse_start = b->pos;
-        r->invalid_header = 0;
-    }
 
-    if (st->state == 0) {
-        if (r->header_name_start == NULL) {
-            name = &st->header_rep.header.name;
-
-            if (name->len && name->data[0] != ':') {
-                goto done;
-            }
+        if (st->state) {
+            r->state = sw_next;
+            goto done;
         }
 
+        name = &st->header_rep.header.name;
+
+        if (name->len && name->data[0] != ':') {
+            r->state = sw_done;
+            goto done;
+        }
+
+        /* fall through */
+
+    case sw_done:
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 parse header done");
-
         return NGX_HTTP_PARSE_HEADER_DONE;
+
+    case sw_next:
+        r->parse_start = b->pos;
+        r->invalid_header = 0;
+        break;
+
+    case sw_header:
+        break;
     }
 
     while (b->pos < b->last) {
@@ -158,11 +178,18 @@ ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
             return NGX_HTTP_PARSE_INVALID_HEADER;
         }
 
-        if (rc != NGX_AGAIN) {
+        if (rc == NGX_DONE) {
+            r->state = sw_done;
+            goto done;
+        }
+
+        if (rc == NGX_OK) {
+            r->state = sw_next;
             goto done;
         }
     }
 
+    r->state = sw_header;
     return NGX_AGAIN;
 
 done:
