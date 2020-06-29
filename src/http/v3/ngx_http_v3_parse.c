@@ -399,7 +399,8 @@ ngx_int_t
 ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
     u_char ch)
 {
-    ngx_uint_t  n;
+    ngx_uint_t               n;
+    ngx_http_v3_srv_conf_t  *v3cf;
     enum {
         sw_start = 0,
         sw_value
@@ -414,6 +415,14 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
                        st->huffman, st->length);
 
         n = st->length;
+
+        v3cf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+
+        if (n > v3cf->max_field_size) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "client exceeded http3_max_field_size limit");
+            return NGX_ERROR;
+        }
 
         if (st->huffman) {
             n = n * 8 / 5;

@@ -47,9 +47,12 @@
 #define NGX_HTTP_V3_STREAM_SERVER_DECODER          5
 #define NGX_HTTP_V3_MAX_KNOWN_STREAM               6
 
+#define NGX_HTTP_V3_DEFAULT_MAX_FIELD_SIZE         4096
+
 
 typedef struct {
     ngx_quic_tp_t           quic;
+    size_t                  max_field_size;
 } ngx_http_v3_srv_conf_t;
 
 
