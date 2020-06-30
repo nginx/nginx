@@ -51,6 +51,29 @@
 #define NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY     16384
 #define NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS    16
 
+/* HTTP/3 errors */
+#define NGX_HTTP_V3_ERR_NO_ERROR                   0x100
+#define NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR     0x101
+#define NGX_HTTP_V3_ERR_INTERNAL_ERROR             0x102
+#define NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR      0x103
+#define NGX_HTTP_V3_ERR_CLOSED_CRITICAL_STREAM     0x104
+#define NGX_HTTP_V3_ERR_FRAME_UNEXPECTED           0x105
+#define NGX_HTTP_V3_ERR_FRAME_ERROR                0x106
+#define NGX_HTTP_V3_ERR_EXCESSIVE_LOAD             0x107
+#define NGX_HTTP_V3_ERR_ID_ERROR                   0x108
+#define NGX_HTTP_V3_ERR_SETTINGS_ERROR             0x109
+#define NGX_HTTP_V3_ERR_MISSING_SETTINGS           0x10a
+#define NGX_HTTP_V3_ERR_REQUEST_REJECTED           0x10b
+#define NGX_HTTP_V3_ERR_REQUEST_CANCELLED          0x10c
+#define NGX_HTTP_V3_ERR_REQUEST_INCOMPLETE         0x10d
+#define NGX_HTTP_V3_ERR_CONNECT_ERROR              0x10f
+#define NGX_HTTP_V3_ERR_VERSION_FALLBACK           0x110
+
+/* QPACK errors */
+#define NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED       0x200
+#define NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR       0x201
+#define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
+
 
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
     ngx_http_get_module_srv_conf(                                             \
