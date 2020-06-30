@@ -727,7 +727,6 @@ ngx_http_alloc_request(ngx_connection_t *c)
 #if (NGX_HTTP_V3)
     if (hc->quic) {
         r->http_version = NGX_HTTP_VERSION_30;
-        r->headers_in.chunked = 1;
     }
 #endif
 
@@ -2154,6 +2153,12 @@ ngx_http_process_request_header(ngx_http_request_t *r)
             return NGX_ERROR;
         }
     }
+
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        r->headers_in.chunked = 1;
+    }
+#endif
 
     if (r->headers_in.connection_type == NGX_HTTP_CONNECTION_KEEP_ALIVE) {
         if (r->headers_in.keep_alive) {
