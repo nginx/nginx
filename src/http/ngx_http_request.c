@@ -223,7 +223,17 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 #if (NGX_HTTP_V3)
     if (c->type == SOCK_DGRAM) {
-        hc = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
+        ngx_http_v3_connection_t  *h3c;
+
+        h3c = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
+        if (h3c == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        ngx_queue_init(&h3c->blocked);
+
+        hc = &h3c->hc;
         hc->quic = 1;
         hc->ssl = 1;
 
@@ -413,6 +423,13 @@ ngx_http_quic_stream_handler(ngx_connection_t *c)
 
     pc = c->qs->parent;
     h3c = pc->data;
+
+    if (!h3c->settings_sent) {
+        h3c->settings_sent = 1;
+
+        /* TODO close QUIC connection on error */
+        (void) ngx_http_v3_send_settings(c);
+    }
 
     if (c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         ngx_http_v3_handle_client_uni_stream(c);
@@ -1255,7 +1272,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
             break;
         }
 
-        if (rc == NGX_DONE) {
+        if (rc == NGX_BUSY) {
             if (ngx_handle_read_event(rev, 0) != NGX_OK) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
                 return;

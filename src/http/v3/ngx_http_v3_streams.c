@@ -34,10 +34,6 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
 {
     ngx_http_v3_uni_stream_t  *us;
 
-    ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
-    ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_ENCODER);
-    ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 new uni stream id:0x%uxL", c->qs->id);
 
@@ -337,6 +333,56 @@ failed:
     ngx_http_v3_close_uni_stream(sc);
 
     return NULL;
+}
+
+
+ngx_int_t
+ngx_http_v3_send_settings(ngx_connection_t *c)
+{
+    u_char                    *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
+    size_t                     n;
+    ngx_connection_t          *cc;
+    ngx_http_v3_srv_conf_t    *v3cf;
+    ngx_http_v3_connection_t  *h3c;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
+
+    cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
+    if (cc == NULL) {
+        return NGX_ERROR;
+    }
+
+    h3c = c->qs->parent->data;
+    v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+
+    n = ngx_http_v3_encode_varlen_int(NULL,
+                                      NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY);
+    n += ngx_http_v3_encode_varlen_int(NULL, v3cf->max_table_capacity);
+    n += ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
+    n += ngx_http_v3_encode_varlen_int(NULL, v3cf->max_blocked_streams);
+
+    p = (u_char *) ngx_http_v3_encode_varlen_int(buf,
+                                                 NGX_HTTP_V3_FRAME_SETTINGS);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, n);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p,
+                                         NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, v3cf->max_table_capacity);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p,
+                                            NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, v3cf->max_blocked_streams);
+    n = p - buf;
+
+    if (cc->send(cc, buf, n) != (ssize_t) n) {
+        goto failed;
+    }
+
+    return NGX_OK;
+
+failed:
+
+    ngx_http_v3_close_uni_stream(cc);
+
+    return NGX_ERROR;
 }
 
 

@@ -10,6 +10,10 @@
 #include <ngx_http.h>
 
 
+static ngx_int_t ngx_http_v3_parse_lookup(ngx_connection_t *c,
+    ngx_uint_t dynamic, ngx_uint_t index, ngx_str_t *name, ngx_str_t *value);
+
+
 ngx_int_t
 ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
     ngx_http_v3_parse_varlen_int_t *st, u_char ch)
@@ -144,6 +148,7 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
         sw_start = 0,
         sw_length,
         sw_prefix,
+        sw_verify,
         sw_header_rep,
         sw_done
     };
@@ -195,8 +200,19 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
             return NGX_ERROR;
         }
 
-        st->state = sw_header_rep;
+        st->state = sw_verify;
         break;
+
+    case sw_verify:
+
+        rc = ngx_http_v3_check_insert_count(c, st->prefix.insert_count);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        st->state = sw_header_rep;
+
+        /* fall through */
 
     case sw_header_rep:
 
@@ -227,6 +243,12 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 done:
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse headers done");
+
+    if (st->prefix.insert_count > 0) {
+        if (ngx_http_v3_client_ack_header(c, c->qs->id) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
 
     st->state = sw_start;
     return NGX_DONE;
@@ -286,6 +308,10 @@ ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
 
 done:
 
+    if (ngx_http_v3_decode_insert_count(c, &st->insert_count) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (st->sign) {
         st->base = st->insert_count - st->delta_base - 1;
     } else {
@@ -294,7 +320,7 @@ done:
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
                   "http3 parse header block prefix done "
-                  "i:%ui, s:%ui, d:%ui, base:%uL",
+                  "insert_count:%ui, sign:%ui, delta_base:%ui, base:%uL",
                   st->insert_count, st->sign, st->delta_base, st->base);
 
     st->state = sw_start;
@@ -479,7 +505,6 @@ ngx_int_t
 ngx_http_v3_parse_header_ri(ngx_connection_t *c, ngx_http_v3_parse_header_t *st,
     u_char ch)
 {
-    ngx_http_v3_header_t  *h;
     enum {
         sw_start = 0,
         sw_index
@@ -518,15 +543,14 @@ done:
         st->index = st->base - st->index - 1;
     }
 
-    h = ngx_http_v3_lookup_table(c, st->dynamic, st->index);
-    if (h == NULL) {
+    if (ngx_http_v3_parse_lookup(c, st->dynamic, st->index, &st->name,
+                                 &st->value)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
-    st->name = h->name;
-    st->value = h->value;
     st->state = sw_start;
-
     return NGX_DONE;
 }
 
@@ -535,8 +559,7 @@ ngx_int_t
 ngx_http_v3_parse_header_lri(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch)
 {
-    ngx_int_t              rc;
-    ngx_http_v3_header_t  *h;
+    ngx_int_t  rc;
     enum {
         sw_start = 0,
         sw_index,
@@ -616,12 +639,12 @@ done:
         st->index = st->base - st->index - 1;
     }
 
-    h = ngx_http_v3_lookup_table(c, st->dynamic, st->index);
-    if (h == NULL) {
+    if (ngx_http_v3_parse_lookup(c, st->dynamic, st->index, &st->name, NULL)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
-    st->name = h->name;
     st->state = sw_start;
     return NGX_DONE;
 }
@@ -735,7 +758,6 @@ ngx_int_t
 ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch)
 {
-    ngx_http_v3_header_t  *h;
     enum {
         sw_start = 0,
         sw_index
@@ -768,13 +790,13 @@ done:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 parse header pbi done dynamic[+%ui]", st->index);
 
-    h = ngx_http_v3_lookup_table(c, 1, st->base + st->index);
-    if (h == NULL) {
+    if (ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name,
+                                 &st->value)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
-    st->name = h->name;
-    st->value = h->value;
     st->state = sw_start;
     return NGX_DONE;
 }
@@ -784,8 +806,7 @@ ngx_int_t
 ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch)
 {
-    ngx_int_t              rc;
-    ngx_http_v3_header_t  *h;
+    ngx_int_t  rc;
     enum {
         sw_start = 0,
         sw_index,
@@ -860,14 +881,54 @@ done:
                    "http3 parse header lpbi done dynamic[+%ui] \"%V\"",
                    st->index, &st->value);
 
-    h = ngx_http_v3_lookup_table(c, 1, st->base + st->index);
-    if (h == NULL) {
+    if (ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name, NULL)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
-    st->name = h->name;
     st->state = sw_start;
     return NGX_DONE;
+}
+
+
+static ngx_int_t
+ngx_http_v3_parse_lookup(ngx_connection_t *c, ngx_uint_t dynamic,
+    ngx_uint_t index, ngx_str_t *name, ngx_str_t *value)
+{
+    u_char  *p;
+
+    if (!dynamic) {
+        return ngx_http_v3_lookup_static(c, index, name, value);
+    }
+
+    if (ngx_http_v3_lookup(c, index, name, value) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (name) {
+        p = ngx_pnalloc(c->pool, name->len + 1);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(p, name->data, name->len);
+        p[name->len] = '\0';
+        name->data = p;
+    }
+
+    if (value) {
+        p = ngx_pnalloc(c->pool, value->len + 1);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(p, value->data, value->len);
+        p[value->len] = '\0';
+        value->data = p;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -1145,7 +1206,7 @@ done:
                    "http3 parse encoder instruction done");
 
     st->state = sw_start;
-    return NGX_DONE;
+    return NGX_AGAIN;
 }
 
 
@@ -1429,7 +1490,7 @@ done:
                    "http3 parse decoder instruction done");
 
     st->state = sw_start;
-    return NGX_DONE;
+    return NGX_AGAIN;
 }
 
 

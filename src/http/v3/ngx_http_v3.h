@@ -48,20 +48,8 @@
 #define NGX_HTTP_V3_MAX_KNOWN_STREAM               6
 
 #define NGX_HTTP_V3_DEFAULT_MAX_FIELD_SIZE         4096
-
-
-typedef struct {
-    ngx_quic_tp_t           quic;
-    size_t                  max_field_size;
-} ngx_http_v3_srv_conf_t;
-
-
-typedef struct {
-    ngx_http_connection_t   hc;
-
-    ngx_array_t            *dynamic;
-    ngx_connection_t       *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
-} ngx_http_v3_connection_t;
+#define NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY     16384
+#define NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS    16
 
 
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
@@ -71,9 +59,37 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t               name;
-    ngx_str_t               value;
+    ngx_quic_tp_t                 quic;
+    size_t                        max_field_size;
+    size_t                        max_table_capacity;
+    ngx_uint_t                    max_blocked_streams;
+} ngx_http_v3_srv_conf_t;
+
+
+typedef struct {
+    ngx_str_t                     name;
+    ngx_str_t                     value;
 } ngx_http_v3_header_t;
+
+
+typedef struct {
+    ngx_http_v3_header_t        **elts;
+    ngx_uint_t                    nelts;
+    ngx_uint_t                    base;
+    size_t                        size;
+    size_t                        capacity;
+} ngx_http_v3_dynamic_table_t;
+
+
+typedef struct {
+    ngx_http_connection_t         hc;
+    ngx_http_v3_dynamic_table_t   table;
+    ngx_queue_t                   blocked;
+    ngx_uint_t                    nblocked;
+    ngx_uint_t                    settings_sent;
+                                               /* unsigned  settings_sent:1; */
+    ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
+} ngx_http_v3_connection_t;
 
 
 ngx_int_t ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b);
@@ -88,6 +104,7 @@ uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
 uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,
     ngx_uint_t prefix);
 
+ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
 void ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
@@ -99,8 +116,12 @@ ngx_int_t ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index);
 ngx_int_t ngx_http_v3_ack_header(ngx_connection_t *c, ngx_uint_t stream_id);
 ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
 ngx_int_t ngx_http_v3_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc);
-ngx_http_v3_header_t *ngx_http_v3_lookup_table(ngx_connection_t *c,
-    ngx_uint_t dynamic, ngx_uint_t index);
+ngx_int_t ngx_http_v3_lookup_static(ngx_connection_t *c, ngx_uint_t index,
+    ngx_str_t *name, ngx_str_t *value);
+ngx_int_t ngx_http_v3_lookup(ngx_connection_t *c, ngx_uint_t index,
+    ngx_str_t *name, ngx_str_t *value);
+ngx_int_t ngx_http_v3_decode_insert_count(ngx_connection_t *c,
+    ngx_uint_t *insert_count);
 ngx_int_t ngx_http_v3_check_insert_count(ngx_connection_t *c,
     ngx_uint_t insert_count);
 ngx_int_t ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id,

@@ -64,11 +64,17 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
     }
 
     while (b->pos < b->last) {
-        rc = ngx_http_v3_parse_headers(c, st, *b->pos++);
+        rc = ngx_http_v3_parse_headers(c, st, *b->pos);
 
         if (rc == NGX_ERROR) {
             goto failed;
         }
+
+        if (rc == NGX_BUSY) {
+            return NGX_BUSY;
+        }
+
+        b->pos++;
 
         if (rc == NGX_AGAIN) {
             continue;

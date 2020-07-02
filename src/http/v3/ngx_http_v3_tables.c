@@ -10,8 +10,20 @@
 #include <ngx_http.h>
 
 
-static ngx_array_t *ngx_http_v3_get_dynamic_table(ngx_connection_t *c);
+#define ngx_http_v3_table_entry_size(n, v) ((n)->len + (v)->len + 32)
+
+
+static ngx_int_t ngx_http_v3_evict(ngx_connection_t *c, size_t need);
+static void ngx_http_v3_cleanup_table(void *data);
+static void ngx_http_v3_unblock(void *data);
 static ngx_int_t ngx_http_v3_new_header(ngx_connection_t *c);
+
+
+typedef struct {
+    ngx_queue_t        queue;
+    ngx_connection_t  *connection;
+    ngx_uint_t        *nblocked;
+} ngx_http_v3_block_t;
 
 
 static ngx_http_v3_header_t  ngx_http_v3_static_table[] = {
@@ -148,88 +160,73 @@ ngx_int_t
 ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)
 {
-    ngx_array_t           *dt;
-    ngx_connection_t      *pc;
-    ngx_http_v3_header_t  *ref, *h;
+    ngx_str_t  name;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 ref insert %s[$ui] \"%V\"",
-                   dynamic ? "dynamic" : "static", index, value);
+    if (dynamic) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 ref insert dynamic[%ui] \"%V\"", index, value);
 
-    pc = c->qs->parent;
+        if (ngx_http_v3_lookup(c, index, &name, NULL) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
-    ref = ngx_http_v3_lookup_table(c, dynamic, index);
-    if (ref == NULL) {
-        return NGX_ERROR;
+    } else {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 ref insert static[%ui] \"%V\"", index, value);
+
+        if (ngx_http_v3_lookup_static(c, index, &name, NULL) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
-    dt = ngx_http_v3_get_dynamic_table(c);
-    if (dt == NULL) {
-        return NGX_ERROR;
-    }
-
-    h = ngx_array_push(dt);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-
-    h->name = ref->name;
-
-    h->value.data = ngx_pstrdup(pc->pool, value);
-    if (h->value.data == NULL) {
-        h->value.len = 0;
-        return NGX_ERROR;
-    }
-
-    h->value.len = value->len;
-
-    if (ngx_http_v3_new_header(c) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
+    return ngx_http_v3_insert(c, &name, value);
 }
 
 
 ngx_int_t
-ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
-    ngx_str_t *value)
+ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
 {
-    ngx_array_t           *dt;
-    ngx_connection_t      *pc;
-    ngx_http_v3_header_t  *h;
+    u_char                       *p;
+    size_t                        size;
+    ngx_http_v3_header_t         *h;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 insert \"%V\":\"%V\"", name, value);
+    size = ngx_http_v3_table_entry_size(name, value);
 
-    pc = c->qs->parent;
-
-    dt = ngx_http_v3_get_dynamic_table(c);
-    if (dt == NULL) {
+    if (ngx_http_v3_evict(c, size) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    h = ngx_array_push(dt);
-    if (h == NULL) {
+    h3c = c->qs->parent->data;
+    dt = &h3c->table;
+
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 insert [%ui] \"%V\":\"%V\", size:%uz",
+                   dt->base + dt->nelts, name, value, size);
+
+    p = ngx_alloc(sizeof(ngx_http_v3_header_t) + name->len + value->len,
+                  c->log);
+    if (p == NULL) {
         return NGX_ERROR;
     }
 
-    h->name.data = ngx_pstrdup(pc->pool, name);
-    if (h->name.data == NULL) {
-        h->name.len = 0;
-        h->value.len = 0;
-        return NGX_ERROR;
-    }
+    h = (ngx_http_v3_header_t *) p;
 
+    h->name.data = p + sizeof(ngx_http_v3_header_t);
     h->name.len = name->len;
+    h->value.data = ngx_cpymem(h->name.data, name->data, name->len);
+    h->value.len = value->len;
+    ngx_memcpy(h->value.data, value->data, value->len);
 
-    h->value.data = ngx_pstrdup(pc->pool, value);
-    if (h->value.data == NULL) {
-        h->value.len = 0;
+    dt->elts[dt->nelts++] = h;
+    dt->size += size;
+
+    /* TODO increment can be sent less often */
+
+    if (ngx_http_v3_client_inc_insert_count(c, 1) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    h->value.len = value->len;
 
     if (ngx_http_v3_new_header(c) != NGX_OK) {
         return NGX_ERROR;
@@ -242,10 +239,120 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
 ngx_int_t
 ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 {
+    ngx_uint_t                     max, prev_max;
+    ngx_connection_t              *pc;
+    ngx_pool_cleanup_t            *cln;
+    ngx_http_v3_header_t         **elts;
+    ngx_http_v3_srv_conf_t        *v3cf;
+    ngx_http_v3_connection_t      *h3c;
+    ngx_http_v3_dynamic_table_t   *dt;
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 set capacity %ui", capacity);
 
-    /* XXX ignore capacity */
+    pc = c->qs->parent;
+    h3c = pc->data;
+    v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+
+    if (capacity > v3cf->max_table_capacity) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client exceeded http3_max_table_capacity limit");
+        return NGX_ERROR;
+    }
+
+    dt = &h3c->table;
+
+    if (dt->size > capacity) {
+        if (ngx_http_v3_evict(c, dt->size - capacity) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    max = capacity / 32;
+    prev_max = dt->capacity / 32;
+
+    if (max > prev_max) {
+        elts = ngx_alloc(max * sizeof(void *), c->log);
+        if (elts == NULL) {
+            return NGX_ERROR;
+        }
+
+        if (dt->elts == NULL) {
+            cln = ngx_pool_cleanup_add(pc->pool, 0);
+            if (cln == NULL) {
+                return NGX_ERROR;
+            }
+
+            cln->handler = ngx_http_v3_cleanup_table;
+            cln->data = dt;
+
+        } else {
+            ngx_memcpy(elts, dt->elts, dt->nelts * sizeof(void *));
+            ngx_free(dt->elts);
+        }
+
+        dt->elts = elts;
+    }
+
+    dt->capacity = capacity;
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_v3_cleanup_table(void *data)
+{
+    ngx_http_v3_dynamic_table_t  *dt = data;
+
+    ngx_uint_t  n;
+
+    for (n = 0; n < dt->nelts; n++) {
+        ngx_free(dt->elts[n]);
+    }
+
+    ngx_free(dt->elts);
+}
+
+
+static ngx_int_t
+ngx_http_v3_evict(ngx_connection_t *c, size_t need)
+{
+    size_t                        size, target;
+    ngx_uint_t                    n;
+    ngx_http_v3_header_t         *h;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    h3c = c->qs->parent->data;
+    dt = &h3c->table;
+
+    if (need > dt->capacity) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "not enough dynamic table capacity");
+        return NGX_ERROR;
+    }
+
+    target = dt->capacity - need;
+    n = 0;
+
+    while (dt->size > target) {
+        h = dt->elts[n++];
+        size = ngx_http_v3_table_entry_size(&h->name, &h->value);
+
+        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 evict [%ui] \"%V\":\"%V\" size:%uz",
+                       dt->base, &h->name, &h->value, size);
+
+        ngx_free(h);
+        dt->size -= size;
+    }
+
+    if (n) {
+        dt->nelts -= n;
+        dt->base += n;
+        ngx_memmove(dt->elts, &dt->elts[n], dt->nelts * sizeof(void *));
+    }
 
     return NGX_OK;
 }
@@ -254,33 +361,26 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 ngx_int_t
 ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index)
 {
-    ngx_array_t           *dt;
-    ngx_http_v3_header_t  *ref, *h;
+    ngx_str_t                     name, value;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 duplicate %ui", index);
 
-    ref = ngx_http_v3_lookup_table(c, 1, index);
-    if (ref == NULL) {
+    h3c = c->qs->parent->data;
+    dt = &h3c->table;
+
+    if (dt->base + dt->nelts <= index) {
         return NGX_ERROR;
     }
 
-    dt = ngx_http_v3_get_dynamic_table(c);
-    if (dt == NULL) {
+    index = dt->base + dt->nelts - 1 - index;
+
+    if (ngx_http_v3_lookup(c, index, &name, &value) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    h = ngx_array_push(dt);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-
-    *h = *ref;
-
-    if (ngx_http_v3_new_header(c) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
+    return ngx_http_v3_insert(c, &name, &value);
 }
 
 
@@ -320,94 +420,237 @@ ngx_http_v3_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
 }
 
 
-static ngx_array_t *
-ngx_http_v3_get_dynamic_table(ngx_connection_t *c)
-{
-    ngx_connection_t          *pc;
-    ngx_http_v3_connection_t  *h3c;
-
-    pc = c->qs->parent;
-    h3c = pc->data;
-
-    if (h3c->dynamic) {
-        return h3c->dynamic;
-    }
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 create dynamic table");
-
-    h3c->dynamic = ngx_array_create(pc->pool, 1, sizeof(ngx_http_v3_header_t));
-
-    return h3c->dynamic;
-}
-
-
-ngx_http_v3_header_t *
-ngx_http_v3_lookup_table(ngx_connection_t *c, ngx_uint_t dynamic,
-    ngx_uint_t index)
+ngx_int_t
+ngx_http_v3_lookup_static(ngx_connection_t *c, ngx_uint_t index,
+    ngx_str_t *name, ngx_str_t *value)
 {
     ngx_uint_t             nelts;
-    ngx_array_t           *dt;
-    ngx_http_v3_header_t  *table;
+    ngx_http_v3_header_t  *h;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 lookup %s[%ui]",
-                   dynamic ? "dynamic" : "static", index);
-
-    if (dynamic) {
-        dt = ngx_http_v3_get_dynamic_table(c);
-        if (dt == NULL) {
-            return NULL;
-        }
-
-        table = dt->elts;
-        nelts = dt->nelts;
-
-    } else {
-        table = ngx_http_v3_static_table;
-        nelts = sizeof(ngx_http_v3_static_table)
-                / sizeof(ngx_http_v3_static_table[0]);
-    }
+    nelts = sizeof(ngx_http_v3_static_table)
+            / sizeof(ngx_http_v3_static_table[0]);
 
     if (index >= nelts) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 lookup out of bounds: %ui", nelts);
-        return NULL;
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 static[%ui] lookup out of bounds: %ui",
+                       index, nelts);
+        return NGX_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 lookup \"%V\":\"%V\"",
-                   &table[index].name, &table[index].value);
+    h = &ngx_http_v3_static_table[index];
 
-    return &table[index];
-}
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 static[%ui] lookup \"%V\":\"%V\"",
+                   index, &h->name, &h->value);
 
+    if (name) {
+        *name = h->name;
+    }
 
-ngx_int_t
-ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
-{
-    size_t                     n;
-    ngx_http_v3_connection_t  *h3c;
-
-    h3c = c->qs->parent->data;
-    n = h3c->dynamic ? h3c->dynamic->nelts : 0;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 check insert count %ui/%ui", insert_count, n);
-
-    if (n < insert_count) {
-        /* XXX how to get notified? */
-        /* XXX wake all streams on any arrival to the encoder stream? */
-        return NGX_AGAIN;
+    if (value) {
+        *value = h->value;
     }
 
     return NGX_OK;
 }
 
 
+ngx_int_t
+ngx_http_v3_lookup(ngx_connection_t *c, ngx_uint_t index, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    ngx_http_v3_header_t         *h;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    h3c = c->qs->parent->data;
+    dt = &h3c->table;
+
+    if (index < dt->base || index - dt->base >= dt->nelts) {
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 dynamic[%ui] lookup out of bounds: [%ui,%ui]",
+                       index, dt->base, dt->base + dt->nelts);
+        return NGX_ERROR;
+    }
+
+    h = dt->elts[index - dt->base];
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 dynamic[%ui] lookup \"%V\":\"%V\"",
+                   index, &h->name, &h->value);
+
+    if (name) {
+        *name = h->name;
+    }
+
+    if (value) {
+        *value = h->value;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
+{
+    ngx_uint_t                    max_entries, full_range, max_value,
+                                  max_wrapped, req_insert_count;
+    ngx_http_v3_srv_conf_t       *v3cf;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    /* QPACK 4.5.1.1. Required Insert Count */
+
+    if (*insert_count == 0) {
+        return NGX_OK;
+    }
+
+    h3c = c->qs->parent->data;
+    dt = &h3c->table;
+
+    v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+
+    max_entries = v3cf->max_table_capacity / 32;
+    full_range = 2 * max_entries;
+
+    if (*insert_count > full_range) {
+        return NGX_ERROR;
+    }
+
+    max_value = dt->base + dt->nelts + max_entries;
+    max_wrapped = (max_value / full_range) * full_range;
+    req_insert_count = max_wrapped + *insert_count - 1;
+
+    if (req_insert_count > max_value) {
+        if (req_insert_count <= full_range) {
+            return NGX_ERROR;
+        }
+
+        req_insert_count -= full_range;
+    }
+
+    if (req_insert_count == 0) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 decode insert_count %ui -> %ui",
+                   *insert_count, req_insert_count);
+
+    *insert_count = req_insert_count;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
+{
+    size_t                        n;
+    ngx_connection_t             *pc;
+    ngx_pool_cleanup_t           *cln;
+    ngx_http_v3_block_t          *block;
+    ngx_http_v3_srv_conf_t       *v3cf;
+    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    pc = c->qs->parent;
+    h3c = pc->data;
+    dt = &h3c->table;
+
+    n = dt->base + dt->nelts;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 check insert count req:%ui, have:%ui",
+                   insert_count, n);
+
+    if (n >= insert_count) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 block stream");
+
+    block = NULL;
+
+    for (cln = c->pool->cleanup; cln; cln = cln->next) {
+        if (cln->handler == ngx_http_v3_unblock) {
+            block = cln->data;
+            break;
+        }
+    }
+
+    if (block == NULL) {
+        cln = ngx_pool_cleanup_add(c->pool, sizeof(ngx_http_v3_block_t));
+        if (cln == NULL) {
+            return NGX_ERROR;
+        }
+
+        cln->handler = ngx_http_v3_unblock;
+
+        block = cln->data;
+        block->queue.prev = NULL;
+        block->connection = c;
+        block->nblocked = &h3c->nblocked;
+    }
+
+    if (block->queue.prev == NULL) {
+        v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx,
+                                            ngx_http_v3_module);
+
+        if (h3c->nblocked == v3cf->max_blocked_streams) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client exceeded http3_max_blocked_streams limit");
+            return NGX_ERROR;
+        }
+
+        h3c->nblocked++;
+        ngx_queue_insert_tail(&h3c->blocked, &block->queue);
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 blocked:%ui", h3c->nblocked);
+
+    return NGX_BUSY;
+}
+
+
+static void
+ngx_http_v3_unblock(void *data)
+{
+    ngx_http_v3_block_t  *block = data;
+
+    if (block->queue.prev) {
+        ngx_queue_remove(&block->queue);
+        block->queue.prev = NULL;
+        (*block->nblocked)--;
+    }
+}
+
+
 static ngx_int_t
 ngx_http_v3_new_header(ngx_connection_t *c)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 new dynamic header");
+    ngx_queue_t               *q;
+    ngx_connection_t          *bc;
+    ngx_http_v3_block_t       *block;
+    ngx_http_v3_connection_t  *h3c;
 
-    /* XXX report all waiting streams of a new header */
+    h3c = c->qs->parent->data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 new dynamic header, blocked:%ui", h3c->nblocked);
+
+    while (!ngx_queue_empty(&h3c->blocked)) {
+        q = ngx_queue_head(&h3c->blocked);
+        block = (ngx_http_v3_block_t *) q;
+        bc = block->connection;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, bc->log, 0, "http3 unblock stream");
+
+        ngx_http_v3_unblock(block);
+        ngx_post_event(bc->read, &ngx_posted_events);
+    }
 
     return NGX_OK;
 }
