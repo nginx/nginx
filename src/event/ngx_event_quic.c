@@ -110,9 +110,11 @@ struct ngx_quic_connection_s {
     uint64_t                          max_streams;
 
     ngx_uint_t                        error;
+    enum ssl_encryption_level_t       error_level;
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
+    unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
     unsigned                          draining:1;
@@ -181,9 +183,7 @@ static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c,
-    enum ssl_encryption_level_t level, ngx_uint_t err, ngx_uint_t frame_type,
-    const char *reason);
+static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c);
 static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
@@ -540,7 +540,8 @@ static int
 ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     uint8_t alert)
 {
-    ngx_connection_t  *c;
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
@@ -548,13 +549,18 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
                    "quic ngx_quic_send_alert(), lvl=%d, alert=%d",
                    (int) level, (int) alert);
 
-    if (c->quic == NULL) {
+    qc = c->quic;
+    if (qc == NULL) {
         return 1;
     }
 
-    if (ngx_quic_send_cc(c, level, NGX_QUIC_ERR_CRYPTO(alert), 0, "TLS alert")
-        != NGX_OK)
-    {
+    qc->error_level = level;
+    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
+    qc->error_reason = "TLS alert";
+    qc->error_app = 0;
+    qc->error_ftype = 0;
+
+    if (ngx_quic_send_cc(c) != NGX_OK) {
         return 0;
     }
 
@@ -1262,10 +1268,9 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 static ngx_int_t
 ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
-    ngx_uint_t                    i, err;
-    ngx_quic_send_ctx_t          *ctx;
-    ngx_quic_connection_t        *qc;
-    enum ssl_encryption_level_t   level;
+    ngx_uint_t              i;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
 
     qc = c->quic;
 
@@ -1311,27 +1316,28 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 
                 ngx_add_timer(&qc->close, 3 * NGX_QUIC_HARDCODED_PTO);
 
-                err = NGX_QUIC_ERR_NO_ERROR;
+                qc->error = NGX_QUIC_ERR_NO_ERROR;
 
             } else {
-                err = qc->error ? qc->error : NGX_QUIC_ERR_INTERNAL_ERROR;
+                if (qc->error == 0 && !qc->error_app) {
+                    qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+                }
 
-                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic immediate close due to error: %ui %s",
-                               qc->error,
+                ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "quic immediate close due to %serror: %ui %s",
+                               qc->error_app ? "app " : "", qc->error,
                                qc->error_reason ? qc->error_reason : "");
             }
 
-            level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
-                           : ssl_encryption_initial;
+            qc->error_level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
+                                     : ssl_encryption_initial;
 
-            (void) ngx_quic_send_cc(c, level, err, qc->error_ftype,
-                                    qc->error_reason);
+            (void) ngx_quic_send_cc(c);
 
-            if (level == ssl_encryption_handshake) {
+            if (qc->error_level == ssl_encryption_handshake) {
                 /* for clients that might not have handshake keys */
-                (void) ngx_quic_send_cc(c, ssl_encryption_initial, err,
-                                        qc->error_ftype, qc->error_reason);
+                qc->error_level = ssl_encryption_initial;
+                (void) ngx_quic_send_cc(c);
             }
         }
 
@@ -1379,6 +1385,22 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
     c->quic = NULL;
 
     return NGX_OK;
+}
+
+
+void
+ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
+    const char *reason)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+    qc->error = err;
+    qc->error_reason = reason;
+    qc->error_app = 1;
+    qc->error_ftype = 0;
+
+    ngx_quic_close_connection(c, NGX_ERROR);
 }
 
 
@@ -1887,8 +1909,14 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
          *  a packet containing a CONNECTION_CLOSE frame and to identify
          *  packets as belonging to the connection.
          */
-        return ngx_quic_send_cc(c, pkt->level, NGX_QUIC_ERR_NO_ERROR, 0,
-                                "connection is closing, packet discarded");
+
+        qc->error_level = pkt->level;
+        qc->error = NGX_QUIC_ERR_NO_ERROR;
+        qc->error_reason = "connection is closing, packet discarded";
+        qc->error_ftype = 0;
+        qc->error_app = 0;
+
+        return ngx_quic_send_cc(c);
     }
 
     p = pkt->payload.data;
@@ -1926,7 +1954,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             continue;
 
         case NGX_QUIC_FT_CONNECTION_CLOSE:
-        case NGX_QUIC_FT_CONNECTION_CLOSE2:
+        case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
             do_close = 1;
             continue;
         }
@@ -2098,8 +2126,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 
 static ngx_int_t
-ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
-    ngx_uint_t err, ngx_uint_t frame_type, const char *reason)
+ngx_quic_send_cc(ngx_connection_t *c)
 {
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -2122,19 +2149,21 @@ ngx_quic_send_cc(ngx_connection_t *c, enum ssl_encryption_level_t level,
         return NGX_ERROR;
     }
 
-    frame->level = level;
+    frame->level = qc->error_level;
     frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
-    frame->u.close.error_code = err;
-    frame->u.close.frame_type = frame_type;
+    frame->u.close.error_code = qc->error;
+    frame->u.close.frame_type = qc->error_ftype;
+    frame->u.close.app = qc->error_app;
 
-    if (reason) {
-        frame->u.close.reason.len = ngx_strlen(reason);
-        frame->u.close.reason.data = (u_char *) reason;
+    if (qc->error_reason) {
+        frame->u.close.reason.len = ngx_strlen(qc->error_reason);
+        frame->u.close.reason.data = (u_char *) qc->error_reason;
     }
 
     ngx_snprintf(frame->info, sizeof(frame->info) - 1,
-                 "cc from send_cc err=%ui level=%d ft=%ui reason \"%s\"",
-                 err, level, frame_type, reason ? reason : "-");
+                 "CONNECTION_CLOSE%s err:%ui level:%d ft:%ui reason:\"%s\"",
+                 qc->error_app ? "_APP" : "", qc->error, qc->error_level,
+                 qc->error_ftype, qc->error_reason ? qc->error_reason : "-");
 
     ngx_quic_queue_frame(c->quic, frame);
 

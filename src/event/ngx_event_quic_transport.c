@@ -726,10 +726,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
-    case NGX_QUIC_FT_CONNECTION_CLOSE2:
-        /* fall through */
-
     case NGX_QUIC_FT_CONNECTION_CLOSE:
+    case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
 
         p = ngx_quic_parse_int(p, end, &f->u.close.error_code);
         if (p == NULL) {
@@ -767,7 +765,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         } else {
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                          "quic frame in: CONNECTION_CLOSE2:"
+                          "quic frame in: CONNECTION_CLOSE_APP:"
                           " code:0x%xi reason:'%V'",
                            f->u.close.error_code, &f->u.close.reason);
         }
@@ -1174,6 +1172,7 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
         return ngx_quic_create_stream(p, &f->u.stream);
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
+    case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
         f->need_ack = 0;
         return ngx_quic_create_close(p, &f->u.close);
 
@@ -1742,13 +1741,21 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
 static size_t
 ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
 {
-    size_t   len;
-    u_char  *start;
+    size_t       len;
+    u_char      *start;
+    ngx_uint_t   type;
+
+    type = cl->app ? NGX_QUIC_FT_CONNECTION_CLOSE_APP
+                   : NGX_QUIC_FT_CONNECTION_CLOSE;
 
     if (p == NULL) {
-        len = ngx_quic_varint_len(NGX_QUIC_FT_CONNECTION_CLOSE);
+        len = ngx_quic_varint_len(type);
         len += ngx_quic_varint_len(cl->error_code);
-        len += ngx_quic_varint_len(cl->frame_type);
+
+        if (!cl->app) {
+            len += ngx_quic_varint_len(cl->frame_type);
+        }
+
         len += ngx_quic_varint_len(cl->reason.len);
         len += cl->reason.len;
 
@@ -1757,9 +1764,13 @@ ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
 
     start = p;
 
-    ngx_quic_build_int(&p, NGX_QUIC_FT_CONNECTION_CLOSE);
+    ngx_quic_build_int(&p, type);
     ngx_quic_build_int(&p, cl->error_code);
-    ngx_quic_build_int(&p, cl->frame_type);
+
+    if (!cl->app) {
+        ngx_quic_build_int(&p, cl->frame_type);
+    }
+
     ngx_quic_build_int(&p, cl->reason.len);
     p = ngx_cpymem(p, cl->reason.data, cl->reason.len);
 
