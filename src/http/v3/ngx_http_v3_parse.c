@@ -197,11 +197,6 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
         }
 
         rc = ngx_http_v3_parse_header_block_prefix(c, &st->prefix, ch);
-
-        if (rc == NGX_AGAIN) {
-            break;
-        }
-
         if (rc != NGX_DONE) {
             return rc;
         }
@@ -228,14 +223,9 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
         rc = ngx_http_v3_parse_header_rep(c, &st->header_rep, st->prefix.base,
                                           ch);
-        st->length--;
 
-        if (rc == NGX_AGAIN) {
-            if (st->length == 0) {
-                return NGX_HTTP_V3_ERR_FRAME_ERROR;
-            }
-
-            break;
+        if (--st->length == 0 && rc == NGX_AGAIN) {
+            return NGX_HTTP_V3_ERR_FRAME_ERROR;
         }
 
         if (rc != NGX_DONE) {
@@ -1018,14 +1008,8 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
 
         rc = ngx_http_v3_parse_settings(c, &st->settings, ch);
 
-        st->length--;
-
-        if (rc == NGX_AGAIN) {
-            if (st->length == 0) {
-                return NGX_HTTP_V3_ERR_SETTINGS_ERROR;
-            }
-
-            break;
+        if (--st->length == 0 && rc == NGX_AGAIN) {
+            return NGX_HTTP_V3_ERR_SETTINGS_ERROR;
         }
 
         if (rc != NGX_DONE) {
@@ -1167,11 +1151,6 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch)
     case sw_inr:
 
         rc = ngx_http_v3_parse_header_inr(c, &st->header, ch);
-
-        if (rc == NGX_AGAIN) {
-            break;
-        }
-
         if (rc != NGX_DONE) {
             return rc;
         }
@@ -1181,11 +1160,6 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch)
     case sw_iwnr:
 
         rc = ngx_http_v3_parse_header_iwnr(c, &st->header, ch);
-
-        if (rc == NGX_AGAIN) {
-            break;
-        }
-
         if (rc != NGX_DONE) {
             return rc;
         }
