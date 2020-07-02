@@ -39,6 +39,8 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
 
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        NULL);
         ngx_http_v3_close_uni_stream(c);
         return;
     }
@@ -85,7 +87,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 {
     u_char                     ch;
     ssize_t                    n;
-    ngx_int_t                  index;
+    ngx_int_t                  index, rc;
     ngx_connection_t          *c;
     ngx_http_v3_connection_t  *h3c;
     ngx_http_v3_uni_stream_t  *us;
@@ -100,12 +102,18 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 
         n = c->recv(c, &ch, 1);
 
-        if (n == NGX_ERROR) {
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
+        if (n == 0) {
+            rc = NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR;
             goto failed;
         }
 
-        if (n == NGX_AGAIN || n != 1) {
-            break;
+        if (n != 1) {
+            rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
+            goto failed;
         }
 
         switch (ch) {
@@ -154,6 +162,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
         if (index >= 0) {
             if (h3c->known_streams[index]) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream exists");
+                rc = NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR;
                 goto failed;
             }
 
@@ -164,6 +173,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
         if (n) {
             us->data = ngx_pcalloc(c->pool, n);
             if (us->data == NULL) {
+                rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
                 goto failed;
             }
         }
@@ -174,6 +184,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
     }
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
         goto failed;
     }
 
@@ -181,6 +192,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 
 failed:
 
+    ngx_http_v3_finalize_connection(c, rc, "could not read stream type");
     ngx_http_v3_close_uni_stream(c);
 }
 
@@ -203,8 +215,20 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
 
         n = c->recv(c, buf, sizeof(buf));
 
-        if (n == NGX_ERROR || n == 0) {
+        if (n == NGX_ERROR) {
+            rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
             goto failed;
+        }
+
+        if (n == 0) {
+            if (us->index >= 0) {
+                rc = NGX_HTTP_V3_ERR_CLOSED_CRITICAL_STREAM;
+                goto failed;
+            }
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read eof");
+            ngx_http_v3_close_uni_stream(c);
+            return;
         }
 
         if (n == NGX_AGAIN) {
@@ -219,30 +243,34 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
 
             rc = us->handler(c, us->data, buf[i]);
 
-            if (rc == NGX_ERROR) {
+            if (rc == NGX_DONE) {
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                               "http3 read done");
+                ngx_http_v3_close_uni_stream(c);
+                return;
+            }
+
+            if (rc > 0) {
                 goto failed;
             }
 
-            if (rc == NGX_DONE) {
-                goto done;
+            if (rc != NGX_AGAIN) {
+                rc = NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR;
+                goto failed;
             }
-
-            /* rc == NGX_AGAIN */
         }
     }
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
         goto failed;
     }
 
     return;
 
-done:
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read done");
-
 failed:
 
+    ngx_http_v3_finalize_connection(c, rc, "stream error");
     ngx_http_v3_close_uni_stream(c);
 }
 
@@ -257,6 +285,8 @@ ngx_http_v3_dummy_write_handler(ngx_event_t *wev)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 dummy write handler");
 
     if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        NULL);
         ngx_http_v3_close_uni_stream(c);
     }
 }

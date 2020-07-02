@@ -416,19 +416,21 @@ static void
 ngx_http_quic_stream_handler(ngx_connection_t *c)
 {
     ngx_event_t               *rev;
-    ngx_connection_t          *pc;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_connection_t     *hc;
     ngx_http_v3_connection_t  *h3c;
 
-    pc = c->qs->parent;
-    h3c = pc->data;
+    h3c = c->qs->parent->data;
 
     if (!h3c->settings_sent) {
         h3c->settings_sent = 1;
 
-        /* TODO close QUIC connection on error */
-        (void) ngx_http_v3_send_settings(c);
+        if (ngx_http_v3_send_settings(c) != NGX_OK) {
+            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                            "could not send settings");
+            ngx_http_close_connection(c);
+            return;
+        }
     }
 
     if (c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {

@@ -167,7 +167,7 @@ ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
                        "http3 ref insert dynamic[%ui] \"%V\"", index, value);
 
         if (ngx_http_v3_lookup(c, index, &name, NULL) != NGX_OK) {
-            return NGX_ERROR;
+            return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
         }
 
     } else {
@@ -175,7 +175,7 @@ ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
                        "http3 ref insert static[%ui] \"%V\"", index, value);
 
         if (ngx_http_v3_lookup_static(c, index, &name, NULL) != NGX_OK) {
-            return NGX_ERROR;
+            return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
         }
     }
 
@@ -195,7 +195,7 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
     size = ngx_http_v3_table_entry_size(name, value);
 
     if (ngx_http_v3_evict(c, size) != NGX_OK) {
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
     h3c = c->qs->parent->data;
@@ -257,14 +257,14 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
     if (capacity > v3cf->max_table_capacity) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client exceeded http3_max_table_capacity limit");
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
     dt = &h3c->table;
 
     if (dt->size > capacity) {
         if (ngx_http_v3_evict(c, dt->size - capacity) != NGX_OK) {
-            return NGX_ERROR;
+            return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
         }
     }
 
@@ -371,13 +371,13 @@ ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index)
     dt = &h3c->table;
 
     if (dt->base + dt->nelts <= index) {
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
     index = dt->base + dt->nelts - 1 - index;
 
     if (ngx_http_v3_lookup(c, index, &name, &value) != NGX_OK) {
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
     return ngx_http_v3_insert(c, &name, &value);
@@ -515,7 +515,7 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
     full_range = 2 * max_entries;
 
     if (*insert_count > full_range) {
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
     }
 
     max_value = dt->base + dt->nelts + max_entries;
@@ -524,14 +524,14 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
 
     if (req_insert_count > max_value) {
         if (req_insert_count <= full_range) {
-            return NGX_ERROR;
+            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
         }
 
         req_insert_count -= full_range;
     }
 
     if (req_insert_count == 0) {
-        return NGX_ERROR;
+        return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -601,7 +601,7 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
         if (h3c->nblocked == v3cf->max_blocked_streams) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client exceeded http3_max_blocked_streams limit");
-            return NGX_ERROR;
+            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
         }
 
         h3c->nblocked++;

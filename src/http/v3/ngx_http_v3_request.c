@@ -66,6 +66,12 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
     while (b->pos < b->last) {
         rc = ngx_http_v3_parse_headers(c, st, *b->pos);
 
+        if (rc > 0) {
+            ngx_http_v3_finalize_connection(c, rc,
+                                            "could not parse request headers");
+            goto failed;
+        }
+
         if (rc == NGX_ERROR) {
             goto failed;
         }
@@ -179,6 +185,12 @@ ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
 
     while (b->pos < b->last) {
         rc = ngx_http_v3_parse_headers(c, st, *b->pos++);
+
+        if (rc > 0) {
+            ngx_http_v3_finalize_connection(c, rc,
+                                            "could not parse request headers");
+            return NGX_HTTP_PARSE_INVALID_HEADER;
+        }
 
         if (rc == NGX_ERROR) {
             return NGX_HTTP_PARSE_INVALID_HEADER;
@@ -358,6 +370,12 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
 
     while (b->pos < b->last) {
         rc = ngx_http_v3_parse_data(c, st, *b->pos++);
+
+        if (rc > 0) {
+            ngx_http_v3_finalize_connection(c, rc,
+                                            "could not parse request body");
+            goto failed;
+        }
 
         if (rc == NGX_ERROR) {
             goto failed;

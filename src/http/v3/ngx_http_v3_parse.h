@@ -112,6 +112,16 @@ typedef struct {
 } ngx_http_v3_parse_data_t;
 
 
+/*
+ * Parse functions return codes:
+ *   NGX_DONE - parsing done
+ *   NGX_OK - sub-element done
+ *   NGX_AGAIN - more data expected
+ *   NGX_BUSY - waiting for external event
+ *   NGX_ERROR - internal error
+ *   NGX_HTTP_V3_ERROR_XXX - HTTP/3 or QPACK error
+ */
+
 ngx_int_t ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
     ngx_http_v3_parse_varlen_int_t *st, u_char ch);
 ngx_int_t ngx_http_v3_parse_prefix_int(ngx_connection_t *c,

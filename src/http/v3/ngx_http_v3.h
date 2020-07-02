@@ -80,6 +80,9 @@
              ((ngx_http_v3_connection_t *) c->qs->parent->data)->hc.conf_ctx, \
              module)
 
+#define ngx_http_v3_finalize_connection(c, code, reason)                      \
+    ngx_quic_finalize_connection(c->qs->parent, code, reason)
+
 
 typedef struct {
     ngx_quic_tp_t                 quic;
