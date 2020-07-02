@@ -91,6 +91,7 @@ ngx_int_t
 ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
     ngx_http_v3_parse_prefix_int_t *st, ngx_uint_t prefix, u_char ch)
 {
+    ngx_uint_t  mask;
     enum {
         sw_start = 0,
         sw_value
@@ -100,25 +101,25 @@ ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
 
     case sw_start:
 
-        st->mask = (1 << prefix) - 1;
-        st->value = (ch & st->mask);
+        mask = (1 << prefix) - 1;
+        st->value = ch & mask;
 
-        if (st->value != st->mask) {
+        if (st->value != mask) {
             goto done;
         }
 
-        st->value = 0;
+        st->shift = 0;
         st->state = sw_value;
         break;
 
     case sw_value:
 
-        st->value = (st->value << 7) + (ch & 0x7f);
+        st->value += (ch & 0x7f) << st->shift;
         if (ch & 0x80) {
+            st->shift += 7;
             break;
         }
 
-        st->value += st->mask;
         goto done;
     }
 

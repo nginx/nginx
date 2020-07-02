@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                      state;
-    ngx_uint_t                      mask;
+    ngx_uint_t                      shift;
     uint64_t                        value;
 } ngx_http_v3_parse_prefix_int_t;
 

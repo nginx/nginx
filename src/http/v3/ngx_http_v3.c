@@ -78,23 +78,22 @@ ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value, ngx_uint_t prefix)
 
     value -= thresh;
 
-    for (n = 10; n > 1; n--) {
-        if (value >> (7 * (n - 1))) {
-            break;
-        }
-    }
-
     if (p == NULL) {
-        return n + 1;
+        for (n = 2; value >= 128; n++) {
+            value >>= 7;
+        }
+
+        return n;
     }
 
     *p++ |= thresh;
 
-    for ( /* void */ ; n > 1; n--) {
-        *p++ = 0x80 | (value >> 7 * (n - 1));
+    while (value >= 128) {
+        *p++ = 0x80 | value;
+        value >>= 7;
     }
 
-    *p++ = value & 0x7f;
+    *p++ = value;
 
     return (uintptr_t) p;
 }
