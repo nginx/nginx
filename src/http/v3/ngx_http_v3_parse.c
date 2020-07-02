@@ -1465,7 +1465,7 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_ack_header:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch) != NGX_DONE) {
+        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
             break;
         }
 
