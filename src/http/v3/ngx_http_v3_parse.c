@@ -624,17 +624,12 @@ ngx_http_v3_parse_header_lri(ngx_connection_t *c,
     case sw_value:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->value = st->literal.value;
-            goto done;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
-        break;
+        st->value = st->literal.value;
+        goto done;
     }
 
     return NGX_AGAIN;
@@ -703,17 +698,12 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
     case sw_name:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->name = st->literal.value;
-            st->state = sw_value_len;
-            break;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
+        st->name = st->literal.value;
+        st->state = sw_value_len;
         break;
 
     case sw_value_len:
@@ -741,17 +731,12 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
     case sw_value:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->value = st->literal.value;
-            goto done;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
-        break;
+        st->value = st->literal.value;
+        goto done;
     }
 
     return NGX_AGAIN;
@@ -876,17 +861,12 @@ ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
     case sw_value:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->value = st->literal.value;
-            goto done;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
-        break;
+        st->value = st->literal.value;
+        goto done;
     }
 
     return NGX_AGAIN;
@@ -1306,17 +1286,12 @@ ngx_http_v3_parse_header_inr(ngx_connection_t *c,
     case sw_value:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->value = st->literal.value;
-            goto done;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
-        break;
+        st->value = st->literal.value;
+        goto done;
     }
 
     return NGX_AGAIN;
@@ -1382,17 +1357,12 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
     case sw_name:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->name = st->literal.value;
-            st->state = sw_value_len;
-            break;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
+        st->name = st->literal.value;
+        st->state = sw_value_len;
         break;
 
     case sw_value_len:
@@ -1420,17 +1390,12 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
     case sw_value:
 
         rc = ngx_http_v3_parse_literal(c, &st->literal, ch);
-
-        if (rc == NGX_DONE) {
-            st->value = st->literal.value;
-            goto done;
-        }
-
-        if (rc != NGX_AGAIN) {
+        if (rc != NGX_DONE) {
             return rc;
         }
 
-        break;
+        st->value = st->literal.value;
+        goto done;
     }
 
     return NGX_AGAIN;
