@@ -177,8 +177,9 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
     case sw_length:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->length = st->vlint.value;
@@ -960,8 +961,9 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
     case sw_first_type:
     case sw_type:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->type = st->vlint.value;
@@ -980,8 +982,9 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_length:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1037,8 +1040,9 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_max_push_id:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1064,6 +1068,7 @@ ngx_int_t
 ngx_http_v3_parse_settings(ngx_connection_t *c,
     ngx_http_v3_parse_settings_t *st, u_char ch)
 {
+    ngx_int_t  rc;
     enum {
         sw_start = 0,
         sw_id,
@@ -1082,8 +1087,9 @@ ngx_http_v3_parse_settings(ngx_connection_t *c,
 
     case sw_id:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->id = st->vlint.value;
@@ -1092,8 +1098,9 @@ ngx_http_v3_parse_settings(ngx_connection_t *c,
 
     case sw_value:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         if (ngx_http_v3_set_param(c, st->id, st->vlint.value) != NGX_OK) {
@@ -1512,6 +1519,7 @@ ngx_int_t
 ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
     u_char ch)
 {
+    ngx_int_t  rc;
     enum {
         sw_start = 0,
         sw_type,
@@ -1530,8 +1538,9 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
 
     case sw_type:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         if (st->vlint.value != NGX_HTTP_V3_FRAME_DATA) {
@@ -1543,8 +1552,9 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
 
     case sw_length:
 
-        if (ngx_http_v3_parse_varlen_int(c, &st->vlint, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->length = st->vlint.value;
