@@ -119,6 +119,15 @@ ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
     case sw_value:
 
         st->value += (uint64_t) (ch & 0x7f) << st->shift;
+
+        if (st->shift == 56
+            && ((ch & 0x80) || (st->value & 0xc000000000000000)))
+        {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client exceeded integer size limit");
+            return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+        }
+
         if (ch & 0x80) {
             st->shift += 7;
             break;
@@ -281,8 +290,9 @@ ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
 
     case sw_req_insert_count:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 8, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 8, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->insert_count = st->pint.value;
@@ -298,8 +308,9 @@ ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
 
     case sw_read_delta_base:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->delta_base = st->pint.value;
@@ -521,8 +532,9 @@ ngx_http_v3_parse_header_ri(ngx_connection_t *c, ngx_http_v3_parse_header_t *st,
 
     case sw_index:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->index = st->pint.value;
@@ -578,8 +590,9 @@ ngx_http_v3_parse_header_lri(ngx_connection_t *c,
 
     case sw_index:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 4, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 4, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->index = st->pint.value;
@@ -595,8 +608,9 @@ ngx_http_v3_parse_header_lri(ngx_connection_t *c,
 
     case sw_read_value_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -673,8 +687,9 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
 
     case sw_name_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 3, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 3, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -710,8 +725,9 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
 
     case sw_read_value_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -773,8 +789,9 @@ ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
 
     case sw_index:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 4, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 4, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->index = st->pint.value;
@@ -825,8 +842,9 @@ ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
 
     case sw_index:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 3, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 3, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->index = st->pint.value;
@@ -842,8 +860,9 @@ ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
 
     case sw_read_value_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -1188,8 +1207,9 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_capacity:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         rc = ngx_http_v3_set_capacity(c, st->pint.value);
@@ -1201,8 +1221,9 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_duplicate:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         rc = ngx_http_v3_duplicate(c, st->pint.value);
@@ -1251,8 +1272,9 @@ ngx_http_v3_parse_header_inr(ngx_connection_t *c,
 
     case sw_name_index:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->index = st->pint.value;
@@ -1268,8 +1290,9 @@ ngx_http_v3_parse_header_inr(ngx_connection_t *c,
 
     case sw_read_value_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -1343,8 +1366,9 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
 
     case sw_name_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 5, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -1380,8 +1404,9 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
 
     case sw_read_value_len:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         st->literal.length = st->pint.value;
@@ -1465,8 +1490,9 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_ack_header:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         rc = ngx_http_v3_ack_header(c, st->pint.value);
@@ -1478,8 +1504,9 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_cancel_stream:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         rc = ngx_http_v3_cancel_stream(c, st->pint.value);
@@ -1491,8 +1518,9 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch)
 
     case sw_inc_insert_count:
 
-        if (ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch) != NGX_DONE) {
-            break;
+        rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 6, ch);
+        if (rc != NGX_DONE) {
+            return rc;
         }
 
         rc = ngx_http_v3_inc_insert_count(c, st->pint.value);
