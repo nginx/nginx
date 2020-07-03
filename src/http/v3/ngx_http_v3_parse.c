@@ -118,7 +118,7 @@ ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
 
     case sw_value:
 
-        st->value += (ch & 0x7f) << st->shift;
+        st->value += (uint64_t) (ch & 0x7f) << st->shift;
         if (ch & 0x80) {
             st->shift += 7;
             break;
