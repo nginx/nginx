@@ -2104,6 +2104,23 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_ERROR;
     }
 
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http proxy data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent data after final chunk");
+
+        r->upstream->keepalive = 0;
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
     b = NULL;
     prev = &buf->shadow;
 
@@ -2166,8 +2183,14 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
             /* a whole response has been parsed successfully */
 
-            p->upstream_done = 1;
+            p->length = 0;
             r->upstream->keepalive = !r->upstream->headers_in.connection_close;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                              "upstream sent data after final chunk");
+                r->upstream->keepalive = 0;
+            }
 
             break;
         }
@@ -2346,6 +2369,12 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
 
             u->keepalive = !u->headers_in.connection_close;
             u->length = 0;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "upstream sent data after final chunk");
+                u->keepalive = 0;
+            }
 
             break;
         }
