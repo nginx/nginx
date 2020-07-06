@@ -2015,6 +2015,25 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http proxy data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        r = p->input_ctx;
+        r->upstream->keepalive = 0;
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
     cl = ngx_chain_get_free_buf(p->pool, &p->free);
     if (cl == NULL) {
         return NGX_ERROR;
@@ -2042,20 +2061,23 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
+    if (b->last - b->pos > p->length) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        b->last = b->pos + p->length;
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
     p->length -= b->last - b->pos;
 
     if (p->length == 0) {
         r = p->input_ctx;
-        p->upstream_done = 1;
         r->upstream->keepalive = !r->upstream->headers_in.connection_close;
-
-    } else if (p->length < 0) {
-        r = p->input_ctx;
-        p->upstream_done = 1;
-
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "upstream sent more data than specified in "
-                      "\"Content-Length\" header");
     }
 
     return NGX_OK;
@@ -2224,6 +2246,18 @@ ngx_http_proxy_non_buffered_copy_filter(void *data, ssize_t bytes)
     cl->buf->tag = u->output.tag;
 
     if (u->length == -1) {
+        return NGX_OK;
+    }
+
+    if (bytes > u->length) {
+
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        cl->buf->last = cl->buf->pos + u->length;
+        u->length = 0;
+
         return NGX_OK;
     }
 
