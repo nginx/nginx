@@ -84,6 +84,8 @@ typedef struct {
     ngx_uint_t                 pings;
     ngx_uint_t                 settings;
 
+    off_t                      length;
+
     ssize_t                    send_window;
     size_t                     recv_window;
 
@@ -1953,10 +1955,28 @@ ngx_http_grpc_filter_init(void *data)
     r = ctx->request;
     u = r->upstream;
 
-    u->length = 1;
+    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+        || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
+        || r->method == NGX_HTTP_HEAD)
+    {
+        ctx->length = 0;
+
+    } else {
+        ctx->length = u->headers_in.content_length_n;
+    }
 
     if (ctx->end_stream) {
+
+        if (ctx->length > 0) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream prematurely closed stream");
+            return NGX_ERROR;
+        }
+
         u->length = 0;
+
+    } else {
+        u->length = 1;
     }
 
     return NGX_OK;
@@ -1998,6 +2018,12 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             if (rc == NGX_AGAIN) {
 
                 if (ctx->done) {
+
+                    if (ctx->length > 0) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream prematurely closed stream");
+                        return NGX_ERROR;
+                    }
 
                     /*
                      * We have finished parsing the response and the
@@ -2050,6 +2076,17 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                                   "for unknown stream %ui",
                                   ctx->stream_id);
                     return NGX_ERROR;
+                }
+
+                if (ctx->length != -1) {
+                    if ((off_t) ctx->rest > ctx->length) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream sent response body larger "
+                                      "than indicated content length");
+                        return NGX_ERROR;
+                    }
+
+                    ctx->length -= ctx->rest;
                 }
 
                 if (ctx->rest > ctx->recv_window) {
