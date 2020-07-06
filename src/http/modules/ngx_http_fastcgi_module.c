@@ -81,12 +81,15 @@ typedef struct {
     size_t                         length;
     size_t                         padding;
 
+    off_t                          rest;
+
     ngx_chain_t                   *free;
     ngx_chain_t                   *busy;
 
     unsigned                       fastcgi_stdout:1;
     unsigned                       large_stderr:1;
     unsigned                       header_sent:1;
+    unsigned                       closed:1;
 
     ngx_array_t                   *split_parts;
 
@@ -2075,13 +2078,31 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_fastcgi_input_filter_init(void *data)
 {
-    ngx_http_request_t           *r = data;
+    ngx_http_request_t  *r = data;
+
+    ngx_http_upstream_t          *u;
+    ngx_http_fastcgi_ctx_t       *f;
     ngx_http_fastcgi_loc_conf_t  *flcf;
 
+    u = r->upstream;
+
+    f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
-    r->upstream->pipe->length = flcf->keep_conn ?
-                                (off_t) sizeof(ngx_http_fastcgi_header_t) : -1;
+    u->pipe->length = flcf->keep_conn ?
+                      (off_t) sizeof(ngx_http_fastcgi_header_t) : -1;
+
+    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+        || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED)
+    {
+        f->rest = 0;
+
+    } else if (r->method == NGX_HTTP_HEAD) {
+        f->rest = -2;
+
+    } else {
+        f->rest = u->headers_in.content_length_n;
+    }
 
     return NGX_OK;
 }
@@ -2106,6 +2127,15 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     f = ngx_http_get_module_ctx(r, ngx_http_fastcgi_module);
     flcf = ngx_http_get_module_loc_conf(r, ngx_http_fastcgi_module);
 
+    if (p->upstream_done || f->closed) {
+        r->upstream->keepalive = 0;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http fastcgi data after close");
+
+        return NGX_OK;
+    }
+
     b = NULL;
     prev = &buf->shadow;
 
@@ -2128,12 +2158,24 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             if (f->type == NGX_HTTP_FASTCGI_STDOUT && f->length == 0) {
                 f->state = ngx_http_fastcgi_st_padding;
 
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                               "http fastcgi closed stdout");
+
+                if (f->rest > 0) {
+                    ngx_log_error(NGX_LOG_ERR, p->log, 0,
+                                  "upstream prematurely closed "
+                                  "FastCGI stdout");
+
+                    p->upstream_error = 1;
+                    p->upstream_eof = 0;
+                    f->closed = 1;
+
+                    break;
+                }
+
                 if (!flcf->keep_conn) {
                     p->upstream_done = 1;
                 }
-
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
-                               "http fastcgi closed stdout");
 
                 continue;
             }
@@ -2142,6 +2184,18 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
                                "http fastcgi sent end request");
+
+                if (f->rest > 0) {
+                    ngx_log_error(NGX_LOG_ERR, p->log, 0,
+                                  "upstream prematurely closed "
+                                  "FastCGI request");
+
+                    p->upstream_error = 1;
+                    p->upstream_eof = 0;
+                    f->closed = 1;
+
+                    break;
+                }
 
                 if (!flcf->keep_conn) {
                     p->upstream_done = 1;
@@ -2289,15 +2343,31 @@ ngx_http_fastcgi_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
             f->pos += f->length;
             b->last = f->pos;
 
-            continue;
+        } else {
+            f->length -= f->last - f->pos;
+            f->pos = f->last;
+            b->last = f->last;
         }
 
-        f->length -= f->last - f->pos;
+        if (f->rest == -2) {
+            f->rest = r->upstream->headers_in.content_length_n;
+        }
 
-        b->last = f->last;
+        if (f->rest >= 0) {
 
-        break;
+            if (b->last - b->pos > f->rest) {
+                ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                              "upstream sent more data than specified in "
+                              "\"Content-Length\" header");
 
+                b->last = b->pos + f->rest;
+                p->upstream_done = 1;
+
+                break;
+            }
+
+            f->rest -= b->last - b->pos;
+        }
     }
 
     if (flcf->keep_conn) {
@@ -2390,6 +2460,14 @@ ngx_http_fastcgi_non_buffered_filter(void *data, ssize_t bytes)
         if (f->state == ngx_http_fastcgi_st_padding) {
 
             if (f->type == NGX_HTTP_FASTCGI_END_REQUEST) {
+
+                if (f->rest > 0) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream prematurely closed "
+                                  "FastCGI request");
+                    u->error = 1;
+                    break;
+                }
 
                 if (f->pos + f->padding < f->last) {
                     u->length = 0;
@@ -2510,13 +2588,27 @@ ngx_http_fastcgi_non_buffered_filter(void *data, ssize_t bytes)
             f->pos += f->length;
             b->last = f->pos;
 
-            continue;
+        } else {
+            f->length -= f->last - f->pos;
+            f->pos = f->last;
+            b->last = f->last;
         }
 
-        f->length -= f->last - f->pos;
-        b->last = f->last;
+        if (f->rest >= 0) {
 
-        break;
+            if (b->last - b->pos > f->rest) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "upstream sent more data than specified in "
+                              "\"Content-Length\" header");
+
+                b->last = b->pos + f->rest;
+                u->length = 0;
+
+                break;
+            }
+
+            f->rest -= b->last - b->pos;
+        }
     }
 
     return NGX_OK;
