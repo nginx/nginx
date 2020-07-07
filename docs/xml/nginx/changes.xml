@@ -5,6 +5,130 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.1" date="2020-07-07">
+
+<change type="change">
+<para lang="ru">
+директивы lingering_close, lingering_time и lingering_timeout
+теперь работают при использовании HTTP/2.
+</para>
+<para lang="en">
+the "lingering_close", "lingering_time", and "lingering_timeout" directives
+now work when using HTTP/2.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь лишние данные, присланные бэкендом, всегда отбрасываются.
+</para>
+<para lang="en">
+now extra data sent by a backend are always discarded.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при получении слишком короткого ответа от FastCGI-сервера
+nginx пытается отправить клиенту доступную часть ответа,
+после чего закрывает соединение с клиентом.
+</para>
+<para lang="en">
+now after receiving a too short response from a FastCGI server
+nginx tries to send the available part of the response to the client,
+and then closes the client connection.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при получении ответа некорректной длины от gRPC-бэкенда
+nginx прекращает обработку ответа с ошибкой.
+</para>
+<para lang="en">
+now after receiving a response with incorrect length from a gRPC backend
+nginx stops response processing with an error.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр min_free в директивах proxy_cache_path, fastcgi_cache_path,
+scgi_cache_path и uwsgi_cache_path.<br/>
+Спасибо Adam Bambuch.
+</para>
+<para lang="en">
+the "min_free" parameter of the "proxy_cache_path", "fastcgi_cache_path",
+"scgi_cache_path", and "uwsgi_cache_path" directives.<br/>
+Thanks to Adam Bambuch.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не удалял unix domain listen-сокеты
+при плавном завершении по сигналу SIGQUIT.
+</para>
+<para lang="en">
+nginx did not delete unix domain listen sockets
+during graceful shutdown on the SIGQUIT signal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+UDP-пакеты нулевого размера не проксировались.
+</para>
+<para lang="en">
+zero length UDP datagrams were not proxied.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+проксирование на uwsgi-бэкенды с использованием SSL могло не работать.<br/>
+Спасибо Guanzhong Chen.
+</para>
+<para lang="en">
+proxying to uwsgi backends using SSL might not work.<br/>
+Thanks to Guanzhong Chen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ошибок при использовании директивы ssl_ocsp.
+</para>
+<para lang="en">
+in error handling when using the "ssl_ocsp" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании файловых систем XFS и NFS
+размер кэша на диске мог считаться некорректно.
+</para>
+<para lang="en">
+on XFS and NFS file systems
+disk cache size might be calculated incorrectly.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если сервер memcached возвращал некорректный ответ,
+в логах могли появляться сообщения "negative size buf in writer".
+</para>
+<para lang="en">
+"negative size buf in writer" alerts might appear in logs
+if a memcached server returned a malformed response.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.0" date="2020-05-26">
 
 <change type="feature">
