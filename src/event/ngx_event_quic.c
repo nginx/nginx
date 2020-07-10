@@ -188,6 +188,8 @@ static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_ack_delay(ngx_connection_t *c,
+    struct timeval *received, enum ssl_encryption_level_t level);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c);
 static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 
@@ -1877,6 +1879,8 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return rc;
     }
 
+    ngx_gettimeofday(&pkt->received);
+
     /* switch keys on Key Phase change */
 
     if (pkt->key_update) {
@@ -2132,12 +2136,33 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     frame->type = NGX_QUIC_FT_ACK;
     frame->u.ack.largest = pkt->pn;
+    frame->u.ack.delay = ngx_quic_ack_delay(c, &pkt->received, frame->level);
 
     ngx_sprintf(frame->info, "ACK for PN=%d from frame handler level=%d",
                 pkt->pn, frame->level);
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_ack_delay(ngx_connection_t *c, struct timeval *received,
+    enum ssl_encryption_level_t level)
+{
+    ngx_int_t       ack_delay;
+    struct timeval  tv;
+
+    ack_delay = 0;
+
+    if (level == ssl_encryption_application) {
+        ngx_gettimeofday(&tv);
+        ack_delay = (tv.tv_sec - received->tv_sec) * 1000000
+                    + tv.tv_usec - received->tv_usec;
+        ack_delay >>= c->quic->ctp.ack_delay_exponent;
+    }
+
+    return ack_delay;
 }
 
 

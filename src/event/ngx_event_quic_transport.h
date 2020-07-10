@@ -283,6 +283,7 @@ typedef struct {
 
     struct ngx_quic_secret_s                   *secret;
     struct ngx_quic_secret_s                   *next;
+    struct timeval                              received;
     uint64_t                                    number;
     uint8_t                                     num_len;
     uint32_t                                    trunc;
