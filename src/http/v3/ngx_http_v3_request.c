@@ -774,14 +774,16 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 
     n = b->last - b->pos;
 
-    len = 1 + ngx_http_v3_encode_varlen_int(NULL, n);
+    len = ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_FRAME_HEADERS)
+          + ngx_http_v3_encode_varlen_int(NULL, n);
 
     b = ngx_create_temp_buf(c->pool, len);
     if (b == NULL) {
         return NULL;
     }
 
-    *b->last++ = NGX_HTTP_V3_FRAME_HEADERS;
+    b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last,
+                                                    NGX_HTTP_V3_FRAME_HEADERS);
     b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last, n);
 
     hl = ngx_alloc_chain_link(c->pool);
@@ -793,7 +795,8 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     hl->next = cl;
 
     if (r->headers_out.content_length_n >= 0 && !r->header_only) {
-        len = 1 + ngx_http_v3_encode_varlen_int(NULL,
+        len = ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_FRAME_DATA)
+              + ngx_http_v3_encode_varlen_int(NULL,
                                               r->headers_out.content_length_n);
 
         b = ngx_create_temp_buf(c->pool, len);
@@ -801,7 +804,8 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             return NULL;
         }
 
-        *b->last++ = NGX_HTTP_V3_FRAME_DATA;
+        b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last,
+                                                       NGX_HTTP_V3_FRAME_DATA);
         b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last,
                                               r->headers_out.content_length_n);
 
