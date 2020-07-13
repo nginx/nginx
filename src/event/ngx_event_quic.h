@@ -45,6 +45,12 @@
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
 
 #define NGX_QUIC_HARDCODED_PTO               1000 /* 1s, TODO: collect */
+/* quic-recovery, section 6.1.1, Packet Threshold */
+#define NGX_QUIC_PKT_THR                     3 /* packets */
+/* quic-recovery, section 6.1.2, Time Threshold */
+#define NGX_QUIC_TIME_THR                    1.125
+#define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
+
 #define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
 
 #define NGX_QUIC_MIN_INITIAL_SIZE            1200
