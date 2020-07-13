@@ -97,3 +97,131 @@ ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value, ngx_uint_t prefix)
 
     return (uintptr_t) p;
 }
+
+
+uintptr_t
+ngx_http_v3_encode_header_block_prefix(u_char *p, ngx_uint_t insert_count,
+    ngx_uint_t sign, ngx_uint_t delta_base)
+{
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, insert_count, 8)
+               + ngx_http_v3_encode_prefix_int(NULL, delta_base, 7);
+    }
+
+    *p = 0;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, insert_count, 8);
+
+    *p = sign ? 0x80 : 0;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, delta_base, 7);
+
+    return (uintptr_t) p;
+}
+
+
+uintptr_t
+ngx_http_v3_encode_header_ri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index)
+{
+    /* Indexed Header Field */
+
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, index, 6);
+    }
+
+    *p = dynamic ? 0x80 : 0xc0;
+
+    return ngx_http_v3_encode_prefix_int(p, index, 6);
+}
+
+
+uintptr_t
+ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
+    u_char *data, size_t len)
+{
+    /* Literal Header Field With Name Reference */
+
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, index, 4)
+               + ngx_http_v3_encode_prefix_int(NULL, len, 7)
+               + len;
+    }
+
+    *p = dynamic ? 0x60 : 0x70;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 4);
+
+    *p = 0;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
+
+    if (data) {
+        p = ngx_cpymem(p, data, len);
+    }
+
+    return (uintptr_t) p;
+}
+
+
+uintptr_t
+ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
+{
+    /* Literal Header Field Without Name Reference */
+
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, name->len, 3)
+               + name->len
+               + ngx_http_v3_encode_prefix_int(NULL, value->len, 7)
+               + value->len;
+    }
+
+    *p = 0x30;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
+
+    ngx_strlow(p, name->data, name->len);
+    p += name->len;
+
+    *p = 0;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, value->len, 7);
+
+    p = ngx_cpymem(p, value->data, value->len);
+
+    return (uintptr_t) p;
+}
+
+
+uintptr_t
+ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index)
+{
+    /* Indexed Header Field With Post-Base Index */
+
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, index, 4);
+    }
+
+    *p = 0x10;
+
+    return ngx_http_v3_encode_prefix_int(p, index, 4);
+}
+
+
+uintptr_t
+ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index, u_char *data,
+    size_t len)
+{
+    /* Literal Header Field With Post-Base Name Reference */
+
+    if (p == NULL) {
+        return ngx_http_v3_encode_prefix_int(NULL, index, 3)
+               + ngx_http_v3_encode_prefix_int(NULL, len, 7)
+               + len;
+    }
+
+    *p = 0x08;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 3);
+
+    *p = 0;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
+
+    if (data) {
+        p = ngx_cpymem(p, data, len);
+    }
+
+    return (uintptr_t) p;
+}

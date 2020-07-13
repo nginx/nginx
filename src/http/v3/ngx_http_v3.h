@@ -132,6 +132,18 @@ uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
 uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,
     ngx_uint_t prefix);
 
+uintptr_t ngx_http_v3_encode_header_block_prefix(u_char *p,
+    ngx_uint_t insert_count, ngx_uint_t sign, ngx_uint_t delta_base);
+uintptr_t ngx_http_v3_encode_header_ri(u_char *p, ngx_uint_t dynamic,
+    ngx_uint_t index);
+uintptr_t ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic,
+    ngx_uint_t index, u_char *data, size_t len);
+uintptr_t ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name,
+    ngx_str_t *value);
+uintptr_t ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index);
+uintptr_t ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index,
+    u_char *data, size_t len);
+
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
 ngx_int_t ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,

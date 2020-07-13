@@ -10,6 +10,16 @@
 #include <ngx_http.h>
 
 
+/* static table indices */
+#define NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO       4
+#define NGX_HTTP_V3_HEADER_DATE                      6
+#define NGX_HTTP_V3_HEADER_LAST_MODIFIED             10
+#define NGX_HTTP_V3_HEADER_STATUS_200                25
+#define NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN   53
+#define NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING      59
+#define NGX_HTTP_V3_HEADER_SERVER                    92
+
+
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 
@@ -416,7 +426,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     u_char                    *p;
     size_t                     len, n;
     ngx_buf_t                 *b;
-    ngx_uint_t                 i, j;
+    ngx_uint_t                 i;
     ngx_chain_t               *hl, *cl, *bl;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
@@ -427,14 +437,16 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 create header");
 
-    len = 2;
+    len = ngx_http_v3_encode_header_block_prefix(NULL, 0, 0, 0);
 
     if (r->headers_out.status == NGX_HTTP_OK) {
-        len += ngx_http_v3_encode_prefix_int(NULL, 25, 6);
+        len += ngx_http_v3_encode_header_ri(NULL, 0,
+                                            NGX_HTTP_V3_HEADER_STATUS_200);
 
     } else {
-        len += 3 + ngx_http_v3_encode_prefix_int(NULL, 25, 4)
-                 + ngx_http_v3_encode_prefix_int(NULL, 3, 7);
+        len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                             NGX_HTTP_V3_HEADER_STATUS_200,
+                                             NULL, 3);
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -450,15 +462,14 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             n = sizeof("nginx") - 1;
         }
 
-        len += ngx_http_v3_encode_prefix_int(NULL, 92, 4)
-               + ngx_http_v3_encode_prefix_int(NULL, n, 7) + n;
+        len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                             NGX_HTTP_V3_HEADER_SERVER,
+                                             NULL, n);
     }
 
     if (r->headers_out.date == NULL) {
-        len += ngx_http_v3_encode_prefix_int(NULL, 6, 4)
-               + ngx_http_v3_encode_prefix_int(NULL, ngx_cached_http_time.len,
-                                               7)
-               + ngx_cached_http_time.len;
+        len += ngx_http_v3_encode_header_lri(NULL, 0, NGX_HTTP_V3_HEADER_DATE,
+                                             NULL, ngx_cached_http_time.len);
     }
 
     if (r->headers_out.content_type.len) {
@@ -470,22 +481,29 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             n += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
 
-        len += ngx_http_v3_encode_prefix_int(NULL, 53, 4)
-               + ngx_http_v3_encode_prefix_int(NULL, n, 7) + n;
+        len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                    NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
+                                    NULL, n);
     }
 
-    if (r->headers_out.content_length_n > 0) {
-        len += ngx_http_v3_encode_prefix_int(NULL, 4, 4) + 1 + NGX_OFF_T_LEN;
+    if (r->headers_out.content_length == NULL) {
+        if (r->headers_out.content_length_n > 0) {
+            len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                        NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO,
+                                        NULL, NGX_OFF_T_LEN);
 
-    } else if (r->headers_out.content_length_n == 0) {
-        len += ngx_http_v3_encode_prefix_int(NULL, 4, 6);
+        } else if (r->headers_out.content_length_n == 0) {
+            len += ngx_http_v3_encode_header_ri(NULL, 0,
+                                       NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO);
+        }
     }
 
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        len += ngx_http_v3_encode_prefix_int(NULL, 10, 4) + 1
-               + sizeof("Last-Modified: Mon, 28 Sep 1970 06:00:00 GMT");
+        len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                  NGX_HTTP_V3_HEADER_LAST_MODIFIED, NULL,
+                                  sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
     }
 
     /* XXX location */
@@ -493,8 +511,8 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
         if (clcf->gzip_vary) {
-            /* Vary: Accept-Encoding */
-            len += ngx_http_v3_encode_prefix_int(NULL, 59, 6);
+            len += ngx_http_v3_encode_header_ri(NULL, 0,
+                                      NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING);
 
         } else {
             r->gzip_vary = 0;
@@ -521,10 +539,8 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             continue;
         }
 
-        len += ngx_http_v3_encode_prefix_int(NULL, header[i].key.len, 3)
-               + header[i].key.len
-               + ngx_http_v3_encode_prefix_int(NULL, header[i].value.len, 7 )
-               + header[i].value.len;
+        len += ngx_http_v3_encode_header_l(NULL, &header[i].key,
+                                           &header[i].value);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 header len:%uz", len);
@@ -534,20 +550,17 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
         return NULL;
     }
 
-    *b->last++ = 0;
-    *b->last++ = 0;
+    b->last = (u_char *) ngx_http_v3_encode_header_block_prefix(b->last,
+                                                                0, 0, 0);
 
     if (r->headers_out.status == NGX_HTTP_OK) {
-        /* :status: 200 */
-        *b->last = 0xc0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 25, 6);
+        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+                                                NGX_HTTP_V3_HEADER_STATUS_200);
 
     } else {
-        /* :status: 200 */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 25, 4);
-        *b->last = 0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 3, 7);
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                                 NGX_HTTP_V3_HEADER_STATUS_200,
+                                                 NULL, 3);
         b->last = ngx_sprintf(b->last, "%03ui", r->headers_out.status);
     }
 
@@ -565,23 +578,16 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             n = sizeof("nginx") - 1;
         }
 
-        /* server */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 92, 4);
-        *b->last = 0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, n, 7);
-        b->last = ngx_cpymem(b->last, p, n);
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                                     NGX_HTTP_V3_HEADER_SERVER,
+                                                     p, n);
     }
 
     if (r->headers_out.date == NULL) {
-        /* date */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 6, 4);
-        *b->last = 0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last,
-                                                 ngx_cached_http_time.len, 7);
-        b->last = ngx_cpymem(b->last, ngx_cached_http_time.data,
-                             ngx_cached_http_time.len);
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                                     NGX_HTTP_V3_HEADER_DATE,
+                                                     ngx_cached_http_time.data,
+                                                     ngx_cached_http_time.len);
     }
 
     if (r->headers_out.content_type.len) {
@@ -593,23 +599,21 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             n += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
 
-        /* content-type: text/plain */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 53, 4);
-        *b->last = 0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, n, 7);
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                    NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
+                                    NULL, n);
 
         p = b->last;
-        b->last = ngx_copy(b->last, r->headers_out.content_type.data,
-                           r->headers_out.content_type.len);
+        b->last = ngx_cpymem(b->last, r->headers_out.content_type.data,
+                             r->headers_out.content_type.len);
 
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
             && r->headers_out.charset.len)
         {
             b->last = ngx_cpymem(b->last, "; charset=",
                                  sizeof("; charset=") - 1);
-            b->last = ngx_copy(b->last, r->headers_out.charset.data,
-                               r->headers_out.charset.len);
+            b->last = ngx_cpymem(b->last, r->headers_out.charset.data,
+                                 r->headers_out.charset.len);
 
             /* update r->headers_out.content_type for possible logging */
 
@@ -618,36 +622,38 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->headers_out.content_length_n > 0) {
-        /* content-length: 0 */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 4, 4);
-        p = b->last++;
-        b->last = ngx_sprintf(b->last, "%O", r->headers_out.content_length_n);
-        *p = b->last - p - 1;
+    if (r->headers_out.content_length == NULL) {
+        if (r->headers_out.content_length_n > 0) {
+            p = ngx_sprintf(b->last, "%O", r->headers_out.content_length_n);
+            n = p - b->last;
 
-    } else if (r->headers_out.content_length_n == 0) {
-        /* content-length: 0 */
-        *b->last = 0xc0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 4, 6);
+            b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                        NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO,
+                                        NULL, n);
+
+            b->last = ngx_sprintf(b->last, "%O",
+                                  r->headers_out.content_length_n);
+
+        } else if (r->headers_out.content_length_n == 0) {
+            b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+                                       NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO);
+        }
     }
 
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        /* last-modified */
-        *b->last = 0x70;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 10, 4);
-        p = b->last++;
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                  NGX_HTTP_V3_HEADER_LAST_MODIFIED, NULL,
+                                  sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
+
         b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
-        *p = b->last - p - 1;
     }
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
-        /* vary: accept-encoding */
-        *b->last = 0xc0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last, 59, 6);
+        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+                                      NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING);
     }
 #endif
 
@@ -670,19 +676,9 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
             continue;
         }
 
-        *b->last = 0x30;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last,
-                                                           header[i].key.len,
-                                                           3);
-        for (j = 0; j < header[i].key.len; j++) {
-            *b->last++ = ngx_tolower(header[i].key.data[j]);
-        }
-
-        *b->last = 0;
-        b->last = (u_char *) ngx_http_v3_encode_prefix_int(b->last,
-                                                           header[i].value.len,
-                                                           7);
-        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+        b->last = (u_char *) ngx_http_v3_encode_header_l(b->last,
+                                                         &header[i].key,
+                                                         &header[i].value);
     }
 
     if (r->header_only) {
