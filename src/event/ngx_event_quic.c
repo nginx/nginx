@@ -94,7 +94,7 @@ struct ngx_quic_connection_s {
     ngx_ssl_t                        *ssl;
 
     ngx_event_t                       push;
-    ngx_event_t                       retransmit;
+    ngx_event_t                       pto;
     ngx_event_t                       close;
     ngx_queue_t                       free_frames;
     ngx_msec_t                        last_cc;
@@ -245,8 +245,8 @@ static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames);
 
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
-static void ngx_quic_retransmit_handler(ngx_event_t *ev);
-static ngx_int_t ngx_quic_retransmit(ngx_connection_t *c,
+static void ngx_quic_pto_handler(ngx_event_t *ev);
+static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, ngx_msec_t *waitp);
 static void ngx_quic_push_handler(ngx_event_t *ev);
 
@@ -683,10 +683,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
      * qc->latest_rtt = 0
      */
 
-    qc->retransmit.log = c->log;
-    qc->retransmit.data = c;
-    qc->retransmit.handler = ngx_quic_retransmit_handler;
-    qc->retransmit.cancelable = 1;
+    qc->pto.log = c->log;
+    qc->pto.data = c;
+    qc->pto.handler = ngx_quic_pto_handler;
+    qc->pto.cancelable = 1;
 
     qc->push.log = c->log;
     qc->push.data = c;
@@ -1388,8 +1388,8 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         ngx_del_timer(&qc->push);
     }
 
-    if (qc->retransmit.timer_set) {
-        ngx_del_timer(&qc->retransmit);
+    if (qc->pto.timer_set) {
+        ngx_del_timer(&qc->pto);
     }
 
     if (qc->push.posted) {
@@ -3260,9 +3260,8 @@ ngx_quic_output(ngx_connection_t *c)
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
 
-    if (!qc->retransmit.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->retransmit,
-                              qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO);
+    if (!qc->pto.timer_set && !qc->closing) {
+        ngx_add_timer(&qc->pto, qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO);
     }
 
     return NGX_OK;
@@ -3543,15 +3542,14 @@ ngx_quic_set_packet_number(ngx_quic_header_t *pkt, ngx_quic_send_ctx_t *ctx)
 
 
 static void
-ngx_quic_retransmit_handler(ngx_event_t *ev)
+ngx_quic_pto_handler(ngx_event_t *ev)
 {
     ngx_uint_t              i;
     ngx_msec_t              wait, nswait;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "quic retransmit timer");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic pto timer");
 
     c = ev->data;
     qc = c->quic;
@@ -3559,7 +3557,7 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
     wait = 0;
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-        if (ngx_quic_retransmit(c, &qc->send_ctx[i], &nswait) != NGX_OK) {
+        if (ngx_quic_detect_lost(c, &qc->send_ctx[i], &nswait) != NGX_OK) {
             ngx_quic_close_connection(c, NGX_ERROR);
             return;
         }
@@ -3573,7 +3571,7 @@ ngx_quic_retransmit_handler(ngx_event_t *ev)
     }
 
     if (wait > 0) {
-        ngx_add_timer(&qc->retransmit, wait);
+        ngx_add_timer(&qc->pto, wait);
     }
 }
 
@@ -3595,7 +3593,7 @@ ngx_quic_push_handler(ngx_event_t *ev)
 
 
 static ngx_int_t
-ngx_quic_retransmit(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
+ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_msec_t *waitp)
 {
     uint64_t                pn;
