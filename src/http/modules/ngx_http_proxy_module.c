@@ -2015,6 +2015,25 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http proxy data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        r = p->input_ctx;
+        r->upstream->keepalive = 0;
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
     cl = ngx_chain_get_free_buf(p->pool, &p->free);
     if (cl == NULL) {
         return NGX_ERROR;
@@ -2042,20 +2061,23 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
+    if (b->last - b->pos > p->length) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        b->last = b->pos + p->length;
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
     p->length -= b->last - b->pos;
 
     if (p->length == 0) {
         r = p->input_ctx;
-        p->upstream_done = 1;
         r->upstream->keepalive = !r->upstream->headers_in.connection_close;
-
-    } else if (p->length < 0) {
-        r = p->input_ctx;
-        p->upstream_done = 1;
-
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "upstream sent more data than specified in "
-                      "\"Content-Length\" header");
     }
 
     return NGX_OK;
@@ -2080,6 +2102,23 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
     if (ctx == NULL) {
         return NGX_ERROR;
+    }
+
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http proxy data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent data after final chunk");
+
+        r->upstream->keepalive = 0;
+        p->upstream_done = 1;
+
+        return NGX_OK;
     }
 
     b = NULL;
@@ -2144,8 +2183,14 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
             /* a whole response has been parsed successfully */
 
-            p->upstream_done = 1;
+            p->length = 0;
             r->upstream->keepalive = !r->upstream->headers_in.connection_close;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                              "upstream sent data after final chunk");
+                r->upstream->keepalive = 0;
+            }
 
             break;
         }
@@ -2161,13 +2206,13 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
         /* invalid response */
 
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, p->log, 0,
                       "upstream sent invalid chunked response");
 
         return NGX_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->log, 0,
                    "http proxy chunked state %ui, length %O",
                    ctx->chunked.state, p->length);
 
@@ -2224,6 +2269,18 @@ ngx_http_proxy_non_buffered_copy_filter(void *data, ssize_t bytes)
     cl->buf->tag = u->output.tag;
 
     if (u->length == -1) {
+        return NGX_OK;
+    }
+
+    if (bytes > u->length) {
+
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        cl->buf->last = cl->buf->pos + u->length;
+        u->length = 0;
+
         return NGX_OK;
     }
 
@@ -2312,6 +2369,12 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
 
             u->keepalive = !u->headers_in.connection_close;
             u->length = 0;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "upstream sent data after final chunk");
+                u->keepalive = 0;
+            }
 
             break;
         }

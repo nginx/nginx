@@ -1959,7 +1959,7 @@ ngx_http_file_cache_manager(void *data)
 {
     ngx_http_file_cache_t  *cache = data;
 
-    off_t       size;
+    off_t       size, free;
     time_t      wait;
     ngx_msec_t  elapsed, next;
     ngx_uint_t  count, watermark;
@@ -1988,7 +1988,19 @@ ngx_http_file_cache_manager(void *data)
                        size, count, (ngx_int_t) watermark);
 
         if (size < cache->max_size && count < watermark) {
-            break;
+
+            if (!cache->min_free) {
+                break;
+            }
+
+            free = ngx_fs_available(cache->path->name.data);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                           "http file cache free: %O", free);
+
+            if (free > cache->min_free) {
+                break;
+            }
         }
 
         wait = ngx_http_file_cache_forced_expire(cache);
@@ -2304,7 +2316,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *confp = conf;
 
-    off_t                   max_size;
+    off_t                   max_size, min_free;
     u_char                 *last, *p;
     time_t                  inactive;
     ssize_t                 size;
@@ -2341,6 +2353,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     name.len = 0;
     size = 0;
     max_size = NGX_MAX_OFF_T_VALUE;
+    min_free = 0;
 
     value = cf->args->elts;
 
@@ -2476,6 +2489,29 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[i].data, "min_free=", 9) == 0) {
+
+#if (NGX_WIN32 || NGX_HAVE_STATFS || NGX_HAVE_STATVFS)
+
+            s.len = value[i].len - 9;
+            s.data = value[i].data + 9;
+
+            min_free = ngx_parse_offset(&s);
+            if (min_free < 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid min_free value \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+#else
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "min_free is not supported "
+                               "on this platform, ignored");
+#endif
+
+            continue;
+        }
+
         if (ngx_strncmp(value[i].data, "loader_files=", 13) == 0) {
 
             loader_files = ngx_atoi(value[i].data + 13, value[i].len - 13);
@@ -2607,6 +2643,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cache->inactive = inactive;
     cache->max_size = max_size;
+    cache->min_free = min_free;
 
     caches = (ngx_array_t *) (confp + cmd->offset);
 

@@ -60,6 +60,8 @@ typedef struct {
 static void ngx_http_v2_read_handler(ngx_event_t *rev);
 static void ngx_http_v2_write_handler(ngx_event_t *wev);
 static void ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c);
+static void ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c);
+static void ngx_http_v2_lingering_close_handler(ngx_event_t *rev);
 
 static u_char *ngx_http_v2_state_proxy_protocol(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
@@ -661,7 +663,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     }
 
     if (h2c->goaway) {
-        ngx_http_close_connection(c);
+        ngx_http_v2_lingering_close(h2c);
         return;
     }
 
@@ -696,6 +698,113 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     }
 
     ngx_add_timer(c->read, h2scf->idle_timeout);
+}
+
+
+static void
+ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c)
+{
+    ngx_event_t               *rev, *wev;
+    ngx_connection_t          *c;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    c = h2c->connection;
+
+    clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
+                                        ngx_http_core_module);
+
+    if (clcf->lingering_close == NGX_HTTP_LINGERING_OFF) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    rev = c->read;
+    rev->handler = ngx_http_v2_lingering_close_handler;
+
+    h2c->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
+    ngx_add_timer(rev, clcf->lingering_timeout);
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    wev = c->write;
+    wev->handler = ngx_http_empty_handler;
+
+    if (wev->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
+        if (ngx_del_event(wev, NGX_WRITE_EVENT, 0) != NGX_OK) {
+            ngx_http_close_connection(c);
+            return;
+        }
+    }
+
+    if (ngx_shutdown_socket(c->fd, NGX_WRITE_SHUTDOWN) == -1) {
+        ngx_connection_error(c, ngx_socket_errno,
+                             ngx_shutdown_socket_n " failed");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (rev->ready) {
+        ngx_http_v2_lingering_close_handler(rev);
+    }
+}
+
+
+static void
+ngx_http_v2_lingering_close_handler(ngx_event_t *rev)
+{
+    ssize_t                    n;
+    ngx_msec_t                 timer;
+    ngx_connection_t          *c;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_v2_connection_t  *h2c;
+    u_char                     buffer[NGX_HTTP_LINGERING_BUFFER_SIZE];
+
+    c = rev->data;
+    h2c = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http2 lingering close handler");
+
+    if (rev->timedout) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    timer = (ngx_msec_t) h2c->lingering_time - (ngx_msec_t) ngx_time();
+    if ((ngx_msec_int_t) timer <= 0) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    do {
+        n = c->recv(c, buffer, NGX_HTTP_LINGERING_BUFFER_SIZE);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "lingering read: %z", n);
+
+        if (n == NGX_ERROR || n == 0) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+    } while (rev->ready);
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
+                                        ngx_http_core_module);
+    timer *= 1000;
+
+    if (timer > clcf->lingering_timeout) {
+        timer = clcf->lingering_timeout;
+    }
+
+    ngx_add_timer(rev, timer);
 }
 
 
@@ -4541,16 +4650,15 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
     h2c->blocked = 1;
 
     if (!c->error && !h2c->goaway) {
+        h2c->goaway = 1;
+
         if (ngx_http_v2_send_goaway(h2c, status) != NGX_ERROR) {
             (void) ngx_http_v2_send_output_queue(h2c);
         }
     }
 
-    c->error = 1;
-
     if (!h2c->processing && !h2c->pushing) {
-        ngx_http_close_connection(c);
-        return;
+        goto done;
     }
 
     c->read->handler = ngx_http_empty_handler;
@@ -4598,10 +4706,18 @@ ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
     h2c->blocked = 0;
 
     if (h2c->processing || h2c->pushing) {
+        c->error = 1;
         return;
     }
 
-    ngx_http_close_connection(c);
+done:
+
+    if (c->error) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    ngx_http_v2_lingering_close(h2c);
 }
 
 

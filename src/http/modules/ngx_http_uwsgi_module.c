@@ -67,6 +67,7 @@ static ngx_int_t ngx_http_uwsgi_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_uwsgi_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_uwsgi_process_status_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_uwsgi_process_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_uwsgi_input_filter_init(void *data);
 static void ngx_http_uwsgi_abort_request(ngx_http_request_t *r);
 static void ngx_http_uwsgi_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
@@ -703,6 +704,10 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
     u->pipe->input_filter = ngx_event_pipe_copy_input_filter;
     u->pipe->input_ctx = r;
 
+    u->input_filter_init = ngx_http_uwsgi_input_filter_init;
+    u->input_filter = ngx_http_upstream_non_buffered_filter;
+    u->input_filter_ctx = r;
+
     if (!uwcf->upstream.request_buffering
         && uwcf->upstream.pass_request_body
         && !r->headers_in.chunked)
@@ -1141,6 +1146,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         r->upstream->request_bufs = cl;
     }
 
+    b->flush = 1;
     cl->next = NULL;
 
     return NGX_OK;
@@ -1352,6 +1358,37 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
 
         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
+}
+
+
+static ngx_int_t
+ngx_http_uwsgi_input_filter_init(void *data)
+{
+    ngx_http_request_t   *r = data;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http uwsgi filter init s:%ui l:%O",
+                   u->headers_in.status_n, u->headers_in.content_length_n);
+
+    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+        || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED)
+    {
+        u->pipe->length = 0;
+        u->length = 0;
+
+    } else if (r->method == NGX_HTTP_HEAD) {
+        u->pipe->length = -1;
+        u->length = -1;
+
+    } else {
+        u->pipe->length = u->headers_in.content_length_n;
+        u->length = u->headers_in.content_length_n;
+    }
+
+    return NGX_OK;
 }
 
 
