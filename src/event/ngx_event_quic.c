@@ -2248,14 +2248,17 @@ static ngx_int_t
 ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_ack_frame_t *ack)
 {
-    ssize_t               n;
-    u_char               *pos, *end;
-    uint64_t              gap, range;
-    ngx_msec_t            send_time;
-    ngx_uint_t            i, min, max;
-    ngx_quic_send_ctx_t  *ctx;
+    ssize_t                 n;
+    u_char                 *pos, *end;
+    uint64_t                gap, range;
+    ngx_msec_t              send_time;
+    ngx_uint_t              i, min, max;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
 
-    ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
+    qc = c->quic;
+
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_handle_ack_frame level %d", pkt->level);
@@ -2267,7 +2270,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
      */
 
     if (ack->first_range > ack->largest) {
-        c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+        qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic invalid first range in ack frame");
         return NGX_ERROR;
@@ -2313,7 +2316,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         pos += n;
 
         if (gap >= min) {
-            c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+            qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
@@ -2322,7 +2325,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         max = min - 1 - gap;
 
         if (range > max + 1) {
-            c->quic->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+            qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
