@@ -833,6 +833,10 @@ done:
         r->request_end = p;
     }
 
+    if (r->http_protocol.data) {
+        r->http_protocol.len = r->request_end - r->http_protocol.data;
+    }
+
     r->http_version = r->http_major * 1000 + r->http_minor;
     r->state = sw_start;
 

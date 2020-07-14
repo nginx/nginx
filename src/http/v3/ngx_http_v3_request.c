@@ -110,6 +110,8 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
             continue;
         }
 
+        ngx_str_set(&r->http_protocol, "HTTP/3.0");
+
         len = (r->method_end - r->method_start) + 1
             + (r->uri_end - r->uri_start) + 1
             + sizeof("HTTP/3") - 1;
