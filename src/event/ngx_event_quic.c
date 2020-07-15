@@ -241,7 +241,8 @@ static ngx_int_t ngx_quic_output(ngx_connection_t *c);
 static ngx_int_t ngx_quic_output_frames(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames);
-static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames);
+static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx, ngx_queue_t *frames);
 
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
@@ -3260,10 +3261,6 @@ ngx_quic_output(ngx_connection_t *c)
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
 
-    if (!qc->pto.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->pto, qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO);
-    }
-
     return NGX_OK;
 }
 
@@ -3272,7 +3269,6 @@ static ngx_int_t
 ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
     size_t                  len, hlen, n;
-    ngx_int_t               rc;
     ngx_uint_t              need_ack;
     ngx_queue_t            *q, range;
     ngx_quic_frame_t       *f;
@@ -3332,32 +3328,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             break;
         }
 
-        rc = ngx_quic_send_frames(c, &range);
-
-        if (rc == NGX_OK) {
-            /*
-             * frames are moved into the sent queue
-             * to wait for ack/be retransmitted
-            */
-            if (qc->closing) {
-                /* if we are closing, any ack will be discarded */
-                ngx_quic_free_frames(c, &range);
-
-            } else {
-                ngx_queue_add(&ctx->sent, &range);
-            }
-
-            cg->in_flight += len;
-
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic congestion send if:%uz", cg->in_flight);
-
-        } else if (rc == NGX_DONE) {
-
-            /* no ack is expected for this frames, can free them */
-            ngx_quic_free_frames(c, &range);
-
-        } else {
+        if (ngx_quic_send_frames(c, ctx, &range) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -3390,7 +3361,8 @@ ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
 
 static ngx_int_t
-ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
+ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
+    ngx_queue_t *frames)
 {
     ssize_t                 len;
     u_char                 *p;
@@ -3401,7 +3373,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     ngx_quic_frame_t       *f, *start;
     ngx_quic_header_t       pkt;
     ngx_quic_secrets_t     *keys;
-    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
     static ngx_str_t        initial_token = ngx_null_string;
     static u_char           src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
@@ -3414,8 +3385,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
 
     q = ngx_queue_head(frames);
     start = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-    ctx = ngx_quic_get_send_ctx(c->quic, start->level);
 
     ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
 
@@ -3507,7 +3476,29 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_queue_t *frames)
     /* len == NGX_OK || NGX_AGAIN */
     ctx->pnum++;
 
-    return pkt.need_ack ? NGX_OK : NGX_DONE;
+    if (pkt.need_ack) {
+        /* move frames into the sent queue to wait for ack */
+
+        if (qc->closing) {
+            /* if we are closing, any ack will be discarded */
+            ngx_quic_free_frames(c, frames);
+
+        } else {
+            ngx_queue_add(&ctx->sent, frames);
+            ngx_add_timer(&qc->pto, NGX_QUIC_HARDCODED_PTO);
+        }
+
+        qc->congestion.in_flight += out.len;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic congestion send if:%uz",
+                       qc->congestion.in_flight);
+    } else {
+        /* no ack is expected for this frames, so we can free them */
+        ngx_quic_free_frames(c, frames);
+    }
+
+    return NGX_OK;
 }
 
 
@@ -3650,15 +3641,9 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         ngx_quic_congestion_lost(c, start->last);
 
-        /* NGX_DONE is impossible here, such frames don't get into this queue */
-        if (ngx_quic_send_frames(c, &range) != NGX_OK) {
+        if (ngx_quic_send_frames(c, ctx, &range) != NGX_OK) {
             return NGX_ERROR;
         }
-
-        /* move frames group to the end of queue */
-        ngx_queue_add(&ctx->sent, &range);
-
-        wait = qc->ctp.max_ack_delay + NGX_QUIC_HARDCODED_PTO;
 
     } while (q != ngx_queue_sentinel(&ctx->sent));
 
