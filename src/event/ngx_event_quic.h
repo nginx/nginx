@@ -54,6 +54,10 @@
 
 #define NGX_QUIC_MIN_INITIAL_SIZE            1200
 
+/* if we have so much data, send immediately */
+/* TODO: configurable ? */
+#define NGX_QUIC_MIN_DATA_NODELAY             512 /* bytes */
+
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 

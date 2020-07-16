@@ -73,6 +73,8 @@ typedef struct {
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
+
+    size_t                            frames_len;
 } ngx_quic_send_ctx_t;
 
 
@@ -3273,10 +3275,24 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
 
     ngx_queue_insert_tail(&ctx->frames, &frame->queue);
 
-    /* TODO: check PUSH flag on stream and call output */
+    frame->len = ngx_quic_create_frame(NULL, frame);
+    /* always succeeds */
 
-    if (!qc->push.timer_set && !qc->closing) {
-        ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
+    ctx->frames_len += frame->len;
+
+    if (qc->closing) {
+        return;
+    }
+
+    /* TODO: TCP_NODELAY analogue ? TCP_CORK and others... */
+
+    if (ctx->frames_len < NGX_QUIC_MIN_DATA_NODELAY) {
+        if (!qc->push.timer_set) {
+            ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
+        }
+
+    } else {
+        ngx_post_event(&qc->push, &ngx_posted_events);
     }
 }
 
@@ -3309,7 +3325,7 @@ ngx_quic_output(ngx_connection_t *c)
 static ngx_int_t
 ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
-    size_t                  len, hlen, n;
+    size_t                  len, hlen;
     ngx_uint_t              need_ack;
     ngx_queue_t            *q, range;
     ngx_quic_frame_t       *f;
@@ -3340,9 +3356,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             /* process group of frames that fits into packet */
             f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-            n = ngx_quic_create_frame(NULL, f);
-
-            if (len && hlen + len + n > qc->ctp.max_udp_payload_size) {
+            if (len && hlen + len + f->len > qc->ctp.max_udp_payload_size) {
                 break;
             }
 
@@ -3350,7 +3364,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
                 need_ack = 1;
             }
 
-            if (need_ack && cg->in_flight + len + n > cg->window) {
+            if (need_ack && cg->in_flight + len + f->len > cg->window) {
                 break;
             }
 
@@ -3360,8 +3374,9 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
             ngx_queue_remove(&f->queue);
             ngx_queue_insert_tail(&range, &f->queue);
+            ctx->frames_len -= f->len;
 
-            len += n;
+            len += f->len;
 
         } while (q != ngx_queue_sentinel(&ctx->frames));
 
@@ -4271,7 +4286,6 @@ ngx_quic_alloc_frame(ngx_connection_t *c, size_t size)
 static void
 ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
-    ssize_t                 n;
     ngx_msec_t              timer;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
@@ -4279,9 +4293,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     qc = c->quic;
     cg = &qc->congestion;
 
-    n = ngx_quic_create_frame(NULL, f);
-
-    cg->in_flight -= n;
+    cg->in_flight -= f->len;
 
     timer = f->last - cg->recovery_start;
 
@@ -4290,14 +4302,14 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     }
 
     if (cg->window < cg->ssthresh) {
-        cg->window += n;
+        cg->window += f->len;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic congestion slow start win:%uz, ss:%uz, if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
     } else {
-        cg->window += qc->tp.max_udp_payload_size * n / cg->window;
+        cg->window += qc->tp.max_udp_payload_size * f->len / cg->window;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic congestion avoidance win:%uz, ss:%uz, if:%uz",

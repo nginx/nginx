@@ -250,6 +250,7 @@ struct ngx_quic_frame_s {
     uint64_t                                    pnum;
     ngx_msec_t                                  first;
     ngx_msec_t                                  last;
+    ssize_t                                     len;
     ngx_uint_t                                  need_ack;
                                                     /* unsigned need_ack:1; */
 
