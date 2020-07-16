@@ -114,6 +114,7 @@ struct ngx_quic_connection_s {
 
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
+    size_t                            received;
 
     uint64_t                          cur_streams;
     uint64_t                          max_streams;
@@ -130,6 +131,7 @@ struct ngx_quic_connection_s {
     unsigned                          key_phase:1;
     unsigned                          in_retry:1;
     unsigned                          initialized:1;
+    unsigned                          validated:1;
 };
 
 
@@ -689,6 +691,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
      * qc->latest_rtt = 0
      */
 
+    qc->received = pkt->raw->last - pkt->raw->start;
+
     qc->pto.log = c->log;
     qc->pto.data = c;
     qc->pto.handler = ngx_quic_pto_handler;
@@ -763,6 +767,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         }
 
         /* NGX_OK */
+        qc->validated = 1;
 
     } else if (tp->retry) {
         return ngx_quic_retry(c);
@@ -1240,6 +1245,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     }
 
     b.last += n;
+    qc->received += n;
 
     if (ngx_quic_input(c, &b) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
@@ -1639,6 +1645,8 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
+    qc->validated = 1;
+
     pkt->secret = &keys->client;
     pkt->level = ssl_encryption_initial;
     pkt->plaintext = buf;
@@ -1759,6 +1767,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_initial);
     ngx_quic_free_frames(c, &ctx->sent);
 
+    qc->validated = 1;
     qc->pto_count = 0;
 
     return ngx_quic_payload_handler(c, pkt);
@@ -3366,6 +3375,22 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
             if (need_ack && cg->in_flight + len + f->len > cg->window) {
                 break;
+            }
+
+            if (!qc->validated) {
+                /*
+                 * Prior to validation, endpoints are limited in what they
+                 * are able to send.  During the handshake, a server cannot
+                 * send more than three times the data it receives;
+                 */
+
+                if (((c->sent + len + f->len) / 3) > qc->received) {
+                    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "quic hit amplification limit"
+                                   " received %uz sent %O",
+                                   qc->received, c->sent);
+                    break;
+                }
             }
 
             q = ngx_queue_next(q);
