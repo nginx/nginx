@@ -104,6 +104,8 @@ struct ngx_quic_connection_s {
     ngx_msec_t                        min_rtt;
     ngx_msec_t                        rttvar;
 
+    ngx_msec_t                        pto_count;
+
 #if (NGX_DEBUG)
     ngx_uint_t                        nframes;
 #endif
@@ -200,6 +202,8 @@ static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
     ngx_msec_t *send_time);
 static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     enum ssl_encryption_level_t level, ngx_msec_t send_time);
+static ngx_inline ngx_msec_t ngx_quic_pto(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_handle_stream_ack(ngx_connection_t *c,
     ngx_quic_frame_t *f);
 
@@ -1322,6 +1326,9 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
              *  to terminate the connection immediately.
              */
 
+            qc->error_level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
+                                     : ssl_encryption_initial;
+
             if (rc == NGX_OK) {
                  ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                 "quic immediate close, drain = %d",
@@ -1332,7 +1339,9 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                 qc->close.handler = ngx_quic_close_timer_handler;
                 qc->close.cancelable = 1;
 
-                ngx_add_timer(&qc->close, 3 * NGX_QUIC_HARDCODED_PTO);
+                ctx = ngx_quic_get_send_ctx(qc, qc->error_level);
+
+                ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
 
                 qc->error = NGX_QUIC_ERR_NO_ERROR;
 
@@ -1346,9 +1355,6 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                                qc->error_app ? "app " : "", qc->error,
                                qc->error_reason ? qc->error_reason : "");
             }
-
-            qc->error_level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
-                                     : ssl_encryption_initial;
 
             (void) ngx_quic_send_cc(c);
 
@@ -1750,6 +1756,8 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
      */
     ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_initial);
     ngx_quic_free_frames(c, &ctx->sent);
+
+    qc->pto_count = 0;
 
     return ngx_quic_payload_handler(c, pkt);
 }
@@ -2404,6 +2412,8 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
 
+    qc->pto_count = 0;
+
     return NGX_OK;
 }
 
@@ -2451,6 +2461,34 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic rtt sample: latest %M, min %M, avg %M, var %M",
                    latest_rtt, qc->min_rtt, qc->avg_rtt, qc->rttvar);
+}
+
+
+static ngx_inline ngx_msec_t
+ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
+{
+    ngx_msec_t              duration;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    /* PTO calculation: quic-recovery, Appendix 8 */
+    duration = qc->avg_rtt;
+
+    duration += ngx_max(4 * qc->rttvar, NGX_QUIC_TIME_GRANULARITY);
+    duration <<= qc->pto_count;
+
+    if (qc->congestion.in_flight == 0) { /* no in-flight packets */
+        return duration;
+    }
+
+    if (ctx == &qc->send_ctx[2] && c->ssl->handshaked) {
+        /* application send space */
+
+        duration += qc->tp.max_ack_delay << qc->pto_count;
+    }
+
+    return duration;
 }
 
 
@@ -2766,6 +2804,8 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic handshake completed successfully");
 
+        c->ssl->handshaked = 1;
+
         frame = ngx_quic_alloc_frame(c, 0);
         if (frame == NULL) {
             return NGX_ERROR;
@@ -2799,6 +2839,8 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
          */
         ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_handshake);
         ngx_quic_free_frames(c, &ctx->sent);
+
+        c->quic->pto_count = 0;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -3484,7 +3526,10 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         } else {
             ngx_queue_add(&ctx->sent, frames);
-            ngx_add_timer(&qc->pto, NGX_QUIC_HARDCODED_PTO);
+            if (qc->pto.timer_set) {
+                ngx_del_timer(&qc->pto);
+            }
+            ngx_add_timer(&qc->pto, ngx_quic_pto(c, ctx));
         }
 
         qc->congestion.in_flight += out.len;
@@ -3544,6 +3589,8 @@ ngx_quic_pto_handler(ngx_event_t *ev)
         ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
+
+    c->quic->pto_count++;
 }
 
 
@@ -3579,12 +3626,13 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
 
     min_wait = 0;
 
+#if (NGX_SUPPRESS_WARN)
+    thr = 0;
+#endif
+
     if (ack) {
         thr = NGX_QUIC_TIME_THR * ngx_max(qc->latest_rtt, qc->avg_rtt);
         thr = ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
-
-    } else {
-        thr = NGX_QUIC_HARDCODED_PTO;
     }
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
@@ -3593,6 +3641,10 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
 
         if (ngx_queue_empty(&ctx->sent)) {
             continue;
+        }
+
+        if (!ack) {
+            thr = ngx_quic_pto(c, ctx);
         }
 
         q = ngx_queue_head(&ctx->sent);

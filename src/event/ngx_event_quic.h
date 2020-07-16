@@ -44,7 +44,6 @@
 /* quic-recovery, section 6.2.2, kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
 
-#define NGX_QUIC_HARDCODED_PTO               1000 /* 1s, TODO: collect */
 /* quic-recovery, section 6.1.1, Packet Threshold */
 #define NGX_QUIC_PKT_THR                     3 /* packets */
 /* quic-recovery, section 6.1.2, Time Threshold */
