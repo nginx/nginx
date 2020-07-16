@@ -99,6 +99,11 @@ struct ngx_quic_connection_s {
     ngx_queue_t                       free_frames;
     ngx_msec_t                        last_cc;
 
+    ngx_msec_t                        latest_rtt;
+    ngx_msec_t                        avg_rtt;
+    ngx_msec_t                        min_rtt;
+    ngx_msec_t                        rttvar;
+
 #if (NGX_DEBUG)
     ngx_uint_t                        nframes;
 #endif
@@ -189,7 +194,10 @@ static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 static ngx_int_t ngx_quic_handle_ack_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_ack_frame_t *f);
 static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
-    ngx_quic_send_ctx_t *ctx, uint64_t min, uint64_t max);
+    ngx_quic_send_ctx_t *ctx, uint64_t min, uint64_t max,
+    ngx_msec_t *send_time);
+static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
+    enum ssl_encryption_level_t level, ngx_msec_t send_time);
 static void ngx_quic_handle_stream_ack(ngx_connection_t *c,
     ngx_quic_frame_t *f);
 
@@ -664,6 +672,14 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     }
 
     ngx_queue_init(&qc->free_frames);
+
+    qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
+    qc->rttvar = NGX_QUIC_INITIAL_RTT / 2;
+    qc->min_rtt = NGX_TIMER_INFINITE;
+
+    /*
+     * qc->latest_rtt = 0
+     */
 
     qc->retransmit.log = c->log;
     qc->retransmit.data = c;
@@ -2210,6 +2226,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ssize_t               n;
     u_char               *pos, *end;
     uint64_t              gap, range;
+    ngx_msec_t            send_time;
     ngx_uint_t            i, min, max;
     ngx_quic_send_ctx_t  *ctx;
 
@@ -2234,7 +2251,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     min = ack->largest - ack->first_range;
     max = ack->largest;
 
-    if (ngx_quic_handle_ack_frame_range(c, ctx, min, max) != NGX_OK) {
+    if (ngx_quic_handle_ack_frame_range(c, ctx, min, max, &send_time)
+        != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
@@ -2243,6 +2262,18 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         ctx->largest_ack = max;
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic updated largest received ack: %ui", max);
+
+        /*
+         *  An endpoint generates an RTT sample on receiving an
+         *  ACK frame that meets the following two conditions:
+         *
+         *  - the largest acknowledged packet number is newly acknowledged
+         *  - at least one of the newly acknowledged packets was ack-eliciting.
+         */
+
+        if (send_time != NGX_TIMER_INFINITE) {
+            ngx_quic_rtt_sample(c, ack, pkt->level, send_time);
+        }
     }
 
     pos = ack->ranges_start;
@@ -2274,7 +2305,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         min = max - range + 1;
 
-        if (ngx_quic_handle_ack_frame_range(c, ctx, min, max) != NGX_OK) {
+        if (ngx_quic_handle_ack_frame_range(c, ctx, min, max, &send_time)
+            != NGX_OK)
+        {
             return NGX_ERROR;
         }
     }
@@ -2285,8 +2318,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
 static ngx_int_t
 ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    uint64_t min, uint64_t max)
+    uint64_t min, uint64_t max, ngx_msec_t *send_time)
 {
+    uint64_t                found_num;
     ngx_uint_t              found;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
@@ -2294,26 +2328,30 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     qc = c->quic;
 
+    *send_time = NGX_TIMER_INFINITE;
     found = 0;
+    found_num = 0;
 
-    q = ngx_queue_head(&ctx->sent);
+    q = ngx_queue_last(&ctx->sent);
 
     while (q != ngx_queue_sentinel(&ctx->sent)) {
 
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        q = ngx_queue_prev(q);
 
         if (f->pnum >= min && f->pnum <= max) {
             ngx_quic_congestion_ack(c, f);
 
             ngx_quic_handle_stream_ack(c, f);
 
-            q = ngx_queue_next(q);
+            if (f->pnum > found_num || !found) {
+                *send_time = f->last;
+                found_num = f->pnum;
+            }
+
             ngx_queue_remove(&f->queue);
             ngx_quic_free_frame(c, f);
             found = 1;
-
-        } else {
-            q = ngx_queue_next(q);
         }
     }
 
@@ -2339,6 +2377,52 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
+    enum ssl_encryption_level_t level, ngx_msec_t send_time)
+{
+    ngx_msec_t              latest_rtt, ack_delay, adjusted_rtt, rttvar_sample;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    latest_rtt = ngx_current_msec - send_time;
+    qc->latest_rtt = latest_rtt;
+
+    if (qc->min_rtt == NGX_TIMER_INFINITE) {
+        qc->min_rtt = latest_rtt;
+        qc->avg_rtt = latest_rtt;
+        qc->rttvar = latest_rtt / 2;
+
+    } else {
+        qc->min_rtt = ngx_min(qc->min_rtt, latest_rtt);
+
+
+        if (level == ssl_encryption_application) {
+            ack_delay = ack->delay * (1 << qc->ctp.ack_delay_exponent) / 1000;
+            ack_delay = ngx_min(ack_delay, qc->ctp.max_ack_delay);
+
+        } else {
+            ack_delay = 0;
+        }
+
+        adjusted_rtt = latest_rtt;
+
+        if (qc->min_rtt + ack_delay < latest_rtt) {
+            adjusted_rtt -= ack_delay;
+        }
+
+        qc->avg_rtt = 0.875 * qc->avg_rtt + 0.125 * adjusted_rtt;
+        rttvar_sample = ngx_abs((ngx_msec_int_t) (qc->avg_rtt - adjusted_rtt));
+        qc->rttvar = 0.75 * qc->rttvar + 0.25 * rttvar_sample;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic rtt sample: latest %M, min %M, avg %M, var %M",
+                   latest_rtt, qc->min_rtt, qc->avg_rtt, qc->rttvar);
 }
 
 

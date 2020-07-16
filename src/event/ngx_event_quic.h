@@ -41,6 +41,9 @@
 #define NGX_QUIC_MAX_TOKEN_SIZE              32
     /* sizeof(struct in6_addr) + sizeof(ngx_msec_t) up to AES-256 block size */
 
+/* quic-recovery, section 6.2.2, kInitialRtt */
+#define NGX_QUIC_INITIAL_RTT                 333 /* ms */
+
 #define NGX_QUIC_HARDCODED_PTO               1000 /* 1s, TODO: collect */
 #define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
 
