@@ -3892,8 +3892,8 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     sn->c->send = ngx_quic_stream_send;
     sn->c->send_chain = ngx_quic_stream_send_chain;
 
-    sn->c->read->log = c->log;
-    sn->c->write->log = c->log;
+    sn->c->read->log = log;
+    sn->c->write->log = log;
 
     log->connection = sn->c->number;
 
