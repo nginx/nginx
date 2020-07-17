@@ -417,9 +417,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
         SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
 
-        if (len != NGX_QUIC_ALPN_LEN
-            || ngx_strncmp(data, NGX_QUIC_ALPN_STR, NGX_QUIC_ALPN_LEN) != 0)
-        {
+        if (len == 0) {
             qc->error = 0x100 + SSL_AD_NO_APPLICATION_PROTOCOL;
             qc->error_reason = "unsupported protocol in ALPN extension";
 
