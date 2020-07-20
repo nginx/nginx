@@ -645,7 +645,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     if (!ngx_quic_pkt_in(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid initial packet: 0x%xi", pkt->flags);
+                      "quic invalid initial packet: 0x%xd", pkt->flags);
         return NGX_ERROR;
     }
 
@@ -1614,7 +1614,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (!ngx_quic_pkt_in(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid initial packet: 0x%xi", pkt->flags);
+                      "quic invalid initial packet: 0x%xd", pkt->flags);
         return NGX_ERROR;
     }
 
@@ -2157,7 +2157,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
     frame->u.ack.largest = pkt->pn;
     frame->u.ack.delay = ngx_quic_ack_delay(c, &pkt->received, frame->level);
 
-    ngx_sprintf(frame->info, "ACK for PN=%d from frame handler level=%d",
+    ngx_sprintf(frame->info, "ACK for PN=%uL from frame handler level=%d",
                 pkt->pn, frame->level);
     ngx_quic_queue_frame(c->quic, frame);
 
@@ -2552,7 +2552,7 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
 
     if (f->offset > fs->received) {
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic out-of-order frame: expecting %ui got %ui",
+                       "quic out-of-order frame: expecting %uL got %uL",
                        fs->received, f->offset);
 
         return ngx_quic_buffer_frame(c, fs, frame);
@@ -2769,8 +2769,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 static ngx_int_t
 ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
-    int                       sslerr;
-    ssize_t                   n;
+    int                       n, sslerr;
     ngx_ssl_conn_t           *ssl_conn;
     ngx_quic_send_ctx_t      *ctx;
     ngx_quic_crypto_frame_t  *f;
@@ -2889,7 +2888,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     if (sn == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic stream id 0x%xi is new", f->stream_id);
+                       "quic stream id 0x%xL is new", f->stream_id);
 
         if (f->stream_id & NGX_QUIC_STREAM_SERVER_INITIATED) {
             qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
@@ -3263,7 +3262,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
 
     if (sn == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic stream id 0x%xi is new", f->id);
+                       "quic stream id 0x%xL is new", f->id);
 
         if (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) {
             qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
@@ -3951,7 +3950,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     rev = c->read;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%xi recv: eof:%d, avail:%z",
+                   "quic stream id 0x%xL recv: eof:%d, avail:%z",
                    qs->id, rev->pending_eof, b->last - b->pos);
 
     if (b->pos == b->last) {
@@ -3963,7 +3962,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic stream id 0x%xi recv() not ready", qs->id);
+                       "quic stream id 0x%xL recv() not ready", qs->id);
         return NGX_AGAIN;
     }
 
@@ -3981,7 +3980,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%xi recv: %z of %uz", qs->id, len, size);
+                   "quic stream id 0x%xL recv: %z of %uz", qs->id, len, size);
 
     if (!rev->pending_eof) {
         frame = ngx_quic_alloc_frame(pc, 0);
@@ -4023,7 +4022,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         ngx_quic_queue_frame(pc->quic, frame);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic stream id 0x%xi recv: increased max data: %ui",
+                       "quic stream id 0x%xL recv: increased max data: %uL",
                        qs->id, qc->streams.recv_max_data);
     }
 
@@ -4051,7 +4050,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%xi send: %uz", qs->id, size);
+                   "quic stream id 0x%xL send: %uz", qs->id, size);
 
     /*
      * we need to fit at least 1 frame into a packet, thus account head/tail;
@@ -4127,7 +4126,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
         p += fsize;
         n += fsize;
 
-        ngx_sprintf(frame->info, "stream 0x%xi len=%ui level=%d",
+        ngx_sprintf(frame->info, "stream 0x%xL len=%ui level=%d",
                     qs->id, fsize, frame->level);
 
         ngx_quic_queue_frame(qc, frame);
@@ -4164,7 +4163,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     qc = pc->quic;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%xi cleanup", qs->id);
+                   "quic stream id 0x%xL cleanup", qs->id);
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
     ngx_quic_free_frames(pc, &qs->fs.frames);
@@ -4181,7 +4180,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%xi send fin", qs->id);
+                   "quic stream id 0x%xL send fin", qs->id);
 
     frame = ngx_quic_alloc_frame(pc, 0);
     if (frame == NULL) {
@@ -4200,7 +4199,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     frame->u.stream.length = 0;
     frame->u.stream.data = NULL;
 
-    ngx_sprintf(frame->info, "stream 0x%xi fin=1 level=%d",
+    ngx_sprintf(frame->info, "stream 0x%xL fin=1 level=%d",
                 qs->id, frame->level);
 
     ngx_quic_queue_frame(qc, frame);

@@ -325,7 +325,7 @@ done:
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
                   "http3 parse header block prefix done "
-                  "insert_count:%ui, sign:%ui, delta_base:%ui, base:%uL",
+                  "insert_count:%ui, sign:%ui, delta_base:%ui, base:%ui",
                   st->insert_count, st->sign, st->delta_base, st->base);
 
     st->state = sw_start;

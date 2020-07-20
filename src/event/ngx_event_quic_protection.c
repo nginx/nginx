@@ -1089,7 +1089,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 #endif
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic clear flags: %xi", clearflags);
+                   "quic clear flags: %xd", clearflags);
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic packet number: %uL, len: %xi", pn, pnl);
 
