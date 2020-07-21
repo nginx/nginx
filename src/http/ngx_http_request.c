@@ -336,7 +336,7 @@ ngx_http_init_connection(ngx_connection_t *c)
             sscf = ngx_http_get_module_srv_conf(hc->conf_ctx,
                                                 ngx_http_ssl_module);
 
-            ngx_quic_run(c, &sscf->ssl, qcf, ngx_http_init_connection);
+            ngx_quic_run(c, &sscf->ssl, qcf);
             return;
         }
     }

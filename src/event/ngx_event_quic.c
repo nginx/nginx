@@ -36,7 +36,6 @@
 typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
-    ngx_connection_handler_pt         handler;
 
     ngx_uint_t                        id_counter;
 
@@ -162,8 +161,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt,
-    ngx_connection_handler_pt handler);
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
 static ngx_int_t ngx_quic_retry(ngx_connection_t *c);
 static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
@@ -587,8 +585,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
 
 void
-ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf,
-    ngx_connection_handler_pt handler)
+ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
 {
     ngx_buf_t          *b;
     ngx_quic_header_t   pkt;
@@ -606,7 +603,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf,
     pkt.data = b->start;
     pkt.len = b->last - b->start;
 
-    if (ngx_quic_new_connection(c, ssl, conf, &pkt, handler) != NGX_OK) {
+    if (ngx_quic_new_connection(c, ssl, conf, &pkt) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
@@ -622,8 +619,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf,
 
 static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt,
-    ngx_connection_handler_pt handler)
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
     ngx_uint_t              i;
@@ -708,7 +704,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     qc->ssl = ssl;
     qc->conf = conf;
     qc->tp = conf->tp;
-    qc->streams.handler = handler;
 
     ctp = &qc->ctp;
     ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
@@ -2949,7 +2944,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             ngx_quic_handle_max_streams(c);
         }
 
-        qc->streams.handler(sn->c);
+        sn->c->listening->handler(sn->c);
 
         if (f->offset == 0) {
             return NGX_OK;

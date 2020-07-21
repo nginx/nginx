@@ -129,7 +129,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
             scf = ngx_stream_get_module_srv_conf(addr_conf->ctx,
                                                  ngx_stream_ssl_module);
 
-            ngx_quic_run(c, &scf->ssl, qcf, ngx_stream_init_connection);
+            ngx_quic_run(c, &scf->ssl, qcf);
             return;
         }
     }
