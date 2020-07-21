@@ -402,7 +402,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
 #if (NGX_DEBUG)
     unsigned int            i;
 #endif
-#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+#if (NGX_HTTP_V2 || NGX_HTTP_QUIC)
     ngx_http_connection_t  *hc;
 #endif
 #if (NGX_HTTP_V2 || NGX_DEBUG)
@@ -419,7 +419,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     }
 #endif
 
-#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+#if (NGX_HTTP_V2 || NGX_HTTP_QUIC)
     hc = c->data;
 #endif
 
@@ -435,6 +435,12 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     if (hc->addr_conf->http3) {
         srv = (unsigned char *) NGX_HTTP_V3_ALPN_ADVERTISE;
         srvlen = sizeof(NGX_HTTP_V3_ALPN_ADVERTISE) - 1;
+    } else
+#endif
+#if (NGX_HTTP_QUIC)
+    if (hc->addr_conf->quic) {
+        srv = (unsigned char *) NGX_HTTP_QUIC_ALPN_ADVERTISE;
+        srvlen = sizeof(NGX_HTTP_QUIC_ALPN_ADVERTISE) - 1;
     } else
 #endif
     {
@@ -1247,6 +1253,7 @@ static ngx_int_t
 ngx_http_ssl_init(ngx_conf_t *cf)
 {
     ngx_uint_t                   a, p, s;
+    const char                  *name;
     ngx_http_conf_addr_t        *addr;
     ngx_http_conf_port_t        *port;
     ngx_http_ssl_srv_conf_t     *sscf;
@@ -1296,8 +1303,18 @@ ngx_http_ssl_init(ngx_conf_t *cf)
         addr = port[p].addrs.elts;
         for (a = 0; a < port[p].addrs.nelts; a++) {
 
-            if (!addr[a].opt.ssl && !addr[a].opt.http3) {
+            if (!addr[a].opt.ssl && !addr[a].opt.quic) {
                 continue;
+            }
+
+            if (addr[a].opt.http3) {
+                name = "http3";
+
+            } else if (addr[a].opt.quic) {
+                name = "quic";
+
+            } else {
+                name = "ssl";
             }
 
             cscf = addr[a].default_server;
@@ -1306,16 +1323,16 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             if (sscf->certificates == NULL) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
-                              "the \"listen ... ssl\" directive in %s:%ui",
-                              cscf->file_name, cscf->line);
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
 
-            if (addr[a].opt.http3 && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
+            if (addr[a].opt.quic && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "\"ssl_protocols\" did not enable TLSv1.3 for "
-                              "the \"listen ... http3\" directive in %s:%ui",
-                              cscf->file_name, cscf->line);
+                              "the \"listen ... %s\" directives in %s:%ui",
+                              name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
         }

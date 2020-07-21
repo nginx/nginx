@@ -1034,9 +1034,11 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
+#if (NGX_QUIC)
         if (ls[i].quic) {
             continue;
         }
+#endif
 
         c = ls[i].connection;
 

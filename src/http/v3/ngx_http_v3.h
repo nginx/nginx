@@ -118,6 +118,8 @@ typedef struct {
 } ngx_http_v3_connection_t;
 
 
+ngx_int_t ngx_http_v3_init_connection(ngx_connection_t *c);
+
 ngx_int_t ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_uint_t allow_underscores);
@@ -129,9 +131,6 @@ ngx_chain_t *ngx_http_v3_create_trailers(ngx_http_request_t *r);
 uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
 uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,
     ngx_uint_t prefix);
-
-ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
-void ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);

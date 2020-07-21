@@ -64,9 +64,6 @@ static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
 #endif
 
-#if (NGX_HTTP_V3)
-static void ngx_http_quic_stream_handler(ngx_connection_t *c);
-#endif
 
 static char *ngx_http_client_errors[] = {
 
@@ -221,26 +218,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_http_in6_addr_t    *addr6;
 #endif
 
-#if (NGX_HTTP_V3)
-    if (c->type == SOCK_DGRAM) {
-        ngx_http_v3_connection_t  *h3c;
-
-        h3c = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
-        if (h3c == NULL) {
-            ngx_http_close_connection(c);
-            return;
-        }
-
-        ngx_queue_init(&h3c->blocked);
-
-        hc = &h3c->hc;
-        hc->quic = 1;
-        hc->ssl = 1;
-
-    } else
-#endif
-        hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
-
+    hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
     if (hc == NULL) {
         ngx_http_close_connection(c);
         return;
@@ -325,6 +303,46 @@ ngx_http_init_connection(ngx_connection_t *c)
     /* the default server configuration for the address:port */
     hc->conf_ctx = hc->addr_conf->default_server->ctx;
 
+#if (NGX_HTTP_QUIC)
+
+    if (hc->addr_conf->quic) {
+        ngx_quic_conf_t          *qcf;
+        ngx_http_ssl_srv_conf_t  *sscf;
+
+#if (NGX_HTTP_V3)
+
+        if (hc->addr_conf->http3) {
+            ngx_int_t  rc;
+
+            rc = ngx_http_v3_init_connection(c);
+
+            if (rc == NGX_ERROR) {
+                ngx_http_close_connection(c);
+                return;
+            }
+
+            if (rc == NGX_DONE) {
+                return;
+            }
+        }
+
+#endif
+
+        if (c->qs == NULL) {
+            c->log->connection = c->number;
+
+            qcf = ngx_http_get_module_srv_conf(hc->conf_ctx,
+                                               ngx_http_quic_module);
+            sscf = ngx_http_get_module_srv_conf(hc->conf_ctx,
+                                                ngx_http_ssl_module);
+
+            ngx_quic_run(c, &sscf->ssl, qcf, ngx_http_init_connection);
+            return;
+        }
+    }
+
+#endif
+
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
         ngx_http_close_connection(c);
@@ -345,23 +363,6 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev = c->read;
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
-
-    if (c->shared) {
-        rev->ready = 1;
-    }
-
-#if (NGX_HTTP_V3)
-    if (hc->quic) {
-        ngx_http_v3_srv_conf_t   *v3cf;
-        ngx_http_ssl_srv_conf_t  *sscf;
-
-        v3cf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
-        sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
-
-        ngx_quic_run(c, &sscf->ssl, &v3cf->quic, ngx_http_quic_stream_handler);
-        return;
-    }
-#endif
 
 #if (NGX_HTTP_V2)
     if (hc->addr_conf->http2) {
@@ -408,72 +409,6 @@ ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 }
-
-
-#if (NGX_HTTP_V3)
-
-static void
-ngx_http_quic_stream_handler(ngx_connection_t *c)
-{
-    ngx_event_t               *rev;
-    ngx_http_log_ctx_t        *ctx;
-    ngx_http_connection_t     *hc;
-    ngx_http_v3_connection_t  *h3c;
-
-    h3c = c->qs->parent->data;
-
-    if (!h3c->settings_sent) {
-        h3c->settings_sent = 1;
-
-        if (ngx_http_v3_send_settings(c) != NGX_OK) {
-            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                            "could not send settings");
-            ngx_http_close_connection(c);
-            return;
-        }
-    }
-
-    if (c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
-        ngx_http_v3_handle_client_uni_stream(c);
-        return;
-    }
-
-    hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
-    if (hc == NULL) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    ngx_memcpy(hc, h3c, sizeof(ngx_http_connection_t));
-    c->data = hc;
-
-    ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
-    if (ctx == NULL) {
-        ngx_http_close_connection(c);
-        return;
-    }
-
-    ctx->connection = c;
-    ctx->request = NULL;
-    ctx->current_request = NULL;
-
-    c->log->handler = ngx_http_log_error;
-    c->log->data = ctx;
-    c->log->action = "waiting for request";
-
-    c->log_error = NGX_ERROR_INFO;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 new stream id:0x%uXL", c->qs->id);
-
-    rev = c->read;
-    rev->handler = ngx_http_wait_request_handler;
-    c->write->handler = ngx_http_empty_handler;
-
-    rev->handler(rev);
-}
-
-#endif
 
 
 static void
@@ -725,7 +660,7 @@ ngx_http_alloc_request(ngx_connection_t *c)
     r->http_version = NGX_HTTP_VERSION_10;
 
 #if (NGX_HTTP_V3)
-    if (hc->quic) {
+    if (hc->addr_conf->http3) {
         r->http_version = NGX_HTTP_VERSION_30;
     }
 #endif

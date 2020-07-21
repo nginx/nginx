@@ -93,6 +93,8 @@ struct ngx_quic_connection_s {
     ngx_quic_secrets_t                next_key;
     ngx_quic_frames_stream_t          crypto[NGX_QUIC_ENCRYPTION_LAST];
 
+    ngx_quic_conf_t                  *conf;
+
     ngx_ssl_t                        *ssl;
 
     ngx_event_t                       push;
@@ -160,7 +162,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_tp_t *tp, ngx_quic_header_t *pkt,
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt,
     ngx_connection_handler_pt handler);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
 static ngx_int_t ngx_quic_retry(ngx_connection_t *c);
@@ -585,7 +587,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
 
 void
-ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
+ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf,
     ngx_connection_handler_pt handler)
 {
     ngx_buf_t          *b;
@@ -604,7 +606,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
     pkt.data = b->start;
     pkt.len = b->last - b->start;
 
-    if (ngx_quic_new_connection(c, ssl, tp, &pkt, handler) != NGX_OK) {
+    if (ngx_quic_new_connection(c, ssl, conf, &pkt, handler) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
@@ -619,8 +621,9 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
 
 static ngx_int_t
-ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
-    ngx_quic_header_t *pkt, ngx_connection_handler_pt handler)
+ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt,
+    ngx_connection_handler_pt handler)
 {
     ngx_int_t               rc;
     ngx_uint_t              i;
@@ -703,7 +706,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
 
     c->quic = qc;
     qc->ssl = ssl;
-    qc->tp = *tp;
+    qc->conf = conf;
+    qc->tp = conf->tp;
     qc->streams.handler = handler;
 
     ctp = &qc->ctp;
@@ -767,7 +771,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
         /* NGX_OK */
         qc->validated = 1;
 
-    } else if (tp->retry) {
+    } else if (conf->retry) {
         return ngx_quic_retry(c);
     }
 
@@ -949,7 +953,7 @@ ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token)
         return NGX_ERROR;
     }
 
-    key = c->quic->tp.token_key;
+    key = c->quic->conf->token_key;
     iv = token->data;
 
     if (RAND_bytes(iv, iv_len) <= 0
@@ -1023,7 +1027,7 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     /* NEW_TOKEN in a previous connection */
 
     cipher = EVP_aes_256_cbc();
-    key = c->quic->tp.token_key;
+    key = c->quic->conf->token_key;
     iv = pkt->token.data;
     iv_len = EVP_CIPHER_iv_length(cipher);
 
@@ -2237,7 +2241,7 @@ ngx_quic_send_new_token(ngx_connection_t *c)
     ngx_str_t          token;
     ngx_quic_frame_t  *frame;
 
-    if (!c->quic->tp.retry) {
+    if (!c->quic->conf->retry) {
         return NGX_OK;
     }
 

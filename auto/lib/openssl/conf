@@ -166,6 +166,7 @@ END
         exit 1
     fi
 
+    have=NGX_QUIC . auto/have
 fi
 
 

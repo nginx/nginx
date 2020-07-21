@@ -58,6 +58,7 @@ HTTP_CACHE=YES
 HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=NO
+HTTP_QUIC=NO
 HTTP_V2=NO
 HTTP_V3=NO
 HTTP_SSI=YES
@@ -225,6 +226,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --http-scgi-temp-path=*)         NGX_HTTP_SCGI_TEMP_PATH="$value" ;;
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
+        --with-http_quic_module)         HTTP_QUIC=YES              ;;
         --with-http_v2_module)           HTTP_V2=YES                ;;
         --with-http_v3_module)           HTTP_V3=YES                ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
@@ -441,6 +443,7 @@ cat << END
   --with-file-aio                    enable file AIO support
 
   --with-http_ssl_module             enable ngx_http_ssl_module
+  --with-http_quic_module            enable ngx_http_quic_module
   --with-http_v2_module              enable ngx_http_v2_module
   --with-http_v3_module              enable ngx_http_v3_module
   --with-http_realip_module          enable ngx_http_realip_module

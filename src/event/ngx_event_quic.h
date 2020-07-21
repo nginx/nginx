@@ -78,13 +78,17 @@ typedef struct {
     ngx_str_t                  initial_scid;
     ngx_str_t                  retry_scid;
 
-    ngx_flag_t                 retry;
-    u_char                     token_key[32]; /* AES 256 */
-
     /* TODO */
     u_char                     stateless_reset_token[16];
     void                      *preferred_address;
 } ngx_quic_tp_t;
+
+
+typedef struct {
+    ngx_quic_tp_t              tp;
+    ngx_flag_t                 retry;
+    u_char                     token_key[32]; /* AES 256 */
+} ngx_quic_conf_t;
 
 
 typedef struct {
@@ -107,7 +111,7 @@ struct ngx_quic_stream_s {
 };
 
 
-void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_tp_t *tp,
+void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf,
     ngx_connection_handler_pt handler);
 ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,

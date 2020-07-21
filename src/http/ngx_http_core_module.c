@@ -4079,8 +4079,22 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strcmp(value[n].data, "quic") == 0) {
+#if (NGX_HTTP_QUIC)
+            lsopt.quic = 1;
+            lsopt.type = SOCK_DGRAM;
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"quic\" parameter requires "
+                               "ngx_http_quic_module");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         if (ngx_strcmp(value[n].data, "http3") == 0) {
 #if (NGX_HTTP_V3)
+            lsopt.quic = 1;
             lsopt.http3 = 1;
             lsopt.type = SOCK_DGRAM;
             continue;
@@ -4200,6 +4214,22 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            "invalid parameter \"%V\"", &value[n]);
         return NGX_CONF_ERROR;
     }
+
+#if (NGX_HTTP_SSL)
+
+#if (NGX_HTTP_V3)
+    if (lsopt.ssl && lsopt.http3) {
+        return "\"ssl\" parameter is incompatible with \"http3\"";
+    }
+#endif
+
+#if (NGX_HTTP_QUIC)
+    if (lsopt.ssl && lsopt.quic) {
+        return "\"ssl\" parameter is incompatible with \"quic\"";
+    }
+#endif
+
+#endif
 
     for (n = 0; n < u.naddrs; n++) {
         lsopt.sockaddr = u.addrs[n].sockaddr;

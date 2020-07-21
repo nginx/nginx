@@ -27,22 +27,55 @@ static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static void ngx_http_v3_dummy_write_handler(ngx_event_t *wev);
 static ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);
+static ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
 
 
-void
-ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
+ngx_int_t
+ngx_http_v3_init_connection(ngx_connection_t *c)
 {
+    ngx_http_connection_t     *hc;
     ngx_http_v3_uni_stream_t  *us;
+    ngx_http_v3_connection_t  *h3c;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 new uni stream id:0x%uxL", c->qs->id);
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init connection");
+
+    hc = c->data;
+
+    if (c->qs == NULL) {
+        h3c = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
+        if (h3c == NULL) {
+            return NGX_ERROR;
+        }
+
+        h3c->hc = *hc;
+
+        ngx_queue_init(&h3c->blocked);
+
+        c->data = h3c;
+        return NGX_OK;
+    }
+
+    h3c = c->qs->parent->data;
+
+    if (!h3c->settings_sent) {
+        h3c->settings_sent = 1;
+
+        if (ngx_http_v3_send_settings(c) != NGX_OK) {
+            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                            "could not send settings");
+            return NGX_ERROR;
+        }
+    }
+
+    if ((c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0) {
+        return NGX_OK;
+    }
 
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
         ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
                                         NULL);
-        ngx_http_v3_close_uni_stream(c);
-        return;
+        return NGX_ERROR;
     }
 
     us->index = -1;
@@ -53,6 +86,8 @@ ngx_http_v3_handle_client_uni_stream(ngx_connection_t *c)
     c->write->handler = ngx_http_v3_dummy_write_handler;
 
     ngx_http_v3_read_uni_stream_type(c->read);
+
+    return NGX_DONE;
 }
 
 
@@ -366,7 +401,7 @@ failed:
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_v3_send_settings(ngx_connection_t *c)
 {
     u_char                    *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
