@@ -572,6 +572,9 @@ ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
 #if (NGX_STREAM_SSL)
         addrs[i].conf.ssl = addr[i].opt.ssl;
 #endif
+#if (NGX_STREAM_QUIC)
+        addrs[i].conf.quic = addr[i].opt.quic;
+#endif
         addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
         addrs[i].conf.addr_text = addr[i].opt.addr_text;
     }
@@ -606,6 +609,9 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
         addrs6[i].conf.ctx = addr[i].opt.ctx;
 #if (NGX_STREAM_SSL)
         addrs6[i].conf.ssl = addr[i].opt.ssl;
+#endif
+#if (NGX_STREAM_QUIC)
+        addrs6[i].conf.quic = addr[i].opt.quic;
 #endif
         addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
         addrs6[i].conf.addr_text = addr[i].opt.addr_text;

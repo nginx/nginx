@@ -87,6 +87,7 @@ typedef struct {
 typedef struct {
     ngx_quic_tp_t              tp;
     ngx_flag_t                 retry;
+    ngx_flag_t                 require_alpn;
     u_char                     token_key[32]; /* AES 256 */
 } ngx_quic_conf_t;
 

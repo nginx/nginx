@@ -118,6 +118,7 @@ MAIL_SMTP=YES
 
 STREAM=NO
 STREAM_SSL=NO
+STREAM_QUIC=NO
 STREAM_REALIP=NO
 STREAM_LIMIT_CONN=YES
 STREAM_ACCESS=YES
@@ -315,6 +316,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-stream)                   STREAM=YES                 ;;
         --with-stream=dynamic)           STREAM=DYNAMIC             ;;
         --with-stream_ssl_module)        STREAM_SSL=YES             ;;
+        --with-stream_quic_module)       STREAM_QUIC=YES            ;;
         --with-stream_realip_module)     STREAM_REALIP=YES          ;;
         --with-stream_geoip_module)      STREAM_GEOIP=YES           ;;
         --with-stream_geoip_module=dynamic)
@@ -534,6 +536,7 @@ cat << END
   --with-stream                      enable TCP/UDP proxy module
   --with-stream=dynamic              enable dynamic TCP/UDP proxy module
   --with-stream_ssl_module           enable ngx_stream_ssl_module
+  --with-stream_quic_module          enable ngx_stream_quic_module
   --with-stream_realip_module        enable ngx_stream_realip_module
   --with-stream_geoip_module         enable ngx_stream_geoip_module
   --with-stream_geoip_module=dynamic enable dynamic ngx_stream_geoip_module

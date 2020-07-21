@@ -115,6 +115,27 @@ ngx_stream_init_connection(ngx_connection_t *c)
         }
     }
 
+#if (NGX_STREAM_QUIC)
+
+    if (addr_conf->quic) {
+        ngx_quic_conf_t        *qcf;
+        ngx_stream_ssl_conf_t  *scf;
+
+        if (c->qs == NULL) {
+            c->log->connection = c->number;
+
+            qcf = ngx_stream_get_module_srv_conf(addr_conf->ctx,
+                                                 ngx_stream_quic_module);
+            scf = ngx_stream_get_module_srv_conf(addr_conf->ctx,
+                                                 ngx_stream_ssl_module);
+
+            ngx_quic_run(c, &scf->ssl, qcf, ngx_stream_init_connection);
+            return;
+        }
+    }
+
+#endif
+
     s = ngx_pcalloc(c->pool, sizeof(ngx_stream_session_t));
     if (s == NULL) {
         ngx_stream_close_connection(c);

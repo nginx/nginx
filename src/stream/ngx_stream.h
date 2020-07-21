@@ -16,6 +16,10 @@
 #include <ngx_stream_ssl_module.h>
 #endif
 
+#if (NGX_STREAM_QUIC)
+#include <ngx_stream_quic_module.h>
+#endif
+
 
 typedef struct ngx_stream_session_s  ngx_stream_session_t;
 
@@ -51,6 +55,7 @@ typedef struct {
     unsigned                       bind:1;
     unsigned                       wildcard:1;
     unsigned                       ssl:1;
+    unsigned                       quic:1;
 #if (NGX_HAVE_INET6)
     unsigned                       ipv6only:1;
 #endif
@@ -73,6 +78,7 @@ typedef struct {
     ngx_stream_conf_ctx_t         *ctx;
     ngx_str_t                      addr_text;
     unsigned                       ssl:1;
+    unsigned                       quic:1;
     unsigned                       proxy_protocol:1;
 } ngx_stream_addr_conf_t;
 
