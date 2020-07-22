@@ -7,6 +7,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_event_quic_transport.h>
+#include <ngx_event_quic_protection.h>
 
 
 #define NGX_QUIC_IV_LEN               12
