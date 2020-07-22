@@ -89,13 +89,24 @@ Experimental QUIC support for nginx
                                       -L../boringssl/build/crypto"
     $ make
 
+    When configuring nginx, you can enable QUIC and HTTP/3 using the
+    following new configuration options:
+
+        --with-http_v3_module     - enable QUIC and HTTP/3
+        --with-http_quic_module   - enable QUIC for older HTTP versions
+        --with-stream_quic_module - enable QUIC in Stream
+
 3. Configuration
 
-    The "listen" directive got a new option: "http3"
-    which enables HTTP/3 over QUIC on the specified port.
+    The HTTP "listen" directive got two new options: "http3" and "quic".
+    The "http3" option enables HTTP/3 over QUIC on the specified port.
+    The "quic" option enables QUIC for older HTTP versions on this port.
 
-    Along with "http3", you also have to specify "reuseport" option [6]
-    to make it work properly with multiple workers.
+    The Stream "listen" directive got a new option "quic" which enables
+    QUIC as client transport protocol instead of TCP or plain UDP.
+
+    Along with "http3" or "quic", you also have to specify "reuseport"
+    option [6] to make it work properly with multiple workers.
 
     A number of directives were added that specify transport parameter values:
 
