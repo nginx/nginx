@@ -21,10 +21,19 @@ typedef struct {
 } ngx_http_v3_uni_stream_t;
 
 
+typedef struct {
+    ngx_queue_t                     queue;
+    uint64_t                        id;
+    ngx_connection_t               *connection;
+    ngx_uint_t                     *npushing;
+} ngx_http_v3_push_t;
+
+
 static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
 static void ngx_http_v3_read_uni_stream_type(ngx_event_t *rev);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static void ngx_http_v3_dummy_write_handler(ngx_event_t *wev);
+static void ngx_http_v3_push_cleanup(void *data);
 static ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);
 static ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
@@ -50,6 +59,7 @@ ngx_http_v3_init_connection(ngx_connection_t *c)
         h3c->hc = *hc;
 
         ngx_queue_init(&h3c->blocked);
+        ngx_queue_init(&h3c->pushing);
 
         c->data = h3c;
         return NGX_OK;
@@ -320,6 +330,70 @@ ngx_http_v3_dummy_write_handler(ngx_event_t *wev)
 
 
 /* XXX async & buffered stream writes */
+
+ngx_connection_t *
+ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
+{
+    u_char                    *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 2];
+    size_t                     n;
+    ngx_connection_t          *sc;
+    ngx_pool_cleanup_t        *cln;
+    ngx_http_v3_push_t        *push;
+    ngx_http_v3_connection_t  *h3c;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 create push stream id:%uL", push_id);
+
+    sc = ngx_quic_open_stream(c, 0);
+    if (sc == NULL) {
+        return NULL;
+    }
+
+    p = buf;
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, NGX_HTTP_V3_STREAM_PUSH);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, push_id);
+    n = p - buf;
+
+    if (sc->send(sc, buf, n) != (ssize_t) n) {
+        goto failed;
+    }
+
+    cln = ngx_pool_cleanup_add(sc->pool, sizeof(ngx_http_v3_push_t));
+    if (cln == NULL) {
+        goto failed;
+    }
+
+    h3c = c->qs->parent->data;
+    h3c->npushing++;
+
+    cln->handler = ngx_http_v3_push_cleanup;
+
+    push = cln->data;
+    push->id = push_id;
+    push->connection = sc;
+    push->npushing = &h3c->npushing;
+
+    ngx_queue_insert_tail(&h3c->pushing, &push->queue);
+
+    return sc;
+
+failed:
+
+    ngx_http_v3_close_uni_stream(sc);
+
+    return NULL;
+}
+
+
+static void
+ngx_http_v3_push_cleanup(void *data)
+{
+    ngx_http_v3_push_t  *push = data;
+
+    ngx_queue_remove(&push->queue);
+    (*push->npushing)--;
+}
+
 
 static ngx_connection_t *
 ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
@@ -678,6 +752,67 @@ ngx_http_v3_client_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
     if (dc->send(dc, buf, n) != (ssize_t) n) {
         ngx_http_v3_close_uni_stream(dc);
         return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
+{
+    ngx_http_v3_connection_t  *h3c;
+
+    h3c = c->qs->parent->data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 MAX_PUSH_ID:%uL", max_push_id);
+
+    if (max_push_id < h3c->max_push_id) {
+        return NGX_HTTP_V3_ERR_ID_ERROR;
+    }
+
+    h3c->max_push_id = max_push_id;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
+{
+    ngx_queue_t               *q;
+    ngx_http_request_t        *r;
+    ngx_http_v3_push_t        *push;
+    ngx_http_v3_connection_t  *h3c;
+
+    h3c = c->qs->parent->data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 CANCEL_PUSH:%uL", push_id);
+
+    if (push_id >= h3c->next_push_id) {
+        return NGX_HTTP_V3_ERR_ID_ERROR;
+    }
+
+    for (q = ngx_queue_head(&h3c->pushing);
+         q != ngx_queue_sentinel(&h3c->pushing);
+         q = ngx_queue_next(&h3c->pushing))
+    {
+        push = (ngx_http_v3_push_t *) q;
+
+        if (push->id != push_id) {
+            continue;
+        }
+
+        r = push->connection->data;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http3 cancel push");
+
+        ngx_http_finalize_request(r, NGX_HTTP_CLOSE);
+
+        break;
     }
 
     return NGX_OK;

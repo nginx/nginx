@@ -50,6 +50,7 @@
 #define NGX_HTTP_V3_DEFAULT_MAX_FIELD_SIZE         4096
 #define NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY     16384
 #define NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS    16
+#define NGX_HTTP_V3_DEFAULT_MAX_CONCURRENT_PUSHES  10
 
 /* HTTP/3 errors */
 #define NGX_HTTP_V3_ERR_NO_ERROR                   0x100
@@ -89,7 +90,15 @@ typedef struct {
     size_t                        max_field_size;
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
+    ngx_uint_t                    max_concurrent_pushes;
 } ngx_http_v3_srv_conf_t;
+
+
+typedef struct {
+    ngx_flag_t                    push_preload;
+    ngx_flag_t                    push;
+    ngx_array_t                  *pushes;
+} ngx_http_v3_loc_conf_t;
 
 
 typedef struct {
@@ -110,8 +119,15 @@ typedef struct {
 typedef struct {
     ngx_http_connection_t         hc;
     ngx_http_v3_dynamic_table_t   table;
+
     ngx_queue_t                   blocked;
     ngx_uint_t                    nblocked;
+
+    ngx_queue_t                   pushing;
+    ngx_uint_t                    npushing;
+    uint64_t                      next_push_id;
+    uint64_t                      max_push_id;
+
     ngx_uint_t                    settings_sent;
                                                /* unsigned  settings_sent:1; */
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
@@ -144,6 +160,8 @@ uintptr_t ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index);
 uintptr_t ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index,
     u_char *data, size_t len);
 
+ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
+    uint64_t push_id);
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
 ngx_int_t ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
@@ -163,6 +181,9 @@ ngx_int_t ngx_http_v3_check_insert_count(ngx_connection_t *c,
     ngx_uint_t insert_count);
 ngx_int_t ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id,
     uint64_t value);
+ngx_int_t ngx_http_v3_set_max_push_id(ngx_connection_t *c,
+    uint64_t max_push_id);
+ngx_int_t ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id);
 
 ngx_int_t ngx_http_v3_client_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);

@@ -933,6 +933,7 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
         sw_first_type,
         sw_type,
         sw_length,
+        sw_cancel_push,
         sw_settings,
         sw_max_push_id,
         sw_skip
@@ -988,6 +989,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
 
         switch (st->type) {
 
+        case NGX_HTTP_V3_FRAME_CANCEL_PUSH:
+            st->state = sw_cancel_push;
+            break;
+
         case NGX_HTTP_V3_FRAME_SETTINGS:
             st->state = sw_settings;
             break;
@@ -1002,6 +1007,26 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
             st->state = sw_skip;
         }
 
+        break;
+
+    case sw_cancel_push:
+
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+
+        if (--st->length == 0 && rc == NGX_AGAIN) {
+            return NGX_HTTP_V3_ERR_FRAME_ERROR;
+        }
+
+        if (rc != NGX_DONE) {
+            return rc;
+        }
+
+        rc = ngx_http_v3_cancel_push(c, st->vlint.value);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        st->state = sw_type;
         break;
 
     case sw_settings:
@@ -1025,12 +1050,19 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
     case sw_max_push_id:
 
         rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+
+        if (--st->length == 0 && rc == NGX_AGAIN) {
+            return NGX_HTTP_V3_ERR_FRAME_ERROR;
+        }
+
         if (rc != NGX_DONE) {
             return rc;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse MAX_PUSH_ID:%uL", st->vlint.value);
+        rc = ngx_http_v3_set_max_push_id(c, st->vlint.value);
+        if (rc != NGX_OK) {
+            return rc;
+        }
 
         st->state = sw_type;
         break;
