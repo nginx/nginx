@@ -10,6 +10,14 @@
 #include <ngx_http.h>
 
 
+static ngx_int_t ngx_http_variable_http3(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_v3_add_variables(ngx_conf_t *cf);
+static void *ngx_http_v3_create_srv_conf(ngx_conf_t *cf);
+static char *ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent,
+    void *child);
+
+
 static ngx_command_t  ngx_http_v3_commands[] = {
 
     { ngx_string("http3_max_field_size"),
@@ -35,14 +43,6 @@ static ngx_command_t  ngx_http_v3_commands[] = {
 
       ngx_null_command
 };
-
-
-static ngx_int_t ngx_http_variable_http3(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_v3_add_variables(ngx_conf_t *cf);
-static void *ngx_http_v3_create_srv_conf(ngx_conf_t *cf);
-static char *ngx_http_v3_merge_srv_conf(ngx_conf_t *cf,
-    void *parent, void *child);
 
 
 static ngx_http_module_t  ngx_http_v3_module_ctx = {
@@ -78,8 +78,7 @@ ngx_module_t  ngx_http_v3_module = {
 
 static ngx_http_variable_t  ngx_http_v3_vars[] = {
 
-    { ngx_string("http3"), NULL, ngx_http_variable_http3,
-      0, 0, 0 },
+    { ngx_string("http3"), NULL, ngx_http_variable_http3, 0, 0, 0 },
 
       ngx_http_null_variable
 };
@@ -121,7 +120,6 @@ ngx_http_v3_add_variables(ngx_conf_t *cf)
 
     return NGX_OK;
 }
-
 
 
 static void *
