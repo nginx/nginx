@@ -14,6 +14,7 @@
 #define NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO       4
 #define NGX_HTTP_V3_HEADER_DATE                      6
 #define NGX_HTTP_V3_HEADER_LAST_MODIFIED             10
+#define NGX_HTTP_V3_HEADER_LOCATION                  12
 #define NGX_HTTP_V3_HEADER_STATUS_200                25
 #define NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN   53
 #define NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING      59
@@ -426,12 +427,15 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     u_char                    *p;
     size_t                     len, n;
     ngx_buf_t                 *b;
-    ngx_uint_t                 i;
+    ngx_str_t                  host;
+    ngx_uint_t                 i, port;
     ngx_chain_t               *hl, *cl, *bl;
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
+    u_char                     addr[NGX_SOCKADDR_STRLEN];
 
     c = r->connection;
 
@@ -506,7 +510,52 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
     }
 
-    /* XXX location */
+    if (r->headers_out.location
+        && r->headers_out.location->value.len
+        && r->headers_out.location->value.data[0] == '/'
+        && clcf->absolute_redirect)
+    {
+        r->headers_out.location->hash = 0;
+
+        if (clcf->server_name_in_redirect) {
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+            host = cscf->server_name;
+
+        } else if (r->headers_in.server.len) {
+            host = r->headers_in.server;
+
+        } else {
+            host.len = NGX_SOCKADDR_STRLEN;
+            host.data = addr;
+
+            if (ngx_connection_local_sockaddr(c, &host, 0) != NGX_OK) {
+                return NULL;
+            }
+        }
+
+        port = ngx_inet_get_port(c->local_sockaddr);
+
+        n = sizeof("https://") - 1 + host.len
+            + r->headers_out.location->value.len;
+
+        if (clcf->port_in_redirect) {
+            port = (port == 443) ? 0 : port;
+
+        } else {
+            port = 0;
+        }
+
+        if (port) {
+            n += sizeof(":65535") - 1;
+        }
+
+        len += ngx_http_v3_encode_header_lri(NULL, 0,
+                                         NGX_HTTP_V3_HEADER_LOCATION, NULL, n);
+
+    } else {
+        ngx_str_null(&host);
+        port = 0;
+    }
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
@@ -648,6 +697,36 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
 
         b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
+    }
+
+    if (host.data) {
+        n = sizeof("https://") - 1 + host.len
+            + r->headers_out.location->value.len;
+
+        if (port) {
+            n += ngx_sprintf(b->last, ":%ui", port) - b->last;
+        }
+
+        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+                                                   NGX_HTTP_V3_HEADER_LOCATION,
+                                                   NULL, n);
+
+        p = b->last;
+        b->last = ngx_cpymem(b->last, "https://", sizeof("https://") - 1);
+        b->last = ngx_cpymem(b->last, host.data, host.len);
+
+        if (port) {
+            b->last = ngx_sprintf(b->last, ":%ui", port);
+        }
+
+        b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,
+                             r->headers_out.location->value.len);
+
+        /* update r->headers_out.location->value for possible logging */
+
+        r->headers_out.location->value.len = b->last - p;
+        r->headers_out.location->value.data = p;
+        ngx_str_set(&r->headers_out.location->key, "Location");
     }
 
 #if (NGX_HTTP_GZIP)
