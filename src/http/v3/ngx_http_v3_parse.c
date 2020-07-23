@@ -426,7 +426,7 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
     u_char ch)
 {
     ngx_uint_t               n;
-    ngx_http_v3_srv_conf_t  *v3cf;
+    ngx_http_v3_srv_conf_t  *h3scf;
     enum {
         sw_start = 0,
         sw_value
@@ -442,9 +442,9 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
 
         n = st->length;
 
-        v3cf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+        h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
-        if (n > v3cf->max_field_size) {
+        if (n > h3scf->max_field_size) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client exceeded http3_max_field_size limit");
             return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;

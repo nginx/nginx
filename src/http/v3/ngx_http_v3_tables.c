@@ -243,7 +243,7 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
     ngx_connection_t              *pc;
     ngx_pool_cleanup_t            *cln;
     ngx_http_v3_header_t         **elts;
-    ngx_http_v3_srv_conf_t        *v3cf;
+    ngx_http_v3_srv_conf_t        *h3scf;
     ngx_http_v3_connection_t      *h3c;
     ngx_http_v3_dynamic_table_t   *dt;
 
@@ -252,9 +252,9 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 
     pc = c->qs->parent;
     h3c = pc->data;
-    v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+    h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
 
-    if (capacity > v3cf->max_table_capacity) {
+    if (capacity > h3scf->max_table_capacity) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client exceeded http3_max_table_capacity limit");
         return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
@@ -496,7 +496,7 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
 {
     ngx_uint_t                    max_entries, full_range, max_value,
                                   max_wrapped, req_insert_count;
-    ngx_http_v3_srv_conf_t       *v3cf;
+    ngx_http_v3_srv_conf_t       *h3scf;
     ngx_http_v3_connection_t     *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
@@ -509,9 +509,9 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
     h3c = c->qs->parent->data;
     dt = &h3c->table;
 
-    v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+    h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
 
-    max_entries = v3cf->max_table_capacity / 32;
+    max_entries = h3scf->max_table_capacity / 32;
     full_range = 2 * max_entries;
 
     if (*insert_count > full_range) {
@@ -551,7 +551,7 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
     ngx_connection_t             *pc;
     ngx_pool_cleanup_t           *cln;
     ngx_http_v3_block_t          *block;
-    ngx_http_v3_srv_conf_t       *v3cf;
+    ngx_http_v3_srv_conf_t       *h3scf;
     ngx_http_v3_connection_t     *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
@@ -595,10 +595,10 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
     }
 
     if (block->queue.prev == NULL) {
-        v3cf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx,
-                                            ngx_http_v3_module);
+        h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx,
+                                             ngx_http_v3_module);
 
-        if (h3c->nblocked == v3cf->max_blocked_streams) {
+        if (h3c->nblocked == h3scf->max_blocked_streams) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client exceeded http3_max_blocked_streams limit");
             return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;

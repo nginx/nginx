@@ -127,18 +127,18 @@ ngx_http_v3_add_variables(ngx_conf_t *cf)
 static void *
 ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
 {
-    ngx_http_v3_srv_conf_t  *v3cf;
+    ngx_http_v3_srv_conf_t  *h3scf;
 
-    v3cf = ngx_pcalloc(cf->pool, sizeof(ngx_http_v3_srv_conf_t));
-    if (v3cf == NULL) {
+    h3scf = ngx_pcalloc(cf->pool, sizeof(ngx_http_v3_srv_conf_t));
+    if (h3scf == NULL) {
         return NULL;
     }
 
-    v3cf->max_field_size = NGX_CONF_UNSET_SIZE;
-    v3cf->max_table_capacity = NGX_CONF_UNSET_SIZE;
-    v3cf->max_blocked_streams = NGX_CONF_UNSET_UINT;
+    h3scf->max_field_size = NGX_CONF_UNSET_SIZE;
+    h3scf->max_table_capacity = NGX_CONF_UNSET_SIZE;
+    h3scf->max_blocked_streams = NGX_CONF_UNSET_UINT;
 
-    return v3cf;
+    return h3scf;
 }
 
 
