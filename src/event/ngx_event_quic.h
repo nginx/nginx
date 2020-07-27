@@ -113,7 +113,7 @@ struct ngx_quic_stream_s {
 
 
 void ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf);
-ngx_connection_t *ngx_quic_create_uni_stream(ngx_connection_t *c);
+ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
 

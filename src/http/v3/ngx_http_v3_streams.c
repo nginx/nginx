@@ -55,16 +55,8 @@ ngx_http_v3_init_connection(ngx_connection_t *c)
         return NGX_OK;
     }
 
-    h3c = c->qs->parent->data;
-
-    if (!h3c->settings_sent) {
-        h3c->settings_sent = 1;
-
-        if (ngx_http_v3_send_settings(c) != NGX_OK) {
-            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                            "could not send settings");
-            return NGX_ERROR;
-        }
+    if (ngx_http_v3_send_settings(c) == NGX_ERROR) {
+        return NGX_ERROR;
     }
 
     if ((c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0) {
@@ -361,7 +353,7 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
         }
     }
 
-    sc = ngx_quic_create_uni_stream(c);
+    sc = ngx_quic_open_stream(c, 0);
     if (sc == NULL) {
         return NULL;
     }
@@ -410,14 +402,19 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
     ngx_http_v3_srv_conf_t    *h3scf;
     ngx_http_v3_connection_t  *h3c;
 
+    h3c = c->qs->parent->data;
+
+    if (h3c->settings_sent) {
+        return NGX_OK;
+    }
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
 
     cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
     if (cc == NULL) {
-        return NGX_ERROR;
+        return NGX_DECLINED;
     }
 
-    h3c = c->qs->parent->data;
     h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
 
     n = ngx_http_v3_encode_varlen_int(NULL,
@@ -441,11 +438,16 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
         goto failed;
     }
 
+    h3c->settings_sent = 1;
+
     return NGX_OK;
 
 failed:
 
     ngx_http_v3_close_uni_stream(cc);
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                    "could not send settings");
 
     return NGX_ERROR;
 }
