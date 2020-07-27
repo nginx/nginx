@@ -125,20 +125,20 @@ typedef struct {
 #define NGX_CHAIN_ERROR     (ngx_chain_t *) NGX_ERROR
 
 
-#define ngx_buf_in_memory(b)        (b->temporary || b->memory || b->mmap)
-#define ngx_buf_in_memory_only(b)   (ngx_buf_in_memory(b) && !b->in_file)
+#define ngx_buf_in_memory(b)       ((b)->temporary || (b)->memory || (b)->mmap)
+#define ngx_buf_in_memory_only(b)  (ngx_buf_in_memory(b) && !(b)->in_file)
 
 #define ngx_buf_special(b)                                                   \
-    ((b->flush || b->last_buf || b->sync)                                    \
-     && !ngx_buf_in_memory(b) && !b->in_file)
+    (((b)->flush || (b)->last_buf || (b)->sync)                              \
+     && !ngx_buf_in_memory(b) && !(b)->in_file)
 
 #define ngx_buf_sync_only(b)                                                 \
-    (b->sync                                                                 \
-     && !ngx_buf_in_memory(b) && !b->in_file && !b->flush && !b->last_buf)
+    ((b)->sync && !ngx_buf_in_memory(b)                                      \
+     && !(b)->in_file && !(b)->flush && !(b)->last_buf)
 
 #define ngx_buf_size(b)                                                      \
-    (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                      \
-                            (b->file_last - b->file_pos))
+    (ngx_buf_in_memory(b) ? (off_t) ((b)->last - (b)->pos):                  \
+                            ((b)->file_last - (b)->file_pos))
 
 ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size);
 ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
@@ -149,8 +149,8 @@ ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 
 ngx_chain_t *ngx_alloc_chain_link(ngx_pool_t *pool);
 #define ngx_free_chain(pool, cl)                                             \
-    cl->next = pool->chain;                                                  \
-    pool->chain = cl
+    (cl)->next = (pool)->chain;                                              \
+    (pool)->chain = (cl)
 
 
 
