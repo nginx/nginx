@@ -48,6 +48,11 @@ typedef struct {
     uint64_t                          server_max_streams_bidi;
     uint64_t                          server_streams_uni;
     uint64_t                          server_streams_bidi;
+
+    uint64_t                          client_max_streams_uni;
+    uint64_t                          client_max_streams_bidi;
+    uint64_t                          client_streams_uni;
+    uint64_t                          client_streams_bidi;
 } ngx_quic_streams_t;
 
 
@@ -121,9 +126,6 @@ struct ngx_quic_connection_s {
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
     size_t                            received;
-
-    uint64_t                          cur_streams;
-    uint64_t                          max_streams;
 
     ngx_uint_t                        error;
     enum ssl_encryption_level_t       error_level;
@@ -233,7 +235,6 @@ static ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
 static ngx_int_t ngx_quic_stream_input(ngx_connection_t *c,
     ngx_quic_frame_t *frame, void *data);
 
-static ngx_int_t ngx_quic_handle_max_streams(ngx_connection_t *c);
 static ngx_int_t ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     ngx_quic_max_data_frame_t *f);
 static ngx_int_t ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
@@ -722,6 +723,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
     qc->streams.recv_max_data = qc->tp.initial_max_data;
 
+    qc->streams.client_max_streams_uni = qc->tp.initial_max_streams_uni;
+    qc->streams.client_max_streams_bidi = qc->tp.initial_max_streams_bidi;
+
     qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,
                                     ngx_max(2 * qc->tp.max_udp_payload_size,
                                             14720));
@@ -1181,8 +1185,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 #endif
-
-    qc->max_streams = qc->tp.initial_max_streams_bidi;
 
     return NGX_OK;
 }
@@ -2885,6 +2887,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
     size_t                     n;
+    uint64_t                   id;
     ngx_buf_t                 *b;
     ngx_event_t               *rev;
     ngx_quic_stream_t         *sn;
@@ -2913,9 +2916,35 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             return NGX_ERROR;
         }
 
-        n = (f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-            ? qc->tp.initial_max_stream_data_uni
-            : qc->tp.initial_max_stream_data_bidi_remote;
+        if (f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            if ((f->stream_id >> 2) < qc->streams.client_streams_uni) {
+                return NGX_OK;
+            }
+
+            if ((f->stream_id >> 2) >= qc->streams.client_max_streams_uni) {
+                qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
+                return NGX_ERROR;
+            }
+
+            id = (qc->streams.client_streams_uni << 2)
+                 | NGX_QUIC_STREAM_UNIDIRECTIONAL;
+            qc->streams.client_streams_uni = (f->stream_id >> 2) + 1;
+            n = qc->tp.initial_max_stream_data_uni;
+
+        } else {
+            if ((f->stream_id >> 2) < qc->streams.client_streams_bidi) {
+                return NGX_OK;
+            }
+
+            if ((f->stream_id >> 2) >= qc->streams.client_max_streams_bidi) {
+                qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
+                return NGX_ERROR;
+            }
+
+            id = (qc->streams.client_streams_bidi << 2);
+            qc->streams.client_streams_bidi = (f->stream_id >> 2) + 1;
+            n = qc->tp.initial_max_stream_data_bidi_remote;
+        }
 
         if (n < NGX_QUIC_STREAM_BUFSIZE) {
             n = NGX_QUIC_STREAM_BUFSIZE;
@@ -2928,8 +2957,6 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
 
         /*
-         *   TODO: check IDs are increasing ? create all lower-numbered?
-         *
          *   2.1.  Stream Types and Identifiers
          *
          *   Within each type, streams are created with numerically increasing
@@ -2937,35 +2964,30 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
          *   streams of that type with lower-numbered stream IDs also being
          *   opened.
          */
-        sn = ngx_quic_create_stream(c, f->stream_id, n);
-        if (sn == NULL) {
-            return NGX_ERROR;
-        }
 
-        rev = sn->c->read;
+        for ( /* void */ ; id <= f->stream_id; id += 0x04) {
 
-        if (f->offset == 0) {
-
-            b = sn->b;
-            b->last = ngx_cpymem(b->last, f->data, f->length);
-
-            sn->fs.received += f->length;
-
-            rev->ready = 1;
-
-            if (f->fin) {
-                rev->pending_eof = 1;
+            sn = ngx_quic_create_stream(c, id, n);
+            if (sn == NULL) {
+                return NGX_ERROR;
             }
 
-        } else {
-            rev->ready = 0;
-        }
+            if (id == f->stream_id && f->offset == 0) {
+                b = sn->b;
+                b->last = ngx_cpymem(b->last, f->data, f->length);
 
-        if ((f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0) {
-            ngx_quic_handle_max_streams(c);
-        }
+                sn->fs.received += f->length;
 
-        sn->c->listening->handler(sn->c);
+                rev = sn->c->read;
+                rev->ready = 1;
+
+                if (f->fin) {
+                    rev->pending_eof = 1;
+                }
+            }
+
+            sn->c->listening->handler(sn->c);
+        }
 
         if (f->offset == 0) {
             return NGX_OK;
@@ -3033,43 +3055,6 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 
 
 static ngx_int_t
-ngx_quic_handle_max_streams(ngx_connection_t *c)
-{
-    ngx_quic_frame_t       *frame;
-    ngx_quic_connection_t  *qc;
-
-    qc = c->quic;
-    qc->cur_streams++;
-
-    if (qc->cur_streams + NGX_QUIC_STREAMS_INC / 2 < qc->max_streams) {
-        return NGX_OK;
-    }
-
-    frame = ngx_quic_alloc_frame(c, 0);
-    if (frame == NULL) {
-        return NGX_ERROR;
-    }
-
-    qc->max_streams = ngx_max(qc->max_streams + NGX_QUIC_STREAMS_INC,
-                              NGX_QUIC_STREAMS_LIMIT);
-
-    frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_MAX_STREAMS;
-    frame->u.max_streams.limit = qc->max_streams;
-    frame->u.max_streams.bidi = 1;
-
-    ngx_sprintf(frame->info, "MAX_STREAMS limit:%d bidi:%d level=%d",
-                (int) frame->u.max_streams.limit,
-                (int) frame->u.max_streams.bidi,
-                frame->level);
-
-    ngx_quic_queue_frame(qc, frame);
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     ngx_quic_max_data_frame_t *f)
 {
@@ -3112,27 +3097,6 @@ static ngx_int_t
 ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_streams_blocked_frame_t *f)
 {
-    ngx_quic_frame_t  *frame;
-
-    frame = ngx_quic_alloc_frame(c, 0);
-    if (frame == NULL) {
-        return NGX_ERROR;
-    }
-
-    frame->level = pkt->level;
-    frame->type = NGX_QUIC_FT_MAX_STREAMS;
-    frame->u.max_streams.limit = ngx_max(f->limit * 2, NGX_QUIC_STREAMS_LIMIT);
-    frame->u.max_streams.bidi = f->bidi;
-
-    c->quic->max_streams = frame->u.max_streams.limit;
-
-    ngx_sprintf(frame->info, "MAX_STREAMS limit:%d bidi:%d level=%d",
-                (int) frame->u.max_streams.limit,
-                (int) frame->u.max_streams.bidi,
-                frame->level);
-
-    ngx_quic_queue_frame(c->quic, frame);
-
     return NGX_OK;
 }
 
@@ -3921,6 +3885,9 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     ngx_pool_cleanup_t     *cln;
     ngx_quic_connection_t  *qc;
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id 0x%uL create", id);
+
     qc = c->quic;
 
     pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
@@ -4257,9 +4224,35 @@ ngx_quic_stream_cleanup_handler(void *data)
         return;
     }
 
-    if ((qs->id & 0x03) == NGX_QUIC_STREAM_UNIDIRECTIONAL) {
-        /* do not send fin for client unidirectional streams */
-        return;
+    if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
+        frame = ngx_quic_alloc_frame(pc, 0);
+        if (frame == NULL) {
+            return;
+        }
+
+        frame->level = ssl_encryption_application;
+        frame->type = NGX_QUIC_FT_MAX_STREAMS;
+
+        if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            frame->u.max_streams.limit = ++qc->streams.client_max_streams_uni;
+            frame->u.max_streams.bidi = 0;
+
+        } else {
+            frame->u.max_streams.limit = ++qc->streams.client_max_streams_bidi;
+            frame->u.max_streams.bidi = 1;
+        }
+
+        ngx_sprintf(frame->info, "MAX_STREAMS limit:%uL bidi:%ui level=%d",
+                    frame->u.max_streams.limit,
+                    frame->u.max_streams.bidi,
+                    (int) frame->level);
+
+        ngx_quic_queue_frame(qc, frame);
+
+        if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            /* do not send fin for client unidirectional streams */
+            return;
+        }
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
