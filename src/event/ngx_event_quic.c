@@ -3141,9 +3141,9 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     frame->u.max_stream_data.id = f->id;
     frame->u.max_stream_data.limit = n;
 
-    ngx_sprintf(frame->info, "MAX_STREAM_DATA id:0x%xL limit:%d level=%d",
-                (int) frame->u.max_stream_data.id,
-                (int) frame->u.max_stream_data.limit,
+    ngx_sprintf(frame->info, "MAX_STREAM_DATA id:0x%xL limit:%uL level=%d",
+                frame->u.max_stream_data.id,
+                frame->u.max_stream_data.limit,
                 frame->level);
 
     ngx_quic_queue_frame(c->quic, frame);
@@ -4046,9 +4046,9 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
                                          + (b->end - b->last);
 
         ngx_sprintf(frame->info,
-                    "MAX_STREAM_DATA id:0x%xL limit:%d l=%d on recv",
-                    (int) frame->u.max_stream_data.id,
-                    (int) frame->u.max_stream_data.limit,
+                    "MAX_STREAM_DATA id:0x%xL limit:%uL l=%d on recv",
+                    frame->u.max_stream_data.id,
+                    frame->u.max_stream_data.limit,
                     frame->level);
 
         ngx_quic_queue_frame(pc->quic, frame);
@@ -4068,8 +4068,8 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         frame->type = NGX_QUIC_FT_MAX_DATA;
         frame->u.max_data.max_data = qc->streams.recv_max_data;
 
-        ngx_sprintf(frame->info, "MAX_DATA max_data:%d level=%d on recv",
-                    (int) frame->u.max_data.max_data, frame->level);
+        ngx_sprintf(frame->info, "MAX_DATA max_data:%uL level=%d on recv",
+                    frame->u.max_data.max_data, frame->level);
 
         ngx_quic_queue_frame(pc->quic, frame);
 
