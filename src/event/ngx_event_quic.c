@@ -3124,7 +3124,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
 
     if (sn == NULL) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic unknown stream id:%uL", f->id);
+                      "quic unknown stream id:0x%xL", f->id);
         return NGX_ERROR;
     }
 
@@ -3141,7 +3141,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     frame->u.max_stream_data.id = f->id;
     frame->u.max_stream_data.limit = n;
 
-    ngx_sprintf(frame->info, "MAX_STREAM_DATA id:%d limit:%d level=%d",
+    ngx_sprintf(frame->info, "MAX_STREAM_DATA id:0x%xL limit:%d level=%d",
                 (int) frame->u.max_stream_data.id,
                 (int) frame->u.max_stream_data.limit,
                 frame->level);
@@ -3173,7 +3173,8 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
     if (sn == NULL) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "unknown stream id:%uL", f->id);
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "unknown stream id:0x%xL", f->id);
 
         if (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) {
             qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
@@ -3786,7 +3787,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
              | NGX_QUIC_STREAM_SERVER_INITIATED;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic creating server bidi stream %uL/%uL id:%uL",
+                       "quic creating server bidi stream %uL/%uL id:0x%xL",
                        qc->streams.server_streams_bidi,
                        qc->streams.server_max_streams_bidi, id);
 
@@ -3808,7 +3809,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
              | NGX_QUIC_STREAM_UNIDIRECTIONAL;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic creating server uni stream %uL/%uL id:%uL",
+                       "quic creating server uni stream %uL/%uL id:0x%xL",
                        qc->streams.server_streams_uni,
                        qc->streams.server_max_streams_uni, id);
 
@@ -3886,7 +3887,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     ngx_quic_connection_t  *qc;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id 0x%uL create", id);
+                   "quic stream id 0x%xL create", id);
 
     qc = c->quic;
 
@@ -4044,7 +4045,8 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         frame->u.max_stream_data.limit = qs->fs.received + (b->pos - b->start)
                                          + (b->end - b->last);
 
-        ngx_sprintf(frame->info, "MAX_STREAM_DATA id:%d limit:%d l=%d on recv",
+        ngx_sprintf(frame->info,
+                    "MAX_STREAM_DATA id:0x%xL limit:%d l=%d on recv",
                     (int) frame->u.max_stream_data.id,
                     (int) frame->u.max_stream_data.limit,
                     frame->level);

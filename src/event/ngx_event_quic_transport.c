@@ -934,7 +934,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: MAX_STREAM_DATA  id:%uL limit:%uL",
+                       "quic frame in: MAX_STREAM_DATA id:0x%xL limit:%uL",
                        f->u.max_stream_data.id,
                        f->u.max_stream_data.limit);
         break;
@@ -965,7 +965,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                        "quic frame in: STREAM_DATA_BLOCKED"
-                       " id:%uL limit:%uL",
+                       " id:0x%xL limit:%uL",
                        f->u.stream_data_blocked.id,
                        f->u.stream_data_blocked.limit);
         break;
