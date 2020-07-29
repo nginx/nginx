@@ -2473,7 +2473,7 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #if (NGX_HTTP_CACHE)
 
         if (u->cache_status == NGX_HTTP_CACHE_EXPIRED
-            && ((u->conf->cache_use_stale & un->mask) || r->cache->stale_error))
+            && (u->conf->cache_use_stale & un->mask))
         {
             ngx_int_t  rc;
 
