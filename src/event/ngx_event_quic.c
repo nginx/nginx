@@ -3180,14 +3180,50 @@ static ngx_int_t
 ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic frame handler not implemented");
+    ngx_event_t            *rev;
+    ngx_connection_t       *sc;
+    ngx_quic_stream_t      *sn;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
     {
-        c->quic->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
+    }
+
+    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+
+    if (sn == NULL) {
+        sn = ngx_quic_create_client_stream(c, f->id);
+
+        if (sn == NULL) {
+            return NGX_ERROR;
+        }
+
+        if (sn == NGX_QUIC_STREAM_GONE) {
+            return NGX_OK;
+        }
+
+        sc = sn->c;
+
+        rev = sc->read;
+        rev->error = 1;
+        rev->ready = 1;
+
+        sc->listening->handler(sc);
+
+        return NGX_OK;
+    }
+
+    rev = sn->c->read;
+    rev->error = 1;
+    rev->ready = 1;
+
+    if (rev->active) {
+        rev->handler(rev);
     }
 
     return NGX_OK;
@@ -3198,11 +3234,10 @@ static ngx_int_t
 ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f)
 {
+    ngx_event_t            *wev;
+    ngx_connection_t       *sc;
     ngx_quic_stream_t      *sn;
     ngx_quic_connection_t  *qc;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic frame handler not implemented");
 
     qc = c->quic;
 
@@ -3216,13 +3251,33 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
     if (sn == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic stream id 0x%xL is new", f->id);
+        sn = ngx_quic_create_client_stream(c, f->id);
 
-        if (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) {
-            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        if (sn == NULL) {
             return NGX_ERROR;
         }
+
+        if (sn == NGX_QUIC_STREAM_GONE) {
+            return NGX_OK;
+        }
+
+        sc = sn->c;
+
+        wev = sc->write;
+        wev->error = 1;
+        wev->ready = 1;
+
+        sc->listening->handler(sc);
+
+        return NGX_OK;
+    }
+
+    wev = sn->c->write;
+    wev->error = 1;
+    wev->ready = 1;
+
+    if (wev->active) {
+        wev->handler(wev);
     }
 
     return NGX_OK;
