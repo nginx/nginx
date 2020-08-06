@@ -12,6 +12,8 @@
 
 static void ngx_http_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
+static ngx_int_t ngx_http_copy_pipelined_header(ngx_http_request_t *r,
+    ngx_buf_t *buf);
 static ngx_int_t ngx_http_write_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_read_discarded_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_discard_request_body_filter(ngx_http_request_t *r,
@@ -379,6 +381,10 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
     }
 
+    if (ngx_http_copy_pipelined_header(r, rb->buf) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
@@ -387,6 +393,88 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         r->read_event_handler = ngx_http_block_reading;
         rb->post_handler(r);
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_copy_pipelined_header(ngx_http_request_t *r, ngx_buf_t *buf)
+{
+    size_t                     n;
+    ngx_buf_t                 *b;
+    ngx_chain_t               *cl;
+    ngx_http_connection_t     *hc;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    b = r->header_in;
+    n = buf->last - buf->pos;
+
+    if (buf == b || n == 0) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http body pipelined header: %uz", n);
+
+    /*
+     * if there is a pipelined request in the client body buffer,
+     * copy it to the r->header_in buffer if there is enough room,
+     * or allocate a large client header buffer
+     */
+
+    if (n > (size_t) (b->end - b->last)) {
+
+        hc = r->http_connection;
+
+        if (hc->free) {
+            cl = hc->free;
+            hc->free = cl->next;
+
+            b = cl->buf;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http large header free: %p %uz",
+                           b->pos, b->end - b->last);
+
+        } else {
+            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+            b = ngx_create_temp_buf(r->connection->pool,
+                                    cscf->large_client_header_buffers.size);
+            if (b == NULL) {
+                return NGX_ERROR;
+            }
+
+            cl = ngx_alloc_chain_link(r->connection->pool);
+            if (cl == NULL) {
+                return NGX_ERROR;
+            }
+
+            cl->buf = b;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http large header alloc: %p %uz",
+                           b->pos, b->end - b->last);
+        }
+
+        cl->next = hc->busy;
+        hc->busy = cl;
+        hc->nbusy++;
+
+        r->header_in = b;
+
+        if (n > (size_t) (b->end - b->last)) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "too large pipelined header after reading body");
+            return NGX_ERROR;
+        }
+    }
+
+    ngx_memcpy(b->last, buf->pos, n);
+
+    b->last += n;
+    r->request_length -= n;
 
     return NGX_OK;
 }
@@ -637,8 +725,7 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
 
     for ( ;; ) {
         if (r->headers_in.content_length_n == 0) {
-            r->read_event_handler = ngx_http_block_reading;
-            return NGX_OK;
+            break;
         }
 
         if (!r->connection->read->ready) {
@@ -672,15 +759,24 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
             return rc;
         }
     }
+
+    if (ngx_http_copy_pipelined_header(r, &b) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    r->read_event_handler = ngx_http_block_reading;
+
+    return NGX_OK;
 }
 
 
 static ngx_int_t
 ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 {
-    size_t                    size;
-    ngx_int_t                 rc;
-    ngx_http_request_body_t  *rb;
+    size_t                     size;
+    ngx_int_t                  rc;
+    ngx_http_request_body_t   *rb;
+    ngx_http_core_srv_conf_t  *cscf;
 
     if (r->headers_in.chunked) {
 
@@ -735,7 +831,10 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 
                 /* set amount of data we want to see next time */
 
-                r->headers_in.content_length_n = rb->chunked->length;
+                cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+                r->headers_in.content_length_n = ngx_max(rb->chunked->length,
+                               (off_t) cscf->large_client_header_buffers.size);
                 break;
             }
 
@@ -903,6 +1002,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_chain_t               *cl, *out, *tl, **ll;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
 
     rb = r->request_body;
 
@@ -916,8 +1016,10 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
         r->headers_in.content_length_n = 0;
-        rb->rest = 3;
+        rb->rest = cscf->large_client_header_buffers.size;
     }
 
     out = NULL;
@@ -1024,7 +1126,10 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 /* set rb->rest, amount of data we want to see next time */
 
-                rb->rest = rb->chunked->length;
+                cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+                rb->rest = ngx_max(rb->chunked->length,
+                               (off_t) cscf->large_client_header_buffers.size);
 
                 break;
             }
