@@ -1027,6 +1027,8 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     for (cl = in; cl; cl = cl->next) {
 
+        b = NULL;
+
         for ( ;; ) {
 
             ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
@@ -1059,6 +1061,29 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                     r->lingering_close = 1;
 
                     return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+                }
+
+                if (b
+                    && rb->chunked->size <= 128
+                    && cl->buf->last - cl->buf->pos >= rb->chunked->size)
+                {
+                    r->headers_in.content_length_n += rb->chunked->size;
+
+                    if (rb->chunked->size < 8) {
+
+                        while (rb->chunked->size) {
+                            *b->last++ = *cl->buf->pos++;
+                            rb->chunked->size--;
+                        }
+
+                    } else {
+                        ngx_memmove(b->last, cl->buf->pos, rb->chunked->size);
+                        b->last += rb->chunked->size;
+                        cl->buf->pos += rb->chunked->size;
+                        rb->chunked->size = 0;
+                    }
+
+                    continue;
                 }
 
                 tl = ngx_chain_get_free_buf(r->pool, &rb->free);
