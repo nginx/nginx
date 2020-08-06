@@ -282,28 +282,12 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         for ( ;; ) {
             if (rb->buf->last == rb->buf->end) {
 
-                if (rb->buf->pos != rb->buf->last) {
+                /* update chains */
 
-                    /* pass buffer to request body filter chain */
+                rc = ngx_http_request_body_filter(r, NULL);
 
-                    out.buf = rb->buf;
-                    out.next = NULL;
-
-                    rc = ngx_http_request_body_filter(r, &out);
-
-                    if (rc != NGX_OK) {
-                        return rc;
-                    }
-
-                } else {
-
-                    /* update chains */
-
-                    rc = ngx_http_request_body_filter(r, NULL);
-
-                    if (rc != NGX_OK) {
-                        return rc;
-                    }
+                if (rc != NGX_OK) {
+                    return rc;
                 }
 
                 if (rb->busy != NULL) {
@@ -355,17 +339,15 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             rb->buf->last += n;
             r->request_length += n;
 
-            if (n == rest) {
-                /* pass buffer to request body filter chain */
+            /* pass buffer to request body filter chain */
 
-                out.buf = rb->buf;
-                out.next = NULL;
+            out.buf = rb->buf;
+            out.next = NULL;
 
-                rc = ngx_http_request_body_filter(r, &out);
+            rc = ngx_http_request_body_filter(r, &out);
 
-                if (rc != NGX_OK) {
-                    return rc;
-                }
+            if (rc != NGX_OK) {
+                return rc;
             }
 
             if (rb->rest == 0) {
@@ -385,21 +367,6 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
         }
 
         if (!c->read->ready) {
-
-            if (r->request_body_no_buffering
-                && rb->buf->pos != rb->buf->last)
-            {
-                /* pass buffer to request body filter chain */
-
-                out.buf = rb->buf;
-                out.next = NULL;
-
-                rc = ngx_http_request_body_filter(r, &out);
-
-                if (rc != NGX_OK) {
-                    return rc;
-                }
-            }
 
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             ngx_add_timer(c->read, clcf->client_body_timeout);
