@@ -3006,6 +3006,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 static ngx_int_t
 ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
+    uint64_t                  id;
     ngx_buf_t                *b;
     ngx_event_t              *rev;
     ngx_quic_stream_t        *sn;
@@ -3016,6 +3017,7 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
     sn = data;
 
     f = &frame->u.stream;
+    id = f->stream_id;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic existing stream");
 
@@ -3046,7 +3048,7 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
     }
 
     /* check if stream was destroyed by handler */
-    if (ngx_quic_find_stream(&qc->streams.tree, f->stream_id) == NULL) {
+    if (ngx_quic_find_stream(&qc->streams.tree, id) == NULL) {
         return NGX_DONE;
     }
 
