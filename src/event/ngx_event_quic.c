@@ -2289,9 +2289,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 {
     ssize_t                 n;
     u_char                 *pos, *end;
-    uint64_t                gap, range;
+    uint64_t                min, max, gap, range;
     ngx_msec_t              send_time;
-    ngx_uint_t              i, min, max;
+    ngx_uint_t              i;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -2328,7 +2328,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     if (ctx->largest_ack < max) {
         ctx->largest_ack = max;
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic updated largest received ack: %ui", max);
+                       "quic updated largest received ack: %uL", max);
 
         /*
          *  An endpoint generates an RTT sample on receiving an
@@ -2354,23 +2354,23 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
         pos += n;
 
-        if (gap >= min) {
+        if (gap + 2 > min) {
             qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
         }
 
-        max = min - 1 - gap;
+        max = min - gap - 2;
 
-        if (range > max + 1) {
+        if (range > max) {
             qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                          "quic invalid range %ui in ack frame", i);
             return NGX_ERROR;
         }
 
-        min = max - range + 1;
+        min = max - range;
 
         if (ngx_quic_handle_ack_frame_range(c, ctx, min, max, &send_time)
             != NGX_OK)
@@ -2392,6 +2392,9 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_connection_t  *qc;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic handle ack range: min:%uL max:%uL", min, max);
 
     qc = c->quic;
 
