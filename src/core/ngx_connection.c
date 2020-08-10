@@ -1107,12 +1107,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    c = ngx_cycle->free_connections;
+    ngx_drain_connections((ngx_cycle_t *) ngx_cycle);
 
-    if (c == NULL) {
-        ngx_drain_connections((ngx_cycle_t *) ngx_cycle);
-        c = ngx_cycle->free_connections;
-    }
+    c = ngx_cycle->free_connections;
 
     if (c == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -1298,7 +1295,9 @@ ngx_drain_connections(ngx_cycle_t *cycle)
     ngx_queue_t       *q;
     ngx_connection_t  *c;
 
-    if (cycle->reusable_connections_n == 0) {
+    if (cycle->free_connection_n > cycle->connection_n / 16
+        || cycle->reusable_connections_n == 0)
+    {
         return;
     }
 
