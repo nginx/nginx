@@ -1298,6 +1298,19 @@ ngx_drain_connections(ngx_cycle_t *cycle)
     ngx_queue_t       *q;
     ngx_connection_t  *c;
 
+    if (cycle->reusable_connections_n == 0) {
+        return;
+    }
+
+    if (cycle->connections_reuse_time != ngx_time()) {
+        cycle->connections_reuse_time = ngx_time();
+
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "%ui worker_connections are not enough, "
+                      "reusing connections",
+                      cycle->connection_n);
+    }
+
     n = ngx_max(ngx_min(32, cycle->reusable_connections_n / 8), 1);
 
     for (i = 0; i < n; i++) {
