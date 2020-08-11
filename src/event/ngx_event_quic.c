@@ -1460,7 +1460,7 @@ ngx_quic_close_timer_handler(ngx_event_t *ev)
 static ngx_int_t
 ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
-    ngx_event_t        *rev;
+    ngx_event_t        *rev, *wev;
     ngx_rbtree_t       *tree;
     ngx_rbtree_node_t  *node;
     ngx_quic_stream_t  *qs;
@@ -1486,8 +1486,12 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
         qs = (ngx_quic_stream_t *) node;
 
         rev = qs->c->read;
+        rev->error = 1;
         rev->ready = 1;
-        rev->pending_eof = 1;
+
+        wev = qs->c->write;
+        wev->error = 1;
+        wev->ready = 1;
 
         ngx_post_event(rev, &ngx_posted_events);
 
@@ -4005,6 +4009,10 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     qc = pc->quic;
     rev = c->read;
 
+    if (rev->error) {
+        return NGX_ERROR;
+    }
+
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic stream id 0x%xL recv: eof:%d, avail:%z",
                    qs->id, rev->pending_eof, b->last - b->pos);
@@ -4093,6 +4101,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     u_char                 *p, *end;
     size_t                  fsize, limit, n, len;
     uint64_t                sent, unacked;
+    ngx_event_t            *wev;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
@@ -4101,8 +4110,9 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     qs = c->qs;
     pc = qs->parent;
     qc = pc->quic;
+    wev = c->write;
 
-    if (qc->closing) {
+    if (wev->error) {
         return NGX_ERROR;
     }
 

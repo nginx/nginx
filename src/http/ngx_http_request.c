@@ -3022,6 +3022,19 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
 #endif
 
+#if (NGX_HTTP_QUIC)
+
+    if (c->qs) {
+        if (c->read->error) {
+            err = 0;
+            goto closed;
+        }
+
+        return;
+    }
+
+#endif
+
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
