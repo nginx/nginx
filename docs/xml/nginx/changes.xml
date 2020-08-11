@@ -5,6 +5,108 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.2" date="2020-08-11">
+
+<change type="change">
+<para lang="ru">
+теперь nginx начинает закрывать keepalive-соединения,
+не дожидаясь исчерпания всех свободных соединений,
+а также пишет об этом предупреждение в лог ошибок.
+</para>
+<para lang="en">
+now nginx starts closing keepalive connections
+before all free worker connections are exhausted,
+and logs a warning about this to the error log.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+оптимизация чтения тела запроса
+при использовании chunked transfer encoding.
+</para>
+<para lang="en">
+optimization of client request body reading
+when using chunked transfer encoding.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки памяти при использовании директивы ssl_ocsp.
+</para>
+<para lang="en">
+memory leak if the "ssl_ocsp" directive was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логах могли появляться сообщения "zero size buf in output",
+если FastCGI-сервер возвращал некорректный ответ;
+ошибка появилась в 1.19.1.
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+if a FastCGI server returned an incorrect response;
+the bug had appeared in 1.19.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если размеры large_client_header_buffers отличались
+в разных виртуальных серверах.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if different large_client_header_buffers sizes were used
+in different virtual servers.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL shutdown мог не работать.
+</para>
+<para lang="en">
+SSL shutdown might not work.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логах могли появляться сообщения
+"SSL_shutdown() failed (SSL: ... bad write retry)".
+</para>
+<para lang="en">
+"SSL_shutdown() failed (SSL: ... bad write retry)"
+messages might appear in logs.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_slice_module.
+</para>
+<para lang="en">
+in the ngx_http_slice_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_xslt_filter_module.
+</para>
+<para lang="en">
+in the ngx_http_xslt_filter_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.1" date="2020-07-07">
 
 <change type="change">
