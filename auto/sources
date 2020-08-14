@@ -208,6 +208,8 @@ DARWIN_DEPS="src/os/unix/ngx_darwin_config.h src/os/unix/ngx_darwin.h"
 DARWIN_SRCS=src/os/unix/ngx_darwin_init.c
 DARWIN_SENDFILE_SRCS=src/os/unix/ngx_darwin_sendfile_chain.c
 
+HAIKU_DEPS="src/os/unix/ngx_haiku_config.h"
+
 
 WIN32_INCS="$CORE_INCS $EVENT_INCS src/os/win32"
 

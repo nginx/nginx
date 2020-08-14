@@ -27,6 +27,10 @@ case "$NGX_PLATFORM" in
         . auto/os/win32
     ;;
 
+    Haiku:*)
+        . auto/os/haiku
+    ;;
+
     DragonFly:*)
         have=NGX_FREEBSD . auto/have_headers
         CORE_INCS="$UNIX_INCS"
