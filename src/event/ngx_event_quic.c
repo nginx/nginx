@@ -3764,6 +3764,7 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
                 q = ngx_queue_next(q);
 
                 ngx_queue_remove(&f->queue);
+                qc->congestion.in_flight -= f->len;
                 ngx_queue_insert_tail(&range, &f->queue);
 
             } while (q != ngx_queue_sentinel(&ctx->sent));
