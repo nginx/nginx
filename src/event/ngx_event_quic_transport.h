@@ -248,6 +248,7 @@ struct ngx_quic_frame_s {
     enum ssl_encryption_level_t                 level;
     ngx_queue_t                                 queue;
     uint64_t                                    pnum;
+    size_t                                      plen;
     ngx_msec_t                                  first;
     ngx_msec_t                                  last;
     ssize_t                                     len;
