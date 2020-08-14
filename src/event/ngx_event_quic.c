@@ -1735,6 +1735,8 @@ static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1782,7 +1784,15 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
      * that no more Initial packets need to be exchanged
      */
     ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_initial);
-    ngx_quic_free_frames(c, &ctx->sent);
+
+    while (!ngx_queue_empty(&ctx->sent)) {
+        q = ngx_queue_head(&ctx->sent);
+        ngx_queue_remove(q);
+
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        ngx_quic_congestion_ack(c, f);
+        ngx_quic_free_frame(c, f);
+    }
 
     qc->validated = 1;
     qc->pto_count = 0;
@@ -2801,6 +2811,7 @@ static ngx_int_t
 ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
     int                       n, sslerr;
+    ngx_queue_t              *q;
     ngx_ssl_conn_t           *ssl_conn;
     ngx_quic_send_ctx_t      *ctx;
     ngx_quic_crypto_frame_t  *f;
@@ -2879,7 +2890,15 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
          * when the TLS handshake is confirmed
          */
         ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_handshake);
-        ngx_quic_free_frames(c, &ctx->sent);
+
+        while (!ngx_queue_empty(&ctx->sent)) {
+            q = ngx_queue_head(&ctx->sent);
+            ngx_queue_remove(q);
+
+            frame = ngx_queue_data(q, ngx_quic_frame_t, queue);
+            ngx_quic_congestion_ack(c, frame);
+            ngx_quic_free_frame(c, frame);
+        }
 
         c->quic->pto_count = 0;
     }
