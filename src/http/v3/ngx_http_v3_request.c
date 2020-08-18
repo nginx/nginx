@@ -392,7 +392,7 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
             goto failed;
         }
 
-        r->h3_parse = st;
+        ctx->h3_parse = st;
     }
 
     if (ctx->size) {
