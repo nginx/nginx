@@ -1029,12 +1029,6 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         r->headers_in.content_length_n = 0;
         rb->rest = cscf->large_client_header_buffers.size;
-
-#if (NGX_HTTP_V3)
-        if (r->http_version == NGX_HTTP_VERSION_30) {
-            rb->rest = 1;
-        }
-#endif
     }
 
     out = NULL;
