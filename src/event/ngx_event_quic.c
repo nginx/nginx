@@ -690,6 +690,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
         ngx_queue_init(&qc->send_ctx[i].frames);
         ngx_queue_init(&qc->send_ctx[i].sent);
         qc->send_ctx[i].largest_pn = (uint64_t) -1;
+        qc->send_ctx[i].largest_ack = (uint64_t) -1;
     }
 
     for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
@@ -2346,7 +2347,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     /* 13.2.3.  Receiver Tracking of ACK Frames */
-    if (ctx->largest_ack < max) {
+    if (ctx->largest_ack < max || ctx->largest_ack == (uint64_t) -1) {
         ctx->largest_ack = max;
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic updated largest received ack: %uL", max);
