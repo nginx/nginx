@@ -1723,6 +1723,12 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http large header copy: %uz", r->header_in->pos - old);
 
+    if (r->header_in->pos - old > b->end - b->start) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "too large header to copy");
+        return NGX_ERROR;
+    }
+
     new = b->start;
 
     ngx_memcpy(new, old, r->header_in->pos - old);
@@ -3119,6 +3125,12 @@ closed:
     if (err) {
         rev->error = 1;
     }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl) {
+        c->ssl->no_send_shutdown = 1;
+    }
+#endif
 
     ngx_log_error(NGX_LOG_INFO, c->log, err,
                   "client prematurely closed connection");

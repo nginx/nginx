@@ -2774,8 +2774,9 @@ ngx_ssl_free_buffer(ngx_connection_t *c)
 ngx_int_t
 ngx_ssl_shutdown(ngx_connection_t *c)
 {
-    int        n, sslerr, mode;
-    ngx_err_t  err;
+    int         n, sslerr, mode;
+    ngx_err_t   err;
+    ngx_uint_t  tries;
 
 #if (NGX_QUIC)
     if (c->qs) {
@@ -2823,55 +2824,71 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
     ngx_ssl_clear_error(c->log);
 
-    n = SSL_shutdown(c->ssl->connection);
+    tries = 2;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
+    for ( ;; ) {
 
-    sslerr = 0;
+        /*
+         * For bidirectional shutdown, SSL_shutdown() needs to be called
+         * twice: first call sends the "close notify" alert and returns 0,
+         * second call waits for the peer's "close notify" alert.
+         */
 
-    /* before 0.9.8m SSL_shutdown() returned 0 instead of -1 on errors */
+        n = SSL_shutdown(c->ssl->connection);
 
-    if (n != 1 && ERR_peek_error()) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
+
+        if (n == 1) {
+            SSL_free(c->ssl->connection);
+            c->ssl = NULL;
+
+            return NGX_OK;
+        }
+
+        if (n == 0 && tries-- > 1) {
+            continue;
+        }
+
+        /* before 0.9.8m SSL_shutdown() returned 0 instead of -1 on errors */
+
         sslerr = SSL_get_error(c->ssl->connection, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_get_error: %d", sslerr);
-    }
 
-    if (n == 1 || sslerr == 0 || sslerr == SSL_ERROR_ZERO_RETURN) {
+        if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_WRITE) {
+            c->read->handler = ngx_ssl_shutdown_handler;
+            c->write->handler = ngx_ssl_shutdown_handler;
+
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            ngx_add_timer(c->read, 3000);
+
+            return NGX_AGAIN;
+        }
+
+        if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
+            SSL_free(c->ssl->connection);
+            c->ssl = NULL;
+
+            return NGX_OK;
+        }
+
+        err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+
+        ngx_ssl_connection_error(c, sslerr, err, "SSL_shutdown() failed");
+
         SSL_free(c->ssl->connection);
         c->ssl = NULL;
 
-        return NGX_OK;
+        return NGX_ERROR;
     }
-
-    if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_WRITE) {
-        c->read->handler = ngx_ssl_shutdown_handler;
-        c->write->handler = ngx_ssl_shutdown_handler;
-
-        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (sslerr == SSL_ERROR_WANT_READ) {
-            ngx_add_timer(c->read, 30000);
-        }
-
-        return NGX_AGAIN;
-    }
-
-    err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
-
-    ngx_ssl_connection_error(c, sslerr, err, "SSL_shutdown() failed");
-
-    SSL_free(c->ssl->connection);
-    c->ssl = NULL;
-
-    return NGX_ERROR;
 }
 
 

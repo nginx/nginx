@@ -883,6 +883,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
 
     ocsp = ngx_pcalloc(c->pool, sizeof(ngx_ssl_ocsp_t));
     if (ocsp == NULL) {
+        X509_free(cert);
         return NGX_ERROR;
     }
 
@@ -899,6 +900,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
     if (ocsp->certs) {
         ocsp->certs = X509_chain_up_ref(ocsp->certs);
         if (ocsp->certs == NULL) {
+            X509_free(cert);
             return NGX_ERROR;
         }
     }
@@ -910,6 +912,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
         if (store == NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                           "SSL_CTX_get_cert_store() failed");
+            X509_free(cert);
             return NGX_ERROR;
         }
 
@@ -917,6 +920,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
         if (store_ctx == NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                           "X509_STORE_CTX_new() failed");
+            X509_free(cert);
             return NGX_ERROR;
         }
 
@@ -926,6 +930,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                           "X509_STORE_CTX_init() failed");
             X509_STORE_CTX_free(store_ctx);
+            X509_free(cert);
             return NGX_ERROR;
         }
 
@@ -933,6 +938,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
         if (rc <= 0) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "X509_verify_cert() failed");
             X509_STORE_CTX_free(store_ctx);
+            X509_free(cert);
             return NGX_ERROR;
         }
 
@@ -941,11 +947,14 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                           "X509_STORE_CTX_get1_chain() failed");
             X509_STORE_CTX_free(store_ctx);
+            X509_free(cert);
             return NGX_ERROR;
         }
 
         X509_STORE_CTX_free(store_ctx);
     }
+
+    X509_free(cert);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "ssl ocsp validate, certs:%d", sk_X509_num(ocsp->certs));
