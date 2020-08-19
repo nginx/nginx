@@ -117,7 +117,7 @@ struct ngx_quic_connection_s {
     ngx_msec_t                        min_rtt;
     ngx_msec_t                        rttvar;
 
-    ngx_msec_t                        pto_count;
+    ngx_uint_t                        pto_count;
 
 #if (NGX_DEBUG)
     ngx_uint_t                        nframes;
