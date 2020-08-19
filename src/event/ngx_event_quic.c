@@ -3703,7 +3703,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
         }
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic pto pnum:%ui pto_count:%ui level:%d",
+                       "quic pto pnum:%uL pto_count:%ui level:%d",
                        start->pnum, c->quic->pto_count, start->level);
 
         if (ngx_quic_resend_frames(c, ctx, start) != NGX_OK) {
@@ -3783,7 +3783,7 @@ ngx_quic_detect_lost(ngx_connection_t *c)
             wait = start->last + thr - now;
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic detect_lost pnum:%ui thr:%M wait:%i level:%d",
+                           "quic detect_lost pnum:%uL thr:%M wait:%i level:%d",
                            start->pnum, thr, (ngx_int_t) wait, start->level);
 
             if ((ngx_msec_int_t) wait > 0
