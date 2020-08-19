@@ -84,8 +84,6 @@ typedef struct {
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
-
-    size_t                            frames_len;
 } ngx_quic_send_ctx_t;
 
 
@@ -3351,22 +3349,11 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
     frame->len = ngx_quic_create_frame(NULL, frame);
     /* always succeeds */
 
-    ctx->frames_len += frame->len;
-
     if (qc->closing) {
         return;
     }
 
-    /* TODO: TCP_NODELAY analogue ? TCP_CORK and others... */
-
-    if (ctx->frames_len < NGX_QUIC_MIN_DATA_NODELAY) {
-        if (!qc->push.timer_set) {
-            ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
-        }
-
-    } else {
-        ngx_post_event(&qc->push, &ngx_posted_events);
-    }
+    ngx_post_event(&qc->push, &ngx_posted_events);
 }
 
 
@@ -3463,7 +3450,6 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
             ngx_queue_remove(&f->queue);
             ngx_queue_insert_tail(&range, &f->queue);
-            ctx->frames_len -= f->len;
 
             len += f->len;
 
