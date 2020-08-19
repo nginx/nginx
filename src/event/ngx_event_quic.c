@@ -3800,15 +3800,15 @@ ngx_quic_detect_lost(ngx_connection_t *c)
                            "quic detect_lost pnum:%ui thr:%M wait:%i level:%d",
                            start->pnum, thr, (ngx_int_t) wait, start->level);
 
-            if ((ngx_msec_int_t) wait > 0) {
+            if ((ngx_msec_int_t) wait > 0
+                && ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR)
+            {
 
                 if (min_wait == 0 || wait < min_wait) {
                     min_wait = wait;
                 }
 
-                if (ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR) {
-                    break;
-                }
+                break;
             }
 
             if (ngx_quic_resend_frames(c, ctx, start) != NGX_OK) {
