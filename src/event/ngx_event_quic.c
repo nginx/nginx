@@ -3792,7 +3792,7 @@ ngx_quic_detect_lost(ngx_connection_t *c)
                            "quic detect_lost pnum:%ui thr:%M wait:%i level:%d",
                            start->pnum, thr, (ngx_int_t) wait, start->level);
 
-            if ((ngx_msec_int_t) wait >= 0) {
+            if ((ngx_msec_int_t) wait > 0) {
 
                 if (min_wait == 0 || wait < min_wait) {
                     min_wait = wait;
