@@ -3781,10 +3781,18 @@ ngx_quic_detect_lost(ngx_connection_t *c)
 
         ctx = &qc->send_ctx[i];
 
+        if (ctx->largest_ack == (uint64_t) -1) {
+            continue;
+        }
+
         while (!ngx_queue_empty(&ctx->sent)) {
 
             q = ngx_queue_head(&ctx->sent);
             start = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+            if (start->pnum > ctx->largest_ack) {
+                break;
+            }
 
             wait = start->last + thr - now;
 
@@ -3798,10 +3806,7 @@ ngx_quic_detect_lost(ngx_connection_t *c)
                     min_wait = wait;
                 }
 
-                if ((start->pnum > ctx->largest_ack)
-                     || ctx->largest_ack == (uint64_t) -1
-                     || ((ctx->largest_ack - start->pnum) < NGX_QUIC_PKT_THR))
-                {
+                if (ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR) {
                     break;
                 }
             }
