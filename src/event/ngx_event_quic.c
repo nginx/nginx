@@ -265,7 +265,10 @@ static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c,
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_pto_handler(ngx_event_t *ev);
-static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack);
+static void ngx_quic_lost_handler(ngx_event_t *ev);
+static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c);
+static ngx_int_t ngx_quic_resend_frames(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx, ngx_quic_frame_t *start);
 static void ngx_quic_push_handler(ngx_event_t *ev);
 
 static void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
@@ -2401,7 +2404,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
     }
 
-    return ngx_quic_detect_lost(c, 1);
+    return ngx_quic_detect_lost(c);
 }
 
 
@@ -3682,18 +3685,46 @@ ngx_quic_set_packet_number(ngx_quic_header_t *pkt, ngx_quic_send_ctx_t *ctx)
 static void
 ngx_quic_pto_handler(ngx_event_t *ev)
 {
-    ngx_connection_t  *c;
+    ngx_uint_t              i;
+    ngx_queue_t            *q;
+    ngx_connection_t       *c;
+    ngx_quic_frame_t       *start;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic pto timer");
 
     c = ev->data;
+    qc = c->quic;
 
-    if (ngx_quic_detect_lost(c, 0) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
-        return;
+    qc->pto_count++;
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+
+        ctx = &qc->send_ctx[i];
+
+        if (ngx_queue_empty(&ctx->sent)) {
+            continue;
+        }
+
+        q = ngx_queue_head(&ctx->sent);
+        start = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        if (start->pnum <= ctx->largest_ack
+            && ctx->largest_ack != (uint64_t) -1)
+        {
+            continue;
+        }
+
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic pto pnum:%ui pto_count:%ui level:%d",
+                       start->pnum, c->quic->pto_count, start->level);
+
+        if (ngx_quic_resend_frames(c, ctx, start) != NGX_OK) {
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
     }
-
-    c->quic->pto_count++;
 }
 
 
@@ -3713,14 +3744,28 @@ ngx_quic_push_handler(ngx_event_t *ev)
 }
 
 
-static ngx_int_t
-ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
+static
+void ngx_quic_lost_handler(ngx_event_t *ev)
 {
-    uint64_t                pn;
+    ngx_connection_t  *c;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic lost timer");
+
+    c = ev->data;
+
+    if (ngx_quic_detect_lost(c) != NGX_OK) {
+        ngx_quic_close_connection(c, NGX_ERROR);
+    }
+}
+
+
+static ngx_int_t
+ngx_quic_detect_lost(ngx_connection_t *c)
+{
     ngx_uint_t              i;
     ngx_msec_t              now, wait, min_wait, thr;
-    ngx_queue_t            *q, range;
-    ngx_quic_frame_t       *f, *start;
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *start;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -3729,33 +3774,23 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
 
     min_wait = 0;
 
-#if (NGX_SUPPRESS_WARN)
-    thr = 0;
-#endif
-
-    if (ack) {
-        thr = NGX_QUIC_TIME_THR * ngx_max(qc->latest_rtt, qc->avg_rtt);
-        thr = ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
-    }
+    thr = NGX_QUIC_TIME_THR * ngx_max(qc->latest_rtt, qc->avg_rtt);
+    thr = ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
         ctx = &qc->send_ctx[i];
 
-        if (ngx_queue_empty(&ctx->sent)) {
-            continue;
-        }
+        while (!ngx_queue_empty(&ctx->sent)) {
 
-        if (!ack) {
-            thr = ngx_quic_pto(c, ctx);
-        }
-
-        q = ngx_queue_head(&ctx->sent);
-
-        do {
+            q = ngx_queue_head(&ctx->sent);
             start = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
             wait = start->last + thr - now;
+
+            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic detect_lost pnum:%ui thr:%M wait:%i level:%d",
+                           start->pnum, thr, (ngx_int_t) wait, start->level);
 
             if ((ngx_msec_int_t) wait >= 0) {
 
@@ -3763,54 +3798,69 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_uint_t ack)
                     min_wait = wait;
                 }
 
-                if (!ack) {
-                    break;
-                }
-
                 if ((start->pnum > ctx->largest_ack)
+                     || ctx->largest_ack == (uint64_t) -1
                      || ((ctx->largest_ack - start->pnum) < NGX_QUIC_PKT_THR))
                 {
                     break;
                 }
             }
 
-            pn = start->pnum;
-
-            ngx_queue_init(&range);
-
-            /* send frames with same packet number to the wire */
-            do {
-                f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-                if (f->pnum != pn) {
-                    break;
-                }
-
-                q = ngx_queue_next(q);
-
-                ngx_queue_remove(&f->queue);
-                ngx_queue_insert_tail(&range, &f->queue);
-
-            } while (q != ngx_queue_sentinel(&ctx->sent));
-
-            ngx_quic_congestion_lost(c, start);
-
-            if (ngx_quic_send_frames(c, ctx, &range) != NGX_OK) {
+            if (ngx_quic_resend_frames(c, ctx, start) != NGX_OK) {
                 return NGX_ERROR;
             }
-
-        } while (q != ngx_queue_sentinel(&ctx->sent));
+        }
     }
+
+    /* no more preceeding packets */
+
+    if (min_wait == 0) {
+        qc->pto.handler = ngx_quic_pto_handler;
+        return NGX_OK;
+    }
+
+    qc->pto.handler = ngx_quic_lost_handler;
 
     if (qc->pto.timer_set) {
         ngx_del_timer(&qc->pto);
     }
 
-    if (min_wait > 0) {
-        ngx_add_timer(&qc->pto, min_wait);
-    }
+    ngx_add_timer(&qc->pto, min_wait);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
+    ngx_quic_frame_t *start)
+{
+    ngx_queue_t       *q, range;
+    ngx_quic_frame_t  *f;
+
+    ngx_queue_init(&range);
+
+    /* send frames with same packet number to the wire */
+
+    q = ngx_queue_head(&ctx->sent);
+
+    do {
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        if (f->pnum != start->pnum) {
+            break;
+        }
+
+        q = ngx_queue_next(q);
+
+        ngx_queue_remove(&f->queue);
+        ngx_queue_insert_tail(&range, &f->queue);
+
+    } while (q != ngx_queue_sentinel(&ctx->sent));
+
+    ngx_quic_congestion_lost(c, start);
+
+    return ngx_quic_send_frames(c, ctx, &range);
 }
 
 
