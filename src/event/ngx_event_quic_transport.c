@@ -88,6 +88,15 @@ static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
     uint16_t id, ngx_quic_tp_t *dst);
 
 
+/* currently only single version (selected at compile-time) is supported */
+uint32_t  ngx_quic_versions[] = {
+    NGX_QUIC_VERSION
+};
+
+#define NGX_QUIC_NVERSIONS \
+    (sizeof(ngx_quic_versions) / sizeof(ngx_quic_versions[0]))
+
+
 /* literal errors indexed by corresponding value */
 static char *ngx_quic_errors[] = {
     "NO_ERROR",
@@ -232,8 +241,8 @@ ngx_quic_error_text(uint64_t error_code)
 ngx_int_t
 ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
 {
-    u_char  *p, *end;
-    uint8_t  idlen;
+    u_char   *p, *end;
+    uint8_t   idlen;
 
     p = pkt->data;
     end = pkt->data + pkt->len;
@@ -268,12 +277,6 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
         return NGX_DECLINED;
-    }
-
-    if (pkt->version != NGX_QUIC_VERSION) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic unsupported version: 0x%xD", pkt->version);
-        return NGX_ERROR;
     }
 
     p = ngx_quic_read_uint8(p, end, &idlen);
@@ -323,6 +326,36 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     pkt->raw->pos = p;
 
     return NGX_OK;
+}
+
+
+size_t
+ngx_quic_create_version_negotiation(ngx_quic_header_t *pkt, u_char *out)
+{
+    u_char      *p, *start;
+    ngx_uint_t   i;
+
+    p = start = out;
+
+    *p++ = pkt->flags;
+
+    /*
+     * The Version field of a Version Negotiation packet
+     * MUST be set to 0x00000000
+     */
+    p = ngx_quic_write_uint32(p, 0);
+
+    *p++ = pkt->dcid.len;
+    p = ngx_cpymem(p, pkt->dcid.data, pkt->dcid.len);
+
+    *p++ = pkt->scid.len;
+    p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
+
+    for (i = 0; i < NGX_QUIC_NVERSIONS; i++) {
+        p = ngx_quic_write_uint32(p, ngx_quic_versions[i]);
+    }
+
+    return p - start;
 }
 
 

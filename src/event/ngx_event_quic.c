@@ -169,6 +169,8 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
+    ngx_quic_header_t *inpkt);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
 static ngx_int_t ngx_quic_retry(ngx_connection_t *c);
 static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
@@ -659,6 +661,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
         return rc;
     }
 
+    if (pkt->version != NGX_QUIC_VERSION) {
+        return ngx_quic_negotiate_version(c, pkt);
+    }
+
     if (!ngx_quic_pkt_in(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic invalid initial packet: 0x%xd", pkt->flags);
@@ -820,6 +826,35 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     (void) ngx_quic_skip_zero_padding(pkt->raw);
 
     return ngx_quic_input(c, pkt->raw);
+}
+
+
+static ngx_int_t
+ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
+{
+    size_t             len;
+    ngx_quic_header_t  pkt;
+
+    /* buffer size is calculated assuming a single supported version */
+    static u_char      buf[NGX_QUIC_MAX_LONG_HEADER + sizeof(uint32_t)];
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "sending version negotiation packet");
+
+    pkt.log = c->log;
+    pkt.flags = NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_FIXED_BIT;
+    pkt.dcid = inpkt->scid;
+    pkt.scid = inpkt->dcid;
+
+    len = ngx_quic_create_version_negotiation(&pkt, buf);
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(c->log, "quic vnego packet to send", buf, len);
+#endif
+
+    (void) c->send(c, buf, len);
+
+    return NGX_ERROR;
 }
 
 
@@ -1628,6 +1663,12 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return rc;
     }
 
+    if (pkt->version != NGX_QUIC_VERSION) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic unsupported version: 0x%xD", pkt->version);
+        return NGX_ERROR;
+    }
+
     if (ngx_quic_pkt_zrtt(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic discard inflight 0-RTT packet");
@@ -1715,6 +1756,12 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return rc;
     }
 
+    if (pkt->version != NGX_QUIC_VERSION) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic unsupported version: 0x%xD", pkt->version);
+        return NGX_ERROR;
+    }
+
     if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -1763,6 +1810,12 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     rc = ngx_quic_parse_long_header(pkt);
     if (rc != NGX_OK) {
         return rc;
+    }
+
+    if (pkt->version != NGX_QUIC_VERSION) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic unsupported version: 0x%xD", pkt->version);
+        return NGX_ERROR;
     }
 
     if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
@@ -1823,6 +1876,12 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     rc = ngx_quic_parse_long_header(pkt);
     if (rc != NGX_OK) {
         return rc;
+    }
+
+    if (pkt->version != NGX_QUIC_VERSION) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic unsupported version: 0x%xD", pkt->version);
+        return NGX_ERROR;
     }
 
     if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
