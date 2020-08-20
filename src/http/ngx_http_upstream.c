@@ -1345,6 +1345,19 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     }
 #endif
 
+#if (NGX_HTTP_QUIC)
+
+    if (c->qs) {
+        if (c->write->error) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        }
+
+        return;
+    }
+
+#endif
+
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
