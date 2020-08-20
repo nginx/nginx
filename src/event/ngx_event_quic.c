@@ -1578,7 +1578,6 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             return ngx_quic_retry_input(c, &pkt);
         }
 
-        /* TODO: check current state */
         if (ngx_quic_long_pkt(pkt.flags)) {
 
             if (ngx_quic_pkt_in(pkt.flags)) {
@@ -2829,8 +2828,6 @@ ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                   "quic ordered frame with unexpected offset:"
                   " buffered, total %ui", fs->total);
-
-    /* TODO: do we need some timeout for this queue ?  */
 
     if (ngx_queue_empty(&fs->frames)) {
         ngx_queue_insert_after(&fs->frames, &dst->queue);
