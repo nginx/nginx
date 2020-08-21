@@ -52,14 +52,14 @@ Experimental QUIC support for nginx
     + An H3 transaction succeeded
     + One or both endpoints insert entries into dynamic table and
       subsequently reference them from header blocks
+    + Version Negotiation packet is sent to client with unknown version
+    + Lost packets are detected and retransmitted properly
 
      Not (yet) supported features:
 
-    - Version negotiation
-    - ECN, Congestion control and friends as specified in quic-recovery [5]
+    - Explicit Congestion Notification (ECN) as specified in quic-recovery [5]
     - A connection with the spin bit succeeds and the bit is spinning
     - Structured Logging
-    - QUIC recovery (proper congestion and flow control)
     - NAT Rebinding
     - Address Mobility
     - HTTP/3 trailers
