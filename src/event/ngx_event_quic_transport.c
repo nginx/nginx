@@ -930,14 +930,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         break;
 
-    case NGX_QUIC_FT_NEW_TOKEN:
-        /* TODO: implement */
-
-        ngx_log_error(NGX_LOG_ALERT, pkt->log, 0,
-                      "quic unimplemented frame type 0x%xi in packet", f->type);
-
-        break;
-
     case NGX_QUIC_FT_MAX_STREAMS:
     case NGX_QUIC_FT_MAX_STREAMS2:
 
