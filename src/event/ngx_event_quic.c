@@ -3651,10 +3651,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         return NGX_ERROR;
     }
 
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic packet to send", res.data, res.len);
-#endif
-
     len = c->send(c, res.data, res.len);
     if (len == NGX_ERROR || (size_t) len != res.len) {
         return NGX_ERROR;

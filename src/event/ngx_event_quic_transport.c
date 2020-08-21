@@ -247,10 +247,6 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     p = pkt->data;
     end = pkt->data + pkt->len;
 
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(pkt->log, "quic long packet in", pkt->data, pkt->len);
-#endif
-
     p = ngx_quic_read_uint8(p, end, &pkt->flags);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
@@ -474,10 +470,6 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
     p = pkt->data;
     end = pkt->data + pkt->len;
 
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(pkt->log, "quic short packet in", pkt->data, pkt->len);
-#endif
-
     p = ngx_quic_read_uint8(p, end, &pkt->flags);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
@@ -655,15 +647,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: CRYPTO length: %uL off:%uL pp:%p",
-                       f->u.crypto.length, f->u.crypto.offset,
-                       f->u.crypto.data);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "quic frame in: CRYPTO length: %uL off:%uL",
+                       f->u.crypto.length, f->u.crypto.offset);
 
-#ifdef NGX_QUIC_DEBUG_FRAMES
-        ngx_quic_hexdump(pkt->log, "quic CRYPTO frame",
-                         f->u.crypto.data, f->u.crypto.length);
-#endif
         break;
 
     case NGX_QUIC_FT_PADDING:
