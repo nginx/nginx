@@ -2918,6 +2918,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
                        "quic handshake completed successfully");
 
         c->ssl->handshaked = 1;
+        c->ssl->no_wait_shutdown = 1;
 
         frame = ngx_quic_alloc_frame(c, 0);
         if (frame == NULL) {
