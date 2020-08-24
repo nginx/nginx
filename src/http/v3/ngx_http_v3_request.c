@@ -418,7 +418,11 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
             continue;
         }
 
-        /* rc == NGX_DONE */
+        if (rc == NGX_DONE) {
+            return NGX_DONE;
+        }
+
+        /* rc == NGX_OK */
 
         ctx->size = st->length;
         ctx->state = sw_start;

@@ -76,6 +76,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                      state;
+    ngx_uint_t                      type;
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
     ngx_http_v3_parse_header_block_prefix_t  prefix;
@@ -107,6 +108,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                      state;
+    ngx_uint_t                      type;
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
 } ngx_http_v3_parse_data_t;
