@@ -2802,13 +2802,6 @@ ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
 
     /* frame start offset is in the future, buffer it */
 
-    /* check limit on total size used by all buffered frames, not actual data */
-    if (NGX_QUIC_MAX_BUFFERED - fs->total < f->length) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic ordered input buffer limit exceeded");
-        return NGX_ERROR;
-    }
-
     dst = ngx_quic_alloc_frame(c, f->length);
     if (dst == NULL) {
         return NGX_ERROR;
@@ -2857,11 +2850,22 @@ static ngx_int_t
 ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
+    uint64_t                   last;
     ngx_quic_connection_t     *qc;
+    ngx_quic_crypto_frame_t   *f;
     ngx_quic_frames_stream_t  *fs;
 
     qc = c->quic;
     fs = &qc->crypto[pkt->level];
+    f = &frame->u.crypto;
+
+    /* no overflow since both values are 62-bit */
+    last = f->offset + f->length;
+
+    if (last > fs->received && last - fs->received > NGX_QUIC_MAX_BUFFERED) {
+        c->quic->error = NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED;
+        return NGX_ERROR;
+    }
 
     return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input,
                                          NULL);
@@ -2978,6 +2982,9 @@ static ngx_int_t
 ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
+    size_t                     window;
+    uint64_t                   last;
+    ngx_buf_t                 *b;
     ngx_pool_t                *pool;
     ngx_connection_t          *sc;
     ngx_quic_stream_t         *sn;
@@ -2995,6 +3002,9 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
+    /* no overflow since both values are 62-bit */
+    last = f->offset + f->length;
+
     sn = ngx_quic_find_stream(&qc->streams.tree, f->stream_id);
 
     if (sn == NULL) {
@@ -3010,17 +3020,19 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         sc = sn->c;
         fs = &sn->fs;
+        b = sn->b;
+        window = b->end - b->last;
+
+        if (last > window) {
+            c->quic->error = NGX_QUIC_ERR_FLOW_CONTROL_ERROR;
+            goto cleanup;
+        }
 
         if (ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input,
                                           sn)
             != NGX_OK)
         {
-            pool = sc->pool;
-
-            ngx_close_connection(sc);
-            ngx_destroy_pool(pool);
-
-            return NGX_ERROR;
+            goto cleanup;
         }
 
         sc->listening->handler(sc);
@@ -3029,9 +3041,25 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     fs = &sn->fs;
+    b = sn->b;
+    window = (b->pos - b->start) + (b->end - b->last);
+
+    if (last > fs->received && last - fs->received > window) {
+        c->quic->error = NGX_QUIC_ERR_FLOW_CONTROL_ERROR;
+        return NGX_ERROR;
+    }
 
     return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input,
                                          sn);
+
+cleanup:
+
+    pool = sc->pool;
+
+    ngx_close_connection(sc);
+    ngx_destroy_pool(pool);
+
+    return NGX_ERROR;
 }
 
 
