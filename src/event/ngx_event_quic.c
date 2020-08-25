@@ -4564,6 +4564,27 @@ ngx_quic_stream_cleanup_handler(void *data)
         return;
     }
 
+    if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0
+        || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
+    {
+        if (!c->read->eof && !c->read->error) {
+            frame = ngx_quic_alloc_frame(pc, 0);
+            if (frame == NULL) {
+                return;
+            }
+
+            frame->level = ssl_encryption_application;
+            frame->type = NGX_QUIC_FT_STOP_SENDING;
+            frame->u.stop_sending.id = qs->id;
+            frame->u.stop_sending.error_code = 0x100; /* HTTP/3 no error */
+
+            ngx_sprintf(frame->info, "STOP_SENDING id:0x%xL err:0x%xL level:%d",
+                        qs->id, frame->u.stop_sending.error_code, frame->level);
+
+            ngx_quic_queue_frame(qc, frame);
+        }
+    }
+
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
         frame = ngx_quic_alloc_frame(pc, 0);
         if (frame == NULL) {

@@ -70,6 +70,8 @@ static u_char *ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len,
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
+static size_t ngx_quic_create_stop_sending(u_char *p,
+    ngx_quic_stop_sending_frame_t *ss);
 static size_t ngx_quic_create_crypto(u_char *p,
     ngx_quic_crypto_frame_t *crypto);
 static size_t ngx_quic_create_hs_done(u_char *p);
@@ -1165,6 +1167,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
         f->need_ack = 0;
         return ngx_quic_create_ack(p, &f->u.ack);
 
+    case NGX_QUIC_FT_STOP_SENDING:
+        return ngx_quic_create_stop_sending(p, &f->u.stop_sending);
+
     case NGX_QUIC_FT_CRYPTO:
         return ngx_quic_create_crypto(p, &f->u.crypto);
 
@@ -1230,6 +1235,29 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
     ngx_quic_build_int(&p, ack->delay);
     ngx_quic_build_int(&p, 0);
     ngx_quic_build_int(&p, ack->first_range);
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_stop_sending(u_char *p, ngx_quic_stop_sending_frame_t *ss)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_STOP_SENDING);
+        len += ngx_quic_varint_len(ss->id);
+        len += ngx_quic_varint_len(ss->error_code);
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_STOP_SENDING);
+    ngx_quic_build_int(&p, ss->id);
+    ngx_quic_build_int(&p, ss->error_code);
 
     return p - start;
 }
