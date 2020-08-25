@@ -2819,6 +2819,13 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
     }
 #endif
 
+#if (NGX_HTTP_QUIC)
+    if (r->connection->qs) {
+        ngx_http_close_request(r, 0);
+        return;
+    }
+#endif
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->main->count != 1) {
