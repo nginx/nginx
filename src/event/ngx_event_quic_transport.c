@@ -751,6 +751,19 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
+    case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+
+        p = ngx_quic_parse_int(p, end, &f->u.retire_cid.sequence_number);
+        if (p == NULL) {
+            goto error;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                       "quic frame in: RETIRE_CONNECTION_ID"
+                       " sequence_number:%uL",
+                       f->u.retire_cid.sequence_number);
+        break;
+
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
 
@@ -984,19 +997,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                        " id:0x%xL limit:%uL",
                        f->u.stream_data_blocked.id,
                        f->u.stream_data_blocked.limit);
-        break;
-
-    case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
-
-        p = ngx_quic_parse_int(p, end, &f->u.retire_cid.sequence_number);
-        if (p == NULL) {
-            goto error;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: RETIRE_CONNECTION_ID"
-                       " sequence_number:%uL",
-                       f->u.retire_cid.sequence_number);
         break;
 
     case NGX_QUIC_FT_PATH_CHALLENGE:
