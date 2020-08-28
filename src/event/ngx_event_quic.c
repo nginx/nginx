@@ -251,6 +251,8 @@ static ngx_int_t ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f);
 static ngx_int_t ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_streams_frame_t *f);
+static ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
     ngx_quic_frame_t *frame);
@@ -2202,9 +2204,19 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
             break;
 
+        case NGX_QUIC_FT_PATH_CHALLENGE:
+
+            if (ngx_quic_handle_path_challenge_frame(c, pkt,
+                                                     &frame.u.path_challenge)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
-        case NGX_QUIC_FT_PATH_CHALLENGE:
         case NGX_QUIC_FT_PATH_RESPONSE:
 
             /* TODO: handle */
@@ -3417,6 +3429,30 @@ ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
                            "quic max_streams_uni:%uL", f->limit);
         }
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
+{
+    ngx_quic_frame_t  *frame;
+
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = pkt->level;
+    frame->type = NGX_QUIC_FT_PATH_RESPONSE;
+    frame->u.path_response = *f;
+
+    ngx_sprintf(frame->info, "PATH_RESPONSE data:0x%xL level:%d",
+                *(uint64_t *) &f->data, frame->level);
+
+    ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
 }
