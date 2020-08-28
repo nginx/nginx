@@ -124,6 +124,7 @@ STREAM_GEOIP=NO
 STREAM_MAP=YES
 STREAM_SPLIT_CLIENTS=YES
 STREAM_RETURN=YES
+STREAM_SET=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_RANDOM=YES
@@ -324,6 +325,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --without-stream_split_clients_module)
                                          STREAM_SPLIT_CLIENTS=NO    ;;
         --without-stream_return_module)  STREAM_RETURN=NO           ;;
+        --without-stream_set_module)     STREAM_SET=NO              ;;
         --without-stream_upstream_hash_module)
                                          STREAM_UPSTREAM_HASH=NO    ;;
         --without-stream_upstream_least_conn_module)
@@ -538,6 +540,7 @@ cat << END
   --without-stream_split_clients_module
                                      disable ngx_stream_split_clients_module
   --without-stream_return_module     disable ngx_stream_return_module
+  --without-stream_set_module        disable ngx_stream_set_module
   --without-stream_upstream_hash_module
                                      disable ngx_stream_upstream_hash_module
   --without-stream_upstream_least_conn_module
