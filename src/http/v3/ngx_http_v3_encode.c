@@ -145,7 +145,7 @@ ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
                + len;
     }
 
-    *p = dynamic ? 0x60 : 0x70;
+    *p = dynamic ? 0x40 : 0x50;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 4);
 
     *p = 0;
@@ -171,7 +171,7 @@ ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
                + value->len;
     }
 
-    *p = 0x30;
+    *p = 0x20;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
 
     ngx_strlow(p, name->data, name->len);
@@ -213,7 +213,7 @@ ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index, u_char *data,
                + len;
     }
 
-    *p = 0x08;
+    *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 3);
 
     *p = 0;
