@@ -276,7 +276,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     p = ngx_quic_read_uint8(p, end, &idlen);
@@ -491,7 +491,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     if (ngx_memcmp(p, dcid->data, dcid->len) != 0) {
