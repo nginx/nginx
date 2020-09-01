@@ -998,7 +998,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 {
     u_char               clearflags, *p, *sample;
     uint8_t              badflags;
-    uint64_t             pn;
+    uint64_t             pn, lpn;
     ngx_int_t            pnl, rc, key_phase;
     ngx_str_t            in, ad;
     ngx_quic_secret_t   *secret;
@@ -1043,8 +1043,10 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         }
     }
 
+    lpn = *largest_pn;
+
     pnl = (clearflags & 0x03) + 1;
-    pn = ngx_quic_parse_pn(&p, pnl, &mask[1], largest_pn);
+    pn = ngx_quic_parse_pn(&p, pnl, &mask[1], &lpn);
 
     pkt->pn = pn;
     pkt->flags = clearflags;
@@ -1117,6 +1119,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }
+
+    *largest_pn = lpn;
 
     return NGX_OK;
 }
