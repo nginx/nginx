@@ -610,6 +610,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 void
 ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
 {
+    ngx_int_t           rc;
     ngx_buf_t          *b;
     ngx_quic_header_t   pkt;
 
@@ -626,8 +627,9 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
     pkt.data = b->start;
     pkt.len = b->last - b->start;
 
-    if (ngx_quic_new_connection(c, ssl, conf, &pkt) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
+    rc = ngx_quic_new_connection(c, ssl, conf, &pkt);
+    if (rc != NGX_OK) {
+        ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
         return;
     }
 
@@ -806,11 +808,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
+    rc = ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn);
+    if (rc != NGX_OK) {
         qc->error = pkt->error;
         qc->error_reason = "failed to decrypt packet";
-
-        return NGX_ERROR;
+        return rc;
     }
 
     if (ngx_quic_init_connection(c) != NGX_OK) {
@@ -1647,6 +1649,7 @@ ngx_quic_skip_zero_padding(ngx_buf_t *b)
 static ngx_int_t
 ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1717,9 +1720,11 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn) != NGX_OK) {
+    rc = ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn);
+    if (rc != NGX_OK) {
         qc->error = pkt->error;
-        return NGX_ERROR;
+        qc->error_reason = "failed to decrypt packet";
+        return rc;
     }
 
     if (ngx_quic_init_connection(c) != NGX_OK) {
@@ -1742,10 +1747,12 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
-    ngx_ssl_conn_t       *ssl_conn;
-    ngx_quic_secrets_t   *keys;
-    ngx_quic_send_ctx_t  *ctx;
-    static u_char         buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+    ngx_int_t               rc;
+    ngx_ssl_conn_t         *ssl_conn;
+    ngx_quic_secrets_t     *keys;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "processing initial quic packet";
 
@@ -1761,7 +1768,9 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-    if (ngx_quic_check_peer(c->quic, pkt) != NGX_OK) {
+    qc = c->quic;
+
+    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
         return NGX_DECLINED;
     }
 
@@ -1769,17 +1778,19 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-    keys = &c->quic->keys[ssl_encryption_initial];
+    keys = &qc->keys[ssl_encryption_initial];
 
     pkt->secret = &keys->client;
     pkt->level = ssl_encryption_initial;
     pkt->plaintext = buf;
 
-    ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, ssl_conn, &ctx->largest_pn) != NGX_OK) {
-        c->quic->error = pkt->error;
-        return NGX_ERROR;
+    rc = ngx_quic_decrypt(pkt, ssl_conn, &ctx->largest_pn);
+    if (rc != NGX_OK) {
+        qc->error = pkt->error;
+        qc->error_reason = "failed to decrypt packet";
+        return rc;
     }
 
     return ngx_quic_payload_handler(c, pkt);
@@ -1789,6 +1800,7 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_secrets_t     *keys;
@@ -1833,9 +1845,11 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
+    if (rc != NGX_OK) {
         qc->error = pkt->error;
-        return NGX_ERROR;
+        qc->error_reason = "failed to decrypt packet";
+        return rc;
     }
 
     /*
@@ -1863,6 +1877,7 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_int_t               rc;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
@@ -1906,9 +1921,11 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
-    if (ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn) != NGX_OK) {
+    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
+    if (rc != NGX_OK) {
         qc->error = pkt->error;
-        return NGX_ERROR;
+        qc->error_reason = "failed to decrypt packet";
+        return rc;
     }
 
     return ngx_quic_payload_handler(c, pkt);
@@ -1981,9 +1998,9 @@ ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
-
     if (rc != NGX_OK) {
         qc->error = pkt->error;
+        qc->error_reason = "failed to decrypt packet";
         return rc;
     }
 
