@@ -953,6 +953,13 @@ ngx_http_v2_state_data(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 DATA frame");
 
+    if (h2c->state.sid == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent DATA frame with incorrect identifier");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
     if (size > h2c->recv_window) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client violated connection flow control: "
@@ -2095,6 +2102,16 @@ static u_char *
 ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 SETTINGS frame");
+
+    if (h2c->state.sid) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent SETTINGS frame with incorrect identifier");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
     if (h2c->state.flags == NGX_HTTP_V2_ACK_FLAG) {
 
         if (h2c->state.length != 0) {
@@ -2117,9 +2134,6 @@ ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
     }
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 SETTINGS frame");
 
     return ngx_http_v2_state_settings_params(h2c, pos, end);
 }
@@ -2269,6 +2283,13 @@ ngx_http_v2_state_ping(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 PING frame");
 
+    if (h2c->state.sid) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PING frame with incorrect identifier");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
     if (h2c->state.flags & NGX_HTTP_V2_ACK_FLAG) {
         return ngx_http_v2_state_skip(h2c, pos, end);
     }
@@ -2308,6 +2329,13 @@ ngx_http_v2_state_goaway(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (end - pos < NGX_HTTP_V2_GOAWAY_SIZE) {
         return ngx_http_v2_state_save(h2c, pos, end, ngx_http_v2_state_goaway);
+    }
+
+    if (h2c->state.sid) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent GOAWAY frame with incorrect identifier");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
 #if (NGX_DEBUG)
