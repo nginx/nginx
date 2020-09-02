@@ -1593,7 +1593,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             } else {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic unknown long packet type");
-                return NGX_ERROR;
+                rc = NGX_DECLINED;
             }
 
         } else {
@@ -1618,6 +1618,9 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
          * not available or any other reason), the receiver MAY either
          * discard or buffer the packet for later processing and MUST
          * attempt to process the remaining packets.
+         *
+         * We also skip packets that don't match connection state
+         * or cannot be parsed properly.
          */
 
         /* b->pos is at header end, adjust by actual packet length */
