@@ -86,6 +86,8 @@ static size_t ngx_quic_create_max_data(u_char *p,
     ngx_quic_max_data_frame_t *md);
 static size_t ngx_quic_create_path_response(u_char *p,
     ngx_quic_path_challenge_frame_t *pc);
+static size_t ngx_quic_create_retire_connection_id(u_char *p,
+    ngx_quic_retire_cid_frame_t *rcid);
 static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
 
 static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
@@ -731,8 +733,16 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
+        if (f->u.ncid.retire > f->u.ncid.seqnum) {
+            goto error;
+        }
+
         p = ngx_quic_read_uint8(p, end, &f->u.ncid.len);
         if (p == NULL) {
+            goto error;
+        }
+
+        if (f->u.ncid.len < 1 || f->u.ncid.len > NGX_QUIC_CID_LEN_MAX) {
             goto error;
         }
 
@@ -741,7 +751,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        p = ngx_quic_copy_bytes(p, end, 16, f->u.ncid.srt);
+        p = ngx_quic_copy_bytes(p, end, NGX_QUIC_SRT_LEN, f->u.ncid.srt);
         if (p == NULL) {
             goto error;
         }
@@ -1199,6 +1209,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
 
     case NGX_QUIC_FT_PATH_RESPONSE:
         return ngx_quic_create_path_response(p, &f->u.path_response);
+
+    case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+        return ngx_quic_create_retire_connection_id(p, &f->u.retire_cid);
 
     default:
         /* BUG: unsupported frame type generated */
@@ -1674,6 +1687,28 @@ ngx_quic_create_path_response(u_char *p, ngx_quic_path_challenge_frame_t *pc)
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_PATH_RESPONSE);
     p = ngx_cpymem(p, &pc->data, sizeof(pc->data));
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_retire_connection_id(u_char *p,
+    ngx_quic_retire_cid_frame_t *rcid)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_RETIRE_CONNECTION_ID);
+        len += ngx_quic_varint_len(rcid->sequence_number);
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_RETIRE_CONNECTION_ID);
+    ngx_quic_build_int(&p, rcid->sequence_number);
 
     return p - start;
 }

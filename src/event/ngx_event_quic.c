@@ -88,10 +88,16 @@ typedef struct {
 
 
 struct ngx_quic_connection_s {
-    ngx_str_t                         scid;
-    ngx_str_t                         dcid;
-    ngx_str_t                         odcid;
+    ngx_str_t                         scid;  /* initial client ID */
+    ngx_str_t                         dcid;  /* server (our own) ID */
+    ngx_str_t                         odcid; /* original server ID */
     ngx_str_t                         token;
+
+    ngx_queue_t                       client_ids;
+    ngx_queue_t                       free_client_ids;
+    ngx_uint_t                        nclient_ids;
+    uint64_t                          max_retired_seqnum;
+    uint64_t                          curr_seqnum;
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
@@ -141,6 +147,15 @@ struct ngx_quic_connection_s {
     unsigned                          initialized:1;
     unsigned                          validated:1;
 };
+
+
+typedef struct {
+    ngx_queue_t                       queue;
+    uint64_t                          seqnum;
+    size_t                            len;
+    u_char                            id[NGX_QUIC_CID_LEN_MAX];
+    u_char                            sr_token[NGX_QUIC_SRT_LEN];
+} ngx_quic_client_id_t;
 
 
 typedef ngx_int_t (*ngx_quic_frame_handler_pt)(ngx_connection_t *c,
@@ -253,6 +268,11 @@ static ngx_int_t ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_streams_frame_t *f);
 static ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
+static ngx_int_t ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f);
+static ngx_int_t ngx_quic_retire_connection_id(ngx_connection_t *c,
+    enum ssl_encryption_level_t level, uint64_t seqnum);
+static ngx_quic_client_id_t *ngx_quic_alloc_connection_id(ngx_connection_t *c);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
     ngx_quic_frame_t *frame);
@@ -651,6 +671,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_tp_t          *ctp;
     ngx_quic_secrets_t     *keys;
     ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
@@ -708,6 +729,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     }
 
     ngx_queue_init(&qc->free_frames);
+    ngx_queue_init(&qc->client_ids);
+    ngx_queue_init(&qc->free_client_ids);
 
     qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
     qc->rttvar = NGX_QUIC_INITIAL_RTT / 2;
@@ -715,6 +738,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
     /*
      * qc->latest_rtt = 0
+     * qc->nclient_ids = 0
+     * qc->max_retired_seqnum = 0
      */
 
     qc->received = pkt->raw->last - pkt->raw->start;
@@ -765,6 +790,19 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
         return NGX_ERROR;
     }
     ngx_memcpy(qc->scid.data, pkt->scid.data, qc->scid.len);
+
+    cid = ngx_quic_alloc_connection_id(c);
+    if (cid == NULL) {
+        return NGX_ERROR;
+    }
+
+    cid->seqnum = 0;
+    cid->len = pkt->scid.len;
+    ngx_memcpy(cid->id, pkt->scid.data, pkt->scid.len);
+
+    ngx_queue_insert_tail(&qc->client_ids, &cid->queue);
+    qc->nclient_ids++;
+    qc->curr_seqnum = 0;
 
     keys = &c->quic->keys[ssl_encryption_initial];
 
@@ -1935,7 +1973,9 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
-    ngx_str_t  *dcid;
+    ngx_str_t             *dcid;
+    ngx_queue_t           *q;
+    ngx_quic_client_id_t  *cid;
 
     dcid = ngx_quic_pkt_zrtt(pkt->flags) ? &qc->odcid : &qc->dcid;
 
@@ -1949,17 +1989,22 @@ ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    if (pkt->scid.len != qc->scid.len) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scidl");
-        return NGX_ERROR;
+    for (q = ngx_queue_head(&qc->client_ids);
+         q != ngx_queue_sentinel(&qc->client_ids);
+         q = ngx_queue_next(q))
+    {
+        cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
+
+        if (pkt->scid.len == cid->len
+            && ngx_memcmp(pkt->scid.data, cid->id, cid->len) == 0)
+        {
+            return NGX_OK;
+        }
     }
 
-    if (ngx_memcmp(pkt->scid.data, qc->scid.data, qc->scid.len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
-        return NGX_ERROR;
-    }
 
-    return NGX_OK;
+   ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
+   return NGX_ERROR;
 }
 
 
@@ -2230,6 +2275,15 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
+
+            if (ngx_quic_handle_new_connection_id_frame(c, pkt, &frame.u.ncid)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
         case NGX_QUIC_FT_PATH_RESPONSE:
 
@@ -3469,6 +3523,202 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f)
+{
+    ngx_queue_t            *q;
+    ngx_quic_client_id_t   *cid, *item;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    if (f->seqnum < qc->max_retired_seqnum) {
+        /*
+         *  An endpoint that receives a NEW_CONNECTION_ID frame with
+         *  a sequence number smaller than the Retire Prior To field
+         *  of a previously received NEW_CONNECTION_ID frame MUST send
+         *  a corresponding RETIRE_CONNECTION_ID frame that retires
+         *  the newly received connection  ID, unless it has already
+         *  done so for that sequence number.
+         */
+
+        if (ngx_quic_retire_connection_id(c, pkt->level, f->seqnum) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        goto retire;
+    }
+
+    cid = NULL;
+
+    for (q = ngx_queue_head(&qc->client_ids);
+         q != ngx_queue_sentinel(&qc->client_ids);
+         q = ngx_queue_next(q))
+    {
+        item = ngx_queue_data(q, ngx_quic_client_id_t, queue);
+
+        if (item->seqnum == f->seqnum) {
+            cid = item;
+            break;
+        }
+    }
+
+    if (cid) {
+        /*
+         * Transmission errors, timeouts and retransmissions might cause the
+         * same NEW_CONNECTION_ID frame to be received multiple times
+         */
+
+        if (cid->len != f->len
+            || ngx_strncmp(cid->id, f->cid, f->len) != 0
+            || ngx_strncmp(cid->sr_token, f->srt, NGX_QUIC_SRT_LEN) != 0)
+        {
+            /*
+             * ..a sequence number is used for different connection IDs,
+             * the endpoint MAY treat that receipt as a connection error
+             * of type PROTOCOL_VIOLATION.
+             */
+            qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+            qc->error_reason = "seqnum refers to different connection id/token";
+            return NGX_ERROR;
+        }
+
+    } else {
+
+        cid = ngx_quic_alloc_connection_id(c);
+        if (cid == NULL) {
+            return NGX_ERROR;
+        }
+
+        cid->seqnum = f->seqnum;
+        cid->len = f->len;
+        ngx_memcpy(cid->id, f->cid, f->len);
+
+        ngx_memcpy(cid->sr_token, f->srt, NGX_QUIC_SRT_LEN);
+
+        ngx_queue_insert_tail(&qc->client_ids, &cid->queue);
+        qc->nclient_ids++;
+
+        /* always use latest available connection id */
+        if (f->seqnum > qc->curr_seqnum) {
+            qc->scid.len = cid->len;
+            qc->scid.data = cid->id;
+            qc->curr_seqnum = f->seqnum;
+        }
+    }
+
+retire:
+
+    if (qc->max_retired_seqnum && f->retire <= qc->max_retired_seqnum) {
+        /*
+         * Once a sender indicates a Retire Prior To value, smaller values sent
+         * in subsequent NEW_CONNECTION_ID frames have no effect.  A receiver
+         * MUST ignore any Retire Prior To fields that do not increase the
+         * largest received Retire Prior To value.
+         */
+        goto done;
+    }
+
+    qc->max_retired_seqnum = f->retire;
+
+    q = ngx_queue_head(&qc->client_ids);
+
+    while (q != ngx_queue_sentinel(&qc->client_ids)) {
+
+        cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
+        q = ngx_queue_next(q);
+
+        if (cid->seqnum >= f->retire) {
+            continue;
+        }
+
+        /* this connection id must be retired */
+
+        if (ngx_quic_retire_connection_id(c, pkt->level, cid->seqnum)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        ngx_queue_remove(&cid->queue);
+        ngx_queue_insert_head(&qc->free_client_ids, &cid->queue);
+        qc->nclient_ids--;
+    }
+
+done:
+
+    if (qc->nclient_ids > qc->tp.active_connection_id_limit) {
+        /*
+         * After processing a NEW_CONNECTION_ID frame and
+         * adding and retiring active connection IDs, if the number of active
+         * connection IDs exceeds the value advertised in its
+         * active_connection_id_limit transport parameter, an endpoint MUST
+         * close the connection with an error of type CONNECTION_ID_LIMIT_ERROR.
+         */
+        qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
+        qc->error_reason = "too many connection ids received";
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_retire_connection_id(ngx_connection_t *c,
+    enum ssl_encryption_level_t level, uint64_t seqnum)
+{
+    ngx_quic_frame_t  *frame;
+
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = level;
+    frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
+    frame->u.retire_cid.sequence_number = seqnum;
+
+    ngx_sprintf(frame->info, "RETIRE_CONNECTION_ID seqnum=%uL level=%d",
+                seqnum, frame->level);
+
+    ngx_quic_queue_frame(c->quic, frame);
+
+    return NGX_OK;
+}
+
+
+static ngx_quic_client_id_t *
+ngx_quic_alloc_connection_id(ngx_connection_t *c)
+{
+    ngx_queue_t            *q;
+    ngx_quic_client_id_t   *cid;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    if (!ngx_queue_empty(&qc->free_client_ids)) {
+
+        q = ngx_queue_head(&qc->free_client_ids);
+        cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
+
+        ngx_queue_remove(&cid->queue);
+
+        ngx_memzero(cid, sizeof(ngx_quic_client_id_t));
+
+    } else {
+
+        cid = ngx_pcalloc(c->pool, sizeof(ngx_quic_client_id_t));
+        if (cid == NULL) {
+            return NULL;
+        }
+    }
+
+    return cid;
 }
 
 

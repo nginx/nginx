@@ -120,6 +120,8 @@
 #define NGX_QUIC_CID_LEN_MIN                                8
 #define NGX_QUIC_CID_LEN_MAX                               20
 
+#define NGX_QUIC_SRT_LEN                                   16
+
 
 typedef struct {
     uint64_t                                    largest;
@@ -139,7 +141,7 @@ typedef struct {
     uint64_t                                    retire;
     uint8_t                                     len;
     u_char                                      cid[NGX_QUIC_CID_LEN_MAX];
-    u_char                                      srt[16];
+    u_char                                      srt[NGX_QUIC_SRT_LEN];
 } ngx_quic_new_conn_id_frame_t;
 
 
