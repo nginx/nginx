@@ -1098,10 +1098,6 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_connection_t  *qc;
     u_char                  tdec[NGX_QUIC_MAX_TOKEN_SIZE];
 
-    if (pkt->token.len == 0) {
-        return NGX_ERROR;
-    }
-
     qc = c->quic;
 
     /* Retry token */
@@ -1616,10 +1612,9 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.flags = p[0];
 
         if (c->quic->in_retry) {
-            return ngx_quic_retry_input(c, &pkt);
-        }
+            rc = ngx_quic_retry_input(c, &pkt);
 
-        if (ngx_quic_long_pkt(pkt.flags)) {
+        } else if (ngx_quic_long_pkt(pkt.flags)) {
 
             if (ngx_quic_pkt_in(pkt.flags)) {
                 rc = ngx_quic_initial_input(c, &pkt);
@@ -1698,7 +1693,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic UDP datagram is too small for initial packet");
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
@@ -1714,7 +1709,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (ngx_quic_pkt_zrtt(pkt->flags)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic discard inflight 0-RTT packet");
-        return NGX_OK;
+        return NGX_DECLINED;
     }
 
     if (!ngx_quic_pkt_in(pkt->flags)) {
@@ -1724,6 +1719,10 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
+        return NGX_DECLINED;
+    }
+
+    if (!pkt->token.len) {
         return NGX_DECLINED;
     }
 
@@ -1773,12 +1772,7 @@ ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    /* pos is at header end, adjust by actual packet length */
-    pkt->raw->pos += pkt->len;
-
-    (void) ngx_quic_skip_zero_padding(pkt->raw);
-
-    return ngx_quic_input(c, pkt->raw);
+    return NGX_OK;
 }
 
 
