@@ -4895,7 +4895,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0
         || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
     {
-        if (!c->read->eof && !c->read->error) {
+        if (!c->read->pending_eof && !c->read->error) {
             frame = ngx_quic_alloc_frame(pc, 0);
             if (frame == NULL) {
                 return;
