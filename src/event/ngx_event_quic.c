@@ -4751,8 +4751,8 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         frame->u.stream.length = n;
         frame->u.stream.data = frame->data;
 
-        ngx_sprintf(frame->info, "STREAM id:0x%xL len:%uz level:%d",
-                    qs->id, n, frame->level);
+        ngx_sprintf(frame->info, "STREAM id:0x%xL offset:%O len:%uz level:%d",
+                    qs->id, c->sent, n, frame->level);
 
         c->sent += n;
         qc->streams.sent += n;
@@ -4958,8 +4958,8 @@ ngx_quic_stream_cleanup_handler(void *data)
     frame->u.stream.length = 0;
     frame->u.stream.data = NULL;
 
-    ngx_sprintf(frame->info, "stream 0x%xL fin=1 level=%d",
-                qs->id, frame->level);
+    ngx_sprintf(frame->info, "STREAM id:0x%xL offset:%O fin:1 level:%d",
+                qs->id, c->sent, frame->level);
 
     ngx_quic_queue_frame(qc, frame);
 
