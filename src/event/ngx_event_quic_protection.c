@@ -1019,6 +1019,10 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
      * AES-Based and ChaCha20-Based header protections sample 16 bytes
      */
 
+    if (pkt->len < EVP_GCM_TLS_TAG_LEN + 4) {
+        return NGX_DECLINED;
+    }
+
     sample = p + 4;
 
     /* header protection */
