@@ -866,7 +866,15 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
     (void) ngx_quic_skip_zero_padding(pkt->raw);
 
-    return ngx_quic_input(c, pkt->raw);
+    rc = ngx_quic_input(c, pkt->raw);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    /* rc == NGX_OK || rc == NGX_DECLINED */
+
+    return NGX_OK;
 }
 
 
@@ -1290,6 +1298,7 @@ static void
 ngx_quic_input_handler(ngx_event_t *rev)
 {
     ssize_t                 n;
+    ngx_int_t               rc;
     ngx_buf_t               b;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
@@ -1337,10 +1346,18 @@ ngx_quic_input_handler(ngx_event_t *rev)
     b.last += n;
     qc->received += n;
 
-    if (ngx_quic_input(c, &b) != NGX_OK) {
+    rc = ngx_quic_input(c, &b);
+
+    if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
+
+    if (rc == NGX_DECLINED) {
+        return;
+    }
+
+    /* rc == NGX_OK */
 
     qc->send_timer_set = 0;
     ngx_add_timer(rev, qc->tp.max_idle_timeout);
@@ -1597,7 +1614,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 {
     u_char             *p;
     ngx_int_t           rc;
+    ngx_uint_t          good;
     ngx_quic_header_t   pkt;
+
+    good = 0;
 
     p = b->pos;
 
@@ -1639,6 +1659,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
             return NGX_ERROR;
         }
 
+        if (rc == NGX_OK) {
+            good = 1;
+        }
+
         /* NGX_OK || NGX_DECLINED */
 
         /*
@@ -1663,7 +1687,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         p = ngx_quic_skip_zero_padding(b);
     }
 
-    return NGX_OK;
+    return good ? NGX_OK : NGX_DECLINED;
 }
 
 
