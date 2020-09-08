@@ -511,6 +511,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
     }
 
     pkt->raw->pos = p;
+    pkt->len = end - p;
 
     return NGX_OK;
 }

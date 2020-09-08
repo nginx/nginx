@@ -1058,13 +1058,12 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     /* packet protection */
 
     in.data = p;
+    in.len = pkt->len - pnl;
 
     if (ngx_quic_long_pkt(pkt->flags)) {
-        in.len = pkt->len - pnl;
         badflags = clearflags & NGX_QUIC_PKT_LONG_RESERVED_BIT;
 
     } else {
-        in.len = pkt->data + pkt->len - p;
         badflags = clearflags & NGX_QUIC_PKT_SHORT_RESERVED_BIT;
     }
 
