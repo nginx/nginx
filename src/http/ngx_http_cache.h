@@ -117,6 +117,7 @@ struct ngx_http_cache_s {
     unsigned                         purged:1;
     unsigned                         reading:1;
     unsigned                         secondary:1;
+    unsigned                         update_variant:1;
     unsigned                         background:1;
 
     unsigned                         stale_updating:1;
