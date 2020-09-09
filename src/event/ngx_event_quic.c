@@ -1991,21 +1991,34 @@ ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
 static ngx_int_t
 ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
-    ngx_str_t             *dcid;
     ngx_queue_t           *q;
+    ngx_quic_send_ctx_t   *ctx;
     ngx_quic_client_id_t  *cid;
 
-    dcid = ngx_quic_pkt_zrtt(pkt->flags) ? &qc->odcid : &qc->dcid;
+    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
 
-    if (pkt->dcid.len != dcid->len) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcidl");
-        return NGX_ERROR;
+    if (ngx_quic_pkt_zrtt(pkt->flags)
+        || (ngx_quic_pkt_in(pkt->flags) && ctx->largest_ack == (uint64_t) -1))
+    {
+        if (pkt->dcid.len == qc->odcid.len
+            && ngx_memcmp(pkt->dcid.data, qc->odcid.data, qc->odcid.len) == 0)
+        {
+            goto found;
+        }
     }
 
-    if (ngx_memcmp(pkt->dcid.data, dcid->data, dcid->len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcid");
-        return NGX_ERROR;
+    if (!ngx_quic_pkt_zrtt(pkt->flags)) {
+        if (pkt->dcid.len == qc->dcid.len
+            && ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) == 0)
+        {
+            goto found;
+        }
     }
+
+    ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcid");
+    return NGX_ERROR;
+
+found:
 
     for (q = ngx_queue_head(&qc->client_ids);
          q != ngx_queue_sentinel(&qc->client_ids);
