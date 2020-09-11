@@ -190,7 +190,7 @@ Example configuration:
         + to enable QUIC in Chrome, enable it on command line and force it
           on your site:
 
-        $ ./chrome --enable-quic --quic-version=h3-27 \
+        $ ./chrome --enable-quic --quic-version=h3-29 \
                        --origin-to-force-quic-on=example.com:8443
 
     * Console clients
@@ -202,7 +202,7 @@ Example configuration:
         $ ./neqo-client https://127.0.0.1:8443/
 
         $ chromium-build/out/my_build/quic_client http://example.com:8443 \
-                  --quic_version=h3-27 \
+                  --quic_version=h3-29 \
                   --allow_unknown_root_cert \
                   --disable_certificate_verification
 
@@ -210,7 +210,7 @@ Example configuration:
    If you've got it right, in the access log you should see something like:
 
    127.0.0.1 - - [24/Apr/2020:11:27:29 +0300] "GET / HTTP/3" 200 805 "-"
-                                         "nghttp3/ngtcp2 client" "quic" "h3-27"
+                                         "nghttp3/ngtcp2 client" "quic" "h3-29"
 
 
 5. Troubleshooting
@@ -218,7 +218,7 @@ Example configuration:
     Here are some tips that may help you to identify problems:
 
     + Ensure you are building with proper SSL library that
-      implements draft 27
+      implements draft 29
 
     + Ensure you are using the proper SSL library in runtime
       (`nginx -V` will show you what you are using)
@@ -251,10 +251,10 @@ Example configuration:
 
 7. Links
 
-    [1] https://tools.ietf.org/html/draft-ietf-quic-transport-27
-    [2] https://tools.ietf.org/html/draft-ietf-quic-http-27
+    [1] https://tools.ietf.org/html/draft-ietf-quic-transport-29
+    [2] https://tools.ietf.org/html/draft-ietf-quic-http-29
     [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
     [4] https://boringssl.googlesource.com/boringssl/
-    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery-27
+    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery-29
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
