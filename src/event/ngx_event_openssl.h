@@ -78,6 +78,7 @@ struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
+    ngx_open_file_t            *keylog;
 };
 
 
@@ -100,6 +101,7 @@ struct ngx_ssl_connection_s {
     ngx_ssl_ocsp_t             *ocsp;
 
     u_char                      early_buf;
+    ngx_open_file_t            *keylog;
 
     unsigned                    handshaked:1;
     unsigned                    renegotiation:1;
@@ -296,6 +298,7 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
 void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     char *fmt, ...);
 void ngx_ssl_cleanup_ctx(void *data);
+void ngx_ssl_keylogger(const ngx_ssl_conn_t *ssl, const char *line);
 
 
 extern int  ngx_ssl_connection_index;

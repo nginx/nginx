@@ -255,6 +255,50 @@ ngx_ssl_init(ngx_log_t *log)
 }
 
 
+void
+ngx_ssl_keylogger(const ngx_ssl_conn_t *ssl_conn, const char *line)
+{
+    u_char                *p;
+    size_t                 len;
+    ssize_t                n;
+    ngx_connection_t      *c;
+    ngx_ssl_connection_t  *sc;
+
+    if (line == NULL) {
+        return;
+    }
+
+    len = ngx_strlen(line);
+
+    if (len == 0) {
+        return;
+    }
+
+    c = ngx_ssl_get_connection(ssl_conn);
+    sc = c->ssl;
+
+    p = ngx_alloc(len + 1, c->log);
+    if (p == NULL) {
+        return;
+    }
+
+    ngx_memcpy(p, line, len);
+    p[len] = '\n';
+
+    n = ngx_write_fd(sc->keylog->fd, p, len + 1);
+    if (n == -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_errno,
+                      ngx_write_fd_n " to \"%s\" failed",
+                      sc->keylog->name.data);
+
+    } else if ((size_t) n != len + 1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      ngx_write_fd_n " to \"%s\" was incomplete: %z of %uz",
+                      sc->keylog->name.data, n, len + 1);
+    }
+}
+
+
 ngx_int_t
 ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 {
@@ -1515,6 +1559,8 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     if (sc == NULL) {
         return NGX_ERROR;
     }
+
+    sc->keylog = ssl->keylog;
 
     sc->buffer = ((flags & NGX_SSL_BUFFER) != 0);
     sc->buffer_size = ssl->buffer_size;
