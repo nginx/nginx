@@ -2865,6 +2865,13 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             c->read->handler = ngx_ssl_shutdown_handler;
             c->write->handler = ngx_ssl_shutdown_handler;
 
+            if (sslerr == SSL_ERROR_WANT_READ) {
+                c->read->ready = 0;
+
+            } else {
+                c->write->ready = 0;
+            }
+
             if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
                 return NGX_ERROR;
             }
