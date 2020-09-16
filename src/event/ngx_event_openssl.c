@@ -2805,7 +2805,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         return NGX_OK;
     }
 
-    if (c->timedout || c->error) {
+    if (c->timedout || c->error || c->buffered) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
         SSL_set_quiet_shutdown(c->ssl->connection, 1);
 
