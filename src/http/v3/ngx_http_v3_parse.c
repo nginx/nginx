@@ -10,6 +10,10 @@
 #include <ngx_http.h>
 
 
+#define ngx_http_v3_is_v2_frame(type)                                         \
+    ((type) == 0x02 || (type) == 0x06 || (type) == 0x08 || (type) == 0x09)
+
+
 static ngx_int_t ngx_http_v3_parse_lookup(ngx_connection_t *c,
     ngx_uint_t dynamic, ngx_uint_t index, ngx_str_t *name, ngx_str_t *value);
 
@@ -182,6 +186,11 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
         }
 
         st->type = st->vlint.value;
+
+        if (ngx_http_v3_is_v2_frame(st->type)) {
+            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
+        }
+
         st->state = sw_length;
         break;
 
@@ -986,6 +995,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 parse frame type:%ui", st->type);
 
+        if (ngx_http_v3_is_v2_frame(st->type)) {
+            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
+        }
+
         if (st->state == sw_first_type
             && st->type != NGX_HTTP_V3_FRAME_SETTINGS)
         {
@@ -1579,6 +1592,10 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
         if (st->type == NGX_HTTP_V3_FRAME_HEADERS) {
             /* trailers */
             goto done;
+        }
+
+        if (ngx_http_v3_is_v2_frame(st->type)) {
+            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
         }
 
         st->state = sw_length;
