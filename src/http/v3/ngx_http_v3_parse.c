@@ -212,6 +212,10 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
             break;
         }
 
+        if (st->length == 0) {
+            return NGX_HTTP_V3_ERR_FRAME_ERROR;
+        }
+
         st->state = sw_prefix;
         break;
 
@@ -225,17 +229,13 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
     case sw_prefix:
 
-        if (st->length-- == 0) {
+        if (--st->length == 0) {
             return NGX_HTTP_V3_ERR_FRAME_ERROR;
         }
 
         rc = ngx_http_v3_parse_header_block_prefix(c, &st->prefix, ch);
         if (rc != NGX_DONE) {
             return rc;
-        }
-
-        if (st->length == 0) {
-            return NGX_HTTP_V3_ERR_FRAME_ERROR;
         }
 
         st->state = sw_verify;
