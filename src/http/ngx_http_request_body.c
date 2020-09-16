@@ -804,16 +804,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 
         for ( ;; ) {
 
-            switch (r->http_version) {
-#if (NGX_HTTP_V3)
-            case NGX_HTTP_VERSION_30:
-                rc = ngx_http_v3_parse_request_body(r, b, rb->chunked);
-                break;
-#endif
-
-            default: /* HTTP/1.x */
-                rc = ngx_http_parse_chunked(r, b, rb->chunked);
-            }
+            rc = ngx_http_parse_chunked(r, b, rb->chunked);
 
             if (rc == NGX_OK) {
 
