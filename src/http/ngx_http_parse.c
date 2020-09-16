@@ -2377,11 +2377,6 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
         }
     }
 
-    if (b->last_buf) {
-        /* XXX client prematurely closed connection */
-        return NGX_ERROR;
-    }
-
 data:
 
     ctx->state = state;

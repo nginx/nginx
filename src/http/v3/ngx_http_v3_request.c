@@ -379,6 +379,10 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_int_t                  rc;
     ngx_connection_t          *c;
     ngx_http_v3_parse_data_t  *st;
+    enum {
+        sw_start = 0,
+        sw_skip
+    };
 
     c = r->connection;
     st = ctx->h3_parse;
@@ -395,12 +399,8 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
         ctx->h3_parse = st;
     }
 
-    if (ctx->size) {
-        ctx->length = ctx->size + 1;
-        return (b->pos == b->last) ? NGX_AGAIN : NGX_OK;
-    }
+    while (b->pos < b->last && ctx->size == 0) {
 
-    while (b->pos < b->last) {
         rc = ngx_http_v3_parse_data(c, st, *b->pos++);
 
         if (rc > 0) {
@@ -414,27 +414,27 @@ ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
         }
 
         if (rc == NGX_AGAIN) {
+            ctx->state = sw_skip;
             continue;
         }
 
         /* rc == NGX_DONE */
 
         ctx->size = st->length;
-        return NGX_OK;
+        ctx->state = sw_start;
     }
 
-    if (!b->last_buf) {
+    if (ctx->state == sw_skip) {
         ctx->length = 1;
         return NGX_AGAIN;
     }
 
-    if (st->state) {
-        goto failed;
+    if (b->pos == b->last) {
+        ctx->length = ctx->size;
+        return NGX_AGAIN;
     }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header done");
-
-    return NGX_DONE;
+    return NGX_OK;
 
 failed:
 

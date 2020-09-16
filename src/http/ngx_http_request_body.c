@@ -960,6 +960,15 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
             break;
         }
 
+        size = cl->buf->last - cl->buf->pos;
+
+        if (cl->buf->last_buf && (off_t) size < rb->rest) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client prematurely closed connection");
+            r->connection->error = 1;
+            return NGX_HTTP_BAD_REQUEST;
+        }
+
         tl = ngx_chain_get_free_buf(r->pool, &rb->free);
         if (tl == NULL) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -977,8 +986,6 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
         b->end = cl->buf->end;
         b->flush = r->request_body_no_buffering;
 
-        size = cl->buf->last - cl->buf->pos;
-
         if ((off_t) size < rb->rest) {
             cl->buf->pos = cl->buf->last;
             rb->rest -= size;
@@ -988,11 +995,6 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
             rb->rest = 0;
             b->last = cl->buf->pos;
             b->last_buf = 1;
-        }
-
-        if (cl->buf->last_buf && rb->rest > 0) {
-            /* XXX client prematurely closed connection */
-            return NGX_ERROR;
         }
 
         *ll = tl;
@@ -1146,6 +1148,20 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 b->last = cl->buf->pos;
 
                 continue;
+            }
+
+            if (rc == NGX_AGAIN && cl->buf->last_buf) {
+
+                /* last body buffer */
+
+                if (rb->chunked->length > 0) {
+                    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                                  "client prematurely closed connection");
+                    r->connection->error = 1;
+                    return NGX_HTTP_BAD_REQUEST;
+                }
+
+                rc = NGX_DONE;
             }
 
             if (rc == NGX_DONE) {
