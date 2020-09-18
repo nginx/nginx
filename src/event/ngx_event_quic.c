@@ -910,24 +910,17 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 static ngx_int_t
 ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid)
 {
-    uint8_t                 len;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
 
-    if (RAND_bytes(&len, sizeof(len)) != 1) {
-        return NGX_ERROR;
-    }
-
-    len = len % 10 + 10;
-
-    qc->dcid.len = len;
-    qc->dcid.data = ngx_pnalloc(c->pool, len);
+    qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
+    qc->dcid.data = ngx_pnalloc(c->pool, NGX_QUIC_SERVER_CID_LEN);
     if (qc->dcid.data == NULL) {
         return NGX_ERROR;
     }
 
-    if (RAND_bytes(qc->dcid.data, len) != 1) {
+    if (RAND_bytes(qc->dcid.data, NGX_QUIC_SERVER_CID_LEN) != 1) {
         return NGX_ERROR;
     }
 

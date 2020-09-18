@@ -54,6 +54,8 @@
 
 #define NGX_QUIC_STREAM_BUFSIZE              65536
 
+#define NGX_QUIC_SERVER_CID_LEN              20
+
 
 typedef struct {
     /* configurable */
