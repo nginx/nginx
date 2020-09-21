@@ -1492,8 +1492,16 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         return NGX_AGAIN;
     }
 
-    if (qc->close.timer_set) {
-        return NGX_AGAIN;
+    if (qc->push.timer_set) {
+        ngx_del_timer(&qc->push);
+    }
+
+    if (qc->pto.timer_set) {
+        ngx_del_timer(&qc->pto);
+    }
+
+    if (qc->push.posted) {
+        ngx_delete_posted_event(&qc->push);
     }
 
     for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
@@ -1505,16 +1513,8 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
     }
 
-    if (qc->push.timer_set) {
-        ngx_del_timer(&qc->push);
-    }
-
-    if (qc->pto.timer_set) {
-        ngx_del_timer(&qc->pto);
-    }
-
-    if (qc->push.posted) {
-        ngx_delete_posted_event(&qc->push);
+    if (qc->close.timer_set) {
+        return NGX_AGAIN;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
