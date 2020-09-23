@@ -1084,6 +1084,13 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
     }
 
+    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "skipping http2 DATA frame");
+
+        return ngx_http_v2_state_skip_padded(h2c, pos, end);
+    }
+
     size = end - pos;
 
     if (size >= h2c->state.length) {
