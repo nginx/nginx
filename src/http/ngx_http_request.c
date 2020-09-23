@@ -308,6 +308,8 @@ ngx_http_init_connection(ngx_connection_t *c)
         ngx_quic_conf_t          *qcf;
         ngx_http_ssl_srv_conf_t  *sscf;
 
+        hc->ssl = 1;
+
 #if (NGX_HTTP_V3)
 
         if (hc->addr_conf->http3) {
