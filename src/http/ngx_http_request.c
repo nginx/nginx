@@ -932,7 +932,10 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     c->ssl->buffer_size = sscf->buffer_size;
 
     if (sscf->ssl.ctx) {
-        SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx);
+        if (SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx) == NULL) {
+            *ad = SSL_AD_INTERNAL_ERROR;
+            return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
 
         /*
          * SSL_set_SSL_CTX() only changes certs as of 1.0.0d
