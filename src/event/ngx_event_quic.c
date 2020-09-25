@@ -1676,7 +1676,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
          */
 
         /* b->pos is at header end, adjust by actual packet length */
-        b->pos += pkt.len;
+        b->pos = pkt.data + pkt.len;
         p = ngx_quic_skip_zero_padding(b);
     }
 

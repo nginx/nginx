@@ -997,6 +997,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     uint64_t *largest_pn)
 {
     u_char               clearflags, *p, *sample;
+    size_t               len;
     uint8_t              badflags;
     uint64_t             pn, lpn;
     ngx_int_t            pnl, rc, key_phase;
@@ -1012,6 +1013,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     secret = pkt->secret;
 
     p = pkt->raw->pos;
+    len = pkt->data + pkt->len - p;
 
     /* draft-ietf-quic-tls-23#section-5.4.2:
      * the Packet Number field is assumed to be 4 bytes long
@@ -1019,7 +1021,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
      * AES-Based and ChaCha20-Based header protections sample 16 bytes
      */
 
-    if (pkt->len < EVP_GCM_TLS_TAG_LEN + 4) {
+    if (len < EVP_GCM_TLS_TAG_LEN + 4) {
         return NGX_DECLINED;
     }
 
@@ -1062,7 +1064,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     /* packet protection */
 
     in.data = p;
-    in.len = pkt->len - pnl;
+    in.len = len - pnl;
 
     if (ngx_quic_long_pkt(pkt->flags)) {
         badflags = clearflags & NGX_QUIC_PKT_LONG_RESERVED_BIT;

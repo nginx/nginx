@@ -511,7 +511,6 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
     }
 
     pkt->raw->pos = p;
-    pkt->len = end - p;
 
     return NGX_OK;
 }
@@ -561,7 +560,7 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
     }
 
     pkt->raw->pos = p;
-    pkt->len = varint;
+    pkt->len = p + varint - pkt->data;
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
     ngx_quic_hexdump(pkt->log, "quic DCID", pkt->dcid.data, pkt->dcid.len);
@@ -600,7 +599,7 @@ ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
     }
 
     pkt->raw->pos = p;
-    pkt->len = plen;
+    pkt->len = p + plen - pkt->data;
 
     return NGX_OK;
 }
