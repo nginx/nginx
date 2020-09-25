@@ -250,20 +250,8 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     u_char   *p, *end;
     uint8_t   idlen;
 
-    p = pkt->data;
+    p = pkt->raw->pos;
     end = pkt->data + pkt->len;
-
-    p = ngx_quic_read_uint8(p, end, &pkt->flags);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read flags");
-        return NGX_ERROR;
-    }
-
-    if (!ngx_quic_long_pkt(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic not a long packet");
-        return NGX_ERROR;
-    }
 
     p = ngx_quic_read_uint32(p, end, &pkt->version);
     if (p == NULL) {
@@ -473,20 +461,8 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 {
     u_char  *p, *end;
 
-    p = pkt->data;
+    p = pkt->raw->pos;
     end = pkt->data + pkt->len;
-
-    p = ngx_quic_read_uint8(p, end, &pkt->flags);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read flags");
-        return NGX_ERROR;
-    }
-
-    if (!ngx_quic_short_pkt(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic not a short packet");
-        return NGX_ERROR;
-    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic short packet flags:%xd", pkt->flags);

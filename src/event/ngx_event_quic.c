@@ -1623,6 +1623,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.len = b->last - p;
         pkt.log = c->log;
         pkt.flags = p[0];
+        pkt.raw->pos++;
 
         if (c->quic->in_retry) {
             rc = ngx_quic_retry_input(c, &pkt);
