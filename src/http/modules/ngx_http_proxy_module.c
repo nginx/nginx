@@ -3766,7 +3766,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->redirect == 0) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     plcf->redirect = 1;
@@ -3775,16 +3775,12 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (cf->args->nelts == 2) {
         if (ngx_strcmp(value[1].data, "off") == 0) {
-            plcf->redirect = 0;
-            plcf->redirects = NULL;
-            return NGX_CONF_OK;
-        }
 
-        if (ngx_strcmp(value[1].data, "false") == 0) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                           "invalid parameter \"false\", use \"off\" instead");
+            if (plcf->redirects) {
+                return "is duplicate";
+            }
+
             plcf->redirect = 0;
-            plcf->redirects = NULL;
             return NGX_CONF_OK;
         }
 
@@ -3808,7 +3804,9 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_strcmp(value[1].data, "default") == 0) {
+    if (cf->args->nelts == 2
+        && ngx_strcmp(value[1].data, "default") == 0)
+    {
         if (plcf->proxy_lengths) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_redirect default\" cannot be used "
@@ -3911,7 +3909,7 @@ ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->cookie_domains == NULL) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     value = cf->args->elts;
@@ -3919,6 +3917,11 @@ ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cf->args->nelts == 2) {
 
         if (ngx_strcmp(value[1].data, "off") == 0) {
+
+            if (plcf->cookie_domains != NGX_CONF_UNSET_PTR) {
+                return "is duplicate";
+            }
+
             plcf->cookie_domains = NULL;
             return NGX_CONF_OK;
         }
@@ -3998,7 +4001,7 @@ ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->cookie_paths == NULL) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     value = cf->args->elts;
@@ -4006,6 +4009,11 @@ ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cf->args->nelts == 2) {
 
         if (ngx_strcmp(value[1].data, "off") == 0) {
+
+            if (plcf->cookie_paths != NGX_CONF_UNSET_PTR) {
+                return "is duplicate";
+            }
+
             plcf->cookie_paths = NULL;
             return NGX_CONF_OK;
         }
