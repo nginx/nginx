@@ -18,7 +18,7 @@ typedef struct {
 typedef struct ngx_http_proxy_rewrite_s  ngx_http_proxy_rewrite_t;
 
 typedef ngx_int_t (*ngx_http_proxy_rewrite_pt)(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len,
+    ngx_str_t *value, size_t prefix, size_t len,
     ngx_http_proxy_rewrite_t *pr);
 
 struct ngx_http_proxy_rewrite_s {
@@ -161,7 +161,7 @@ static ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r,
     ngx_table_elt_t *h, u_char *value, ngx_array_t *rewrites);
 static ngx_int_t ngx_http_proxy_rewrite(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_str_t *replacement);
+    ngx_str_t *value, size_t prefix, size_t len, ngx_str_t *replacement);
 
 static ngx_int_t ngx_http_proxy_add_variables(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_main_conf(ngx_conf_t *cf);
@@ -2584,7 +2584,7 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
     len = h->value.len - prefix;
 
     for (i = 0; i < plcf->redirects->nelts; i++) {
-        rc = pr[i].handler(r, h, prefix, len, &pr[i]);
+        rc = pr[i].handler(r, &h->value, prefix, len, &pr[i]);
 
         if (rc != NGX_DECLINED) {
             return rc;
@@ -2669,7 +2669,7 @@ ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r, ngx_table_elt_t *h,
     pr = rewrites->elts;
 
     for (i = 0; i < rewrites->nelts; i++) {
-        rc = pr[i].handler(r, h, prefix, len, &pr[i]);
+        rc = pr[i].handler(r, &h->value, prefix, len, &pr[i]);
 
         if (rc != NGX_DECLINED) {
             return rc;
@@ -2681,8 +2681,8 @@ ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
+ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r, ngx_str_t *value,
+    size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     ngx_str_t  pattern, replacement;
 
@@ -2691,8 +2691,7 @@ ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
     }
 
     if (pattern.len > len
-        || ngx_rstrncmp(h->value.data + prefix, pattern.data,
-                        pattern.len) != 0)
+        || ngx_rstrncmp(value->data + prefix, pattern.data, pattern.len) != 0)
     {
         return NGX_DECLINED;
     }
@@ -2701,20 +2700,20 @@ ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    return ngx_http_proxy_rewrite(r, h, prefix, pattern.len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, pattern.len, &replacement);
 }
 
 
 #if (NGX_PCRE)
 
 static ngx_int_t
-ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_table_elt_t *h,
+ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_str_t *value,
     size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     ngx_str_t  pattern, replacement;
 
     pattern.len = len;
-    pattern.data = h->value.data + prefix;
+    pattern.data = value->data + prefix;
 
     if (ngx_http_regex_exec(r, pr->pattern.regex, &pattern) != NGX_OK) {
         return NGX_DECLINED;
@@ -2724,20 +2723,15 @@ ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    if (prefix == 0 && h->value.len == len) {
-        h->value = replacement;
-        return NGX_OK;
-    }
-
-    return ngx_http_proxy_rewrite(r, h, prefix, len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, len, &replacement);
 }
 
 #endif
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
+ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r, ngx_str_t *value,
+    size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     u_char     *p;
     ngx_str_t   pattern, replacement;
@@ -2746,7 +2740,7 @@ ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    p = h->value.data + prefix;
+    p = value->data + prefix;
 
     if (p[0] == '.') {
         p++;
@@ -2762,18 +2756,23 @@ ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    return ngx_http_proxy_rewrite(r, h, prefix, len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, len, &replacement);
 }
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_table_elt_t *h, size_t prefix,
+ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_str_t *value, size_t prefix,
     size_t len, ngx_str_t *replacement)
 {
     u_char  *p, *data;
     size_t   new_len;
 
-    new_len = replacement->len + h->value.len - len;
+    if (len == value->len) {
+        *value = *replacement;
+        return NGX_OK;
+    }
+
+    new_len = replacement->len + value->len - len;
 
     if (replacement->len > len) {
 
@@ -2782,23 +2781,22 @@ ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_table_elt_t *h, size_t prefix,
             return NGX_ERROR;
         }
 
-        p = ngx_copy(data, h->value.data, prefix);
+        p = ngx_copy(data, value->data, prefix);
         p = ngx_copy(p, replacement->data, replacement->len);
 
-        ngx_memcpy(p, h->value.data + prefix + len,
-                   h->value.len - len - prefix + 1);
+        ngx_memcpy(p, value->data + prefix + len,
+                   value->len - len - prefix + 1);
 
-        h->value.data = data;
+        value->data = data;
 
     } else {
-        p = ngx_copy(h->value.data + prefix, replacement->data,
-                     replacement->len);
+        p = ngx_copy(value->data + prefix, replacement->data, replacement->len);
 
-        ngx_memmove(p, h->value.data + prefix + len,
-                    h->value.len - len - prefix + 1);
+        ngx_memmove(p, value->data + prefix + len,
+                    value->len - len - prefix + 1);
     }
 
-    h->value.len = new_len;
+    value->len = new_len;
 
     return NGX_OK;
 }
