@@ -2679,7 +2679,9 @@ ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r, ngx_table_elt_t *h)
     ngx_keyval_t               *attr;
     ngx_http_proxy_loc_conf_t  *plcf;
 
-    ngx_array_init(&attrs, r->pool, 2, sizeof(ngx_keyval_t));
+    if (ngx_array_init(&attrs, r->pool, 2, sizeof(ngx_keyval_t)) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     if (ngx_http_proxy_parse_cookie(&h->value, &attrs) != NGX_OK) {
         return NGX_ERROR;
