@@ -305,8 +305,10 @@ ngx_http_init_connection(ngx_connection_t *c)
 #if (NGX_HTTP_QUIC)
 
     if (hc->addr_conf->quic) {
-        ngx_quic_conf_t          *qcf;
-        ngx_http_ssl_srv_conf_t  *sscf;
+        ngx_quic_conf_t           *qcf;
+        ngx_http_connection_t     *phc;
+        ngx_http_ssl_srv_conf_t   *sscf;
+        ngx_http_core_loc_conf_t  *clcf;
 
         hc->ssl = 1;
 
@@ -339,6 +341,17 @@ ngx_http_init_connection(ngx_connection_t *c)
 
             ngx_quic_run(c, &sscf->ssl, qcf);
             return;
+        }
+
+        phc = c->qs->parent->data;
+
+        if (phc->ssl_servername) {
+            hc->ssl_servername = phc->ssl_servername;
+            hc->conf_ctx = phc->conf_ctx;
+
+            clcf = ngx_http_get_module_loc_conf(hc->conf_ctx,
+                                                ngx_http_core_module);
+            ngx_set_connection_log(c, clcf->error_log);
         }
     }
 
