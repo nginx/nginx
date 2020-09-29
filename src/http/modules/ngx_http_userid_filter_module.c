@@ -15,12 +15,13 @@
 #define NGX_HTTP_USERID_V1    2
 #define NGX_HTTP_USERID_ON    3
 
-#define NGX_HTTP_USERID_COOKIE_SECURE           0x0001
-#define NGX_HTTP_USERID_COOKIE_HTTPONLY         0x0002
-#define NGX_HTTP_USERID_COOKIE_SAMESITE         0x0004
-#define NGX_HTTP_USERID_COOKIE_SAMESITE_STRICT  0x0008
-#define NGX_HTTP_USERID_COOKIE_SAMESITE_LAX     0x0010
-#define NGX_HTTP_USERID_COOKIE_SAMESITE_NONE    0x0020
+#define NGX_HTTP_USERID_COOKIE_OFF              0x0002
+#define NGX_HTTP_USERID_COOKIE_SECURE           0x0004
+#define NGX_HTTP_USERID_COOKIE_HTTPONLY         0x0008
+#define NGX_HTTP_USERID_COOKIE_SAMESITE         0x0010
+#define NGX_HTTP_USERID_COOKIE_SAMESITE_STRICT  0x0020
+#define NGX_HTTP_USERID_COOKIE_SAMESITE_LAX     0x0040
+#define NGX_HTTP_USERID_COOKIE_SAMESITE_NONE    0x0080
 
 /* 31 Dec 2037 23:55:55 GMT */
 #define NGX_HTTP_USERID_MAX_EXPIRES  2145916555
@@ -97,6 +98,7 @@ static ngx_conf_enum_t  ngx_http_userid_state[] = {
 
 
 static ngx_conf_bitmask_t  ngx_http_userid_flags[] = {
+    { ngx_string("off"), NGX_HTTP_USERID_COOKIE_OFF },
     { ngx_string("secure"), NGX_HTTP_USERID_COOKIE_SECURE },
     { ngx_string("httponly"), NGX_HTTP_USERID_COOKIE_HTTPONLY },
     { ngx_string("samesite=strict"),
@@ -752,7 +754,7 @@ ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                               NGX_HTTP_USERID_OFF);
 
     ngx_conf_merge_bitmask_value(conf->flags, prev->flags,
-                                 NGX_CONF_BITMASK_SET);
+                            (NGX_CONF_BITMASK_SET|NGX_HTTP_USERID_COOKIE_OFF));
 
     ngx_conf_merge_str_value(conf->name, prev->name, "uid");
     ngx_conf_merge_str_value(conf->domain, prev->domain, "");
