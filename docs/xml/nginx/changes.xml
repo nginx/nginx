@@ -5,6 +5,112 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.3" date="2020-09-29">
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_set_module.
+</para>
+<para lang="en">
+the ngx_stream_set_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_cookie_flags.
+</para>
+<para lang="en">
+the "proxy_cookie_flags" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива userid_flags.
+</para>
+<para lang="en">
+the "userid_flags" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+расширение управления кэшированием stale-if-error
+ошибочно применялось, если бэкенд возвращал ответ
+с кодом 500, 502, 503, 504, 403, 404 или 429.
+</para>
+<para lang="en">
+the "stale-if-error" cache control extension
+was erroneously applied if backend returned a response
+with status code 500, 502, 503, 504, 403, 404, or 429.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если использовалось кэширование
+и бэкенд возвращал ответы с строкой заголовка Vary,
+в логах могли появляться сообщения "[crit] cache file ... has too long header".
+</para>
+<para lang="en">
+"[crit] cache file ... has too long header" messages might appear in logs
+if caching was used
+and the backend returned responses with the "Vary" header line.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании OpenSSL 1.1.1
+в логах могли появляться сообщения "[crit] SSL_write() failed".
+</para>
+<para lang="en">
+"[crit] SSL_write() failed" messages might appear in logs
+when using OpenSSL 1.1.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логах могли появляться сообщения
+"SSL_shutdown() failed (SSL: ... bad write retry)";
+ошибка появилась в 1.19.2.
+</para>
+<para lang="en">
+"SSL_shutdown() failed (SSL: ... bad write retry)"
+messages might appear in logs;
+the bug had appeared in 1.19.2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+в рабочем процессе мог произойти segmentation fault,
+если ошибки с кодом 400 с помощью директивы error_page
+перенаправлялись в проксируемый location.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using HTTP/2
+if errors with code 400 were redirected to a proxied location
+using the "error_page" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+утечки сокетов при использовании HTTP/2 и подзапросов в модуле njs.
+</para>
+<para lang="en">
+socket leak when using HTTP/2 and subrequests in the njs module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.2" date="2020-08-11">
 
 <change type="change">
