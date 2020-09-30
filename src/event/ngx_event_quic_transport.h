@@ -319,22 +319,18 @@ typedef struct {
 
 u_char *ngx_quic_error_text(uint64_t error_code);
 
+ngx_int_t ngx_quic_parse_packet(ngx_quic_header_t *pkt);
+
 size_t ngx_quic_create_version_negotiation(ngx_quic_header_t *pkt, u_char *out);
 
-ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
 size_t ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp);
 
-ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
-    ngx_str_t *dcid);
 size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp);
 
 size_t ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
     u_char **start);
-
-ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
-ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
 
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);

@@ -187,7 +187,7 @@ static ngx_int_t ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
     ngx_quic_header_t *inpkt);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid);
-static ngx_int_t ngx_quic_retry(ngx_connection_t *c);
+static ngx_int_t ngx_quic_send_retry(ngx_connection_t *c);
 static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
 static ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -201,19 +201,13 @@ static void ngx_quic_close_timer_handler(ngx_event_t *ev);
 static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
-static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b);
-static ngx_inline u_char *ngx_quic_skip_zero_padding(ngx_buf_t *b);
-static ngx_int_t ngx_quic_retry_input(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_initial_input(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_handshake_input(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_early_input(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b,
+    ngx_ssl_t *ssl, ngx_quic_conf_t *conf);
+static ngx_int_t ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static void ngx_quic_discard_ctx(ngx_connection_t *c,
+    enum ssl_encryption_level_t level);
 static ngx_int_t ngx_quic_check_peer(ngx_quic_connection_t *qc,
-    ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_app_input(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -630,24 +624,13 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 void
 ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
 {
-    ngx_int_t           rc;
-    ngx_buf_t          *b;
-    ngx_quic_header_t   pkt;
+    ngx_int_t  rc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run");
 
     c->log->action = "QUIC initialization";
 
-    ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
-
-    b = c->buffer;
-
-    pkt.log = c->log;
-    pkt.raw = b;
-    pkt.data = b->start;
-    pkt.len = b->last - b->start;
-
-    rc = ngx_quic_new_connection(c, ssl, conf, &pkt);
+    rc = ngx_quic_input(c, c->buffer, ssl, conf);
     if (rc != NGX_OK) {
         ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
         return;
@@ -666,46 +649,10 @@ static ngx_int_t
 ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt)
 {
-    ngx_int_t               rc;
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
-    ngx_quic_secrets_t     *keys;
-    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
-
-    if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic UDP datagram is too small for initial packet");
-        return NGX_ERROR;
-    }
-
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (pkt->version != NGX_QUIC_VERSION) {
-        return ngx_quic_negotiate_version(c, pkt);
-    }
-
-    if (!ngx_quic_pkt_in(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid initial packet: 0x%xd", pkt->flags);
-        return NGX_ERROR;
-    }
-
-    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
-        /* 7.2.  Negotiating Connection IDs */
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic too short dcid in initial packet: length %i",
-                      pkt->dcid.len);
-        return NGX_ERROR;
-    }
 
     c->log->action = "creating new quic connection";
 
@@ -804,75 +751,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     qc->nclient_ids++;
     qc->curr_seqnum = 0;
 
-    keys = &c->quic->keys[ssl_encryption_initial];
-
-    if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
-                                    &qc->odcid)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
     qc->initialized = 1;
 
     if (ngx_terminate || ngx_exiting) {
         qc->error = NGX_QUIC_ERR_CONNECTION_REFUSED;
         return NGX_ERROR;
     }
-
-    if (pkt->token.len) {
-        rc = ngx_quic_validate_token(c, pkt);
-
-        if (rc == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
-            return NGX_ERROR;
-        }
-
-        if (rc == NGX_DECLINED) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic expired token");
-            return ngx_quic_retry(c);
-        }
-
-        /* NGX_OK */
-        qc->validated = 1;
-
-    } else if (conf->retry) {
-        return ngx_quic_retry(c);
-    }
-
-    pkt->secret = &keys->client;
-    pkt->level = ssl_encryption_initial;
-    pkt->plaintext = buf;
-
-    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
-
-    rc = ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn);
-    if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
-        return rc;
-    }
-
-    if (ngx_quic_init_connection(c) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (ngx_quic_payload_handler(c, pkt) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    /* pos is at header end, adjust by actual packet length */
-    pkt->raw->pos += pkt->len;
-
-    (void) ngx_quic_skip_zero_padding(pkt->raw);
-
-    rc = ngx_quic_input(c, pkt->raw);
-
-    if (rc == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
-    /* rc == NGX_OK || rc == NGX_DECLINED */
 
     return NGX_OK;
 }
@@ -939,7 +823,7 @@ ngx_quic_new_dcid(ngx_connection_t *c, ngx_str_t *odcid)
 
 
 static ngx_int_t
-ngx_quic_retry(ngx_connection_t *c)
+ngx_quic_send_retry(ngx_connection_t *c)
 {
     ssize_t            len;
     ngx_str_t          res, token;
@@ -1194,12 +1078,15 @@ ngx_quic_validate_token(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_memcpy(&msec, tdec + len, sizeof(msec));
 
     if (ngx_current_msec - msec > NGX_QUIC_RETRY_LIFETIME) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic expired token");
         return NGX_DECLINED;
     }
 
     return NGX_OK;
 
 bad_token:
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
 
     qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
     qc->error_reason = "invalid_token";
@@ -1339,7 +1226,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     b.last += n;
     qc->received += n;
 
-    rc = ngx_quic_input(c, &b);
+    rc = ngx_quic_input(c, &b, NULL, NULL);
 
     if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
@@ -1603,7 +1490,8 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 
 
 static ngx_int_t
-ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
+ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_ssl_t *ssl,
+    ngx_quic_conf_t *conf)
 {
     u_char             *p;
     ngx_int_t           rc;
@@ -1625,29 +1513,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
         pkt.flags = p[0];
         pkt.raw->pos++;
 
-        if (c->quic->in_retry) {
-            rc = ngx_quic_retry_input(c, &pkt);
-
-        } else if (ngx_quic_long_pkt(pkt.flags)) {
-
-            if (ngx_quic_pkt_in(pkt.flags)) {
-                rc = ngx_quic_initial_input(c, &pkt);
-
-            } else if (ngx_quic_pkt_hs(pkt.flags)) {
-                rc = ngx_quic_handshake_input(c, &pkt);
-
-            } else if (ngx_quic_pkt_zrtt(pkt.flags)) {
-                rc = ngx_quic_early_input(c, &pkt);
-
-            } else {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic unknown long packet type");
-                rc = NGX_DECLINED;
-            }
-
-        } else {
-            rc = ngx_quic_app_input(c, &pkt);
-        }
+        rc = ngx_quic_process_packet(c, ssl, conf, &pkt);
 
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
@@ -1678,163 +1544,155 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b)
 
         /* b->pos is at header end, adjust by actual packet length */
         b->pos = pkt.data + pkt.len;
-        p = ngx_quic_skip_zero_padding(b);
+
+        /* firefox workaround: skip zero padding at the end of quic packet */
+        while (b->pos < b->last && *(b->pos) == 0) {
+            b->pos++;
+        }
+
+        p = b->pos;
     }
 
     return good ? NGX_OK : NGX_DECLINED;
 }
 
 
-/* firefox workaround: skip zero padding at the end of quic packet */
-static ngx_inline u_char *
-ngx_quic_skip_zero_padding(ngx_buf_t *b)
-{
-    while (b->pos < b->last && *(b->pos) == 0) {
-        b->pos++;
-    }
-
-    return b->pos;
-}
-
-
 static ngx_int_t
-ngx_quic_retry_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    ngx_int_t               rc;
-    ngx_quic_secrets_t     *keys;
-    ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
-
-    c->log->action = "retrying quic connection";
-
-    if (ngx_buf_size(pkt->raw) < NGX_QUIC_MIN_INITIAL_SIZE) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic UDP datagram is too small for initial packet");
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    if (pkt->version != NGX_QUIC_VERSION) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic unsupported version: 0x%xD", pkt->version);
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_pkt_zrtt(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic discard inflight 0-RTT packet");
-        return NGX_DECLINED;
-    }
-
-    if (!ngx_quic_pkt_in(pkt->flags)) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic invalid initial packet: 0x%xd", pkt->flags);
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    if (!pkt->token.len) {
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_new_dcid(c, &pkt->dcid) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    qc = c->quic;
-    qc->tp.initial_scid = c->quic->dcid;
-
-    keys = &c->quic->keys[ssl_encryption_initial];
-
-    if (ngx_quic_set_initial_secret(c->pool, &keys->client, &keys->server,
-                                    &qc->odcid)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    c->quic->in_retry = 0;
-
-    if (ngx_quic_validate_token(c, pkt) != NGX_OK) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
-        return NGX_ERROR;
-    }
-
-    qc->validated = 1;
-
-    pkt->secret = &keys->client;
-    pkt->level = ssl_encryption_initial;
-    pkt->plaintext = buf;
-
-    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
-
-    rc = ngx_quic_decrypt(pkt, NULL, &ctx->largest_pn);
-    if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
-        return rc;
-    }
-
-    if (ngx_quic_init_connection(c) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (ngx_quic_payload_handler(c, pkt) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
+ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
     ngx_ssl_conn_t         *ssl_conn;
-    ngx_quic_secrets_t     *keys;
+    ngx_quic_secrets_t     *keys, *next, tmp;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
+
     static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
-    c->log->action = "processing initial quic packet";
+    rc = ngx_quic_parse_packet(pkt);
 
-    ssl_conn = c->ssl->connection;
-
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    if (pkt->version != NGX_QUIC_VERSION) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic unsupported version: 0x%xD", pkt->version);
-        return NGX_DECLINED;
+    if (rc == NGX_DECLINED || rc == NGX_ERROR) {
+        return rc;
     }
 
     qc = c->quic;
 
-    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
+    if (qc) {
+
+        if (rc == NGX_ABORT) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic unsupported version: 0x%xD", pkt->version);
+            return NGX_DECLINED;
+        }
+
+        if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
+            return NGX_DECLINED;
+        }
+
+        if (qc->in_retry) {
+
+            c->log->action = "retrying quic connection";
+
+            if (pkt->level != ssl_encryption_initial) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic discard late retry packet");
+                return NGX_DECLINED;
+            }
+
+            if (!pkt->token.len) {
+                return NGX_DECLINED;
+            }
+
+            if (ngx_quic_new_dcid(c, &pkt->dcid) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            qc->tp.initial_scid = qc->dcid;
+            qc->in_retry = 0;
+
+            keys = &qc->keys[ssl_encryption_initial];
+
+            if (ngx_quic_set_initial_secret(c->pool, &keys->client,
+                                            &keys->server, &qc->odcid)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            if (ngx_quic_validate_token(c, pkt) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            qc->validated = 1;
+        }
+
+    } else {
+
+        if (rc == NGX_ABORT) {
+            return ngx_quic_negotiate_version(c, pkt);
+        }
+
+        if (pkt->level == ssl_encryption_initial) {
+
+            if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
+                /* 7.2.  Negotiating Connection IDs */
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic too short dcid in initial"
+                              " packet: length %i", pkt->dcid.len);
+                return NGX_ERROR;
+            }
+
+            rc = ngx_quic_new_connection(c, ssl, conf, pkt);
+            if (rc != NGX_OK) {
+                return rc;
+            }
+
+            if (pkt->token.len) {
+                if (ngx_quic_validate_token(c, pkt) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+
+            } else if (conf->retry) {
+                return ngx_quic_send_retry(c);
+            }
+
+            qc = c->quic;
+
+            keys = &qc->keys[ssl_encryption_initial];
+
+            if (ngx_quic_set_initial_secret(c->pool, &keys->client,
+                                            &keys->server, &qc->odcid)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+        } else if (pkt->level == ssl_encryption_application) {
+            return NGX_DECLINED;
+
+        } else {
+            return NGX_ERROR;
+        }
+    }
+
+    keys = &qc->keys[pkt->level];
+
+    if (keys->client.key.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic no level %d keys yet, ignoring packet", pkt->level);
         return NGX_DECLINED;
     }
 
-    if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    keys = &qc->keys[ssl_encryption_initial];
+    next = &qc->next_key;
 
     pkt->secret = &keys->client;
-    pkt->level = ssl_encryption_initial;
+    pkt->next = &next->client;
+    pkt->key_phase = qc->key_phase;
     pkt->plaintext = buf;
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    ssl_conn = c->ssl ? c->ssl->connection : NULL;
 
     rc = ngx_quic_decrypt(pkt, ssl_conn, &ctx->largest_pn);
     if (rc != NGX_OK) {
@@ -1843,70 +1701,72 @@ ngx_quic_initial_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return rc;
     }
 
-    return ngx_quic_payload_handler(c, pkt);
-}
-
-
-static ngx_int_t
-ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    ngx_int_t               rc;
-    ngx_queue_t            *q;
-    ngx_quic_frame_t       *f;
-    ngx_quic_secrets_t     *keys;
-    ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
-
-    c->log->action = "processing handshake quic packet";
-
-    qc = c->quic;
-
-    keys = &c->quic->keys[ssl_encryption_handshake];
-
-    if (keys->client.key.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no read keys yet, packet ignored");
-        return NGX_DECLINED;
+    if (c->ssl == NULL) {
+        if (ngx_quic_init_connection(c) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
-    /* extract cleartext data into pkt */
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
+    if (pkt->level == ssl_encryption_handshake) {
+        /*
+         * 4.10.1. The successful use of Handshake packets indicates
+         * that no more Initial packets need to be exchanged
+         */
+        ngx_quic_discard_ctx(c, ssl_encryption_initial);
+        qc->validated = 1;
     }
 
-    if (pkt->version != NGX_QUIC_VERSION) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic unsupported version: 0x%xD", pkt->version);
-        return NGX_DECLINED;
+    if (pkt->level != ssl_encryption_application) {
+        return ngx_quic_payload_handler(c, pkt);
     }
 
-    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
-        return NGX_DECLINED;
+    ngx_gettimeofday(&pkt->received);
+
+    /* switch keys on Key Phase change */
+
+    if (pkt->key_update) {
+        qc->key_phase ^= 1;
+
+        tmp = *keys;
+        *keys = *next;
+        *next = tmp;
     }
 
-    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    pkt->secret = &keys->client;
-    pkt->level = ssl_encryption_handshake;
-    pkt->plaintext = buf;
-
-    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
-
-    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
+    rc = ngx_quic_payload_handler(c, pkt);
     if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
         return rc;
     }
 
-    /*
-     * 4.10.1. The successful use of Handshake packets indicates
-     * that no more Initial packets need to be exchanged
-     */
-    ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_initial);
+    /* generate next keys */
+
+    if (pkt->key_update) {
+        if (ngx_quic_key_update(c, keys, next) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
+{
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    if (qc->keys[level].client.key.len == 0) {
+        return;
+    }
+
+    qc->keys[level].client.key.len = 0;
+    qc->pto_count = 0;
+
+    ctx = ngx_quic_get_send_ctx(qc, level);
 
     while (!ngx_queue_empty(&ctx->sent)) {
         q = ngx_queue_head(&ctx->sent);
@@ -1916,94 +1776,40 @@ ngx_quic_handshake_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
         ngx_quic_congestion_ack(c, f);
         ngx_quic_free_frame(c, f);
     }
-
-    qc->validated = 1;
-    qc->pto_count = 0;
-
-    return ngx_quic_payload_handler(c, pkt);
-}
-
-
-static ngx_int_t
-ngx_quic_early_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    ngx_int_t               rc;
-    ngx_quic_secrets_t     *keys;
-    ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
-
-    c->log->action = "processing early data quic packet";
-
-    qc = c->quic;
-
-    /* extract cleartext data into pkt */
-    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    if (pkt->version != NGX_QUIC_VERSION) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic unsupported version: 0x%xD", pkt->version);
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    keys = &c->quic->keys[ssl_encryption_early_data];
-
-    if (keys->client.key.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no 0-RTT keys yet, packet ignored");
-        return NGX_DECLINED;
-    }
-
-
-    pkt->secret = &keys->client;
-    pkt->level = ssl_encryption_early_data;
-    pkt->plaintext = buf;
-
-    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
-
-    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
-    if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
-        return rc;
-    }
-
-    return ngx_quic_payload_handler(c, pkt);
 }
 
 
 static ngx_int_t
 ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
+    ngx_str_t             *dcid;
     ngx_queue_t           *q;
     ngx_quic_send_ctx_t   *ctx;
     ngx_quic_client_id_t  *cid;
 
+    dcid = (pkt->level == ssl_encryption_early_data) ? &qc->odcid : &qc->dcid;
+
+    if (pkt->dcid.len == dcid->len
+        && ngx_memcmp(pkt->dcid.data, dcid->data, dcid->len) == 0)
+    {
+        if (pkt->level == ssl_encryption_application) {
+            return NGX_OK;
+        }
+
+        goto found;
+    }
+
+    /*
+     * a packet sent in response to an initial client packet might be lost,
+     * thus check also for old dcid
+     */
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
 
-    if (ngx_quic_pkt_zrtt(pkt->flags)
-        || (ngx_quic_pkt_in(pkt->flags) && ctx->largest_ack == (uint64_t) -1))
+    if (pkt->level == ssl_encryption_initial
+        && ctx->largest_ack == (uint64_t) -1)
     {
         if (pkt->dcid.len == qc->odcid.len
             && ngx_memcmp(pkt->dcid.data, qc->odcid.data, qc->odcid.len) == 0)
-        {
-            goto found;
-        }
-    }
-
-    if (!ngx_quic_pkt_zrtt(pkt->flags)) {
-        if (pkt->dcid.len == qc->dcid.len
-            && ngx_memcmp(pkt->dcid.data, qc->dcid.data, qc->dcid.len) == 0)
         {
             goto found;
         }
@@ -2027,80 +1833,8 @@ found:
         }
     }
 
-
-   ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
-   return NGX_ERROR;
-}
-
-
-static ngx_int_t
-ngx_quic_app_input(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    ngx_int_t               rc;
-    ngx_quic_secrets_t     *keys, *next, tmp;
-    ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
-
-    c->log->action = "processing application data quic packet";
-
-    qc = c->quic;
-
-    keys = &c->quic->keys[ssl_encryption_application];
-    next = &c->quic->next_key;
-
-    if (keys->client.key.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no read keys yet, packet ignored");
-        return NGX_DECLINED;
-    }
-
-    if (ngx_quic_parse_short_header(pkt, &qc->dcid) != NGX_OK) {
-        return NGX_DECLINED;
-    }
-
-    pkt->secret = &keys->client;
-    pkt->next = &next->client;
-    pkt->key_phase = c->quic->key_phase;
-    pkt->level = ssl_encryption_application;
-    pkt->plaintext = buf;
-
-    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
-
-    rc = ngx_quic_decrypt(pkt, c->ssl->connection, &ctx->largest_pn);
-    if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
-        return rc;
-    }
-
-    ngx_gettimeofday(&pkt->received);
-
-    /* switch keys on Key Phase change */
-
-    if (pkt->key_update) {
-        c->quic->key_phase ^= 1;
-
-        tmp = *keys;
-        *keys = *next;
-        *next = tmp;
-    }
-
-    rc = ngx_quic_payload_handler(c, pkt);
-
-    if (rc == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
-    /* generate next keys */
-
-    if (pkt->key_update) {
-        if (ngx_quic_key_update(c, keys, next) != NGX_OK) {
-            return NGX_ERROR;
-        }
-    }
-
-    return rc;
+    ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
+    return NGX_ERROR;
 }
 
 
@@ -2981,9 +2715,7 @@ static ngx_int_t
 ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 {
     int                       n, sslerr;
-    ngx_queue_t              *q;
     ngx_ssl_conn_t           *ssl_conn;
-    ngx_quic_send_ctx_t      *ctx;
     ngx_quic_crypto_frame_t  *f;
 
     f = &frame->u.crypto;
@@ -3060,18 +2792,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
          * 4.10.2 An endpoint MUST discard its handshake keys
          * when the TLS handshake is confirmed
          */
-        ctx = ngx_quic_get_send_ctx(c->quic, ssl_encryption_handshake);
-
-        while (!ngx_queue_empty(&ctx->sent)) {
-            q = ngx_queue_head(&ctx->sent);
-            ngx_queue_remove(q);
-
-            frame = ngx_queue_data(q, ngx_quic_frame_t, queue);
-            ngx_quic_congestion_ack(c, frame);
-            ngx_quic_free_frame(c, frame);
-        }
-
-        c->quic->pto_count = 0;
+        ngx_quic_discard_ctx(c, ssl_encryption_handshake);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,

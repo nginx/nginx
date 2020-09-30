@@ -67,6 +67,12 @@ static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
 static u_char *ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len,
     u_char *dst);
 
+static ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
+    size_t dcid_len);
+static ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
+
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
@@ -245,6 +251,52 @@ ngx_quic_error_text(uint64_t error_code)
 
 
 ngx_int_t
+ngx_quic_parse_packet(ngx_quic_header_t *pkt)
+{
+    if (!ngx_quic_long_pkt(pkt->flags)) {
+        pkt->level = ssl_encryption_application;
+
+        return ngx_quic_parse_short_header(pkt, NGX_QUIC_SERVER_CID_LEN);
+    }
+
+    if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
+        return NGX_DECLINED;
+    }
+
+    if (pkt->version != NGX_QUIC_VERSION) {
+        return NGX_ABORT;
+    }
+
+    if (ngx_quic_pkt_in(pkt->flags)) {
+
+        if (pkt->len < NGX_QUIC_MIN_INITIAL_SIZE) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "quic UDP datagram is too small for initial packet");
+            return NGX_DECLINED;
+        }
+
+        pkt->level = ssl_encryption_initial;
+
+        return ngx_quic_parse_initial_header(pkt);
+    }
+
+    if (ngx_quic_pkt_hs(pkt->flags)) {
+        pkt->level = ssl_encryption_handshake;
+
+    } else if (ngx_quic_pkt_zrtt(pkt->flags)) {
+        pkt->level = ssl_encryption_early_data;
+
+    } else {
+         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                       "quic unknown long packet type");
+         return NGX_DECLINED;
+    }
+
+    return ngx_quic_parse_handshake_header(pkt);
+}
+
+
+static ngx_int_t
 ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
 {
     u_char   *p, *end;
@@ -456,8 +508,8 @@ ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
 }
 
 
-ngx_int_t
-ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
+static ngx_int_t
+ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
 {
     u_char  *p, *end;
 
@@ -472,14 +524,9 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
         return NGX_ERROR;
     }
 
-    if (ngx_memcmp(p, dcid->data, dcid->len) != 0) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "unexpected quic dcid");
-        return NGX_ERROR;
-    }
+    pkt->dcid.len = dcid_len;
 
-    pkt->dcid.len = dcid->len;
-
-    p = ngx_quic_read_bytes(p, end, dcid->len, &pkt->dcid.data);
+    p = ngx_quic_read_bytes(p, end, dcid_len, &pkt->dcid.data);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                       "quic packet is too small to read dcid");
@@ -492,7 +539,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, ngx_str_t *dcid)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 {
     u_char    *p, *end;
@@ -548,7 +595,7 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
 {
     u_char    *p, *end;
