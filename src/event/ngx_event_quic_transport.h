@@ -101,7 +101,7 @@
 /* Transport parameters */
 #define NGX_QUIC_TP_ORIGINAL_DCID                        0x00
 #define NGX_QUIC_TP_MAX_IDLE_TIMEOUT                     0x01
-#define NGX_QUIC_TP_STATELESS_RESET_TOKEN                0x02
+#define NGX_QUIC_TP_SR_TOKEN                             0x02
 #define NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE                 0x03
 #define NGX_QUIC_TP_INITIAL_MAX_DATA                     0x04
 #define NGX_QUIC_TP_INITIAL_MAX_STREAM_DATA_BIDI_LOCAL   0x05
@@ -119,9 +119,6 @@
 
 #define NGX_QUIC_CID_LEN_MIN                                8
 #define NGX_QUIC_CID_LEN_MAX                               20
-
-#define NGX_QUIC_SRT_LEN                                   16
-
 
 typedef struct {
     uint64_t                                    largest;
@@ -141,7 +138,7 @@ typedef struct {
     uint64_t                                    retire;
     uint8_t                                     len;
     u_char                                      cid[NGX_QUIC_CID_LEN_MAX];
-    u_char                                      srt[NGX_QUIC_SRT_LEN];
+    u_char                                      srt[NGX_QUIC_SR_TOKEN_LEN];
 } ngx_quic_new_conn_id_frame_t;
 
 

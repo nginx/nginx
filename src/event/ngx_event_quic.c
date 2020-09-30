@@ -36,6 +36,16 @@
 
 #define NGX_QUIC_STREAM_GONE     (void *) -1
 
+/*
+ * Endpoints MUST discard packets that are too small to be valid QUIC
+ * packets.  With the set of AEAD functions defined in [QUIC-TLS],
+ * packets that are smaller than 21 bytes are never valid.
+ */
+#define NGX_QUIC_MIN_PKT_LEN     21
+
+#define NGX_QUIC_MIN_SR_PACKET   43 /* 5 random + 16 srt + 22 padding */
+#define NGX_QUIC_MAX_SR_PACKET   1200
+
 
 typedef struct {
     ngx_rbtree_t                      tree;
@@ -154,7 +164,7 @@ typedef struct {
     uint64_t                          seqnum;
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
-    u_char                            sr_token[NGX_QUIC_SRT_LEN];
+    u_char                            sr_token[NGX_QUIC_SR_TOKEN_LEN];
 } ngx_quic_client_id_t;
 
 
@@ -184,6 +194,10 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_ssl_t *ssl, ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
     ngx_quic_header_t *inpkt);
 static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c,
@@ -758,6 +772,105 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
 
 
 static ngx_int_t
+ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
+    ngx_quic_header_t *pkt)
+{
+    u_char    *token;
+    size_t     len, max;
+    uint16_t   rndbytes;
+    u_char     buf[NGX_QUIC_MAX_SR_PACKET];
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic handle stateless reset output");
+
+    if (conf->sr_token_key.len == 0) {
+        return NGX_DECLINED;
+    }
+
+    if (pkt->len <= NGX_QUIC_MIN_PKT_LEN) {
+        return NGX_DECLINED;
+    }
+
+    if (pkt->len <= NGX_QUIC_MIN_SR_PACKET) {
+        len = pkt->len - 1;
+
+    } else {
+        max = ngx_min(NGX_QUIC_MAX_SR_PACKET, pkt->len * 3);
+
+        if (RAND_bytes((u_char *) &rndbytes, sizeof(rndbytes)) != 1) {
+            return NGX_ERROR;
+        }
+
+        len = (rndbytes % (max - NGX_QUIC_MIN_SR_PACKET + 1))
+              + NGX_QUIC_MIN_SR_PACKET;
+    }
+
+    if (RAND_bytes(buf, len - NGX_QUIC_SR_TOKEN_LEN) != 1) {
+        return NGX_ERROR;
+    }
+
+    buf[0] &= ~NGX_QUIC_PKT_LONG;
+    buf[0] |= NGX_QUIC_PKT_FIXED_BIT;
+
+    token = &buf[len - NGX_QUIC_SR_TOKEN_LEN];
+
+    if (ngx_quic_new_sr_token(c, &pkt->dcid, &conf->sr_token_key, token)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    (void) c->send(c, buf, len);
+
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_quic_process_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    u_char                 *tail, ch;
+    ngx_uint_t              i;
+    ngx_queue_t            *q;
+    ngx_quic_client_id_t   *cid;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    /* A stateless reset uses an entire UDP datagram */
+    if (pkt->raw->start != pkt->data) {
+        return NGX_DECLINED;
+    }
+
+    tail = pkt->raw->last - NGX_QUIC_SR_TOKEN_LEN;
+
+    for (q = ngx_queue_head(&qc->client_ids);
+         q != ngx_queue_sentinel(&qc->client_ids);
+         q = ngx_queue_next(q))
+    {
+        cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
+
+        if (cid->seqnum == 0) {
+            /* no stateless reset token in initial connection id */
+            continue;
+        }
+
+        /* constant time comparison */
+
+        for (ch = 0, i = 0; i < NGX_QUIC_SR_TOKEN_LEN; i++) {
+            ch |= tail[i] ^ cid->sr_token[i];
+        }
+
+        if (ch == 0) {
+            return NGX_OK;
+        }
+    }
+
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
 ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 {
     size_t             len;
@@ -1115,6 +1228,20 @@ ngx_quic_init_connection(ngx_connection_t *c)
         SSL_set_quic_early_data_enabled(ssl_conn, 1);
     }
 #endif
+
+    if (qc->conf->sr_token_key.len) {
+        qc->tp.sr_enabled = 1;
+
+        if (ngx_quic_new_sr_token(c, &qc->dcid, &qc->conf->sr_token_key,
+                                  qc->tp.sr_token)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        ngx_quic_hexdump(c->log, "quic stateless reset token",
+                         qc->tp.sr_token, NGX_QUIC_SR_TOKEN_LEN);
+    }
 
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
     /* always succeeds */
@@ -1578,6 +1705,21 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
         }
 
         if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
+
+            if (pkt->level == ssl_encryption_application) {
+                if (ngx_quic_process_stateless_reset(c, pkt) == NGX_OK) {
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "quic stateless reset packet detected");
+
+                    qc->draining = 1;
+                    ngx_quic_close_connection(c, NGX_OK);
+
+                    return NGX_OK;
+                }
+
+                return ngx_quic_send_stateless_reset(c, qc->conf, pkt);
+            }
+
             return NGX_DECLINED;
         }
 
@@ -1655,7 +1797,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
             }
 
         } else if (pkt->level == ssl_encryption_application) {
-            return NGX_DECLINED;
+            return ngx_quic_send_stateless_reset(c, conf, pkt);
 
         } else {
             return NGX_ERROR;
@@ -3337,7 +3479,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
         if (cid->len != f->len
             || ngx_strncmp(cid->id, f->cid, f->len) != 0
-            || ngx_strncmp(cid->sr_token, f->srt, NGX_QUIC_SRT_LEN) != 0)
+            || ngx_strncmp(cid->sr_token, f->srt, NGX_QUIC_SR_TOKEN_LEN) != 0)
         {
             /*
              * ..a sequence number is used for different connection IDs,
@@ -3360,7 +3502,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
         cid->len = f->len;
         ngx_memcpy(cid->id, f->cid, f->len);
 
-        ngx_memcpy(cid->sr_token, f->srt, NGX_QUIC_SRT_LEN);
+        ngx_memcpy(cid->sr_token, f->srt, NGX_QUIC_SR_TOKEN_LEN);
 
         ngx_queue_insert_tail(&qc->client_ids, &cid->queue);
         qc->nclient_ids++;

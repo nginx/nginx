@@ -774,7 +774,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        p = ngx_quic_copy_bytes(p, end, NGX_QUIC_SRT_LEN, f->u.ncid.srt);
+        p = ngx_quic_copy_bytes(p, end, NGX_QUIC_SR_TOKEN_LEN, f->u.ncid.srt);
         if (p == NULL) {
             goto error;
         }
@@ -1553,7 +1553,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         case NGX_QUIC_TP_ORIGINAL_DCID:
         case NGX_QUIC_TP_PREFERRED_ADDRESS:
         case NGX_QUIC_TP_RETRY_SCID:
-        case NGX_QUIC_TP_STATELESS_RESET_TOKEN:
+        case NGX_QUIC_TP_SR_TOKEN:
             ngx_log_error(NGX_LOG_INFO, log, 0,
                           "quic client sent forbidden transport param"
                           " id 0x%xL", id);
@@ -1810,6 +1810,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     }
 #endif
 
+    if (tp->sr_enabled) {
+        len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
+        len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
+        len += NGX_QUIC_SR_TOKEN_LEN;
+    }
+
     if (pos == NULL) {
         return len;
     }
@@ -1850,6 +1856,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
         ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     }
 #endif
+
+    if (tp->sr_enabled) {
+        ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
+        ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);
+        p = ngx_cpymem(p, tp->sr_token, NGX_QUIC_SR_TOKEN_LEN);
+    }
 
     return p - pos;
 }

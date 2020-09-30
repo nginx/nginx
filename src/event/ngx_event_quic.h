@@ -56,6 +56,8 @@
 
 #define NGX_QUIC_SERVER_CID_LEN              20
 
+#define NGX_QUIC_SR_TOKEN_LEN                16
+
 
 typedef struct {
     /* configurable */
@@ -75,9 +77,10 @@ typedef struct {
     ngx_str_t                  original_dcid;
     ngx_str_t                  initial_scid;
     ngx_str_t                  retry_scid;
+    u_char                     sr_token[NGX_QUIC_SR_TOKEN_LEN];
+    ngx_uint_t                 sr_enabled;
 
     /* TODO */
-    u_char                     stateless_reset_token[16];
     void                      *preferred_address;
 } ngx_quic_tp_t;
 
@@ -87,6 +90,7 @@ typedef struct {
     ngx_flag_t                 retry;
     ngx_flag_t                 require_alpn;
     u_char                     token_key[32]; /* AES 256 */
+    ngx_str_t                  sr_token_key; /* stateless reset token key */
 } ngx_quic_conf_t;
 
 

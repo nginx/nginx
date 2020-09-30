@@ -923,6 +923,62 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 }
 
 
+ngx_int_t
+ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, ngx_str_t *secret,
+    u_char *token)
+{
+    uint8_t       *p;
+    size_t         is_len, key_len, info_len;
+    ngx_str_t      label;
+    const EVP_MD  *digest;
+    uint8_t       info[20];
+    uint8_t       is[SHA256_DIGEST_LENGTH];
+    uint8_t       key[SHA256_DIGEST_LENGTH];
+
+    /* 10.4.2.  Calculating a Stateless Reset Token */
+
+    digest = EVP_sha256();
+    ngx_str_set(&label, "sr_token_key");
+
+    if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
+                         cid->data, cid->len)
+       != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "ngx_hkdf_extract(%V) failed", &label);
+        return NGX_ERROR;
+    }
+
+    key_len = SHA256_DIGEST_LENGTH;
+
+    info_len = 2 + 1 + label.len + 1;
+
+    info[0] = 0;
+    info[1] = key_len;
+    info[2] = label.len;
+
+    p = ngx_cpymem(&info[3], label.data, label.len);
+    *p = '\0';
+
+    if (ngx_hkdf_expand(key, key_len, digest, is, is_len, info, info_len)
+        != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+                      "ngx_hkdf_expand(%V) failed", &label);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(token, key, NGX_QUIC_SR_TOKEN_LEN);
+
+#if (NGX_DEBUG)
+    ngx_quic_hexdump(c->log, "quic stateless reset token", token,
+                     NGX_QUIC_SR_TOKEN_LEN);
+#endif
+
+    return NGX_OK;
+}
+
+
 static uint64_t
 ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn)

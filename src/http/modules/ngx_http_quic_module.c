@@ -125,6 +125,13 @@ static ngx_command_t  ngx_http_quic_commands[] = {
       offsetof(ngx_quic_conf_t, retry),
       NULL },
 
+    { ngx_string("quic_stateless_reset_token_key"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_quic_conf_t, sr_token_key),
+      NULL },
+
       ngx_null_command
 };
 
@@ -223,8 +230,10 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
      *     conf->tp.original_dcid = { 0, NULL };
      *     conf->tp.initial_scid = { 0, NULL };
      *     conf->tp.retry_scid = { 0, NULL };
-     *     conf->tp.stateless_reset_token = { 0 }
+     *     conf->tp.sr_token = { 0 }
+     *     conf->tp.sr_enabled = 0
      *     conf->tp.preferred_address = NULL
+     *     conf->sr_token_key = { 0, NULL }
      */
 
     conf->tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;
@@ -303,6 +312,8 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
     }
+
+    ngx_conf_merge_str_value(conf->sr_token_key, prev->sr_token_key, "");
 
     return NGX_CONF_OK;
 }
