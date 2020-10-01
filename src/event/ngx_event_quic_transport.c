@@ -256,7 +256,12 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
     if (!ngx_quic_long_pkt(pkt->flags)) {
         pkt->level = ssl_encryption_application;
 
-        return ngx_quic_parse_short_header(pkt, NGX_QUIC_SERVER_CID_LEN);
+        if (ngx_quic_parse_short_header(pkt, NGX_QUIC_SERVER_CID_LEN) != NGX_OK)
+        {
+            return NGX_DECLINED;
+        }
+
+        return NGX_OK;
     }
 
     if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
@@ -277,7 +282,11 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
 
         pkt->level = ssl_encryption_initial;
 
-        return ngx_quic_parse_initial_header(pkt);
+        if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
+            return NGX_DECLINED;
+        }
+
+        return NGX_OK;
     }
 
     if (ngx_quic_pkt_hs(pkt->flags)) {
@@ -292,7 +301,11 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
          return NGX_DECLINED;
     }
 
-    return ngx_quic_parse_handshake_header(pkt);
+    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
