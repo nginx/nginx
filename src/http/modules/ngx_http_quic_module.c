@@ -262,6 +262,8 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_quic_conf_t *prev = parent;
     ngx_quic_conf_t *conf = child;
 
+    ngx_http_ssl_srv_conf_t  *sscf;
+
     ngx_conf_merge_msec_value(conf->tp.max_idle_timeout,
                               prev->tp.max_idle_timeout, 60000);
 
@@ -314,6 +316,9 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_str_value(conf->sr_token_key, prev->sr_token_key, "");
+
+    sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
+    conf->ssl = &sscf->ssl;
 
     return NGX_CONF_OK;
 }

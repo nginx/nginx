@@ -28,7 +28,7 @@ static ngx_conf_post_t  ngx_stream_quic_max_udp_payload_size_post =
     { ngx_stream_quic_max_udp_payload_size };
 static ngx_conf_num_bounds_t  ngx_stream_quic_ack_delay_exponent_bounds =
     { ngx_conf_check_num_bounds, 0, 20 };
-static ngx_conf_num_bounds_t 
+static ngx_conf_num_bounds_t
                             ngx_stream_quic_active_connection_id_limit_bounds =
     { ngx_conf_check_num_bounds, 2, -1 };
 
@@ -251,6 +251,8 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_quic_conf_t *prev = parent;
     ngx_quic_conf_t *conf = child;
 
+    ngx_stream_ssl_conf_t  *scf;
+
     ngx_conf_merge_msec_value(conf->tp.max_idle_timeout,
                               prev->tp.max_idle_timeout, 60000);
 
@@ -301,6 +303,9 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
     }
+
+    scf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_ssl_module);
+    conf->ssl = &scf->ssl;
 
     return NGX_CONF_OK;
 }

@@ -120,8 +120,6 @@ struct ngx_quic_connection_s {
 
     ngx_quic_conf_t                  *conf;
 
-    ngx_ssl_t                        *ssl;
-
     ngx_event_t                       push;
     ngx_event_t                       pto;
     ngx_event_t                       close;
@@ -193,7 +191,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
-    ngx_ssl_t *ssl, ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
@@ -217,8 +215,8 @@ static ngx_int_t ngx_quic_close_streams(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
 static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b,
-    ngx_ssl_t *ssl, ngx_quic_conf_t *conf);
-static ngx_int_t ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
+    ngx_quic_conf_t *conf);
+static ngx_int_t ngx_quic_process_packet(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_init_secrets(ngx_connection_t *c);
 static void ngx_quic_discard_ctx(ngx_connection_t *c,
@@ -639,7 +637,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
 
 void
-ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
+ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
 {
     ngx_int_t  rc;
 
@@ -647,7 +645,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
 
     c->log->action = "QUIC initialization";
 
-    rc = ngx_quic_input(c, c->buffer, ssl, conf);
+    rc = ngx_quic_input(c, c->buffer, conf);
     if (rc != NGX_OK) {
         ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
         return;
@@ -663,8 +661,8 @@ ngx_quic_run(ngx_connection_t *c, ngx_ssl_t *ssl, ngx_quic_conf_t *conf)
 
 
 static ngx_quic_connection_t *
-ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt)
+ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
+    ngx_quic_header_t *pkt)
 {
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
@@ -718,7 +716,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_ssl_t *ssl,
     qc->push.handler = ngx_quic_push_handler;
     qc->push.cancelable = 1;
 
-    qc->ssl = ssl;
     qc->conf = conf;
     qc->tp = conf->tp;
 
@@ -1211,7 +1208,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     qc = c->quic;
 
-    if (ngx_ssl_create_connection(qc->ssl, c, NGX_SSL_BUFFER) != NGX_OK) {
+    if (ngx_ssl_create_connection(qc->conf->ssl, c, NGX_SSL_BUFFER) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1345,7 +1342,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     b.last += n;
     qc->received += n;
 
-    rc = ngx_quic_input(c, &b, NULL, NULL);
+    rc = ngx_quic_input(c, &b, NULL);
 
     if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
@@ -1609,8 +1606,7 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 
 
 static ngx_int_t
-ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_ssl_t *ssl,
-    ngx_quic_conf_t *conf)
+ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 {
     u_char             *p;
     ngx_int_t           rc;
@@ -1632,7 +1628,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_ssl_t *ssl,
         pkt.flags = p[0];
         pkt.raw->pos++;
 
-        rc = ngx_quic_process_packet(c, ssl, conf, &pkt);
+        rc = ngx_quic_process_packet(c, conf, &pkt);
 
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
@@ -1677,8 +1673,8 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_ssl_t *ssl,
 
 
 static ngx_int_t
-ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt)
+ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
+    ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
     ngx_ssl_conn_t         *ssl_conn;
@@ -1771,7 +1767,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_ssl_t *ssl,
                 return NGX_ERROR;
             }
 
-            qc = ngx_quic_new_connection(c, ssl, conf, pkt);
+            qc = ngx_quic_new_connection(c, conf, pkt);
             if (qc == NULL) {
                 return NGX_ERROR;
             }
