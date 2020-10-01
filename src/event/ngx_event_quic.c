@@ -1221,7 +1221,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
-    if (SSL_CTX_get_max_early_data(qc->ssl->ctx)) {
+    if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
         SSL_set_quic_early_data_enabled(ssl_conn, 1);
     }
 #endif
