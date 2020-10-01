@@ -1237,7 +1237,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         }
 
         ngx_quic_hexdump(c->log, "quic stateless reset token",
-                         qc->tp.sr_token, NGX_QUIC_SR_TOKEN_LEN);
+                         qc->tp.sr_token, (size_t) NGX_QUIC_SR_TOKEN_LEN);
     }
 
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);

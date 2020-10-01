@@ -972,7 +972,7 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, ngx_str_t *secret,
 
 #if (NGX_DEBUG)
     ngx_quic_hexdump(c->log, "quic stateless reset token", token,
-                     NGX_QUIC_SR_TOKEN_LEN);
+                     (size_t) NGX_QUIC_SR_TOKEN_LEN);
 #endif
 
     return NGX_OK;
