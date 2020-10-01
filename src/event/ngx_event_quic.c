@@ -2265,6 +2265,7 @@ ngx_quic_ack_delay(ngx_connection_t *c, struct timeval *received,
         ngx_gettimeofday(&tv);
         ack_delay = (tv.tv_sec - received->tv_sec) * 1000000
                     + tv.tv_usec - received->tv_usec;
+        ack_delay = ngx_max(ack_delay, 0);
         ack_delay >>= c->quic->ctp.ack_delay_exponent;
     }
 
