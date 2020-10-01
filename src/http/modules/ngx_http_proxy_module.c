@@ -10,6 +10,19 @@
 #include <ngx_http.h>
 
 
+#define  NGX_HTTP_PROXY_COOKIE_SECURE           0x0001
+#define  NGX_HTTP_PROXY_COOKIE_SECURE_ON        0x0002
+#define  NGX_HTTP_PROXY_COOKIE_SECURE_OFF       0x0004
+#define  NGX_HTTP_PROXY_COOKIE_HTTPONLY         0x0008
+#define  NGX_HTTP_PROXY_COOKIE_HTTPONLY_ON      0x0010
+#define  NGX_HTTP_PROXY_COOKIE_HTTPONLY_OFF     0x0020
+#define  NGX_HTTP_PROXY_COOKIE_SAMESITE         0x0040
+#define  NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT  0x0080
+#define  NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX     0x0100
+#define  NGX_HTTP_PROXY_COOKIE_SAMESITE_NONE    0x0200
+#define  NGX_HTTP_PROXY_COOKIE_SAMESITE_OFF     0x0400
+
+
 typedef struct {
     ngx_array_t                    caches;  /* ngx_http_file_cache_t * */
 } ngx_http_proxy_main_conf_t;
@@ -18,7 +31,7 @@ typedef struct {
 typedef struct ngx_http_proxy_rewrite_s  ngx_http_proxy_rewrite_t;
 
 typedef ngx_int_t (*ngx_http_proxy_rewrite_pt)(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len,
+    ngx_str_t *value, size_t prefix, size_t len,
     ngx_http_proxy_rewrite_t *pr);
 
 struct ngx_http_proxy_rewrite_s {
@@ -33,6 +46,19 @@ struct ngx_http_proxy_rewrite_s {
 
     ngx_http_complex_value_t       replacement;
 };
+
+
+typedef struct {
+    union {
+        ngx_http_complex_value_t   complex;
+#if (NGX_PCRE)
+        ngx_http_regex_t          *regex;
+#endif
+    } cookie;
+
+    ngx_uint_t                     flags;
+    ngx_uint_t                     regex;
+} ngx_http_proxy_cookie_flags_t;
 
 
 typedef struct {
@@ -72,6 +98,7 @@ typedef struct {
     ngx_array_t                   *redirects;
     ngx_array_t                   *cookie_domains;
     ngx_array_t                   *cookie_paths;
+    ngx_array_t                   *cookie_flags;
 
     ngx_http_complex_value_t      *method;
     ngx_str_t                      location;
@@ -158,10 +185,16 @@ static ngx_int_t ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r,
     ngx_table_elt_t *h, size_t prefix);
 static ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h);
+static ngx_int_t ngx_http_proxy_parse_cookie(ngx_str_t *value,
+    ngx_array_t *attrs);
 static ngx_int_t ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r,
-    ngx_table_elt_t *h, u_char *value, ngx_array_t *rewrites);
+    ngx_str_t *value, ngx_array_t *rewrites);
+static ngx_int_t ngx_http_proxy_rewrite_cookie_flags(ngx_http_request_t *r,
+    ngx_array_t *attrs, ngx_array_t *flags);
+static ngx_int_t ngx_http_proxy_edit_cookie_flags(ngx_http_request_t *r,
+    ngx_array_t *attrs, ngx_uint_t flags);
 static ngx_int_t ngx_http_proxy_rewrite(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_str_t *replacement);
+    ngx_str_t *value, size_t prefix, size_t len, ngx_str_t *replacement);
 
 static ngx_int_t ngx_http_proxy_add_variables(ngx_conf_t *cf);
 static void *ngx_http_proxy_create_main_conf(ngx_conf_t *cf);
@@ -179,6 +212,8 @@ static char *ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_proxy_cookie_flags(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -278,6 +313,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
     { ngx_string("proxy_cookie_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
       ngx_http_proxy_cookie_path,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("proxy_cookie_flags"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
+      ngx_http_proxy_cookie_flags,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -845,6 +887,36 @@ static ngx_path_init_t  ngx_http_proxy_temp_path = {
 };
 
 
+static ngx_conf_bitmask_t  ngx_http_proxy_cookie_flags_masks[] = {
+
+    { ngx_string("secure"),
+      NGX_HTTP_PROXY_COOKIE_SECURE|NGX_HTTP_PROXY_COOKIE_SECURE_ON },
+
+    { ngx_string("nosecure"),
+      NGX_HTTP_PROXY_COOKIE_SECURE|NGX_HTTP_PROXY_COOKIE_SECURE_OFF },
+
+    { ngx_string("httponly"),
+      NGX_HTTP_PROXY_COOKIE_HTTPONLY|NGX_HTTP_PROXY_COOKIE_HTTPONLY_ON },
+
+    { ngx_string("nohttponly"),
+      NGX_HTTP_PROXY_COOKIE_HTTPONLY|NGX_HTTP_PROXY_COOKIE_HTTPONLY_OFF },
+
+    { ngx_string("samesite=strict"),
+      NGX_HTTP_PROXY_COOKIE_SAMESITE|NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT },
+
+    { ngx_string("samesite=lax"),
+      NGX_HTTP_PROXY_COOKIE_SAMESITE|NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX },
+
+    { ngx_string("samesite=none"),
+      NGX_HTTP_PROXY_COOKIE_SAMESITE|NGX_HTTP_PROXY_COOKIE_SAMESITE_NONE },
+
+    { ngx_string("nosamesite"),
+      NGX_HTTP_PROXY_COOKIE_SAMESITE|NGX_HTTP_PROXY_COOKIE_SAMESITE_OFF },
+
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_int_t
 ngx_http_proxy_handler(ngx_http_request_t *r)
 {
@@ -906,7 +978,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
         u->rewrite_redirect = ngx_http_proxy_rewrite_redirect;
     }
 
-    if (plcf->cookie_domains || plcf->cookie_paths) {
+    if (plcf->cookie_domains || plcf->cookie_paths || plcf->cookie_flags) {
         u->rewrite_cookie = ngx_http_proxy_rewrite_cookie;
     }
 
@@ -2584,7 +2656,7 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
     len = h->value.len - prefix;
 
     for (i = 0; i < plcf->redirects->nelts; i++) {
-        rc = pr[i].handler(r, h, prefix, len, &pr[i]);
+        rc = pr[i].handler(r, &h->value, prefix, len, &pr[i]);
 
         if (rc != NGX_DECLINED) {
             return rc;
@@ -2598,27 +2670,43 @@ ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r, ngx_table_elt_t *h,
 static ngx_int_t
 ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r, ngx_table_elt_t *h)
 {
-    size_t                      prefix;
     u_char                     *p;
+    size_t                      len;
     ngx_int_t                   rc, rv;
+    ngx_str_t                  *key, *value;
+    ngx_uint_t                  i;
+    ngx_array_t                 attrs;
+    ngx_keyval_t               *attr;
     ngx_http_proxy_loc_conf_t  *plcf;
 
-    p = (u_char *) ngx_strchr(h->value.data, ';');
-    if (p == NULL) {
-        return NGX_DECLINED;
+    if (ngx_array_init(&attrs, r->pool, 2, sizeof(ngx_keyval_t)) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    prefix = p + 1 - h->value.data;
+    if (ngx_http_proxy_parse_cookie(&h->value, &attrs) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    attr = attrs.elts;
+
+    if (attr[0].value.data == NULL) {
+        return NGX_DECLINED;
+    }
 
     rv = NGX_DECLINED;
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
-    if (plcf->cookie_domains) {
-        p = ngx_strcasestrn(h->value.data + prefix, "domain=", 7 - 1);
+    for (i = 1; i < attrs.nelts; i++) {
 
-        if (p) {
-            rc = ngx_http_proxy_rewrite_cookie_value(r, h, p + 7,
+        key = &attr[i].key;
+        value = &attr[i].value;
+
+        if (plcf->cookie_domains && key->len == 6
+            && ngx_strncasecmp(key->data, (u_char *) "domain", 6) == 0
+            && value->data)
+        {
+            rc = ngx_http_proxy_rewrite_cookie_value(r, value,
                                                      plcf->cookie_domains);
             if (rc == NGX_ERROR) {
                 return NGX_ERROR;
@@ -2628,13 +2716,12 @@ ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r, ngx_table_elt_t *h)
                 rv = rc;
             }
         }
-    }
 
-    if (plcf->cookie_paths) {
-        p = ngx_strcasestrn(h->value.data + prefix, "path=", 5 - 1);
-
-        if (p) {
-            rc = ngx_http_proxy_rewrite_cookie_value(r, h, p + 5,
+        if (plcf->cookie_paths && key->len == 4
+            && ngx_strncasecmp(key->data, (u_char *) "path", 4) == 0
+            && value->data)
+        {
+            rc = ngx_http_proxy_rewrite_cookie_value(r, value,
                                                      plcf->cookie_paths);
             if (rc == NGX_ERROR) {
                 return NGX_ERROR;
@@ -2646,30 +2733,153 @@ ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r, ngx_table_elt_t *h)
         }
     }
 
-    return rv;
+    if (plcf->cookie_flags) {
+        rc = ngx_http_proxy_rewrite_cookie_flags(r, &attrs,
+                                                 plcf->cookie_flags);
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc != NGX_DECLINED) {
+            rv = rc;
+        }
+
+        attr = attrs.elts;
+    }
+
+    if (rv != NGX_OK) {
+        return rv;
+    }
+
+    len = 0;
+
+    for (i = 0; i < attrs.nelts; i++) {
+
+        if (attr[i].key.data == NULL) {
+            continue;
+        }
+
+        if (i > 0) {
+            len += 2;
+        }
+
+        len += attr[i].key.len;
+
+        if (attr[i].value.data) {
+            len += 1 + attr[i].value.len;
+        }
+    }
+
+    p = ngx_pnalloc(r->pool, len + 1);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    h->value.data = p;
+    h->value.len = len;
+
+    for (i = 0; i < attrs.nelts; i++) {
+
+        if (attr[i].key.data == NULL) {
+            continue;
+        }
+
+        if (i > 0) {
+            *p++ = ';';
+            *p++ = ' ';
+        }
+
+        p = ngx_cpymem(p, attr[i].key.data, attr[i].key.len);
+
+        if (attr[i].value.data) {
+            *p++ = '=';
+            p = ngx_cpymem(p, attr[i].value.data, attr[i].value.len);
+        }
+    }
+
+    *p = '\0';
+
+    return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r, ngx_table_elt_t *h,
-    u_char *value, ngx_array_t *rewrites)
+ngx_http_proxy_parse_cookie(ngx_str_t *value, ngx_array_t *attrs)
 {
-    size_t                     len, prefix;
-    u_char                    *p;
+    u_char        *start, *end, *p, *last;
+    ngx_str_t      name, val;
+    ngx_keyval_t  *attr;
+
+    start = value->data;
+    end = value->data + value->len;
+
+    for ( ;; ) {
+
+        last = (u_char *) ngx_strchr(start, ';');
+
+        if (last == NULL) {
+            last = end;
+        }
+
+        while (start < last && *start == ' ') { start++; }
+
+        for (p = start; p < last && *p != '='; p++) { /* void */ }
+
+        name.data = start;
+        name.len = p - start;
+
+        while (name.len && name.data[name.len - 1] == ' ') {
+            name.len--;
+        }
+
+        if (p < last) {
+
+            p++;
+
+            while (p < last && *p == ' ') { p++; }
+
+            val.data = p;
+            val.len = last - val.data;
+
+            while (val.len && val.data[val.len - 1] == ' ') {
+                val.len--;
+            }
+
+        } else {
+            ngx_str_null(&val);
+        }
+
+        attr = ngx_array_push(attrs);
+        if (attr == NULL) {
+            return NGX_ERROR;
+        }
+
+        attr->key = name;
+        attr->value = val;
+
+        if (last == end) {
+            break;
+        }
+
+        start = last + 1;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r, ngx_str_t *value,
+    ngx_array_t *rewrites)
+{
     ngx_int_t                  rc;
     ngx_uint_t                 i;
     ngx_http_proxy_rewrite_t  *pr;
 
-    prefix = value - h->value.data;
-
-    p = (u_char *) ngx_strchr(value, ';');
-
-    len = p ? (size_t) (p - value) : (h->value.len - prefix);
-
     pr = rewrites->elts;
 
     for (i = 0; i < rewrites->nelts; i++) {
-        rc = pr[i].handler(r, h, prefix, len, &pr[i]);
+        rc = pr[i].handler(r, value, 0, value->len, &pr[i]);
 
         if (rc != NGX_DECLINED) {
             return rc;
@@ -2681,8 +2891,194 @@ ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r, ngx_table_elt_t *h,
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
+ngx_http_proxy_rewrite_cookie_flags(ngx_http_request_t *r, ngx_array_t *attrs,
+    ngx_array_t *flags)
+{
+    ngx_str_t                       pattern;
+#if (NGX_PCRE)
+    ngx_int_t                       rc;
+#endif
+    ngx_uint_t                      i;
+    ngx_keyval_t                   *attr;
+    ngx_http_proxy_cookie_flags_t  *pcf;
+
+    attr = attrs->elts;
+    pcf = flags->elts;
+
+    for (i = 0; i < flags->nelts; i++) {
+
+#if (NGX_PCRE)
+        if (pcf[i].regex) {
+            rc = ngx_http_regex_exec(r, pcf[i].cookie.regex, &attr[0].key);
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (rc == NGX_OK) {
+                break;
+            }
+
+            /* NGX_DECLINED */
+
+            continue;
+        }
+#endif
+
+        if (ngx_http_complex_value(r, &pcf[i].cookie.complex, &pattern)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        if (pattern.len == attr[0].key.len
+            && ngx_strncasecmp(attr[0].key.data, pattern.data, pattern.len)
+               == 0)
+        {
+            break;
+        }
+    }
+
+    if (i == flags->nelts) {
+        return NGX_DECLINED;
+    }
+
+    return ngx_http_proxy_edit_cookie_flags(r, attrs, pcf[i].flags);
+}
+
+
+static ngx_int_t
+ngx_http_proxy_edit_cookie_flags(ngx_http_request_t *r, ngx_array_t *attrs,
+    ngx_uint_t flags)
+{
+    ngx_str_t     *key, *value;
+    ngx_uint_t     i;
+    ngx_keyval_t  *attr;
+
+    attr = attrs->elts;
+
+    for (i = 1; i < attrs->nelts; i++) {
+        key = &attr[i].key;
+
+        if (key->len == 6
+            && ngx_strncasecmp(key->data, (u_char *) "secure", 6) == 0)
+        {
+            if (flags & NGX_HTTP_PROXY_COOKIE_SECURE_ON) {
+                flags &= ~NGX_HTTP_PROXY_COOKIE_SECURE_ON;
+
+            } else if (flags & NGX_HTTP_PROXY_COOKIE_SECURE_OFF) {
+                key->data = NULL;
+            }
+
+            continue;
+        }
+
+        if (key->len == 8
+            && ngx_strncasecmp(key->data, (u_char *) "httponly", 8) == 0)
+        {
+            if (flags & NGX_HTTP_PROXY_COOKIE_HTTPONLY_ON) {
+                flags &= ~NGX_HTTP_PROXY_COOKIE_HTTPONLY_ON;
+
+            } else if (flags & NGX_HTTP_PROXY_COOKIE_HTTPONLY_OFF) {
+                key->data = NULL;
+            }
+
+            continue;
+        }
+
+        if (key->len == 8
+            && ngx_strncasecmp(key->data, (u_char *) "samesite", 8) == 0)
+        {
+            value = &attr[i].value;
+
+            if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT) {
+                flags &= ~NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT;
+
+                if (value->len != 6
+                    || ngx_strncasecmp(value->data, (u_char *) "strict", 6)
+                       != 0)
+                {
+                    ngx_str_set(key, "SameSite");
+                    ngx_str_set(value, "Strict");
+                }
+
+            } else if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX) {
+                flags &= ~NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX;
+
+                if (value->len != 3
+                    || ngx_strncasecmp(value->data, (u_char *) "lax", 3) != 0)
+                {
+                    ngx_str_set(key, "SameSite");
+                    ngx_str_set(value, "Lax");
+                }
+
+            } else if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_NONE) {
+                flags &= ~NGX_HTTP_PROXY_COOKIE_SAMESITE_NONE;
+
+                if (value->len != 4
+                    || ngx_strncasecmp(value->data, (u_char *) "none", 4) != 0)
+                {
+                    ngx_str_set(key, "SameSite");
+                    ngx_str_set(value, "None");
+                }
+
+            } else if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_OFF) {
+                key->data = NULL;
+            }
+
+            continue;
+        }
+    }
+
+    if (flags & NGX_HTTP_PROXY_COOKIE_SECURE_ON) {
+        attr = ngx_array_push(attrs);
+        if (attr == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_str_set(&attr->key, "Secure");
+        ngx_str_null(&attr->value);
+    }
+
+    if (flags & NGX_HTTP_PROXY_COOKIE_HTTPONLY_ON) {
+        attr = ngx_array_push(attrs);
+        if (attr == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_str_set(&attr->key, "HttpOnly");
+        ngx_str_null(&attr->value);
+    }
+
+    if (flags & (NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT
+                 |NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX
+                 |NGX_HTTP_PROXY_COOKIE_SAMESITE_NONE))
+    {
+        attr = ngx_array_push(attrs);
+        if (attr == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_str_set(&attr->key, "SameSite");
+
+        if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_STRICT) {
+            ngx_str_set(&attr->value, "Strict");
+
+        } else if (flags & NGX_HTTP_PROXY_COOKIE_SAMESITE_LAX) {
+            ngx_str_set(&attr->value, "Lax");
+
+        } else {
+            ngx_str_set(&attr->value, "None");
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r, ngx_str_t *value,
+    size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     ngx_str_t  pattern, replacement;
 
@@ -2691,8 +3087,7 @@ ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
     }
 
     if (pattern.len > len
-        || ngx_rstrncmp(h->value.data + prefix, pattern.data,
-                        pattern.len) != 0)
+        || ngx_rstrncmp(value->data + prefix, pattern.data, pattern.len) != 0)
     {
         return NGX_DECLINED;
     }
@@ -2701,20 +3096,20 @@ ngx_http_proxy_rewrite_complex_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    return ngx_http_proxy_rewrite(r, h, prefix, pattern.len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, pattern.len, &replacement);
 }
 
 
 #if (NGX_PCRE)
 
 static ngx_int_t
-ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_table_elt_t *h,
+ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_str_t *value,
     size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     ngx_str_t  pattern, replacement;
 
     pattern.len = len;
-    pattern.data = h->value.data + prefix;
+    pattern.data = value->data + prefix;
 
     if (ngx_http_regex_exec(r, pr->pattern.regex, &pattern) != NGX_OK) {
         return NGX_DECLINED;
@@ -2724,20 +3119,15 @@ ngx_http_proxy_rewrite_regex_handler(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    if (prefix == 0 && h->value.len == len) {
-        h->value = replacement;
-        return NGX_OK;
-    }
-
-    return ngx_http_proxy_rewrite(r, h, prefix, len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, len, &replacement);
 }
 
 #endif
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
-    ngx_table_elt_t *h, size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
+ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r, ngx_str_t *value,
+    size_t prefix, size_t len, ngx_http_proxy_rewrite_t *pr)
 {
     u_char     *p;
     ngx_str_t   pattern, replacement;
@@ -2746,9 +3136,9 @@ ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    p = h->value.data + prefix;
+    p = value->data + prefix;
 
-    if (p[0] == '.') {
+    if (len && p[0] == '.') {
         p++;
         prefix++;
         len--;
@@ -2762,18 +3152,23 @@ ngx_http_proxy_rewrite_domain_handler(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    return ngx_http_proxy_rewrite(r, h, prefix, len, &replacement);
+    return ngx_http_proxy_rewrite(r, value, prefix, len, &replacement);
 }
 
 
 static ngx_int_t
-ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_table_elt_t *h, size_t prefix,
+ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_str_t *value, size_t prefix,
     size_t len, ngx_str_t *replacement)
 {
     u_char  *p, *data;
     size_t   new_len;
 
-    new_len = replacement->len + h->value.len - len;
+    if (len == value->len) {
+        *value = *replacement;
+        return NGX_OK;
+    }
+
+    new_len = replacement->len + value->len - len;
 
     if (replacement->len > len) {
 
@@ -2782,23 +3177,22 @@ ngx_http_proxy_rewrite(ngx_http_request_t *r, ngx_table_elt_t *h, size_t prefix,
             return NGX_ERROR;
         }
 
-        p = ngx_copy(data, h->value.data, prefix);
+        p = ngx_copy(data, value->data, prefix);
         p = ngx_copy(p, replacement->data, replacement->len);
 
-        ngx_memcpy(p, h->value.data + prefix + len,
-                   h->value.len - len - prefix + 1);
+        ngx_memcpy(p, value->data + prefix + len,
+                   value->len - len - prefix + 1);
 
-        h->value.data = data;
+        value->data = data;
 
     } else {
-        p = ngx_copy(h->value.data + prefix, replacement->data,
-                     replacement->len);
+        p = ngx_copy(value->data + prefix, replacement->data, replacement->len);
 
-        ngx_memmove(p, h->value.data + prefix + len,
-                    h->value.len - len - prefix + 1);
+        ngx_memmove(p, value->data + prefix + len,
+                    value->len - len - prefix + 1);
     }
 
-    h->value.len = new_len;
+    value->len = new_len;
 
     return NGX_OK;
 }
@@ -2957,6 +3351,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->cookie_domains = NGX_CONF_UNSET_PTR;
     conf->cookie_paths = NGX_CONF_UNSET_PTR;
+    conf->cookie_flags = NGX_CONF_UNSET_PTR;
 
     conf->http_version = NGX_CONF_UNSET_UINT;
 
@@ -3351,6 +3746,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->cookie_domains, prev->cookie_domains, NULL);
 
     ngx_conf_merge_ptr_value(conf->cookie_paths, prev->cookie_paths, NULL);
+
+    ngx_conf_merge_ptr_value(conf->cookie_flags, prev->cookie_flags, NULL);
 
     ngx_conf_merge_uint_value(conf->http_version, prev->http_version,
                               NGX_HTTP_VERSION_10);
@@ -3766,7 +4163,7 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->redirect == 0) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     plcf->redirect = 1;
@@ -3775,16 +4172,12 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (cf->args->nelts == 2) {
         if (ngx_strcmp(value[1].data, "off") == 0) {
-            plcf->redirect = 0;
-            plcf->redirects = NULL;
-            return NGX_CONF_OK;
-        }
 
-        if (ngx_strcmp(value[1].data, "false") == 0) {
-            ngx_conf_log_error(NGX_LOG_ERR, cf, 0,
-                           "invalid parameter \"false\", use \"off\" instead");
+            if (plcf->redirects) {
+                return "is duplicate";
+            }
+
             plcf->redirect = 0;
-            plcf->redirects = NULL;
             return NGX_CONF_OK;
         }
 
@@ -3808,7 +4201,9 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_strcmp(value[1].data, "default") == 0) {
+    if (cf->args->nelts == 2
+        && ngx_strcmp(value[1].data, "default") == 0)
+    {
         if (plcf->proxy_lengths) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_redirect default\" cannot be used "
@@ -3911,7 +4306,7 @@ ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->cookie_domains == NULL) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     value = cf->args->elts;
@@ -3919,6 +4314,11 @@ ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cf->args->nelts == 2) {
 
         if (ngx_strcmp(value[1].data, "off") == 0) {
+
+            if (plcf->cookie_domains != NGX_CONF_UNSET_PTR) {
+                return "is duplicate";
+            }
+
             plcf->cookie_domains = NULL;
             return NGX_CONF_OK;
         }
@@ -3998,7 +4398,7 @@ ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t   ccv;
 
     if (plcf->cookie_paths == NULL) {
-        return NGX_CONF_OK;
+        return "is duplicate";
     }
 
     value = cf->args->elts;
@@ -4006,6 +4406,11 @@ ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (cf->args->nelts == 2) {
 
         if (ngx_strcmp(value[1].data, "off") == 0) {
+
+            if (plcf->cookie_paths != NGX_CONF_UNSET_PTR) {
+                return "is duplicate";
+            }
+
             plcf->cookie_paths = NULL;
             return NGX_CONF_OK;
         }
@@ -4069,6 +4474,131 @@ ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_cookie_flags(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_proxy_loc_conf_t *plcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_uint_t                         i, m;
+    ngx_conf_bitmask_t                *mask;
+    ngx_http_proxy_cookie_flags_t     *pcf;
+    ngx_http_compile_complex_value_t   ccv;
+#if (NGX_PCRE)
+    ngx_regex_compile_t                rc;
+    u_char                             errstr[NGX_MAX_CONF_ERRSTR];
+#endif
+
+    if (plcf->cookie_flags == NULL) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (cf->args->nelts == 2) {
+
+        if (ngx_strcmp(value[1].data, "off") == 0) {
+
+            if (plcf->cookie_flags != NGX_CONF_UNSET_PTR) {
+                return "is duplicate";
+            }
+
+            plcf->cookie_flags = NULL;
+            return NGX_CONF_OK;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (plcf->cookie_flags == NGX_CONF_UNSET_PTR) {
+        plcf->cookie_flags = ngx_array_create(cf->pool, 1,
+                                        sizeof(ngx_http_proxy_cookie_flags_t));
+        if (plcf->cookie_flags == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    pcf = ngx_array_push(plcf->cookie_flags);
+    if (pcf == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    pcf->regex = 0;
+
+    if (value[1].data[0] == '~') {
+        value[1].len--;
+        value[1].data++;
+
+#if (NGX_PCRE)
+        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+
+        rc.pattern = value[1];
+        rc.err.len = NGX_MAX_CONF_ERRSTR;
+        rc.err.data = errstr;
+        rc.options = NGX_REGEX_CASELESS;
+
+        pcf->cookie.regex = ngx_http_regex_compile(cf, &rc);
+        if (pcf->cookie.regex == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        pcf->regex = 1;
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "using regex \"%V\" requires PCRE library",
+                           &value[1]);
+        return NGX_CONF_ERROR;
+#endif
+
+    } else {
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &value[1];
+        ccv.complex_value = &pcf->cookie.complex;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    mask = ngx_http_proxy_cookie_flags_masks;
+    pcf->flags = 0;
+
+    for (i = 2; i < cf->args->nelts; i++) {
+        for (m = 0; mask[m].name.len != 0; m++) {
+
+            if (mask[m].name.len != value[i].len
+                || ngx_strcasecmp(mask[m].name.data, value[i].data) != 0)
+            {
+                continue;
+            }
+
+            if (pcf->flags & mask[m].mask) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "duplicate parameter \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            pcf->flags |= mask[m].mask;
+
+            break;
+        }
+
+        if (mask[m].name.len == 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[i]);
+            return NGX_CONF_ERROR;
+        }
     }
 
     return NGX_CONF_OK;

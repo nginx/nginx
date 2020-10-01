@@ -1918,7 +1918,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (rn == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "unexpected response for %V", &name);
+                      "unexpected DNS response for %V", &name);
         ngx_resolver_free(r, name.data);
         goto failed;
     }
@@ -1930,7 +1930,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
         if (rn->query6 == NULL || rn->naddrs6 != (u_short) -1) {
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected response for %V", &name);
+                          "unexpected DNS response for %V", &name);
             ngx_resolver_free(r, name.data);
             goto failed;
         }
@@ -1949,7 +1949,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
         if (rn->query == NULL || rn->naddrs != (u_short) -1) {
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected response for %V", &name);
+                          "unexpected DNS response for %V", &name);
             ngx_resolver_free(r, name.data);
             goto failed;
         }
@@ -1964,7 +1964,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "wrong ident %ui response for %V, expect %ui",
+                      "wrong ident %ui in DNS response for %V, expect %ui",
                       ident, &name, qident);
         ngx_resolver_free(r, name.data);
         goto failed;
@@ -2149,7 +2149,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
         if (class != 1) {
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR class %ui", class);
+                          "unexpected RR class %ui in DNS response", class);
             goto failed;
         }
 
@@ -2218,7 +2218,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         default:
 
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR type %ui", type);
+                          "unexpected RR type %ui in DNS response", type);
         }
 
         i += len;
@@ -2567,7 +2567,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (rn == NULL || rn->query == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "unexpected response for %V", &name);
+                      "unexpected DNS response for %V", &name);
         ngx_resolver_free(r, name.data);
         goto failed;
     }
@@ -2581,7 +2581,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "wrong ident %ui response for %V, expect %ui",
+                      "wrong ident %ui in DNS response for %V, expect %ui",
                       ident, &name, qident);
         ngx_resolver_free(r, name.data);
         goto failed;
@@ -2691,7 +2691,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
 
         if (class != 1) {
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR class %ui", class);
+                          "unexpected RR class %ui in DNS response", class);
             goto failed;
         }
 
@@ -2734,7 +2734,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
         default:
 
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR type %ui", type);
+                          "unexpected RR type %ui in DNS response", type);
         }
 
         i += len;
@@ -3165,7 +3165,7 @@ valid:
 
     if (rn == NULL || rn->query == NULL) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "unexpected response for %V", &name);
+                      "unexpected DNS response for %V", &name);
         ngx_resolver_free(r, name.data);
         goto failed;
     }
@@ -3174,7 +3174,7 @@ valid:
 
     if (ident != qident) {
         ngx_log_error(r->log_level, r->log, 0,
-                      "wrong ident %ui response for %V, expect %ui",
+                      "wrong ident %ui in DNS response for %V, expect %ui",
                       ident, &name, qident);
         ngx_resolver_free(r, name.data);
         goto failed;
@@ -3256,7 +3256,7 @@ valid:
 
         if (class != 1) {
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR class %ui", class);
+                          "unexpected RR class %ui in DNS response", class);
             goto failed;
         }
 
@@ -3283,7 +3283,7 @@ valid:
         default:
 
             ngx_log_error(r->log_level, r->log, 0,
-                          "unexpected RR type %ui", type);
+                          "unexpected RR type %ui in DNS response", type);
         }
 
         i += len;
@@ -3952,12 +3952,12 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         }
 
         if (p >= last) {
-            err = "name is out of response";
+            err = "name is out of DNS response";
             goto invalid;
         }
     }
 
-    err = "compression pointers loop";
+    err = "compression pointers loop in DNS response";
 
 invalid:
 

@@ -80,6 +80,7 @@ struct ngx_http_cache_s {
     ngx_str_t                        vary;
     u_char                           variant[NGX_HTTP_CACHE_KEY_LEN];
 
+    size_t                           buffer_size;
     size_t                           header_start;
     size_t                           body_start;
     off_t                            length;
@@ -116,6 +117,7 @@ struct ngx_http_cache_s {
     unsigned                         purged:1;
     unsigned                         reading:1;
     unsigned                         secondary:1;
+    unsigned                         update_variant:1;
     unsigned                         background:1;
 
     unsigned                         stale_updating:1;

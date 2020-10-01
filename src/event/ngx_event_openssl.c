@@ -2573,6 +2573,18 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
     sslerr = SSL_get_error(c->ssl->connection, n);
 
+    if (sslerr == SSL_ERROR_ZERO_RETURN) {
+
+        /*
+         * OpenSSL 1.1.1 fails to return SSL_ERROR_SYSCALL if an error
+         * happens during SSL_write() after close_notify alert from the
+         * peer, and returns SSL_ERROR_ZERO_RETURN instead,
+         * https://git.openssl.org/?p=openssl.git;a=commitdiff;h=8051ab2
+         */
+
+        sslerr = SSL_ERROR_SYSCALL;
+    }
+
     err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d", sslerr);
@@ -2800,7 +2812,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         return NGX_OK;
     }
 
-    if (c->timedout) {
+    if (c->timedout || c->error || c->buffered) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
         SSL_set_quiet_shutdown(c->ssl->connection, 1);
 
@@ -2859,6 +2871,13 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_WRITE) {
             c->read->handler = ngx_ssl_shutdown_handler;
             c->write->handler = ngx_ssl_shutdown_handler;
+
+            if (sslerr == SSL_ERROR_WANT_READ) {
+                c->read->ready = 0;
+
+            } else {
+                c->write->ready = 0;
+            }
 
             if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
                 return NGX_ERROR;

@@ -294,6 +294,8 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         cln->data = c;
     }
 
+    c->buffer_size = c->body_start;
+
     rc = ngx_http_file_cache_exists(cache, c);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -852,7 +854,7 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         if (fcn->exists || fcn->uses >= c->min_uses) {
 
             c->exists = fcn->exists;
-            if (fcn->body_start) {
+            if (fcn->body_start && !c->update_variant) {
                 c->body_start = fcn->body_start;
             }
 
@@ -1230,7 +1232,7 @@ ngx_http_file_cache_reopen(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     c->secondary = 1;
     c->file.name.len = 0;
-    c->body_start = c->buf->end - c->buf->start;
+    c->body_start = c->buffer_size;
 
     ngx_memcpy(c->key, c->variant, NGX_HTTP_CACHE_KEY_LEN);
 
@@ -1337,6 +1339,7 @@ ngx_http_file_cache_update_variant(ngx_http_request_t *r, ngx_http_cache_t *c)
     ngx_shmtx_unlock(&cache->shpool->mutex);
 
     c->file.name.len = 0;
+    c->update_variant = 1;
 
     ngx_memcpy(c->key, c->main, NGX_HTTP_CACHE_KEY_LEN);
 
