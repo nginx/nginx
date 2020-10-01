@@ -2661,7 +2661,7 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
             == NGX_DONE)
         {
             /* old/duplicate data range */
-            return NGX_OK;
+            return handler == ngx_quic_crypto_input ? NGX_DECLINED : NGX_OK;
         }
 
         /* intersecting data range, frame modified */
@@ -2844,6 +2844,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
     uint64_t                   last;
+    ngx_int_t                  rc;
     ngx_quic_connection_t     *qc;
     ngx_quic_crypto_frame_t   *f;
     ngx_quic_frames_stream_t  *fs;
@@ -2860,8 +2861,19 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input,
-                                         NULL);
+    rc = ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_crypto_input,
+                                       NULL);
+    if (rc != NGX_DECLINED) {
+        return rc;
+    }
+
+    /* speeding up handshake completion */
+
+    if (pkt->level == ssl_encryption_initial) {
+        ngx_quic_resend_frames(c, ngx_quic_get_send_ctx(qc, pkt->level));
+    }
+
+    return NGX_OK;
 }
 
 
