@@ -46,6 +46,11 @@
 #define NGX_QUIC_MIN_SR_PACKET   43 /* 5 random + 16 srt + 22 padding */
 #define NGX_QUIC_MAX_SR_PACKET   1200
 
+#define ngx_quic_level_name(lvl)                                              \
+    (lvl == ssl_encryption_application) ? "application"                       \
+        : (lvl == ssl_encryption_initial) ? "initial"                         \
+            : (lvl == ssl_encryption_handshake) ? "handshake" : "early_data"
+
 
 typedef struct {
     ngx_rbtree_t                      tree;
@@ -1625,6 +1630,25 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 
         rc = ngx_quic_process_packet(c, conf, &pkt);
 
+#if (NGX_DEBUG)
+        if (pkt.parsed) {
+            ngx_quic_connection_t  *qc;
+
+            qc = c->quic;
+
+            ngx_log_debug8(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic pkt done %s decr:%d pn:%L pe:%ui rc:%i"
+                           " closing:%d err:%d %s",
+                           ngx_quic_level_name(pkt.level), pkt.decrypted,
+                           pkt.pn, pkt.error, rc, (qc && qc->closing) ? 1 : 0,
+                           qc ? qc->error : 0,
+                           (qc && qc->error_reason) ? qc->error_reason : "");
+        } else {
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic pkt done parse failed rc:%i", rc);
+        }
+#endif
+
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -1686,6 +1710,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     if (rc == NGX_DECLINED || rc == NGX_ERROR) {
         return rc;
     }
+
+    pkt->parsed = 1;
 
     c->log->action = "processing quic packet";
 
@@ -1837,6 +1863,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         qc->error_reason = "failed to decrypt packet";
         return rc;
     }
+
+    pkt->decrypted = 1;
 
     if (c->ssl == NULL) {
         if (ngx_quic_init_connection(c) != NGX_OK) {

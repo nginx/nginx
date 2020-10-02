@@ -311,6 +311,8 @@ typedef struct {
     unsigned                                    need_ack:1;
     unsigned                                    key_phase:1;
     unsigned                                    key_update:1;
+    unsigned                                    parsed:1;
+    unsigned                                    decrypted:1;
 } ngx_quic_header_t;
 
 
