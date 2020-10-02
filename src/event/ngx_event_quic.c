@@ -906,9 +906,7 @@ ngx_quic_new_dcid(ngx_connection_t *c, ngx_quic_connection_t *qc,
         return NGX_ERROR;
     }
 
-#ifdef NGX_QUIC_DEBUG_PACKETS
     ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
-#endif
 
     qc->odcid.len = odcid->len;
     qc->odcid.data = ngx_pstrdup(c->pool, odcid);
