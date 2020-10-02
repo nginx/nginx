@@ -165,9 +165,9 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
         .len = is_len
     };
 
-#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pool->log, 0,
                   "quic ngx_quic_set_initial_secret");
+#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(pool->log, "quic salt", salt, sizeof(salt));
     ngx_quic_hexdump(pool->log, "quic initial secret", is, is_len);
 #endif

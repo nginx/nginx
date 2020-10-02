@@ -353,9 +353,9 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
-#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_read_secret() level:%d", level);
+#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(c->log, "quic read secret", rsecret, secret_len);
 #endif
 
@@ -377,9 +377,9 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
-#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_write_secret() level:%d", level);
+#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(c->log, "quic write secret", wsecret, secret_len);
 #endif
 
@@ -403,9 +403,9 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
-#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_encryption_secrets() level:%d", level);
+#ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_quic_hexdump(c->log, "quic read", rsecret, secret_len);
 #endif
 
@@ -1690,6 +1690,15 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     c->log->action = "processing quic packet";
 
     qc = c->quic;
+
+#if (NGX_DEBUG)
+    ngx_quic_hexdump(c->log, "quic pkt dcid", pkt->dcid.data, pkt->dcid.len);
+
+    if (pkt->level != ssl_encryption_application) {
+        ngx_quic_hexdump(c->log, "quic pkt scid", pkt->scid.data,
+                         pkt->scid.len);
+    }
+#endif
 
     if (qc) {
 
