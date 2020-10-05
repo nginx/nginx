@@ -3840,6 +3840,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         p += len;
         f->pnum = ctx->pnum;
         f->last = now;
+        f->plen = 0;
     }
 
     out.len = p - out.data;
