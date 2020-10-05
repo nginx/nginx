@@ -2846,6 +2846,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 {
     uint64_t                   last;
     ngx_int_t                  rc;
+    ngx_quic_send_ctx_t       *ctx;
     ngx_quic_connection_t     *qc;
     ngx_quic_crypto_frame_t   *f;
     ngx_quic_frames_stream_t  *fs;
@@ -2871,7 +2872,11 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     /* speeding up handshake completion */
 
     if (pkt->level == ssl_encryption_initial) {
-        ngx_quic_resend_frames(c, ngx_quic_get_send_ctx(qc, pkt->level));
+        ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+        if (!ngx_queue_empty(&ctx->sent)) {
+            ngx_quic_resend_frames(c, ctx);
+        }
     }
 
     return NGX_OK;
