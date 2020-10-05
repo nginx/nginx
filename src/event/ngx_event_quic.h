@@ -130,18 +130,20 @@ void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
 
 #if (NGX_DEBUG)
 
-#define ngx_quic_hexdump(log, label, data, len)                               \
-do {                                                                          \
-    ngx_int_t  m;                                                             \
-    u_char     buf[2048];                                                     \
-                                                                              \
-    if (log->log_level & NGX_LOG_DEBUG_EVENT) {                               \
-        m = ngx_hex_dump(buf, (u_char *) data, ngx_min(len, 1024)) - buf;     \
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,                           \
-                      label " len:%uz data:%*s%s",                            \
-                      len, m, buf, len < 2048 ? "" : "...");                  \
-    }                                                                         \
-} while (0)
+static ngx_inline
+void ngx_quic_hexdump(ngx_log_t *log, const char *label, u_char *data,
+    size_t len)
+{
+    ngx_int_t  m;
+    u_char     buf[2048];
+
+    if (log->log_level & NGX_LOG_DEBUG_EVENT) {
+        m = ngx_hex_dump(buf, data, (len > 1024) ? 1024 : len) - buf;
+        ngx_log_debug5(NGX_LOG_DEBUG_EVENT, log, 0,
+                      "%s len:%uz data:%*s%s",
+                      label, len, m, buf, len < 2048 ? "" : "...");
+    }
+}
 
 #else
 
