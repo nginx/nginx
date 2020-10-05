@@ -130,8 +130,11 @@ void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
 
 #if (NGX_DEBUG)
 
+#define ngx_quic_hexdump(log, fmt, data, len)                                 \
+    ngx_quic_hexdump_real(log, fmt, (u_char *) data, (size_t) len)
+
 static ngx_inline
-void ngx_quic_hexdump(ngx_log_t *log, const char *label, u_char *data,
+void ngx_quic_hexdump_real(ngx_log_t *log, const char *label, u_char *data,
     size_t len)
 {
     ngx_int_t  m;
