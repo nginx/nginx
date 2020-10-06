@@ -1841,11 +1841,15 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         qc->validated = 1;
     }
 
+    if (pkt->level == ssl_encryption_early_data
+        || pkt->level == ssl_encryption_application)
+    {
+        ngx_gettimeofday(&pkt->received);
+    }
+
     if (pkt->level != ssl_encryption_application) {
         return ngx_quic_payload_handler(c, pkt);
     }
-
-    ngx_gettimeofday(&pkt->received);
 
     /* switch keys on Key Phase change */
 
