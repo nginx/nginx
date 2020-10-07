@@ -1638,7 +1638,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 
             ngx_log_debug8(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic pkt done %s decr:%d pn:%L pe:%ui rc:%i"
-                           " closing:%d err:%d %s",
+                           " closing:%d err:%ui %s",
                            ngx_quic_level_name(pkt.level), pkt.decrypted,
                            pkt.pn, pkt.error, rc, (qc && qc->closing) ? 1 : 0,
                            qc ? qc->error : 0,
