@@ -3839,6 +3839,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
         len = ngx_quic_create_frame(p, f);
         if (len == -1) {
+            ngx_quic_free_frames(c, frames);
             return NGX_ERROR;
         }
 
@@ -3897,11 +3898,13 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                    pkt.num_len, pkt.trunc);
 
     if (ngx_quic_encrypt(&pkt, ssl_conn, &res) != NGX_OK) {
+        ngx_quic_free_frames(c, frames);
         return NGX_ERROR;
     }
 
     len = c->send(c, res.data, res.len);
     if (len == NGX_ERROR || (size_t) len != res.len) {
+        ngx_quic_free_frames(c, frames);
         return NGX_ERROR;
     }
 
