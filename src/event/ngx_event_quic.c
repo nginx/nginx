@@ -643,8 +643,6 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run");
 
-    c->log->action = "QUIC initialization";
-
     rc = ngx_quic_input(c, c->buffer, conf);
     if (rc != NGX_OK) {
         ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
@@ -668,8 +666,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_tp_t          *ctp;
     ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
-
-    c->log->action = "creating new quic connection";
 
     qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
     if (qc == NULL) {
@@ -1300,6 +1296,8 @@ ngx_quic_input_handler(ngx_event_t *rev)
     ngx_quic_connection_t  *qc;
     static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
+
     ngx_memzero(&b, sizeof(ngx_buf_t));
     b.start = buf;
     b.end = buf + sizeof(buf);
@@ -1309,7 +1307,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     c = rev->data;
     qc = c->quic;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
+    c->log->action = "handling quic input";
 
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
@@ -1618,7 +1616,6 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
     p = b->pos;
 
     while (p < b->last) {
-        c->log->action = "processing quic packet";
 
         ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
         pkt.raw = b;
@@ -1684,11 +1681,15 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
+    c->log->action = "parsing quic packet";
+
     rc = ngx_quic_parse_packet(pkt);
 
     if (rc == NGX_DECLINED || rc == NGX_ERROR) {
         return rc;
     }
+
+    c->log->action = "processing quic packet";
 
     qc = c->quic;
 
@@ -1759,6 +1760,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
         if (pkt->level == ssl_encryption_initial) {
 
+            c->log->action = "creating quic connection";
+
             if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
                 /* 7.2.  Negotiating Connection IDs */
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -1799,6 +1802,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             return NGX_ERROR;
         }
     }
+
+    c->log->action = "decrypting packet";
 
     keys = &qc->keys[pkt->level];
 
@@ -1846,6 +1851,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     {
         ngx_gettimeofday(&pkt->received);
     }
+
+    c->log->action = "handling payload";
 
     if (pkt->level != ssl_encryption_application) {
         return ngx_quic_payload_handler(c, pkt);
