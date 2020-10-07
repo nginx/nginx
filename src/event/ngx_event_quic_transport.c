@@ -1482,7 +1482,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
     case NGX_QUIC_TP_INITIAL_SCID:
 
         str.len = end - p;
-        p = ngx_quic_read_bytes(p, end, str.len, &str.data);
+        str.data = p;
         break;
 
     default:
