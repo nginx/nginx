@@ -4438,6 +4438,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     sn->c->listening = c->listening;
     sn->c->addr_text = c->addr_text;
     sn->c->local_sockaddr = c->local_sockaddr;
+    sn->c->local_socklen = c->local_socklen;
     sn->c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
     sn->c->recv = ngx_quic_stream_recv;
