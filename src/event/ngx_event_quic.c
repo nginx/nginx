@@ -1628,6 +1628,11 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         pkt.flags = p[0];
         pkt.raw->pos++;
 
+        if (c->quic) {
+            c->quic->error = 0;
+            c->quic->error_reason = 0;
+        }
+
         rc = ngx_quic_process_packet(c, conf, &pkt);
 
 #if (NGX_DEBUG)
