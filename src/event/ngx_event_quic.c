@@ -3757,6 +3757,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     hlen = (f->level == ssl_encryption_application) ? NGX_QUIC_MAX_SHORT_HEADER
                                                     : NGX_QUIC_MAX_LONG_HEADER;
     hlen += EVP_GCM_TLS_TAG_LEN;
+    hlen -= NGX_QUIC_MAX_CID_LEN - qc->scid.len;
 
     do {
         len = 0;
@@ -3786,7 +3787,7 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
                  * send more than three times the data it receives;
                  */
 
-                if (((c->sent + len + f->len) / 3) > qc->received) {
+                if (((c->sent + hlen + len + f->len) / 3) > qc->received) {
                     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                    "quic hit amplification limit"
                                    " received %uz sent %O",
