@@ -54,8 +54,7 @@
 
 #define NGX_QUIC_STREAM_BUFSIZE              65536
 
-#define NGX_QUIC_MAX_CID_LEN                 20
-#define NGX_QUIC_SERVER_CID_LEN              NGX_QUIC_MAX_CID_LEN
+#define NGX_QUIC_SERVER_CID_LEN              20
 
 #define NGX_QUIC_SR_TOKEN_LEN                16
 

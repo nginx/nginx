@@ -120,15 +120,6 @@
 #define NGX_QUIC_CID_LEN_MIN                                8
 #define NGX_QUIC_CID_LEN_MAX                               20
 
-#define NGX_QUIC_MAX_RANGES                                10
-
-
-typedef struct {
-    uint64_t                                    gap;
-    uint64_t                                    range;
-} ngx_quic_ack_range_t;
-
-
 typedef struct {
     uint64_t                                    largest;
     uint64_t                                    delay;
@@ -137,8 +128,8 @@ typedef struct {
     uint64_t                                    ect0;
     uint64_t                                    ect1;
     uint64_t                                    ce;
-    u_char                                     *ranges_start;
-    u_char                                     *ranges_end;
+    u_char                                      *ranges_start;
+    u_char                                      *ranges_end;
 } ngx_quic_ack_frame_t;
 
 

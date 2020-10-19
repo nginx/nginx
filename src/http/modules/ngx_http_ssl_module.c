@@ -119,13 +119,6 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       0,
       NULL },
 
-    { ngx_string("ssl_keys_file"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_ssl_srv_conf_t, keys_file),
-      NULL },
-
     { ngx_string("ssl_dhparam"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
@@ -612,7 +605,6 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->trusted_certificate = { 0, NULL };
      *     sscf->crl = { 0, NULL };
      *     sscf->ciphers = { 0, NULL };
-     *     sscf->keys_file = { 0, NULL };
      *     sscf->shm_zone = NULL;
      *     sscf->ocsp_responder = { 0, NULL };
      *     sscf->stapling_file = { 0, NULL };
@@ -683,8 +675,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                          NULL);
 
     ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
-
-    ngx_conf_merge_str_value(conf->keys_file, prev->keys_file, "");
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
 
@@ -920,17 +910,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
-    }
-
-    if (conf->keys_file.len) {
-
-        conf->ssl.keylog = ngx_conf_open_file(cf->cycle, &conf->keys_file);
-
-        if (conf->ssl.keylog == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        SSL_CTX_set_keylog_callback(conf->ssl.ctx, ngx_ssl_keylogger);
     }
 
     if (conf->stapling) {

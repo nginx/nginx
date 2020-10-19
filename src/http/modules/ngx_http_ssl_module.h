@@ -36,8 +36,6 @@ typedef struct {
     ngx_array_t                    *certificates;
     ngx_array_t                    *certificate_keys;
 
-    ngx_str_t                       keys_file;
-
     ngx_array_t                    *certificate_values;
     ngx_array_t                    *certificate_key_values;
 
