@@ -244,6 +244,8 @@ static ngx_int_t ngx_quic_ack_packet(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_ack_range(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t smallest, uint64_t largest);
+static void ngx_quic_drop_ack_ranges(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx, uint64_t pn);
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx);
 static ngx_int_t ngx_quic_ack_delay(ngx_connection_t *c,
@@ -2537,6 +2539,59 @@ ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 }
 
 
+static void
+ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
+    uint64_t pn)
+{
+    uint64_t               base;
+    ngx_uint_t             i, smallest, largest;
+    ngx_quic_ack_range_t  *r;
+
+    base = ctx->largest_range;
+
+    if (base == (uint64_t) -1) {
+        return;
+    }
+
+    if (ctx->pending_ack != (uint64_t) -1 && pn >= ctx->pending_ack) {
+        ctx->pending_ack = (uint64_t) -1;
+    }
+
+    largest = base;
+    smallest = largest - ctx->first_range;
+
+    if (pn >= largest) {
+        ctx->largest_range = (uint64_t) - 1;
+        ctx->first_range = 0;
+        ctx->nranges = 0;
+        return;
+    }
+
+    if (pn >= smallest) {
+        ctx->first_range = largest - pn - 1;
+        ctx->nranges = 0;
+        return;
+    }
+
+    for (i = 0; i < ctx->nranges; i++) {
+        r = &ctx->ranges[i];
+
+        largest = smallest - r->gap - 2;
+        smallest = largest - r->range;
+
+        if (pn >= largest) {
+            ctx->nranges = i;
+            return;
+        }
+        if (pn >= smallest) {
+            r->range = largest - pn - 1;
+            ctx->nranges = i + 1;
+            return;
+        }
+    }
+}
+
+
 static ngx_int_t
 ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
@@ -2805,7 +2860,22 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         if (f->pnum >= min && f->pnum <= max) {
             ngx_quic_congestion_ack(c, f);
 
-            ngx_quic_handle_stream_ack(c, f);
+            switch (f->type) {
+            case NGX_QUIC_FT_ACK:
+                ngx_quic_drop_ack_ranges(c, ctx, f->u.ack.largest);
+                break;
+
+            case NGX_QUIC_FT_STREAM0:
+            case NGX_QUIC_FT_STREAM1:
+            case NGX_QUIC_FT_STREAM2:
+            case NGX_QUIC_FT_STREAM3:
+            case NGX_QUIC_FT_STREAM4:
+            case NGX_QUIC_FT_STREAM5:
+            case NGX_QUIC_FT_STREAM6:
+            case NGX_QUIC_FT_STREAM7:
+                ngx_quic_handle_stream_ack(c, f);
+                break;
+            }
 
             if (f->pnum > found_num || !found) {
                 *send_time = f->last;
@@ -2926,10 +2996,6 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     ngx_event_t            *wev;
     ngx_quic_stream_t      *sn;
     ngx_quic_connection_t  *qc;
-
-    if (f->type < NGX_QUIC_FT_STREAM0 || f->type > NGX_QUIC_FT_STREAM7) {
-        return;
-    }
 
     qc = c->quic;
 
