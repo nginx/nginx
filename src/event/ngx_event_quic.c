@@ -93,12 +93,22 @@ typedef struct {
     ngx_quic_secret_t                 client_secret;
     ngx_quic_secret_t                 server_secret;
 
+    enum ssl_encryption_level_t       level;
+
     uint64_t                          pnum;        /* to be sent */
     uint64_t                          largest_ack; /* received from peer */
     uint64_t                          largest_pn;  /* received from peer */
 
     ngx_queue_t                       frames;
     ngx_queue_t                       sent;
+
+    uint64_t                          pending_ack; /* non sent ack-eliciting */
+    uint64_t                          largest_range;
+    uint64_t                          first_range;
+    ngx_uint_t                        nranges;
+    ngx_quic_ack_range_t              ranges[NGX_QUIC_MAX_RANGES];
+    struct timeval                    ack_received;
+    ngx_uint_t                        send_ack;    /* unsigned send_ack:1 */
 } ngx_quic_send_ctx_t;
 
 
@@ -230,7 +240,12 @@ static ngx_int_t ngx_quic_check_peer(ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_ack_packet(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_send_ack_range(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx, uint64_t smallest, uint64_t largest);
+static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c,
+    ngx_quic_send_ctx_t *ctx);
 static ngx_int_t ngx_quic_ack_delay(ngx_connection_t *c,
     struct timeval *received, enum ssl_encryption_level_t level);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c);
@@ -685,7 +700,13 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         ngx_queue_init(&qc->send_ctx[i].sent);
         qc->send_ctx[i].largest_pn = (uint64_t) -1;
         qc->send_ctx[i].largest_ack = (uint64_t) -1;
+        qc->send_ctx[i].largest_range = (uint64_t) -1;
+        qc->send_ctx[i].pending_ack = (uint64_t) -1;
     }
+
+    qc->send_ctx[0].level = ssl_encryption_initial;
+    qc->send_ctx[1].level = ssl_encryption_handshake;
+    qc->send_ctx[2].level = ssl_encryption_application;
 
     for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
         ngx_queue_init(&qc->crypto[i].frames);
@@ -1974,6 +1995,8 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
         ngx_quic_congestion_ack(c, f);
         ngx_quic_free_frame(c, f);
     }
+
+    ctx->send_ack = 0;
 }
 
 
@@ -2041,7 +2064,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     u_char                 *end, *p;
     ssize_t                 len;
-    ngx_uint_t              ack_sent, do_close;
+    ngx_uint_t              do_close;
     ngx_quic_frame_t        frame;
     ngx_quic_connection_t  *qc;
 
@@ -2069,7 +2092,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     p = pkt->payload.data;
     end = p + pkt->payload.len;
 
-    ack_sent = 0;
     do_close = 0;
 
     while (p < end) {
@@ -2107,14 +2129,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
 
         /* got there with ack-eliciting packet */
-
-        if (!ack_sent) {
-            if (ngx_quic_send_ack(c, pkt) != NGX_OK) {
-                return NGX_ERROR;
-            }
-
-            ack_sent = 1;
-        }
+        pkt->need_ack = 1;
 
         switch (frame.type) {
 
@@ -2269,34 +2284,286 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         ngx_quic_close_connection(c, NGX_OK);
     }
 
+    if (ngx_quic_ack_packet(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_header_t *pkt)
+ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    uint64_t               base, largest, smallest, gs, ge, gap, range, pn;
+    uint64_t               prev_pending;
+    ngx_uint_t             i, nr;
+    ngx_quic_send_ctx_t   *ctx;
+    ngx_quic_ack_range_t  *r;
+
+    c->log->action = "preparing ack";
+
+    ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "ngx_quic_ack_packet pn %uL largest %uL nranges %ui",
+                   pkt->pn, ctx->largest_range, ctx->nranges);
+
+    prev_pending = ctx->pending_ack;
+
+    if (pkt->need_ack) {
+
+        ngx_post_event(&c->quic->push, &ngx_posted_events);
+
+        ctx->send_ack = 1;
+
+        if (ctx->pending_ack == (uint64_t) -1
+            || ctx->pending_ack < pkt->pn)
+        {
+            ctx->pending_ack = pkt->pn;
+        }
+    }
+
+    base = ctx->largest_range;
+    pn = pkt->pn;
+
+    if (base == (uint64_t) -1) {
+        ctx->largest_range = pn;
+        ctx->ack_received = pkt->received;
+        return NGX_OK;
+    }
+
+    if (base == pn) {
+        return NGX_OK;
+    }
+
+    largest = base;
+    smallest = largest - ctx->first_range;
+
+    if (pn > base) {
+
+        if (pn - base == 1) {
+            ctx->first_range++;
+            ctx->largest_range = pn;
+            ctx->ack_received = pkt->received;
+
+            return NGX_OK;
+
+        } else {
+            /* new gap in front of current largest */
+
+            /* no place for new range, send current range as is */
+            if (ctx->nranges == NGX_QUIC_MAX_RANGES) {
+
+                if (prev_pending != (uint64_t) -1) {
+                    if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
+                        return NGX_ERROR;
+                    }
+                }
+
+                if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
+                    ctx->pending_ack = (uint64_t) -1;
+                }
+            }
+
+            gap = pn - base - 2;
+            range = ctx->first_range;
+
+            ctx->first_range = 0;
+            ctx->largest_range = pn;
+            ctx->ack_received = pkt->received;
+
+            i = 0;
+
+            goto insert;
+        }
+    }
+
+    /*  pn < base, perform lookup in existing ranges */
+
+    if (pn >= smallest && pn <= largest) {
+        return NGX_OK;
+    }
+
+#if (NGX_SUPPRESS_WARN)
+    r = NULL;
+#endif
+
+    for (i = 0; i < ctx->nranges; i++) {
+        r = &ctx->ranges[i];
+
+        ge = smallest - 1;
+        gs = ge - r->gap;
+
+        if (pn >= gs && pn <= ge) {
+
+            if (gs == ge) {
+                /* gap size is exactly one packet, now filled */
+
+                /* data moves to previous range, current is removed */
+
+                if (i == 0) {
+                    ctx->first_range += r->range + 2;
+
+                } else {
+                    ctx->ranges[i - 1].range += r->range + 2;
+                }
+
+                nr = ctx->nranges - i - 1;
+                if (nr) {
+                    ngx_memmove(&ctx->ranges[i], &ctx->ranges[i + 1],
+                                sizeof(ngx_quic_ack_range_t) * nr);
+                }
+
+                ctx->nranges--;
+
+            } else if (pn == gs) {
+                /* current gap shrinks from tail (current range grows) */
+                r->gap--;
+                r->range++;
+
+            } else if (pn == ge) {
+                /* current gap shrinks from head (previous range grows) */
+                r->gap--;
+
+                if (i == 0) {
+                    ctx->first_range++;
+
+                } else {
+                    ctx->ranges[i - 1].range++;
+                }
+
+            } else {
+                /* current gap is split into two parts */
+
+                gap = ge - pn - 1;
+                range = 0;
+
+                if (ctx->nranges == NGX_QUIC_MAX_RANGES) {
+                    if (prev_pending != (uint64_t) -1) {
+                        if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
+                            return NGX_ERROR;
+                        }
+                    }
+
+                    if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
+                        ctx->pending_ack = (uint64_t) -1;
+                    }
+                }
+
+                r->gap = pn - gs - 1;
+                goto insert;
+            }
+
+            return NGX_OK;
+        }
+
+        largest = smallest - r->gap - 2;
+        smallest = largest - r->range;
+
+        if (pn >= smallest && pn <= largest) {
+            /* this packet number is already known */
+            return NGX_OK;
+        }
+
+    }
+
+    if (pn == smallest - 1) {
+        /* extend first or last range */
+
+        if (i == 0) {
+            ctx->first_range++;
+
+        } else {
+            r->range++;
+        }
+
+        return NGX_OK;
+    }
+
+    /* nothing found, add new range at the tail  */
+
+    if (ctx->nranges == NGX_QUIC_MAX_RANGES) {
+        /* packet is too old to keep it */
+
+        if (pkt->need_ack) {
+            return ngx_quic_send_ack_range(c, ctx, pn, pn);
+        }
+
+        return NGX_OK;
+    }
+
+    gap = smallest - 2 - pn;
+    range = 0;
+
+insert:
+
+    if (ctx->nranges < NGX_QUIC_MAX_RANGES) {
+        ctx->nranges++;
+    }
+
+    ngx_memmove(&ctx->ranges[i + 1], &ctx->ranges[i],
+                sizeof(ngx_quic_ack_range_t) * (ctx->nranges - i - 1));
+
+    ctx->ranges[i].gap = gap;
+    ctx->ranges[i].range = range;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
+    uint64_t smallest, uint64_t largest)
 {
     ngx_quic_frame_t  *frame;
-
-    c->log->action = "generating acknowledgment";
-
-    /* every ACK-eliciting packet is acknowledged, TODO ACK Ranges */
 
     frame = ngx_quic_alloc_frame(c, 0);
     if (frame == NULL) {
         return NGX_ERROR;
     }
 
-    frame->level = (pkt->level == ssl_encryption_early_data)
-                   ? ssl_encryption_application
-                   : pkt->level;
-
+    frame->level = ctx->level;
     frame->type = NGX_QUIC_FT_ACK;
-    frame->u.ack.largest = pkt->pn;
-    frame->u.ack.delay = ngx_quic_ack_delay(c, &pkt->received, frame->level);
+    frame->u.ack.largest = largest;
+    frame->u.ack.delay = 0;
+    frame->u.ack.range_count = 0;
+    frame->u.ack.first_range = largest - smallest;
 
-    ngx_sprintf(frame->info, "ACK for PN=%uL from frame handler level=%d",
-                pkt->pn, frame->level);
+    ngx_sprintf(frame->info, "ACK for PN=%uL..%uL 0 ranges level=%d",
+                largest, smallest, frame->level);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
+{
+    size_t             ranges_len;
+    ngx_quic_frame_t  *frame;
+
+    ranges_len = sizeof(ngx_quic_ack_range_t) * ctx->nranges;
+
+    frame = ngx_quic_alloc_frame(c, ranges_len);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(frame->data, ctx->ranges, ranges_len);
+
+    frame->level = ctx->level;
+    frame->type = NGX_QUIC_FT_ACK;
+    frame->u.ack.largest = ctx->largest_range;
+    frame->u.ack.delay = ngx_quic_ack_delay(c, &ctx->ack_received, ctx->level);
+    frame->u.ack.range_count = ctx->nranges;
+    frame->u.ack.first_range = ctx->first_range;
+    frame->u.ack.ranges_start = frame->data;
+    frame->u.ack.ranges_end = frame->data + ranges_len;
+
+    ngx_sprintf(frame->info, "ACK for PN=%uL %ui ranges level=%d",
+                ctx->largest_range, ctx->nranges, frame->level);
+
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
@@ -3712,6 +3979,7 @@ static ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
 {
     ngx_uint_t              i;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
     c->log->action = "sending frames";
@@ -3719,7 +3987,17 @@ ngx_quic_output(ngx_connection_t *c)
     qc = c->quic;
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-        if (ngx_quic_output_frames(c, &qc->send_ctx[i]) != NGX_OK) {
+
+        ctx = &qc->send_ctx[i];
+
+        if (ctx->send_ack) {
+            if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
+                return NGX_ERROR;
+            }
+            ctx->send_ack = 0;
+        }
+
+        if (ngx_quic_output_frames(c, ctx) != NGX_OK) {
             return NGX_ERROR;
         }
     }

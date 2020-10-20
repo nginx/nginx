@@ -1269,17 +1269,24 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
 static size_t
 ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
 {
-    size_t   len;
-    u_char  *start;
+    size_t                 len;
+    u_char                *start;
+    ngx_uint_t             i;
+    ngx_quic_ack_range_t  *ranges;
 
-    /* minimal ACK packet */
+    ranges = (ngx_quic_ack_range_t *) ack->ranges_start;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_ACK);
         len += ngx_quic_varint_len(ack->largest);
         len += ngx_quic_varint_len(ack->delay);
-        len += ngx_quic_varint_len(0);
+        len += ngx_quic_varint_len(ack->range_count);
         len += ngx_quic_varint_len(ack->first_range);
+
+        for (i = 0; i < ack->range_count; i++) {
+            len += ngx_quic_varint_len(ranges[i].gap);
+            len += ngx_quic_varint_len(ranges[i].range);
+        }
 
         return len;
     }
@@ -1289,8 +1296,13 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
     ngx_quic_build_int(&p, NGX_QUIC_FT_ACK);
     ngx_quic_build_int(&p, ack->largest);
     ngx_quic_build_int(&p, ack->delay);
-    ngx_quic_build_int(&p, 0);
+    ngx_quic_build_int(&p, ack->range_count);
     ngx_quic_build_int(&p, ack->first_range);
+
+    for (i = 0; i < ack->range_count; i++) {
+        ngx_quic_build_int(&p, ranges[i].gap);
+        ngx_quic_build_int(&p, ranges[i].range);
+    }
 
     return p - start;
 }
