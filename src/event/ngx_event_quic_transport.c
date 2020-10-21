@@ -433,7 +433,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
 
     if (pkt->level == ssl_encryption_initial) {
-        ngx_quic_build_int(&p, pkt->token.len);
+        ngx_quic_build_int(&p, 0);
     }
 
     ngx_quic_build_int(&p, pkt_len + pkt->num_len);
