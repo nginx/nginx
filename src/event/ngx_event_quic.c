@@ -3847,10 +3847,10 @@ static ngx_int_t
 ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_queue_t *frames)
 {
-    ssize_t                 len;
     u_char                 *p;
-    ngx_msec_t              now;
+    ssize_t                 len;
     ngx_str_t               out, res;
+    ngx_msec_t              now;
     ngx_queue_t            *q;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_frame_t       *f, *start;
