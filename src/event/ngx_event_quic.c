@@ -36,6 +36,8 @@
 
 #define NGX_QUIC_STREAM_GONE     (void *) -1
 
+#define NGX_QUIC_UNSET_PN        (uint64_t) -1
+
 /*
  * Endpoints MUST discard packets that are too small to be valid QUIC
  * packets.  With the set of AEAD functions defined in [QUIC-TLS],
@@ -700,10 +702,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         ngx_queue_init(&qc->send_ctx[i].frames);
         ngx_queue_init(&qc->send_ctx[i].sent);
-        qc->send_ctx[i].largest_pn = (uint64_t) -1;
-        qc->send_ctx[i].largest_ack = (uint64_t) -1;
-        qc->send_ctx[i].largest_range = (uint64_t) -1;
-        qc->send_ctx[i].pending_ack = (uint64_t) -1;
+        qc->send_ctx[i].largest_pn = NGX_QUIC_UNSET_PN;
+        qc->send_ctx[i].largest_ack = NGX_QUIC_UNSET_PN;
+        qc->send_ctx[i].largest_range = NGX_QUIC_UNSET_PN;
+        qc->send_ctx[i].pending_ack = NGX_QUIC_UNSET_PN;
     }
 
     qc->send_ctx[0].level = ssl_encryption_initial;
@@ -2029,7 +2031,7 @@ ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
 
     if (pkt->level == ssl_encryption_initial
-        && ctx->largest_ack == (uint64_t) -1)
+        && ctx->largest_ack == NGX_QUIC_UNSET_PN)
     {
         if (pkt->dcid.len == qc->odcid.len
             && ngx_memcmp(pkt->dcid.data, qc->odcid.data, qc->odcid.len) == 0)
@@ -2319,7 +2321,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         ctx->send_ack = 1;
 
-        if (ctx->pending_ack == (uint64_t) -1
+        if (ctx->pending_ack == NGX_QUIC_UNSET_PN
             || ctx->pending_ack < pkt->pn)
         {
             ctx->pending_ack = pkt->pn;
@@ -2329,7 +2331,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
     base = ctx->largest_range;
     pn = pkt->pn;
 
-    if (base == (uint64_t) -1) {
+    if (base == NGX_QUIC_UNSET_PN) {
         ctx->largest_range = pn;
         ctx->ack_received = pkt->received;
         return NGX_OK;
@@ -2357,14 +2359,14 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
             /* no place for new range, send current range as is */
             if (ctx->nranges == NGX_QUIC_MAX_RANGES) {
 
-                if (prev_pending != (uint64_t) -1) {
+                if (prev_pending != NGX_QUIC_UNSET_PN) {
                     if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
                         return NGX_ERROR;
                     }
                 }
 
                 if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
-                    ctx->pending_ack = (uint64_t) -1;
+                    ctx->pending_ack = NGX_QUIC_UNSET_PN;
                 }
             }
 
@@ -2442,14 +2444,14 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 range = 0;
 
                 if (ctx->nranges == NGX_QUIC_MAX_RANGES) {
-                    if (prev_pending != (uint64_t) -1) {
+                    if (prev_pending != NGX_QUIC_UNSET_PN) {
                         if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
                             return NGX_ERROR;
                         }
                     }
 
                     if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
-                        ctx->pending_ack = (uint64_t) -1;
+                        ctx->pending_ack = NGX_QUIC_UNSET_PN;
                     }
                 }
 
@@ -2549,19 +2551,19 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     base = ctx->largest_range;
 
-    if (base == (uint64_t) -1) {
+    if (base == NGX_QUIC_UNSET_PN) {
         return;
     }
 
-    if (ctx->pending_ack != (uint64_t) -1 && pn >= ctx->pending_ack) {
-        ctx->pending_ack = (uint64_t) -1;
+    if (ctx->pending_ack != NGX_QUIC_UNSET_PN && pn >= ctx->pending_ack) {
+        ctx->pending_ack = NGX_QUIC_UNSET_PN;
     }
 
     largest = base;
     smallest = largest - ctx->first_range;
 
     if (pn >= largest) {
-        ctx->largest_range = (uint64_t) - 1;
+        ctx->largest_range = NGX_QUIC_UNSET_PN;
         ctx->first_range = 0;
         ctx->nranges = 0;
         return;
@@ -2773,7 +2775,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     /* 13.2.3.  Receiver Tracking of ACK Frames */
-    if (ctx->largest_ack < max || ctx->largest_ack == (uint64_t) -1) {
+    if (ctx->largest_ack < max || ctx->largest_ack == NGX_QUIC_UNSET_PN) {
         ctx->largest_ack = max;
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic updated largest received ack: %uL", max);
@@ -4402,7 +4404,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
         start = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
         if (start->pnum <= ctx->largest_ack
-            && ctx->largest_ack != (uint64_t) -1)
+            && ctx->largest_ack != NGX_QUIC_UNSET_PN)
         {
             continue;
         }
@@ -4469,7 +4471,7 @@ ngx_quic_detect_lost(ngx_connection_t *c)
 
         ctx = &qc->send_ctx[i];
 
-        if (ctx->largest_ack == (uint64_t) -1) {
+        if (ctx->largest_ack == NGX_QUIC_UNSET_PN) {
             continue;
         }
 
