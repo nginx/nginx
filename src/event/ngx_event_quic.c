@@ -3857,7 +3857,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_quic_header_t       pkt;
     ngx_quic_secrets_t     *keys;
     ngx_quic_connection_t  *qc;
-    static ngx_str_t        initial_token = ngx_null_string;
     static u_char           src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
     static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
@@ -3918,7 +3917,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     if (start->level == ssl_encryption_initial) {
         pkt.flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_INITIAL;
-        pkt.token = initial_token;
 
     } else if (start->level == ssl_encryption_handshake) {
         pkt.flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_HANDSHAKE;
