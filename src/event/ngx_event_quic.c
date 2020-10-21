@@ -3848,6 +3848,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_queue_t *frames)
 {
     u_char                 *p;
+    size_t                  pad_len;
     ssize_t                 len;
     ngx_str_t               out, res;
     ngx_msec_t              now;
@@ -3902,11 +3903,6 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     out.len = p - out.data;
 
-    while (out.len < 4) {
-        *p++ = NGX_QUIC_FT_PADDING;
-        out.len++;
-    }
-
     qc = c->quic;
 
     keys = &c->quic->keys[start->level];
@@ -3933,6 +3929,21 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     pkt.level = start->level;
     pkt.dcid = qc->scid;
     pkt.scid = qc->dcid;
+
+    if (start->level == ssl_encryption_initial && pkt.need_ack) {
+        pad_len = NGX_QUIC_MIN_INITIAL_SIZE - EVP_GCM_TLS_TAG_LEN
+                  - ngx_quic_create_long_header(&pkt, NULL, out.len, NULL);
+        pad_len = ngx_min(pad_len, NGX_QUIC_MIN_INITIAL_SIZE);
+
+    } else {
+        pad_len = 4;
+    }
+
+    if (out.len < pad_len) {
+        ngx_memset(p, NGX_QUIC_FT_PADDING, pad_len - out.len);
+        out.len = pad_len;
+    }
+
     pkt.payload = out;
 
     res.data = dst;
