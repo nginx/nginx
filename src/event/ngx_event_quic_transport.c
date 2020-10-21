@@ -420,6 +420,12 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
 {
     u_char  *p, *start;
 
+    if (out == NULL) {
+        return 5 + 2 + pkt->dcid.len + pkt->scid.len
+               + ngx_quic_varint_len(pkt_len + pkt->num_len) + pkt->num_len
+               + (pkt->level == ssl_encryption_initial ? 1 : 0);
+    }
+
     p = start = out;
 
     *p++ = pkt->flags;
@@ -464,6 +470,10 @@ ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp)
 {
     u_char  *p, *start;
+
+    if (out == NULL) {
+        return 1 + pkt->dcid.len + pkt->num_len;
+    }
 
     p = start = out;
 
