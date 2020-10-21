@@ -2309,9 +2309,10 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
 
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_ack_packet pn %uL largest %uL nranges %ui",
-                   pkt->pn, ctx->largest_range, ctx->nranges);
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "ngx_quic_ack_packet pn %uL largest %uL"
+                   " first %uL nranges %ui", pkt->pn, ctx->largest_range,
+                   ctx->first_range, ctx->nranges);
 
     prev_pending = ctx->pending_ack;
 
@@ -2548,6 +2549,11 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t               base;
     ngx_uint_t             i, smallest, largest;
     ngx_quic_ack_range_t  *r;
+
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "ngx_quic_drop_ack_ranges pn %uL largest %uL"
+                   " first %uL nranges %ui", pn, ctx->largest_range,
+                   ctx->first_range, ctx->nranges);
 
     base = ctx->largest_range;
 
@@ -2793,6 +2799,8 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
     }
 
+    ngx_quic_drop_ack_ranges(c, ctx, ack->largest);
+
     pos = ack->ranges_start;
     end = ack->ranges_end;
 
@@ -2863,9 +2871,6 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
             ngx_quic_congestion_ack(c, f);
 
             switch (f->type) {
-            case NGX_QUIC_FT_ACK:
-                ngx_quic_drop_ack_ranges(c, ctx, f->u.ack.largest);
-                break;
 
             case NGX_QUIC_FT_STREAM0:
             case NGX_QUIC_FT_STREAM1:
