@@ -2799,8 +2799,6 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
     }
 
-    ngx_quic_drop_ack_ranges(c, ctx, ack->largest);
-
     pos = ack->ranges_start;
     end = ack->ranges_end;
 
@@ -2871,6 +2869,10 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
             ngx_quic_congestion_ack(c, f);
 
             switch (f->type) {
+            case NGX_QUIC_FT_ACK:
+            case NGX_QUIC_FT_ACK_ECN:
+                ngx_quic_drop_ack_ranges(c, ctx, f->u.ack.largest);
+                break;
 
             case NGX_QUIC_FT_STREAM0:
             case NGX_QUIC_FT_STREAM1:
