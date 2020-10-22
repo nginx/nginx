@@ -53,6 +53,9 @@ static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
+static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
 
 
@@ -87,6 +90,10 @@ static ngx_conf_enum_t  ngx_http_ssl_ocsp[] = {
 static ngx_conf_deprecated_t  ngx_http_ssl_deprecated = {
     ngx_conf_deprecated, "ssl", "listen ... ssl"
 };
+
+
+static ngx_conf_post_t  ngx_http_ssl_conf_command_post =
+    { ngx_http_ssl_conf_command_check };
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
@@ -279,6 +286,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, early_data),
       NULL },
+
+    { ngx_string("ssl_conf_command"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, conf_commands),
+      &ngx_http_ssl_conf_command_post },
 
       ngx_null_command
 };
@@ -606,6 +620,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->certificates = NGX_CONF_UNSET_PTR;
     sscf->certificate_keys = NGX_CONF_UNSET_PTR;
     sscf->passwords = NGX_CONF_UNSET_PTR;
+    sscf->conf_commands = NGX_CONF_UNSET_PTR;
     sscf->builtin_session_cache = NGX_CONF_UNSET;
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->session_tickets = NGX_CONF_UNSET;
@@ -674,6 +689,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                          NGX_DEFAULT_ECDH_CURVE);
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
+
+    ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
 
     ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
     ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
@@ -910,6 +927,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (ngx_ssl_early_data(cf, &conf->ssl, conf->early_data) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -1232,6 +1253,17 @@ invalid:
                        "invalid OCSP cache \"%V\"", &value[1]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
 }
 
 

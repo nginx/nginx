@@ -45,6 +45,10 @@ static char *ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+static char *ngx_stream_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+
 static ngx_int_t ngx_stream_ssl_init(ngx_conf_t *cf);
 
 
@@ -66,6 +70,10 @@ static ngx_conf_enum_t  ngx_stream_ssl_verify[] = {
     { ngx_string("optional_no_ca"), 3 },
     { ngx_null_string, 0 }
 };
+
+
+static ngx_conf_post_t  ngx_stream_ssl_conf_command_post =
+    { ngx_stream_ssl_conf_command_check };
 
 
 static ngx_command_t  ngx_stream_ssl_commands[] = {
@@ -195,6 +203,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_ssl_conf_t, crl),
       NULL },
+
+    { ngx_string("ssl_conf_command"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, conf_commands),
+      &ngx_stream_ssl_conf_command_post },
 
       ngx_null_command
 };
@@ -595,6 +610,7 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
     scf->certificates = NGX_CONF_UNSET_PTR;
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
     scf->passwords = NGX_CONF_UNSET_PTR;
+    scf->conf_commands = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->verify = NGX_CONF_UNSET_UINT;
     scf->verify_depth = NGX_CONF_UNSET_UINT;
@@ -649,6 +665,8 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                          NGX_DEFAULT_ECDH_CURVE);
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
+
+    ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
 
 
     conf->ssl.log = cf->log;
@@ -808,6 +826,10 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_session_ticket_keys(cf, &conf->ssl, conf->session_ticket_keys)
         != NGX_OK)
     {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -1031,6 +1053,17 @@ invalid:
                        "invalid session cache \"%V\"", &value[i]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_stream_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
 }
 
 

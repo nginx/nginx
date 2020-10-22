@@ -1471,6 +1471,78 @@ ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 
 
 ngx_int_t
+ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *commands)
+{
+    if (commands == NULL) {
+        return NGX_OK;
+    }
+
+#ifdef SSL_CONF_FLAG_FILE
+    {
+    int            type;
+    u_char        *key, *value;
+    ngx_uint_t     i;
+    ngx_keyval_t  *cmd;
+    SSL_CONF_CTX  *cctx;
+
+    cctx = SSL_CONF_CTX_new();
+    if (cctx == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CONF_CTX_new() failed");
+        return NGX_ERROR;
+    }
+
+    SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_FILE);
+    SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_SERVER);
+    SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CLIENT);
+    SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_CERTIFICATE);
+    SSL_CONF_CTX_set_flags(cctx, SSL_CONF_FLAG_SHOW_ERRORS);
+
+    SSL_CONF_CTX_set_ssl_ctx(cctx, ssl->ctx);
+
+    cmd = commands->elts;
+    for (i = 0; i < commands->nelts; i++) {
+
+        key = cmd[i].key.data;
+        type = SSL_CONF_cmd_value_type(cctx, (char *) key);
+
+        if (type == SSL_CONF_TYPE_FILE || type == SSL_CONF_TYPE_DIR) {
+            if (ngx_conf_full_name(cf->cycle, &cmd[i].value, 1) != NGX_OK) {
+                SSL_CONF_CTX_free(cctx);
+                return NGX_ERROR;
+            }
+        }
+
+        value = cmd[i].value.data;
+
+        if (SSL_CONF_cmd(cctx, (char *) key, (char *) value) <= 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "SSL_CONF_cmd(\"%s\", \"%s\") failed", key, value);
+            SSL_CONF_CTX_free(cctx);
+            return NGX_ERROR;
+        }
+    }
+
+    if (SSL_CONF_CTX_finish(cctx) != 1) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CONF_finish() failed");
+        SSL_CONF_CTX_free(cctx);
+        return NGX_ERROR;
+    }
+
+    SSL_CONF_CTX_free(cctx);
+
+    return NGX_OK;
+    }
+#else
+    ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
+                  "SSL_CONF_cmd() is not available on this platform");
+    return NGX_ERROR;
+#endif
+}
+
+
+ngx_int_t
 ngx_ssl_client_session_cache(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 {
     if (!enable) {
