@@ -48,6 +48,7 @@ typedef struct {
     ngx_str_t        ciphers;
 
     ngx_array_t     *passwords;
+    ngx_array_t     *conf_commands;
 
     ngx_shm_zone_t  *shm_zone;
 

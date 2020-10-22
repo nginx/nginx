@@ -26,6 +26,9 @@ static char *ngx_mail_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
+static char *ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+
 
 static ngx_conf_enum_t  ngx_mail_starttls_state[] = {
     { ngx_string("off"), NGX_MAIL_STARTTLS_OFF },
@@ -59,6 +62,10 @@ static ngx_conf_enum_t  ngx_mail_ssl_verify[] = {
 static ngx_conf_deprecated_t  ngx_mail_ssl_deprecated = {
     ngx_conf_deprecated, "ssl", "listen ... ssl"
 };
+
+
+static ngx_conf_post_t  ngx_mail_ssl_conf_command_post =
+    { ngx_mail_ssl_conf_command_check };
 
 
 static ngx_command_t  ngx_mail_ssl_commands[] = {
@@ -196,6 +203,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       offsetof(ngx_mail_ssl_conf_t, crl),
       NULL },
 
+    { ngx_string("ssl_conf_command"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, conf_commands),
+      &ngx_mail_ssl_conf_command_post },
+
       ngx_null_command
 };
 
@@ -259,6 +273,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     scf->certificates = NGX_CONF_UNSET_PTR;
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
     scf->passwords = NGX_CONF_UNSET_PTR;
+    scf->conf_commands = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->verify = NGX_CONF_UNSET_UINT;
     scf->verify_depth = NGX_CONF_UNSET_UINT;
@@ -315,6 +330,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->crl, prev->crl, "");
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
+
+    ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
 
 
     conf->ssl.log = cf->log;
@@ -458,6 +475,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_session_ticket_keys(cf, &conf->ssl, conf->session_ticket_keys)
         != NGX_OK)
     {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -653,4 +674,15 @@ invalid:
                        "invalid session cache \"%V\"", &value[i]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
 }
