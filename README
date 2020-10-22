@@ -15,12 +15,12 @@ Experimental QUIC support for nginx
 
     The code is developed in a separate "quic" branch available
     at https://hg.nginx.org/nginx-quic.  Currently it is based
-    on nginx mainline 1.19.x. We are planning to merge new nginx
-    releases into this branch regularly.
+    on nginx mainline 1.19.x.  We merge new nginx releases into
+    this branch regularly.
 
     The project code base is under the same BSD license as nginx.
 
-    The code is at an early alpha level of quality and should not
+    The code is currently at a beta level of quality and should not
     be used in production.
 
     We are working on improving HTTP/3 support with the goal of
@@ -34,13 +34,13 @@ Experimental QUIC support for nginx
 
     What works now:
 
-    Currently we support IETF-QUIC draft-27, draft-28, draft-29.
+    Currently we support IETF-QUIC draft-27 through draft-32.
     Earlier drafts are NOT supported as they have incompatible wire format.
 
     You may look at src/event/ngx_event_quic.h for alternative values of the
     NGX_QUIC_DRAFT_VERSION macro used to select IETF draft version number.
 
-    nginx should be able to respond to simple HTTP/3 requests over QUIC and
+    nginx should be able to respond to HTTP/3 requests over QUIC and
     it should be possible to upload and download big files without errors.
 
     + The handshake completes successfully
@@ -66,9 +66,6 @@ Experimental QUIC support for nginx
 
     Since the code is experimental and still under development,
     a lot of things may not work as expected, for example:
-
-    - ACK handling is basic: every received ack-eliciting packet
-      is acknowledged, no ack ranges are used
 
     - Flow control mechanism is basic and intended to avoid CPU hog and make
       simple interactions possible
@@ -217,8 +214,7 @@ Example configuration:
 
     Here are some tips that may help you to identify problems:
 
-    + Ensure you are building with proper SSL library that
-      implements draft 29
+    + Ensure you are building with proper SSL library that supports QUIC
 
     + Ensure you are using the proper SSL library in runtime
       (`nginx -V` will show you what you are using)
@@ -251,10 +247,10 @@ Example configuration:
 
 7. Links
 
-    [1] https://tools.ietf.org/html/draft-ietf-quic-transport-29
-    [2] https://tools.ietf.org/html/draft-ietf-quic-http-29
+    [1] https://tools.ietf.org/html/draft-ietf-quic-transport
+    [2] https://tools.ietf.org/html/draft-ietf-quic-http
     [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
     [4] https://boringssl.googlesource.com/boringssl/
-    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery-29
+    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
