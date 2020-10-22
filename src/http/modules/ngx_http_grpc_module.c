@@ -4324,7 +4324,6 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
      *     conf->upstream.ssl_name = NULL;
      *
-     *     conf->headers_source = NULL;
      *     conf->headers.lengths = NULL;
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
@@ -4376,6 +4375,8 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.force_ranges = 0;
     conf->upstream.pass_trailers = 1;
     conf->upstream.preserve_output = 1;
+
+    conf->headers_source = NGX_CONF_UNSET_PTR;
 
     ngx_str_set(&conf->upstream.module, "grpc");
 
@@ -4507,9 +4508,10 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         clcf->handler = ngx_http_grpc_handler;
     }
 
-    if (conf->headers_source == NULL) {
+    ngx_conf_merge_ptr_value(conf->headers_source, prev->headers_source, NULL);
+
+    if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
-        conf->headers_source = prev->headers_source;
         conf->host_set = prev->host_set;
     }
 
