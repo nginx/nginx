@@ -3268,7 +3268,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->method = NULL;
      *     conf->location = NULL;
      *     conf->url = { 0, NULL };
-     *     conf->headers_source = NULL;
      *     conf->headers.lengths = NULL;
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
@@ -3345,6 +3344,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     /* "proxy_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
+
+    conf->headers_source = NGX_CONF_UNSET_PTR;
 
     conf->redirect = NGX_CONF_UNSET;
     conf->upstream.change_buffering = 1;
@@ -3819,12 +3820,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (conf->headers_source == NULL) {
+    ngx_conf_merge_ptr_value(conf->headers_source, prev->headers_source, NULL);
+
+    if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
 #if (NGX_HTTP_CACHE)
         conf->headers_cache = prev->headers_cache;
 #endif
-        conf->headers_source = prev->headers_source;
     }
 
     rc = ngx_http_proxy_init_headers(cf, conf, &conf->headers,
