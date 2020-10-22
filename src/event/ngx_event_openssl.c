@@ -1793,6 +1793,13 @@ ngx_ssl_handshake(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    if (c->ssl->handshake_rejected) {
+        ngx_connection_error(c, err, "handshake rejected");
+        ERR_clear_error();
+
+        return NGX_ERROR;
+    }
+
     c->read->error = 1;
 
     ngx_ssl_connection_error(c, sslerr, err, "SSL_do_handshake() failed");
@@ -3354,8 +3361,9 @@ ngx_ssl_session_id_context(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
         }
     }
 
-    if (SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index) == NULL) {
-
+    if (SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index) == NULL
+        && certificates != NULL)
+    {
         /*
          * If certificates are loaded dynamically, we use certificate
          * names as specified in the configuration (with variables).
