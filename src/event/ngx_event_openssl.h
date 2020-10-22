@@ -95,6 +95,7 @@ struct ngx_ssl_connection_s {
     u_char                      early_buf;
 
     unsigned                    handshaked:1;
+    unsigned                    handshake_rejected:1;
     unsigned                    renegotiation:1;
     unsigned                    buffer:1;
     unsigned                    no_wait_shutdown:1;
