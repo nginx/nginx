@@ -472,6 +472,7 @@ ngx_http_copy_pipelined_header(ngx_http_request_t *r, ngx_buf_t *buf)
     }
 
     ngx_memcpy(b->last, buf->pos, n);
+    buf->last -= n;
 
     b->last += n;
     r->request_length -= n;
