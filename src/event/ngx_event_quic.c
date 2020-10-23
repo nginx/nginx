@@ -2310,7 +2310,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_ack_packet pn %uL largest %uL"
+                   "quic ngx_quic_ack_packet pn %uL largest %uL"
                    " first %uL nranges %ui", pkt->pn, ctx->largest_range,
                    ctx->first_range, ctx->nranges);
 
@@ -2551,7 +2551,7 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_quic_ack_range_t  *r;
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "ngx_quic_drop_ack_ranges pn %uL largest %uL"
+                   "quic ngx_quic_drop_ack_ranges pn %uL largest %uL"
                    " first %uL nranges %ui", pn, ctx->largest_range,
                    ctx->first_range, ctx->nranges);
 
