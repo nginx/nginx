@@ -1171,6 +1171,16 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_UPSTREAM_QUIC_LB = YES ]; then
+        ngx_module_name=ngx_stream_upstream_quic_lb_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_quic_lb_module.c
+        ngx_module_libs=src/stream/quic_lb.so
+        ngx_module_link=$STREAM_UPSTREAM_QUIC_LB
+
+        . auto/module
+    fi
+
     if [ $STREAM_SSL_PREREAD = YES ]; then
         ngx_module_name=ngx_stream_ssl_preread_module
         ngx_module_deps=

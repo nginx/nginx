@@ -59,6 +59,8 @@ typedef struct {
     time_t                             fail_timeout;
     ngx_msec_t                         slow_start;
     ngx_uint_t                         down;
+    u_char                             sid[3][19]; /* For QUIC-LB */
+    ngx_uint_t                         sidl[3];    /* For QUIC-LB */
 
     unsigned                           backup:1;
 

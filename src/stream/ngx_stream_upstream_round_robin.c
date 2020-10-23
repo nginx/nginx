@@ -38,7 +38,7 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_stream_upstream_srv_conf_t *us)
 {
     ngx_url_t                        u;
-    ngx_uint_t                       i, j, n, w;
+    ngx_uint_t                       i, j, n, w, k;
     ngx_stream_upstream_server_t    *server;
     ngx_stream_upstream_rr_peer_t   *peer, **peerp;
     ngx_stream_upstream_rr_peers_t  *peers, *backup;
@@ -103,6 +103,13 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
                 peer[n].server = server[i].name;
+                for (k = 0; k < 3; k++) {
+                    if (server[i].sidl[k] == 0) {
+                        continue;
+                    }
+                    peer[n].sidl[k] = server[i].sidl[k];
+                    ngx_memcpy(peer[n].sid[k], server[i].sid[k], server[i].sidl[k]);
+                }
 
                 *peerp = &peer[n];
                 peerp = &peer[n].next;

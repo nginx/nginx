@@ -406,8 +406,10 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                         fail_timeout;
     ngx_str_t                     *value, s;
     ngx_url_t                      u;
-    ngx_int_t                      weight, max_conns, max_fails;
-    ngx_uint_t                     i;
+    ngx_int_t                      weight, max_conns, max_fails, cr, byte;
+    ngx_uint_t                     i, j;
+    u_char                         sid[3][19];
+    ngx_uint_t                     sidl[3];
     ngx_stream_upstream_server_t  *us;
 
     us = ngx_array_push(uscf->servers);
@@ -423,6 +425,9 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
+    sidl[0] = 0;
+    sidl[1] = 0;
+    sidl[2] = 0;
 
     for (i = 2; i < cf->args->nelts; i++) {
 
@@ -489,6 +494,28 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        /* Valid values: sid0, sid1, sid2 */
+        if (ngx_strncmp(value[i].data, "sid", 3) == 0) {
+            if ((value[i].len % 2) == 0) {
+                /* Must be omitting trailing or leading zeroes */
+                goto invalid;
+            }
+            cr = ngx_atoi(&value[i].data[3], 1);
+            if ((cr == NGX_ERROR) || (cr < 0) || (cr > 2) ||
+                    ngx_strncmp(&value[i].data[4], "=", 1) != 0) {
+                goto invalid;
+            }
+            for (j = 5; j < value[i].len; j += 2) {
+                byte = ngx_hextoi(&value[i].data[j], 2);
+                if (byte == NGX_ERROR) {
+                    goto invalid;
+                }
+                sid[cr][sidl[cr]] = (u_char)byte;
+                sidl[cr]++;
+            }
+            continue;
+        }
+
         if (ngx_strcmp(value[i].data, "backup") == 0) {
 
             if (!(uscf->flags & NGX_STREAM_UPSTREAM_BACKUP)) {
@@ -540,6 +567,12 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     us->max_conns = max_conns;
     us->max_fails = max_fails;
     us->fail_timeout = fail_timeout;
+    for (i = 0; i < 3; i++) {
+        us->sidl[i] = sidl[i];
+        if (sidl[i] > 0) {
+            ngx_memcpy(&us->sid[i], sid[i], sidl[i]);
+        }
+    }
 
     return NGX_CONF_OK;
 

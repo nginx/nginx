@@ -38,6 +38,10 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_msec_t                       slow_start;
     ngx_msec_t                       start_time;
 
+    /* QUIC-LB configuration */
+    ngx_uint_t                       sidl[3];
+    u_char                           sid[3][19];
+
     ngx_uint_t                       down;
 
     void                            *ssl_session;
