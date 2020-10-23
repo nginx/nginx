@@ -48,6 +48,8 @@
 #define NGX_QUIC_MIN_SR_PACKET   43 /* 5 random + 16 srt + 22 padding */
 #define NGX_QUIC_MAX_SR_PACKET   1200
 
+#define NGX_QUIC_MAX_ACK_GAP     2
+
 #define ngx_quic_level_name(lvl)                                              \
     (lvl == ssl_encryption_application) ? "application"                       \
         : (lvl == ssl_encryption_initial) ? "initial"                         \
@@ -107,10 +109,11 @@ typedef struct {
     uint64_t                          pending_ack; /* non sent ack-eliciting */
     uint64_t                          largest_range;
     uint64_t                          first_range;
+    ngx_msec_t                        largest_received;
+    ngx_msec_t                        ack_delay_start;
     ngx_uint_t                        nranges;
     ngx_quic_ack_range_t              ranges[NGX_QUIC_MAX_RANGES];
-    struct timeval                    ack_received;
-    ngx_uint_t                        send_ack;    /* unsigned send_ack:1 */
+    ngx_uint_t                        send_ack;
 } ngx_quic_send_ctx_t;
 
 
@@ -250,8 +253,6 @@ static void ngx_quic_drop_ack_ranges(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t pn);
 static ngx_int_t ngx_quic_send_ack(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx);
-static ngx_int_t ngx_quic_ack_delay(ngx_connection_t *c,
-    struct timeval *received, enum ssl_encryption_level_t level);
 static ngx_int_t ngx_quic_send_cc(ngx_connection_t *c);
 static ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c);
 
@@ -1911,11 +1912,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         qc->validated = 1;
     }
 
-    if (pkt->level == ssl_encryption_early_data
-        || pkt->level == ssl_encryption_application)
-    {
-        ngx_gettimeofday(&pkt->received);
-    }
+    pkt->received = ngx_current_msec;
 
     c->log->action = "handling payload";
 
@@ -2320,7 +2317,11 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         ngx_post_event(&c->quic->push, &ngx_posted_events);
 
-        ctx->send_ack = 1;
+        if (ctx->send_ack == 0) {
+            ctx->ack_delay_start = ngx_current_msec;
+        }
+
+        ctx->send_ack++;
 
         if (ctx->pending_ack == NGX_QUIC_UNSET_PN
             || ctx->pending_ack < pkt->pn)
@@ -2334,7 +2335,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (base == NGX_QUIC_UNSET_PN) {
         ctx->largest_range = pn;
-        ctx->ack_received = pkt->received;
+        ctx->largest_received = pkt->received;
         return NGX_OK;
     }
 
@@ -2350,7 +2351,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (pn - base == 1) {
             ctx->first_range++;
             ctx->largest_range = pn;
-            ctx->ack_received = pkt->received;
+            ctx->largest_received = pkt->received;
 
             return NGX_OK;
 
@@ -2376,7 +2377,12 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
             ctx->first_range = 0;
             ctx->largest_range = pn;
-            ctx->ack_received = pkt->received;
+            ctx->largest_received = pkt->received;
+
+            /* packet is out of order, force send */
+            if (pkt->need_ack) {
+                ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
+            }
 
             i = 0;
 
@@ -2385,6 +2391,11 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     /*  pn < base, perform lookup in existing ranges */
+
+    /* packet is out of order */
+    if (pkt->need_ack) {
+        ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
+    }
 
     if (pn >= smallest && pn <= largest) {
         return NGX_OK;
@@ -2604,7 +2615,17 @@ static ngx_int_t
 ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
     size_t             ranges_len;
+    uint64_t           ack_delay;
     ngx_quic_frame_t  *frame;
+
+    if (ctx->level == ssl_encryption_application) {
+        ack_delay = ngx_current_msec - ctx->largest_received;
+        ack_delay *= 1000;
+        ack_delay >>= c->quic->ctp.ack_delay_exponent;
+
+    } else {
+        ack_delay = 0;
+    }
 
     ranges_len = sizeof(ngx_quic_ack_range_t) * ctx->nranges;
 
@@ -2618,7 +2639,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     frame->level = ctx->level;
     frame->type = NGX_QUIC_FT_ACK;
     frame->u.ack.largest = ctx->largest_range;
-    frame->u.ack.delay = ngx_quic_ack_delay(c, &ctx->ack_received, ctx->level);
+    frame->u.ack.delay = ack_delay;
     frame->u.ack.range_count = ctx->nranges;
     frame->u.ack.first_range = ctx->first_range;
     frame->u.ack.ranges_start = frame->data;
@@ -2630,27 +2651,6 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_ack_delay(ngx_connection_t *c, struct timeval *received,
-    enum ssl_encryption_level_t level)
-{
-    ngx_int_t       ack_delay;
-    struct timeval  tv;
-
-    ack_delay = 0;
-
-    if (level == ssl_encryption_application) {
-        ngx_gettimeofday(&tv);
-        ack_delay = (tv.tv_sec - received->tv_sec) * 1000000
-                    + tv.tv_usec - received->tv_usec;
-        ack_delay = ngx_max(ack_delay, 0);
-        ack_delay >>= c->quic->ctp.ack_delay_exponent;
-    }
-
-    return ack_delay;
 }
 
 
@@ -4054,6 +4054,7 @@ static ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
 {
     ngx_uint_t              i;
+    ngx_msec_t              delay;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -4066,11 +4067,29 @@ ngx_quic_output(ngx_connection_t *c)
         ctx = &qc->send_ctx[i];
 
         if (ctx->send_ack) {
+
+            if (ctx->level == ssl_encryption_application)  {
+
+                delay = ngx_current_msec - ctx->ack_delay_start;
+
+                if (ctx->send_ack < NGX_QUIC_MAX_ACK_GAP
+                    && delay < qc->tp.max_ack_delay)
+                {
+                    if (!qc->push.timer_set && !qc->closing) {
+                        ngx_add_timer(&qc->push, qc->tp.max_ack_delay - delay);
+                    }
+
+                    goto output;
+                }
+            }
+
             if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
                 return NGX_ERROR;
             }
             ctx->send_ack = 0;
         }
+
+    output:
 
         if (ngx_quic_output_frames(c, ctx) != NGX_OK) {
             return NGX_ERROR;
