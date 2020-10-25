@@ -1984,6 +1984,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
 
             if (!pkt->token.len) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic discard retry packet without token");
                 return NGX_DECLINED;
             }
 
