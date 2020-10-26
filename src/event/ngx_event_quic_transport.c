@@ -326,7 +326,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx long flags:%xd version:%xD",
+                   "quic packet rx long flags:%xd version:%xD",
                    pkt->flags, pkt->version);
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
@@ -540,7 +540,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
     end = pkt->data + pkt->len;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx short flags:%xd", pkt->flags);
+                   "quic packet rx short flags:%xd", pkt->flags);
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
@@ -597,7 +597,7 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx initial len:%uL", varint);
+                   "quic packet rx initial len:%uL", varint);
 
     if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
@@ -636,7 +636,7 @@ ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx handshake len:%uL", plen);
+                   "quic packet rx handshake len:%uL", plen);
 
     if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,

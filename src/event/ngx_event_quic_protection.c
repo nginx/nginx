@@ -1113,9 +1113,9 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     pkt->flags = clearflags;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx clearflags:%xd", clearflags);
+                   "quic packet rx clearflags:%xd", clearflags);
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic pkt rx number:%uL len:%xi", pn, pnl);
+                   "quic packet rx number:%uL len:%xi", pn, pnl);
 
     /* packet protection */
 
