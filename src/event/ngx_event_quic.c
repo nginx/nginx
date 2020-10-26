@@ -1921,7 +1921,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 #if (NGX_DEBUG)
         if (pkt.parsed) {
             ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic %s pkt done decr:%d pn:%L perr:%ui rc:%i",
+                           "quic pkt %s done decr:%d pn:%L perr:%ui rc:%i",
                            ngx_quic_level_name(pkt.level), pkt.decrypted,
                            pkt.pn, pkt.error, rc);
         } else {
@@ -1999,10 +1999,10 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc = c->quic;
 
 #if (NGX_DEBUG)
-    ngx_quic_hexdump(c->log, "quic pkt dcid", pkt->dcid.data, pkt->dcid.len);
+    ngx_quic_hexdump(c->log, "quic pkt rx dcid", pkt->dcid.data, pkt->dcid.len);
 
     if (pkt->level != ssl_encryption_application) {
-        ngx_quic_hexdump(c->log, "quic pkt scid", pkt->scid.data,
+        ngx_quic_hexdump(c->log, "quic pkt rx scid", pkt->scid.data,
                          pkt->scid.len);
     }
 #endif
@@ -4551,10 +4551,10 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     res.data = dst;
 
     ngx_log_debug6(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet ready bytes:%ui level:%d"
+                   "quic pkt tx %s bytes:%ui"
                    " need_ack:%d number:%L encoded nl:%d trunc:0x%xD",
-                   out.len, start->level, pkt.need_ack, pkt.number,
-                   pkt.num_len, pkt.trunc);
+                   ngx_quic_level_name(start->level), out.len, pkt.need_ack,
+                   pkt.number, pkt.num_len, pkt.trunc);
 
     if (ngx_quic_encrypt(&pkt, ssl_conn, &res) != NGX_OK) {
         ngx_quic_free_frames(c, frames);
