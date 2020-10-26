@@ -4340,7 +4340,7 @@ ngx_quic_output(ngx_connection_t *c)
 static ngx_int_t
 ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
-    size_t                  len, hlen;
+    size_t                  len, hlen, cutoff;
     ngx_uint_t              need_ack;
     ngx_queue_t            *q, range;
     ngx_quic_frame_t       *f;
@@ -4391,7 +4391,14 @@ ngx_quic_output_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
                  * send more than three times the data it receives;
                  */
 
-                if (((c->sent + hlen + len + f->len) / 3) > qc->received) {
+                if (f->level == ssl_encryption_initial) {
+                    cutoff = (c->sent + NGX_QUIC_MIN_INITIAL_SIZE) / 3;
+
+                } else {
+                    cutoff = (c->sent + hlen + len + f->len) / 3;
+                }
+
+                if (cutoff > qc->received) {
                     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                    "quic hit amplification limit"
                                    " received:%uz sent:%O",
