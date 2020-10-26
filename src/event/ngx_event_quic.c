@@ -2162,7 +2162,11 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
          * that no more Initial packets need to be exchanged
          */
         ngx_quic_discard_ctx(c, ssl_encryption_initial);
-        qc->validated = 1;
+
+        if (qc->validated == 0) {
+            qc->validated = 1;
+            ngx_post_event(&c->quic->push, &ngx_posted_events);
+        }
     }
 
     pkt->received = ngx_current_msec;
