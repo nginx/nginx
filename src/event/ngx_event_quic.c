@@ -2254,6 +2254,15 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
         ngx_quic_free_frame(c, f);
     }
 
+    while (!ngx_queue_empty(&ctx->frames)) {
+        q = ngx_queue_head(&ctx->frames);
+        ngx_queue_remove(q);
+
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        ngx_quic_congestion_ack(c, f);
+        ngx_quic_free_frame(c, f);
+    }
+
     ctx->send_ack = 0;
 }
 
@@ -5677,6 +5686,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     cg = &qc->congestion;
 
     cg->in_flight -= f->plen;
+    f->plen = 0;
 
     timer = f->last - cg->recovery_start;
 
