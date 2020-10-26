@@ -551,9 +551,74 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
                    p - buf, buf);
 }
 
+
+static void
+ngx_quic_connstate_dbg(ngx_connection_t *c)
+{
+    u_char                 *p, *last;
+    ngx_quic_connection_t  *qc;
+    u_char                  buf[NGX_MAX_ERROR_STR];
+
+    p = buf;
+    last = p + sizeof(buf);
+
+    qc = c->quic;
+
+    p = ngx_slprintf(p, last, "state:");
+
+    if (qc) {
+
+        if (qc->error) {
+            p = ngx_slprintf(p, last, "%s", qc->error_app ? " app" : "");
+            p = ngx_slprintf(p, last, " error:%ui", qc->error);
+
+            if (qc->error_reason) {
+                p = ngx_slprintf(p, last, " \"%s\"", qc->error_reason);
+            }
+        }
+
+        p = ngx_slprintf(p, last, "%s", qc->closing ? " closing" : "");
+        p = ngx_slprintf(p, last, "%s", qc->draining ? " draining" : "");
+        p = ngx_slprintf(p, last, "%s", qc->key_phase ? " kp" : "");
+        p = ngx_slprintf(p, last, "%s", qc->in_retry ? " retry" : "");
+        p = ngx_slprintf(p, last, "%s", qc->validated? " valid" : "");
+
+    } else {
+        p = ngx_slprintf(p, last, " early");
+    }
+
+    if (c->read->timer_set) {
+        p = ngx_slprintf(p, last,
+                         qc && qc->send_timer_set ? " send:%M" : " read:%M",
+                         c->read->timer.key - ngx_current_msec);
+    }
+
+    if (qc) {
+
+        if (qc->push.timer_set) {
+            p = ngx_slprintf(p, last, " push:%M",
+                             qc->push.timer.key - ngx_current_msec);
+        }
+
+        if (qc->pto.timer_set) {
+            p = ngx_slprintf(p, last, " pto:%M",
+                             qc->pto.timer.key - ngx_current_msec);
+        }
+
+        if (qc->close.timer_set) {
+            p = ngx_slprintf(p, last, " close:%M",
+                             qc->close.timer.key - ngx_current_msec);
+        }
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic %*s", p - buf, buf);
+}
+
 #else
 
 #define ngx_quic_log_frame(log, f, tx)
+#define ngx_quic_connstate_dbg(c)
 
 #endif
 
@@ -868,6 +933,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
 
     c->read->handler = ngx_quic_input_handler;
 
+    ngx_quic_connstate_dbg(c);
     return;
 }
 
@@ -1573,6 +1639,8 @@ ngx_quic_input_handler(ngx_event_t *rev)
 
     qc->send_timer_set = 0;
     ngx_add_timer(rev, qc->tp.max_idle_timeout);
+
+    ngx_quic_connstate_dbg(c);
 }
 
 
@@ -1852,17 +1920,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 
 #if (NGX_DEBUG)
         if (pkt.parsed) {
-            ngx_quic_connection_t  *qc;
-
-            qc = c->quic;
-
-            ngx_log_debug8(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic pkt done %s decr:%d pn:%L pe:%ui rc:%i"
-                           " closing:%d err:%ui %s",
+            ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic %s pkt done decr:%d pn:%L perr:%ui rc:%i",
                            ngx_quic_level_name(pkt.level), pkt.decrypted,
-                           pkt.pn, pkt.error, rc, (qc && qc->closing) ? 1 : 0,
-                           qc ? qc->error : 0,
-                           (qc && qc->error_reason) ? qc->error_reason : "");
+                           pkt.pn, pkt.error, rc);
         } else {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic pkt done parse failed rc:%i", rc);
@@ -4610,6 +4671,8 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
         ngx_quic_resend_frames(c, ctx);
     }
+
+    ngx_quic_connstate_dbg(c);
 }
 
 
@@ -4626,6 +4689,8 @@ ngx_quic_push_handler(ngx_event_t *ev)
         ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
+
+    ngx_quic_connstate_dbg(c);
 }
 
 
@@ -4641,6 +4706,8 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
     if (ngx_quic_detect_lost(c) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
     }
+
+    ngx_quic_connstate_dbg(c);
 }
 
 
