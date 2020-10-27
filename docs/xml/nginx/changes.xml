@@ -5,6 +5,40 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.4" date="2020-10-27">
+
+<change type="feature">
+<para lang="ru">
+директивы ssl_conf_command, proxy_ssl_conf_command, grpc_ssl_conf_command
+и uwsgi_ssl_conf_command.
+</para>
+<para lang="en">
+the "ssl_conf_command", "proxy_ssl_conf_command", "grpc_ssl_conf_command",
+and "uwsgi_ssl_conf_command" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_reject_handshake.
+</para>
+<para lang="en">
+the "ssl_reject_handshake" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_smtp_auth в почтовом прокси-сервере.
+</para>
+<para lang="en">
+the "proxy_smtp_auth" directive in mail proxy.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.3" date="2020-09-29">
 
 <change type="feature">
