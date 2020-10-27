@@ -474,12 +474,20 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
     case NGX_QUIC_FT_STREAM6:
     case NGX_QUIC_FT_STREAM7:
 
-        p = ngx_slprintf(p, last,
-                         "STREAM type:0x%xi id:0x%xL offset:0x%xL "
-                         "len:0x%xL bits off:%d len:%d fin:%d",
-                         f->type, f->u.stream.stream_id, f->u.stream.offset,
-                         f->u.stream.length, f->u.stream.off, f->u.stream.len,
-                         f->u.stream.fin);
+        p = ngx_slprintf(p, last, "STREAM id:0x%xL", f->u.stream.stream_id);
+
+        if (f->u.stream.off) {
+            p = ngx_slprintf(p, last, " off:%uL", f->u.stream.offset);
+        }
+
+        if (f->u.stream.len) {
+            p = ngx_slprintf(p, last, " len:%uL", f->u.stream.length);
+        }
+
+        if (f->u.stream.fin) {
+            p = ngx_slprintf(p, last, " fin:1");
+        }
+
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
