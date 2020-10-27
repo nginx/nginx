@@ -371,12 +371,11 @@ static SSL_QUIC_METHOD quic_method = {
 static void
 ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 {
-    u_char                *p, *last, *pos, *end;
-    ssize_t                n;
-    uint64_t               gap, range;
-    ngx_uint_t             i;
-    ngx_quic_ack_range_t  *ranges;
-    u_char                 buf[NGX_MAX_ERROR_STR];
+    u_char      *p, *last, *pos, *end;
+    ssize_t      n;
+    uint64_t     gap, range;
+    ngx_uint_t   i;
+    u_char       buf[NGX_MAX_ERROR_STR];
 
     p = buf;
     last = buf + sizeof(buf);
@@ -400,28 +399,18 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
                          f->u.ack.largest, f->u.ack.first_range,
                          f->u.ack.range_count, f->u.ack.delay);
 
-        if (tx) {
-            ranges = (ngx_quic_ack_range_t *) f->u.ack.ranges_start;
+        pos = f->u.ack.ranges_start;
+        end = f->u.ack.ranges_end;
 
-            for (i = 0; i < f->u.ack.range_count; i++) {
-                p = ngx_slprintf(p, last, " %uL,%uL",
-                                 ranges[i].gap, ranges[i].range);
+        for (i = 0; i < f->u.ack.range_count; i++) {
+            n = ngx_quic_parse_ack_range(log, pos, end, &gap, &range);
+            if (n == NGX_ERROR) {
+                break;
             }
 
-        } else {
-            pos = f->u.ack.ranges_start;
-            end = f->u.ack.ranges_end;
+            pos += n;
 
-            for (i = 0; i < f->u.ack.range_count; i++) {
-                n = ngx_quic_parse_ack_range(log, pos, end, &gap, &range);
-                if (n == NGX_ERROR) {
-                    break;
-                }
-
-                pos += n;
-
-                p = ngx_slprintf(p, last, " %uL,%uL", gap, range);
-            }
+            p = ngx_slprintf(p, last, " %uL,%uL", gap, range);
         }
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
@@ -2879,8 +2868,10 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 static ngx_int_t
 ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
+    u_char            *p;
     size_t             ranges_len;
     uint64_t           ack_delay;
+    ngx_uint_t         i;
     ngx_quic_frame_t  *frame;
 
     if (ctx->level == ssl_encryption_application) {
@@ -2892,14 +2883,24 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         ack_delay = 0;
     }
 
-    ranges_len = sizeof(ngx_quic_ack_range_t) * ctx->nranges;
+    ranges_len = 0;
+
+    for (i = 0; i < ctx->nranges; i++) {
+        ranges_len += ngx_quic_create_ack_range(NULL, ctx->ranges[i].gap,
+                                                ctx->ranges[i].range);
+    }
 
     frame = ngx_quic_alloc_frame(c, ranges_len);
     if (frame == NULL) {
         return NGX_ERROR;
     }
 
-    ngx_memcpy(frame->data, ctx->ranges, ranges_len);
+    p = frame->data;
+
+    for (i = 0; i < ctx->nranges; i++) {
+        p += ngx_quic_create_ack_range(p, ctx->ranges[i].gap,
+                                       ctx->ranges[i].range);
+    }
 
     frame->level = ctx->level;
     frame->type = NGX_QUIC_FT_ACK;

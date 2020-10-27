@@ -345,6 +345,7 @@ ssize_t ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f);
 
 ssize_t ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start,
     u_char *end, uint64_t *gap, uint64_t *range);
+size_t ngx_quic_create_ack_range(u_char *p, uint64_t gap, uint64_t range);
 
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, ngx_log_t *log);
