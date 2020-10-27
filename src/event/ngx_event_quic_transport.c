@@ -699,10 +699,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: CRYPTO length: %uL off:%uL",
-                       f->u.crypto.length, f->u.crypto.offset);
-
         break;
 
     case NGX_QUIC_FT_PADDING:
@@ -740,13 +736,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         }
 
         f->u.ack.ranges_end = p;
-
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in ACK largest:%uL delay:%uL"
-                       " count:%uL first:%uL", f->u.ack.largest,
-                       f->u.ack.delay,
-                       f->u.ack.range_count,
-                       f->u.ack.first_range);
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
 
@@ -802,9 +791,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: NCID seq:%uL retire:%uL len:%ud",
-                       f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
     case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
@@ -814,10 +800,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: RETIRE_CONNECTION_ID"
-                       " sequence_number:%uL",
-                       f->u.retire_cid.sequence_number);
         break;
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
@@ -846,22 +828,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                                 &f->u.close.reason.data);
         if (p == NULL) {
             goto error;
-        }
-
-        if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
-
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                          "quic frame in CONNECTION_CLOSE"
-                          " err:%s code:0x%xL type:0x%xL reason:'%V'",
-                           ngx_quic_error_text(f->u.close.error_code),
-                           f->u.close.error_code, f->u.close.frame_type,
-                           &f->u.close.reason);
-        } else {
-
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                          "quic frame in: CONNECTION_CLOSE_APP:"
-                          " code:0x%xL reason:'%V'",
-                           f->u.close.error_code, &f->u.close.reason);
         }
 
         break;
@@ -912,16 +878,9 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug7(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: STREAM type:0x%xi id:0x%xL offset:0x%xL "
-                       "len:0x%xL bits off:%d len:%d fin:%d",
-                       f->type, f->u.stream.stream_id, f->u.stream.offset,
-                       f->u.stream.length, f->u.stream.off, f->u.stream.len,
-                       f->u.stream.fin);
-
 #ifdef NGX_QUIC_DEBUG_FRAMES
-            ngx_quic_hexdump(pkt->log, "quic STREAM frame",
-                             f->u.stream.data, f->u.stream.length);
+        ngx_quic_hexdump(pkt->log, "quic STREAM frame",
+                         f->u.stream.data, f->u.stream.length);
 #endif
         break;
 
@@ -932,9 +891,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: MAX_DATA max_data:%uL",
-                       f->u.max_data.max_data);
         break;
 
     case NGX_QUIC_FT_RESET_STREAM:
@@ -947,11 +903,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: RESET_STREAM"
-                       " id:0x%xL error_code:0x%xL final_size:0x%xL",
-                       f->u.reset_stream.id, f->u.reset_stream.error_code,
-                       f->u.reset_stream.final_size);
         break;
 
     case NGX_QUIC_FT_STOP_SENDING:
@@ -966,10 +917,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: STOP_SENDING id:0x%xL error_code:0x%xL",
-                       f->u.stop_sending.id, f->u.stop_sending.error_code);
-
         break;
 
     case NGX_QUIC_FT_STREAMS_BLOCKED:
@@ -982,12 +929,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         f->u.streams_blocked.bidi =
                               (f->type == NGX_QUIC_FT_STREAMS_BLOCKED) ? 1 : 0;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: STREAMS_BLOCKED limit:%uL bidi:%ui",
-                       f->u.streams_blocked.limit,
-                       f->u.streams_blocked.bidi);
-
         break;
 
     case NGX_QUIC_FT_MAX_STREAMS:
@@ -1000,10 +941,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         f->u.max_streams.bidi = (f->type == NGX_QUIC_FT_MAX_STREAMS) ? 1 : 0;
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: MAX_STREAMS limit:%uL bidi:%ui",
-                       f->u.max_streams.limit,
-                       f->u.max_streams.bidi);
         break;
 
     case NGX_QUIC_FT_MAX_STREAM_DATA:
@@ -1018,10 +955,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: MAX_STREAM_DATA id:0x%xL limit:%uL",
-                       f->u.max_stream_data.id,
-                       f->u.max_stream_data.limit);
         break;
 
     case NGX_QUIC_FT_DATA_BLOCKED:
@@ -1031,9 +964,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: DATA_BLOCKED limit:%uL",
-                       f->u.data_blocked.limit);
         break;
 
     case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
@@ -1048,11 +978,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: STREAM_DATA_BLOCKED"
-                       " id:0x%xL limit:%uL",
-                       f->u.stream_data_blocked.id,
-                       f->u.stream_data_blocked.limit);
         break;
 
     case NGX_QUIC_FT_PATH_CHALLENGE:
@@ -1062,9 +987,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: PATH_CHALLENGE data:0x%xL",
-                       *(uint64_t *) &f->u.path_challenge.data);
         break;
 
     case NGX_QUIC_FT_PATH_RESPONSE:
@@ -1074,9 +996,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                       "quic frame in: PATH_RESPONSE data:0x%xL",
-                       *(uint64_t *) &f->u.path_response.data);
         break;
 
     default:
@@ -1084,6 +1003,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
                       "quic unknown frame type 0x%xi", f->type);
         return NGX_ERROR;
     }
+
+    f->level = pkt->level;
 
     return p - start;
 
@@ -1173,7 +1094,7 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
 
 
 ssize_t
-ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start, u_char *end,
+ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start, u_char *end,
     uint64_t *gap, uint64_t *range)
 {
     u_char  *p;
@@ -1182,20 +1103,17 @@ ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     p = ngx_quic_parse_int(p, end, gap);
     if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+        ngx_log_error(NGX_LOG_INFO, log, 0,
                       "quic failed to parse ack frame gap");
         return NGX_ERROR;
     }
 
     p = ngx_quic_parse_int(p, end, range);
     if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+        ngx_log_error(NGX_LOG_INFO, log, 0,
                       "quic failed to parse ack frame range");
         return NGX_ERROR;
     }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic ACK range: gap %uL range %uL", *gap, *range);
 
     return p - start;
 }

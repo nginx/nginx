@@ -284,7 +284,6 @@ struct ngx_quic_frame_s {
         ngx_quic_path_challenge_frame_t         path_challenge;
         ngx_quic_path_challenge_frame_t         path_response;
     } u;
-    u_char                                      info[128]; /* for debug */
 };
 
 
@@ -344,7 +343,7 @@ ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *frame);
 ssize_t ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f);
 
-ssize_t ngx_quic_parse_ack_range(ngx_quic_header_t *pkt, u_char *start,
+ssize_t ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start,
     u_char *end, uint64_t *gap, uint64_t *range);
 
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,

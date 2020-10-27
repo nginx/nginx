@@ -51,9 +51,9 @@
 #define NGX_QUIC_MAX_ACK_GAP     2
 
 #define ngx_quic_level_name(lvl)                                              \
-    (lvl == ssl_encryption_application) ? "application"                       \
-        : (lvl == ssl_encryption_initial) ? "initial"                         \
-            : (lvl == ssl_encryption_handshake) ? "handshake" : "early_data"
+    (lvl == ssl_encryption_application) ? "app"                               \
+        : (lvl == ssl_encryption_initial) ? "init"                            \
+            : (lvl == ssl_encryption_handshake) ? "hs" : "early"
 
 
 typedef struct {
@@ -366,6 +366,198 @@ static SSL_QUIC_METHOD quic_method = {
 };
 
 
+#if (NGX_DEBUG)
+
+static void
+ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
+{
+    u_char                *p, *last, *pos, *end;
+    ssize_t                n;
+    uint64_t               gap, range;
+    ngx_uint_t             i;
+    ngx_quic_ack_range_t  *ranges;
+    u_char                 buf[NGX_MAX_ERROR_STR];
+
+    p = buf;
+    last = buf + sizeof(buf);
+
+    switch (f->type) {
+
+    case NGX_QUIC_FT_CRYPTO:
+        p = ngx_slprintf(p, last, "CRYPTO len:%uL off:%uL",
+                         f->u.crypto.length, f->u.crypto.offset);
+        break;
+
+    case NGX_QUIC_FT_PADDING:
+        p = ngx_slprintf(p, last, "PADDING");
+        break;
+
+    case NGX_QUIC_FT_ACK:
+    case NGX_QUIC_FT_ACK_ECN:
+
+        p = ngx_slprintf(p, last,
+                        "ACK largest:%uL fr:%uL nranges:%ui delay:%uL",
+                         f->u.ack.largest, f->u.ack.first_range,
+                         f->u.ack.range_count, f->u.ack.delay);
+
+        if (tx) {
+            ranges = (ngx_quic_ack_range_t *) f->u.ack.ranges_start;
+
+            for (i = 0; i < f->u.ack.range_count; i++) {
+                p = ngx_slprintf(p, last, " %uL,%uL",
+                                 ranges[i].gap, ranges[i].range);
+            }
+
+        } else {
+            pos = f->u.ack.ranges_start;
+            end = f->u.ack.ranges_end;
+
+            for (i = 0; i < f->u.ack.range_count; i++) {
+                n = ngx_quic_parse_ack_range(log, pos, end, &gap, &range);
+                if (n == NGX_ERROR) {
+                    break;
+                }
+
+                pos += n;
+
+                p = ngx_slprintf(p, last, " %uL,%uL", gap, range);
+            }
+        }
+
+        if (f->type == NGX_QUIC_FT_ACK_ECN) {
+            p = ngx_slprintf(p, last, " ECN counters ect0:%uL ect1:%uL ce:%uL",
+                             f->u.ack.ect0, f->u.ack.ect1, f->u.ack.ce);
+        }
+        break;
+
+    case NGX_QUIC_FT_PING:
+        p = ngx_slprintf(p, last, "PING");
+        break;
+
+    case NGX_QUIC_FT_NEW_CONNECTION_ID:
+        p = ngx_slprintf(p, last, "NCID seq:%uL retire:%uL len:%ud",
+                         f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
+        break;
+
+    case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+        p = ngx_slprintf(p, last, "RETIRE_CONNECTION_ID seqnum:%uL",
+                         f->u.retire_cid.sequence_number);
+        break;
+
+    case NGX_QUIC_FT_CONNECTION_CLOSE:
+    case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
+        p = ngx_slprintf(p, last, "CONNECTION_CLOSE%s err:%ui",
+                         f->u.close.app ? "_APP" : "", f->u.close.error_code);
+
+        if (f->u.close.reason.len) {
+            p = ngx_slprintf(p, last, " %V", &f->u.close.reason);
+        }
+
+        if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
+            p = ngx_slprintf(p, last, " ft:%ui", f->u.close.frame_type);
+        }
+
+
+        break;
+
+    case NGX_QUIC_FT_STREAM0:
+    case NGX_QUIC_FT_STREAM1:
+    case NGX_QUIC_FT_STREAM2:
+    case NGX_QUIC_FT_STREAM3:
+    case NGX_QUIC_FT_STREAM4:
+    case NGX_QUIC_FT_STREAM5:
+    case NGX_QUIC_FT_STREAM6:
+    case NGX_QUIC_FT_STREAM7:
+
+        p = ngx_slprintf(p, last,
+                         "STREAM type:0x%xi id:0x%xL offset:0x%xL "
+                         "len:0x%xL bits off:%d len:%d fin:%d",
+                         f->type, f->u.stream.stream_id, f->u.stream.offset,
+                         f->u.stream.length, f->u.stream.off, f->u.stream.len,
+                         f->u.stream.fin);
+        break;
+
+    case NGX_QUIC_FT_MAX_DATA:
+        p = ngx_slprintf(p, last, "MAX_DATA max_data:%uL on recv",
+                         f->u.max_data.max_data);
+        break;
+
+    case NGX_QUIC_FT_RESET_STREAM:
+       p = ngx_slprintf(p, last, "RESET_STREAM"
+                        " id:0x%xL error_code:0x%xL final_size:0x%xL",
+                        f->u.reset_stream.id, f->u.reset_stream.error_code,
+                        f->u.reset_stream.final_size);
+        break;
+
+    case NGX_QUIC_FT_STOP_SENDING:
+        p = ngx_slprintf(p, last, "STOP_SENDING id:0x%xL err:0x%xL",
+                         f->u.stop_sending.id, f->u.stop_sending.error_code);
+        break;
+
+    case NGX_QUIC_FT_STREAMS_BLOCKED:
+    case NGX_QUIC_FT_STREAMS_BLOCKED2:
+        p = ngx_slprintf(p, last, "STREAMS_BLOCKED limit:%uL bidi:%ui",
+                         f->u.streams_blocked.limit, f->u.streams_blocked.bidi);
+        break;
+
+    case NGX_QUIC_FT_MAX_STREAMS:
+    case NGX_QUIC_FT_MAX_STREAMS2:
+        p = ngx_slprintf(p, last, "MAX_STREAMS limit:%uL bidi:%ui",
+                         f->u.max_streams.limit, f->u.max_streams.bidi);
+        break;
+
+    case NGX_QUIC_FT_MAX_STREAM_DATA:
+        p = ngx_slprintf(p, last, "MAX_STREAM_DATA id:0x%xL limit:%uL",
+                         f->u.max_stream_data.id, f->u.max_stream_data.limit);
+        break;
+
+
+    case NGX_QUIC_FT_DATA_BLOCKED:
+        p = ngx_slprintf(p, last, "DATA_BLOCKED limit:%uL",
+                         f->u.data_blocked.limit);
+        break;
+
+    case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
+        p = ngx_slprintf(p, last, "STREAM_DATA_BLOCKED id:0x%xL limit:%uL",
+                         f->u.stream_data_blocked.id,
+                         f->u.stream_data_blocked.limit);
+        break;
+
+    case NGX_QUIC_FT_PATH_CHALLENGE:
+        p = ngx_slprintf(p, last, "PATH_CHALLENGE data:0x%xL",
+                         *(uint64_t *) &f->u.path_challenge.data);
+        break;
+
+    case NGX_QUIC_FT_PATH_RESPONSE:
+        p = ngx_slprintf(p, last, "PATH_RESPONSE data:0x%xL",
+                         f->u.path_response);
+        break;
+
+    case NGX_QUIC_FT_NEW_TOKEN:
+        p = ngx_slprintf(p, last, "NEW_TOKEN");
+        break;
+
+    case NGX_QUIC_FT_HANDSHAKE_DONE:
+        p = ngx_slprintf(p, last, "HANDSHAKE DONE");
+        break;
+
+    default:
+        p = ngx_slprintf(p, last, "unknown type 0x%xi", f->type);
+        break;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0, "quic frame %s %s %*s",
+                   tx ? "tx" : "rx", ngx_quic_level_name(f->level),
+                   p - buf, buf);
+}
+
+#else
+
+#define ngx_quic_log_frame(log, f, tx)
+
+#endif
+
+
 #if BORINGSSL_API_VERSION >= 10
 
 static int
@@ -603,9 +795,6 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
         fs->sent += fsize;
         p += fsize;
-
-        ngx_sprintf(frame->info, "crypto, generated by SSL len=%ui level=%d",
-                    fsize, level);
 
         ngx_quic_queue_frame(qc, frame);
     }
@@ -2106,6 +2295,8 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             return NGX_ERROR;
         }
 
+        ngx_quic_log_frame(c->log, &frame, 0);
+
         c->log->action = "handling frames";
 
         p += len;
@@ -2546,9 +2737,6 @@ ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     frame->u.ack.range_count = 0;
     frame->u.ack.first_range = largest - smallest;
 
-    ngx_sprintf(frame->info, "ACK for PN=%uL..%uL 0 ranges level=%d",
-                largest, smallest, frame->level);
-
     return NGX_OK;
 }
 
@@ -2645,9 +2833,6 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     frame->u.ack.ranges_start = frame->data;
     frame->u.ack.ranges_end = frame->data + ranges_len;
 
-    ngx_sprintf(frame->info, "ACK for PN=%uL %ui ranges level=%d",
-                ctx->largest_range, ctx->nranges, frame->level);
-
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
@@ -2696,11 +2881,6 @@ ngx_quic_send_cc(ngx_connection_t *c)
         frame->u.close.reason.data = (u_char *) qc->error_reason;
     }
 
-    ngx_snprintf(frame->info, sizeof(frame->info) - 1,
-                 "CONNECTION_CLOSE%s err:%ui level:%d ft:%ui reason:\"%s\"",
-                 qc->error_app ? "_APP" : "", qc->error, qc->error_level,
-                 qc->error_ftype, qc->error_reason ? qc->error_reason : "-");
-
     ngx_quic_queue_frame(c->quic, frame);
 
     qc->last_cc = ngx_current_msec;
@@ -2732,7 +2912,7 @@ ngx_quic_send_new_token(ngx_connection_t *c)
     frame->type = NGX_QUIC_FT_NEW_TOKEN;
     frame->u.token.length = token.len;
     frame->u.token.data = token.data;
-    ngx_sprintf(frame->info, "NEW_TOKEN");
+
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
@@ -2804,7 +2984,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     for (i = 0; i < ack->range_count; i++) {
 
-        n = ngx_quic_parse_ack_range(pkt, pos, end, &gap, &range);
+        n = ngx_quic_parse_ack_range(pkt->log, pos, end, &gap, &range);
         if (n == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -3334,7 +3514,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
         /* 12.4 Frames and frame types, figure 8 */
         frame->level = ssl_encryption_application;
         frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
-        ngx_sprintf(frame->info, "HANDSHAKE DONE on handshake completed");
         ngx_quic_queue_frame(c->quic, frame);
 
         if (ngx_quic_send_new_token(c) != NGX_OK) {
@@ -3604,11 +3783,6 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     frame->u.max_stream_data.id = f->id;
     frame->u.max_stream_data.limit = n;
 
-    ngx_sprintf(frame->info, "MAX_STREAM_DATA id:0x%xL limit:%uL level=%d",
-                frame->u.max_stream_data.id,
-                frame->u.max_stream_data.limit,
-                frame->level);
-
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
@@ -3828,9 +4002,6 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     frame->type = NGX_QUIC_FT_PATH_RESPONSE;
     frame->u.path_response = *f;
 
-    ngx_sprintf(frame->info, "PATH_RESPONSE data:0x%xL level:%d",
-                *(uint64_t *) &f->data, frame->level);
-
     ngx_quic_queue_frame(c->quic, frame);
 
     return NGX_OK;
@@ -3993,9 +4164,6 @@ ngx_quic_retire_connection_id(ngx_connection_t *c,
     frame->level = level;
     frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
     frame->u.retire_cid.sequence_number = seqnum;
-
-    ngx_sprintf(frame->info, "RETIRE_CONNECTION_ID seqnum=%uL level=%d",
-                seqnum, frame->level);
 
     ngx_quic_queue_frame(c->quic, frame);
 
@@ -4254,8 +4422,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic frame out: %s", f->info);
+        ngx_quic_log_frame(c->log, f, 1);
 
         len = ngx_quic_create_frame(p, f);
         if (len == -1) {
@@ -4966,12 +5133,6 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         frame->u.max_stream_data.limit = qs->fs.received + (b->pos - b->start)
                                          + (b->end - b->last);
 
-        ngx_sprintf(frame->info,
-                    "MAX_STREAM_DATA id:0x%xL limit:%uL l=%d on recv",
-                    frame->u.max_stream_data.id,
-                    frame->u.max_stream_data.limit,
-                    frame->level);
-
         ngx_quic_queue_frame(pc->quic, frame);
     }
 
@@ -4988,9 +5149,6 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         frame->level = ssl_encryption_application;
         frame->type = NGX_QUIC_FT_MAX_DATA;
         frame->u.max_data.max_data = qc->streams.recv_max_data;
-
-        ngx_sprintf(frame->info, "MAX_DATA max_data:%uL level=%d on recv",
-                    frame->u.max_data.max_data, frame->level);
 
         ngx_quic_queue_frame(pc->quic, frame);
 
@@ -5109,9 +5267,6 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         frame->u.stream.offset = c->sent;
         frame->u.stream.length = n;
         frame->u.stream.data = frame->data;
-
-        ngx_sprintf(frame->info, "STREAM id:0x%xL offset:%O len:%uz level:%d",
-                    qs->id, c->sent, n, frame->level);
 
         c->sent += n;
         qc->streams.sent += n;
@@ -5259,9 +5414,6 @@ ngx_quic_stream_cleanup_handler(void *data)
             frame->u.stop_sending.id = qs->id;
             frame->u.stop_sending.error_code = 0x100; /* HTTP/3 no error */
 
-            ngx_sprintf(frame->info, "STOP_SENDING id:0x%xL err:0x%xL level:%d",
-                        qs->id, frame->u.stop_sending.error_code, frame->level);
-
             ngx_quic_queue_frame(qc, frame);
         }
     }
@@ -5283,11 +5435,6 @@ ngx_quic_stream_cleanup_handler(void *data)
             frame->u.max_streams.limit = ++qc->streams.client_max_streams_bidi;
             frame->u.max_streams.bidi = 1;
         }
-
-        ngx_sprintf(frame->info, "MAX_STREAMS limit:%uL bidi:%ui level=%d",
-                    frame->u.max_streams.limit,
-                    frame->u.max_streams.bidi,
-                    (int) frame->level);
 
         ngx_quic_queue_frame(qc, frame);
 
@@ -5316,9 +5463,6 @@ ngx_quic_stream_cleanup_handler(void *data)
     frame->u.stream.offset = c->sent;
     frame->u.stream.length = 0;
     frame->u.stream.data = NULL;
-
-    ngx_sprintf(frame->info, "STREAM id:0x%xL offset:%O fin:1 level:%d",
-                qs->id, c->sent, frame->level);
 
     ngx_quic_queue_frame(qc, frame);
 
