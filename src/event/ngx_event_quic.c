@@ -373,7 +373,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 {
     u_char      *p, *last, *pos, *end;
     ssize_t      n;
-    uint64_t     gap, range;
+    uint64_t     gap, range, largest, smallest;
     ngx_uint_t   i;
     u_char       buf[NGX_MAX_ERROR_STR];
 
@@ -394,13 +394,21 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
     case NGX_QUIC_FT_ACK:
     case NGX_QUIC_FT_ACK_ECN:
 
-        p = ngx_slprintf(p, last,
-                        "ACK largest:%uL fr:%uL nranges:%ui delay:%uL",
-                         f->u.ack.largest, f->u.ack.first_range,
+        p = ngx_slprintf(p, last, "ACK n:%ui delay:%uL ",
                          f->u.ack.range_count, f->u.ack.delay);
 
         pos = f->u.ack.ranges_start;
         end = f->u.ack.ranges_end;
+
+        largest = f->u.ack.largest;
+        smallest = f->u.ack.largest - f->u.ack.first_range;
+
+        if (largest == smallest) {
+            p = ngx_slprintf(p, last, "%uL", largest);
+
+        } else {
+            p = ngx_slprintf(p, last, "%uL-%uL", largest, smallest);
+        }
 
         for (i = 0; i < f->u.ack.range_count; i++) {
             n = ngx_quic_parse_ack_range(log, pos, end, &gap, &range);
@@ -410,7 +418,15 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
             pos += n;
 
-            p = ngx_slprintf(p, last, " %uL,%uL", gap, range);
+            largest = smallest - gap - 2;
+            smallest = largest - range;
+
+            if (largest == smallest) {
+                p = ngx_slprintf(p, last, " %uL", largest);
+
+            } else {
+                p = ngx_slprintf(p, last, " %uL-%uL", largest, smallest);
+            }
         }
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
@@ -3106,9 +3122,6 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_connection_t  *qc;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic handle ack range min:%uL max:%uL", min, max);
 
     qc = c->quic;
 
