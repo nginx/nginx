@@ -2662,16 +2662,8 @@ ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
     p = ngx_cpymem(p, serial->data, serial->length);
     ngx_memzero(p, 20 - serial->length);
 
-#if (NGX_DEBUG)
-    {
-        u_char  buf[120];
-
-        ngx_hex_dump(buf, ctx->key.data, ctx->key.len);
-
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
-                       "ssl ocsp key %*s", sizeof(buf), buf);
-    }
-#endif
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
+                   "ssl ocsp key %xV", &ctx->key);
 
     return NGX_OK;
 }
