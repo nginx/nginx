@@ -4843,6 +4843,8 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic resend packet pnum:%uL", start->pnum);
 
+    ngx_quic_congestion_lost(c, start);
+
     do {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
@@ -4853,11 +4855,20 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         q = ngx_queue_next(q);
 
         ngx_queue_remove(&f->queue);
-        ngx_queue_insert_tail(&ctx->frames, &f->queue);
+
+        switch (f->type) {
+        case NGX_QUIC_FT_ACK:
+        case NGX_QUIC_FT_ACK_ECN:
+            /* force generation of most recent acknowledgment */
+            ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
+            ngx_quic_free_frame(c, f);
+            break;
+
+        default:
+            ngx_queue_insert_tail(&ctx->frames, &f->queue);
+        }
 
     } while (q != ngx_queue_sentinel(&ctx->sent));
-
-    ngx_quic_congestion_lost(c, start);
 
     if (qc->closing) {
         return;
