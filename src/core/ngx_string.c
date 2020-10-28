@@ -11,6 +11,8 @@
 
 static u_char *ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64,
     u_char zero, ngx_uint_t hexadecimal, ngx_uint_t width);
+static u_char *ngx_sprintf_str(u_char *buf, u_char *last, u_char *src,
+    size_t len, ngx_uint_t hexadecimal);
 static void ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis, ngx_uint_t padding);
 static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
@@ -101,10 +103,10 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
  *    %M                        ngx_msec_t
  *    %r                        rlim_t
  *    %p                        void *
- *    %V                        ngx_str_t *
- *    %v                        ngx_variable_value_t *
- *    %s                        null-terminated string
- *    %*s                       length and string
+ *    %[x|X]V                   ngx_str_t *
+ *    %[x|X]v                   ngx_variable_value_t *
+ *    %[x|X]s                   null-terminated string
+ *    %*[x|X]s                  length and string
  *    %Z                        '\0'
  *    %N                        '\n'
  *    %c                        char
@@ -165,7 +167,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
     u_char                *p, zero;
     int                    d;
     double                 f;
-    size_t                 len, slen;
+    size_t                 slen;
     int64_t                i64;
     uint64_t               ui64, frac;
     ngx_msec_t             ms;
@@ -250,8 +252,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'V':
                 v = va_arg(args, ngx_str_t *);
 
-                len = ngx_min(((size_t) (last - buf)), v->len);
-                buf = ngx_cpymem(buf, v->data, len);
+                buf = ngx_sprintf_str(buf, last, v->data, v->len, hex);
                 fmt++;
 
                 continue;
@@ -259,8 +260,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'v':
                 vv = va_arg(args, ngx_variable_value_t *);
 
-                len = ngx_min(((size_t) (last - buf)), vv->len);
-                buf = ngx_cpymem(buf, vv->data, len);
+                buf = ngx_sprintf_str(buf, last, vv->data, vv->len, hex);
                 fmt++;
 
                 continue;
@@ -268,16 +268,7 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 's':
                 p = va_arg(args, u_char *);
 
-                if (slen == (size_t) -1) {
-                    while (*p && buf < last) {
-                        *buf++ = *p++;
-                    }
-
-                } else {
-                    len = ngx_min(((size_t) (last - buf)), slen);
-                    buf = ngx_cpymem(buf, p, len);
-                }
-
+                buf = ngx_sprintf_str(buf, last, p, slen, hex);
                 fmt++;
 
                 continue;
@@ -573,6 +564,64 @@ ngx_sprintf_num(u_char *buf, u_char *last, uint64_t ui64, u_char zero,
     }
 
     return ngx_cpymem(buf, p, len);
+}
+
+
+static u_char *
+ngx_sprintf_str(u_char *buf, u_char *last, u_char *src, size_t len,
+    ngx_uint_t hexadecimal)
+{
+    static u_char   hex[] = "0123456789abcdef";
+    static u_char   HEX[] = "0123456789ABCDEF";
+
+    if (hexadecimal == 0) {
+
+        if (len == (size_t) -1) {
+            while (*src && buf < last) {
+                *buf++ = *src++;
+            }
+
+        } else {
+            len = ngx_min((size_t) (last - buf), len);
+            buf = ngx_cpymem(buf, src, len);
+        }
+
+    } else if (hexadecimal == 1) {
+
+        if (len == (size_t) -1) {
+
+            while (*src && buf < last - 1) {
+                *buf++ = hex[*src >> 4];
+                *buf++ = hex[*src++ & 0xf];
+            }
+
+        } else {
+
+            while (len-- && buf < last - 1) {
+                *buf++ = hex[*src >> 4];
+                *buf++ = hex[*src++ & 0xf];
+            }
+        }
+
+    } else { /* hexadecimal == 2 */
+
+        if (len == (size_t) -1) {
+
+            while (*src && buf < last - 1) {
+                *buf++ = HEX[*src >> 4];
+                *buf++ = HEX[*src++ & 0xf];
+            }
+
+        } else {
+
+            while (len-- && buf < last - 1) {
+                *buf++ = HEX[*src >> 4];
+                *buf++ = HEX[*src++ & 0xf];
+            }
+        }
+    }
+
+    return buf;
 }
 
 
