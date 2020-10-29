@@ -76,6 +76,10 @@ struct ngx_listening_s {
     unsigned            add_reuseport:1;
     unsigned            keepalive:2;
 
+#if (NGX_HAVE_UNIX_DOMAIN && NGX_HAVE_MSGHDR_MSG_CONTROL)
+    unsigned            fd_passing:1;
+#endif
+
     unsigned            deferred_accept:1;
     unsigned            delete_deferred:1;
     unsigned            add_deferred:1;

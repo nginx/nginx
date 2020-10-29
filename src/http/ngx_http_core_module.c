@@ -4182,6 +4182,24 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strcmp(value[n].data, "fd_passing") == 0) {
+#if (NGX_HAVE_UNIX_DOMAIN && NGX_HAVE_MSGHDR_MSG_CONTROL)
+            //if (lsopt.sockaddr->sa_family == AF_UNIX) {
+                lsopt.fd_passing = 1;
+            //} else {
+            //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+            //                       "fd_passing is not supported "
+            //                       "on addr \"%s\", ignored", lsopt.addr_text);
+            //}
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"fd_passing\" parameter is not supported "
+                               "on this platform");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[n]);
         return NGX_CONF_ERROR;

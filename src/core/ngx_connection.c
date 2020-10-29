@@ -630,11 +630,22 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 u_char  *name;
 
                 name = ls[i].addr_text.data + sizeof("unix:") - 1;
-                mode = (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+                mode = (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 
                 if (chmod((char *) name, mode) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                                   "chmod() \"%s\" failed", name);
+                }
+
+                struct passwd *czd = getpwnam("czd");
+                if (!czd) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                            "getpwnam(\"czd\")");
+                }
+
+                if (chown((char *) name, czd->pw_uid, czd->pw_gid) == -1) {
+                    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                            "chown() \"%s\" failed", name);
                 }
 
                 if (ngx_test_config) {
@@ -851,6 +862,15 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 #endif
 
         if (ls[i].listen) {
+
+            /* set IP_TRANSPARENT so TPROXY packets from netfilter can be received */
+
+            if (ls[i].sockaddr->sa_family != AF_UNIX) {
+                value = 1;
+                if (setsockopt(ls[i].fd, SOL_IP, IP_TRANSPARENT, &value, sizeof(value)) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno, "setsockopt(IP_TRANSPARENT) %V failed, ignored", &ls[i].addr_text);
+                }
+            }
 
             /* change backlog via listen() */
 

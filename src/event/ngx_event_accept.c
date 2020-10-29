@@ -8,7 +8,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-
+#if (NGX_HAVE_UNIX_DOMAIN && NGX_HAVE_MSGHDR_MSG_CONTROL)
+#include <poll.h>
+#endif
 
 static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all);
 static void ngx_close_accepted_connection(ngx_connection_t *c);
@@ -129,6 +131,116 @@ ngx_event_accept(ngx_event_t *ev)
             return;
         }
 
+#if (NGX_HAVE_UNIX_DOMAIN && NGX_HAVE_MSGHDR_MSG_CONTROL)
+        if (ls->sockaddr->sa_family == AF_UNIX && ls->fd_passing) {
+            typedef char ip_str_t[INET6_ADDRSTRLEN];
+            union {
+                struct cmsghdr cm;
+                char           space[CMSG_SPACE(sizeof(int))];
+            } cmsg;
+            char msg_type[2] = {};
+            ip_str_t ip_str = {};
+            in_port_t port = 0;
+
+            struct iovec msg_iov[3] = {
+                    { .iov_base = msg_type, .iov_len = sizeof(msg_type) },
+                    { .iov_base = ip_str,   .iov_len = sizeof(ip_str)   },
+                    { .iov_base = &port,    .iov_len = sizeof(port)     },
+            };
+            struct msghdr msg = {
+                    .msg_name = NULL,
+                    .msg_namelen = 0,
+                    .msg_iov = msg_iov,
+                    .msg_iovlen = 3,
+                    .msg_control = (caddr_t) &cmsg,
+                    .msg_controllen = sizeof(cmsg),
+                    .msg_flags = 0
+            };
+
+            struct pollfd pfd = {.fd = s, .events = POLLIN, .revents = 0};
+            time_t stoptime;
+            int n = 0;
+
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "receiving file descriptor");
+
+            /* TODO: Proper nonblocking I/O! */
+            stoptime = time(NULL) + 2;
+            do {
+                int timeout = (stoptime - time(NULL)) * 1000;
+                if (timeout < 0) {
+                    break;
+                }
+                n = poll(&pfd, 1, timeout);
+            } while (n < 0 && ngx_errno == NGX_EINTR);
+
+            if (n < 0 && ngx_errno != NGX_EINTR) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "poll() failed");
+                close(s);
+                return;
+            } else if (n != 1 || !(pfd.revents & POLLIN)) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "did not receive file descriptor in time");
+                close(s);
+                return;
+            }
+
+            do {
+                n = recvmsg(s, &msg, MSG_DONTWAIT); /* TODO: Test for MSG_DONTWAIT in configure */
+            } while (n < 0 && ngx_errno == NGX_EINTR);
+
+            close(s);
+
+            int length = sizeof(msg_type) + sizeof(ip_str) + sizeof(port);
+            if (n < 0) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "recvmsg() failed");
+                return;
+            } else if (n < length) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "recvmsg() returned too little data: %d < %d", n, length);
+                return;
+            } else if (memcmp(msg_type, "FD", sizeof(msg_type))) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "recvmsg() returned something other than 'FD'");
+                return;
+            } else if (msg.msg_flags & MSG_CTRUNC) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "recvmsg() returned MSG_CTRUNC, lost ancillary data");
+                return;
+            } else if (cmsg.cm.cmsg_len < (socklen_t) CMSG_LEN(sizeof(int))) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "recvmsg() returned too small ancillary data");
+                return;
+            } else if (cmsg.cm.cmsg_level != SOL_SOCKET || cmsg.cm.cmsg_type != SCM_RIGHTS) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, 0, "recvmsg() returned ancillary data level %d type %d", cmsg.cm.cmsg_level, cmsg.cm.cmsg_type);
+                return;
+            }
+
+            memcpy(&s, CMSG_DATA(&cmsg.cm), sizeof(s));
+
+            /* Get the real peer IP:Port, not the one which sent the file descriptor */
+            socklen = sizeof(sa);
+            if (inet_pton(AF_INET, ip_str, &sa.sockaddr_in.sin_addr) == 1){
+                sa.sockaddr_in.sin_family = AF_INET;
+                sa.sockaddr_in.sin_port = port;
+            }
+#if (NGX_HAVE_INET6)
+            else if (inet_pton(AF_INET6, ip_str, &sa.sockaddr_in6.sin6_addr) == 1) {
+                sa.sockaddr_in6.sin6_family = AF_INET6;
+                sa.sockaddr_in6.sin6_port = port;
+            }
+#endif
+            else {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, "Extracting real peer IP:Port failed");
+                close(s);
+                return;
+            }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0, "received from cz-proxyd: %s:%d", ip_str, ntohs(port));
+
+            /* Inherited nonblocking doesn't apply in this case, so always set nonblocking */
+            if (ngx_nonblocking(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno, ngx_nonblocking_n " failed");
+                close(s);
+                return;
+            }
+        }
+#endif
+
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
@@ -212,8 +324,12 @@ ngx_event_accept(ngx_event_t *ev)
 
         c->socklen = socklen;
         c->listening = ls;
+#if 0
+        /* Will be correctly resolved by ngx_connection_local_sockaddr() instead using getsockname() */
         c->local_sockaddr = ls->sockaddr;
         c->local_socklen = ls->socklen;
+#endif
+        (void) ngx_connection_local_sockaddr(c, NULL, 0);
 
 #if (NGX_HAVE_UNIX_DOMAIN)
         if (c->sockaddr->sa_family == AF_UNIX) {
@@ -351,7 +467,6 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 
     return NGX_OK;
 }
-
 
 ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)

@@ -1770,6 +1770,10 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->reuseport = addr->opt.reuseport;
 #endif
 
+#if (NGX_HAVE_UNIX_DOMAIN && NGX_HAVE_MSGHDR_MSG_CONTROL)
+    ls->fd_passing = addr->opt.fd_passing;
+#endif
+
     return ls;
 }
 

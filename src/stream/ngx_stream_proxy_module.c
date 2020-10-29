@@ -1786,15 +1786,11 @@ ngx_stream_proxy_next_upstream(ngx_stream_session_t *s)
     u = s->upstream;
     pc = u->peer.connection;
 
-    if (pc && pc->buffered) {
+    if (u->upstream_out || u->upstream_busy || (pc && pc->buffered)) {
         ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                      "buffered data on next upstream");
+                      "pending buffers on next upstream");
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
-    }
-
-    if (s->connection->type == SOCK_DGRAM) {
-        u->upstream_out = NULL;
     }
 
     if (u->peer.sockaddr) {

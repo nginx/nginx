@@ -284,7 +284,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     } else {
 
-        switch (c->local_sockaddr->sa_family) {
+        switch (c->listening->fd_passing ? AF_INET : c->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
