@@ -127,6 +127,7 @@ typedef struct {
     ngx_str_t                      ssl_certificate;
     ngx_str_t                      ssl_certificate_key;
     ngx_array_t                   *ssl_passwords;
+    ngx_array_t                   *ssl_conf_commands;
 #endif
 } ngx_http_proxy_loc_conf_t;
 
@@ -229,6 +230,10 @@ static char *ngx_http_proxy_ssl_password_file(ngx_conf_t *cf,
 #endif
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
+#if (NGX_HTTP_SSL)
+static char *ngx_http_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+#endif
 
 static ngx_int_t ngx_http_proxy_rewrite_regex(ngx_conf_t *cf,
     ngx_http_proxy_rewrite_t *pr, ngx_str_t *regex, ngx_uint_t caseless);
@@ -273,6 +278,9 @@ static ngx_conf_bitmask_t  ngx_http_proxy_ssl_protocols[] = {
     { ngx_string("TLSv1.3"), NGX_SSL_TLSv1_3 },
     { ngx_null_string, 0 }
 };
+
+static ngx_conf_post_t  ngx_http_proxy_ssl_conf_command_post =
+    { ngx_http_proxy_ssl_conf_command_check };
 
 #endif
 
@@ -763,6 +771,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("proxy_ssl_conf_command"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_conf_commands),
+      &ngx_http_proxy_ssl_conf_command_post },
 
 #endif
 
@@ -3268,7 +3283,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->method = NULL;
      *     conf->location = NULL;
      *     conf->url = { 0, NULL };
-     *     conf->headers_source = NULL;
      *     conf->headers.lengths = NULL;
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
@@ -3341,10 +3355,13 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.ssl_verify = NGX_CONF_UNSET;
     conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
     conf->ssl_passwords = NGX_CONF_UNSET_PTR;
+    conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
 #endif
 
     /* "proxy_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
+
+    conf->headers_source = NGX_CONF_UNSET_PTR;
 
     conf->redirect = NGX_CONF_UNSET;
     conf->upstream.change_buffering = 1;
@@ -3686,6 +3703,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->ssl_certificate_key, "");
     ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
 
+    ngx_conf_merge_ptr_value(conf->ssl_conf_commands,
+                              prev->ssl_conf_commands, NULL);
+
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -3819,12 +3839,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (conf->headers_source == NULL) {
+    ngx_conf_merge_ptr_value(conf->headers_source, prev->headers_source, NULL);
+
+    if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
 #if (NGX_HTTP_CACHE)
         conf->headers_cache = prev->headers_cache;
 #endif
-        conf->headers_source = prev->headers_source;
     }
 
     rc = ngx_http_proxy_init_headers(cf, conf, &conf->headers,
@@ -4843,6 +4864,17 @@ ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
 
 #if (NGX_HTTP_SSL)
 
+static char *
+ngx_http_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
 {
@@ -4915,6 +4947,12 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
 
     if (ngx_ssl_client_session_cache(cf, plcf->upstream.ssl,
                                      plcf->upstream.ssl_session_reuse)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_ssl_conf_commands(cf, plcf->upstream.ssl, plcf->ssl_conf_commands)
         != NGX_OK)
     {
         return NGX_ERROR;

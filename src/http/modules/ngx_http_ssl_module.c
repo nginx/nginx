@@ -53,6 +53,9 @@ static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
+static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
 
 
@@ -87,6 +90,10 @@ static ngx_conf_enum_t  ngx_http_ssl_ocsp[] = {
 static ngx_conf_deprecated_t  ngx_http_ssl_deprecated = {
     ngx_conf_deprecated, "ssl", "listen ... ssl"
 };
+
+
+static ngx_conf_post_t  ngx_http_ssl_conf_command_post =
+    { ngx_http_ssl_conf_command_check };
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
@@ -278,6 +285,20 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, early_data),
+      NULL },
+
+    { ngx_string("ssl_conf_command"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, conf_commands),
+      &ngx_http_ssl_conf_command_post },
+
+    { ngx_string("ssl_reject_handshake"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, reject_handshake),
       NULL },
 
       ngx_null_command
@@ -614,12 +635,14 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->enable = NGX_CONF_UNSET;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
     sscf->early_data = NGX_CONF_UNSET;
+    sscf->reject_handshake = NGX_CONF_UNSET;
     sscf->buffer_size = NGX_CONF_UNSET_SIZE;
     sscf->verify = NGX_CONF_UNSET_UINT;
     sscf->verify_depth = NGX_CONF_UNSET_UINT;
     sscf->certificates = NGX_CONF_UNSET_PTR;
     sscf->certificate_keys = NGX_CONF_UNSET_PTR;
     sscf->passwords = NGX_CONF_UNSET_PTR;
+    sscf->conf_commands = NGX_CONF_UNSET_PTR;
     sscf->builtin_session_cache = NGX_CONF_UNSET;
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->session_tickets = NGX_CONF_UNSET;
@@ -659,6 +682,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                          prev->prefer_server_ciphers, 0);
 
     ngx_conf_merge_value(conf->early_data, prev->early_data, 0);
+    ngx_conf_merge_value(conf->reject_handshake, prev->reject_handshake, 0);
 
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
                          (NGX_CONF_BITMASK_SET|NGX_SSL_TLSv1
@@ -689,6 +713,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
+    ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
+
     ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
     ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
     ngx_conf_merge_ptr_value(conf->ocsp_cache_zone,
@@ -704,7 +730,27 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->enable) {
 
-        if (conf->certificates == NULL) {
+        if (conf->certificates) {
+            if (conf->certificate_keys == NULL) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "no \"ssl_certificate_key\" is defined for "
+                              "the \"ssl\" directive in %s:%ui",
+                              conf->file, conf->line);
+                return NGX_CONF_ERROR;
+            }
+
+            if (conf->certificate_keys->nelts < conf->certificates->nelts) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "no \"ssl_certificate_key\" is defined "
+                              "for certificate \"%V\" and "
+                              "the \"ssl\" directive in %s:%ui",
+                              ((ngx_str_t *) conf->certificates->elts)
+                              + conf->certificates->nelts - 1,
+                              conf->file, conf->line);
+                return NGX_CONF_ERROR;
+            }
+
+        } else if (!conf->reject_handshake) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_certificate\" is defined for "
                           "the \"ssl\" directive in %s:%ui",
@@ -712,30 +758,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             return NGX_CONF_ERROR;
         }
 
-        if (conf->certificate_keys == NULL) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate_key\" is defined for "
-                          "the \"ssl\" directive in %s:%ui",
-                          conf->file, conf->line);
-            return NGX_CONF_ERROR;
-        }
-
-        if (conf->certificate_keys->nelts < conf->certificates->nelts) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no \"ssl_certificate_key\" is defined "
-                          "for certificate \"%V\" and "
-                          "the \"ssl\" directive in %s:%ui",
-                          ((ngx_str_t *) conf->certificates->elts)
-                          + conf->certificates->nelts - 1,
-                          conf->file, conf->line);
-            return NGX_CONF_ERROR;
-        }
-
-    } else {
-
-        if (conf->certificates == NULL) {
-            return NGX_CONF_OK;
-        }
+    } else if (conf->certificates) {
 
         if (conf->certificate_keys == NULL
             || conf->certificate_keys->nelts < conf->certificates->nelts)
@@ -747,6 +770,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                           + conf->certificates->nelts - 1);
             return NGX_CONF_ERROR;
         }
+
+    } else if (!conf->reject_handshake) {
+        return NGX_CONF_OK;
     }
 
     if (ngx_ssl_create(&conf->ssl, conf->protocols, conf) != NGX_OK) {
@@ -805,7 +831,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
 #endif
 
-    } else {
+    } else if (conf->certificates) {
 
         /* configure certificates */
 
@@ -927,6 +953,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     return NGX_CONF_OK;
 }
 
@@ -939,6 +969,10 @@ ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
     ngx_uint_t                         i, nelts;
     ngx_http_complex_value_t          *cv;
     ngx_http_compile_complex_value_t   ccv;
+
+    if (conf->certificates == NULL) {
+        return NGX_OK;
+    }
 
     cert = conf->certificates->elts;
     key = conf->certificate_keys->elts;
@@ -1249,6 +1283,17 @@ invalid:
 }
 
 
+static char *
+ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_ssl_init(ngx_conf_t *cf)
 {
@@ -1320,7 +1365,33 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             cscf = addr[a].default_server;
             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
-            if (sscf->certificates == NULL) {
+            if (sscf->certificates) {
+                continue;
+            }
+
+            if (!sscf->reject_handshake) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "no \"ssl_certificate\" is defined for "
+                              "the \"listen ... ssl\" directive in %s:%ui",
+                              cscf->file_name, cscf->line);
+                return NGX_ERROR;
+            }
+
+            /*
+             * if no certificates are defined in the default server,
+             * check all non-default server blocks
+             */
+
+            cscfp = addr[a].servers.elts;
+            for (s = 0; s < addr[a].servers.nelts; s++) {
+
+                cscf = cscfp[s];
+                sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+
+                if (sscf->certificates || sscf->reject_handshake) {
+                    continue;
+                }
+
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
                               "the \"listen ... %s\" directive in %s:%ui",

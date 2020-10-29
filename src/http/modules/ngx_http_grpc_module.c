@@ -40,6 +40,7 @@ typedef struct {
     ngx_str_t                  ssl_certificate;
     ngx_str_t                  ssl_certificate_key;
     ngx_array_t               *ssl_passwords;
+    ngx_array_t               *ssl_conf_commands;
 #endif
 } ngx_http_grpc_loc_conf_t;
 
@@ -208,6 +209,8 @@ static char *ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd,
 #if (NGX_HTTP_SSL)
 static char *ngx_http_grpc_ssl_password_file(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char *ngx_http_grpc_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
 static ngx_int_t ngx_http_grpc_set_ssl(ngx_conf_t *cf,
     ngx_http_grpc_loc_conf_t *glcf);
 #endif
@@ -241,6 +244,9 @@ static ngx_conf_bitmask_t  ngx_http_grpc_ssl_protocols[] = {
     { ngx_string("TLSv1.3"), NGX_SSL_TLSv1_3 },
     { ngx_null_string, 0 }
 };
+
+static ngx_conf_post_t  ngx_http_grpc_ssl_conf_command_post =
+    { ngx_http_grpc_ssl_conf_command_check };
 
 #endif
 
@@ -437,6 +443,13 @@ static ngx_command_t  ngx_http_grpc_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
+
+    { ngx_string("grpc_ssl_conf_command"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_grpc_loc_conf_t, ssl_conf_commands),
+      &ngx_http_grpc_ssl_conf_command_post },
 
 #endif
 
@@ -4324,7 +4337,6 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.hide_headers_hash = { NULL, 0 };
      *     conf->upstream.ssl_name = NULL;
      *
-     *     conf->headers_source = NULL;
      *     conf->headers.lengths = NULL;
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
@@ -4360,6 +4372,7 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.ssl_verify = NGX_CONF_UNSET;
     conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
     conf->ssl_passwords = NGX_CONF_UNSET_PTR;
+    conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
 #endif
 
     /* the hardcoded values */
@@ -4376,6 +4389,8 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.force_ranges = 0;
     conf->upstream.pass_trailers = 1;
     conf->upstream.preserve_output = 1;
+
+    conf->headers_source = NGX_CONF_UNSET_PTR;
 
     ngx_str_set(&conf->upstream.module, "grpc");
 
@@ -4468,6 +4483,9 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->ssl_certificate_key, "");
     ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
 
+    ngx_conf_merge_ptr_value(conf->ssl_conf_commands,
+                              prev->ssl_conf_commands, NULL);
+
     if (conf->ssl && ngx_http_grpc_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -4507,9 +4525,10 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         clcf->handler = ngx_http_grpc_handler;
     }
 
-    if (conf->headers_source == NULL) {
+    ngx_conf_merge_ptr_value(conf->headers_source, prev->headers_source, NULL);
+
+    if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
-        conf->headers_source = prev->headers_source;
         conf->host_set = prev->host_set;
     }
 
@@ -4834,6 +4853,17 @@ ngx_http_grpc_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static char *
+ngx_http_grpc_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#endif
+
+    return NGX_CONF_OK;
+}
+
+
 static ngx_int_t
 ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
 {
@@ -4923,6 +4953,12 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
     }
 
 #endif
+
+    if (ngx_ssl_conf_commands(cf, glcf->upstream.ssl, glcf->ssl_conf_commands)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
