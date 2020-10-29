@@ -4832,8 +4832,11 @@ ngx_quic_detect_lost(ngx_connection_t *c)
 static void
 ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
+    size_t                  n;
+    ngx_buf_t              *b;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f, *start;
+    ngx_quic_stream_t      *sn;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
@@ -4863,6 +4866,61 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
             ngx_quic_free_frame(c, f);
             break;
+
+        case NGX_QUIC_FT_PING:
+        case NGX_QUIC_FT_PATH_RESPONSE:
+        case NGX_QUIC_FT_CONNECTION_CLOSE:
+            ngx_quic_free_frame(c, f);
+            break;
+
+        case NGX_QUIC_FT_MAX_DATA:
+            f->u.max_data.max_data = qc->streams.recv_max_data;
+            ngx_quic_queue_frame(qc, f);
+            break;
+
+        case NGX_QUIC_FT_MAX_STREAMS:
+        case NGX_QUIC_FT_MAX_STREAMS2:
+            f->u.max_streams.limit = f->u.max_streams.bidi
+                                     ? qc->streams.client_max_streams_bidi
+                                     : qc->streams.client_max_streams_uni;
+            ngx_quic_queue_frame(qc, f);
+            break;
+
+        case NGX_QUIC_FT_MAX_STREAM_DATA:
+            sn = ngx_quic_find_stream(&qc->streams.tree,
+                                      f->u.max_stream_data.id);
+            if (sn == NULL) {
+                ngx_quic_free_frame(c, f);
+                break;
+            }
+
+            b = sn->b;
+            n = sn->fs.received + (b->pos - b->start) + (b->end - b->last);
+
+            if (f->u.max_stream_data.limit < n) {
+                f->u.max_stream_data.limit = n;
+            }
+
+            ngx_quic_queue_frame(qc, f);
+            break;
+
+        case NGX_QUIC_FT_STREAM0:
+        case NGX_QUIC_FT_STREAM1:
+        case NGX_QUIC_FT_STREAM2:
+        case NGX_QUIC_FT_STREAM3:
+        case NGX_QUIC_FT_STREAM4:
+        case NGX_QUIC_FT_STREAM5:
+        case NGX_QUIC_FT_STREAM6:
+        case NGX_QUIC_FT_STREAM7:
+            sn = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
+
+            if (sn && sn->c->write->error) {
+                /* RESET_STREAM was sent */
+                ngx_quic_free_frame(c, f);
+                break;
+            }
+
+            /* fall through */
 
         default:
             ngx_queue_insert_tail(&ctx->frames, &f->queue);
