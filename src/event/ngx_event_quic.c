@@ -759,7 +759,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             unsigned int          len;
             const unsigned char  *data;
 
-            SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
+            SSL_get0_alpn_selected(ssl_conn, &data, &len);
 
             if (len == 0) {
                 qc->error = 0x100 + SSL_AD_NO_APPLICATION_PROTOCOL;
