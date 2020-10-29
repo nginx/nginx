@@ -3581,9 +3581,14 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
 
     n = SSL_do_handshake(ssl_conn);
 
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic SSL_quic_read_level:%d SSL_quic_write_level:%d",
+                   (int) SSL_quic_read_level(ssl_conn),
+                   (int) SSL_quic_write_level(ssl_conn));
+
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
-    if (n == -1) {
+    if (n <= 0) {
         sslerr = SSL_get_error(ssl_conn, n);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d",
@@ -3594,54 +3599,53 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
             return NGX_ERROR;
         }
 
-    } else if (n == 1 && !SSL_in_init(ssl_conn)) {
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic ssl cipher:%s", SSL_get_cipher(ssl_conn));
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic handshake completed successfully");
-
-        c->ssl->handshaked = 1;
-        c->ssl->no_wait_shutdown = 1;
-
-        frame = ngx_quic_alloc_frame(c, 0);
-        if (frame == NULL) {
-            return NGX_ERROR;
-        }
-
-        /* 12.4 Frames and frame types, figure 8 */
-        frame->level = ssl_encryption_application;
-        frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
-        ngx_quic_queue_frame(c->quic, frame);
-
-        if (ngx_quic_send_new_token(c) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        /*
-         * Generating next keys before a key update is received.
-         * See quic-tls 9.4 Header Protection Timing Side-Channels.
-         */
-
-        if (ngx_quic_key_update(c, &c->quic->keys[ssl_encryption_application],
-                                &c->quic->next_key)
-            != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-
-        /*
-         * 4.10.2 An endpoint MUST discard its handshake keys
-         * when the TLS handshake is confirmed
-         */
-        ngx_quic_discard_ctx(c, ssl_encryption_handshake);
+        return NGX_OK;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic SSL_quic_read_level:%d SSL_quic_write_level:%d",
-                   (int) SSL_quic_read_level(ssl_conn),
-                   (int) SSL_quic_write_level(ssl_conn));
+    if (SSL_in_init(ssl_conn)) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ssl cipher:%s", SSL_get_cipher(ssl_conn));
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic handshake completed successfully");
+
+    c->ssl->handshaked = 1;
+    c->ssl->no_wait_shutdown = 1;
+
+    frame = ngx_quic_alloc_frame(c, 0);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* 12.4 Frames and frame types, figure 8 */
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
+    ngx_quic_queue_frame(c->quic, frame);
+
+    if (ngx_quic_send_new_token(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    /*
+     * Generating next keys before a key update is received.
+     * See quic-tls 9.4 Header Protection Timing Side-Channels.
+     */
+
+    if (ngx_quic_key_update(c, &c->quic->keys[ssl_encryption_application],
+                            &c->quic->next_key)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    /*
+     * 4.10.2 An endpoint MUST discard its handshake keys
+     * when the TLS handshake is confirmed
+     */
+    ngx_quic_discard_ctx(c, ssl_encryption_handshake);
 
     return NGX_OK;
 }
