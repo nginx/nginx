@@ -72,6 +72,7 @@ typedef struct {
     ngx_http_complex_value_t                   *cookie_domain;
     ngx_str_t                                   cookie_path;
     time_t                                      cookie_expires;
+    ngx_http_complex_value_t                   *cookie_samesite;
     unsigned                                    cookie_httponly:1;
     unsigned                                    cookie_secure:1;
     unsigned                                    learn_after_headers:1;
@@ -129,6 +130,7 @@ static void ngx_http_upstream_sticky_notify_peer(
     ngx_peer_connection_t *pc, void *data, ngx_uint_t type);
 static ngx_int_t ngx_http_upstream_sticky_cookie_insert(
     ngx_peer_connection_t *pc, ngx_http_upstream_sticky_peer_data_t *stp);
+static ngx_int_t ngx_http_upstream_sticky_samesite(ngx_str_t *value);
 
 
 static ngx_http_upstream_sticky_sess_node_t *
@@ -557,7 +559,7 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
 {
     size_t                                len;
     u_char                               *data, *p;
-    ngx_str_t                             domain;
+    ngx_str_t                             domain, samesite;
     ngx_table_elt_t                      *cookie;
     ngx_http_request_t                   *r;
     ngx_http_upstream_sticky_srv_conf_t  *stcf;
@@ -615,6 +617,30 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         len += sizeof(secure) - 1;
     }
 
+    ngx_str_set(&samesite, "");
+
+    if (stcf->cookie_samesite) {
+
+        if (ngx_http_complex_value(r, stcf->cookie_samesite, &samesite)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        if (stcf->cookie_samesite->lengths && samesite.len
+            && ngx_http_upstream_sticky_samesite(&samesite) != NGX_OK)
+        {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "sticky: invalid cookie samesite value \"%V\"",
+                           &samesite);
+            ngx_str_set(&samesite, "strict");
+        }
+    }
+
+    if (samesite.len) {
+        len += sizeof("; samesite=") - 1 + samesite.len;
+    }
+
     data = ngx_pnalloc(r->pool, len);
     if (data == NULL) {
         return NGX_ERROR;
@@ -649,6 +675,11 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         p = ngx_copy(p, secure, sizeof(secure) - 1);
     }
 
+    if (samesite.len) {
+        p = ngx_cpymem(p, "; samesite=", 11);
+        p = ngx_copy(p, samesite.data, samesite.len);
+    }
+
     p = ngx_cpymem(p, stcf->cookie_path.data, stcf->cookie_path.len);
 
     cookie = stp->cookie;
@@ -674,6 +705,31 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
                    "sticky: set cookie: \"%V\"", &cookie->value);
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_sticky_samesite(ngx_str_t *value)
+{
+    ngx_uint_t  i;
+
+    static ngx_str_t samesite[] = {
+        ngx_string("strict"),
+        ngx_string("lax"),
+        ngx_string("none"),
+        ngx_null_string
+    };
+
+    for (i = 0; samesite[i].len != 0; i++) {
+
+        if (samesite[i].len == value->len
+            && ngx_strncasecmp(samesite[i].data, value->data, value->len) == 0)
+        {
+            return NGX_OK;
+        }
+    }
+
+    return NGX_ERROR;
 }
 
 
@@ -971,6 +1027,7 @@ ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf)
      *     stcf->cookie_path = { 0, NULL };
      *     stcf->cookie_httponly = 0;
      *     stcf->cookie_secure = 0;
+     *     stcf->cookie_samesite = NULL;
      *
      *     stcf->learn_after_headers = 0;
      */
@@ -1160,6 +1217,37 @@ ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
             }
 
             stcf->cookie_secure = 1;
+
+        } else if (ngx_strncmp(value[i].data, "samesite=", 9) == 0) {
+
+            if (stcf->cookie_samesite) {
+                return "parameter \"samesite\" is duplicate";
+            }
+
+            value[i].data += 9;
+            value[i].len -= 9;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            stcf->cookie_samesite = ngx_palloc(cf->pool,
+                                             sizeof(ngx_http_complex_value_t));
+            if (stcf->cookie_samesite == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            ccv.cf = cf;
+            ccv.value = &value[i];
+            ccv.complex_value = stcf->cookie_samesite;
+
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+            if (stcf->cookie_samesite->lengths == NULL
+                && ngx_http_upstream_sticky_samesite(&value[i]) != NGX_OK)
+            {
+                return "invalid \"samesite\" parameter value";
+            }
 
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
