@@ -116,6 +116,9 @@ struct ngx_quic_stream_s {
 };
 
 
+typedef struct ngx_quic_keys_s  ngx_quic_keys_t;
+
+
 void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,

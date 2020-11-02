@@ -24,11 +24,33 @@
 #define ngx_quic_cipher_t             EVP_CIPHER
 #endif
 
+
 typedef struct {
     const ngx_quic_cipher_t  *c;
     const EVP_CIPHER         *hp;
     const EVP_MD             *d;
 } ngx_quic_ciphers_t;
+
+
+typedef struct ngx_quic_secret_s {
+    ngx_str_t                 secret;
+    ngx_str_t                 key;
+    ngx_str_t                 iv;
+    ngx_str_t                 hp;
+} ngx_quic_secret_t;
+
+
+typedef struct {
+    ngx_quic_secret_t         client;
+    ngx_quic_secret_t         server;
+} ngx_quic_secrets_t;
+
+
+struct ngx_quic_keys_s {
+    ngx_quic_secrets_t        secrets[NGX_QUIC_ENCRYPTION_LAST];
+    ngx_quic_secrets_t        next_key;
+    ngx_uint_t                cipher;
+};
 
 
 static ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
@@ -41,7 +63,7 @@ static ngx_int_t ngx_hkdf_extract(u_char *out_key, size_t *out_len,
 static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn);
 static void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
-static ngx_int_t ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn,
+static ngx_int_t ngx_quic_ciphers(ngx_uint_t id,
     ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
 
 static ngx_int_t ngx_quic_tls_open(const ngx_quic_cipher_t *cipher,
@@ -56,30 +78,21 @@ static ngx_int_t ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest,
     ngx_str_t *out, ngx_str_t *label, const uint8_t *prk, size_t prk_len);
 
 static ngx_int_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
-    ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
+    ngx_str_t *res);
 static ngx_int_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
-    ngx_ssl_conn_t *ssl_conn, ngx_str_t *res);
+    ngx_str_t *res);
 static ngx_int_t ngx_quic_create_retry_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
 
 
 static ngx_int_t
-ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn, ngx_quic_ciphers_t *ciphers,
+ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
     enum ssl_encryption_level_t level)
 {
-    ngx_int_t          id, len;
-    const SSL_CIPHER  *cipher;
+    ngx_int_t  len;
 
     if (level == ssl_encryption_initial) {
         id = NGX_AES_128_GCM_SHA256;
-
-    } else {
-        cipher = SSL_get_current_cipher(ssl_conn);
-        if (cipher == NULL) {
-            return NGX_ERROR;
-        }
-
-        id = SSL_CIPHER_get_id(cipher) & 0xffff;
     }
 
     switch (id) {
@@ -130,14 +143,15 @@ ngx_quic_ciphers(ngx_ssl_conn_t *ssl_conn, ngx_quic_ciphers_t *ciphers,
 
 
 ngx_int_t
-ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
-    ngx_quic_secret_t *server, ngx_str_t *secret)
+ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
+    ngx_str_t *secret)
 {
-    size_t             is_len;
-    uint8_t            is[SHA256_DIGEST_LENGTH];
-    ngx_uint_t         i;
-    const EVP_MD      *digest;
-    const EVP_CIPHER  *cipher;
+    size_t              is_len;
+    uint8_t             is[SHA256_DIGEST_LENGTH];
+    ngx_uint_t          i;
+    const EVP_MD       *digest;
+    const EVP_CIPHER   *cipher;
+    ngx_quic_secret_t  *client, *server;
 
     static const uint8_t salt[20] =
 #if (NGX_QUIC_DRAFT_VERSION >= 29)
@@ -147,6 +161,9 @@ ngx_quic_set_initial_secret(ngx_pool_t *pool, ngx_quic_secret_t *client,
         "\xc3\xee\xf7\x12\xc7\x2e\xbb\x5a\x11\xa7"
         "\xd2\x43\x2b\xb4\x63\x65\xbe\xf9\xf5\x02";
 #endif
+
+    client = &keys->secrets[ssl_encryption_initial].client;
+    server = &keys->secrets[ssl_encryption_initial].server;
 
     /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
 
@@ -626,16 +643,25 @@ failed:
 }
 
 
-int
-ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const uint8_t *secret,
-    size_t secret_len, ngx_quic_secret_t *peer_secret)
+int ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
+    ngx_quic_keys_t *keys, enum ssl_encryption_level_t level,
+    const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len)
 {
-    ngx_int_t           key_len;
-    ngx_uint_t          i;
-    ngx_quic_ciphers_t  ciphers;
+    ngx_int_t            key_len;
+    ngx_uint_t           i;
+    ngx_quic_secret_t   *peer_secret;
+    ngx_quic_ciphers_t   ciphers;
 
-    key_len = ngx_quic_ciphers(ssl_conn, &ciphers, level);
+    peer_secret = is_write ? &keys->secrets[level].server
+                           : &keys->secrets[level].client;
+
+    /*
+     * SSL_CIPHER_get_protocol_id() is not universally available,
+     * casting to uint16_t works for both OpenSSL and BoringSSL
+     */
+    keys->cipher = (uint16_t) SSL_CIPHER_get_id(cipher);
+
+    key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
 
     if (key_len == NGX_ERROR) {
         ngx_ssl_error(NGX_LOG_INFO, pool->log, 0, "unexpected cipher");
@@ -682,17 +708,56 @@ ngx_quic_set_encryption_secret(ngx_pool_t *pool, ngx_ssl_conn_t *ssl_conn,
 }
 
 
-ngx_int_t
-ngx_quic_key_update(ngx_connection_t *c, ngx_quic_secrets_t *current,
-    ngx_quic_secrets_t *next)
+ngx_quic_keys_t *
+ngx_quic_keys_new(ngx_pool_t *pool)
 {
-    ngx_uint_t          i;
-    ngx_quic_ciphers_t  ciphers;
+    return ngx_pcalloc(pool, sizeof(ngx_quic_keys_t));
+}
+
+
+ngx_uint_t
+ngx_quic_keys_available(ngx_quic_keys_t *keys,
+    enum ssl_encryption_level_t level)
+{
+    return keys->secrets[level].client.key.len != 0;
+}
+
+
+void
+ngx_quic_keys_discard(ngx_quic_keys_t *keys,
+     enum ssl_encryption_level_t level)
+{
+    keys->secrets[level].client.key.len = 0;
+}
+
+
+void
+ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys)
+{
+    ngx_quic_secrets_t  *current, *next, tmp;
+
+    current = &keys->secrets[ssl_encryption_application];
+    next = &keys->next_key;
+
+    tmp = *current;
+    *current = *next;
+    *next = tmp;
+}
+
+
+ngx_int_t
+ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
+{
+    ngx_uint_t           i;
+    ngx_quic_ciphers_t   ciphers;
+    ngx_quic_secrets_t  *current, *next;
+
+    current = &keys->secrets[ssl_encryption_application];
+    next = &keys->next_key;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic key update");
 
-    if (ngx_quic_ciphers(c->ssl->connection, &ciphers,
-                         ssl_encryption_application)
+    if (ngx_quic_ciphers(keys->cipher, &ciphers, ssl_encryption_application)
         == NGX_ERROR)
     {
         return NGX_ERROR;
@@ -760,12 +825,12 @@ ngx_quic_key_update(ngx_connection_t *c, ngx_quic_secrets_t *current,
 
 
 static ngx_int_t
-ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
-    ngx_str_t *res)
+ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
     u_char              *pnp, *sample;
     ngx_str_t            ad, out;
     ngx_uint_t           i;
+    ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[12], mask[16];
 
@@ -780,14 +845,17 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
 #endif
 
-    if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
+    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
-    ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
+    secret = &pkt->keys->secrets[pkt->level].server;
+
+    ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
-    if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out,
+    if (ngx_quic_tls_seal(ciphers.c, secret, &out,
                           nonce, &pkt->payload, &ad, pkt->log)
         != NGX_OK)
     {
@@ -795,7 +863,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     sample = &out.data[4 - pkt->num_len];
-    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
+    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -815,12 +883,12 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
 
 
 static ngx_int_t
-ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
-    ngx_str_t *res)
+ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
     u_char              *pnp, *sample;
     ngx_str_t            ad, out;
     ngx_uint_t           i;
+    ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[12], mask[16];
 
@@ -835,14 +903,17 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
 #endif
 
-    if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
+    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
-    ngx_memcpy(nonce, pkt->secret->iv.data, pkt->secret->iv.len);
+    secret = &pkt->keys->secrets[pkt->level].server;
+
+    ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
-    if (ngx_quic_tls_seal(ciphers.c, pkt->secret, &out,
+    if (ngx_quic_tls_seal(ciphers.c, secret, &out,
                           nonce, &pkt->payload, &ad, pkt->log)
         != NGX_OK)
     {
@@ -850,7 +921,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     }
 
     sample = &out.data[4 - pkt->num_len];
-    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, pkt->secret, mask, sample)
+    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -902,7 +973,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_quic_hexdump(pkt->log, "quic retry itag", ad.data, ad.len);
 #endif
 
-    if (ngx_quic_ciphers(NULL, &ciphers, pkt->level) == NGX_ERROR) {
+    if (ngx_quic_ciphers(0, &ciphers, pkt->level) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -1033,24 +1104,22 @@ ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
 
 
 ngx_int_t
-ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
-    ngx_str_t *res)
+ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
     if (ngx_quic_short_pkt(pkt->flags)) {
-        return ngx_quic_create_short_packet(pkt, ssl_conn, res);
+        return ngx_quic_create_short_packet(pkt, res);
     }
 
     if (ngx_quic_pkt_retry(pkt->flags)) {
         return ngx_quic_create_retry_packet(pkt, res);
     }
 
-    return ngx_quic_create_long_packet(pkt, ssl_conn, res);
+    return ngx_quic_create_long_packet(pkt, res);
 }
 
 
 ngx_int_t
-ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
-    uint64_t *largest_pn)
+ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 {
     u_char               clearflags, *p, *sample;
     size_t               len;
@@ -1062,11 +1131,12 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
     ngx_quic_ciphers_t   ciphers;
     uint8_t              mask[16], nonce[12];
 
-    if (ngx_quic_ciphers(ssl_conn, &ciphers, pkt->level) == NGX_ERROR) {
+    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
-    secret = pkt->secret;
+    secret = &pkt->keys->secrets[pkt->level].client;
 
     p = pkt->raw->pos;
     len = pkt->data + pkt->len - p;
@@ -1099,7 +1169,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, ngx_ssl_conn_t *ssl_conn,
         key_phase = (clearflags & NGX_QUIC_PKT_KPHASE) != 0;
 
         if (key_phase != pkt->key_phase) {
-            secret = pkt->next;
+            secret = &pkt->keys->next_key.client;
             pkt->key_update = 1;
         }
     }

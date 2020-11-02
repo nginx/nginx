@@ -290,8 +290,8 @@ struct ngx_quic_frame_s {
 typedef struct {
     ngx_log_t                                  *log;
 
-    struct ngx_quic_secret_s                   *secret;
-    struct ngx_quic_secret_s                   *next;
+    ngx_quic_keys_t                            *keys;
+
     ngx_msec_t                                  received;
     uint64_t                                    number;
     uint8_t                                     num_len;
