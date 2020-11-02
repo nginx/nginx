@@ -1479,7 +1479,7 @@ bad_token:
     qc->error = NGX_QUIC_ERR_INVALID_TOKEN;
     qc->error_reason = "invalid_token";
 
-    return NGX_ERROR;
+    return NGX_DECLINED;
 }
 
 
@@ -2104,8 +2104,19 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
 
             if (pkt->token.len) {
-                if (ngx_quic_validate_token(c, pkt) != NGX_OK) {
+                rc = ngx_quic_validate_token(c, pkt);
+
+                if (rc == NGX_OK) {
+                    qc->validated = 1;
+
+                } else if (rc == NGX_ERROR) {
                     return NGX_ERROR;
+
+                } else {
+                    /* NGX_DECLINED */
+                    if (conf->retry) {
+                        return ngx_quic_send_retry(c);
+                    }
                 }
 
             } else if (conf->retry) {
