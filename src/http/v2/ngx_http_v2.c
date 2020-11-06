@@ -60,7 +60,7 @@ typedef struct {
 static void ngx_http_v2_read_handler(ngx_event_t *rev);
 static void ngx_http_v2_write_handler(ngx_event_t *wev);
 static void ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c);
-static void ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c);
+static void ngx_http_v2_lingering_close(ngx_connection_t *c);
 static void ngx_http_v2_lingering_close_handler(ngx_event_t *rev);
 
 static u_char *ngx_http_v2_state_proxy_protocol(ngx_http_v2_connection_t *h2c,
@@ -664,7 +664,7 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     }
 
     if (h2c->goaway) {
-        ngx_http_v2_lingering_close(h2c);
+        ngx_http_v2_lingering_close(c);
         return;
     }
 
@@ -703,13 +703,13 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 
 
 static void
-ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c)
+ngx_http_v2_lingering_close(ngx_connection_t *c)
 {
     ngx_event_t               *rev, *wev;
-    ngx_connection_t          *c;
+    ngx_http_v2_connection_t  *h2c;
     ngx_http_core_loc_conf_t  *clcf;
 
-    c = h2c->connection;
+    h2c = c->data;
 
     clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
                                         ngx_http_core_module);
@@ -719,11 +719,33 @@ ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c)
         return;
     }
 
+    if (h2c->lingering_time == 0) {
+        h2c->lingering_time = ngx_time()
+                              + (time_t) (clcf->lingering_time / 1000);
+    }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl) {
+        ngx_int_t  rc;
+
+        rc = ngx_ssl_shutdown(c);
+
+        if (rc == NGX_ERROR) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        if (rc == NGX_AGAIN) {
+            c->ssl->handler = ngx_http_v2_lingering_close;
+            return;
+        }
+
+        c->recv = ngx_recv;
+    }
+#endif
+
     rev = c->read;
     rev->handler = ngx_http_v2_lingering_close_handler;
-
-    h2c->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
-    ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_connection(c);
@@ -746,6 +768,8 @@ ngx_http_v2_lingering_close(ngx_http_v2_connection_t *h2c)
         ngx_http_close_connection(c);
         return;
     }
+
+    ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (rev->ready) {
         ngx_http_v2_lingering_close_handler(rev);
@@ -4757,7 +4781,7 @@ done:
         return;
     }
 
-    ngx_http_v2_lingering_close(h2c);
+    ngx_http_v2_lingering_close(c);
 }
 
 

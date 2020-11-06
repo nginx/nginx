@@ -49,7 +49,7 @@ static void ngx_http_request_finalizer(ngx_http_request_t *r);
 
 static void ngx_http_set_keepalive(ngx_http_request_t *r);
 static void ngx_http_keepalive_handler(ngx_event_t *ev);
-static void ngx_http_set_lingering_close(ngx_http_request_t *r);
+static void ngx_http_set_lingering_close(ngx_connection_t *c);
 static void ngx_http_lingering_close_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_post_action(ngx_http_request_t *r);
 static void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t error);
@@ -2754,7 +2754,7 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
                 || r->header_in->pos < r->header_in->last
                 || r->connection->read->ready)))
     {
-        ngx_http_set_lingering_close(r);
+        ngx_http_set_lingering_close(r->connection);
         return;
     }
 
@@ -3368,21 +3368,42 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
 
 static void
-ngx_http_set_lingering_close(ngx_http_request_t *r)
+ngx_http_set_lingering_close(ngx_connection_t *c)
 {
     ngx_event_t               *rev, *wev;
-    ngx_connection_t          *c;
+    ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
-    c = r->connection;
+    r = c->data;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    if (r->lingering_time == 0) {
+        r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
+    }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl) {
+        ngx_int_t  rc;
+
+        rc = ngx_ssl_shutdown(c);
+
+        if (rc == NGX_ERROR) {
+            ngx_http_close_request(r, 0);
+            return;
+        }
+
+        if (rc == NGX_AGAIN) {
+            c->ssl->handler = ngx_http_set_lingering_close;
+            return;
+        }
+
+        c->recv = ngx_recv;
+    }
+#endif
+
     rev = c->read;
     rev->handler = ngx_http_lingering_close_handler;
-
-    r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
-    ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_request(r, 0);
@@ -3405,6 +3426,8 @@ ngx_http_set_lingering_close(ngx_http_request_t *r)
         ngx_http_close_request(r, 0);
         return;
     }
+
+    ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (rev->ready) {
         ngx_http_lingering_close_handler(rev);

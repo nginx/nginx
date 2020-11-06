@@ -674,6 +674,7 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
     if (rc == NGX_OK) {
         r->discard_body = 0;
         r->lingering_close = 0;
+        r->lingering_time = 0;
         ngx_http_finalize_request(r, NGX_DONE);
         return;
     }
