@@ -3039,13 +3039,6 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "set http keepalive handler");
 
-    if (r->discard_body) {
-        r->write_event_handler = ngx_http_request_empty_handler;
-        r->lingering_time = ngx_time() + (time_t) (clcf->lingering_time / 1000);
-        ngx_add_timer(rev, clcf->lingering_timeout);
-        return;
-    }
-
     c->log->action = "closing request";
 
     hc = r->http_connection;
