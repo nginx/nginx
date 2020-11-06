@@ -1020,7 +1020,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,
                                     ngx_max(2 * qc->tp.max_udp_payload_size,
                                             14720));
-    qc->congestion.ssthresh = NGX_MAX_SIZE_T_VALUE;
+    qc->congestion.ssthresh = (size_t) -1;
     qc->congestion.recovery_start = ngx_current_msec;
 
     if (ngx_quic_new_dcid(c, qc, &pkt->dcid) != NGX_OK) {
@@ -2572,8 +2572,8 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(c->quic, pkt->level);
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_ack_packet pn:%uL largest %uL fr:%uL"
-                   " nranges:%ui", pkt->pn, ctx->largest_range,
+                   "quic ngx_quic_ack_packet pn:%uL largest %L fr:%uL"
+                   " nranges:%ui", pkt->pn, (int64_t) ctx->largest_range,
                    ctx->first_range, ctx->nranges);
 
     prev_pending = ctx->pending_ack;
@@ -5710,7 +5710,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 
     if ((ngx_msec_int_t) timer <= 0) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic congestion ack recovery win:%uz ss:%uz if:%uz",
+                       "quic congestion ack recovery win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
         return;
@@ -5720,14 +5720,14 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
         cg->window += f->plen;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic congestion slow start win:%uz ss:%uz if:%uz",
+                       "quic congestion slow start win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
     } else {
         cg->window += qc->tp.max_udp_payload_size * f->plen / cg->window;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic congestion avoidance win:%uz ss:%uz if:%uz",
+                       "quic congestion avoidance win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
     }
 
@@ -5762,7 +5762,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
 
     if ((ngx_msec_int_t) timer <= 0) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic congestion lost recovery win:%uz ss:%uz if:%uz",
+                       "quic congestion lost recovery win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
         return;
@@ -5778,7 +5778,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     cg->ssthresh = cg->window;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic congestion lost win:%uz ss:%uz if:%uz",
+                   "quic congestion lost win:%uz ss:%z if:%uz",
                    cg->window, cg->ssthresh, cg->in_flight);
 }
 
