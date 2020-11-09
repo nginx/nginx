@@ -137,8 +137,9 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     } else {
         /* set rb->rest */
 
-        if (ngx_http_request_body_filter(r, NULL) != NGX_OK) {
-            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        rc = ngx_http_request_body_filter(r, NULL);
+
+        if (rc != NGX_OK) {
             goto done;
         }
     }
