@@ -56,6 +56,8 @@
      : ((uint64_t) value) <= 1073741823 ?  4                                  \
      : 8)
 
+#define NGX_QUIC_VERSION(c)       (0xff000000 + (c))
+
 
 static u_char *ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
@@ -101,9 +103,18 @@ static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
     uint16_t id, ngx_quic_tp_t *dst);
 
 
-/* currently only single version (selected at compile-time) is supported */
 uint32_t  ngx_quic_versions[] = {
-    NGX_QUIC_VERSION
+#if (NGX_QUIC_DRAFT_VERSION >= 29)
+    /* pretend we support all versions in range draft-29..v1 */
+    NGX_QUIC_VERSION(29),
+    NGX_QUIC_VERSION(30),
+    NGX_QUIC_VERSION(31),
+    NGX_QUIC_VERSION(32),
+    /* QUICv1 */
+    0x00000001
+#else
+    NGX_QUIC_VERSION(NGX_QUIC_DRAFT_VERSION)
+#endif
 };
 
 #define NGX_QUIC_NVERSIONS \

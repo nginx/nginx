@@ -1163,9 +1163,7 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 {
     size_t             len;
     ngx_quic_header_t  pkt;
-
-    /* buffer size is calculated assuming a single supported version */
-    static u_char      buf[NGX_QUIC_MAX_LONG_HEADER + sizeof(uint32_t)];
+    static u_char      buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "sending version negotiation packet");

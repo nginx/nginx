@@ -16,7 +16,6 @@
 #ifndef NGX_QUIC_DRAFT_VERSION
 #define NGX_QUIC_DRAFT_VERSION               29
 #endif
-#define NGX_QUIC_VERSION  (0xff000000 + NGX_QUIC_DRAFT_VERSION)
 
 #define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
 #define NGX_QUIC_MAX_LONG_HEADER             56
