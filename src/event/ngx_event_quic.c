@@ -125,7 +125,7 @@ struct ngx_quic_connection_s {
     ngx_queue_t                       free_client_ids;
     ngx_uint_t                        nclient_ids;
     uint64_t                          max_retired_seqnum;
-    uint64_t                          curr_seqnum;
+    uint64_t                          client_seqnum;
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
@@ -304,7 +304,7 @@ static ngx_int_t ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f);
 static ngx_int_t ngx_quic_retire_connection_id(ngx_connection_t *c,
     enum ssl_encryption_level_t level, uint64_t seqnum);
-static ngx_quic_client_id_t *ngx_quic_alloc_connection_id(ngx_connection_t *c,
+static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
@@ -1042,7 +1042,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     }
     ngx_memcpy(qc->scid.data, pkt->scid.data, qc->scid.len);
 
-    cid = ngx_quic_alloc_connection_id(c, qc);
+    cid = ngx_quic_alloc_client_id(c, qc);
     if (cid == NULL) {
         return NULL;
     }
@@ -1053,7 +1053,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     ngx_queue_insert_tail(&qc->client_ids, &cid->queue);
     qc->nclient_ids++;
-    qc->curr_seqnum = 0;
+    qc->client_seqnum = 0;
 
     return qc;
 }
@@ -4165,7 +4165,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
     } else {
 
-        cid = ngx_quic_alloc_connection_id(c, qc);
+        cid = ngx_quic_alloc_client_id(c, qc);
         if (cid == NULL) {
             return NGX_ERROR;
         }
@@ -4180,10 +4180,10 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
         qc->nclient_ids++;
 
         /* always use latest available connection id */
-        if (f->seqnum > qc->curr_seqnum) {
+        if (f->seqnum > qc->client_seqnum) {
             qc->scid.len = cid->len;
             qc->scid.data = cid->id;
-            qc->curr_seqnum = f->seqnum;
+            qc->client_seqnum = f->seqnum;
         }
     }
 
@@ -4266,7 +4266,7 @@ ngx_quic_retire_connection_id(ngx_connection_t *c,
 
 
 static ngx_quic_client_id_t *
-ngx_quic_alloc_connection_id(ngx_connection_t *c, ngx_quic_connection_t *qc)
+ngx_quic_alloc_client_id(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
     ngx_queue_t           *q;
     ngx_quic_client_id_t  *cid;
