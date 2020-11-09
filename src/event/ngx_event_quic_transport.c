@@ -72,6 +72,7 @@ static ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
     size_t dcid_len);
 static ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_supported_version(uint32_t version);
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
@@ -268,7 +269,7 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-    if (pkt->version != NGX_QUIC_VERSION) {
+    if (!ngx_quic_supported_version(pkt->version)) {
         return NGX_ABORT;
     }
 
@@ -430,7 +431,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
 
     *p++ = pkt->flags;
 
-    p = ngx_quic_write_uint32(p, NGX_QUIC_VERSION);
+    p = ngx_quic_write_uint32(p, pkt->version);
 
     *p++ = pkt->dcid.len;
     p = ngx_cpymem(p, pkt->dcid.data, pkt->dcid.len);
@@ -517,7 +518,7 @@ ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
 
     *p++ = 0xff;
 
-    p = ngx_quic_write_uint32(p, NGX_QUIC_VERSION);
+    p = ngx_quic_write_uint32(p, pkt->version);
 
     *p++ = pkt->dcid.len;
     p = ngx_cpymem(p, pkt->dcid.data, pkt->dcid.len);
@@ -648,6 +649,21 @@ ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
     pkt->len = p + plen - pkt->data;
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_supported_version(uint32_t version)
+{
+    ngx_uint_t  i;
+
+    for (i = 0; i < NGX_QUIC_NVERSIONS; i++) {
+        if (ngx_quic_versions[i] == version) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 

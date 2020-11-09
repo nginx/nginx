@@ -115,6 +115,7 @@ typedef struct {
 
 
 struct ngx_quic_connection_s {
+    uint32_t                          version;
     ngx_str_t                         scid;  /* initial client ID */
     ngx_str_t                         dcid;  /* server (our own) ID */
     ngx_str_t                         odcid; /* original server ID */
@@ -958,6 +959,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
+    qc->version = pkt->version;
+
     ngx_rbtree_init(&qc->streams.tree, &qc->streams.sentinel,
                     ngx_quic_rbtree_insert_stream);
 
@@ -1224,6 +1227,7 @@ ngx_quic_send_retry(ngx_connection_t *c)
 
     ngx_memzero(&pkt, sizeof(ngx_quic_header_t));
     pkt.flags = NGX_QUIC_PKT_FIXED_BIT | NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_RETRY;
+    pkt.version = c->quic->version;
     pkt.log = c->log;
     pkt.odcid = c->quic->odcid;
     pkt.dcid = c->quic->scid;
@@ -2018,6 +2022,14 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "quic unsupported version: 0x%xD", pkt->version);
             return NGX_DECLINED;
+        }
+
+        if (pkt->level != ssl_encryption_application) {
+            if (pkt->version != qc->version) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic version mismatch: 0x%xD", pkt->version);
+                return NGX_DECLINED;
+            }
         }
 
         if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
@@ -4549,6 +4561,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     ngx_quic_set_packet_number(&pkt, ctx);
 
+    pkt.version = qc->version;
     pkt.log = c->log;
     pkt.level = start->level;
     pkt.dcid = qc->scid;
