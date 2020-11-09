@@ -305,6 +305,9 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                         return NGX_AGAIN;
                     }
 
+                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                                  "busy buffers after request body flush");
+
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
