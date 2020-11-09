@@ -122,6 +122,7 @@ void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
+uint32_t ngx_quic_version(ngx_connection_t *c);
 
 
 /********************************* DEBUG *************************************/

@@ -5813,3 +5813,14 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
                    "quic free frame n:%ui", qc->nframes);
 #endif
 }
+
+
+uint32_t
+ngx_quic_version(ngx_connection_t *c)
+{
+    uint32_t  version;
+
+    version = c->quic->version;
+
+    return (version & 0xff000000) == 0xff000000 ? version & 0xff : version;
+}

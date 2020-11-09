@@ -15,9 +15,8 @@
 #include <ngx_http_v3_parse.h>
 
 
-#define NGX_HTTP_V3_ALPN(s)         NGX_HTTP_V3_ALPN_DRAFT(s)
-#define NGX_HTTP_V3_ALPN_DRAFT(s)   "\x05h3-" #s
-#define NGX_HTTP_V3_ALPN_ADVERTISE  NGX_HTTP_V3_ALPN(NGX_QUIC_DRAFT_VERSION)
+#define NGX_HTTP_V3_ALPN_ADVERTISE                 "\x02h3"
+#define NGX_HTTP_V3_ALPN_DRAFT_FMT                 "\x05h3-%02uD"
 
 #define NGX_HTTP_V3_VARLEN_INT_LEN                 4
 #define NGX_HTTP_V3_PREFIX_INT_LEN                 11

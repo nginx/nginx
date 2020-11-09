@@ -14,9 +14,8 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_QUIC_ALPN(s)         NGX_HTTP_QUIC_ALPN_DRAFT(s)
-#define NGX_HTTP_QUIC_ALPN_DRAFT(s)   "\x05hq-" #s
-#define NGX_HTTP_QUIC_ALPN_ADVERTISE  NGX_HTTP_QUIC_ALPN(NGX_QUIC_DRAFT_VERSION)
+#define NGX_HTTP_QUIC_ALPN_ADVERTISE  "\x02hq"
+#define NGX_HTTP_QUIC_ALPN_DRAFT_FMT  "\x05hq-%02uD"
 
 
 extern ngx_module_t  ngx_http_quic_module;
