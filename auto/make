@@ -502,6 +502,7 @@ fi
 for ngx_module in $DYNAMIC_MODULES
 do
     eval ngx_module_srcs="\$${ngx_module}_SRCS"
+    eval ngx_module_shrd="\$${ngx_module}_SHRD"
     eval eval ngx_module_libs="\\\"\$${ngx_module}_LIBS\\\""
 
     eval ngx_module_modules="\$${ngx_module}_MODULES"
@@ -567,7 +568,7 @@ END
         | sed -e "s/\(.*\.\)c/\1$ngx_objext/"`
 
     ngx_module_objs=
-    for ngx_src in $ngx_module_srcs
+    for ngx_src in $ngx_module_srcs $ngx_module_shrd
     do
         case "$ngx_src" in
             src/*)
