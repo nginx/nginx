@@ -179,7 +179,7 @@ static ngx_int_t
 ngx_http_variable_quic(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    if (r->connection->qs) {
+    if (r->connection->quic) {
 
         v->len = 4;
         v->valid = 1;

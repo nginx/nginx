@@ -77,11 +77,11 @@
 
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
     ngx_http_get_module_srv_conf(                                             \
-             ((ngx_http_v3_connection_t *) c->qs->parent->data)->hc.conf_ctx, \
-             module)
+           ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
+           module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
-    ngx_quic_finalize_connection(c->qs->parent, code, reason)
+    ngx_quic_finalize_connection(c->quic->parent, code, reason)
 
 
 typedef struct {

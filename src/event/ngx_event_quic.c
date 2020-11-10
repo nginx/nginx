@@ -5231,7 +5231,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
     ngx_quic_stream_t      *qs, *sn;
     ngx_quic_connection_t  *qc;
 
-    qs = c->qs;
+    qs = c->quic;
     qc = ngx_quic_get_connection(qs->parent);
 
     if (bidi) {
@@ -5482,7 +5482,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
         return NULL;
     }
 
-    sn->c->qs = sn;
+    sn->c->quic = sn;
     sn->c->type = SOCK_STREAM;
     sn->c->pool = pool;
     sn->c->ssl = c->ssl;
@@ -5548,7 +5548,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->qs;
+    qs = c->quic;
     b = qs->b;
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
@@ -5678,7 +5678,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->qs;
+    qs = c->quic;
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
     wev = c->write;
@@ -5797,7 +5797,7 @@ ngx_quic_max_stream_flow(ngx_connection_t *c)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->qs;
+    qs = c->quic;
     qc = ngx_quic_get_connection(qs->parent);
 
     size = NGX_QUIC_STREAM_BUFSIZE;
@@ -5855,7 +5855,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->qs;
+    qs = c->quic;
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
 

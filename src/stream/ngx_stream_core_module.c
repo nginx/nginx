@@ -326,7 +326,7 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
 
     if (c->type == SOCK_STREAM
 #if (NGX_STREAM_QUIC)
-        && c->qs == NULL
+        && c->quic == NULL
 #endif
         && cscf->tcp_nodelay
         && ngx_tcp_nodelay(c) != NGX_OK)

@@ -469,7 +469,7 @@ ngx_http_v3_create_header(ngx_http_request_t *r)
     out = NULL;
     ll = &out;
 
-    if ((c->qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
+    if ((c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
         && r->method != NGX_HTTP_HEAD)
     {
         if (ngx_http_v3_push_resources(r, &ll) != NGX_OK) {
@@ -1123,7 +1123,7 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     ngx_http_v3_connection_t  *h3c;
 
     c = r->connection;
-    h3c = c->qs->parent->data;
+    h3c = c->quic->parent->data;
     h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
 
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1196,7 +1196,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
         goto failed;
     }
 
-    h3c = c->qs->parent->data;
+    h3c = c->quic->parent->data;
     ngx_memcpy(hc, h3c, sizeof(ngx_http_connection_t));
     c->data = hc;
 

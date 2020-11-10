@@ -330,7 +330,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 
 #endif
 
-        if (c->qs == NULL) {
+        if (c->quic == NULL) {
             c->log->connection = c->number;
 
             qcf = ngx_http_get_module_srv_conf(hc->conf_ctx,
@@ -339,7 +339,7 @@ ngx_http_init_connection(ngx_connection_t *c)
             return;
         }
 
-        phc = c->qs->parent->data;
+        phc = c->quic->parent->data;
 
         if (phc->ssl_servername) {
             hc->ssl_servername = phc->ssl_servername;
@@ -2847,7 +2847,7 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 #endif
 
 #if (NGX_HTTP_QUIC)
-    if (r->connection->qs) {
+    if (r->connection->quic) {
         ngx_http_close_request(r, 0);
         return;
     }
@@ -3064,7 +3064,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
 #if (NGX_HTTP_QUIC)
 
-    if (c->qs) {
+    if (c->quic) {
         if (c->read->error) {
             err = 0;
             goto closed;

@@ -580,7 +580,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 #endif
 
 #if (NGX_HTTP_QUIC)
-    if (r->connection->qs) {
+    if (r->connection->quic) {
         return NGX_OK;
     }
 #endif

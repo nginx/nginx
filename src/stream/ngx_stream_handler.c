@@ -120,7 +120,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
     if (addr_conf->quic) {
         ngx_quic_conf_t  *qcf;
 
-        if (c->qs == NULL) {
+        if (c->quic == NULL) {
             c->log->connection = c->number;
 
             qcf = ngx_stream_get_module_srv_conf(addr_conf->ctx,

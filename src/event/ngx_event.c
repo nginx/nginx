@@ -274,7 +274,7 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 
     c = rev->data;
 
-    if (c->qs) {
+    if (c->quic) {
 
         if (!rev->active && !rev->ready) {
             rev->active = 1;
@@ -368,7 +368,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 
 #if (NGX_QUIC)
 
-    if (c->qs) {
+    if (c->quic) {
 
         if (!wev->active && !wev->ready) {
             wev->active = 1;
@@ -953,7 +953,7 @@ ngx_send_lowat(ngx_connection_t *c, size_t lowat)
     int  sndlowat;
 
 #if (NGX_QUIC)
-    if (c->qs) {
+    if (c->quic) {
         return NGX_OK;
     }
 #endif
