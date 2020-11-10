@@ -18,7 +18,7 @@ typedef struct {
 
 static ngx_int_t ngx_http_chunked_filter_init(ngx_conf_t *cf);
 static ngx_chain_t *ngx_http_chunked_create_trailers(ngx_http_request_t *r,
-    ngx_http_chunked_filter_ctx_t *ctx, size_t size);
+    ngx_http_chunked_filter_ctx_t *ctx);
 
 
 static ngx_http_module_t  ngx_http_chunked_filter_module_ctx = {
@@ -204,8 +204,25 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         out = tl;
     }
 
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+
+        if (cl->buf->last_buf) {
+            tl = ngx_http_v3_create_trailers(r);
+            if (tl == NULL) {
+                return NGX_ERROR;
+            }
+
+            cl->buf->last_buf = 0;
+
+            *ll = tl;
+        }
+
+    } else
+#endif
+
     if (cl->buf->last_buf) {
-        tl = ngx_http_chunked_create_trailers(r, ctx, size);
+        tl = ngx_http_chunked_create_trailers(r, ctx);
         if (tl == NULL) {
             return NGX_ERROR;
         }
@@ -214,12 +231,11 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         *ll = tl;
 
-    } else if (size > 0
-#if (NGX_HTTP_V3)
-               && r->http_version != NGX_HTTP_VERSION_30
-#endif
-               )
-    {
+        if (size == 0) {
+            tl->buf->pos += 2;
+        }
+
+    } else if (size > 0) {
         tl = ngx_chain_get_free_buf(r->pool, &ctx->free);
         if (tl == NULL) {
             return NGX_ERROR;
@@ -250,7 +266,7 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 static ngx_chain_t *
 ngx_http_chunked_create_trailers(ngx_http_request_t *r,
-    ngx_http_chunked_filter_ctx_t *ctx, size_t size)
+    ngx_http_chunked_filter_ctx_t *ctx)
 {
     size_t            len;
     ngx_buf_t        *b;
@@ -258,12 +274,6 @@ ngx_http_chunked_create_trailers(ngx_http_request_t *r,
     ngx_chain_t      *cl;
     ngx_list_part_t  *part;
     ngx_table_elt_t  *header;
-
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
-        return ngx_http_v3_create_trailers(r);
-    }
-#endif
 
     len = 0;
 
@@ -317,10 +327,7 @@ ngx_http_chunked_create_trailers(ngx_http_request_t *r,
 
     b->last = b->pos;
 
-    if (size > 0) {
-        *b->last++ = CR; *b->last++ = LF;
-    }
-
+    *b->last++ = CR; *b->last++ = LF;
     *b->last++ = '0';
     *b->last++ = CR; *b->last++ = LF;
 
