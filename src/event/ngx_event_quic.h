@@ -60,6 +60,8 @@
 
 #define NGX_QUIC_MAX_SERVER_IDS              8
 
+#define ngx_quic_get_connection(c)           ((ngx_quic_connection_t *)(c)->udp)
+
 
 typedef struct {
     /* configurable */

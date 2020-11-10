@@ -151,7 +151,6 @@ struct ngx_connection_s {
     ngx_proxy_protocol_t   *proxy_protocol;
 
 #if (NGX_QUIC || NGX_COMPAT)
-    ngx_quic_connection_t  *quic;
     ngx_quic_stream_t      *qs;
 #endif
 
