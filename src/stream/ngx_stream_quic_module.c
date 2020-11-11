@@ -228,7 +228,6 @@ ngx_stream_quic_create_srv_conf(ngx_conf_t *cf)
      *     conf->tp.original_dcid = { 0, NULL };
      *     conf->tp.initial_scid = { 0, NULL };
      *     conf->tp.retry_scid = { 0, NULL };
-     *     conf->tp.stateless_reset_token = { 0 }
      *     conf->tp.preferred_address = NULL
      *     conf->sr_token_key = { 0, NULL }
      *     conf->require_alpn = 0;
