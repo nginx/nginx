@@ -317,6 +317,19 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->sr_token_key, prev->sr_token_key, "");
 
+    if (conf->sr_token_key.len == 0) {
+        conf->sr_token_key.len = NGX_QUIC_DEFAULT_SRT_KEY_LEN;
+
+        conf->sr_token_key.data = ngx_pnalloc(cf->pool, conf->sr_token_key.len);
+        if (conf->sr_token_key.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (RAND_bytes(conf->sr_token_key.data, conf->sr_token_key.len) <= 0) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     conf->ssl = &sscf->ssl;
 

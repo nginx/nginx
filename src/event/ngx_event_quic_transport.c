@@ -1883,11 +1883,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     }
 #endif
 
-    if (tp->sr_enabled) {
-        len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
-        len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
-        len += NGX_QUIC_SR_TOKEN_LEN;
-    }
+    len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
+    len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
+    len += NGX_QUIC_SR_TOKEN_LEN;
 
     if (pos == NULL) {
         return len;
@@ -1935,11 +1933,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     }
 #endif
 
-    if (tp->sr_enabled) {
-        ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
-        ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);
-        p = ngx_cpymem(p, tp->sr_token, NGX_QUIC_SR_TOKEN_LEN);
-    }
+    ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
+    ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);
+    p = ngx_cpymem(p, tp->sr_token, NGX_QUIC_SR_TOKEN_LEN);
 
     return p - pos;
 }

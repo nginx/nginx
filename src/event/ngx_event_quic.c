@@ -1133,10 +1133,6 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic handle stateless reset output");
 
-    if (conf->sr_token_key.len == 0) {
-        return NGX_DECLINED;
-    }
-
     if (pkt->len <= NGX_QUIC_MIN_PKT_LEN) {
         return NGX_DECLINED;
     }
@@ -1573,19 +1569,15 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-    if (qc->conf->sr_token_key.len) {
-        qc->tp.sr_enabled = 1;
-
-        if (ngx_quic_new_sr_token(c, &qc->dcid, &qc->conf->sr_token_key,
-                                  qc->tp.sr_token)
-            != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-
-        ngx_quic_hexdump(c->log, "quic stateless reset token",
-                         qc->tp.sr_token, (size_t) NGX_QUIC_SR_TOKEN_LEN);
+    if (ngx_quic_new_sr_token(c, &qc->dcid, &qc->conf->sr_token_key,
+                              qc->tp.sr_token)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
     }
+
+    ngx_quic_hexdump(c->log, "quic stateless reset token",
+                     qc->tp.sr_token, (size_t) NGX_QUIC_SR_TOKEN_LEN);
 
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
     /* always succeeds */

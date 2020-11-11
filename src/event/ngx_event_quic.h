@@ -27,6 +27,7 @@
 
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
+#define NGX_QUIC_DEFAULT_SRT_KEY_LEN         32
 
 #define NGX_QUIC_RETRY_TIMEOUT               3000
 #define NGX_QUIC_RETRY_LIFETIME              30000
@@ -82,7 +83,6 @@ typedef struct {
     ngx_str_t                  initial_scid;
     ngx_str_t                  retry_scid;
     u_char                     sr_token[NGX_QUIC_SR_TOKEN_LEN];
-    ngx_uint_t                 sr_enabled;
 
     /* TODO */
     void                      *preferred_address;
