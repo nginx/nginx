@@ -104,9 +104,9 @@ static ngx_command_t  ngx_http_quic_commands[] = {
       offsetof(ngx_quic_conf_t, tp.ack_delay_exponent),
       &ngx_http_quic_ack_delay_exponent_bounds },
 
-    { ngx_string("quic_active_migration"),
+    { ngx_string("quic_disable_active_migration"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
+      ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_quic_conf_t, tp.disable_active_migration),
       NULL },
@@ -246,7 +246,7 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
     conf->tp.initial_max_streams_bidi = NGX_CONF_UNSET_UINT;
     conf->tp.initial_max_streams_uni = NGX_CONF_UNSET_UINT;
     conf->tp.ack_delay_exponent = NGX_CONF_UNSET_UINT;
-    conf->tp.disable_active_migration = NGX_CONF_UNSET_UINT;
+    conf->tp.disable_active_migration = NGX_CONF_UNSET;
     conf->tp.active_connection_id_limit = NGX_CONF_UNSET_UINT;
 
     conf->retry = NGX_CONF_UNSET;
@@ -301,8 +301,8 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->tp.ack_delay_exponent,
                               NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT);
 
-    ngx_conf_merge_uint_value(conf->tp.disable_active_migration,
-                              prev->tp.disable_active_migration, 1);
+    ngx_conf_merge_value(conf->tp.disable_active_migration,
+                              prev->tp.disable_active_migration, 0);
 
     ngx_conf_merge_uint_value(conf->tp.active_connection_id_limit,
                               prev->tp.active_connection_id_limit, 2);

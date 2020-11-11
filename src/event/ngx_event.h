@@ -167,6 +167,18 @@ struct ngx_event_aio_s {
 #endif
 
 
+#if !(NGX_WIN32)
+
+struct ngx_udp_connection_s {
+    ngx_rbtree_node_t          node;
+    ngx_connection_t          *connection;
+    ngx_str_t                  key;
+    ngx_buf_t                 *buffer;
+};
+
+#endif
+
+
 typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
@@ -501,6 +513,8 @@ void ngx_event_accept(ngx_event_t *ev);
 void ngx_event_recvmsg(ngx_event_t *ev);
 void ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
+void ngx_insert_udp_connection(ngx_connection_t *c, ngx_udp_connection_t *udp,
+    ngx_str_t *key);
 #endif
 void ngx_delete_udp_connection(void *data);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);

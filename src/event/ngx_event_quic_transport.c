@@ -10,6 +10,11 @@
 #include <ngx_event_quic_transport.h>
 
 
+#define NGX_QUIC_LONG_DCID_LEN_OFFSET  5
+#define NGX_QUIC_LONG_DCID_OFFSET      6
+#define NGX_QUIC_SHORT_DCID_OFFSET     1
+
+
 #if (NGX_HAVE_NONALIGNED)
 
 #define ngx_quic_parse_uint16(p)  ntohs(*(uint16_t *) (p))
@@ -95,6 +100,8 @@ static size_t ngx_quic_create_max_data(u_char *p,
     ngx_quic_max_data_frame_t *md);
 static size_t ngx_quic_create_path_response(u_char *p,
     ngx_quic_path_challenge_frame_t *pc);
+static size_t ngx_quic_create_new_connection_id(u_char *p,
+    ngx_quic_new_conn_id_frame_t *rcid);
 static size_t ngx_quic_create_retire_connection_id(u_char *p,
     ngx_quic_retire_cid_frame_t *rcid);
 static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
@@ -318,6 +325,46 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
     }
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t n,
+    ngx_str_t *dcid)
+{
+    size_t  len, offset;
+
+    if (n == 0) {
+        goto failed;
+    }
+
+    if (ngx_quic_long_pkt(*data)) {
+        if (n < NGX_QUIC_LONG_DCID_LEN_OFFSET + 1) {
+            goto failed;
+        }
+
+        len = data[NGX_QUIC_LONG_DCID_LEN_OFFSET];
+        offset = NGX_QUIC_LONG_DCID_OFFSET;
+
+    } else {
+        len = NGX_QUIC_SERVER_CID_LEN;
+        offset = NGX_QUIC_SHORT_DCID_OFFSET;
+    }
+
+    if (n < len + offset) {
+        goto failed;
+    }
+
+    dcid->len = len;
+    dcid->data = &data[offset];
+
+    return NGX_OK;
+
+failed:
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0, "quic malformed packet");
+
+    return NGX_ERROR;
 }
 
 
@@ -1222,6 +1269,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_PATH_RESPONSE:
         return ngx_quic_create_path_response(p, &f->u.path_response);
 
+    case NGX_QUIC_FT_NEW_CONNECTION_ID:
+        return ngx_quic_create_new_connection_id(p, &f->u.ncid);
+
     case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
         return ngx_quic_create_retire_connection_id(p, &f->u.retire_cid);
 
@@ -1705,6 +1755,35 @@ ngx_quic_create_path_response(u_char *p, ngx_quic_path_challenge_frame_t *pc)
 
 
 static size_t
+ngx_quic_create_new_connection_id(u_char *p, ngx_quic_new_conn_id_frame_t *ncid)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_NEW_CONNECTION_ID);
+        len += ngx_quic_varint_len(ncid->seqnum);
+        len += ngx_quic_varint_len(ncid->retire);
+        len++;
+        len += ncid->len;
+        len += NGX_QUIC_SR_TOKEN_LEN;
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_NEW_CONNECTION_ID);
+    ngx_quic_build_int(&p, ncid->seqnum);
+    ngx_quic_build_int(&p, ncid->retire);
+    *p++ = ncid->len;
+    p = ngx_cpymem(p, ncid->cid, ncid->len);
+    p = ngx_cpymem(p, ncid->srt, NGX_QUIC_SR_TOKEN_LEN);
+
+    return p - start;
+}
+
+
+static size_t
 ngx_quic_create_retire_connection_id(u_char *p,
     ngx_quic_retire_cid_frame_t *rcid)
 {
@@ -1783,6 +1862,11 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
         *clen = len;
     }
 
+    if (tp->disable_active_migration) {
+        len += ngx_quic_varint_len(NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION);
+        len += ngx_quic_varint_len(0);
+    }
+
     len += ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
                            tp->active_connection_id_limit);
 
@@ -1829,6 +1913,11 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
 
     ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                      tp->max_idle_timeout);
+
+    if (tp->disable_active_migration) {
+        ngx_quic_build_int(&p, NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION);
+        ngx_quic_build_int(&p, 0);
+    }
 
     ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
                      tp->active_connection_id_limit);

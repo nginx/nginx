@@ -121,11 +121,18 @@ struct ngx_quic_connection_s {
     ngx_str_t                         odcid; /* original server ID */
     ngx_str_t                         token;
 
+    struct sockaddr                  *sockaddr;
+    socklen_t                         socklen;
+
     ngx_queue_t                       client_ids;
+    ngx_queue_t                       server_ids;
     ngx_queue_t                       free_client_ids;
+    ngx_queue_t                       free_server_ids;
     ngx_uint_t                        nclient_ids;
+    ngx_uint_t                        nserver_ids;
     uint64_t                          max_retired_seqnum;
     uint64_t                          client_seqnum;
+    uint64_t                          server_seqnum;
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
@@ -185,6 +192,15 @@ typedef struct {
 } ngx_quic_client_id_t;
 
 
+typedef struct {
+    ngx_udp_connection_t              udp;
+    ngx_queue_t                       queue;
+    uint64_t                          seqnum;
+    size_t                            len;
+    u_char                            id[NGX_QUIC_CID_LEN_MAX];
+} ngx_quic_server_id_t;
+
+
 typedef ngx_int_t (*ngx_quic_frame_handler_pt)(ngx_connection_t *c,
     ngx_quic_frame_t *frame, void *data);
 
@@ -217,8 +233,7 @@ static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
     ngx_quic_header_t *inpkt);
-static ngx_int_t ngx_quic_new_dcid(ngx_connection_t *c,
-    ngx_quic_connection_t *qc, ngx_str_t *odcid);
+static ngx_int_t ngx_quic_create_server_id(ngx_connection_t *c, u_char *id);
 static ngx_int_t ngx_quic_send_retry(ngx_connection_t *c);
 static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
 static ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
@@ -304,7 +319,15 @@ static ngx_int_t ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f);
 static ngx_int_t ngx_quic_retire_connection_id(ngx_connection_t *c,
     enum ssl_encryption_level_t level, uint64_t seqnum);
+static ngx_int_t ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_retire_cid_frame_t *f);
+static ngx_int_t ngx_quic_issue_server_ids(ngx_connection_t *c);
+static void ngx_quic_clear_temp_server_ids(ngx_connection_t *c);
+static ngx_quic_server_id_t *ngx_quic_insert_server_id(ngx_connection_t *c,
+    ngx_str_t *id);
 static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
+    ngx_quic_connection_t *qc);
+static ngx_quic_server_id_t *ngx_quic_alloc_server_id(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 
 static void ngx_quic_queue_frame(ngx_quic_connection_t *qc,
@@ -439,7 +462,8 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
         break;
 
     case NGX_QUIC_FT_NEW_CONNECTION_ID:
-        p = ngx_slprintf(p, last, "NCID seq:%uL retire:%uL len:%ud",
+        p = ngx_slprintf(p, last,
+                         "NEW_CONNECTION_ID seq:%uL retire:%uL len:%ud",
                          f->u.ncid.seqnum, f->u.ncid.retire, f->u.ncid.len);
         break;
 
@@ -983,7 +1007,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     ngx_queue_init(&qc->free_frames);
     ngx_queue_init(&qc->client_ids);
+    ngx_queue_init(&qc->server_ids);
     ngx_queue_init(&qc->free_client_ids);
+    ngx_queue_init(&qc->free_server_ids);
 
     qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
     qc->rttvar = NGX_QUIC_INITIAL_RTT / 2;
@@ -992,6 +1018,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     /*
      * qc->latest_rtt = 0
      * qc->nclient_ids = 0
+     * qc->nserver_ids = 0
      * qc->max_retired_seqnum = 0
      */
 
@@ -1010,6 +1037,16 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->conf = conf;
     qc->tp = conf->tp;
 
+    if (qc->tp.disable_active_migration) {
+        qc->sockaddr = ngx_palloc(c->pool, c->socklen);
+        if (qc->sockaddr == NULL) {
+            return NULL;
+        }
+
+        ngx_memcpy(qc->sockaddr, c->sockaddr, c->socklen);
+        qc->socklen = c->socklen;
+    }
+
     ctp = &qc->ctp;
     ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
@@ -1026,7 +1063,19 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->congestion.ssthresh = (size_t) -1;
     qc->congestion.recovery_start = ngx_current_msec;
 
-    if (ngx_quic_new_dcid(c, qc, &pkt->dcid) != NGX_OK) {
+    qc->odcid.len = pkt->dcid.len;
+    qc->odcid.data = ngx_pstrdup(c->pool, &pkt->dcid);
+    if (qc->odcid.data == NULL) {
+        return NULL;
+    }
+
+    qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
+    qc->dcid.data = ngx_pnalloc(c->pool, qc->dcid.len);
+    if (qc->dcid.data == NULL) {
+        return NULL;
+    }
+
+    if (ngx_quic_create_server_id(c, qc->dcid.data) != NGX_OK) {
         return NULL;
     }
 
@@ -1054,6 +1103,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_queue_insert_tail(&qc->client_ids, &cid->queue);
     qc->nclient_ids++;
     qc->client_seqnum = 0;
+
+    qc->server_seqnum = NGX_QUIC_UNSET_PN;
 
     return qc;
 }
@@ -1186,26 +1237,14 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 
 
 static ngx_int_t
-ngx_quic_new_dcid(ngx_connection_t *c, ngx_quic_connection_t *qc,
-    ngx_str_t *odcid)
+ngx_quic_create_server_id(ngx_connection_t *c, u_char *id)
 {
-    qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
-    qc->dcid.data = ngx_pnalloc(c->pool, NGX_QUIC_SERVER_CID_LEN);
-    if (qc->dcid.data == NULL) {
+    if (RAND_bytes(id, NGX_QUIC_SERVER_CID_LEN) != 1) {
         return NGX_ERROR;
     }
 
-    if (RAND_bytes(qc->dcid.data, NGX_QUIC_SERVER_CID_LEN) != 1) {
-        return NGX_ERROR;
-    }
-
-    ngx_quic_hexdump(c->log, "quic server CID", qc->dcid.data, qc->dcid.len);
-
-    qc->odcid.len = odcid->len;
-    qc->odcid.data = ngx_pstrdup(c->pool, odcid);
-    if (qc->odcid.data == NULL) {
-        return NGX_ERROR;
-    }
+    ngx_quic_hexdump(c->log, "quic create server id",
+                     id, NGX_QUIC_SERVER_CID_LEN);
 
     return NGX_OK;
 }
@@ -1253,6 +1292,10 @@ ngx_quic_send_retry(ngx_connection_t *c)
 #endif
     c->quic->tp.retry_scid = c->quic->dcid;
     c->quic->in_retry = 1;
+
+    if (ngx_quic_insert_server_id(c, &c->quic->dcid) == NULL) {
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
@@ -1629,6 +1672,16 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
+    if (qc->tp.disable_active_migration) {
+        if (c->socklen != qc->socklen
+            || ngx_memcmp(c->sockaddr, qc->sockaddr, c->socklen) != 0)
+        {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic dropping packet from new address");
+            return;
+        }
+    }
+
     b.last += n;
     qc->received += n;
 
@@ -1694,7 +1747,9 @@ static ngx_int_t
 ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
     ngx_uint_t              i;
+    ngx_queue_t            *q;
     ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_server_id_t   *sid;
     ngx_quic_connection_t  *qc;
 
     qc = c->quic;
@@ -1799,6 +1854,15 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         ngx_quic_free_frames(c, &qc->send_ctx[i].frames);
         ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
+    }
+
+    while (!ngx_queue_empty(&qc->server_ids)) {
+        q = ngx_queue_head(&qc->server_ids);
+        sid = ngx_queue_data(q, ngx_quic_server_id_t, queue);
+
+        ngx_queue_remove(q);
+        ngx_rbtree_delete(&c->listening->rbtree, &sid->udp.node);
+        qc->nserver_ids--;
     }
 
     if (qc->close.timer_set) {
@@ -2065,7 +2129,21 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                 return NGX_DECLINED;
             }
 
-            if (ngx_quic_new_dcid(c, qc, &pkt->dcid) != NGX_OK) {
+            qc->odcid.len = pkt->dcid.len;
+            qc->odcid.data = ngx_pstrdup(c->pool, &pkt->dcid);
+            if (qc->odcid.data == NULL) {
+                return NGX_ERROR;
+            }
+
+            ngx_quic_clear_temp_server_ids(c);
+
+            if (ngx_quic_create_server_id(c, qc->dcid.data) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            qc->server_seqnum = 0;
+
+            if (ngx_quic_insert_server_id(c, &qc->dcid) == NULL) {
                 return NGX_ERROR;
             }
 
@@ -2134,6 +2212,16 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
 
             if (ngx_quic_init_secrets(c) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_quic_insert_server_id(c, &qc->odcid) == NULL) {
+                return NGX_ERROR;
+            }
+
+            qc->server_seqnum = 0;
+
+            if (ngx_quic_insert_server_id(c, &qc->dcid) == NULL) {
                 return NGX_ERROR;
             }
 
@@ -2270,6 +2358,10 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
         ngx_quic_free_frame(c, f);
     }
 
+    if (level == ssl_encryption_initial) {
+        ngx_quic_clear_temp_server_ids(c);
+    }
+
     ctx->send_ack = 0;
 }
 
@@ -2277,43 +2369,12 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
 static ngx_int_t
 ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
-    ngx_str_t             *dcid;
     ngx_queue_t           *q;
-    ngx_quic_send_ctx_t   *ctx;
     ngx_quic_client_id_t  *cid;
 
-    dcid = (pkt->level == ssl_encryption_early_data) ? &qc->odcid : &qc->dcid;
-
-    if (pkt->dcid.len == dcid->len
-        && ngx_memcmp(pkt->dcid.data, dcid->data, dcid->len) == 0)
-    {
-        if (pkt->level == ssl_encryption_application) {
-            return NGX_OK;
-        }
-
-        goto found;
+    if (pkt->level == ssl_encryption_application) {
+        return NGX_OK;
     }
-
-    /*
-     * a packet sent in response to an initial client packet might be lost,
-     * thus check also for old dcid
-     */
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
-
-    if (pkt->level == ssl_encryption_initial
-        && ctx->largest_ack == NGX_QUIC_UNSET_PN)
-    {
-        if (pkt->dcid.len == qc->odcid.len
-            && ngx_memcmp(pkt->dcid.data, qc->odcid.data, qc->odcid.len) == 0)
-        {
-            goto found;
-        }
-    }
-
-    ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic dcid");
-    return NGX_ERROR;
-
-found:
 
     for (q = ngx_queue_head(&qc->client_ids);
          q != ngx_queue_sentinel(&qc->client_ids);
@@ -2533,6 +2594,16 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
+
+            if (ngx_quic_handle_retire_connection_id_frame(c, pkt,
+                                                           &frame.u.retire_cid)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_PATH_RESPONSE:
 
             /* TODO: handle */
@@ -3638,6 +3709,10 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
      */
     ngx_quic_discard_ctx(c, ssl_encryption_handshake);
 
+    if (ngx_quic_issue_server_ids(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
@@ -4265,6 +4340,173 @@ ngx_quic_retire_connection_id(ngx_connection_t *c,
 }
 
 
+static ngx_int_t
+ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_retire_cid_frame_t *f)
+{
+    ngx_queue_t            *q;
+    ngx_quic_server_id_t   *sid;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    for (q = ngx_queue_head(&qc->server_ids);
+         q != ngx_queue_sentinel(&qc->server_ids);
+         q = ngx_queue_next(q))
+    {
+        sid = ngx_queue_data(q, ngx_quic_server_id_t, queue);
+
+        if (sid->seqnum == f->sequence_number) {
+            ngx_queue_remove(q);
+            ngx_rbtree_delete(&c->listening->rbtree, &sid->udp.node);
+            qc->nserver_ids--;
+
+            if (c->udp != &sid->udp) {
+                ngx_queue_insert_tail(&qc->free_server_ids, &sid->queue);
+            }
+
+            break;
+        }
+    }
+
+    return ngx_quic_issue_server_ids(c);
+}
+
+
+static ngx_int_t
+ngx_quic_issue_server_ids(ngx_connection_t *c)
+{
+    ngx_str_t               dcid;
+    ngx_uint_t              n;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_server_id_t   *sid;
+    ngx_quic_connection_t  *qc;
+    u_char                  id[NGX_QUIC_SERVER_CID_LEN];
+
+    qc = c->quic;
+
+    n = ngx_min(NGX_QUIC_MAX_SERVER_IDS, qc->ctp.active_connection_id_limit);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic issue server ids has:%ui max:%ui", qc->nserver_ids, n);
+
+    while (qc->nserver_ids < n) {
+        if (ngx_quic_create_server_id(c, id) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        dcid.len = NGX_QUIC_SERVER_CID_LEN;
+        dcid.data = id;
+
+        sid = ngx_quic_insert_server_id(c, &dcid);
+        if (sid == NULL) {
+            return NGX_ERROR;
+        }
+
+        frame = ngx_quic_alloc_frame(c, 0);
+        if (frame == NULL) {
+            return NGX_ERROR;
+        }
+
+        frame->level = ssl_encryption_application;
+        frame->type = NGX_QUIC_FT_NEW_CONNECTION_ID;
+        frame->u.ncid.seqnum = sid->seqnum;
+        frame->u.ncid.retire = 0;
+        frame->u.ncid.len = NGX_QUIC_SERVER_CID_LEN;
+        ngx_memcpy(frame->u.ncid.cid, id, NGX_QUIC_SERVER_CID_LEN);
+
+        if (ngx_quic_new_sr_token(c, &dcid, &qc->conf->sr_token_key,
+                                  frame->u.ncid.srt)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        ngx_quic_queue_frame(c->quic, frame);
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_quic_clear_temp_server_ids(ngx_connection_t *c)
+{
+    ngx_queue_t            *q, *next;
+    ngx_quic_server_id_t   *sid;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic clear temp server ids");
+
+    for (q = ngx_queue_head(&qc->server_ids);
+         q != ngx_queue_sentinel(&qc->server_ids);
+         q = next)
+    {
+        next = ngx_queue_next(q);
+        sid = ngx_queue_data(q, ngx_quic_server_id_t, queue);
+
+        if (sid->seqnum != NGX_QUIC_UNSET_PN) {
+            continue;
+        }
+
+        ngx_queue_remove(q);
+        ngx_rbtree_delete(&c->listening->rbtree, &sid->udp.node);
+        qc->nserver_ids--;
+
+        if (c->udp != &sid->udp) {
+            ngx_queue_insert_tail(&qc->free_server_ids, &sid->queue);
+        }
+    }
+}
+
+
+static ngx_quic_server_id_t *
+ngx_quic_insert_server_id(ngx_connection_t *c, ngx_str_t *id)
+{
+    ngx_str_t               dcid;
+    ngx_quic_server_id_t   *sid;
+    ngx_quic_connection_t  *qc;
+
+    qc = c->quic;
+
+    sid = ngx_quic_alloc_server_id(c, qc);
+    if (sid == NULL) {
+        return NULL;
+    }
+
+    sid->seqnum = qc->server_seqnum;
+
+    if (qc->server_seqnum != NGX_QUIC_UNSET_PN) {
+        qc->server_seqnum++;
+    }
+
+    sid->len = id->len;
+    ngx_memcpy(sid->id, id->data, id->len);
+
+    ngx_queue_insert_tail(&qc->server_ids, &sid->queue);
+    qc->nserver_ids++;
+
+    dcid.data = sid->id;
+    dcid.len = sid->len;
+
+    ngx_insert_udp_connection(c, &sid->udp, &dcid);
+
+    if (c->udp == NULL) {
+        c->udp = &sid->udp;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic insert server id seqnum:%uL", sid->seqnum);
+
+    ngx_quic_hexdump(c->log, "quic server id", id->data, id->len);
+
+    return sid;
+}
+
+
 static ngx_quic_client_id_t *
 ngx_quic_alloc_client_id(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
@@ -4289,6 +4531,33 @@ ngx_quic_alloc_client_id(ngx_connection_t *c, ngx_quic_connection_t *qc)
     }
 
     return cid;
+}
+
+
+static ngx_quic_server_id_t *
+ngx_quic_alloc_server_id(ngx_connection_t *c, ngx_quic_connection_t *qc)
+{
+    ngx_queue_t           *q;
+    ngx_quic_server_id_t  *sid;
+
+    if (!ngx_queue_empty(&qc->free_server_ids)) {
+
+        q = ngx_queue_head(&qc->free_server_ids);
+        sid = ngx_queue_data(q, ngx_quic_server_id_t, queue);
+
+        ngx_queue_remove(&sid->queue);
+
+        ngx_memzero(sid, sizeof(ngx_quic_server_id_t));
+
+    } else {
+
+        sid = ngx_pcalloc(c->pool, sizeof(ngx_quic_server_id_t));
+        if (sid == NULL) {
+            return NULL;
+        }
+    }
+
+    return sid;
 }
 
 

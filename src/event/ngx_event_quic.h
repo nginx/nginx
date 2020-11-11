@@ -58,6 +58,8 @@
 
 #define NGX_QUIC_SR_TOKEN_LEN                16
 
+#define NGX_QUIC_MAX_SERVER_IDS              8
+
 
 typedef struct {
     /* configurable */
@@ -72,8 +74,8 @@ typedef struct {
     ngx_uint_t                 initial_max_streams_bidi;
     ngx_uint_t                 initial_max_streams_uni;
     ngx_uint_t                 ack_delay_exponent;
-    ngx_uint_t                 disable_active_migration;
     ngx_uint_t                 active_connection_id_limit;
+    ngx_flag_t                 disable_active_migration;
     ngx_str_t                  original_dcid;
     ngx_str_t                  initial_scid;
     ngx_str_t                  retry_scid;
@@ -123,6 +125,8 @@ ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
 uint32_t ngx_quic_version(ngx_connection_t *c);
+ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
+    ngx_str_t *dcid);
 
 
 /********************************* DEBUG *************************************/
