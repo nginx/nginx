@@ -2158,6 +2158,12 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
             ngx_quic_clear_temp_server_ids(c);
 
+            qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
+            qc->dcid.data = ngx_pnalloc(c->pool, qc->dcid.len);
+            if (qc->dcid.data == NULL) {
+                return NGX_ERROR;
+            }
+
             if (ngx_quic_create_server_id(c, qc->dcid.data) != NGX_OK) {
                 return NGX_ERROR;
             }
