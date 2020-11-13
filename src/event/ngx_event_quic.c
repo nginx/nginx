@@ -114,7 +114,7 @@ typedef struct {
 } ngx_quic_send_ctx_t;
 
 
-struct ngx_quic_connection_s {
+typedef struct {
     ngx_udp_connection_t              udp;
 
     uint32_t                          version;
@@ -182,7 +182,7 @@ struct ngx_quic_connection_s {
     unsigned                          in_retry:1;
     unsigned                          initialized:1;
     unsigned                          validated:1;
-};
+} ngx_quic_connection_t;
 
 
 typedef struct {
