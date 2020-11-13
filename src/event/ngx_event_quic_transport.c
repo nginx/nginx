@@ -160,7 +160,7 @@ ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
     }
 
     p = pos;
-    len = 1 << ((*p & 0xc0) >> 6);
+    len = 1 << (*p >> 6);
 
     value = *p++ & 0x3f;
 
