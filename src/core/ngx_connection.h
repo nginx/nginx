@@ -148,17 +148,17 @@ struct ngx_connection_s {
     socklen_t           socklen;
     ngx_str_t           addr_text;
 
-    ngx_proxy_protocol_t   *proxy_protocol;
+    ngx_proxy_protocol_t  *proxy_protocol;
 
 #if (NGX_QUIC || NGX_COMPAT)
-    ngx_quic_stream_t      *quic;
+    ngx_quic_stream_t     *quic;
 #endif
 
 #if (NGX_SSL || NGX_COMPAT)
-    ngx_ssl_connection_t   *ssl;
+    ngx_ssl_connection_t  *ssl;
 #endif
 
-    ngx_udp_connection_t   *udp;
+    ngx_udp_connection_t  *udp;
 
     struct sockaddr    *local_sockaddr;
     socklen_t           local_socklen;
