@@ -4858,7 +4858,7 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     if (start->level == ssl_encryption_initial && pkt.need_ack) {
         pad_len = NGX_QUIC_MIN_INITIAL_SIZE - EVP_GCM_TLS_TAG_LEN
-                  - ngx_quic_create_long_header(&pkt, NULL, out.len, NULL);
+                  - ngx_quic_create_header(&pkt, NULL, out.len, NULL);
         pad_len = ngx_min(pad_len, NGX_QUIC_MIN_INITIAL_SIZE);
 
     } else {

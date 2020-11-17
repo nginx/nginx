@@ -837,7 +837,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
 
     ad.data = res->data;
-    ad.len = ngx_quic_create_long_header(pkt, ad.data, out.len, &pnp);
+    ad.len = ngx_quic_create_header(pkt, ad.data, out.len, &pnp);
 
     out.data = res->data + ad.len;
 
@@ -895,7 +895,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
 
     ad.data = res->data;
-    ad.len = ngx_quic_create_short_header(pkt, ad.data, out.len, &pnp);
+    ad.len = ngx_quic_create_header(pkt, ad.data, out.len, &pnp);
 
     out.data = res->data + ad.len;
 
