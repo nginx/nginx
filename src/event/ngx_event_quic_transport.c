@@ -74,12 +74,12 @@ static u_char *ngx_quic_read_bytes(u_char *pos, u_char *end, size_t len,
 static u_char *ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len,
     u_char *dst);
 
-static ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
     size_t dcid_len);
+static ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_supported_version(uint32_t version);
 static ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_supported_version(uint32_t version);
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
@@ -328,43 +328,34 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
 }
 
 
-ngx_int_t
-ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t n,
-    ngx_str_t *dcid)
+static ngx_int_t
+ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
 {
-    size_t  len, offset;
+    u_char  *p, *end;
 
-    if (n == 0) {
-        goto failed;
+    p = pkt->raw->pos;
+    end = pkt->data + pkt->len;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic packet rx short flags:%xd", pkt->flags);
+
+    if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
+        return NGX_ERROR;
     }
 
-    if (ngx_quic_long_pkt(*data)) {
-        if (n < NGX_QUIC_LONG_DCID_LEN_OFFSET + 1) {
-            goto failed;
-        }
+    pkt->dcid.len = dcid_len;
 
-        len = data[NGX_QUIC_LONG_DCID_LEN_OFFSET];
-        offset = NGX_QUIC_LONG_DCID_OFFSET;
-
-    } else {
-        len = NGX_QUIC_SERVER_CID_LEN;
-        offset = NGX_QUIC_SHORT_DCID_OFFSET;
+    p = ngx_quic_read_bytes(p, end, dcid_len, &pkt->dcid.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic packet is too small to read dcid");
+        return NGX_ERROR;
     }
 
-    if (n < len + offset) {
-        goto failed;
-    }
-
-    dcid->len = len;
-    dcid->data = &data[offset];
+    pkt->raw->pos = p;
 
     return NGX_OK;
-
-failed:
-
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0, "quic malformed packet");
-
-    return NGX_ERROR;
 }
 
 
@@ -440,6 +431,150 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     pkt->raw->pos = p;
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_supported_version(uint32_t version)
+{
+    ngx_uint_t  i;
+
+    for (i = 0; i < NGX_QUIC_NVERSIONS; i++) {
+        if (ngx_quic_versions[i] == version) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+static ngx_int_t
+ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
+{
+    u_char    *p, *end;
+    uint64_t   varint;
+
+    p = pkt->raw->pos;
+
+    end = pkt->raw->last;
+
+    pkt->log->action = "parsing quic initial header";
+
+    p = ngx_quic_parse_int(p, end, &varint);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic failed to parse token length");
+        return NGX_ERROR;
+    }
+
+    pkt->token.len = varint;
+
+    p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic packet too small to read token data");
+        return NGX_ERROR;
+    }
+
+    p = ngx_quic_parse_int(p, end, &varint);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic packet rx initial len:%uL", varint);
+
+    if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic truncated initial packet");
+        return NGX_ERROR;
+    }
+
+    pkt->raw->pos = p;
+    pkt->len = p + varint - pkt->data;
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_quic_hexdump(pkt->log, "quic DCID", pkt->dcid.data, pkt->dcid.len);
+    ngx_quic_hexdump(pkt->log, "quic SCID", pkt->scid.data, pkt->scid.len);
+    ngx_quic_hexdump(pkt->log, "quic token", pkt->token.data, pkt->token.len);
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
+{
+    u_char    *p, *end;
+    uint64_t   plen;
+
+    p = pkt->raw->pos;
+    end = pkt->raw->last;
+
+    pkt->log->action = "parsing quic handshake header";
+
+    p = ngx_quic_parse_int(p, end, &plen);
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic packet rx handshake len:%uL", plen);
+
+    if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic truncated handshake packet");
+        return NGX_ERROR;
+    }
+
+    pkt->raw->pos = p;
+    pkt->len = p + plen - pkt->data;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t n,
+    ngx_str_t *dcid)
+{
+    size_t  len, offset;
+
+    if (n == 0) {
+        goto failed;
+    }
+
+    if (ngx_quic_long_pkt(*data)) {
+        if (n < NGX_QUIC_LONG_DCID_LEN_OFFSET + 1) {
+            goto failed;
+        }
+
+        len = data[NGX_QUIC_LONG_DCID_LEN_OFFSET];
+        offset = NGX_QUIC_LONG_DCID_OFFSET;
+
+    } else {
+        len = NGX_QUIC_SERVER_CID_LEN;
+        offset = NGX_QUIC_SHORT_DCID_OFFSET;
+    }
+
+    if (n < len + offset) {
+        goto failed;
+    }
+
+    dcid->len = len;
+    dcid->data = &data[offset];
+
+    return NGX_OK;
+
+failed:
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0, "quic malformed packet");
+
+    return NGX_ERROR;
 }
 
 
@@ -587,141 +722,6 @@ ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
     p = ngx_cpymem(p, pkt->token.data, pkt->token.len);
 
     return p - out;
-}
-
-
-static ngx_int_t
-ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
-{
-    u_char  *p, *end;
-
-    p = pkt->raw->pos;
-    end = pkt->data + pkt->len;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx short flags:%xd", pkt->flags);
-
-    if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
-        return NGX_ERROR;
-    }
-
-    pkt->dcid.len = dcid_len;
-
-    p = ngx_quic_read_bytes(p, end, dcid_len, &pkt->dcid.data);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read dcid");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
-{
-    u_char    *p, *end;
-    uint64_t   varint;
-
-    p = pkt->raw->pos;
-
-    end = pkt->raw->last;
-
-    pkt->log->action = "parsing quic initial header";
-
-    p = ngx_quic_parse_int(p, end, &varint);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic failed to parse token length");
-        return NGX_ERROR;
-    }
-
-    pkt->token.len = varint;
-
-    p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet too small to read token data");
-        return NGX_ERROR;
-    }
-
-    p = ngx_quic_parse_int(p, end, &varint);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
-        return NGX_ERROR;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx initial len:%uL", varint);
-
-    if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic truncated initial packet");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-    pkt->len = p + varint - pkt->data;
-
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(pkt->log, "quic DCID", pkt->dcid.data, pkt->dcid.len);
-    ngx_quic_hexdump(pkt->log, "quic SCID", pkt->scid.data, pkt->scid.len);
-    ngx_quic_hexdump(pkt->log, "quic token", pkt->token.data, pkt->token.len);
-#endif
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
-{
-    u_char    *p, *end;
-    uint64_t   plen;
-
-    p = pkt->raw->pos;
-    end = pkt->raw->last;
-
-    pkt->log->action = "parsing quic handshake header";
-
-    p = ngx_quic_parse_int(p, end, &plen);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
-        return NGX_ERROR;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx handshake len:%uL", plen);
-
-    if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic truncated handshake packet");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-    pkt->len = p + plen - pkt->data;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_supported_version(uint32_t version)
-{
-    ngx_uint_t  i;
-
-    for (i = 0; i < NGX_QUIC_NVERSIONS; i++) {
-        if (ngx_quic_versions[i] == version) {
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 
