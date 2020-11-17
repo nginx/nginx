@@ -77,9 +77,7 @@ static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
 static ngx_int_t ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest,
     ngx_str_t *out, ngx_str_t *label, const uint8_t *prk, size_t prk_len);
 
-static ngx_int_t ngx_quic_create_long_packet(ngx_quic_header_t *pkt,
-    ngx_str_t *res);
-static ngx_int_t ngx_quic_create_short_packet(ngx_quic_header_t *pkt,
+static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
 static ngx_int_t ngx_quic_create_retry_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
@@ -825,65 +823,7 @@ ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
 
 
 static ngx_int_t
-ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
-{
-    u_char              *pnp, *sample;
-    ngx_str_t            ad, out;
-    ngx_uint_t           i;
-    ngx_quic_secret_t   *secret;
-    ngx_quic_ciphers_t   ciphers;
-    u_char               nonce[12], mask[16];
-
-    out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
-
-    ad.data = res->data;
-    ad.len = ngx_quic_create_header(pkt, ad.data, out.len, &pnp);
-
-    out.data = res->data + ad.len;
-
-#ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
-#endif
-
-    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
-    {
-        return NGX_ERROR;
-    }
-
-    secret = &pkt->keys->secrets[pkt->level].server;
-
-    ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
-    ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
-
-    if (ngx_quic_tls_seal(ciphers.c, secret, &out,
-                          nonce, &pkt->payload, &ad, pkt->log)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    sample = &out.data[4 - pkt->num_len];
-    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
-
-    /* quic-tls: 5.4.1.  Header Protection Application */
-    ad.data[0] ^= mask[0] & ngx_quic_pkt_hp_mask(pkt->flags);
-
-    for (i = 0; i < pkt->num_len; i++) {
-        pnp[i] ^= mask[i + 1];
-    }
-
-    res->len = ad.len + out.len;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
+ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
     u_char              *pnp, *sample;
     ngx_str_t            ad, out;
@@ -1106,15 +1046,11 @@ ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
 ngx_int_t
 ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
-    if (ngx_quic_short_pkt(pkt->flags)) {
-        return ngx_quic_create_short_packet(pkt, res);
-    }
-
     if (ngx_quic_pkt_retry(pkt->flags)) {
         return ngx_quic_create_retry_packet(pkt, res);
     }
 
-    return ngx_quic_create_long_packet(pkt, res);
+    return ngx_quic_create_packet(pkt, res);
 }
 
 
