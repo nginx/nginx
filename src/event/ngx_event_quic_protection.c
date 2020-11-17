@@ -1057,9 +1057,8 @@ ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res)
 ngx_int_t
 ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 {
-    u_char               clearflags, *p, *sample;
+    u_char              *p, *sample;
     size_t               len;
-    uint8_t              badflags;
     uint64_t             pn, lpn;
     ngx_int_t            pnl, rc, key_phase;
     ngx_str_t            in, ad;
@@ -1097,10 +1096,10 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
         return NGX_DECLINED;
     }
 
-    clearflags = pkt->flags ^ (mask[0] & ngx_quic_pkt_hp_mask(pkt->flags));
+    pkt->flags ^= mask[0] & ngx_quic_pkt_hp_mask(pkt->flags);
 
     if (ngx_quic_short_pkt(pkt->flags)) {
-        key_phase = (clearflags & NGX_QUIC_PKT_KPHASE) != 0;
+        key_phase = (pkt->flags & NGX_QUIC_PKT_KPHASE) != 0;
 
         if (key_phase != pkt->key_phase) {
             secret = &pkt->keys->next_key.client;
@@ -1110,14 +1109,13 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     lpn = *largest_pn;
 
-    pnl = (clearflags & 0x03) + 1;
+    pnl = (pkt->flags & 0x03) + 1;
     pn = ngx_quic_parse_pn(&p, pnl, &mask[1], &lpn);
 
     pkt->pn = pn;
-    pkt->flags = clearflags;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx clearflags:%xd", clearflags);
+                   "quic packet rx clearflags:%xd", pkt->flags);
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic packet rx number:%uL len:%xi", pn, pnl);
 
@@ -1126,13 +1124,11 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     in.data = p;
     in.len = len - pnl;
 
-    badflags = clearflags & ngx_quic_pkt_rb_mask(pkt->flags);
-
     ad.len = p - pkt->data;
     ad.data = pkt->plaintext;
 
     ngx_memcpy(ad.data, pkt->data, ad.len);
-    ad.data[0] = clearflags;
+    ad.data[0] = pkt->flags;
 
     do {
         ad.data[ad.len - pnl] = pn >> (8 * (pnl - 1)) % 256;
@@ -1160,7 +1156,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
         return NGX_DECLINED;
     }
 
-    if (badflags) {
+    if (pkt->flags & ngx_quic_pkt_rb_mask(pkt->flags)) {
         /*
          * An endpoint MUST treat receipt of a packet that has
          * a non-zero value for these bits, after removing both
