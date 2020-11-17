@@ -870,7 +870,7 @@ ngx_quic_create_long_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     }
 
     /* quic-tls: 5.4.1.  Header Protection Application */
-    ad.data[0] ^= mask[0] & 0x0f;
+    ad.data[0] ^= mask[0] & ngx_quic_pkt_hp_mask(pkt->flags);
 
     for (i = 0; i < pkt->num_len; i++) {
         pnp[i] ^= mask[i + 1];
@@ -928,7 +928,7 @@ ngx_quic_create_short_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     }
 
     /* quic-tls: 5.4.1.  Header Protection Application */
-    ad.data[0] ^= mask[0] & 0x1f;
+    ad.data[0] ^= mask[0] & ngx_quic_pkt_hp_mask(pkt->flags);
 
     for (i = 0; i < pkt->num_len; i++) {
         pnp[i] ^= mask[i + 1];
@@ -1161,11 +1161,9 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
         return NGX_DECLINED;
     }
 
-    if (ngx_quic_long_pkt(pkt->flags)) {
-        clearflags = pkt->flags ^ (mask[0] & 0x0f);
+    clearflags = pkt->flags ^ (mask[0] & ngx_quic_pkt_hp_mask(pkt->flags));
 
-    } else {
-        clearflags = pkt->flags ^ (mask[0] & 0x1f);
+    if (ngx_quic_short_pkt(pkt->flags)) {
         key_phase = (clearflags & NGX_QUIC_PKT_KPHASE) != 0;
 
         if (key_phase != pkt->key_phase) {
@@ -1192,12 +1190,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     in.data = p;
     in.len = len - pnl;
 
-    if (ngx_quic_long_pkt(pkt->flags)) {
-        badflags = clearflags & NGX_QUIC_PKT_LONG_RESERVED_BIT;
-
-    } else {
-        badflags = clearflags & NGX_QUIC_PKT_SHORT_RESERVED_BIT;
-    }
+    badflags = clearflags & ngx_quic_pkt_rb_mask(pkt->flags);
 
     ad.len = p - pkt->data;
     ad.data = pkt->plaintext;

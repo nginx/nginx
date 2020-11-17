@@ -19,9 +19,6 @@
 #define NGX_QUIC_PKT_TYPE       0x30  /* in long packet */
 #define NGX_QUIC_PKT_KPHASE     0x04  /* in short packet */
 
-#define NGX_QUIC_PKT_LONG_RESERVED_BIT   0x0C
-#define NGX_QUIC_PKT_SHORT_RESERVED_BIT  0x18
-
 #define ngx_quic_long_pkt(flags)  ((flags) & NGX_QUIC_PKT_LONG)
 #define ngx_quic_short_pkt(flags)  (((flags) & NGX_QUIC_PKT_LONG) == 0)
 
@@ -39,6 +36,11 @@
     (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_HANDSHAKE)
 #define ngx_quic_pkt_retry(flags)                                             \
     (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_RETRY)
+
+#define ngx_quic_pkt_rb_mask(flags)                                           \
+    (ngx_quic_long_pkt(flags) ? 0x0C : 0x18)
+#define ngx_quic_pkt_hp_mask(flags)                                           \
+    (ngx_quic_long_pkt(flags) ? 0x0F : 0x1F)
 
 #define ngx_quic_level_name(lvl)                                              \
     (lvl == ssl_encryption_application) ? "app"                               \
