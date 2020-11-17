@@ -40,6 +40,11 @@
 #define ngx_quic_pkt_retry(flags)                                             \
     (((flags) & NGX_QUIC_PKT_TYPE) == NGX_QUIC_PKT_RETRY)
 
+#define ngx_quic_level_name(lvl)                                              \
+    (lvl == ssl_encryption_application) ? "app"                               \
+        : (lvl == ssl_encryption_initial) ? "init"                            \
+            : (lvl == ssl_encryption_handshake) ? "hs" : "early"
+
 
 /* 12.4.  Frames and Frame Types */
 #define NGX_QUIC_FT_PADDING                              0x00

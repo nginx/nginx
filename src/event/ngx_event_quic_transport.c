@@ -78,8 +78,7 @@ static ngx_int_t ngx_quic_parse_short_header(ngx_quic_header_t *pkt,
     size_t dcid_len);
 static ngx_int_t ngx_quic_parse_long_header(ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_supported_version(uint32_t version);
-static ngx_int_t ngx_quic_parse_initial_header(ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt);
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
@@ -291,36 +290,7 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
         return NGX_ABORT;
     }
 
-    if (ngx_quic_pkt_in(pkt->flags)) {
-
-        if (pkt->len < NGX_QUIC_MIN_INITIAL_SIZE) {
-            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "quic UDP datagram is too small for initial packet");
-            return NGX_DECLINED;
-        }
-
-        pkt->level = ssl_encryption_initial;
-
-        if (ngx_quic_parse_initial_header(pkt) != NGX_OK) {
-            return NGX_DECLINED;
-        }
-
-        return NGX_OK;
-    }
-
-    if (ngx_quic_pkt_hs(pkt->flags)) {
-        pkt->level = ssl_encryption_handshake;
-
-    } else if (ngx_quic_pkt_zrtt(pkt->flags)) {
-        pkt->level = ssl_encryption_early_data;
-
-    } else {
-         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                       "quic unknown long packet type");
-         return NGX_DECLINED;
-    }
-
-    if (ngx_quic_parse_handshake_header(pkt) != NGX_OK) {
+    if (ngx_quic_parse_long_header_v1(pkt) != NGX_OK) {
         return NGX_DECLINED;
     }
 
@@ -450,31 +420,52 @@ ngx_quic_supported_version(uint32_t version)
 
 
 static ngx_int_t
-ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
+ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt)
 {
     u_char    *p, *end;
     uint64_t   varint;
 
     p = pkt->raw->pos;
-
     end = pkt->raw->last;
 
-    pkt->log->action = "parsing quic initial header";
+    pkt->log->action = "parsing quic long header";
 
-    p = ngx_quic_parse_int(p, end, &varint);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic failed to parse token length");
-        return NGX_ERROR;
-    }
+    if (ngx_quic_pkt_in(pkt->flags)) {
 
-    pkt->token.len = varint;
+        if (pkt->len < NGX_QUIC_MIN_INITIAL_SIZE) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "quic UDP datagram is too small for initial packet");
+            return NGX_DECLINED;
+        }
 
-    p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet too small to read token data");
-        return NGX_ERROR;
+        p = ngx_quic_parse_int(p, end, &varint);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "quic failed to parse token length");
+            return NGX_ERROR;
+        }
+
+        pkt->token.len = varint;
+
+        p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
+        if (p == NULL) {
+            ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                          "quic packet too small to read token data");
+            return NGX_ERROR;
+        }
+
+        pkt->level = ssl_encryption_initial;
+
+    } else if (ngx_quic_pkt_zrtt(pkt->flags)) {
+        pkt->level = ssl_encryption_early_data;
+
+    } else if (ngx_quic_pkt_hs(pkt->flags)) {
+        pkt->level = ssl_encryption_handshake;
+
+    } else {
+         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                       "quic bad packet type");
+         return NGX_DECLINED;
     }
 
     p = ngx_quic_parse_int(p, end, &varint);
@@ -483,56 +474,18 @@ ngx_quic_parse_initial_header(ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx initial len:%uL", varint);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic packet rx %s len:%uL",
+                   ngx_quic_level_name(pkt->level), varint);
 
     if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic truncated initial packet");
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic truncated %s packet",
+                      ngx_quic_level_name(pkt->level));
         return NGX_ERROR;
     }
 
     pkt->raw->pos = p;
     pkt->len = p + varint - pkt->data;
-
-#ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(pkt->log, "quic DCID", pkt->dcid.data, pkt->dcid.len);
-    ngx_quic_hexdump(pkt->log, "quic SCID", pkt->scid.data, pkt->scid.len);
-    ngx_quic_hexdump(pkt->log, "quic token", pkt->token.data, pkt->token.len);
-#endif
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_parse_handshake_header(ngx_quic_header_t *pkt)
-{
-    u_char    *p, *end;
-    uint64_t   plen;
-
-    p = pkt->raw->pos;
-    end = pkt->raw->last;
-
-    pkt->log->action = "parsing quic handshake header";
-
-    p = ngx_quic_parse_int(p, end, &plen);
-    if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
-        return NGX_ERROR;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
-                   "quic packet rx handshake len:%uL", plen);
-
-    if (plen > (uint64_t)((pkt->data + pkt->len) - p)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic truncated handshake packet");
-        return NGX_ERROR;
-    }
-
-    pkt->raw->pos = p;
-    pkt->len = p + plen - pkt->data;
 
     return NGX_OK;
 }

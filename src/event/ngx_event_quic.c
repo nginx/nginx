@@ -47,11 +47,6 @@
 
 #define NGX_QUIC_MAX_ACK_GAP     2
 
-#define ngx_quic_level_name(lvl)                                              \
-    (lvl == ssl_encryption_application) ? "app"                               \
-        : (lvl == ssl_encryption_initial) ? "init"                            \
-            : (lvl == ssl_encryption_handshake) ? "hs" : "early"
-
 
 typedef struct {
     ngx_rbtree_t                      tree;
@@ -2085,6 +2080,10 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     if (pkt->level != ssl_encryption_application) {
         ngx_quic_hexdump(c->log, "quic packet rx scid", pkt->scid.data,
                          pkt->scid.len);
+    }
+
+    if (pkt->level == ssl_encryption_initial) {
+        ngx_quic_hexdump(c->log, "quic token", pkt->token.data, pkt->token.len);
     }
 #endif
 
