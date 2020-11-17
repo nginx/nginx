@@ -25,9 +25,6 @@
 
 #define NGX_QUIC_SEND_CTX_LAST  (NGX_QUIC_ENCRYPTION_LAST - 1)
 
-#define NGX_QUIC_STREAMS_INC     16
-#define NGX_QUIC_STREAMS_LIMIT   (1ULL < 60)
-
 /*
  * 7.4.  Cryptographic Message Buffering
  *       Implementations MUST support buffering at least 4096 bytes of data
