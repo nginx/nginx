@@ -216,6 +216,9 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             cl->buf->last_buf = 0;
 
             *ll = tl;
+
+        } else {
+            *ll = NULL;
         }
 
     } else
