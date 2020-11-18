@@ -1146,14 +1146,18 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     rc = ngx_quic_tls_open(ciphers.c, secret, &pkt->payload,
                            nonce, &in, &ad, pkt->log);
-
-#if defined(NGX_QUIC_DEBUG_CRYPTO) && defined(NGX_QUIC_DEBUG_PACKETS)
-    ngx_quic_hexdump(pkt->log, "quic packet payload",
-                     pkt->payload.data, pkt->payload.len);
-#endif
-
     if (rc != NGX_OK) {
         return NGX_DECLINED;
+    }
+
+    if (pkt->payload.len == 0) {
+        /*
+         * An endpoint MUST treat receipt of a packet containing no
+         * frames as a connection error of type PROTOCOL_VIOLATION.
+         */
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic zero-length packet");
+        pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        return NGX_ERROR;
     }
 
     if (pkt->flags & ngx_quic_pkt_rb_mask(pkt->flags)) {
@@ -1168,6 +1172,11 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }
+
+#if defined(NGX_QUIC_DEBUG_CRYPTO) && defined(NGX_QUIC_DEBUG_PACKETS)
+    ngx_quic_hexdump(pkt->log, "quic packet payload",
+                     pkt->payload.data, pkt->payload.len);
+#endif
 
     *largest_pn = lpn;
 
