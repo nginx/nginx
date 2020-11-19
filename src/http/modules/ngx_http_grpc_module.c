@@ -1969,6 +1969,7 @@ ngx_http_grpc_filter_init(void *data)
         }
 
         u->length = 0;
+        ctx->done = 1;
 
     } else {
         u->length = 1;
