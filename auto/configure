@@ -87,6 +87,10 @@ have=NGX_PID_PATH value="\"$NGX_PID_PATH\"" . auto/define
 have=NGX_LOCK_PATH value="\"$NGX_LOCK_PATH\"" . auto/define
 have=NGX_ERROR_LOG_PATH value="\"$NGX_ERROR_LOG_PATH\"" . auto/define
 
+if [ ".$NGX_ERROR_LOG_PATH" = "." ]; then
+    have=NGX_ERROR_LOG_STDERR . auto/have
+fi
+
 have=NGX_HTTP_LOG_PATH value="\"$NGX_HTTP_LOG_PATH\"" . auto/define
 have=NGX_HTTP_CLIENT_TEMP_PATH value="\"$NGX_HTTP_CLIENT_TEMP_PATH\""
 . auto/define

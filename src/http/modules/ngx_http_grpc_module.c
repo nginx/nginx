@@ -1141,20 +1141,11 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
 
     f->flags |= NGX_HTTP_V2_END_HEADERS_FLAG;
 
-#if (NGX_DEBUG)
-    if (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP) {
-        u_char  buf[512];
-        size_t  n, m;
-
-        n = ngx_min(b->last - b->pos, 256);
-        m = ngx_hex_dump(buf, b->pos, n) - buf;
-
-        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "grpc header: %*s%s, len: %uz",
-                       m, buf, b->last - b->pos > 256 ? "..." : "",
-                       b->last - b->pos);
-    }
-#endif
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "grpc header: %*xs%s, len: %uz",
+                   (size_t) ngx_min(b->last - b->pos, 256), b->pos,
+                   b->last - b->pos > 256 ? "..." : "",
+                   b->last - b->pos);
 
     if (r->request_body_no_buffering) {
 
@@ -1604,20 +1595,11 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
     u = r->upstream;
     b = &u->buffer;
 
-#if (NGX_DEBUG)
-    if (r->connection->log->log_level & NGX_LOG_DEBUG_HTTP) {
-        u_char  buf[512];
-        size_t  n, m;
-
-        n = ngx_min(b->last - b->pos, 256);
-        m = ngx_hex_dump(buf, b->pos, n) - buf;
-
-        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "grpc response: %*s%s, len: %uz",
-                       m, buf, b->last - b->pos > 256 ? "..." : "",
-                       b->last - b->pos);
-    }
-#endif
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "grpc response: %*xs%s, len: %uz",
+                   (size_t) ngx_min(b->last - b->pos, 256),
+                   b->pos, b->last - b->pos > 256 ? "..." : "",
+                   b->last - b->pos);
 
     ctx = ngx_http_grpc_get_ctx(r);
 
@@ -1987,6 +1969,7 @@ ngx_http_grpc_filter_init(void *data)
         }
 
         u->length = 0;
+        ctx->done = 1;
 
     } else {
         u->length = 1;

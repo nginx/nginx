@@ -313,7 +313,7 @@ $ngx_obj:	\$(CORE_DEPS) \$(HTTP_DEPS)$ngx_cont$ngx_src
 END
 
         fi
-     done
+    done
 
 fi
 
@@ -343,7 +343,7 @@ $ngx_obj:	\$(CORE_DEPS) \$(MAIL_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
-     done
+    done
 
 fi
 
@@ -373,7 +373,7 @@ $ngx_obj:	\$(CORE_DEPS) \$(STREAM_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
-     done
+    done
 
 fi
 
@@ -399,7 +399,7 @@ $ngx_obj:	\$(CORE_DEPS) $ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
-     done
+    done
 
 fi
 
@@ -431,7 +431,7 @@ $ngx_obj:	\$(ADDON_DEPS)$ngx_cont$ngx_src
 	$ngx_cc$ngx_tab$ngx_objout$ngx_obj$ngx_tab$ngx_src$NGX_AUX
 
 END
-     done
+    done
 
 fi
 
@@ -502,6 +502,7 @@ fi
 for ngx_module in $DYNAMIC_MODULES
 do
     eval ngx_module_srcs="\$${ngx_module}_SRCS"
+    eval ngx_module_shrd="\$${ngx_module}_SHRD"
     eval eval ngx_module_libs="\\\"\$${ngx_module}_LIBS\\\""
 
     eval ngx_module_modules="\$${ngx_module}_MODULES"
@@ -567,7 +568,7 @@ END
         | sed -e "s/\(.*\.\)c/\1$ngx_objext/"`
 
     ngx_module_objs=
-    for ngx_src in $ngx_module_srcs
+    for ngx_src in $ngx_module_srcs $ngx_module_shrd
     do
         case "$ngx_src" in
             src/*)
