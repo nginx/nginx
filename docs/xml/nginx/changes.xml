@@ -5,6 +5,62 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.5" date="2020-11-24">
+
+<change type="feature">
+<para lang="ru">
+ключ -e.
+</para>
+<para lang="en">
+the -e switch.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+при сборке дополнительных модулей
+теперь можно указывать одни и те же исходные файлы в разных модулях.
+</para>
+<para lang="en">
+the same source files can now be specified in different modules
+while building addon modules.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL shutdown не работал
+при закрытии соединений с ожиданием дополнительных данных (lingering close).
+</para>
+<para lang="en">
+SSL shutdown did not work
+when lingering close was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работе с gRPC-бэкендами
+могли возникать ошибки "upstream sent frame for closed stream".
+</para>
+<para lang="en">
+"upstream sent frame for closed stream" errors might occur
+when working with gRPC backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во внутреннем API для обработки тела запроса.
+</para>
+<para lang="en">
+in request body filters internal API.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.4" date="2020-10-27">
 
 <change type="feature">
