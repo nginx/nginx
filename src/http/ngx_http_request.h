@@ -585,7 +585,6 @@ struct ngx_http_request_s {
     u_char                           *args_start;
     u_char                           *request_start;
     u_char                           *request_end;
-    u_char                           *method_start;
     u_char                           *method_end;
     u_char                           *schema_start;
     u_char                           *schema_end;

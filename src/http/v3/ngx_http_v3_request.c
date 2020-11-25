@@ -129,11 +129,9 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
             continue;
         }
 
-        ngx_str_set(&r->http_protocol, "HTTP/3.0");
-
-        len = (r->method_end - r->method_start) + 1
+        len = r->method_name.len + 1
             + (r->uri_end - r->uri_start) + 1
-            + sizeof("HTTP/3") - 1;
+            + sizeof("HTTP/3.0") - 1;
 
         p = ngx_pnalloc(c->pool, len);
         if (p == NULL) {
@@ -142,11 +140,13 @@ ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
 
         r->request_start = p;
 
-        p = ngx_cpymem(p, r->method_start, r->method_end - r->method_start);
+        p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
+        r->method_end = p - 1;
         *p++ = ' ';
         p = ngx_cpymem(p, r->uri_start, r->uri_end - r->uri_start);
         *p++ = ' ';
-        p = ngx_cpymem(p, "HTTP/3", sizeof("HTTP/3") - 1);
+        r->http_protocol.data = p;
+        p = ngx_cpymem(p, "HTTP/3.0", sizeof("HTTP/3.0") - 1);
 
         r->request_end = p;
         r->state = 0;
@@ -309,8 +309,7 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     c = r->connection;
 
     if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
-        r->method_start = value->data;
-        r->method_end = value->data + value->len;
+        r->method_name = *value;
 
         for (i = 0; i < sizeof(ngx_http_v3_methods)
                         / sizeof(ngx_http_v3_methods[0]); i++)

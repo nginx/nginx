@@ -1162,8 +1162,12 @@ ngx_http_process_request_line(ngx_event_t *rev)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http request line: \"%V\"", &r->request_line);
 
-            r->method_name.len = r->method_end - r->method_start;
-            r->method_name.data = r->method_start;
+            r->method_name.len = r->method_end - r->request_start + 1;
+            r->method_name.data = r->request_line.data;
+
+            if (r->http_protocol.data) {
+                r->http_protocol.len = r->request_end - r->http_protocol.data;
+            }
 
             if (ngx_http_process_request_uri(r) != NGX_OK) {
                 break;
