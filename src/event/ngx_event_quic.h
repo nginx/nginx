@@ -138,30 +138,4 @@ ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
 /* #define NGX_QUIC_DEBUG_FRAMES_ALLOC */ /* log frames alloc/reuse/free */
 /* #define NGX_QUIC_DEBUG_CRYPTO */
 
-#if (NGX_DEBUG)
-
-#define ngx_quic_hexdump(log, fmt, data, len)                                 \
-    ngx_quic_hexdump_real(log, fmt, (u_char *) data, (size_t) len)
-
-static ngx_inline
-void ngx_quic_hexdump_real(ngx_log_t *log, const char *label, u_char *data,
-    size_t len)
-{
-    ngx_int_t  m;
-    u_char     buf[2048];
-
-    if (log->log_level & NGX_LOG_DEBUG_EVENT) {
-        m = ngx_hex_dump(buf, data, (len > 1024) ? 1024 : len) - buf;
-        ngx_log_debug5(NGX_LOG_DEBUG_EVENT, log, 0,
-                      "%s len:%uz data:%*s%s",
-                      label, len, m, buf, len < 2048 ? "" : "...");
-    }
-}
-
-#else
-
-#define ngx_quic_hexdump(log, fmt, data, len)
-
-#endif
-
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

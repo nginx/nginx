@@ -183,8 +183,10 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pool->log, 0,
                   "quic ngx_quic_set_initial_secret");
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pool->log, "quic salt", salt, sizeof(salt));
-    ngx_quic_hexdump(pool->log, "quic initial secret", is, is_len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "quic salt len:%uz %*xs", sizeof(salt), sizeof(salt), salt);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "quic initial secret len:%uz %*xs", is_len, is_len, is);
 #endif
 
     /* draft-ietf-quic-tls-23#section-5.2 */
@@ -292,8 +294,8 @@ ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest, ngx_str_t *out,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pool->log, 0, "quic expand %V", label);
-    ngx_quic_hexdump(pool->log, "quic key", out->data, out->len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "quic expand %V key len:%uz %xV", label, out->len, out);
 #endif
 
     return NGX_OK;
@@ -840,7 +842,8 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic ad len:%uz %xV", ad.len, &ad);
 #endif
 
     if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
@@ -910,7 +913,8 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     itag.len = EVP_GCM_TLS_TAG_LEN;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pkt->log, "quic retry itag", ad.data, ad.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic retry itag len:%uz %xV", ad.len, &ad);
 #endif
 
     if (ngx_quic_ciphers(0, &ciphers, pkt->level) == NGX_ERROR) {
@@ -982,8 +986,9 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, ngx_str_t *secret,
     ngx_memcpy(token, key, NGX_QUIC_SR_TOKEN_LEN);
 
 #if (NGX_DEBUG)
-    ngx_quic_hexdump(c->log, "quic stateless reset token", token,
-                     (size_t) NGX_QUIC_SR_TOKEN_LEN);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stateless reset token %*xs",
+                    (size_t) NGX_QUIC_SR_TOKEN_LEN, token);
 #endif
 
     return NGX_OK;
@@ -1138,7 +1143,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pn);
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(pkt->log, "quic ad", ad.data, ad.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic ad len:%uz %xV", ad.len, &ad);
 #endif
 
     pkt->payload.len = in.len - EVP_GCM_TLS_TAG_LEN;
@@ -1174,8 +1180,9 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     }
 
 #if defined(NGX_QUIC_DEBUG_CRYPTO) && defined(NGX_QUIC_DEBUG_PACKETS)
-    ngx_quic_hexdump(pkt->log, "quic packet payload",
-                     pkt->payload.data, pkt->payload.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
+                   "quic packet payload len:%uz %xV",
+                   pkt->payload.len, &pkt->payload);
 #endif
 
     *largest_pn = lpn;

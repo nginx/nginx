@@ -505,6 +505,11 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
             p = ngx_slprintf(p, last, " fin:1");
         }
 
+#ifdef NGX_QUIC_DEBUG_FRAMES
+        p = ngx_slprintf(p, last, " data len:%uL %*xs", f->u.stream.length,
+                         (size_t) f->u.stream.length, f->u.stream.data);
+#endif
+
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
@@ -669,7 +674,9 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_read_secret() level:%d", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "quic read secret", rsecret, secret_len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic read secret len:%uz %*xs", secret_len,
+                   secret_len, rsecret);
 #endif
 
     return ngx_quic_keys_set_encryption_secret(c->pool, 0, qc->keys, level,
@@ -691,7 +698,9 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_write_secret() level:%d", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "quic write secret", wsecret, secret_len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic write secret len:%uz %*xs", secret_len,
+                   secret_len, wsecret);
 #endif
 
     return ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
@@ -715,7 +724,9 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_set_encryption_secrets() level:%d", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "quic read secret", rsecret, secret_len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic read secret len:%uz %*xs", secret_len,
+                   secret_len, rsecret);
 #endif
 
     cipher = SSL_get_current_cipher(ssl_conn);
@@ -732,7 +743,9 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_quic_hexdump(c->log, "quic write secret", wsecret, secret_len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic write secret len:%uz %*xs", secret_len,
+                   secret_len, wsecret);
 #endif
 
     return ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
@@ -1226,7 +1239,8 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
     len = ngx_quic_create_version_negotiation(&pkt, buf);
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic vnego packet to send", buf, len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic vnego packet to send len:%uz %*xs", len, len, buf);
 #endif
 
     (void) c->send(c, buf, len);
@@ -1242,9 +1256,9 @@ ngx_quic_create_server_id(ngx_connection_t *c, u_char *id)
         return NGX_ERROR;
     }
 
-    ngx_quic_hexdump(c->log, "quic create server id",
-                     id, NGX_QUIC_SERVER_CID_LEN);
-
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic create server id %*xs",
+                   (size_t) NGX_QUIC_SERVER_CID_LEN, id);
     return NGX_OK;
 }
 
@@ -1280,7 +1294,8 @@ ngx_quic_send_retry(ngx_connection_t *c)
     }
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic packet to send", res.data, res.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet to send len:%uz %xV", res.len, &res);
 #endif
 
     len = c->send(c, res.data, res.len);
@@ -1398,7 +1413,8 @@ ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token)
     EVP_CIPHER_CTX_free(ctx);
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic new token", token->data, token->len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic new token len:%uz %xV", token->len, token);
 #endif
 
     return NGX_OK;
@@ -1568,8 +1584,9 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    ngx_quic_hexdump(c->log, "quic stateless reset token",
-                     qc->tp.sr_token, (size_t) NGX_QUIC_SR_TOKEN_LEN);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stateless reset token %*xs",
+                   (size_t) NGX_QUIC_SR_TOKEN_LEN, qc->tp.sr_token);
 
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
     /* always succeeds */
@@ -1585,7 +1602,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_quic_hexdump(c->log, "quic transport parameters", p, len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic transport parameters len:%uz %*xs", len, len, p);
 #endif
 
     if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
@@ -2073,17 +2091,21 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc = ngx_quic_get_connection(c);
 
-#if (NGX_DEBUG)
-    ngx_quic_hexdump(c->log, "quic packet rx dcid",
-                     pkt->dcid.data, pkt->dcid.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet rx dcid len:%uz %xV",
+                   pkt->dcid.len, &pkt->dcid);
 
+#if (NGX_DEBUG)
     if (pkt->level != ssl_encryption_application) {
-        ngx_quic_hexdump(c->log, "quic packet rx scid", pkt->scid.data,
-                         pkt->scid.len);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic packet rx scid len:%uz %xV",
+                       pkt->scid.len, &pkt->scid);
     }
 
     if (pkt->level == ssl_encryption_initial) {
-        ngx_quic_hexdump(c->log, "quic token", pkt->token.data, pkt->token.len);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic token len:%uz %xV",
+                       pkt->token.len, &pkt->token);
     }
 #endif
 
@@ -4520,10 +4542,9 @@ ngx_quic_insert_server_id(ngx_connection_t *c, ngx_str_t *id)
 
     ngx_insert_udp_connection(c, &sid->udp, &dcid);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic insert server id seqnum:%uL", sid->seqnum);
-
-    ngx_quic_hexdump(c->log, "quic server id", id->data, id->len);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic insert server id seqnum:%uL id len:%uz %xV",
+                   sid->seqnum, id->len, id);
 
     return sid;
 }

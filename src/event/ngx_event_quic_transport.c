@@ -920,10 +920,6 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-#ifdef NGX_QUIC_DEBUG_FRAMES
-        ngx_quic_hexdump(pkt->log, "quic STREAM frame",
-                         f->u.stream.data, f->u.stream.length);
-#endif
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
@@ -1649,8 +1645,9 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
                    tp->active_connection_id_limit);
 
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
-    ngx_quic_hexdump(log, "quic tp initial_source_connection_id:",
-                     tp->initial_scid.data, tp->initial_scid.len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "quic tp initial source_connection_id len:%uz %xV",
+                   tp->initial_scid.len, &tp->initial_scid);
 #endif
 
     return NGX_OK;
