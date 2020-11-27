@@ -140,8 +140,6 @@ ngx_int_t ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_uint_t allow_underscores);
 ngx_int_t ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx);
-ngx_chain_t *ngx_http_v3_create_header(ngx_http_request_t *r);
-ngx_chain_t *ngx_http_v3_create_trailers(ngx_http_request_t *r);
 
 uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
 uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,

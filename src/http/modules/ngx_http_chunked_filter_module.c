@@ -106,7 +106,6 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     u_char                         *chunk;
     off_t                           size;
-    size_t                          n;
     ngx_int_t                       rc;
     ngx_buf_t                      *b;
     ngx_chain_t                    *out, *cl, *tl, **ll;
@@ -162,67 +161,26 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         chunk = b->start;
 
         if (chunk == NULL) {
+            /* the "0000000000000000" is 64-bit hexadecimal string */
 
-#if (NGX_HTTP_V3)
-            if (r->http_version == NGX_HTTP_VERSION_30) {
-                n = NGX_HTTP_V3_VARLEN_INT_LEN * 2;
-
-            } else
-#endif
-            {
-                /* the "0000000000000000" is 64-bit hexadecimal string */
-                n = sizeof("0000000000000000" CRLF) - 1;
-            }
-
-            chunk = ngx_palloc(r->pool, n);
+            chunk = ngx_palloc(r->pool, sizeof("0000000000000000" CRLF) - 1);
             if (chunk == NULL) {
                 return NGX_ERROR;
             }
 
             b->start = chunk;
-            b->end = chunk + n;
+            b->end = chunk + sizeof("0000000000000000" CRLF) - 1;
         }
 
         b->tag = (ngx_buf_tag_t) &ngx_http_chunked_filter_module;
         b->memory = 0;
         b->temporary = 1;
         b->pos = chunk;
-
-#if (NGX_HTTP_V3)
-        if (r->http_version == NGX_HTTP_VERSION_30) {
-            b->last = (u_char *) ngx_http_v3_encode_varlen_int(chunk,
-                                                       NGX_HTTP_V3_FRAME_DATA);
-            b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last, size);
-
-        } else
-#endif
-        {
-            b->last = ngx_sprintf(chunk, "%xO" CRLF, size);
-        }
+        b->last = ngx_sprintf(chunk, "%xO" CRLF, size);
 
         tl->next = out;
         out = tl;
     }
-
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
-
-        if (cl->buf->last_buf) {
-            tl = ngx_http_v3_create_trailers(r);
-            if (tl == NULL) {
-                return NGX_ERROR;
-            }
-
-            cl->buf->last_buf = 0;
-
-            *ll = tl;
-
-        } else {
-            *ll = NULL;
-        }
-
-    } else
-#endif
 
     if (cl->buf->last_buf) {
         tl = ngx_http_chunked_create_trailers(r, ctx);
