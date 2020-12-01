@@ -87,15 +87,17 @@ static size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
-static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack);
+static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack,
+    ngx_chain_t *ranges);
 static size_t ngx_quic_create_stop_sending(u_char *p,
     ngx_quic_stop_sending_frame_t *ss);
 static size_t ngx_quic_create_crypto(u_char *p,
-    ngx_quic_crypto_frame_t *crypto);
+    ngx_quic_crypto_frame_t *crypto, ngx_chain_t *data);
 static size_t ngx_quic_create_hs_done(u_char *p);
 static size_t ngx_quic_create_new_token(u_char *p,
     ngx_quic_new_token_frame_t *token);
-static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf);
+static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf,
+    ngx_chain_t *data);
 static size_t ngx_quic_create_max_streams(u_char *p,
     ngx_quic_max_streams_frame_t *ms);
 static size_t ngx_quic_create_max_stream_data(u_char *p,
@@ -703,7 +705,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 {
     u_char      *p;
     uint64_t     varint;
+    ngx_buf_t   *b;
     ngx_uint_t   i;
+
+    b = f->data->buf;
 
     p = start;
 
@@ -736,10 +741,12 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        p = ngx_quic_read_bytes(p, end, f->u.crypto.length, &f->u.crypto.data);
+        p = ngx_quic_read_bytes(p, end, f->u.crypto.length, &b->pos);
         if (p == NULL) {
             goto error;
         }
+
+        b->last = p;
 
         break;
 
@@ -762,7 +769,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        f->u.ack.ranges_start = p;
+        b->pos = p;
 
         /* process all ranges to get bounds, values are ignored */
         for (i = 0; i < f->u.ack.range_count; i++) {
@@ -777,7 +784,9 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             }
         }
 
-        f->u.ack.ranges_end = p;
+        b->last = p;
+
+        f->u.ack.ranges_length = b->last - b->pos;
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
 
@@ -914,12 +923,12 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             f->u.stream.length = end - p; /* up to packet end */
         }
 
-        p = ngx_quic_read_bytes(p, end, f->u.stream.length,
-                                &f->u.stream.data);
+        p = ngx_quic_read_bytes(p, end, f->u.stream.length, &b->pos);
         if (p == NULL) {
             goto error;
         }
 
+        b->last = p;
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
@@ -1192,13 +1201,13 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     switch (f->type) {
     case NGX_QUIC_FT_ACK:
         f->need_ack = 0;
-        return ngx_quic_create_ack(p, &f->u.ack);
+        return ngx_quic_create_ack(p, &f->u.ack, f->data);
 
     case NGX_QUIC_FT_STOP_SENDING:
         return ngx_quic_create_stop_sending(p, &f->u.stop_sending);
 
     case NGX_QUIC_FT_CRYPTO:
-        return ngx_quic_create_crypto(p, &f->u.crypto);
+        return ngx_quic_create_crypto(p, &f->u.crypto, f->data);
 
     case NGX_QUIC_FT_HANDSHAKE_DONE:
         return ngx_quic_create_hs_done(p);
@@ -1214,7 +1223,7 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_STREAM5:
     case NGX_QUIC_FT_STREAM6:
     case NGX_QUIC_FT_STREAM7:
-        return ngx_quic_create_stream(p, &f->u.stream);
+        return ngx_quic_create_stream(p, &f->u.stream, f->data);
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
@@ -1247,10 +1256,11 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
 
 
 static size_t
-ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
+ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack, ngx_chain_t *ranges)
 {
-    size_t   len;
-    u_char  *start;
+    size_t      len;
+    u_char     *start;
+    ngx_buf_t  *b;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_ACK);
@@ -1258,7 +1268,7 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
         len += ngx_quic_varint_len(ack->delay);
         len += ngx_quic_varint_len(ack->range_count);
         len += ngx_quic_varint_len(ack->first_range);
-        len += ack->ranges_end - ack->ranges_start;
+        len += ack->ranges_length;
 
         return len;
     }
@@ -1270,7 +1280,12 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack)
     ngx_quic_build_int(&p, ack->delay);
     ngx_quic_build_int(&p, ack->range_count);
     ngx_quic_build_int(&p, ack->first_range);
-    p = ngx_cpymem(p, ack->ranges_start, ack->ranges_end - ack->ranges_start);
+
+    while (ranges) {
+        b = ranges->buf;
+        p = ngx_cpymem(p, b->pos, b->last - b->pos);
+        ranges = ranges->next;
+    }
 
     return p - start;
 }
@@ -1300,10 +1315,12 @@ ngx_quic_create_stop_sending(u_char *p, ngx_quic_stop_sending_frame_t *ss)
 
 
 static size_t
-ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
+ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto,
+    ngx_chain_t *data)
 {
-    size_t   len;
-    u_char  *start;
+    size_t      len;
+    u_char     *start;
+    ngx_buf_t  *b;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_CRYPTO);
@@ -1319,7 +1336,12 @@ ngx_quic_create_crypto(u_char *p, ngx_quic_crypto_frame_t *crypto)
     ngx_quic_build_int(&p, NGX_QUIC_FT_CRYPTO);
     ngx_quic_build_int(&p, crypto->offset);
     ngx_quic_build_int(&p, crypto->length);
-    p = ngx_cpymem(p, crypto->data, crypto->length);
+
+    while (data) {
+        b = data->buf;
+        p = ngx_cpymem(p, b->pos, b->last - b->pos);
+        data = data->next;
+    }
 
     return p - start;
 }
@@ -1367,10 +1389,12 @@ ngx_quic_create_new_token(u_char *p, ngx_quic_new_token_frame_t *token)
 
 
 static size_t
-ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf)
+ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf,
+    ngx_chain_t *data)
 {
-    size_t   len;
-    u_char  *start;
+    size_t      len;
+    u_char     *start;
+    ngx_buf_t  *b;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(sf->type);
@@ -1401,7 +1425,11 @@ ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf)
     /* length is always present in generated frames */
     ngx_quic_build_int(&p, sf->length);
 
-    p = ngx_cpymem(p, sf->data, sf->length);
+    while (data) {
+        b = data->buf;
+        p = ngx_cpymem(p, b->pos, b->last - b->pos);
+        data = data->next;
+    }
 
     return p - start;
 }

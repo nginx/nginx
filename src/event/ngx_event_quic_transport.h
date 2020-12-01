@@ -144,8 +144,7 @@ typedef struct {
     uint64_t                                    ect0;
     uint64_t                                    ect1;
     uint64_t                                    ce;
-    u_char                                     *ranges_start;
-    u_char                                     *ranges_end;
+    uint64_t                                    ranges_length;
 } ngx_quic_ack_frame_t;
 
 
@@ -171,7 +170,6 @@ typedef struct {
 typedef struct {
     uint64_t                                    offset;
     uint64_t                                    length;
-    u_char                                     *data;
 } ngx_quic_ordered_frame_t;
 
 typedef ngx_quic_ordered_frame_t  ngx_quic_crypto_frame_t;
@@ -181,7 +179,6 @@ typedef struct {
     /* initial fields same as in ngx_quic_ordered_frame_t */
     uint64_t                                    offset;
     uint64_t                                    length;
-    u_char                                     *data;
 
     uint8_t                                     type;
     uint64_t                                    stream_id;
@@ -270,7 +267,7 @@ struct ngx_quic_frame_s {
     ngx_uint_t                                  need_ack;
                                                     /* unsigned need_ack:1; */
 
-    u_char                                     *data;
+    ngx_chain_t                                *data;
     union {
         ngx_quic_ack_frame_t                    ack;
         ngx_quic_crypto_frame_t                 crypto;

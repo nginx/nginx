@@ -237,7 +237,7 @@ Example configuration:
 
         #define NGX_QUIC_DEBUG_PACKETS
         #define NGX_QUIC_DEBUG_FRAMES
-        #define NGX_QUIC_DEBUG_FRAMES_ALLOC
+        #define NGX_QUIC_DEBUG_ALLOC
         #define NGX_QUIC_DEBUG_CRYPTO
 
 6. Contributing

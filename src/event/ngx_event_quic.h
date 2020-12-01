@@ -61,6 +61,8 @@
 
 #define NGX_QUIC_MAX_SERVER_IDS              8
 
+#define NGX_QUIC_BUFFER_SIZE                 4096
+
 #define ngx_quic_get_connection(c)           ((ngx_quic_connection_t *)(c)->udp)
 
 
@@ -135,7 +137,7 @@ ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
 
 /* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
 /* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
-/* #define NGX_QUIC_DEBUG_FRAMES_ALLOC */ /* log frames alloc/reuse/free */
+/* #define NGX_QUIC_DEBUG_ALLOC */        /* log frames and bufs alloc */
 /* #define NGX_QUIC_DEBUG_CRYPTO */
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */
