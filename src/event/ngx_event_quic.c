@@ -1779,8 +1779,7 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 
         /* drop packets from retransmit queues, no ack is expected */
         for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-            ctx = ngx_quic_get_send_ctx(qc, i);
-            ngx_quic_free_frames(c, &ctx->sent);
+            ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
         }
 
         if (rc == NGX_DONE) {
