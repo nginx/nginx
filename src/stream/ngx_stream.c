@@ -514,6 +514,9 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->reuseport = addr[i].opt.reuseport;
 #endif
 
+#if (NGX_STREAM_QUIC)
+            ls->quic = addr[i].opt.quic;
+#endif
             stport = ngx_palloc(cf->pool, sizeof(ngx_stream_port_t));
             if (stport == NULL) {
                 return NGX_CONF_ERROR;
