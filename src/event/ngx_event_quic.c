@@ -1563,6 +1563,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    c->ssl->no_wait_shutdown = 1;
+
     ssl_conn = c->ssl->connection;
 
     if (SSL_set_quic_method(ssl_conn, &quic_method) == 0) {
@@ -3726,7 +3728,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
                    "quic handshake completed successfully");
 
     c->ssl->handshaked = 1;
-    c->ssl->no_wait_shutdown = 1;
 
     frame = ngx_quic_alloc_frame(c, 0);
     if (frame == NULL) {
