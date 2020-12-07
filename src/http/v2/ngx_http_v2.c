@@ -739,8 +739,6 @@ ngx_http_v2_lingering_close(ngx_connection_t *c)
             c->ssl->handler = ngx_http_v2_lingering_close;
             return;
         }
-
-        c->recv = ngx_recv;
     }
 #endif
 
