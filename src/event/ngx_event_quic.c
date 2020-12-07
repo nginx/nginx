@@ -333,6 +333,7 @@ static ngx_int_t ngx_quic_output_frames(ngx_connection_t *c,
 static void ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames);
 static ngx_int_t ngx_quic_send_frames(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, ngx_queue_t *frames);
+static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len);
 
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
@@ -1171,7 +1172,7 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NGX_ERROR;
     }
 
-    (void) c->send(c, buf, len);
+    (void) ngx_quic_send(c, buf, len);
 
     return NGX_DECLINED;
 }
@@ -1243,7 +1244,7 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
                    "quic vnego packet to send len:%uz %*xs", len, len, buf);
 #endif
 
-    (void) c->send(c, buf, len);
+    (void) ngx_quic_send(c, buf, len);
 
     return NGX_ERROR;
 }
@@ -1298,8 +1299,8 @@ ngx_quic_send_retry(ngx_connection_t *c)
                    "quic packet to send len:%uz %xV", res.len, &res);
 #endif
 
-    len = c->send(c, res.data, res.len);
-    if (len == NGX_ERROR || (size_t) len != res.len) {
+    len = ngx_quic_send(c, res.data, res.len);
+    if (len == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -4906,8 +4907,8 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         return NGX_ERROR;
     }
 
-    len = c->send(c, res.data, res.len);
-    if (len == NGX_ERROR || (size_t) len != res.len) {
+    len = ngx_quic_send(c, res.data, res.len);
+    if (len == NGX_ERROR) {
         ngx_quic_free_frames(c, frames);
         return NGX_ERROR;
     }
@@ -4943,6 +4944,31 @@ ngx_quic_send_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     return NGX_OK;
+}
+
+
+static ssize_t
+ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len)
+{
+    ngx_buf_t    b;
+    ngx_chain_t  cl, *res;
+
+    ngx_memzero(&b, sizeof(ngx_buf_t));
+
+    b.pos = b.start = buf;
+    b.last = b.end = buf + len;
+    b.last_buf = 1;
+    b.temporary = 1;
+
+    cl.buf = &b;
+    cl.next= NULL;
+
+    res = c->send_chain(c, &cl, 0);
+    if (res == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
+    }
+
+    return len;
 }
 
 
