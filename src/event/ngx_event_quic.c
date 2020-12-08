@@ -3717,6 +3717,11 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
         if (!ngx_queue_empty(&ctx->sent)) {
             ngx_quic_resend_frames(c, ctx);
+
+            ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_handshake);
+            while (!ngx_queue_empty(&ctx->sent)) {
+                ngx_quic_resend_frames(c, ctx);
+            }
         }
     }
 
