@@ -2481,6 +2481,7 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
         c->log->action = "parsing frames";
 
         ngx_memzero(&buf, sizeof(ngx_buf_t));
+        buf.temporary = 1;
 
         chain.buf = &buf;
         chain.next = NULL;
