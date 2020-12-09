@@ -3423,10 +3423,8 @@ ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         return duration;
     }
 
-    if (ctx == &qc->send_ctx[2] && c->ssl->handshaked) {
-        /* application send space */
-
-        duration += qc->tp.max_ack_delay << qc->pto_count;
+    if (ctx->level == ssl_encryption_application && c->ssl->handshaked) {
+        duration += qc->ctp.max_ack_delay << qc->pto_count;
     }
 
     return duration;
