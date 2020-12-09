@@ -3276,7 +3276,6 @@ static ngx_int_t
 ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t min, uint64_t max, ngx_msec_t *send_time)
 {
-    uint64_t                found_num;
     ngx_uint_t              found;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
@@ -3286,7 +3285,6 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     *send_time = NGX_TIMER_INFINITE;
     found = 0;
-    found_num = 0;
 
     q = ngx_queue_last(&ctx->sent);
 
@@ -3316,9 +3314,8 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                 break;
             }
 
-            if (f->pnum > found_num || !found) {
+            if (f->pnum == max) {
                 *send_time = f->last;
-                found_num = f->pnum;
             }
 
             ngx_queue_remove(&f->queue);
