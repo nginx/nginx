@@ -380,6 +380,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
                 break;
+            case '?':
+                r->uri_start = p;
+                r->args_start = p + 1;
+                r->empty_path_in_uri = 1;
+                state = sw_uri;
+                break;
             case ' ':
                 /*
                  * use single "/" from request line to preserve pointers,
@@ -445,6 +451,13 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->port_end = p;
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
+                break;
+            case '?':
+                r->port_end = p;
+                r->uri_start = p;
+                r->args_start = p + 1;
+                r->empty_path_in_uri = 1;
+                state = sw_uri;
                 break;
             case ' ':
                 r->port_end = p;
@@ -1286,6 +1299,10 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
     u = r->uri.data;
     r->uri_ext = NULL;
     r->args_start = NULL;
+
+    if (r->empty_path_in_uri) {
+        *u++ = '/';
+    }
 
     ch = *p++;
 
