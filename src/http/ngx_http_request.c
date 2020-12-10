@@ -1230,7 +1230,7 @@ ngx_http_process_request_uri(ngx_http_request_t *r)
             r->uri.len++;
         }
 
-        r->uri.data = ngx_pnalloc(r->pool, r->uri.len + 1);
+        r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
         if (r->uri.data == NULL) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
