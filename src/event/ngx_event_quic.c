@@ -3024,14 +3024,9 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     qc = ngx_quic_get_connection(c);
 
-    if (ctx->level == ssl_encryption_application) {
-        ack_delay = ngx_current_msec - ctx->largest_received;
-        ack_delay *= 1000;
-        ack_delay >>= qc->ctp.ack_delay_exponent;
-
-    } else {
-        ack_delay = 0;
-    }
+    ack_delay = ngx_current_msec - ctx->largest_received;
+    ack_delay *= 1000;
+    ack_delay >>= qc->ctp.ack_delay_exponent;
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
@@ -3379,13 +3374,10 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     } else {
         qc->min_rtt = ngx_min(qc->min_rtt, latest_rtt);
 
+        ack_delay = ack->delay * (1 << qc->ctp.ack_delay_exponent) / 1000;
 
-        if (level == ssl_encryption_application) {
-            ack_delay = ack->delay * (1 << qc->ctp.ack_delay_exponent) / 1000;
+        if (c->ssl->handshaked) {
             ack_delay = ngx_min(ack_delay, qc->ctp.max_ack_delay);
-
-        } else {
-            ack_delay = 0;
         }
 
         adjusted_rtt = latest_rtt;
