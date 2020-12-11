@@ -156,12 +156,6 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     }
 
     if (!of.is_file) {
-
-        if (ngx_close_file(of.fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed", path.data);
-        }
-
         return NGX_DECLINED;
     }
 
