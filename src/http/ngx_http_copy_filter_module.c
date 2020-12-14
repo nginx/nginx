@@ -91,7 +91,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_output_chain_ctx_t       *ctx;
     ngx_http_core_loc_conf_t     *clcf;
     ngx_http_copy_filter_conf_t  *conf;
-
+    clock_t start, end;
     c = r->connection;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -148,8 +148,11 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 #if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     ctx->aio = r->aio;
 #endif
-
+    start = clock();
+    ngx_log_error(NGX_LOG_EMERG, c->log, 0,"junhao: elapsed start: %8.7f", start / CLOCKS_PER_SEC);
     rc = ngx_output_chain(ctx, in);
+    end = clock();
+    ngx_log_error(NGX_LOG_EMERG, c->log, 0,"junhao: elapsed: %8.7f", ((double) (end - start)) / CLOCKS_PER_SEC);
 
     if (ctx->in == NULL) {
         r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
