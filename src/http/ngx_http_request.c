@@ -1298,9 +1298,13 @@ ngx_http_process_request_uri(ngx_http_request_t *r)
         r->uri.len = r->uri_end - r->uri_start;
     }
 
-    if (r->complex_uri || r->quoted_uri) {
+    if (r->complex_uri || r->quoted_uri || r->empty_path_in_uri) {
 
-        r->uri.data = ngx_pnalloc(r->pool, r->uri.len + 1);
+        if (r->empty_path_in_uri) {
+            r->uri.len++;
+        }
+
+        r->uri.data = ngx_pnalloc(r->pool, r->uri.len);
         if (r->uri.data == NULL) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
@@ -1324,7 +1328,7 @@ ngx_http_process_request_uri(ngx_http_request_t *r)
     r->unparsed_uri.len = r->uri_end - r->uri_start;
     r->unparsed_uri.data = r->uri_start;
 
-    r->valid_unparsed_uri = r->space_in_uri ? 0 : 1;
+    r->valid_unparsed_uri = (r->space_in_uri || r->empty_path_in_uri) ? 0 : 1;
 
     if (r->uri_ext) {
         if (r->args_start) {
@@ -3553,8 +3557,6 @@ ngx_http_set_lingering_close(ngx_connection_t *c)
             c->ssl->handler = ngx_http_set_lingering_close;
             return;
         }
-
-        c->recv = ngx_recv;
     }
 #endif
 
