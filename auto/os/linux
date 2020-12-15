@@ -208,3 +208,29 @@ ngx_include="sys/vfs.h";     . auto/include
 
 
 CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+
+
+# (E)BPF
+
+ngx_feature="BPF support"
+ngx_feature_name="NGX_HAVE_BPF"
+ngx_feature_run=no
+ngx_feature_incs="#include <linux/bpf.h>
+                  #include <sys/syscall.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="
+    union bpf_attr attr = { 0 };
+    /* only declare BPF support if all required features found */
+    attr.map_flags = 0;
+    attr.map_type = BPF_MAP_TYPE_SOCKHASH;
+    syscall(__NR_bpf, 0, &attr, 0);"
+
+. auto/feature
+
+if [ $ngx_found = yes ]; then
+    BPF_FOUND=YES
+
+    CORE_SRCS="$CORE_SRCS src/core/ngx_bpf.c"
+    CORE_DEPS="$CORE_DEPS src/core/ngx_bpf.h"
+fi

@@ -95,6 +95,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_connection.h>
 #include <ngx_syslog.h>
 #include <ngx_proxy_protocol.h>
+#if (NGX_HAVE_BPF)
+#include <ngx_bpf.h>
+#endif
 
 
 #define LF     (u_char) '\n'
