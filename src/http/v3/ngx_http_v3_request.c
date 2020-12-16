@@ -14,7 +14,7 @@ static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 
 
-struct {
+static const struct {
     ngx_str_t   name;
     ngx_uint_t  method;
 } ngx_http_v3_methods[] = {
