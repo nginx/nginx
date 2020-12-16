@@ -57,7 +57,7 @@ ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_HAVE_ACCEPT4)
         if (use_accept4) {
-            s = accept4(lc->fd, &sa.sockaddr, &socklen, SOCK_NONBLOCK);
+            s = accept4(lc->fd, &sa.sockaddr, &socklen, SOCK_NONBLOCK | SOCK_CLOEXEC);
         } else {
             s = accept(lc->fd, &sa.sockaddr, &socklen);
         }
