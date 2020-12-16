@@ -124,44 +124,14 @@ typedef struct {
  *   NGX_HTTP_V3_ERROR_XXX - HTTP/3 or QPACK error
  */
 
-ngx_int_t ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
-    ngx_http_v3_parse_varlen_int_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
-    ngx_http_v3_parse_prefix_int_t *st, ngx_uint_t prefix, u_char ch);
-
 ngx_int_t ngx_http_v3_parse_headers(ngx_connection_t *c,
     ngx_http_v3_parse_headers_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
-    ngx_http_v3_parse_header_block_prefix_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_rep(ngx_connection_t *c,
-    ngx_http_v3_parse_header_rep_t *st, ngx_uint_t base, u_char ch);
-ngx_int_t ngx_http_v3_parse_literal(ngx_connection_t *c,
-    ngx_http_v3_parse_literal_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_ri(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_lri(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_l(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-
-ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch);
-ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
-    ngx_http_v3_parse_settings_t *st, u_char ch);
-
-ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_inr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-ngx_int_t ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-
-ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch);
-
 ngx_int_t ngx_http_v3_parse_data(ngx_connection_t *c,
     ngx_http_v3_parse_data_t *st, u_char ch);
+
+ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch);
+ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch);
+ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch);
 
 
 #endif /* _NGX_HTTP_V3_PARSE_H_INCLUDED_ */
