@@ -655,11 +655,7 @@ int ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     peer_secret = is_write ? &keys->secrets[level].server
                            : &keys->secrets[level].client;
 
-    /*
-     * SSL_CIPHER_get_protocol_id() is not universally available,
-     * casting to uint16_t works for both OpenSSL and BoringSSL
-     */
-    keys->cipher = (uint16_t) SSL_CIPHER_get_id(cipher);
+    keys->cipher = SSL_CIPHER_get_protocol_id(cipher);
 
     key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
 
