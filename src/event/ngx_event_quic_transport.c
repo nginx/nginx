@@ -55,16 +55,11 @@
 #define ngx_quic_write_uint32_aligned(p, s)                                   \
     (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
 
-#define ngx_quic_varint_len(value)                                            \
-     ((value) <= 63 ? 1                                                       \
-     : ((uint32_t) value) <= 16383 ? 2                                        \
-     : ((uint64_t) value) <= 1073741823 ?  4                                  \
-     : 8)
-
 #define NGX_QUIC_VERSION(c)       (0xff000000 + (c))
 
 
 static u_char *ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out);
+static ngx_uint_t ngx_quic_varint_len(uint64_t value);
 static void ngx_quic_build_int(u_char **pos, uint64_t value);
 
 static u_char *ngx_quic_read_uint8(u_char *pos, u_char *end, uint8_t *value);
@@ -233,6 +228,20 @@ ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len, u_char *dst)
     ngx_memcpy(dst, pos, len);
 
     return pos + len;
+}
+
+
+static ngx_uint_t
+ngx_quic_varint_len(uint64_t value)
+{
+    ngx_uint_t  bits;
+
+    bits = 0;
+    while (value >> ((8 << bits) - 2)) {
+        bits++;
+    }
+
+    return 1 << bits;
 }
 
 
