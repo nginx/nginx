@@ -23,11 +23,13 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
+#if (NGX_QUIC)
 #ifdef OPENSSL_IS_BORINGSSL
 #include <openssl/hkdf.h>
 #include <openssl/chacha.h>
 #else
 #include <openssl/kdf.h>
+#endif
 #endif
 #include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
