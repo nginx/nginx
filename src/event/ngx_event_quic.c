@@ -589,13 +589,15 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
         break;
 
     case NGX_QUIC_FT_PATH_CHALLENGE:
-        p = ngx_slprintf(p, last, "PATH_CHALLENGE data:0x%xL",
-                         *(uint64_t *) &f->u.path_challenge.data);
+        p = ngx_slprintf(p, last, "PATH_CHALLENGE data:0x%*xs",
+                         sizeof(f->u.path_challenge.data),
+                         f->u.path_challenge.data);
         break;
 
     case NGX_QUIC_FT_PATH_RESPONSE:
-        p = ngx_slprintf(p, last, "PATH_RESPONSE data:0x%xL",
-                         f->u.path_response);
+        p = ngx_slprintf(p, last, "PATH_RESPONSE data:0x%*xs",
+                         sizeof(f->u.path_challenge.data),
+                         f->u.path_challenge.data);
         break;
 
     case NGX_QUIC_FT_NEW_TOKEN:
