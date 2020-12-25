@@ -1325,16 +1325,24 @@ if [ $USE_OPENSSL = YES ]; then
     ngx_module_link=YES
     ngx_module_order=
 
-    if [ $USE_OPENSSL_QUIC = YES ]; then
-        ngx_module_deps="$ngx_module_deps \
-                         src/event/quic/ngx_event_quic.h \
-                         src/event/quic/ngx_event_quic_transport.h \
-                         src/event/quic/ngx_event_quic_protection.h"
-        ngx_module_srcs="$ngx_module_srcs \
-                         src/event/quic/ngx_event_quic.c \
-                         src/event/quic/ngx_event_quic_transport.c \
-                         src/event/quic/ngx_event_quic_protection.c"
-    fi
+    . auto/module
+fi
+
+
+if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
+    ngx_module_type=CORE
+    ngx_module_name=ngx_quic_module
+    ngx_module_incs=
+    ngx_module_deps="src/event/quic/ngx_event_quic.h \
+                     src/event/quic/ngx_event_quic_transport.h \
+                     src/event/quic/ngx_event_quic_protection.h"
+    ngx_module_srcs="src/event/quic/ngx_event_quic.c \
+                     src/event/quic/ngx_event_quic_transport.c \
+                     src/event/quic/ngx_event_quic_protection.c"
+
+    ngx_module_libs=
+    ngx_module_link=YES
+    ngx_module_order=
 
     . auto/module
 fi

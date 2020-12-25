@@ -385,6 +385,29 @@ static ngx_chain_t *ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in,
     size_t len);
 
 
+static ngx_core_module_t  ngx_quic_module_ctx = {
+    ngx_string("quic"),
+    NULL,
+    NULL
+};
+
+
+ngx_module_t  ngx_quic_module = {
+    NGX_MODULE_V1,
+    &ngx_quic_module_ctx,                  /* module context */
+    NULL,                                  /* module directives */
+    NGX_CORE_MODULE,                       /* module type */
+    NULL,                                  /* init master */
+    NULL,                                  /* init module */
+    NULL,                                  /* init process */
+    NULL,                                  /* init thread */
+    NULL,                                  /* exit thread */
+    NULL,                                  /* exit process */
+    NULL,                                  /* exit master */
+    NGX_MODULE_V1_PADDING
+};
+
+
 static SSL_QUIC_METHOD quic_method = {
 #if BORINGSSL_API_VERSION >= 10
     ngx_quic_set_read_secret,
