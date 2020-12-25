@@ -45,6 +45,8 @@ USE_THREADS=NO
 
 NGX_FILE_AIO=NO
 
+NGX_QUIC_BPF=YES
+
 HTTP=YES
 
 NGX_HTTP_LOG_PATH=
@@ -170,6 +172,7 @@ NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
 
 BPF_FOUND=NO
+SO_COOKIE_FOUND=NO
 
 NGX_LIBATOMIC=NO
 
@@ -215,6 +218,8 @@ do
         --with-threads)                  USE_THREADS=YES            ;;
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
+
+        --without-quic_bpf_module)       NGX_QUIC_BPF=NO            ;;
 
         --with-ipv6)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
@@ -449,6 +454,8 @@ cat << END
   --with-threads                     enable thread pool support
 
   --with-file-aio                    enable file AIO support
+
+  --without-quic_bpf_module          disable ngx_quic_bpf_module
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_quic_module            enable ngx_http_quic_module

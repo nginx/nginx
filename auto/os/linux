@@ -234,3 +234,41 @@ if [ $ngx_found = yes ]; then
     CORE_SRCS="$CORE_SRCS src/core/ngx_bpf.c"
     CORE_DEPS="$CORE_DEPS src/core/ngx_bpf.h"
 fi
+
+
+# SO_COOKIE socket option
+
+ngx_feature="SO_COOKIE"
+ngx_feature_name="NGX_HAVE_SO_COOKIE"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <stdint.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="socklen_t optlen = sizeof(uint64_t);
+              uint64_t cookie;
+              getsockopt(0, SOL_SOCKET, SO_COOKIE, &cookie, &optlen)"
+. auto/feature
+
+if [ $ngx_found = yes ]; then
+    SO_COOKIE_FOUND=YES
+    have=NGX_HAVE_SO_COOKIE . auto/have
+fi
+
+
+# ngx_quic_bpf module uses sockhash to select socket from reuseport group,
+# support appeared in Linux-5.7:
+#
+# commit: 9fed9000c5c6cacfcaaa48aff74818072ae294cc
+# bpf: Allow selecting reuseport socket from a SOCKMAP/SOCKHASH
+#
+if [ $NGX_QUIC_BPF$BPF_FOUND = YESYES ]; then
+    echo $ngx_n "checking for kernel with reuseport/BPF support...$ngx_c"
+    if [ $version -lt 329472 ]; then
+        echo " not found (at least 5.7 is required)"
+        NGX_QUIC_BPF=NO
+    else
+        echo " found"
+    fi
+fi
+

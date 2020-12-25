@@ -232,6 +232,9 @@ static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
 static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
     ngx_quic_header_t *inpkt);
 static ngx_int_t ngx_quic_create_server_id(ngx_connection_t *c, u_char *id);
+#if (NGX_QUIC_BPF)
+static ngx_int_t ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id);
+#endif
 static ngx_int_t ngx_quic_send_retry(ngx_connection_t *c);
 static ngx_int_t ngx_quic_new_token(ngx_connection_t *c, ngx_str_t *token);
 static ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
@@ -1297,11 +1300,47 @@ ngx_quic_create_server_id(ngx_connection_t *c, u_char *id)
         return NGX_ERROR;
     }
 
+#if (NGX_QUIC_BPF)
+    if (ngx_quic_bpf_attach_id(c, id) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "quic bpf failed to generate socket key");
+        /* ignore error, things still may work */
+    }
+#endif
+
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic create server id %*xs",
                    (size_t) NGX_QUIC_SERVER_CID_LEN, id);
     return NGX_OK;
 }
+
+
+#if (NGX_QUIC_BPF)
+
+static ngx_int_t
+ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id)
+{
+    int        fd;
+    uint64_t   cookie;
+    socklen_t  optlen;
+
+    fd = c->listening->fd;
+
+    optlen = sizeof(cookie);
+
+    if (getsockopt(fd, SOL_SOCKET, SO_COOKIE, &cookie, &optlen) == -1) {
+        ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
+                      "quic getsockopt(SO_COOKIE) failed");
+
+        return NGX_ERROR;
+    }
+
+    ngx_quic_dcid_encode_key(id, cookie);
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t

@@ -1345,6 +1345,22 @@ if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
     ngx_module_order=
 
     . auto/module
+
+    if [ $NGX_QUIC_BPF$BPF_FOUND$SO_COOKIE_FOUND = YESYESYES ]; then
+        ngx_module_type=CORE
+        ngx_module_name=ngx_quic_bpf_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs="src/event/quic/ngx_event_quic_bpf.c \
+                         src/event/quic/ngx_event_quic_bpf_code.c"
+        ngx_module_libs=
+        ngx_module_link=YES
+        ngx_module_order=
+
+        . auto/module
+
+        have=NGX_QUIC_BPF . auto/have
+    fi
 fi
 
 

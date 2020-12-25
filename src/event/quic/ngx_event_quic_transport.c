@@ -43,6 +43,17 @@
 
 #endif
 
+#define ngx_quic_write_uint64(p, s)                                           \
+    ((p)[0] = (u_char) ((s) >> 56),                                           \
+     (p)[1] = (u_char) ((s) >> 48),                                           \
+     (p)[2] = (u_char) ((s) >> 40),                                           \
+     (p)[3] = (u_char) ((s) >> 32),                                           \
+     (p)[4] = (u_char) ((s) >> 24),                                           \
+     (p)[5] = (u_char) ((s) >> 16),                                           \
+     (p)[6] = (u_char) ((s) >> 8),                                            \
+     (p)[7] = (u_char)  (s),                                                  \
+     (p) + sizeof(uint64_t))
+
 #define ngx_quic_write_uint24(p, s)                                           \
     ((p)[0] = (u_char) ((s) >> 16),                                           \
      (p)[1] = (u_char) ((s) >> 8),                                            \
@@ -1980,4 +1991,11 @@ ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
     p = ngx_cpymem(p, cl->reason.data, cl->reason.len);
 
     return p - start;
+}
+
+
+void
+ngx_quic_dcid_encode_key(u_char *dcid, uint64_t key)
+{
+    (void) ngx_quic_write_uint64(dcid, key);
 }

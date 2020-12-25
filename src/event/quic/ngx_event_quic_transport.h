@@ -353,4 +353,6 @@ ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
 ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, size_t *clen);
 
+void ngx_quic_dcid_encode_key(u_char *dcid, uint64_t key);
+
 #endif /* _NGX_EVENT_QUIC_WIRE_H_INCLUDED_ */
