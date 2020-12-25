@@ -11,7 +11,8 @@ mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/src/http/modules $NGX_OBJS/src/http/modules/perl \
          $NGX_OBJS/src/mail \
          $NGX_OBJS/src/stream \
-         $NGX_OBJS/src/misc
+         $NGX_OBJS/src/misc \
+         $NGX_OBJS/src/event/quic
 
 
 ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep

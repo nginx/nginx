@@ -1327,13 +1327,13 @@ if [ $USE_OPENSSL = YES ]; then
 
     if [ $USE_OPENSSL_QUIC = YES ]; then
         ngx_module_deps="$ngx_module_deps \
-                         src/event/ngx_event_quic.h \
-                         src/event/ngx_event_quic_transport.h \
-                         src/event/ngx_event_quic_protection.h"
+                         src/event/quic/ngx_event_quic.h \
+                         src/event/quic/ngx_event_quic_transport.h \
+                         src/event/quic/ngx_event_quic_protection.h"
         ngx_module_srcs="$ngx_module_srcs \
-                         src/event/ngx_event_quic.c \
-                         src/event/ngx_event_quic_transport.c \
-                         src/event/ngx_event_quic_protection.c"
+                         src/event/quic/ngx_event_quic.c \
+                         src/event/quic/ngx_event_quic_transport.c \
+                         src/event/quic/ngx_event_quic_protection.c"
     fi
 
     . auto/module
