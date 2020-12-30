@@ -4,8 +4,8 @@
  */
 
 
-#ifndef _NGX_EVENT_QUIC_WIRE_H_INCLUDED_
-#define _NGX_EVENT_QUIC_WIRE_H_INCLUDED_
+#ifndef _NGX_EVENT_QUIC_TRANSPORT_H_INCLUDED_
+#define _NGX_EVENT_QUIC_TRANSPORT_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -355,4 +355,4 @@ ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
 
 void ngx_quic_dcid_encode_key(u_char *dcid, uint64_t key);
 
-#endif /* _NGX_EVENT_QUIC_WIRE_H_INCLUDED_ */
+#endif /* _NGX_EVENT_QUIC_TRANSPORT_H_INCLUDED_ */
