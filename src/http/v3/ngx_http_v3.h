@@ -116,6 +116,7 @@ typedef struct {
 
 
 typedef struct {
+    /* the http connection must be first */
     ngx_http_connection_t         hc;
     ngx_http_v3_dynamic_table_t   table;
 
