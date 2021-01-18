@@ -13,6 +13,8 @@
 static void ngx_http_v3_process_request(ngx_event_t *rev);
 static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
+static ngx_int_t ngx_http_v3_validate_header(ngx_http_request_t *r,
+    ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r);
@@ -260,7 +262,24 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 {
     ngx_table_elt_t            *h;
     ngx_http_header_t          *hh;
+    ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
+
+    if (ngx_http_v3_validate_header(r, name, value) != NGX_OK) {
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    if (r->invalid_header) {
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (cscf->ignore_invalid_headers) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid header: \"%V\"", name);
+
+            return NGX_OK;
+        }
+    }
 
     if (name->len &&  name->data[0] == ':') {
         return ngx_http_v3_process_pseudo_header(r, name, value);
@@ -292,6 +311,57 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 header: \"%V: %V\"", name, value);
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v3_validate_header(ngx_http_request_t *r, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    u_char                     ch;
+    ngx_uint_t                 i;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    r->invalid_header = 0;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    for (i = (name->data[0] == ':'); i != name->len; i++) {
+        ch = name->data[i];
+
+        if ((ch >= 'a' && ch <= 'z')
+            || (ch == '-')
+            || (ch >= '0' && ch <= '9')
+            || (ch == '_' && cscf->underscores_in_headers))
+        {
+            continue;
+        }
+
+        if (ch == '\0' || ch == LF || ch == CR || ch == ':'
+            || (ch >= 'A' && ch <= 'Z'))
+        {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid header name: \"%V\"", name);
+
+            return NGX_ERROR;
+        }
+
+        r->invalid_header = 1;
+    }
+
+    for (i = 0; i != value->len; i++) {
+        ch = value->data[i];
+
+        if (ch == '\0' || ch == LF || ch == CR) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent header \"%V\" with "
+                          "invalid value: \"%V\"", name, value);
+
+            return NGX_ERROR;
+        }
+    }
+
     return NGX_OK;
 }
 
