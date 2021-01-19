@@ -1714,7 +1714,6 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
     cscf = addr->default_server;
     ls->pool_size = cscf->connection_pool_size;
-    ls->post_accept_timeout = cscf->client_header_timeout;
 
     clcf = cscf->ctx->loc_conf[ngx_http_core_module.ctx_index];
 
