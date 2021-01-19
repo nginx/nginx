@@ -1782,7 +1782,7 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         }
     }
 
-    if (r->method == NGX_HTTP_HEAD || (r != r->main && val.len == 0)) {
+    if (r != r->main && val.len == 0) {
         return ngx_http_send_header(r);
     }
 
