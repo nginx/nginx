@@ -300,6 +300,7 @@ static ngx_int_t
 ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
+    u_char      ch, c;
     ngx_uint_t  i;
 
     if (r->request_line.len) {
@@ -309,6 +310,18 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
+
+        if (r->method_name.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":method\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":method\" header");
+            goto failed;
+        }
 
         r->method_name = *value;
 
@@ -325,12 +338,34 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
             }
         }
 
+        for (i = 0; i < value->len; i++) {
+            ch = value->data[i];
+
+            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent invalid method: \"%V\"", value);
+                goto failed;
+            }
+        }
+
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 method \"%V\" %ui", value, r->method);
         return NGX_OK;
     }
 
     if (name->len == 5 && ngx_strncmp(name->data, ":path", 5) == 0) {
+
+        if (r->uri_start) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":path\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":path\" header");
+            goto failed;
+        }
 
         r->uri_start = value->data;
         r->uri_end = value->data + value->len;
@@ -349,6 +384,39 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
 
     if (name->len == 7 && ngx_strncmp(name->data, ":scheme", 7) == 0) {
 
+        if (r->schema.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":scheme\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":scheme\" header");
+            goto failed;
+        }
+
+        for (i = 0; i < value->len; i++) {
+            ch = value->data[i];
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'z') {
+                continue;
+            }
+
+            if (((ch >= '0' && ch <= '9')
+                 || ch == '+' || ch == '-' || ch == '.')
+                && i > 0)
+            {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid \":scheme\" header: \"%V\"",
+                          value);
+            goto failed;
+        }
+
         r->schema = *value;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -357,6 +425,12 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (name->len == 10 && ngx_strncmp(name->data, ":authority", 10) == 0) {
+
+        if (r->host_start) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":authority\" header");
+            goto failed;
+        }
 
         r->host_start = value->data;
         r->host_end = value->data + value->len;
@@ -386,6 +460,24 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
     if (r->request_line.len) {
         return NGX_OK;
+    }
+
+    if (r->method_name.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":method\" header");
+        goto failed;
+    }
+
+    if (r->schema.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":scheme\" header");
+        goto failed;
+    }
+
+    if (r->uri_start == NULL) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":path\" header");
+        goto failed;
     }
 
     len = r->method_name.len + 1
