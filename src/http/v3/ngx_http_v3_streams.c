@@ -40,44 +40,49 @@ static ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
 
 
 ngx_int_t
-ngx_http_v3_init_connection(ngx_connection_t *c)
+ngx_http_v3_init_session(ngx_connection_t *c)
 {
-    ngx_http_connection_t     *hc;
-    ngx_http_v3_uni_stream_t  *us;
+    ngx_connection_t          *pc;
+    ngx_http_connection_t     *phc;
     ngx_http_v3_connection_t  *h3c;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init connection");
+    pc = c->quic->parent;
+    phc = pc->data;
 
-    hc = c->data;
-
-    if (c->quic == NULL) {
-        h3c = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_connection_t));
-        if (h3c == NULL) {
-            return NGX_ERROR;
-        }
-
-        h3c->hc = *hc;
-
-        ngx_queue_init(&h3c->blocked);
-        ngx_queue_init(&h3c->pushing);
-
-        c->data = h3c;
+    if (phc->http3) {
         return NGX_OK;
     }
 
-    if (ngx_http_v3_send_settings(c) == NGX_ERROR) {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init session");
+
+    h3c = ngx_pcalloc(pc->pool, sizeof(ngx_http_v3_connection_t));
+    if (h3c == NULL) {
         return NGX_ERROR;
     }
 
-    if ((c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0) {
-        return NGX_OK;
-    }
+    h3c->hc = *phc;
+    h3c->hc.http3 = 1;
+
+    ngx_queue_init(&h3c->blocked);
+    ngx_queue_init(&h3c->pushing);
+
+    pc->data = h3c;
+
+    return ngx_http_v3_send_settings(c);
+}
+
+
+void
+ngx_http_v3_init_uni_stream(ngx_connection_t *c)
+{
+    ngx_http_v3_uni_stream_t  *us;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init uni stream");
 
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
-        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                        NULL);
-        return NGX_ERROR;
+        ngx_http_close_connection(c);
+        return;
     }
 
     us->index = -1;
@@ -88,8 +93,6 @@ ngx_http_v3_init_connection(ngx_connection_t *c)
     c->write->handler = ngx_http_v3_dummy_write_handler;
 
     ngx_http_v3_read_uni_stream_type(c->read);
-
-    return NGX_DONE;
 }
 
 
@@ -478,10 +481,6 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
 
     h3c = c->quic->parent->data;
 
-    if (h3c->settings_sent) {
-        return NGX_OK;
-    }
-
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
 
     cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
@@ -512,16 +511,11 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
         goto failed;
     }
 
-    h3c->settings_sent = 1;
-
     return NGX_OK;
 
 failed:
 
     ngx_http_v3_close_uni_stream(cc);
-
-    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                    "could not send settings");
 
     return NGX_ERROR;
 }

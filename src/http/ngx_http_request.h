@@ -325,6 +325,7 @@ typedef struct {
 
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
+    unsigned                          http3:1;
 } ngx_http_connection_t;
 
 
@@ -581,7 +582,6 @@ struct ngx_http_request_s {
      * via ngx_http_ephemeral_t
      */
 
-    u_char                           *parse_start;
     u_char                           *uri_start;
     u_char                           *uri_end;
     u_char                           *uri_ext;

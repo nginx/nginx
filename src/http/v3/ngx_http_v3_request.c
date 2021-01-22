@@ -10,8 +10,13 @@
 #include <ngx_http.h>
 
 
+static void ngx_http_v3_process_request(ngx_event_t *rev);
+static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
+    ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
+static ngx_int_t ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r);
+static ngx_int_t ngx_http_v3_process_request_header(ngx_http_request_t *r);
 
 
 static const struct {
@@ -37,230 +42,256 @@ static const struct {
 };
 
 
-ngx_int_t
-ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b)
+void
+ngx_http_v3_init(ngx_connection_t *c)
 {
-    size_t                        len;
-    u_char                       *p;
-    ngx_int_t                     rc, n;
-    ngx_str_t                    *name, *value;
+    size_t                     size;
+    ngx_buf_t                 *b;
+    ngx_event_t               *rev;
+    ngx_http_request_t        *r;
+    ngx_http_connection_t     *hc;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    if (ngx_http_v3_init_session(c) != NGX_OK) {
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        "internal error");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+        ngx_http_v3_init_uni_stream(c);
+        return;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init request stream");
+
+    hc = c->data;
+
+    cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
+
+    size = cscf->client_header_buffer_size;
+
+    b = c->buffer;
+
+    if (b == NULL) {
+        b = ngx_create_temp_buf(c->pool, size);
+        if (b == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        c->buffer = b;
+
+    } else if (b->start == NULL) {
+
+        b->start = ngx_palloc(c->pool, size);
+        if (b->start == NULL) {
+            ngx_http_close_connection(c);
+            return;
+        }
+
+        b->pos = b->start;
+        b->last = b->start;
+        b->end = b->last + size;
+    }
+
+    c->log->action = "reading client request";
+
+    r = ngx_http_create_request(c);
+    if (r == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    r->http_version = NGX_HTTP_VERSION_30;
+
+    c->data = r;
+
+    rev = c->read;
+    rev->handler = ngx_http_v3_process_request;
+
+    ngx_http_v3_process_request(rev);
+}
+
+
+static void
+ngx_http_v3_process_request(ngx_event_t *rev)
+{
+    ssize_t                       n;
+    ngx_buf_t                    *b;
+    ngx_int_t                     rc;
     ngx_connection_t             *c;
+    ngx_http_request_t           *r;
+    ngx_http_core_srv_conf_t     *cscf;
     ngx_http_v3_parse_headers_t  *st;
 
-    c = r->connection;
+    c = rev->data;
+    r = c->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http3 process request");
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
+        c->timedout = 1;
+        ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
+
     st = r->h3_parse;
 
     if (st == NULL) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header");
-
         st = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_headers_t));
         if (st == NULL) {
-            goto failed;
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return;
         }
 
         r->h3_parse = st;
-        r->parse_start = b->pos;
-        r->state = 1;
     }
 
-    while (b->pos < b->last) {
+    b = r->header_in;
+
+    for ( ;; ) {
+
+        if (b->pos == b->last) {
+
+            if (!rev->ready) {
+                break;
+            }
+
+            n = c->recv(c, b->start, b->end - b->start);
+
+            if (n == NGX_AGAIN) {
+                if (!rev->timer_set) {
+                    cscf = ngx_http_get_module_srv_conf(r,
+                                                        ngx_http_core_module);
+                    ngx_add_timer(rev, cscf->client_header_timeout);
+                }
+
+                if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                }
+
+                break;
+            }
+
+            if (n == 0) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client prematurely closed connection");
+            }
+
+            if (n == 0 || n == NGX_ERROR) {
+                c->error = 1;
+                c->log->action = "reading client request";
+
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                break;
+            }
+
+            b->pos = b->start;
+            b->last = b->start + n;
+        }
+
         rc = ngx_http_v3_parse_headers(c, st, *b->pos);
 
         if (rc > 0) {
             ngx_http_v3_finalize_connection(c, rc,
                                             "could not parse request headers");
-            goto failed;
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            break;
         }
 
         if (rc == NGX_ERROR) {
-            goto failed;
+            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                            "internal error");
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            break;
         }
 
         if (rc == NGX_BUSY) {
-            return NGX_BUSY;
+            if (rev->error) {
+                ngx_http_close_request(r, NGX_HTTP_CLOSE);
+                break;
+            }
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            break;
         }
 
         b->pos++;
+        r->request_length++;
 
         if (rc == NGX_AGAIN) {
             continue;
         }
 
-        name = &st->header_rep.header.name;
-        value = &st->header_rep.header.value;
+        /* rc == NGX_OK || rc == NGX_DONE */
 
-        n = ngx_http_v3_process_pseudo_header(r, name, value);
-
-        if (n == NGX_ERROR) {
-            goto failed;
-        }
-
-        if (n == NGX_OK && rc == NGX_OK) {
-            continue;
-        }
-
-        len = r->method_name.len + 1
-            + (r->uri_end - r->uri_start) + 1
-            + sizeof("HTTP/3.0") - 1;
-
-        p = ngx_pnalloc(c->pool, len);
-        if (p == NULL) {
-            goto failed;
-        }
-
-        r->request_start = p;
-
-        p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
-        r->method_end = p - 1;
-        *p++ = ' ';
-        p = ngx_cpymem(p, r->uri_start, r->uri_end - r->uri_start);
-        *p++ = ' ';
-        r->http_protocol.data = p;
-        p = ngx_cpymem(p, "HTTP/3.0", sizeof("HTTP/3.0") - 1);
-
-        r->request_end = p;
-        r->state = 0;
-
-        return NGX_OK;
-    }
-
-    return NGX_AGAIN;
-
-failed:
-
-    return NGX_HTTP_PARSE_INVALID_REQUEST;
-}
-
-
-ngx_int_t
-ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
-    ngx_uint_t allow_underscores)
-{
-    u_char                        ch;
-    ngx_int_t                     rc;
-    ngx_str_t                    *name, *value;
-    ngx_uint_t                    hash, i, n;
-    ngx_connection_t             *c;
-    ngx_http_v3_parse_headers_t  *st;
-    enum {
-        sw_start = 0,
-        sw_done,
-        sw_next,
-        sw_header
-    };
-
-    c = r->connection;
-    st = r->h3_parse;
-
-    switch (r->state) {
-
-    case sw_start:
-        r->parse_start = b->pos;
-
-        if (st->state) {
-            r->state = sw_next;
-            goto done;
-        }
-
-        name = &st->header_rep.header.name;
-
-        if (name->len && name->data[0] != ':') {
-            r->state = sw_done;
-            goto done;
-        }
-
-        /* fall through */
-
-    case sw_done:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse header done");
-        return NGX_HTTP_PARSE_HEADER_DONE;
-
-    case sw_next:
-        r->parse_start = b->pos;
-        r->invalid_header = 0;
-        break;
-
-    case sw_header:
-        break;
-    }
-
-    while (b->pos < b->last) {
-        rc = ngx_http_v3_parse_headers(c, st, *b->pos++);
-
-        if (rc > 0) {
-            ngx_http_v3_finalize_connection(c, rc,
-                                            "could not parse request headers");
-            return NGX_HTTP_PARSE_INVALID_HEADER;
-        }
-
-        if (rc == NGX_ERROR) {
-            return NGX_HTTP_PARSE_INVALID_HEADER;
+        if (ngx_http_v3_process_header(r, &st->header_rep.header.name,
+                                       &st->header_rep.header.value)
+            != NGX_OK)
+        {
+            break;
         }
 
         if (rc == NGX_DONE) {
-            r->state = sw_done;
-            goto done;
-        }
+            if (ngx_http_v3_process_request_header(r) != NGX_OK) {
+                break;
+            }
 
-        if (rc == NGX_OK) {
-            r->state = sw_next;
-            goto done;
+            ngx_http_process_request(r);
+            break;
         }
     }
 
-    r->state = sw_header;
-    return NGX_AGAIN;
+    ngx_http_run_posted_requests(c);
 
-done:
+    return;
+}
 
-    name = &st->header_rep.header.name;
-    value = &st->header_rep.header.value;
 
-    r->header_name_start = name->data;
-    r->header_name_end = name->data + name->len;
-    r->header_start = value->data;
-    r->header_end = value->data + value->len;
+static ngx_int_t
+ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    ngx_table_elt_t            *h;
+    ngx_http_header_t          *hh;
+    ngx_http_core_main_conf_t  *cmcf;
 
-    hash = 0;
-    i = 0;
-
-    for (n = 0; n < name->len; n++) {
-        ch = name->data[n];
-
-        if (ch >= 'A' && ch <= 'Z') {
-            /*
-             * A request or response containing uppercase
-             * header field names MUST be treated as malformed
-             */
-            return NGX_HTTP_PARSE_INVALID_HEADER;
-        }
-
-        if (ch == '\0') {
-            return NGX_HTTP_PARSE_INVALID_HEADER;
-        }
-
-        if (ch == '_' && !allow_underscores) {
-            r->invalid_header = 1;
-            continue;
-        }
-
-        if ((ch < 'a' || ch > 'z')
-            && (ch < '0' || ch > '9')
-            && ch != '-' && ch != '_')
-        {
-            r->invalid_header = 1;
-            continue;
-        }
-
-        hash = ngx_hash(hash, ch);
-        r->lowcase_header[i++] = ch;
-        i &= (NGX_HTTP_LC_HEADER_LEN - 1);
+    if (name->len &&  name->data[0] == ':') {
+        return ngx_http_v3_process_pseudo_header(r, name, value);
     }
 
-    r->header_hash = hash;
-    r->lowcase_index = i;
+    if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
+    h = ngx_list_push(&r->headers_in.headers);
+    if (h == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    h->key = *name;
+    h->value = *value;
+    h->lowcase_key = h->key.data;
+    h->hash = ngx_hash_key(h->key.data, h->key.len);
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                       h->lowcase_key, h->key.len);
+
+    if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http3 header: \"%V: %V\"", name, value);
     return NGX_OK;
 }
 
@@ -269,75 +300,210 @@ static ngx_int_t
 ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
-    ngx_uint_t         i;
-    ngx_connection_t  *c;
+    ngx_uint_t  i;
 
-    if (name->len == 0 || name->data[0] != ':') {
-        return NGX_DONE;
+    if (r->request_line.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent out of order pseudo-headers");
+        goto failed;
     }
 
-    c = r->connection;
-
     if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
+
         r->method_name = *value;
 
         for (i = 0; i < sizeof(ngx_http_v3_methods)
                         / sizeof(ngx_http_v3_methods[0]); i++)
         {
             if (value->len == ngx_http_v3_methods[i].name.len
-                && ngx_strncmp(value->data, ngx_http_v3_methods[i].name.data,
-                               value->len) == 0)
+                && ngx_strncmp(value->data,
+                               ngx_http_v3_methods[i].name.data, value->len)
+                   == 0)
             {
                 r->method = ngx_http_v3_methods[i].method;
                 break;
             }
         }
 
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 method \"%V\" %ui", value, r->method);
         return NGX_OK;
     }
 
     if (name->len == 5 && ngx_strncmp(name->data, ":path", 5) == 0) {
+
         r->uri_start = value->data;
         r->uri_end = value->data + value->len;
 
         if (ngx_http_parse_uri(r) != NGX_OK) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent invalid :path header: \"%V\"", value);
-            return NGX_ERROR;
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid \":path\" header: \"%V\"",
+                          value);
+            goto failed;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 path \"%V\"", value);
-
         return NGX_OK;
     }
 
     if (name->len == 7 && ngx_strncmp(name->data, ":scheme", 7) == 0) {
-        r->schema_start = value->data;
-        r->schema_end = value->data + value->len;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        r->schema = *value;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 schema \"%V\"", value);
-
         return NGX_OK;
     }
 
     if (name->len == 10 && ngx_strncmp(name->data, ":authority", 10) == 0) {
+
         r->host_start = value->data;
         r->host_end = value->data + value->len;
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 authority \"%V\"", value);
-
         return NGX_OK;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 unknown pseudo header \"%V\" \"%V\"", name, value);
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "client sent unknown pseudo-header \"%V\"", name);
+
+failed:
+
+    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+    return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
+{
+    size_t      len;
+    u_char     *p;
+    ngx_int_t   rc;
+    ngx_str_t   host;
+
+    if (r->request_line.len) {
+        return NGX_OK;
+    }
+
+    len = r->method_name.len + 1
+          + (r->uri_end - r->uri_start) + 1
+          + sizeof("HTTP/3.0") - 1;
+
+    p = ngx_pnalloc(r->pool, len);
+    if (p == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    r->request_line.data = p;
+
+    p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
+    *p++ = ' ';
+    p = ngx_cpymem(p, r->uri_start, r->uri_end - r->uri_start);
+    *p++ = ' ';
+    p = ngx_cpymem(p, "HTTP/3.0", sizeof("HTTP/3.0") - 1);
+
+    r->request_line.len = p - r->request_line.data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http3 request line: \"%V\"", &r->request_line);
+
+    ngx_str_set(&r->http_protocol, "HTTP/3.0");
+
+    if (ngx_http_process_request_uri(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (r->host_end) {
+
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        rc = ngx_http_validate_host(&host, r->pool, 0);
+
+        if (rc == NGX_DECLINED) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid host in request line");
+            goto failed;
+        }
+
+        if (rc == NGX_ERROR) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_set_virtual_server(r, &host) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        r->headers_in.server = host;
+    }
+
+    if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
+
+failed:
+
+    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+    return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_v3_process_request_header(ngx_http_request_t *r)
+{
+    if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (r->headers_in.server.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent neither \":authority\" nor \"Host\" header");
+        goto failed;
+    }
+
+    if (r->headers_in.host) {
+        if (r->headers_in.host->value.len != r->headers_in.server.len
+            || ngx_memcmp(r->headers_in.host->value.data,
+                          r->headers_in.server.data,
+                          r->headers_in.server.len)
+               != 0)
+        {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent \":authority\" and \"Host\" headers "
+                          "with different values");
+            goto failed;
+        }
+    }
+
+    if (r->headers_in.content_length) {
+        r->headers_in.content_length_n =
+                            ngx_atoof(r->headers_in.content_length->value.data,
+                                      r->headers_in.content_length->value.len);
+
+        if (r->headers_in.content_length_n == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid \"Content-Length\" header");
+            goto failed;
+        }
+    }
+
+    return NGX_OK;
+
+failed:
+
+    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+    return NGX_ERROR;
 }
 
 

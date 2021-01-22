@@ -175,6 +175,43 @@ static ngx_http_variable_t  ngx_http_quic_vars[] = {
 };
 
 
+ngx_int_t
+ngx_http_quic_init(ngx_connection_t *c)
+{
+    ngx_quic_conf_t           *qcf;
+    ngx_http_connection_t     *hc, *phc;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    hc = c->data;
+
+    hc->ssl = 1;
+
+    if (c->quic == NULL) {
+        c->log->connection = c->number;
+
+        qcf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_quic_module);
+
+        ngx_quic_run(c, qcf);
+
+        return NGX_DONE;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http init quic stream");
+
+    phc = c->quic->parent->data;
+
+    if (phc->ssl_servername) {
+        hc->ssl_servername = phc->ssl_servername;
+        hc->conf_ctx = phc->conf_ctx;
+
+        clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+        ngx_set_connection_log(c, clcf->error_log);
+    }
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t
 ngx_http_variable_quic(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)

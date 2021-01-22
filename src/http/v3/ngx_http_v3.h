@@ -127,17 +127,11 @@ typedef struct {
     uint64_t                      next_push_id;
     uint64_t                      max_push_id;
 
-    ngx_uint_t                    settings_sent;
-                                               /* unsigned  settings_sent:1; */
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
 } ngx_http_v3_connection_t;
 
 
-ngx_int_t ngx_http_v3_init_connection(ngx_connection_t *c);
-
-ngx_int_t ngx_http_v3_parse_request(ngx_http_request_t *r, ngx_buf_t *b);
-ngx_int_t ngx_http_v3_parse_header(ngx_http_request_t *r, ngx_buf_t *b,
-    ngx_uint_t allow_underscores);
+void ngx_http_v3_init(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx);
 
@@ -157,6 +151,8 @@ uintptr_t ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index);
 uintptr_t ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index,
     u_char *data, size_t len);
 
+ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
+void ngx_http_v3_init_uni_stream(ngx_connection_t *c);
 ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
     uint64_t push_id);
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
