@@ -133,8 +133,8 @@ typedef struct {
 
 
 void ngx_http_v3_init(ngx_connection_t *c);
-ngx_int_t ngx_http_v3_parse_request_body(ngx_http_request_t *r, ngx_buf_t *b,
-    ngx_http_chunked_t *ctx);
+ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
+ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
 
 uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
 uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,
