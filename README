@@ -108,7 +108,7 @@ Experimental QUIC support for nginx
 
         quic_max_idle_timeout
         quic_max_ack_delay
-        quic_max_packet_size
+        quic_max_udp_payload_size
         quic_initial_max_data
         quic_initial_max_stream_data_bidi_local
         quic_initial_max_stream_data_bidi_remote
@@ -116,7 +116,7 @@ Experimental QUIC support for nginx
         quic_initial_max_streams_bidi
         quic_initial_max_streams_uni
         quic_ack_delay_exponent
-        quic_active_migration
+        quic_disable_active_migration
         quic_active_connection_id_limit
 
     To enable address validation:
