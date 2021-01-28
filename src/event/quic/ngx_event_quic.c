@@ -255,13 +255,15 @@ static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b,
     ngx_quic_conf_t *conf);
 static ngx_int_t ngx_quic_process_packet(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_process_payload(ngx_connection_t *c,
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_early_cc(ngx_connection_t *c,
     ngx_quic_header_t *inpkt, ngx_uint_t err, const char *reason);
 static void ngx_quic_discard_ctx(ngx_connection_t *c,
     enum ssl_encryption_level_t level);
 static ngx_int_t ngx_quic_check_peer(ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_payload_handler(ngx_connection_t *c,
+static ngx_int_t ngx_quic_handle_frames(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_ack_packet(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -2120,11 +2122,10 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 static ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 {
-    u_char                 *p;
-    ngx_int_t               rc;
-    ngx_uint_t              good;
-    ngx_quic_header_t       pkt;
-    ngx_quic_connection_t  *qc;
+    u_char             *p;
+    ngx_int_t           rc;
+    ngx_uint_t          good;
+    ngx_quic_header_t   pkt;
 
     good = 0;
 
@@ -2139,12 +2140,6 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         pkt.log = c->log;
         pkt.flags = p[0];
         pkt.raw->pos++;
-
-        qc = ngx_quic_get_connection(c);
-        if (qc) {
-            qc->error = 0;
-            qc->error_reason = 0;
-        }
 
         rc = ngx_quic_process_packet(c, conf, &pkt);
 
@@ -2212,10 +2207,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
-    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "parsing quic packet";
 
@@ -2228,8 +2220,6 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     pkt->parsed = 1;
 
     c->log->action = "processing quic packet";
-
-    qc = ngx_quic_get_connection(c);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic packet rx dcid len:%uz %xV",
@@ -2248,6 +2238,8 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                        pkt->token.len, &pkt->token);
     }
 #endif
+
+    qc = ngx_quic_get_connection(c);
 
     if (qc) {
 
@@ -2284,83 +2276,102 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             return NGX_DECLINED;
         }
 
-    } else {
-
-        if (rc == NGX_ABORT) {
-            return ngx_quic_negotiate_version(c, pkt);
-        }
-
-        if (pkt->level == ssl_encryption_initial) {
-            c->log->action = "processing initial packet";
-
-            if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
-                /* 7.2.  Negotiating Connection IDs */
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic too short dcid in initial"
-                              " packet: len:%i", pkt->dcid.len);
-                return NGX_ERROR;
-            }
-
-            /* process retry and initialize connection IDs */
-
-            if (pkt->token.len) {
-
-                rc = ngx_quic_validate_token(c, conf->token_key, pkt);
-
-                if (rc == NGX_ERROR) {
-                    /* internal error */
-                    return NGX_ERROR;
-
-                } else if (rc == NGX_ABORT) {
-                    /* token cannot be decrypted */
-                    return ngx_quic_send_early_cc(c, pkt,
-                                                  NGX_QUIC_ERR_INVALID_TOKEN,
-                                                  "cannot decrypt token");
-                } else if (rc == NGX_DECLINED) {
-                    /* token is invalid */
-
-                    if (pkt->retried) {
-                        /* invalid Retry token */
-                        return ngx_quic_send_early_cc(c, pkt,
-                                                  NGX_QUIC_ERR_INVALID_TOKEN,
-                                                  "invalid token");
-                    } else if (conf->retry) {
-                        /* invalid NEW_TOKEN */
-                        return ngx_quic_send_retry(c, conf, pkt);
-                    }
-                }
-
-                /* NGX_OK */
-
-            } else if (conf->retry) {
-                return ngx_quic_send_retry(c, conf, pkt);
-
-            } else {
-                pkt->odcid = pkt->dcid;
-            }
-
-            if (ngx_terminate || ngx_exiting) {
-                if (conf->retry) {
-                    return ngx_quic_send_retry(c, conf, pkt);
-                }
-
-                return NGX_ERROR;
-            }
-
-            c->log->action = "creating quic connection";
-
-            qc = ngx_quic_new_connection(c, conf, pkt);
-            if (qc == NULL) {
-                return NGX_ERROR;
-            }
-
-        } else if (pkt->level == ssl_encryption_application) {
-            return ngx_quic_send_stateless_reset(c, conf, pkt);
-
-        } else {
-            return NGX_ERROR;
-        }
+        return ngx_quic_process_payload(c, pkt);
     }
+
+    /* packet does not belong to a connection */
+
+    if (rc == NGX_ABORT) {
+        return ngx_quic_negotiate_version(c, pkt);
+    }
+
+    if (pkt->level == ssl_encryption_application) {
+        return ngx_quic_send_stateless_reset(c, conf, pkt);
+    }
+
+    if (pkt->level != ssl_encryption_initial) {
+        return NGX_ERROR;
+    }
+
+    c->log->action = "processing initial packet";
+
+    if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
+        /* 7.2.  Negotiating Connection IDs */
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic too short dcid in initial"
+                      " packet: len:%i", pkt->dcid.len);
+        return NGX_ERROR;
+    }
+
+    /* process retry and initialize connection IDs */
+
+    if (pkt->token.len) {
+
+        rc = ngx_quic_validate_token(c, conf->token_key, pkt);
+
+        if (rc == NGX_ERROR) {
+            /* internal error */
+            return NGX_ERROR;
+
+        } else if (rc == NGX_ABORT) {
+            /* token cannot be decrypted */
+            return ngx_quic_send_early_cc(c, pkt,
+                                          NGX_QUIC_ERR_INVALID_TOKEN,
+                                          "cannot decrypt token");
+        } else if (rc == NGX_DECLINED) {
+            /* token is invalid */
+
+            if (pkt->retried) {
+                /* invalid Retry token */
+                return ngx_quic_send_early_cc(c, pkt,
+                                          NGX_QUIC_ERR_INVALID_TOKEN,
+                                          "invalid token");
+            } else if (conf->retry) {
+                /* invalid NEW_TOKEN */
+                return ngx_quic_send_retry(c, conf, pkt);
+            }
+        }
+
+        /* NGX_OK */
+
+    } else if (conf->retry) {
+        return ngx_quic_send_retry(c, conf, pkt);
+
+    } else {
+        pkt->odcid = pkt->dcid;
+    }
+
+    if (ngx_terminate || ngx_exiting) {
+        if (conf->retry) {
+            return ngx_quic_send_retry(c, conf, pkt);
+        }
+
+        return NGX_ERROR;
+    }
+
+    c->log->action = "creating quic connection";
+
+    qc = ngx_quic_new_connection(c, conf, pkt);
+    if (qc == NULL) {
+        return NGX_ERROR;
+    }
+
+    return ngx_quic_process_payload(c, pkt);
+}
+
+
+static ngx_int_t
+ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
+{
+    ngx_int_t               rc;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+
+    qc = ngx_quic_get_connection(c);
+
+    qc->error = 0;
+    qc->error_reason = 0;
 
     c->log->action = "decrypting packet";
 
@@ -2404,16 +2415,35 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         }
     }
 
+    if (qc->closing) {
+        /*
+         * 10.1  Closing and Draining Connection States
+         * ... delayed or reordered packets are properly discarded.
+         *
+         *  An endpoint retains only enough information to generate
+         *  a packet containing a CONNECTION_CLOSE frame and to identify
+         *  packets as belonging to the connection.
+         */
+
+        qc->error_level = pkt->level;
+        qc->error = NGX_QUIC_ERR_NO_ERROR;
+        qc->error_reason = "connection is closing, packet discarded";
+        qc->error_ftype = 0;
+        qc->error_app = 0;
+
+        return ngx_quic_send_cc(c);
+    }
+
     pkt->received = ngx_current_msec;
 
     c->log->action = "handling payload";
 
     if (pkt->level != ssl_encryption_application) {
-        return ngx_quic_payload_handler(c, pkt);
+        return ngx_quic_handle_frames(c, pkt);
     }
 
     if (!pkt->key_update) {
-        return ngx_quic_payload_handler(c, pkt);
+        return ngx_quic_handle_frames(c, pkt);
     }
 
     /* switch keys and generate next on Key Phase change */
@@ -2421,7 +2451,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->key_phase ^= 1;
     ngx_quic_keys_switch(c, qc->keys);
 
-    rc = ngx_quic_payload_handler(c, pkt);
+    rc = ngx_quic_handle_frames(c, pkt);
     if (rc != NGX_OK) {
         return rc;
     }
@@ -2581,7 +2611,7 @@ ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 
 
 static ngx_int_t
-ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
+ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     u_char                 *end, *p;
     ssize_t                 len;
@@ -2592,25 +2622,6 @@ ngx_quic_payload_handler(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
-
-    if (qc->closing) {
-        /*
-         * 10.1  Closing and Draining Connection States
-         * ... delayed or reordered packets are properly discarded.
-         *
-         *  An endpoint retains only enough information to generate
-         *  a packet containing a CONNECTION_CLOSE frame and to identify
-         *  packets as belonging to the connection.
-         */
-
-        qc->error_level = pkt->level;
-        qc->error = NGX_QUIC_ERR_NO_ERROR;
-        qc->error_reason = "connection is closing, packet discarded";
-        qc->error_ftype = 0;
-        qc->error_app = 0;
-
-        return ngx_quic_send_cc(c);
-    }
 
     p = pkt->payload.data;
     end = p + pkt->payload.len;
