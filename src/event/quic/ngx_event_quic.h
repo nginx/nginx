@@ -29,12 +29,12 @@
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
 #define NGX_QUIC_DEFAULT_SRT_KEY_LEN         32
 
-#define NGX_QUIC_RETRY_TIMEOUT               3000
-#define NGX_QUIC_RETRY_LIFETIME              30000
-#define NGX_QUIC_RETRY_BUFFER_SIZE           128
-    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(44) */
-#define NGX_QUIC_MAX_TOKEN_SIZE              32
-    /* sizeof(struct in6_addr) + sizeof(ngx_msec_t) up to AES-256 block size */
+#define NGX_QUIC_RETRY_LIFETIME              3   /* seconds */
+#define NGX_QUIC_NEW_TOKEN_LIFETIME          600 /* seconds */
+#define NGX_QUIC_RETRY_BUFFER_SIZE           256
+    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
+#define NGX_QUIC_MAX_TOKEN_SIZE              64
+    /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
 /* quic-recovery, section 6.2.2, kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */

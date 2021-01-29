@@ -305,10 +305,8 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->retry, prev->retry, 0);
 
-    if (conf->retry) {
-        if (RAND_bytes(conf->token_key, sizeof(conf->token_key)) <= 0) {
-            return NGX_CONF_ERROR;
-        }
+    if (RAND_bytes(conf->token_key, sizeof(conf->token_key)) <= 0) {
+        return NGX_CONF_ERROR;
     }
 
     ngx_conf_merge_str_value(conf->sr_token_key, prev->sr_token_key, "");

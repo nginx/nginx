@@ -325,6 +325,8 @@ typedef struct {
     unsigned                                    key_update:1;
     unsigned                                    parsed:1;
     unsigned                                    decrypted:1;
+    unsigned                                    validated:1;
+    unsigned                                    retried:1;
 } ngx_quic_header_t;
 
 
