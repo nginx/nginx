@@ -158,11 +158,12 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
         if (b->pos == b->last) {
 
-            if (!rev->ready) {
-                break;
-            }
+            if (rev->ready) {
+                n = c->recv(c, b->start, b->end - b->start);
 
-            n = c->recv(c, b->start, b->end - b->start);
+            } else {
+                n = NGX_AGAIN;
+            }
 
             if (n == NGX_AGAIN) {
                 if (!rev->timer_set) {
