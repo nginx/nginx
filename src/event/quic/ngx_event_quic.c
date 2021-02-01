@@ -261,7 +261,7 @@ static ngx_int_t ngx_quic_send_early_cc(ngx_connection_t *c,
     ngx_quic_header_t *inpkt, ngx_uint_t err, const char *reason);
 static void ngx_quic_discard_ctx(ngx_connection_t *c,
     enum ssl_encryption_level_t level);
-static ngx_int_t ngx_quic_check_peer(ngx_quic_connection_t *qc,
+static ngx_int_t ngx_quic_check_csid(ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handle_frames(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
@@ -2250,30 +2250,28 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         }
 
         if (pkt->level != ssl_encryption_application) {
+
             if (pkt->version != qc->version) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic version mismatch: 0x%xD", pkt->version);
                 return NGX_DECLINED;
             }
-        }
 
-        if (ngx_quic_check_peer(qc, pkt) != NGX_OK) {
-
-            if (pkt->level == ssl_encryption_application) {
-                if (ngx_quic_process_stateless_reset(c, pkt) == NGX_OK) {
-                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "quic stateless reset packet detected");
-
-                    qc->draining = 1;
-                    ngx_quic_close_connection(c, NGX_OK);
-
-                    return NGX_OK;
-                }
-
-                return ngx_quic_send_stateless_reset(c, qc->conf, pkt);
+            if (ngx_quic_check_csid(qc, pkt) != NGX_OK) {
+                return NGX_DECLINED;
             }
 
-            return NGX_DECLINED;
+        } else {
+
+            if (ngx_quic_process_stateless_reset(c, pkt) == NGX_OK) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "quic stateless reset packet detected");
+
+                qc->draining = 1;
+                ngx_quic_close_connection(c, NGX_OK);
+
+                return NGX_OK;
+            }
         }
 
         return ngx_quic_process_payload(c, pkt);
@@ -2583,14 +2581,10 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
 
 
 static ngx_int_t
-ngx_quic_check_peer(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
+ngx_quic_check_csid(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
 {
     ngx_queue_t           *q;
     ngx_quic_client_id_t  *cid;
-
-    if (pkt->level == ssl_encryption_application) {
-        return NGX_OK;
-    }
 
     for (q = ngx_queue_head(&qc->client_ids);
          q != ngx_queue_sentinel(&qc->client_ids);
