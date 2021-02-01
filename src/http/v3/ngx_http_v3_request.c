@@ -1034,7 +1034,7 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             if (max != -1 && (uint64_t) (max - rb->received) < st->length) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "client intended to send too large "
-                              "body: %O+%uL bytes",
+                              "body: %O+%ui bytes",
                               rb->received, st->length);
 
                 return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
