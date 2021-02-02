@@ -819,7 +819,7 @@ ngx_http_handler(ngx_http_request_t *r)
     if (!r->internal) {
         switch (r->headers_in.connection_type) {
         case 0:
-            r->keepalive = (r->http_version == NGX_HTTP_VERSION_11);
+            r->keepalive = (r->http_version > NGX_HTTP_VERSION_10);
             break;
 
         case NGX_HTTP_CONNECTION_CLOSE:
