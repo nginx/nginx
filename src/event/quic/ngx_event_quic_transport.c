@@ -116,7 +116,7 @@ static size_t ngx_quic_create_new_connection_id(u_char *p,
     ngx_quic_new_conn_id_frame_t *rcid);
 static size_t ngx_quic_create_retire_connection_id(u_char *p,
     ngx_quic_retire_cid_frame_t *rcid);
-static size_t ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl);
+static size_t ngx_quic_create_close(u_char *p, ngx_quic_frame_t *f);
 
 static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
     uint16_t id, ngx_quic_tp_t *dst);
@@ -1249,7 +1249,7 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
         f->need_ack = 0;
-        return ngx_quic_create_close(p, &f->u.close);
+        return ngx_quic_create_close(p, f);
 
     case NGX_QUIC_FT_MAX_STREAMS:
         return ngx_quic_create_max_streams(p, &f->u.max_streams);
@@ -1956,20 +1956,19 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
 
 
 static size_t
-ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
+ngx_quic_create_close(u_char *p, ngx_quic_frame_t *f)
 {
-    size_t       len;
-    u_char      *start;
-    ngx_uint_t   type;
+    size_t                   len;
+    u_char                  *start;
+    ngx_quic_close_frame_t  *cl;
 
-    type = cl->app ? NGX_QUIC_FT_CONNECTION_CLOSE_APP
-                   : NGX_QUIC_FT_CONNECTION_CLOSE;
+    cl = &f->u.close;
 
     if (p == NULL) {
-        len = ngx_quic_varint_len(type);
+        len = ngx_quic_varint_len(f->type);
         len += ngx_quic_varint_len(cl->error_code);
 
-        if (!cl->app) {
+        if (f->type != NGX_QUIC_FT_CONNECTION_CLOSE_APP) {
             len += ngx_quic_varint_len(cl->frame_type);
         }
 
@@ -1981,10 +1980,10 @@ ngx_quic_create_close(u_char *p, ngx_quic_close_frame_t *cl)
 
     start = p;
 
-    ngx_quic_build_int(&p, type);
+    ngx_quic_build_int(&p, f->type);
     ngx_quic_build_int(&p, cl->error_code);
 
-    if (!cl->app) {
+    if (f->type != NGX_QUIC_FT_CONNECTION_CLOSE_APP) {
         ngx_quic_build_int(&p, cl->frame_type);
     }
 

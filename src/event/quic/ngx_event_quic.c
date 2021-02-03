@@ -522,7 +522,8 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
         p = ngx_slprintf(p, last, "CONNECTION_CLOSE%s err:%ui",
-                         f->u.close.app ? "_APP" : "", f->u.close.error_code);
+                         f->type == NGX_QUIC_FT_CONNECTION_CLOSE ? "" : "_APP",
+                         f->u.close.error_code);
 
         if (f->u.close.reason.len) {
             p = ngx_slprintf(p, last, " %V", &f->u.close.reason);
@@ -3251,10 +3252,10 @@ ngx_quic_send_cc(ngx_connection_t *c)
     }
 
     frame->level = qc->error_level;
-    frame->type = NGX_QUIC_FT_CONNECTION_CLOSE;
+    frame->type = qc->error_app ? NGX_QUIC_FT_CONNECTION_CLOSE_APP
+                                : NGX_QUIC_FT_CONNECTION_CLOSE;
     frame->u.close.error_code = qc->error;
     frame->u.close.frame_type = qc->error_ftype;
-    frame->u.close.app = qc->error_app;
 
     if (qc->error_reason) {
         frame->u.close.reason.len = ngx_strlen(qc->error_reason);

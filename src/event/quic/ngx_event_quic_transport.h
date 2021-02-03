@@ -197,7 +197,6 @@ typedef struct {
     uint64_t                                    error_code;
     uint64_t                                    frame_type;
     ngx_str_t                                   reason;
-    ngx_uint_t                                  app;  /* unsigned  app:1; */
 } ngx_quic_close_frame_t;
 
 
