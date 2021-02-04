@@ -3173,7 +3173,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     ack_delay = ngx_current_msec - ctx->largest_received;
     ack_delay *= 1000;
-    ack_delay >>= qc->ctp.ack_delay_exponent;
+    ack_delay >>= qc->tp.ack_delay_exponent;
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
