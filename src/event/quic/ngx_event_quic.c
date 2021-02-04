@@ -5527,8 +5527,11 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         switch (f->type) {
         case NGX_QUIC_FT_ACK:
         case NGX_QUIC_FT_ACK_ECN:
-            /* force generation of most recent acknowledgment */
-            ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
+            if (ctx->level == ssl_encryption_application) {
+                /* force generation of most recent acknowledgment */
+                ctx->send_ack = NGX_QUIC_MAX_ACK_GAP;
+            }
+
             ngx_quic_free_frame(c, f);
             break;
 
