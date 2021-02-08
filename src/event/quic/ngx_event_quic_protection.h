@@ -11,6 +11,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#include <ngx_event_quic_transport.h>
+
 
 #define NGX_QUIC_ENCRYPTION_LAST  ((ssl_encryption_application) + 1)
 
@@ -27,10 +29,8 @@ void ngx_quic_keys_discard(ngx_quic_keys_t *keys,
      enum ssl_encryption_level_t level);
 void ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys);
 ngx_int_t ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys);
-
-ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
-    ngx_str_t *key, u_char *token);
-
+ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,
+    ngx_str_t *secret, ngx_str_t *salt, u_char *out, size_t len);
 ngx_int_t ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res);
 ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn);
 

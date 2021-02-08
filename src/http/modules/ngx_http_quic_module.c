@@ -9,6 +9,8 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#include <ngx_event_quic_protection.h>
+
 
 static ngx_int_t ngx_http_variable_quic(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -20,7 +22,8 @@ static char *ngx_http_quic_max_ack_delay(ngx_conf_t *cf, void *post,
     void *data);
 static char *ngx_http_quic_max_udp_payload_size(ngx_conf_t *cf, void *post,
     void *data);
-
+static char *ngx_http_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 static ngx_conf_post_t  ngx_http_quic_max_ack_delay_post =
     { ngx_http_quic_max_ack_delay };
@@ -125,11 +128,11 @@ static ngx_command_t  ngx_http_quic_commands[] = {
       offsetof(ngx_quic_conf_t, retry),
       NULL },
 
-    { ngx_string("quic_stateless_reset_token_key"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_str_slot,
+    { ngx_string("quic_host_key"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_http_quic_host_key,
       NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, sr_token_key),
+      0,
       NULL },
 
       ngx_null_command
@@ -173,6 +176,8 @@ static ngx_http_variable_t  ngx_http_quic_vars[] = {
 
       ngx_http_null_variable
 };
+
+static ngx_str_t  ngx_http_quic_salt = ngx_string("ngx_quic");
 
 
 ngx_int_t
@@ -270,7 +275,7 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
      *     conf->tp.sr_token = { 0 }
      *     conf->tp.sr_enabled = 0
      *     conf->tp.preferred_address = NULL
-     *     conf->sr_token_key = { 0, NULL }
+     *     conf->host_key = { 0, NULL }
      */
 
     conf->tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;
@@ -346,23 +351,37 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->retry, prev->retry, 0);
 
-    if (RAND_bytes(conf->token_key, sizeof(conf->token_key)) <= 0) {
+    ngx_conf_merge_str_value(conf->host_key, prev->host_key, "");
+
+    if (conf->host_key.len == 0) {
+
+        conf->host_key.len = NGX_QUIC_DEFAULT_HOST_KEY_LEN;
+        conf->host_key.data = ngx_palloc(cf->pool, conf->host_key.len);
+        if (conf->host_key.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (RAND_bytes(conf->host_key.data, NGX_QUIC_DEFAULT_HOST_KEY_LEN)
+            <= 0)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (ngx_quic_derive_key(cf->log, "av_token_key",
+                            &conf->host_key, &ngx_http_quic_salt,
+                            conf->av_token_key, NGX_QUIC_AV_KEY_LEN)
+        != NGX_OK)
+    {
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_merge_str_value(conf->sr_token_key, prev->sr_token_key, "");
-
-    if (conf->sr_token_key.len == 0) {
-        conf->sr_token_key.len = NGX_QUIC_DEFAULT_SRT_KEY_LEN;
-
-        conf->sr_token_key.data = ngx_pnalloc(cf->pool, conf->sr_token_key.len);
-        if (conf->sr_token_key.data == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        if (RAND_bytes(conf->sr_token_key.data, conf->sr_token_key.len) <= 0) {
-            return NGX_CONF_ERROR;
-        }
+    if (ngx_quic_derive_key(cf->log, "sr_token_key",
+                            &conf->host_key, &ngx_http_quic_salt,
+                            conf->sr_token_key, NGX_QUIC_SR_KEY_LEN)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
     }
 
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
@@ -406,4 +425,102 @@ ngx_http_quic_max_udp_payload_size(ngx_conf_t *cf, void *post, void *data)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_quic_conf_t  *qcf = conf;
+
+    u_char           *buf;
+    size_t            size;
+    ssize_t           n;
+    ngx_str_t        *value;
+    ngx_file_t        file;
+    ngx_file_info_t   fi;
+
+    if (qcf->host_key.len) {
+        return "is duplicate";
+    }
+
+    buf = NULL;
+#if (NGX_SUPPRESS_WARN)
+    size = 0;
+#endif
+
+    value = cf->args->elts;
+
+    if (ngx_conf_full_name(cf->cycle, &value[1], 1) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&file, sizeof(ngx_file_t));
+    file.name = value[1];
+    file.log = cf->log;
+
+    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+    if (file.fd == NGX_INVALID_FILE) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                           ngx_open_file_n " \"%V\" failed", &file.name);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_fd_info(file.fd, &fi) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_fd_info_n " \"%V\" failed", &file.name);
+        goto failed;
+    }
+
+    size = ngx_file_size(&fi);
+
+    if (size == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"%V\" zero key size", &file.name);
+        goto failed;
+    }
+
+    buf = ngx_pnalloc(cf->pool, size);
+    if (buf == NULL) {
+        goto failed;
+    }
+
+    n = ngx_read_file(&file, buf, size, 0);
+
+    if (n == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_read_file_n " \"%V\" failed", &file.name);
+        goto failed;
+    }
+
+    if ((size_t) n != size) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, 0,
+                           ngx_read_file_n " \"%V\" returned only "
+                           "%z bytes instead of %uz", &file.name, n, size);
+        goto failed;
+    }
+
+    qcf->host_key.data = buf;
+    qcf->host_key.len = n;
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                      ngx_close_file_n " \"%V\" failed", &file.name);
+    }
+
+    return NGX_CONF_OK;
+
+failed:
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                      ngx_close_file_n " \"%V\" failed", &file.name);
+    }
+
+    if (buf) {
+        ngx_explicit_memzero(buf, size);
+    }
+
+    return NGX_CONF_ERROR;
 }

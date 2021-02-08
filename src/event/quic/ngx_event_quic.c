@@ -225,6 +225,8 @@ static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
+    u_char *secret, u_char *token);
 static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
@@ -1245,7 +1247,7 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     token = &buf[len - NGX_QUIC_SR_TOKEN_LEN];
 
-    if (ngx_quic_new_sr_token(c, &pkt->dcid, &conf->sr_token_key, token)
+    if (ngx_quic_new_sr_token(c, &pkt->dcid, conf->sr_token_key, token)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -1254,6 +1256,32 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
     (void) ngx_quic_send(c, buf, len);
 
     return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
+    u_char *token)
+{
+    ngx_str_t tmp;
+
+    tmp.data = secret;
+    tmp.len = NGX_QUIC_SR_KEY_LEN;
+
+    if (ngx_quic_derive_key(c->log, "sr_token_key", &tmp, cid, token,
+                            NGX_QUIC_SR_TOKEN_LEN)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+#if (NGX_DEBUG)
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stateless reset token %*xs",
+                    (size_t) NGX_QUIC_SR_TOKEN_LEN, token);
+#endif
+
+    return NGX_OK;
 }
 
 
@@ -1391,9 +1419,10 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
     u_char             buf[NGX_QUIC_RETRY_BUFFER_SIZE];
     u_char             dcid[NGX_QUIC_SERVER_CID_LEN];
 
-    expires = ngx_time() + NGX_QUIC_RETRY_LIFETIME;
+    expires = ngx_time() + NGX_QUIC_RETRY_TOKEN_LIFETIME;
 
-    if (ngx_quic_new_token(c, conf->token_key, &token, &inpkt->dcid, expires, 1)
+    if (ngx_quic_new_token(c, conf->av_token_key, &token, &inpkt->dcid,
+                           expires, 1)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -1723,7 +1752,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-    if (ngx_quic_new_sr_token(c, &qc->dcid, &qc->conf->sr_token_key,
+    if (ngx_quic_new_sr_token(c, &qc->dcid, qc->conf->sr_token_key,
                               qc->tp.sr_token)
         != NGX_OK)
     {
@@ -2235,7 +2264,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     if (pkt->level == ssl_encryption_initial) {
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic token len:%uz %xV",
+                       "quic address validation token len:%uz %xV",
                        pkt->token.len, &pkt->token);
     }
 #endif
@@ -2306,7 +2335,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     if (pkt->token.len) {
 
-        rc = ngx_quic_validate_token(c, conf->token_key, pkt);
+        rc = ngx_quic_validate_token(c, conf->av_token_key, pkt);
 
         if (rc == NGX_ERROR) {
             /* internal error */
@@ -2321,10 +2350,10 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             /* token is invalid */
 
             if (pkt->retried) {
-                /* invalid Retry token */
+                /* invalid address validation token */
                 return ngx_quic_send_early_cc(c, pkt,
                                           NGX_QUIC_ERR_INVALID_TOKEN,
-                                          "invalid token");
+                                          "invalid address validation token");
             } else if (conf->retry) {
                 /* invalid NEW_TOKEN */
                 return ngx_quic_send_retry(c, conf, pkt);
@@ -3286,7 +3315,7 @@ ngx_quic_send_new_token(ngx_connection_t *c)
 
     expires = ngx_time() + NGX_QUIC_NEW_TOKEN_LIFETIME;
 
-    if (ngx_quic_new_token(c, qc->conf->token_key, &token, NULL, expires, 0)
+    if (ngx_quic_new_token(c, qc->conf->av_token_key, &token, NULL, expires, 0)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -4667,7 +4696,7 @@ ngx_quic_issue_server_ids(ngx_connection_t *c)
         frame->u.ncid.len = NGX_QUIC_SERVER_CID_LEN;
         ngx_memcpy(frame->u.ncid.cid, id, NGX_QUIC_SERVER_CID_LEN);
 
-        if (ngx_quic_new_sr_token(c, &dcid, &qc->conf->sr_token_key,
+        if (ngx_quic_new_sr_token(c, &dcid, qc->conf->sr_token_key,
                                   frame->u.ncid.srt)
             != NGX_OK)
         {

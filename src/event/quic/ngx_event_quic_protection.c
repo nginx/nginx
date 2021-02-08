@@ -942,57 +942,48 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 
 
 ngx_int_t
-ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, ngx_str_t *secret,
-    u_char *token)
+ngx_quic_derive_key(ngx_log_t *log, const char *label, ngx_str_t *secret,
+    ngx_str_t *salt, u_char *out, size_t len)
 {
+    size_t         is_len, info_len;
     uint8_t       *p;
-    size_t         is_len, key_len, info_len;
-    ngx_str_t      label;
     const EVP_MD  *digest;
-    uint8_t       info[20];
-    uint8_t       is[SHA256_DIGEST_LENGTH];
-    uint8_t       key[SHA256_DIGEST_LENGTH];
 
-    /* 10.4.2.  Calculating a Stateless Reset Token */
+    uint8_t        is[SHA256_DIGEST_LENGTH];
+    uint8_t        info[20];
 
     digest = EVP_sha256();
-    ngx_str_set(&label, "sr_token_key");
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
-                         cid->data, cid->len)
+                         salt->data, salt->len)
        != NGX_OK)
     {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_extract(%V) failed", &label);
+        ngx_ssl_error(NGX_LOG_INFO, log, 0,
+                      "ngx_hkdf_extract(%s) failed", label);
         return NGX_ERROR;
     }
-
-    key_len = SHA256_DIGEST_LENGTH;
-
-    info_len = 2 + 1 + label.len + 1;
 
     info[0] = 0;
-    info[1] = key_len;
-    info[2] = label.len;
+    info[1] = len;
+    info[2] = ngx_strlen(label);
 
-    p = ngx_cpymem(&info[3], label.data, label.len);
-    *p = '\0';
+    info_len = 2 + 1 + info[2] + 1;
 
-    if (ngx_hkdf_expand(key, key_len, digest, is, is_len, info, info_len)
-        != NGX_OK)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
-                      "ngx_hkdf_expand(%V) failed", &label);
+    if (info_len >= 20) {
+        ngx_log_error(NGX_LOG_INFO, log, 0,
+                      "ngx_quic_create_key label \"%s\" too long", label);
         return NGX_ERROR;
     }
 
-    ngx_memcpy(token, key, NGX_QUIC_SR_TOKEN_LEN);
+    p = ngx_cpymem(&info[3], label, info[2]);
+    *p = '\0';
 
-#if (NGX_DEBUG)
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stateless reset token %*xs",
-                    (size_t) NGX_QUIC_SR_TOKEN_LEN, token);
-#endif
+    if (ngx_hkdf_expand(out, len, digest, is, is_len, info, info_len) != NGX_OK)
+    {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0,
+                      "ngx_hkdf_expand(%s) failed", label);
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }

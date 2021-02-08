@@ -27,9 +27,11 @@
 
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
-#define NGX_QUIC_DEFAULT_SRT_KEY_LEN         32
+#define NGX_QUIC_DEFAULT_HOST_KEY_LEN        32
+#define NGX_QUIC_SR_KEY_LEN                  32
+#define NGX_QUIC_AV_KEY_LEN                  32
 
-#define NGX_QUIC_RETRY_LIFETIME              3   /* seconds */
+#define NGX_QUIC_RETRY_TOKEN_LIFETIME          3 /* seconds */
 #define NGX_QUIC_NEW_TOKEN_LIFETIME          600 /* seconds */
 #define NGX_QUIC_RETRY_BUFFER_SIZE           256
     /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
@@ -96,8 +98,9 @@ typedef struct {
     ngx_quic_tp_t              tp;
     ngx_flag_t                 retry;
     ngx_flag_t                 require_alpn;
-    u_char                     token_key[32]; /* AES 256 */
-    ngx_str_t                  sr_token_key; /* stateless reset token key */
+    ngx_str_t                  host_key;
+    u_char                     av_token_key[NGX_QUIC_AV_KEY_LEN];
+    u_char                     sr_token_key[NGX_QUIC_SR_KEY_LEN];
 } ngx_quic_conf_t;
 
 
