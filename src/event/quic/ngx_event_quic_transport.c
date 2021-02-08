@@ -1894,9 +1894,8 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                            tp->max_idle_timeout);
 
-    if (clen) {
-        *clen = len;
-    }
+    len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE,
+                           tp->max_udp_payload_size);
 
     if (tp->disable_active_migration) {
         len += ngx_quic_varint_len(NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION);
@@ -1905,6 +1904,17 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
 
     len += ngx_quic_tp_len(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
                            tp->active_connection_id_limit);
+
+    /* transport parameters listed above will be saved in 0-RTT context */
+    if (clen) {
+        *clen = len;
+    }
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_MAX_ACK_DELAY,
+                           tp->max_ack_delay);
+
+    len += ngx_quic_tp_len(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
+                           tp->ack_delay_exponent);
 
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
@@ -1948,6 +1958,9 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     ngx_quic_tp_vint(NGX_QUIC_TP_MAX_IDLE_TIMEOUT,
                      tp->max_idle_timeout);
 
+    ngx_quic_tp_vint(NGX_QUIC_TP_MAX_UDP_PAYLOAD_SIZE,
+                     tp->max_udp_payload_size);
+
     if (tp->disable_active_migration) {
         ngx_quic_build_int(&p, NGX_QUIC_TP_DISABLE_ACTIVE_MIGRATION);
         ngx_quic_build_int(&p, 0);
@@ -1955,6 +1968,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
 
     ngx_quic_tp_vint(NGX_QUIC_TP_ACTIVE_CONNECTION_ID_LIMIT,
                      tp->active_connection_id_limit);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_MAX_ACK_DELAY,
+                     tp->max_ack_delay);
+
+    ngx_quic_tp_vint(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
+                     tp->ack_delay_exponent);
 
 #if (NGX_QUIC_DRAFT_VERSION >= 28)
     ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
