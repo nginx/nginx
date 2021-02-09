@@ -464,7 +464,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
         if (f->data) {
             pos = f->data->buf->pos;
-            end = f->data->buf->end;
+            end = f->data->buf->last;
 
         } else {
             pos = NULL;
