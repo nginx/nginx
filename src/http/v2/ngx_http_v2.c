@@ -326,6 +326,7 @@ ngx_http_v2_init(ngx_event_t *rev)
     c->write->handler = ngx_http_v2_write_handler;
 
     c->idle = 1;
+    ngx_reusable_connection(c, 0);
 
     ngx_http_v2_read_handler(rev);
 }
