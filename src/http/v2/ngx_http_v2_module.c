@@ -44,6 +44,14 @@ static ngx_conf_deprecated_t  ngx_http_v2_recv_timeout_deprecated = {
     ngx_conf_deprecated, "http2_recv_timeout", "client_header_timeout"
 };
 
+static ngx_conf_deprecated_t  ngx_http_v2_idle_timeout_deprecated = {
+    ngx_conf_deprecated, "http2_idle_timeout", "keepalive_timeout"
+};
+
+static ngx_conf_deprecated_t  ngx_http_v2_max_requests_deprecated = {
+    ngx_conf_deprecated, "http2_max_requests", "keepalive_requests"
+};
+
 
 static ngx_conf_post_t  ngx_http_v2_recv_buffer_size_post =
     { ngx_http_v2_recv_buffer_size };
@@ -89,10 +97,10 @@ static ngx_command_t  ngx_http_v2_commands[] = {
 
     { ngx_string("http2_max_requests"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v2_srv_conf_t, max_requests),
-      NULL },
+      ngx_http_v2_obsolete,
+      0,
+      0,
+      &ngx_http_v2_max_requests_deprecated },
 
     { ngx_string("http2_max_field_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -131,10 +139,10 @@ static ngx_command_t  ngx_http_v2_commands[] = {
 
     { ngx_string("http2_idle_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v2_srv_conf_t, idle_timeout),
-      NULL },
+      ngx_http_v2_obsolete,
+      0,
+      0,
+      &ngx_http_v2_idle_timeout_deprecated },
 
     { ngx_string("http2_chunk_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -302,7 +310,6 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
 
     h2scf->concurrent_streams = NGX_CONF_UNSET_UINT;
     h2scf->concurrent_pushes = NGX_CONF_UNSET_UINT;
-    h2scf->max_requests = NGX_CONF_UNSET_UINT;
 
     h2scf->max_field_size = NGX_CONF_UNSET_SIZE;
     h2scf->max_header_size = NGX_CONF_UNSET_SIZE;
@@ -310,8 +317,6 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
     h2scf->preread_size = NGX_CONF_UNSET_SIZE;
 
     h2scf->streams_index_mask = NGX_CONF_UNSET_UINT;
-
-    h2scf->idle_timeout = NGX_CONF_UNSET_MSEC;
 
     return h2scf;
 }
@@ -329,7 +334,6 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->concurrent_streams, 128);
     ngx_conf_merge_uint_value(conf->concurrent_pushes,
                               prev->concurrent_pushes, 10);
-    ngx_conf_merge_uint_value(conf->max_requests, prev->max_requests, 1000);
 
     ngx_conf_merge_size_value(conf->max_field_size, prev->max_field_size,
                               4096);
@@ -340,9 +344,6 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->streams_index_mask,
                               prev->streams_index_mask, 32 - 1);
-
-    ngx_conf_merge_msec_value(conf->idle_timeout,
-                              prev->idle_timeout, 180000);
 
     return NGX_CONF_OK;
 }
