@@ -325,6 +325,10 @@ ngx_http_v2_init(ngx_event_t *rev)
     rev->handler = ngx_http_v2_read_handler;
     c->write->handler = ngx_http_v2_write_handler;
 
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
     c->idle = 1;
     ngx_reusable_connection(c, 0);
 
@@ -454,14 +458,6 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
     }
 
     h2c->blocked = 0;
-
-    if (h2c->processing || h2c->pushing) {
-        if (rev->timer_set) {
-            ngx_del_timer(rev);
-        }
-
-        return;
-    }
 
     ngx_http_v2_handle_connection(h2c);
 }
@@ -638,7 +634,6 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     ngx_int_t                  rc;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_core_srv_conf_t  *cscf;
 
     if (h2c->last_out || h2c->processing || h2c->pushing) {
         return;
@@ -675,15 +670,16 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
         return;
     }
 
+    clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
+                                        ngx_http_core_module);
+
+    if (!c->read->timer_set) {
+        ngx_add_timer(c->read, clcf->keepalive_timeout);
+    }
+
     ngx_reusable_connection(c, 1);
 
     if (h2c->state.incomplete) {
-        if (!c->read->timer_set) {
-            cscf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                                ngx_http_core_module);
-            ngx_add_timer(c->read, cscf->client_header_timeout);
-        }
-
         return;
     }
 
@@ -708,11 +704,6 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
-
-    clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
-                                        ngx_http_core_module);
-
-    ngx_add_timer(c->read, clcf->keepalive_timeout);
 }
 
 
@@ -3298,6 +3289,10 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t push)
 
     h2c->priority_limit += h2scf->concurrent_streams;
 
+    if (h2c->connection->read->timer_set) {
+        ngx_del_timer(h2c->connection->read);
+    }
+
     return stream;
 }
 
@@ -4708,10 +4703,6 @@ ngx_http_v2_idle_handler(ngx_event_t *rev)
 
     c->destroyed = 0;
     ngx_reusable_connection(c, 0);
-
-    if (c->read->timer_set) {
-        ngx_del_timer(c->read);
-    }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
