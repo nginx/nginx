@@ -767,6 +767,9 @@ ngx_http_v2_lingering_close(ngx_connection_t *c)
         return;
     }
 
+    c->close = 0;
+    ngx_reusable_connection(c, 1);
+
     ngx_add_timer(rev, clcf->lingering_timeout);
 
     if (rev->ready) {
@@ -791,7 +794,7 @@ ngx_http_v2_lingering_close_handler(ngx_event_t *rev)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http2 lingering close handler");
 
-    if (rev->timedout) {
+    if (rev->timedout || c->close) {
         ngx_http_close_connection(c);
         return;
     }
