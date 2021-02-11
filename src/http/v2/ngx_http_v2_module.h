@@ -24,12 +24,10 @@ typedef struct {
     size_t                          pool_size;
     ngx_uint_t                      concurrent_streams;
     ngx_uint_t                      concurrent_pushes;
-    ngx_uint_t                      max_requests;
     size_t                          max_field_size;
     size_t                          max_header_size;
     size_t                          preread_size;
     ngx_uint_t                      streams_index_mask;
-    ngx_msec_t                      idle_timeout;
 } ngx_http_v2_srv_conf_t;
 
 
