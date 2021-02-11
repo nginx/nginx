@@ -4078,14 +4078,6 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
-        if (ngx_strcmp(value[n].data, "spdy") == 0) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "invalid parameter \"spdy\": "
-                               "ngx_http_spdy_module was superseded "
-                               "by ngx_http_v2_module");
-            continue;
-        }
-
         if (ngx_strncmp(value[n].data, "so_keepalive=", 13) == 0) {
 
             if (ngx_strcmp(&value[n].data[13], "on") == 0) {
