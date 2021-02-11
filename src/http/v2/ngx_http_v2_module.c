@@ -52,6 +52,14 @@ static ngx_conf_deprecated_t  ngx_http_v2_max_requests_deprecated = {
     ngx_conf_deprecated, "http2_max_requests", "keepalive_requests"
 };
 
+static ngx_conf_deprecated_t  ngx_http_v2_max_field_size_deprecated = {
+    ngx_conf_deprecated, "http2_max_field_size", "large_client_header_buffers"
+};
+
+static ngx_conf_deprecated_t  ngx_http_v2_max_header_size_deprecated = {
+    ngx_conf_deprecated, "http2_max_header_size", "large_client_header_buffers"
+};
+
 
 static ngx_conf_post_t  ngx_http_v2_recv_buffer_size_post =
     { ngx_http_v2_recv_buffer_size };
@@ -104,17 +112,17 @@ static ngx_command_t  ngx_http_v2_commands[] = {
 
     { ngx_string("http2_max_field_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v2_srv_conf_t, max_field_size),
-      NULL },
+      ngx_http_v2_obsolete,
+      0,
+      0,
+      &ngx_http_v2_max_field_size_deprecated },
 
     { ngx_string("http2_max_header_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v2_srv_conf_t, max_header_size),
-      NULL },
+      ngx_http_v2_obsolete,
+      0,
+      0,
+      &ngx_http_v2_max_header_size_deprecated },
 
     { ngx_string("http2_body_preread_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -311,9 +319,6 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
     h2scf->concurrent_streams = NGX_CONF_UNSET_UINT;
     h2scf->concurrent_pushes = NGX_CONF_UNSET_UINT;
 
-    h2scf->max_field_size = NGX_CONF_UNSET_SIZE;
-    h2scf->max_header_size = NGX_CONF_UNSET_SIZE;
-
     h2scf->preread_size = NGX_CONF_UNSET_SIZE;
 
     h2scf->streams_index_mask = NGX_CONF_UNSET_UINT;
@@ -334,11 +339,6 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->concurrent_streams, 128);
     ngx_conf_merge_uint_value(conf->concurrent_pushes,
                               prev->concurrent_pushes, 10);
-
-    ngx_conf_merge_size_value(conf->max_field_size, prev->max_field_size,
-                              4096);
-    ngx_conf_merge_size_value(conf->max_header_size, prev->max_header_size,
-                              16384);
 
     ngx_conf_merge_size_value(conf->preread_size, prev->preread_size, 65536);
 
