@@ -1198,6 +1198,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_v2_node_t        *node;
     ngx_http_v2_stream_t      *stream;
     ngx_http_v2_srv_conf_t    *h2scf;
+    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
 
     padded = h2c->state.flags & NGX_HTTP_V2_PADDED_FLAG;
@@ -1299,10 +1300,14 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
+    cscf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                        ngx_http_core_module);
+
+    h2c->state.header_limit = cscf->large_client_header_buffers.size
+                              * cscf->large_client_header_buffers.num;
+
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
-
-    h2c->state.header_limit = h2scf->max_header_size;
 
     if (h2c->processing >= h2scf->concurrent_streams) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -1485,10 +1490,10 @@ static u_char *
 ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    size_t                   alloc;
-    ngx_int_t                len;
-    ngx_uint_t               huff;
-    ngx_http_v2_srv_conf_t  *h2scf;
+    size_t                     alloc;
+    ngx_int_t                  len;
+    ngx_uint_t                 huff;
+    ngx_http_core_srv_conf_t  *cscf;
 
     if (!(h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG)
         && h2c->state.length < NGX_HTTP_V2_INT_OCTETS)
@@ -1535,12 +1540,12 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
                    "http2 %s string, len:%i",
                    huff ? "encoded" : "raw", len);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
+    cscf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                        ngx_http_core_module);
 
-    if ((size_t) len > h2scf->max_field_size) {
+    if ((size_t) len > cscf->large_client_header_buffers.size) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client exceeded http2_max_field_size limit");
+                      "client sent too large header field");
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
@@ -1755,7 +1760,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     if (len > h2c->state.header_limit) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client exceeded http2_max_header_size limit");
+                      "client sent too large header");
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
