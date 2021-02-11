@@ -362,6 +362,11 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
             return;
         }
 
+        if (!h2c->processing && !h2c->pushing) {
+            ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
+            return;
+        }
+
         if (!h2c->goaway) {
             h2c->goaway = 1;
 
@@ -668,6 +673,8 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
         return;
     }
 
+    ngx_reusable_connection(c, 1);
+
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
     if (h2c->state.incomplete) {
@@ -689,7 +696,6 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 #endif
 
     c->destroyed = 1;
-    ngx_reusable_connection(c, 1);
 
     c->write->handler = ngx_http_empty_handler;
     c->read->handler = ngx_http_v2_idle_handler;
