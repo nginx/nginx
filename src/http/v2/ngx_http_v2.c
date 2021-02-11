@@ -635,9 +635,10 @@ error:
 static void
 ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 {
-    ngx_int_t                rc;
-    ngx_connection_t        *c;
-    ngx_http_v2_srv_conf_t  *h2scf;
+    ngx_int_t                  rc;
+    ngx_connection_t          *c;
+    ngx_http_v2_srv_conf_t    *h2scf;
+    ngx_http_core_srv_conf_t  *cscf;
 
     if (h2c->last_out || h2c->processing || h2c->pushing) {
         return;
@@ -676,10 +677,13 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
 
     ngx_reusable_connection(c, 1);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
     if (h2c->state.incomplete) {
-        ngx_add_timer(c->read, h2scf->recv_timeout);
+        if (!c->read->timer_set) {
+            cscf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                                ngx_http_core_module);
+            ngx_add_timer(c->read, cscf->client_header_timeout);
+        }
+
         return;
     }
 
@@ -704,6 +708,9 @@ ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c)
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
+
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
 
     ngx_add_timer(c->read, h2scf->idle_timeout);
 }
@@ -4695,6 +4702,10 @@ ngx_http_v2_idle_handler(ngx_event_t *rev)
 
     c->destroyed = 0;
     ngx_reusable_connection(c, 0);
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {

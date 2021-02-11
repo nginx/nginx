@@ -29,7 +29,6 @@ typedef struct {
     size_t                          max_header_size;
     size_t                          preread_size;
     ngx_uint_t                      streams_index_mask;
-    ngx_msec_t                      recv_timeout;
     ngx_msec_t                      idle_timeout;
 } ngx_http_v2_srv_conf_t;
 
