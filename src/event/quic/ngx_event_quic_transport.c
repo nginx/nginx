@@ -93,6 +93,7 @@ static size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
+static size_t ngx_quic_create_ping(u_char *p);
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack,
     ngx_chain_t *ranges);
 static size_t ngx_quic_create_stop_sending(u_char *p,
@@ -1220,6 +1221,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     f->need_ack = 1;
 
     switch (f->type) {
+    case NGX_QUIC_FT_PING:
+        return ngx_quic_create_ping(p);
+
     case NGX_QUIC_FT_ACK:
         f->need_ack = 0;
         return ngx_quic_create_ack(p, &f->u.ack, f->data);
@@ -1273,6 +1277,23 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
         /* BUG: unsupported frame type generated */
         return NGX_ERROR;
     }
+}
+
+
+static size_t
+ngx_quic_create_ping(u_char *p)
+{
+    u_char  *start;
+
+    if (p == NULL) {
+        return ngx_quic_varint_len(NGX_QUIC_FT_PING);
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_PING);
+
+    return p - start;
 }
 
 

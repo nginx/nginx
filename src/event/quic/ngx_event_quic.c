@@ -5099,6 +5099,10 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         f->plen = 0;
 
         nframes++;
+
+        if (f->flush) {
+            break;
+        }
     }
 
     if (nframes == 0) {
@@ -5346,9 +5350,10 @@ static void
 ngx_quic_pto_handler(ngx_event_t *ev)
 {
     ngx_uint_t              i;
-    ngx_queue_t            *q;
+    ngx_msec_t              now;
+    ngx_queue_t            *q, *next;
     ngx_connection_t       *c;
-    ngx_quic_frame_t       *start;
+    ngx_quic_frame_t       *f;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -5356,8 +5361,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
     c = ev->data;
     qc = ngx_quic_get_connection(c);
-
-    qc->pto_count++;
+    now = ngx_current_msec;
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
@@ -5368,20 +5372,78 @@ ngx_quic_pto_handler(ngx_event_t *ev)
         }
 
         q = ngx_queue_head(&ctx->sent);
-        start = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (start->pnum <= ctx->largest_ack
+        if (f->pnum <= ctx->largest_ack
             && ctx->largest_ack != NGX_QUIC_UNSET_PN)
         {
             continue;
         }
 
-        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic pto pnum:%uL pto_count:%ui level:%d",
-                       start->pnum, qc->pto_count, start->level);
+        if ((ngx_msec_int_t) (f->last + ngx_quic_pto(c, ctx) - now) > 0) {
+            continue;
+        }
 
-        ngx_quic_resend_frames(c, ctx);
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic pto %s pto_count:%ui",
+                       ngx_quic_level_name(ctx->level), qc->pto_count);
+
+        for (q = ngx_queue_head(&ctx->frames);
+             q != ngx_queue_sentinel(&ctx->frames);
+             /* void */)
+        {
+            next = ngx_queue_next(q);
+            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+            if (f->type == NGX_QUIC_FT_PING) {
+                ngx_queue_remove(q);
+                ngx_quic_free_frame(c, f);
+            }
+
+            q = next;
+        }
+
+        for (q = ngx_queue_head(&ctx->sent);
+             q != ngx_queue_sentinel(&ctx->sent);
+             /* void */)
+        {
+            next = ngx_queue_next(q);
+            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+            if (f->type == NGX_QUIC_FT_PING) {
+                ngx_quic_congestion_lost(c, f);
+                ngx_queue_remove(q);
+                ngx_quic_free_frame(c, f);
+            }
+
+            q = next;
+        }
+
+        /* enforce 2 udp datagrams */
+
+        f = ngx_quic_alloc_frame(c);
+        if (f == NULL) {
+            break;
+        }
+
+        f->level = ctx->level;
+        f->type = NGX_QUIC_FT_PING;
+        f->flush = 1;
+
+        ngx_quic_queue_frame(qc, f);
+
+        f = ngx_quic_alloc_frame(c);
+        if (f == NULL) {
+            break;
+        }
+
+        f->level = ctx->level;
+        f->type = NGX_QUIC_FT_PING;
+
+        ngx_quic_queue_frame(qc, f);
     }
+
+    qc->pto_count++;
 
     ngx_quic_connstate_dbg(c);
 }
