@@ -24,6 +24,10 @@
         : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
                                                  : &((qc)->send_ctx[2]))
 
+#define ngx_quic_lost_threshold(qc)                                           \
+    ngx_max(NGX_QUIC_TIME_THR * ngx_max((qc)->latest_rtt, (qc)->avg_rtt),     \
+            NGX_QUIC_TIME_GRANULARITY)
+
 #define NGX_QUIC_SEND_CTX_LAST  (NGX_QUIC_ENCRYPTION_LAST - 1)
 
 /*
@@ -357,6 +361,7 @@ static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
 static void ngx_quic_pto_handler(ngx_event_t *ev);
 static void ngx_quic_lost_handler(ngx_event_t *ev);
 static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c);
+static void ngx_quic_set_lost_timer(ngx_connection_t *c);
 static void ngx_quic_resend_frames(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_push_handler(ngx_event_t *ev);
@@ -2607,6 +2612,8 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
     }
 
     ctx->send_ack = 0;
+
+    ngx_quic_set_lost_timer(c);
 }
 
 
@@ -4920,6 +4927,8 @@ ngx_quic_output(ngx_connection_t *c)
         }
     }
 
+    ngx_quic_set_lost_timer(c);
+
     return NGX_OK;
 }
 
@@ -5167,12 +5176,6 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                 ngx_queue_remove(q);
                 ngx_queue_insert_tail(&ctx->sent, q);
             } while (--nframes);
-
-            if (qc->pto.timer_set) {
-                ngx_del_timer(&qc->pto);
-            }
-
-            ngx_add_timer(&qc->pto, ngx_quic_pto(c, ctx));
         }
 
         cg->in_flight += res.len;
@@ -5423,7 +5426,7 @@ static ngx_int_t
 ngx_quic_detect_lost(ngx_connection_t *c)
 {
     ngx_uint_t              i;
-    ngx_msec_t              now, wait, min_wait, thr;
+    ngx_msec_t              now, wait, thr;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *start;
     ngx_quic_send_ctx_t    *ctx;
@@ -5431,11 +5434,7 @@ ngx_quic_detect_lost(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
     now = ngx_current_msec;
-
-    min_wait = 0;
-
-    thr = NGX_QUIC_TIME_THR * ngx_max(qc->latest_rtt, qc->avg_rtt);
-    thr = ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
+    thr = ngx_quic_lost_threshold(qc);
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
@@ -5463,11 +5462,6 @@ ngx_quic_detect_lost(ngx_connection_t *c)
             if ((ngx_msec_int_t) wait > 0
                 && ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR)
             {
-
-                if (min_wait == 0 || wait < min_wait) {
-                    min_wait = wait;
-                }
-
                 break;
             }
 
@@ -5475,22 +5469,88 @@ ngx_quic_detect_lost(ngx_connection_t *c)
         }
     }
 
-    /* no more preceeding packets */
+    ngx_quic_set_lost_timer(c);
 
-    if (min_wait == 0) {
-        qc->pto.handler = ngx_quic_pto_handler;
-        return NGX_OK;
+    return NGX_OK;
+}
+
+
+static void
+ngx_quic_set_lost_timer(ngx_connection_t *c)
+{
+    ngx_uint_t              i;
+    ngx_msec_t              now;
+    ngx_queue_t            *q;
+    ngx_msec_int_t          lost, pto, w;
+    ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    now = ngx_current_msec;
+
+    lost = -1;
+    pto = -1;
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ctx = &qc->send_ctx[i];
+
+        if (ngx_queue_empty(&ctx->sent)) {
+            continue;
+        }
+
+        if (ctx->largest_ack != NGX_QUIC_UNSET_PN) {
+            q = ngx_queue_head(&ctx->sent);
+            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+            w = (ngx_msec_int_t) (f->last + ngx_quic_lost_threshold(qc) - now);
+
+            if (f->pnum <= ctx->largest_ack) {
+                if (w < 0 || ctx->largest_ack - f->pnum >= NGX_QUIC_PKT_THR) {
+                    w = 0;
+                }
+
+                if (lost == -1 || w < lost) {
+                    lost = w;
+                }
+            }
+        }
+
+        q = ngx_queue_last(&ctx->sent);
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        w = (ngx_msec_int_t) (f->last + ngx_quic_pto(c, ctx) - now);
+
+        if (w < 0) {
+            w = 0;
+        }
+
+        if (pto == -1 || w < pto) {
+            pto = w;
+        }
     }
-
-    qc->pto.handler = ngx_quic_lost_handler;
 
     if (qc->pto.timer_set) {
         ngx_del_timer(&qc->pto);
     }
 
-    ngx_add_timer(&qc->pto, min_wait);
+    if (lost != -1) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic lost timer lost:%M", lost);
 
-    return NGX_OK;
+        qc->pto.handler = ngx_quic_lost_handler;
+        ngx_add_timer(&qc->pto, lost);
+        return;
+    }
+
+    if (pto != -1) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic lost timer pto:%M", pto);
+
+        qc->pto.handler = ngx_quic_pto_handler;
+        ngx_add_timer(&qc->pto, pto);
+        return;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic lost timer unset");
 }
 
 
