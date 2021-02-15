@@ -184,7 +184,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     };
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pool->log, 0,
-                  "quic ngx_quic_set_initial_secret");
+                   "quic ngx_quic_set_initial_secret");
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
                    "quic salt len:%uz %*xs", sizeof(salt), sizeof(salt), salt);
@@ -242,7 +242,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
             &server->secret,
         },
         {
-           /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
+            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
             &server->hp,
             &server->secret,
@@ -724,7 +724,7 @@ ngx_quic_keys_available(ngx_quic_keys_t *keys,
 
 void
 ngx_quic_keys_discard(ngx_quic_keys_t *keys,
-     enum ssl_encryption_level_t level)
+    enum ssl_encryption_level_t level)
 {
     keys->secrets[level].client.key.len = 0;
 }
@@ -956,7 +956,7 @@ ngx_quic_derive_key(ngx_log_t *log, const char *label, ngx_str_t *secret,
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
                          salt->data, salt->len)
-       != NGX_OK)
+        != NGX_OK)
     {
         ngx_ssl_error(NGX_LOG_INFO, log, 0,
                       "ngx_hkdf_extract(%s) failed", label);

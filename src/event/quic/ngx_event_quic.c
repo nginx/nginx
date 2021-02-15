@@ -542,7 +542,6 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
             p = ngx_slprintf(p, last, " ft:%ui", f->u.close.frame_type);
         }
 
-
         break;
 
     case NGX_QUIC_FT_STREAM0:
@@ -589,7 +588,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
         break;
 
     case NGX_QUIC_FT_RESET_STREAM:
-       p = ngx_slprintf(p, last, "RESET_STREAM"
+        p = ngx_slprintf(p, last, "RESET_STREAM"
                         " id:0x%xL error_code:0x%xL final_size:0x%xL",
                         f->u.reset_stream.id, f->u.reset_stream.error_code,
                         f->u.reset_stream.final_size);
@@ -1012,7 +1011,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     } else if (ctp->max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
         ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                      "quic client maximum packet size truncated");
+                       "quic client maximum packet size truncated");
     }
 
     if (ctp->active_connection_id_limit < 2) {
@@ -1518,7 +1517,7 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
     }
 
     ngx_log_debug(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic retry packet sent to %xV", &pkt.dcid);
+                  "quic retry packet sent to %xV", &pkt.dcid);
 
     /*
      * quic-transport 17.2.5.1:  A server MUST NOT send more than one Retry
@@ -1967,7 +1966,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     if (qc == NULL) {
         if (rc == NGX_ERROR) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                          "quic close connection early error");
+                           "quic close connection early error");
         }
 
     } else if (ngx_quic_close_quic(c, rc) == NGX_AGAIN) {
@@ -2040,9 +2039,9 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
                                      : ssl_encryption_initial;
 
             if (rc == NGX_OK) {
-                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                                "quic immediate close drain:%d",
-                                qc->draining);
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "quic immediate close drain:%d",
+                               qc->draining);
 
                 qc->close.log = c->log;
                 qc->close.data = c;
@@ -3477,7 +3476,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         if (gap + 2 > min) {
             qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                         "quic invalid range:%ui in ack frame", i);
+                          "quic invalid range:%ui in ack frame", i);
             return NGX_ERROR;
         }
 
@@ -3486,7 +3485,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         if (range > max) {
             qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                         "quic invalid range:%ui in ack frame", i);
+                          "quic invalid range:%ui in ack frame", i);
             return NGX_ERROR;
         }
 
@@ -3757,8 +3756,8 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
                 fs->total -= f->length;
 
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                              "quic skipped buffered frame, total:%ui",
-                              fs->total);
+                               "quic skipped buffered frame, total:%ui",
+                               fs->total);
                 ngx_quic_free_frame(c, frame);
                 continue;
             }
@@ -3784,7 +3783,7 @@ ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
         ngx_queue_remove(q);
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                      "quic consumed buffered frame, total:%ui", fs->total);
+                       "quic consumed buffered frame, total:%ui", fs->total);
 
         ngx_quic_free_frame(c, frame);
 
@@ -3872,8 +3871,8 @@ ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     fs->total += f->length;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                  "quic ordered frame with unexpected offset:"
-                  " buffered total:%ui", fs->total);
+                   "quic ordered frame with unexpected offset:"
+                   " buffered total:%ui", fs->total);
 
     if (ngx_queue_empty(&fs->frames)) {
         ngx_queue_insert_after(&fs->frames, &dst->queue);

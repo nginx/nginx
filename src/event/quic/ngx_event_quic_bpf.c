@@ -400,8 +400,8 @@ ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-              "quic bpf sockmap fd duplicated old:%i new:%i",
-              ogrp->map_fd, grp->map_fd);
+                   "quic bpf sockmap fd duplicated old:%i new:%i",
+                   ogrp->map_fd, grp->map_fd);
 
     return grp;
 }

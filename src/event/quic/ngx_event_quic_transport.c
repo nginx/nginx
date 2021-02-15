@@ -492,9 +492,9 @@ ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt)
         pkt->level = ssl_encryption_handshake;
 
     } else {
-         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                       "quic bad packet type");
-         return NGX_DECLINED;
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic bad packet type");
+        return NGX_DECLINED;
     }
 
     p = ngx_quic_parse_int(p, end, &varint);
@@ -738,7 +738,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     if (p == NULL) {
         pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                     "quic failed to obtain quic frame type");
+                      "quic failed to obtain quic frame type");
         return NGX_ERROR;
     }
 
@@ -1636,8 +1636,8 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         p = ngx_quic_parse_int(p, end, &len);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                         "quic failed to parse"
-                         " transport param id:0x%xL length", id);
+                          "quic failed to parse"
+                          " transport param id:0x%xL length", id);
             return NGX_ERROR;
         }
 
