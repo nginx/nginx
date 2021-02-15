@@ -225,6 +225,8 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, uint8_t alert);
 
 
+static ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
+    ngx_quic_tp_t *ctp);
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
@@ -832,6 +834,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     u_char                    *p, *end;
     size_t                     client_params_len;
     const uint8_t             *client_params;
+    ngx_quic_tp_t              ctp;
     ngx_quic_frame_t          *frame;
     ngx_connection_t          *c;
     ngx_quic_connection_t     *qc;
@@ -888,7 +891,10 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         p = (u_char *) client_params;
         end = p + client_params_len;
 
-        if (ngx_quic_parse_transport_params(p, end, &qc->ctp, c->log)
+        /* defaults for parameters not sent by client */
+        ngx_memcpy(&ctp, &qc->ctp, sizeof(ngx_quic_tp_t));
+
+        if (ngx_quic_parse_transport_params(p, end, &ctp, c->log)
             != NGX_OK)
         {
             qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
@@ -897,43 +903,9 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             return 0;
         }
 
-        if (qc->ctp.max_idle_timeout > 0
-            && qc->ctp.max_idle_timeout < qc->tp.max_idle_timeout)
-        {
-            qc->tp.max_idle_timeout = qc->ctp.max_idle_timeout;
-        }
-
-        if (qc->ctp.max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
-            || qc->ctp.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
-        {
-            qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-            qc->error_reason = "invalid maximum packet size";
-
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "quic maximum packet size is invalid");
+        if (ngx_quic_apply_transport_params(c, &ctp) != NGX_OK) {
             return 0;
         }
-
-        if (qc->ctp.max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
-            qc->ctp.max_udp_payload_size = ngx_quic_max_udp_payload(c);
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                          "quic client maximum packet size truncated");
-        }
-
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
-        if (qc->scid.len != qc->ctp.initial_scid.len
-            || ngx_memcmp(qc->scid.data, qc->ctp.initial_scid.data,
-                          qc->scid.len) != 0)
-        {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "quic client initial_source_connection_id "
-                          "mismatch");
-            return 0;
-        }
-#endif
-
-        qc->streams.server_max_streams_bidi = qc->ctp.initial_max_streams_bidi;
-        qc->streams.server_max_streams_uni = qc->ctp.initial_max_streams_uni;
 
         qc->client_tp_done = 1;
     }
@@ -1007,6 +979,81 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     }
 
     return 1;
+}
+
+
+static ngx_int_t
+ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+#if (NGX_QUIC_DRAFT_VERSION >= 28)
+    if (qc->scid.len != ctp->initial_scid.len
+        || ngx_memcmp(qc->scid.data, ctp->initial_scid.data, qc->scid.len) != 0)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic client initial_source_connection_id mismatch");
+        return NGX_ERROR;
+    }
+#endif
+
+    if (ctp->max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
+        || ctp->max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
+    {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "invalid maximum packet size";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic maximum packet size is invalid");
+        return NGX_ERROR;
+
+    } else if (ctp->max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
+        ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                      "quic client maximum packet size truncated");
+    }
+
+    if (ctp->active_connection_id_limit < 2) {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "invalid active_connection_id_limit";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic active_connection_id_limit is invalid");
+        return NGX_ERROR;
+    }
+
+    if (ctp->ack_delay_exponent > 20) {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "invalid ack_delay_exponent";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic ack_delay_exponent is invalid");
+        return NGX_ERROR;
+    }
+
+    if (ctp->max_ack_delay > 16384) {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "invalid max_ack_delay";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic max_ack_delay is invalid");
+        return NGX_ERROR;
+    }
+
+    if (ctp->max_idle_timeout > 0
+        && ctp->max_idle_timeout < qc->tp.max_idle_timeout)
+    {
+        qc->tp.max_idle_timeout = ctp->max_idle_timeout;
+    }
+
+    qc->streams.server_max_streams_bidi = ctp->initial_max_streams_bidi;
+    qc->streams.server_max_streams_uni = ctp->initial_max_streams_uni;
+
+    ngx_memcpy(&qc->ctp, ctp, sizeof(ngx_quic_tp_t));
+
+    return NGX_OK;
 }
 
 
@@ -1124,9 +1171,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     }
 
     ctp = &qc->ctp;
+
+    /* defaults to be used before actual client parameters are received */
     ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
+    ctp->active_connection_id_limit = 2;
 
     qc->streams.recv_max_data = qc->tp.initial_max_data;
 
