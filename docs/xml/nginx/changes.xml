@@ -5,6 +5,92 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.7" date="2021-02-16">
+
+<change type="change">
+<para lang="ru">
+обработка соединений в HTTP/2 была изменена
+и теперь более соответствует HTTP/1.x;
+директивы http2_recv_timeout, http2_idle_timeout
+и http2_max_requests упразднены,
+вместо них следует использовать директивы
+keepalive_timeout и keepalive_requests.
+</para>
+<para lang="en">
+connections handling in HTTP/2 has been changed
+to better match HTTP/1.x;
+the "http2_recv_timeout", "http2_idle_timeout",
+and "http2_max_requests" directives have been removed,
+the "keepalive_timeout" and "keepalive_requests" directives
+should be used instead.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+директивы http2_max_field_size и http2_max_header_size упразднены,
+вместо них следует использовать директиву large_client_header_buffers.
+</para>
+<para lang="en">
+the "http2_max_field_size" and "http2_max_header_size" directives
+have been removed,
+the "large_client_header_buffers" directive should be used instead.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь при исчерпании свободных соединений
+nginx закрывает не только keepalive-соединения,
+но и соединения в lingering close.
+</para>
+<para lang="en">
+now, if free worker connections are exhausted,
+nginx starts closing not only keepalive connections,
+but also connections in lingering close.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логах могли появляться сообщения "zero size buf in output",
+если бэкенд возвращал некорректный ответ
+при небуферизированном проксировании;
+ошибка появилась в 1.19.1.
+</para>
+<para lang="en">
+"zero size buf in output" alerts might appear in logs
+if an upstream server returned an incorrect response
+during unbuffered proxying;
+the bug had appeared in 1.19.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы return
+вместе с image_filter или xslt_stylesheet
+HEAD-запросы обрабатывались некорректно.
+</para>
+<para lang="en">
+HEAD requests were handled incorrectly
+if the "return" directive was used
+with the "image_filter" or "xslt_stylesheet" directives.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве add_trailer.
+</para>
+<para lang="en">
+in the "add_trailer" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.6" date="2020-12-15">
 
 <change type="bugfix">
