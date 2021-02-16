@@ -24,13 +24,6 @@ static char *ngx_http_v3_push(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 static ngx_command_t  ngx_http_v3_commands[] = {
 
-    { ngx_string("http3_max_field_size"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v3_srv_conf_t, max_field_size),
-      NULL },
-
     { ngx_string("http3_max_table_capacity"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -157,7 +150,6 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    h3scf->max_field_size = NGX_CONF_UNSET_SIZE;
     h3scf->max_table_capacity = NGX_CONF_UNSET_SIZE;
     h3scf->max_blocked_streams = NGX_CONF_UNSET_UINT;
     h3scf->max_concurrent_pushes = NGX_CONF_UNSET_UINT;
@@ -171,10 +163,6 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_v3_srv_conf_t *prev = parent;
     ngx_http_v3_srv_conf_t *conf = child;
-
-    ngx_conf_merge_size_value(conf->max_field_size,
-                              prev->max_field_size,
-                              NGX_HTTP_V3_DEFAULT_MAX_FIELD_SIZE);
 
     ngx_conf_merge_size_value(conf->max_table_capacity,
                               prev->max_table_capacity,

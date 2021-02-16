@@ -46,7 +46,6 @@
 #define NGX_HTTP_V3_STREAM_SERVER_DECODER          5
 #define NGX_HTTP_V3_MAX_KNOWN_STREAM               6
 
-#define NGX_HTTP_V3_DEFAULT_MAX_FIELD_SIZE         4096
 #define NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY     16384
 #define NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS    16
 #define NGX_HTTP_V3_DEFAULT_MAX_CONCURRENT_PUSHES  10
@@ -86,7 +85,6 @@
 
 typedef struct {
     ngx_quic_tp_t                 quic;
-    size_t                        max_field_size;
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
