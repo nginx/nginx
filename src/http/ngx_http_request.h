@@ -447,6 +447,7 @@ struct ngx_http_request_s {
 
     ngx_http_connection_t            *http_connection;
     ngx_http_v2_stream_t             *stream;
+    ngx_http_v3_parse_t              *v3_parse;
 
     ngx_http_log_handler_pt           log_handler;
 
@@ -595,10 +596,6 @@ struct ngx_http_request_s {
     u_char                           *host_end;
     u_char                           *port_start;
     u_char                           *port_end;
-
-#if (NGX_HTTP_V3)
-    void                             *h3_parse;
-#endif
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;

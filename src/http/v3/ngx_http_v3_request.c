@@ -112,6 +112,12 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     r->http_version = NGX_HTTP_VERSION_30;
 
+    r->v3_parse = ngx_pcalloc(r->pool, sizeof(ngx_http_v3_parse_t));
+    if (r->v3_parse == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
     c->data = r;
 
     rev = c->read;
@@ -144,17 +150,7 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         return;
     }
 
-    st = r->h3_parse;
-
-    if (st == NULL) {
-        st = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_headers_t));
-        if (st == NULL) {
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-            return;
-        }
-
-        r->h3_parse = st;
-    }
+    st = &r->v3_parse->headers;
 
     b = r->header_in;
 
@@ -949,19 +945,12 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_v3_parse_data_t  *st;
 
     rb = r->request_body;
-    st = r->h3_parse;
+    st = &r->v3_parse->body;
 
     if (rb->rest == -1) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 request body filter");
-
-        st = ngx_pcalloc(r->pool, sizeof(ngx_http_v3_parse_data_t));
-        if (st == NULL) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-
-        r->h3_parse = st;
 
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 

@@ -98,6 +98,12 @@ typedef struct {
 } ngx_http_v3_loc_conf_t;
 
 
+struct ngx_http_v3_parse_s {
+    ngx_http_v3_parse_headers_t   headers;
+    ngx_http_v3_parse_data_t      body;
+};
+
+
 typedef struct {
     ngx_str_t                     name;
     ngx_str_t                     value;
