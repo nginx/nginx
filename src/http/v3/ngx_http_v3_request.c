@@ -118,6 +118,9 @@ ngx_http_v3_init(ngx_connection_t *c)
         return;
     }
 
+    r->v3_parse->header_limit = cscf->large_client_header_buffers.size
+                                * cscf->large_client_header_buffers.num;
+
     c->data = r;
 
     rev = c->read;
@@ -261,10 +264,22 @@ static ngx_int_t
 ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
+    size_t                      len;
     ngx_table_elt_t            *h;
     ngx_http_header_t          *hh;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
+
+    len = name->len + value->len;
+
+    if (len > r->v3_parse->header_limit) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent too large header");
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
+        return NGX_ERROR;
+    }
+
+    r->v3_parse->header_limit -= len;
 
     if (ngx_http_v3_validate_header(r, name, value) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
