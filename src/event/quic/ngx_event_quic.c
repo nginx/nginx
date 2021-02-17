@@ -2203,6 +2203,40 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 }
 
 
+ngx_int_t
+ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
+{
+    ngx_event_t            *wev;
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    frame = ngx_quic_alloc_frame(pc);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_RESET_STREAM;
+    frame->u.reset_stream.id = qs->id;
+    frame->u.reset_stream.error_code = err;
+    frame->u.reset_stream.final_size = c->sent;
+
+    ngx_quic_queue_frame(qc, frame);
+
+    wev = c->write;
+    wev->error = 1;
+    wev->ready = 1;
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 {
@@ -6408,6 +6442,10 @@ ngx_quic_stream_cleanup_handler(void *data)
         }
     }
 
+    if (c->write->error) {
+        goto error;
+    }
+
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic stream id:0x%xL send fin", qs->id);
 
@@ -6428,6 +6466,8 @@ ngx_quic_stream_cleanup_handler(void *data)
     frame->u.stream.length = 0;
 
     ngx_quic_queue_frame(qc, frame);
+
+error:
 
     (void) ngx_quic_output(pc);
 }

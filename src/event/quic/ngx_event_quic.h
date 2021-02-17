@@ -131,6 +131,7 @@ void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
+ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 uint32_t ngx_quic_version(ngx_connection_t *c);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);

@@ -96,6 +96,8 @@ static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
 static size_t ngx_quic_create_ping(u_char *p);
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack,
     ngx_chain_t *ranges);
+static size_t ngx_quic_create_reset_stream(u_char *p,
+    ngx_quic_reset_stream_frame_t *rs);
 static size_t ngx_quic_create_stop_sending(u_char *p,
     ngx_quic_stop_sending_frame_t *ss);
 static size_t ngx_quic_create_crypto(u_char *p,
@@ -1228,6 +1230,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
         f->need_ack = 0;
         return ngx_quic_create_ack(p, &f->u.ack, f->data);
 
+    case NGX_QUIC_FT_RESET_STREAM:
+        return ngx_quic_create_reset_stream(p, &f->u.reset_stream);
+
     case NGX_QUIC_FT_STOP_SENDING:
         return ngx_quic_create_stop_sending(p, &f->u.stop_sending);
 
@@ -1328,6 +1333,31 @@ ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack, ngx_chain_t *ranges)
         p = ngx_cpymem(p, b->pos, b->last - b->pos);
         ranges = ranges->next;
     }
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_reset_stream(u_char *p, ngx_quic_reset_stream_frame_t *rs)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_RESET_STREAM);
+        len += ngx_quic_varint_len(rs->id);
+        len += ngx_quic_varint_len(rs->error_code);
+        len += ngx_quic_varint_len(rs->final_size);
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_RESET_STREAM);
+    ngx_quic_build_int(&p, rs->id);
+    ngx_quic_build_int(&p, rs->error_code);
+    ngx_quic_build_int(&p, rs->final_size);
 
     return p - start;
 }
