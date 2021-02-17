@@ -1782,7 +1782,7 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         }
     }
 
-    if (r->method == NGX_HTTP_HEAD || (r != r->main && val.len == 0)) {
+    if (r != r->main && val.len == 0) {
         return ngx_http_send_header(r);
     }
 
@@ -4104,14 +4104,6 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "ngx_http_v3_module");
             return NGX_CONF_ERROR;
 #endif
-        }
-
-        if (ngx_strcmp(value[n].data, "spdy") == 0) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "invalid parameter \"spdy\": "
-                               "ngx_http_spdy_module was superseded "
-                               "by ngx_http_v2_module");
-            continue;
         }
 
         if (ngx_strncmp(value[n].data, "so_keepalive=", 13) == 0) {
