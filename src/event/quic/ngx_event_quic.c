@@ -4948,17 +4948,21 @@ static ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
 {
     off_t                   max;
-    size_t                  len, min;
+    size_t                  len, min, in_flight;
     ssize_t                 n;
     u_char                 *p;
     ngx_uint_t              i, pad;
     ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
     static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "sending frames";
 
     qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
+
+    in_flight = cg->in_flight;
 
     for ( ;; ) {
         p = dst;
@@ -5003,11 +5007,11 @@ ngx_quic_output(ngx_connection_t *c)
         if (n == NGX_ERROR) {
             return NGX_ERROR;
         }
+    }
 
-        if (!qc->send_timer_set && !qc->closing) {
-            qc->send_timer_set = 1;
-            ngx_add_timer(c->read, qc->tp.max_idle_timeout);
-        }
+    if (in_flight != cg->in_flight && !qc->send_timer_set && !qc->closing) {
+        qc->send_timer_set = 1;
+        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
 
     ngx_quic_set_lost_timer(c);
