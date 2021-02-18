@@ -130,13 +130,11 @@ uint32_t  ngx_quic_versions[] = {
     /* QUICv1 */
     0x00000001,
     NGX_QUIC_VERSION(33),
-#elif (NGX_QUIC_DRAFT_VERSION >= 29)
+#else
     NGX_QUIC_VERSION(29),
     NGX_QUIC_VERSION(30),
     NGX_QUIC_VERSION(31),
     NGX_QUIC_VERSION(32),
-#else
-    NGX_QUIC_VERSION(NGX_QUIC_DRAFT_VERSION)
 #endif
 };
 
@@ -1125,13 +1123,8 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
          /* RETIRE_CONNECTION_ID */  0x3,
          /* PATH_CHALLENGE */        0x3,
          /* PATH_RESPONSE */         0x3,
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
          /* CONNECTION_CLOSE */      0xF,
          /* CONNECTION_CLOSE2 */     0x3,
-#else
-         /* CONNECTION_CLOSE */      0xD,
-         /* CONNECTION_CLOSE2 */     0x1,
-#endif
          /* HANDSHAKE_DONE */        0x0, /* only sent by server */
     };
 
@@ -1745,11 +1738,9 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
                    "quic tp active_connection_id_limit:%ui",
                    tp->active_connection_id_limit);
 
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic tp initial source_connection_id len:%uz %xV",
                    tp->initial_scid.len, &tp->initial_scid);
-#endif
 
     return NGX_OK;
 }
@@ -1946,18 +1937,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     len += ngx_quic_tp_len(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
                            tp->ack_delay_exponent);
 
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
 
     if (tp->retry_scid.len) {
         len += ngx_quic_tp_strlen(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
     }
-#else
-    if (tp->original_dcid.len) {
-        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
-    }
-#endif
 
     len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
     len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
@@ -2005,18 +1990,12 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     ngx_quic_tp_vint(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
                      tp->ack_delay_exponent);
 
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
     ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     ngx_quic_tp_str(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
 
     if (tp->retry_scid.len) {
         ngx_quic_tp_str(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
     }
-#else
-    if (tp->original_dcid.len) {
-        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
-    }
-#endif
 
     ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
     ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);

@@ -988,7 +988,6 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
 
     qc = ngx_quic_get_connection(c);
 
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
     if (qc->scid.len != ctp->initial_scid.len
         || ngx_memcmp(qc->scid.data, ctp->initial_scid.data, qc->scid.len) != 0)
     {
@@ -996,7 +995,6 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
                       "quic client initial_source_connection_id mismatch");
         return NGX_ERROR;
     }
-#endif
 
     if (ctp->max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
         || ctp->max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
@@ -1204,9 +1202,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
-#if (NGX_QUIC_DRAFT_VERSION >= 28)
     qc->tp.original_dcid = qc->odcid;
-#endif
     qc->tp.initial_scid = qc->dcid;
 
     if (pkt->validated && pkt->retried) {
