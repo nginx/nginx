@@ -34,11 +34,8 @@ Experimental QUIC support for nginx
 
     What works now:
 
-    Currently we support IETF-QUIC draft-27 through draft-32.
+    Currently we support IETF-QUIC draft-29 through draft-34.
     Earlier drafts are NOT supported as they have incompatible wire format.
-
-    You may look at src/event/ngx_event_quic.h for alternative values of the
-    NGX_QUIC_DRAFT_VERSION macro used to select IETF draft version number.
 
     nginx should be able to respond to HTTP/3 requests over QUIC and
     it should be possible to upload and download big files without errors.

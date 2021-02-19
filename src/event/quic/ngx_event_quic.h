@@ -12,7 +12,6 @@
 #include <ngx_core.h>
 
 
-/* Supported drafts: 27, 28, 29 */
 #ifndef NGX_QUIC_DRAFT_VERSION
 #define NGX_QUIC_DRAFT_VERSION               29
 #endif
