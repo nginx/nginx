@@ -1234,7 +1234,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc->server_seqnum = NGX_QUIC_UNSET_PN;
 
-    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid)
+    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid,
+                                         qc->version)
         != NGX_OK)
     {
         return NULL;
@@ -2611,7 +2612,8 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_keys_set_initial_secret(c->pool, pkt.keys, &inpkt->dcid)
+    if (ngx_quic_keys_set_initial_secret(c->pool, pkt.keys, &inpkt->dcid,
+                                         inpkt->version)
         != NGX_OK)
     {
         return NGX_ERROR;

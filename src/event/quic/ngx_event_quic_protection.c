@@ -142,7 +142,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
 
 ngx_int_t
 ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
-    ngx_str_t *secret)
+    ngx_str_t *secret, uint32_t version)
 {
     size_t              is_len;
     uint8_t             is[SHA256_DIGEST_LENGTH];
@@ -152,13 +152,11 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     ngx_quic_secret_t  *client, *server;
 
     static const uint8_t salt[20] =
-#if (NGX_QUIC_DRAFT_VERSION >= 33)
         "\x38\x76\x2c\xf7\xf5\x59\x34\xb3\x4d\x17"
         "\x9a\xe6\xa4\xc8\x0c\xad\xcc\xbb\x7f\x0a";
-#else
+    static const uint8_t salt29[20] =
         "\xaf\xbf\xec\x28\x99\x93\xd2\x4c\x9e\x97"
         "\x86\xf1\x9c\x61\x11\xe0\x43\x90\xa8\x99";
-#endif
 
     client = &keys->secrets[ssl_encryption_initial].client;
     server = &keys->secrets[ssl_encryption_initial].server;
@@ -169,7 +167,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     digest = EVP_sha256();
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
-                         salt, sizeof(salt))
+                         (version & 0xff000000) ? salt29 : salt, sizeof(salt))
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -889,17 +887,13 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 
     /* 5.8.  Retry Packet Integrity */
     static u_char     key[16] =
-#if (NGX_QUIC_DRAFT_VERSION >= 33)
         "\xbe\x0c\x69\x0b\x9f\x66\x57\x5a\x1d\x76\x6b\x54\xe3\x68\xc8\x4e";
-#else
+    static u_char     key29[16] =
         "\xcc\xce\x18\x7e\xd0\x9a\x09\xd0\x57\x28\x15\x5a\x6c\xb9\x6b\xe1";
-#endif
     static u_char     nonce[12] =
-#if (NGX_QUIC_DRAFT_VERSION >= 33)
         "\x46\x15\x99\xd3\x5d\x63\x2b\xf2\x23\x98\x25\xbb";
-#else
+    static u_char     nonce29[12] =
         "\xe5\x49\x30\xf9\x7f\x21\x36\xf0\x53\x0a\x8c\x1c";
-#endif
     static ngx_str_t  in = ngx_string("");
 
     ad.data = res->data;
@@ -918,10 +912,12 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     }
 
     secret.key.len = sizeof(key);
-    secret.key.data = key;
+    secret.key.data = (pkt->version & 0xff000000) ? key29 : key;
     secret.iv.len = sizeof(nonce);
 
-    if (ngx_quic_tls_seal(ciphers.c, &secret, &itag, nonce, &in, &ad, pkt->log)
+    if (ngx_quic_tls_seal(ciphers.c, &secret, &itag,
+                          (pkt->version & 0xff000000) ? nonce29 : nonce,
+                          &in, &ad, pkt->log)
         != NGX_OK)
     {
         return NGX_ERROR;

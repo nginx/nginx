@@ -126,16 +126,12 @@ static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
 
 
 uint32_t  ngx_quic_versions[] = {
-#if (NGX_QUIC_DRAFT_VERSION >= 33)
     /* QUICv1 */
     0x00000001,
-    NGX_QUIC_VERSION(33),
-#else
     NGX_QUIC_VERSION(29),
     NGX_QUIC_VERSION(30),
     NGX_QUIC_VERSION(31),
     NGX_QUIC_VERSION(32),
-#endif
 };
 
 #define NGX_QUIC_NVERSIONS \
