@@ -1019,21 +1019,43 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
     depth = X509_STORE_CTX_get_error_depth(x509_store);
 
     sname = X509_get_subject_name(cert);
-    subject = sname ? X509_NAME_oneline(sname, NULL, 0) : "(none)";
+
+    if (sname) {
+        subject = X509_NAME_oneline(sname, NULL, 0);
+        if (subject == NULL) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                          "X509_NAME_oneline() failed");
+        }
+
+    } else {
+        subject = NULL;
+    }
 
     iname = X509_get_issuer_name(cert);
-    issuer = iname ? X509_NAME_oneline(iname, NULL, 0) : "(none)";
+
+    if (iname) {
+        issuer = X509_NAME_oneline(iname, NULL, 0);
+        if (issuer == NULL) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                          "X509_NAME_oneline() failed");
+        }
+
+    } else {
+        issuer = NULL;
+    }
 
     ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "verify:%d, error:%d, depth:%d, "
                    "subject:\"%s\", issuer:\"%s\"",
-                   ok, err, depth, subject, issuer);
+                   ok, err, depth,
+                   subject ? subject : "(none)",
+                   issuer ? issuer : "(none)");
 
-    if (sname) {
+    if (subject) {
         OPENSSL_free(subject);
     }
 
-    if (iname) {
+    if (issuer) {
         OPENSSL_free(issuer);
     }
 #endif
@@ -4900,6 +4922,11 @@ ngx_ssl_get_subject_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     }
 
     p = X509_NAME_oneline(name, NULL, 0);
+    if (p == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_NAME_oneline() failed");
+        X509_free(cert);
+        return NGX_ERROR;
+    }
 
     for (len = 0; p[len]; len++) { /* void */ }
 
@@ -4943,6 +4970,11 @@ ngx_ssl_get_issuer_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     }
 
     p = X509_NAME_oneline(name, NULL, 0);
+    if (p == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_NAME_oneline() failed");
+        X509_free(cert);
+        return NGX_ERROR;
+    }
 
     for (len = 0; p[len]; len++) { /* void */ }
 
