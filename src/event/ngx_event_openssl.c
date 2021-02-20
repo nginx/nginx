@@ -1014,6 +1014,10 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
 
     c = ngx_ssl_get_connection(ssl_conn);
 
+    if (!(c->log->log_level & NGX_LOG_DEBUG_EVENT)) {
+        return 1;
+    }
+
     cert = X509_STORE_CTX_get_current_cert(x509_store);
     err = X509_STORE_CTX_get_error(x509_store);
     depth = X509_STORE_CTX_get_error_depth(x509_store);
@@ -1969,6 +1973,10 @@ ngx_ssl_handshake_log(ngx_connection_t *c)
     const
 #endif
     SSL_CIPHER  *cipher;
+
+    if (!(c->log->log_level & NGX_LOG_DEBUG_EVENT)) {
+        return;
+    }
 
     cipher = SSL_get_current_cipher(c->ssl->connection);
 
