@@ -83,7 +83,7 @@ static time_t ngx_ssl_parse_time(
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
     const
 #endif
-    ASN1_TIME *asn1time);
+    ASN1_TIME *asn1time, ngx_log_t *log);
 
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -4817,11 +4817,13 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
 
     if (X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253) < 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_NAME_print_ex() failed");
         goto failed;
     }
 
@@ -4869,11 +4871,13 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
 
     if (X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253) < 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_NAME_print_ex() failed");
         goto failed;
     }
 
@@ -5011,6 +5015,7 @@ ngx_ssl_get_serial_number(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
@@ -5049,6 +5054,7 @@ ngx_ssl_get_fingerprint(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     }
 
     if (!X509_digest(cert, EVP_sha1(), buf, &len)) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_digest() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
@@ -5122,6 +5128,7 @@ ngx_ssl_get_client_v_start(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
@@ -5166,6 +5173,7 @@ ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
         X509_free(cert);
         return NGX_ERROR;
     }
@@ -5208,9 +5216,9 @@ ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     }
 
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
-    end = ngx_ssl_parse_time(X509_get0_notAfter(cert));
+    end = ngx_ssl_parse_time(X509_get0_notAfter(cert), c->log);
 #else
-    end = ngx_ssl_parse_time(X509_get_notAfter(cert));
+    end = ngx_ssl_parse_time(X509_get_notAfter(cert), c->log);
 #endif
 
     if (end == (time_t) NGX_ERROR) {
@@ -5245,7 +5253,7 @@ ngx_ssl_parse_time(
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
     const
 #endif
-    ASN1_TIME *asn1time)
+    ASN1_TIME *asn1time, ngx_log_t *log)
 {
     BIO     *bio;
     char    *value;
@@ -5261,6 +5269,7 @@ ngx_ssl_parse_time(
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "BIO_new() failed");
         return NGX_ERROR;
     }
 
