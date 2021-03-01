@@ -727,15 +727,31 @@ ngx_feature_test="char buf[1]; struct iovec vec[1]; ssize_t n;
 . auto/feature
 
 
-ngx_feature="sys_nerr"
-ngx_feature_name="NGX_SYS_NERR"
-ngx_feature_run=value
-ngx_feature_incs='#include <errno.h>
-                  #include <stdio.h>'
+# strerrordesc_np(), introduced in glibc 2.32
+
+ngx_feature="strerrordesc_np()"
+ngx_feature_name="NGX_HAVE_STRERRORDESC_NP"
+ngx_feature_run=no
+ngx_feature_incs='#include <string.h>'
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test='printf("%d", sys_nerr);'
+ngx_feature_test="char *p; p = strerrordesc_np(0);
+                  if (p == NULL) return 1"
 . auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    ngx_feature="sys_nerr"
+    ngx_feature_name="NGX_SYS_NERR"
+    ngx_feature_run=value
+    ngx_feature_incs='#include <errno.h>
+                      #include <stdio.h>'
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test='printf("%d", sys_nerr);'
+    . auto/feature
+fi
 
 
 if [ $ngx_found = no ]; then
