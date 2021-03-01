@@ -56,7 +56,7 @@ typedef struct {
 #endif
     } cookie;
 
-    ngx_uint_t                     flags;
+    ngx_array_t                    flags_values;
     ngx_uint_t                     regex;
 } ngx_http_proxy_cookie_flags_t;
 
@@ -2916,12 +2916,14 @@ static ngx_int_t
 ngx_http_proxy_rewrite_cookie_flags(ngx_http_request_t *r, ngx_array_t *attrs,
     ngx_array_t *flags)
 {
-    ngx_str_t                       pattern;
+    ngx_str_t                       pattern, value;
 #if (NGX_PCRE)
     ngx_int_t                       rc;
 #endif
-    ngx_uint_t                      i;
+    ngx_uint_t                      i, m, f, nelts;
     ngx_keyval_t                   *attr;
+    ngx_conf_bitmask_t             *mask;
+    ngx_http_complex_value_t       *flags_values;
     ngx_http_proxy_cookie_flags_t  *pcf;
 
     attr = attrs->elts;
@@ -2965,7 +2967,47 @@ ngx_http_proxy_rewrite_cookie_flags(ngx_http_request_t *r, ngx_array_t *attrs,
         return NGX_DECLINED;
     }
 
-    return ngx_http_proxy_edit_cookie_flags(r, attrs, pcf[i].flags);
+    nelts = pcf[i].flags_values.nelts;
+    flags_values = pcf[i].flags_values.elts;
+
+    mask = ngx_http_proxy_cookie_flags_masks;
+    f = 0;
+
+    for (i = 0; i < nelts; i++) {
+
+        if (ngx_http_complex_value(r, &flags_values[i], &value) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (value.len == 0) {
+            continue;
+        }
+
+        for (m = 0; mask[m].name.len != 0; m++) {
+
+            if (mask[m].name.len != value.len
+                || ngx_strncasecmp(mask[m].name.data, value.data, value.len)
+                   != 0)
+            {
+                continue;
+            }
+
+            f |= mask[m].mask;
+
+            break;
+        }
+
+        if (mask[m].name.len == 0) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "invalid proxy_cookie_flags flag \"%V\"", &value);
+        }
+    }
+
+    if (f == 0) {
+        return NGX_DECLINED;
+    }
+
+    return ngx_http_proxy_edit_cookie_flags(r, attrs, f);
 }
 
 
@@ -4514,8 +4556,8 @@ ngx_http_proxy_cookie_flags(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_proxy_loc_conf_t *plcf = conf;
 
     ngx_str_t                         *value;
-    ngx_uint_t                         i, m;
-    ngx_conf_bitmask_t                *mask;
+    ngx_uint_t                         i;
+    ngx_http_complex_value_t          *cv;
     ngx_http_proxy_cookie_flags_t     *pcf;
     ngx_http_compile_complex_value_t   ccv;
 #if (NGX_PCRE)
@@ -4599,32 +4641,27 @@ ngx_http_proxy_cookie_flags(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
-    mask = ngx_http_proxy_cookie_flags_masks;
-    pcf->flags = 0;
+    if (ngx_array_init(&pcf->flags_values, cf->pool, cf->args->nelts - 2,
+                       sizeof(ngx_http_complex_value_t))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     for (i = 2; i < cf->args->nelts; i++) {
-        for (m = 0; mask[m].name.len != 0; m++) {
 
-            if (mask[m].name.len != value[i].len
-                || ngx_strcasecmp(mask[m].name.data, value[i].data) != 0)
-            {
-                continue;
-            }
-
-            if (pcf->flags & mask[m].mask) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "duplicate parameter \"%V\"", &value[i]);
-                return NGX_CONF_ERROR;
-            }
-
-            pcf->flags |= mask[m].mask;
-
-            break;
+        cv = ngx_array_push(&pcf->flags_values);
+        if (cv == NULL) {
+            return NGX_CONF_ERROR;
         }
 
-        if (mask[m].name.len == 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[i]);
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &value[i];
+        ccv.complex_value = cv;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
     }
