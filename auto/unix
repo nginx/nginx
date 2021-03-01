@@ -753,34 +753,6 @@ if [ $ngx_found = no ]; then
 fi
 
 
-if [ $ngx_found = no ]; then
-
-    # Solaris has no sys_nerr
-    ngx_feature='maximum errno'
-    ngx_feature_name=NGX_SYS_NERR
-    ngx_feature_run=value
-    ngx_feature_incs='#include <errno.h>
-                      #include <string.h>
-                      #include <stdio.h>'
-    ngx_feature_path=
-    ngx_feature_libs=
-    ngx_feature_test='int  n;
-                      char *p;
-                      for (n = 1; n < 1000; n++) {
-                          errno = 0;
-                          p = strerror(n);
-                          if (errno == EINVAL
-                              || p == NULL
-                              || strncmp(p, "Unknown error", 13) == 0)
-                          {
-                              break;
-                          }
-                      }
-                      printf("%d", n);'
-    . auto/feature
-fi
-
-
 ngx_feature="localtime_r()"
 ngx_feature_name="NGX_HAVE_LOCALTIME_R"
 ngx_feature_run=no
