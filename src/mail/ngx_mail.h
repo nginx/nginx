@@ -234,6 +234,7 @@ typedef struct {
 
     ngx_str_t               greetings[3];
 
+    unsigned                ssl:1;
     unsigned                protocol:3;
     unsigned                blocked:1;
     unsigned                quit:1;
