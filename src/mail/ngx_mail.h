@@ -511,6 +511,7 @@ char *ngx_mail_capabilities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 /* STUB */
 void ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer);
 void ngx_mail_auth_http_init(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_realip_handler(ngx_mail_session_t *s);
 /**/
 
 ngx_mail_cleanup_t * ngx_mail_cleanup_add(ngx_mail_session_t * s, size_t size);
