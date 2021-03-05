@@ -11,6 +11,7 @@
 #include <ngx_mail.h>
 
 
+static void ngx_mail_init_session_handler(ngx_event_t *rev);
 static void ngx_mail_init_session(ngx_connection_t *c);
 
 #if (NGX_MAIL_SSL)
@@ -26,6 +27,7 @@ ngx_mail_init_connection(ngx_connection_t *c)
 {
     size_t                     len;
     ngx_uint_t                 i;
+    ngx_event_t               *rev;
     ngx_mail_port_t           *port;
     struct sockaddr           *sa;
     struct sockaddr_in        *sin;
@@ -129,6 +131,10 @@ ngx_mail_init_connection(ngx_connection_t *c)
     s->main_conf = addr_conf->ctx->main_conf;
     s->srv_conf = addr_conf->ctx->srv_conf;
 
+#if (NGX_MAIL_SSL)
+    s->ssl = addr_conf->ssl;
+#endif
+
     s->addr_text = &addr_conf->addr_text;
 
     c->data = s;
@@ -159,13 +165,34 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
     c->log_error = NGX_ERROR_INFO;
 
+    rev = c->read;
+    rev->handler = ngx_mail_init_session_handler;
+
+    if (ngx_use_accept_mutex) {
+        ngx_post_event(rev, &ngx_posted_events);
+        return;
+    }
+
+    rev->handler(rev);
+}
+
+
+static void
+ngx_mail_init_session_handler(ngx_event_t *rev)
+{
+    ngx_connection_t    *c;
+    ngx_mail_session_t  *s;
+
+    c = rev->data;
+    s = c->data;
+
 #if (NGX_MAIL_SSL)
     {
     ngx_mail_ssl_conf_t  *sslcf;
 
     sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
 
-    if (sslcf->enable || addr_conf->ssl) {
+    if (sslcf->enable || s->ssl) {
         c->log->action = "SSL handshaking";
 
         ngx_mail_ssl_init_connection(&sslcf->ssl, c);
