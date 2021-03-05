@@ -722,11 +722,6 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 
     if (n == NGX_AGAIN) {
-        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
-            ngx_mail_session_internal_server_error(s);
-            return NGX_ERROR;
-        }
-
         if (s->buffer->pos == s->buffer->last) {
             return NGX_AGAIN;
         }

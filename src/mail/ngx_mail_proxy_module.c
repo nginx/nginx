@@ -233,6 +233,11 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
     rc = ngx_mail_proxy_read_response(s, 0);
 
     if (rc == NGX_AGAIN) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
         return;
     }
 
@@ -314,6 +319,11 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         return;
     }
 
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+        ngx_mail_proxy_internal_server_error(s);
+        return;
+    }
+
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
 }
@@ -346,6 +356,11 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
     rc = ngx_mail_proxy_read_response(s, s->mail_state);
 
     if (rc == NGX_AGAIN) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
         return;
     }
 
@@ -448,6 +463,11 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
         return;
     }
 
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+        ngx_mail_proxy_internal_server_error(s);
+        return;
+    }
+
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
 }
@@ -482,6 +502,11 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
     rc = ngx_mail_proxy_read_response(s, s->mail_state);
 
     if (rc == NGX_AGAIN) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
         return;
     }
 
@@ -759,6 +784,11 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
          * we treat the incomplete sending as NGX_ERROR
          * because it is very strange here
          */
+        ngx_mail_proxy_internal_server_error(s);
+        return;
+    }
+
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
         ngx_mail_proxy_internal_server_error(s);
         return;
     }
