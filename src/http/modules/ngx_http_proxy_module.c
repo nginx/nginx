@@ -4913,9 +4913,9 @@ ngx_http_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
 {
 #ifndef SSL_CONF_FLAG_FILE
     return "is not supported on this platform";
-#endif
-
+#else
     return NGX_CONF_OK;
+#endif
 }
 
 
