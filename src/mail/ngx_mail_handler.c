@@ -260,6 +260,11 @@ ngx_mail_proxy_protocol_handler(ngx_event_t *rev)
         return;
     }
 
+    if (ngx_mail_realip_handler(s) != NGX_OK) {
+        ngx_mail_close_connection(c);
+        return;
+    }
+
     ngx_mail_init_session_handler(rev);
 }
 

@@ -985,6 +985,12 @@ if [ $MAIL != NO ]; then
     ngx_module_srcs=src/mail/ngx_mail_proxy_module.c
 
     . auto/module
+
+    ngx_module_name=ngx_mail_realip_module
+    ngx_module_deps=
+    ngx_module_srcs=src/mail/ngx_mail_realip_module.c
+
+    . auto/module
 fi
 
 
