@@ -138,6 +138,12 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
     if (s->out.len) {
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "pop3 send handler busy");
         s->blocked = 1;
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_close_connection(c);
+            return;
+        }
+
         return;
     }
 
