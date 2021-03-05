@@ -1224,21 +1224,37 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
           + sizeof("Client-Host: ") - 1 + s->host.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-Helo: ") - 1 + s->smtp_helo.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-From: ") - 1 + s->smtp_from.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len + sizeof(CRLF) - 1
-#if (NGX_MAIL_SSL)
-          + sizeof("Auth-SSL: on" CRLF) - 1
-          + sizeof("Auth-SSL-Verify: ") - 1 + verify.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Subject: ") - 1 + subject.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Issuer: ") - 1 + issuer.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Serial: ") - 1 + serial.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Fingerprint: ") - 1 + fingerprint.len
-              + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Cert: ") - 1 + cert.len + sizeof(CRLF) - 1
-#endif
           + ahcf->header.len
           + sizeof(CRLF) - 1;
+
+    if (s->auth_method == NGX_MAIL_AUTH_NONE) {
+        len += sizeof("Auth-SMTP-Helo: ") - 1 + s->smtp_helo.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SMTP-From: ") - 1 + s->smtp_from.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len
+                     + sizeof(CRLF) - 1;
+    }
+
+#if (NGX_MAIL_SSL)
+
+    if (c->ssl) {
+        len += sizeof("Auth-SSL: on" CRLF) - 1
+               + sizeof("Auth-SSL-Verify: ") - 1 + verify.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Subject: ") - 1 + subject.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Issuer: ") - 1 + issuer.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Serial: ") - 1 + serial.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Fingerprint: ") - 1 + fingerprint.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Cert: ") - 1 + cert.len
+                     + sizeof(CRLF) - 1;
+    }
+
+#endif
 
     b = ngx_create_temp_buf(pool, len);
     if (b == NULL) {
