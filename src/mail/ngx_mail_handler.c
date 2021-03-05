@@ -365,6 +365,8 @@ ngx_mail_init_session(ngx_connection_t *c)
 
     s = c->data;
 
+    c->log->action = "sending client greeting line";
+
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
     s->protocol = cscf->protocol->type;
