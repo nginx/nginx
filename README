@@ -130,7 +130,6 @@ Experimental QUIC support for nginx
 
     A number of directives were added that configure HTTP/3:
 
-        http3_max_field_size
         http3_max_table_capacity
         http3_max_blocked_streams
         http3_max_concurrent_pushes
