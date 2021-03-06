@@ -172,7 +172,7 @@ Example configuration:
 
     * Browsers
 
-        Known to work: Firefox 75+ and Chrome 83+
+        Known to work: Firefox 80+ and Chrome 85+ (QUIC draft 29+)
 
         Beware of strange issues: sometimes browser may decide to ignore QUIC
         Cache clearing/restart might help.  Always check access.log and
