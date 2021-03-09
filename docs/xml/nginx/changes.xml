@@ -5,6 +5,68 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.8" date="2021-03-09">
+
+<change type="feature">
+<para lang="ru">
+в директиве proxy_cookie_flags теперь
+флаги можно задавать с помощью переменных.
+</para>
+<para lang="en">
+flags in the "proxy_cookie_flags" directive
+can now contain variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр proxy_protocol в директиве listen,
+директивы proxy_protocol и set_real_ip_from
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+the "proxy_protocol" parameter of the "listen" directive,
+the "proxy_protocol" and "set_real_ip_from" directives
+in mail proxy.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+HTTP/2-соединения сразу закрывались
+при использовании "keepalive_timeout 0";
+ошибка появилась в 1.19.7.
+</para>
+<para lang="en">
+HTTP/2 connections were immediately closed
+when using "keepalive_timeout 0";
+the bug had appeared in 1.19.7.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некоторые ошибки логгировались как неизвестные,
+если nginx был собран с glibc 2.32.
+</para>
+<para lang="en">
+some errors were logged as unknown
+if nginx was built with glibc 2.32.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в методе обработки соединений eventport.
+</para>
+<para lang="en">
+in the eventport method.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.7" date="2021-02-16">
 
 <change type="change">
