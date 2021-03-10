@@ -884,6 +884,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
 
     ngx_str_set(&r->http_protocol, "HTTP/3.0");
 
+    r->http_version = NGX_HTTP_VERSION_30;
     r->method_name = ngx_http_core_get_method;
     r->method = NGX_HTTP_GET;
 
