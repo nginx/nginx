@@ -41,6 +41,7 @@ typedef struct {
     unsigned                ipv6only:1;
 #endif
     unsigned                so_keepalive:2;
+    unsigned                proxy_protocol:1;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                     tcp_keepidle;
     int                     tcp_keepintvl;
@@ -55,7 +56,8 @@ typedef struct {
 typedef struct {
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
-    ngx_uint_t              ssl;    /* unsigned   ssl:1; */
+    unsigned                ssl:1;
+    unsigned                proxy_protocol:1;
 } ngx_mail_addr_conf_t;
 
 typedef struct {
@@ -176,6 +178,7 @@ typedef enum {
 typedef struct {
     ngx_peer_connection_t   upstream;
     ngx_buf_t              *buffer;
+    ngx_uint_t              proxy_protocol;  /* unsigned  proxy_protocol:1; */
 } ngx_mail_proxy_ctx_t;
 
 
@@ -197,6 +200,7 @@ typedef struct {
 
     ngx_uint_t              mail_state;
 
+    unsigned                ssl:1;
     unsigned                protocol:3;
     unsigned                blocked:1;
     unsigned                quit:1;
@@ -405,6 +409,7 @@ char *ngx_mail_capabilities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 /* STUB */
 void ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer);
 void ngx_mail_auth_http_init(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_realip_handler(ngx_mail_session_t *s);
 /**/
 
 

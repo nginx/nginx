@@ -2414,26 +2414,26 @@ syn keyword ngxDirectiveThirdParty contained ip2proxy_usage_type
 
 " highlight
 
-hi link ngxComment Comment
-hi link ngxParamComment Comment
-hi link ngxListenComment Comment
-hi link ngxVariable Identifier
-hi link ngxVariableString PreProc
-hi link ngxString String
-hi link ngxListenString String
+hi def link ngxComment Comment
+hi def link ngxParamComment Comment
+hi def link ngxListenComment Comment
+hi def link ngxVariable Identifier
+hi def link ngxVariableString PreProc
+hi def link ngxString String
+hi def link ngxListenString String
 
-hi link ngxBoolean Boolean
-hi link ngxDirectiveBlock Statement
-hi link ngxDirectiveImportant Type
-hi link ngxDirectiveListen Type
-hi link ngxDirectiveControl Keyword
-hi link ngxDirectiveError Constant
-hi link ngxDirectiveDeprecated Error
-hi link ngxDirective Identifier
-hi link ngxDirectiveThirdParty Special
-hi link ngxDirectiveThirdPartyDeprecated Error
+hi def link ngxBoolean Boolean
+hi def link ngxDirectiveBlock Statement
+hi def link ngxDirectiveImportant Type
+hi def link ngxDirectiveListen Type
+hi def link ngxDirectiveControl Keyword
+hi def link ngxDirectiveError Constant
+hi def link ngxDirectiveDeprecated Error
+hi def link ngxDirective Identifier
+hi def link ngxDirectiveThirdParty Special
+hi def link ngxDirectiveThirdPartyDeprecated Error
 
-hi link ngxListenOptions Keyword
-hi link ngxListenOptionsDeprecated Error
+hi def link ngxListenOptions Keyword
+hi def link ngxListenOptionsDeprecated Error
 
 let b:current_syntax = "nginx"

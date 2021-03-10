@@ -1224,21 +1224,48 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
           + sizeof("Client-Host: ") - 1 + s->host.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-Helo: ") - 1 + s->smtp_helo.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-From: ") - 1 + s->smtp_from.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len + sizeof(CRLF) - 1
-#if (NGX_MAIL_SSL)
-          + sizeof("Auth-SSL: on" CRLF) - 1
-          + sizeof("Auth-SSL-Verify: ") - 1 + verify.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Subject: ") - 1 + subject.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Issuer: ") - 1 + issuer.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Serial: ") - 1 + serial.len + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Fingerprint: ") - 1 + fingerprint.len
-              + sizeof(CRLF) - 1
-          + sizeof("Auth-SSL-Cert: ") - 1 + cert.len + sizeof(CRLF) - 1
-#endif
           + ahcf->header.len
           + sizeof(CRLF) - 1;
+
+    if (c->proxy_protocol) {
+        len += sizeof("Proxy-Protocol-Addr: ") - 1
+                     + c->proxy_protocol->src_addr.len + sizeof(CRLF) - 1
+               + sizeof("Proxy-Protocol-Port: ") - 1
+                     + sizeof("65535") - 1 + sizeof(CRLF) - 1
+               + sizeof("Proxy-Protocol-Server-Addr: ") - 1
+                     + c->proxy_protocol->dst_addr.len + sizeof(CRLF) - 1
+               + sizeof("Proxy-Protocol-Server-Port: ") - 1
+                     + sizeof("65535") - 1 + sizeof(CRLF) - 1;
+    }
+
+    if (s->auth_method == NGX_MAIL_AUTH_NONE) {
+        len += sizeof("Auth-SMTP-Helo: ") - 1 + s->smtp_helo.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SMTP-From: ") - 1 + s->smtp_from.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SMTP-To: ") - 1 + s->smtp_to.len
+                     + sizeof(CRLF) - 1;
+    }
+
+#if (NGX_MAIL_SSL)
+
+    if (c->ssl) {
+        len += sizeof("Auth-SSL: on" CRLF) - 1
+               + sizeof("Auth-SSL-Verify: ") - 1 + verify.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Subject: ") - 1 + subject.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Issuer: ") - 1 + issuer.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Serial: ") - 1 + serial.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Fingerprint: ") - 1 + fingerprint.len
+                     + sizeof(CRLF) - 1
+               + sizeof("Auth-SSL-Cert: ") - 1 + cert.len
+                     + sizeof(CRLF) - 1;
+    }
+
+#endif
 
     b = ngx_create_temp_buf(pool, len);
     if (b == NULL) {
@@ -1296,6 +1323,26 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
                              sizeof("Client-Host: ") - 1);
         b->last = ngx_copy(b->last, s->host.data, s->host.len);
         *b->last++ = CR; *b->last++ = LF;
+    }
+
+    if (c->proxy_protocol) {
+        b->last = ngx_cpymem(b->last, "Proxy-Protocol-Addr: ",
+                             sizeof("Proxy-Protocol-Addr: ") - 1);
+        b->last = ngx_copy(b->last, c->proxy_protocol->src_addr.data,
+                           c->proxy_protocol->src_addr.len);
+        *b->last++ = CR; *b->last++ = LF;
+
+        b->last = ngx_sprintf(b->last, "Proxy-Protocol-Port: %d" CRLF,
+                              c->proxy_protocol->src_port);
+
+        b->last = ngx_cpymem(b->last, "Proxy-Protocol-Server-Addr: ",
+                             sizeof("Proxy-Protocol-Server-Addr: ") - 1);
+        b->last = ngx_copy(b->last, c->proxy_protocol->dst_addr.data,
+                           c->proxy_protocol->dst_addr.len);
+        *b->last++ = CR; *b->last++ = LF;
+
+        b->last = ngx_sprintf(b->last, "Proxy-Protocol-Server-Port: %d" CRLF,
+                              c->proxy_protocol->dst_port);
     }
 
     if (s->auth_method == NGX_MAIL_AUTH_NONE) {

@@ -238,6 +238,7 @@ ngx_http_v2_init(ngx_event_t *rev)
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_main_conf_t   *h2mcf;
     ngx_http_v2_connection_t  *h2c;
+    ngx_http_core_srv_conf_t  *cscf;
 
     c = rev->data;
     hc = c->data;
@@ -325,8 +326,10 @@ ngx_http_v2_init(ngx_event_t *rev)
     rev->handler = ngx_http_v2_read_handler;
     c->write->handler = ngx_http_v2_write_handler;
 
-    if (c->read->timer_set) {
-        ngx_del_timer(c->read);
+    if (!rev->timer_set) {
+        cscf = ngx_http_get_module_srv_conf(hc->conf_ctx,
+                                            ngx_http_core_module);
+        ngx_add_timer(rev, cscf->client_header_timeout);
     }
 
     c->idle = 1;
