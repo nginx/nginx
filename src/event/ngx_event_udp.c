@@ -24,6 +24,7 @@ static ngx_connection_t *ngx_lookup_udp_connection(ngx_listening_t *ls,
 void
 ngx_event_recvmsg(ngx_event_t *ev)
 {
+    size_t             len;
     ssize_t            n;
     ngx_str_t          key;
     ngx_buf_t          buf;
@@ -302,7 +303,15 @@ ngx_event_recvmsg(ngx_event_t *ev)
             return;
         }
 
-        c->sockaddr = ngx_palloc(c->pool, socklen);
+        len = socklen;
+
+#if (NGX_QUIC)
+        if (ls->quic) {
+            len = NGX_SOCKADDRLEN;
+        }
+#endif
+
+        c->sockaddr = ngx_palloc(c->pool, len);
         if (c->sockaddr == NULL) {
             ngx_close_accepted_udp_connection(c);
             return;
@@ -703,13 +712,6 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, ngx_str_t *key,
                                        "client migrated to %V", &addr);
                     }
 #endif
-
-                    if (c->socklen < socklen) {
-                        c->sockaddr = ngx_palloc(c->pool, socklen);
-                        if (c->sockaddr == NULL) {
-                            return c;
-                        }
-                    }
 
                     ngx_memcpy(c->sockaddr, sockaddr, socklen);
                     c->socklen = socklen;
