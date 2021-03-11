@@ -1878,20 +1878,12 @@ ngx_quic_max_udp_payload(ngx_connection_t *c)
 static void
 ngx_quic_input_handler(ngx_event_t *rev)
 {
-    ssize_t                 n;
     ngx_int_t               rc;
-    ngx_buf_t               b;
+    ngx_buf_t              *b;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
-
-    ngx_memzero(&b, sizeof(ngx_buf_t));
-    b.start = buf;
-    b.end = buf + sizeof(buf);
-    b.pos = b.last = b.start;
-    b.memory = 1;
 
     c = rev->data;
     qc = ngx_quic_get_connection(c);
@@ -1911,18 +1903,10 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    n = c->recv(c, b.start, b.end - b.start);
-
-    if (n == NGX_AGAIN) {
+    if (!rev->ready) {
         if (qc->closing) {
             ngx_quic_close_connection(c, NGX_OK);
         }
-        return;
-    }
-
-    if (n == NGX_ERROR) {
-        c->read->eof = 1;
-        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
@@ -1936,10 +1920,11 @@ ngx_quic_input_handler(ngx_event_t *rev)
         }
     }
 
-    b.last += n;
-    qc->received += n;
+    b = c->udp->buffer;
 
-    rc = ngx_quic_input(c, &b, NULL);
+    qc->received += (b->last - b->pos);
+
+    rc = ngx_quic_input(c, b, NULL);
 
     if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
