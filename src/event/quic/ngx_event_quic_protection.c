@@ -305,44 +305,57 @@ ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
     const uint8_t *prk, size_t prk_len, const u_char *info, size_t info_len)
 {
 #ifdef OPENSSL_IS_BORINGSSL
+
     if (HKDF_expand(out_key, out_len, digest, prk, prk_len, info, info_len)
         == 0)
     {
         return NGX_ERROR;
     }
+
+    return NGX_OK;
+
 #else
 
     EVP_PKEY_CTX  *pctx;
 
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    if (pctx == NULL) {
+        return NGX_ERROR;
+    }
 
     if (EVP_PKEY_derive_init(pctx) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_hkdf_mode(pctx, EVP_PKEY_HKDEF_MODE_EXPAND_ONLY) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_set_hkdf_md(pctx, digest) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_key(pctx, prk, prk_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_add1_hkdf_info(pctx, info, info_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_derive(pctx, out_key, &out_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
-#endif
-
     return NGX_OK;
+
+failed:
+
+    EVP_PKEY_CTX_free(pctx);
+
+    return NGX_ERROR;
+
+#endif
 }
 
 
@@ -352,45 +365,58 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
     size_t salt_len)
 {
 #ifdef OPENSSL_IS_BORINGSSL
+
     if (HKDF_extract(out_key, out_len, digest, secret, secret_len, salt,
                      salt_len)
         == 0)
     {
         return NGX_ERROR;
     }
+
+    return NGX_OK;
+
 #else
 
     EVP_PKEY_CTX  *pctx;
 
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    if (pctx == NULL) {
+        return NGX_ERROR;
+    }
 
     if (EVP_PKEY_derive_init(pctx) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_hkdf_mode(pctx, EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_set_hkdf_md(pctx, digest) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_key(pctx, secret, secret_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt, salt_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     if (EVP_PKEY_derive(pctx, out_key, out_len) <= 0) {
-        return NGX_ERROR;
+        goto failed;
     }
 
-#endif
-
     return NGX_OK;
+
+failed:
+
+    EVP_PKEY_CTX_free(pctx);
+
+    return NGX_ERROR;
+
+#endif
 }
 
 
