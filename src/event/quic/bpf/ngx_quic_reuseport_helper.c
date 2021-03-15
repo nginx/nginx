@@ -58,10 +58,10 @@ char _license[] SEC("license") = LICENSE;
      ((__u64)(p)[1] << 48) |                                                  \
      ((__u64)(p)[2] << 40) |                                                  \
      ((__u64)(p)[3] << 32) |                                                  \
-             (p)[4] << 24  |                                                  \
-             (p)[5] << 16  |                                                  \
-             (p)[6] << 8   |                                                  \
-             (p)[7])
+     ((__u64)(p)[4] << 24) |                                                  \
+     ((__u64)(p)[5] << 16) |                                                  \
+     ((__u64)(p)[6] << 8)  |                                                  \
+     ((__u64)(p)[7]))
 
 /*
  * actual map object is created by the "bpf" system call,
@@ -82,20 +82,20 @@ int ngx_quic_select_socket_by_dcid(struct sk_reuseport_md *ctx)
     end = (unsigned char *) ctx->data_end;
     offset = 0;
 
-    advance_data(sizeof(struct udphdr)); /* skip UDP header */
-    advance_data(1); /* QUIC flags */
+    advance_data(sizeof(struct udphdr)); /* data at UDP header */
+    advance_data(1); /* data at QUIC flags */
 
     if (data[0] & NGX_QUIC_PKT_LONG) {
 
-        advance_data(4); /* skip QUIC version */
+        advance_data(4); /* data at QUIC version */
+        advance_data(1); /* data at DCID len */
+
         len = data[0];   /* read DCID length */
 
         if (len < 8) {
             /* it's useless to search for key in such short DCID */
             return SK_PASS;
         }
-
-        advance_data(1); /* skip DCID len */
 
     } else {
         len = NGX_QUIC_SERVER_CID_LEN;
@@ -115,17 +115,17 @@ int ngx_quic_select_socket_by_dcid(struct sk_reuseport_md *ctx)
 
     switch (rc) {
     case 0:
-        debugmsg("nginx quic socket selected by key 0x%x", key);
+        debugmsg("nginx quic socket selected by key 0x%llx", key);
         return SK_PASS;
 
     /* kernel returns positive error numbers, errno.h defines positive */
     case -ENOENT:
-        debugmsg("nginx quic default route for key 0x%x", key);
+        debugmsg("nginx quic default route for key 0x%llx", key);
         /* let the default reuseport logic decide which socket to choose */
         return SK_PASS;
 
     default:
-        debugmsg("nginx quic bpf_sk_select_reuseport err: %d key 0x%x",
+        debugmsg("nginx quic bpf_sk_select_reuseport err: %d key 0x%llx",
                   rc, key);
         goto failed;
     }
