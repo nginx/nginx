@@ -93,6 +93,9 @@ ngx_http_v3_init(ngx_connection_t *c)
             ngx_http_close_connection(c);
             return;
         }
+
+        ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+                                        "reached maximum number of requests");
     }
 
     cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);

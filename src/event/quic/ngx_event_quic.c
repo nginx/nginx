@@ -174,9 +174,13 @@ typedef struct {
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
+    ngx_uint_t                        shutdown_code;
+    const char                       *shutdown_reason;
+
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
     unsigned                          closing:1;
+    unsigned                          shutdown:1;
     unsigned                          draining:1;
     unsigned                          key_phase:1;
     unsigned                          validated:1;
@@ -384,6 +388,7 @@ static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
 static size_t ngx_quic_max_stream_flow(ngx_connection_t *c);
 static void ngx_quic_stream_cleanup_handler(void *data);
+static void ngx_quic_shutdown_quic(ngx_connection_t *c);
 static ngx_quic_frame_t *ngx_quic_alloc_frame(ngx_connection_t *c);
 static void ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame);
 
@@ -684,6 +689,7 @@ ngx_quic_connstate_dbg(ngx_connection_t *c)
             }
         }
 
+        p = ngx_slprintf(p, last, "%s", qc->shutdown ? " shutdown" : "");
         p = ngx_slprintf(p, last, "%s", qc->closing ? " closing" : "");
         p = ngx_slprintf(p, last, "%s", qc->draining ? " draining" : "");
         p = ngx_slprintf(p, last, "%s", qc->key_phase ? " kp" : "");
@@ -2135,6 +2141,21 @@ ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     qc->error_ftype = 0;
 
     ngx_quic_close_connection(c, NGX_ERROR);
+}
+
+
+void
+ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
+    const char *reason)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    qc->shutdown = 1;
+    qc->shutdown_code = err;
+    qc->shutdown_reason = reason;
+
+    ngx_quic_shutdown_quic(c);
 }
 
 
@@ -5945,6 +5966,10 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
 
     qc = ngx_quic_get_connection(c);
 
+    if (qc->shutdown) {
+        return NGX_QUIC_STREAM_GONE;
+    }
+
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
 
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
@@ -6016,6 +6041,10 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
         }
 
         sn->c->listening->handler(sn->c);
+
+        if (qc->shutdown) {
+            return NGX_QUIC_STREAM_GONE;
+        }
     }
 
     return ngx_quic_create_stream(c, id, n);
@@ -6410,7 +6439,7 @@ ngx_quic_stream_cleanup_handler(void *data)
         if (!c->read->pending_eof && !c->read->error) {
             frame = ngx_quic_alloc_frame(pc);
             if (frame == NULL) {
-                return;
+                goto done;
             }
 
             frame->level = ssl_encryption_application;
@@ -6425,7 +6454,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
         frame = ngx_quic_alloc_frame(pc);
         if (frame == NULL) {
-            return;
+            goto done;
         }
 
         frame->level = ssl_encryption_application;
@@ -6444,12 +6473,12 @@ ngx_quic_stream_cleanup_handler(void *data)
 
         if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
             /* do not send fin for client unidirectional streams */
-            return;
+            goto done;
         }
     }
 
     if (c->write->error) {
-        goto error;
+        goto done;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -6457,7 +6486,7 @@ ngx_quic_stream_cleanup_handler(void *data)
 
     frame = ngx_quic_alloc_frame(pc);
     if (frame == NULL) {
-        return;
+        goto done;
     }
 
     frame->level = ssl_encryption_application;
@@ -6473,9 +6502,46 @@ ngx_quic_stream_cleanup_handler(void *data)
 
     ngx_quic_queue_frame(qc, frame);
 
-error:
+done:
 
     (void) ngx_quic_output(pc);
+
+    if (qc->shutdown) {
+        ngx_quic_shutdown_quic(pc);
+    }
+}
+
+
+static void
+ngx_quic_shutdown_quic(ngx_connection_t *c)
+{
+    ngx_rbtree_t           *tree;
+    ngx_rbtree_node_t      *node;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->closing) {
+        return;
+    }
+
+    tree = &qc->streams.tree;
+
+    if (tree->root != tree->sentinel) {
+        for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+             node;
+             node = ngx_rbtree_next(tree, node))
+        {
+            qs = (ngx_quic_stream_t *) node;
+
+            if (!qs->cancelable) {
+                return;
+            }
+        }
+    }
+
+    ngx_quic_finalize_connection(c, qc->shutdown_code, qc->shutdown_reason);
 }
 
 

@@ -82,6 +82,9 @@
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
     ngx_quic_finalize_connection(c->quic->parent, code, reason)
 
+#define ngx_http_v3_shutdown_connection(c, code, reason)                      \
+    ngx_quic_shutdown_connection(c->quic->parent, code, reason)
+
 
 typedef struct {
     ngx_quic_tp_t                 quic;

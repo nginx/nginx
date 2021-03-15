@@ -80,6 +80,8 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init uni stream");
 
+    c->quic->cancelable = 1;
+
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
         ngx_http_close_connection(c);
@@ -435,6 +437,8 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     if (sc == NULL) {
         return NULL;
     }
+
+    sc->quic->cancelable = 1;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 create uni stream, type:%ui", type);
