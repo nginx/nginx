@@ -523,6 +523,40 @@ failed:
 
 
 ngx_int_t
+ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id)
+{
+    u_char            *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 3];
+    size_t             n;
+    ngx_connection_t  *cc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send goaway %uL", id);
+
+    cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
+    if (cc == NULL) {
+        return NGX_DECLINED;
+    }
+
+    n = ngx_http_v3_encode_varlen_int(NULL, id);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(buf, NGX_HTTP_V3_FRAME_GOAWAY);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, n);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, id);
+    n = p - buf;
+
+    if (cc->send(cc, buf, n) != (ssize_t) n) {
+        goto failed;
+    }
+
+    return NGX_OK;
+
+failed:
+
+    ngx_http_v3_close_uni_stream(cc);
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_http_v3_client_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)
 {

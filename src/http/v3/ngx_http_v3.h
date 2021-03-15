@@ -161,6 +161,7 @@ ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 void ngx_http_v3_init_uni_stream(ngx_connection_t *c);
 ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
     uint64_t push_id);
+ngx_int_t ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id);
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
 ngx_int_t ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,

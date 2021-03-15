@@ -52,10 +52,12 @@ void
 ngx_http_v3_init(ngx_connection_t *c)
 {
     size_t                     size;
+    uint64_t                   n;
     ngx_buf_t                 *b;
     ngx_event_t               *rev;
     ngx_http_request_t        *r;
     ngx_http_connection_t     *hc;
+    ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
     if (ngx_http_v3_init_session(c) != NGX_OK) {
@@ -73,6 +75,25 @@ ngx_http_v3_init(ngx_connection_t *c)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init request stream");
 
     hc = c->data;
+
+    clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+
+    n = c->quic->id >> 2;
+
+    if (n >= clcf->keepalive_requests) {
+        ngx_quic_reset_stream(c, NGX_HTTP_V3_ERR_REQUEST_REJECTED);
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (n + 1 == clcf->keepalive_requests) {
+        if (ngx_http_v3_send_goaway(c, (n + 1) << 2) != NGX_OK) {
+            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                            "goaway error");
+            ngx_http_close_connection(c);
+            return;
+        }
+    }
 
     cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
 
