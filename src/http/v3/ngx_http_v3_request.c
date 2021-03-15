@@ -165,6 +165,7 @@ ngx_http_v3_init(ngx_connection_t *c)
                                 * cscf->large_client_header_buffers.num;
 
     c->data = r;
+    c->requests = n + 1;
 
     rev = c->read;
     rev->handler = ngx_http_v3_process_request;
