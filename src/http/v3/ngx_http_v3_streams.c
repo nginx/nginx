@@ -62,6 +62,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 
     h3c->hc = *phc;
     h3c->hc.http3 = 1;
+    h3c->max_push_id = (uint64_t) -1;
 
     ngx_queue_init(&h3c->blocked);
     ngx_queue_init(&h3c->pushing);
@@ -762,7 +763,7 @@ ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 MAX_PUSH_ID:%uL", max_push_id);
 
-    if (max_push_id < h3c->max_push_id) {
+    if (h3c->max_push_id != (uint64_t) -1 && max_push_id < h3c->max_push_id) {
         return NGX_HTTP_V3_ERR_ID_ERROR;
     }
 

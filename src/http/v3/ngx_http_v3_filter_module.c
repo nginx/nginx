@@ -787,7 +787,7 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
 
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 push \"%V\" pushing:%ui/%ui id:%uL/%uL",
+                   "http3 push \"%V\" pushing:%ui/%ui id:%uL/%L",
                    path, h3c->npushing, h3scf->max_concurrent_pushes,
                    h3c->next_push_id, h3c->max_push_id);
 
@@ -797,7 +797,9 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         return NGX_DECLINED;
     }
 
-    if (h3c->next_push_id > h3c->max_push_id) {
+    if (h3c->max_push_id == (uint64_t) -1
+        || h3c->next_push_id > h3c->max_push_id)
+    {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 abort pushes due to max_push_id");
         return NGX_ABORT;
