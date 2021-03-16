@@ -1803,6 +1803,10 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
+#if BORINGSSL_API_VERSION >= 13
+    SSL_set_quic_use_legacy_codepoint(ssl_conn, qc->version != 1);
+#endif
+
     if (ngx_quic_new_sr_token(c, &qc->dcid, qc->conf->sr_token_key,
                               qc->tp.sr_token)
         != NGX_OK)
