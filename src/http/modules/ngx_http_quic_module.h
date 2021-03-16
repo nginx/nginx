@@ -14,7 +14,7 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_QUIC_ALPN_ADVERTISE  "\x02hq"
+#define NGX_HTTP_QUIC_ALPN_ADVERTISE  "\x0Ahq-interop"
 #define NGX_HTTP_QUIC_ALPN_DRAFT_FMT  "\x05hq-%02uD"
 
 
