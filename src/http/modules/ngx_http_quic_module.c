@@ -337,7 +337,7 @@ ngx_http_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->tp.initial_max_streams_bidi, 16);
 
     ngx_conf_merge_uint_value(conf->tp.initial_max_streams_uni,
-                              prev->tp.initial_max_streams_uni, 16);
+                              prev->tp.initial_max_streams_uni, 3);
 
     ngx_conf_merge_uint_value(conf->tp.ack_delay_exponent,
                               prev->tp.ack_delay_exponent,
