@@ -45,14 +45,14 @@ ngx_bpf_load_program(ngx_log_t *log, ngx_bpf_program_t *program)
 
     ngx_memzero(&attr, sizeof(union bpf_attr));
 
-    attr.license = (uint64_t) program->license;
+    attr.license = (uintptr_t) program->license;
     attr.prog_type = program->type;
-    attr.insns = (uint64_t) program->ins;
+    attr.insns = (uintptr_t) program->ins;
     attr.insn_cnt = program->nins;
 
 #if (NGX_DEBUG)
     /* for verifier errors */
-    attr.log_buf = (uint64_t) buf;
+    attr.log_buf = (uintptr_t) buf;
     attr.log_size = NGX_BPF_LOGBUF_SIZE;
     attr.log_level = 1;
 #endif
@@ -106,8 +106,8 @@ ngx_bpf_map_update(int fd, const void *key, const void *value, uint64_t flags)
     ngx_memzero(&attr, sizeof(union bpf_attr));
 
     attr.map_fd = fd;
-    attr.key = (uint64_t) key;
-    attr.value = (uint64_t) value;
+    attr.key = (uintptr_t) key;
+    attr.value = (uintptr_t) value;
     attr.flags = flags;
 
     return ngx_bpf(BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));
@@ -122,7 +122,7 @@ ngx_bpf_map_delete(int fd, const void *key)
     ngx_memzero(&attr, sizeof(union bpf_attr));
 
     attr.map_fd = fd;
-    attr.key = (uint64_t) key;
+    attr.key = (uintptr_t) key;
 
     return ngx_bpf(BPF_MAP_DELETE_ELEM, &attr, sizeof(attr));
 }
@@ -136,8 +136,8 @@ ngx_bpf_map_lookup(int fd, const void *key, void *value)
     ngx_memzero(&attr, sizeof(union bpf_attr));
 
     attr.map_fd = fd;
-    attr.key = (uint64_t) key;
-    attr.value = (uint64_t) value;
+    attr.key = (uintptr_t) key;
+    attr.value = (uintptr_t) value;
 
     return ngx_bpf(BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
 }
