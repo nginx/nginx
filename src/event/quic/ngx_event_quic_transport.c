@@ -113,6 +113,8 @@ static size_t ngx_quic_create_max_stream_data(u_char *p,
     ngx_quic_max_stream_data_frame_t *ms);
 static size_t ngx_quic_create_max_data(u_char *p,
     ngx_quic_max_data_frame_t *md);
+static size_t ngx_quic_create_path_challenge(u_char *p,
+    ngx_quic_path_challenge_frame_t *pc);
 static size_t ngx_quic_create_path_response(u_char *p,
     ngx_quic_path_challenge_frame_t *pc);
 static size_t ngx_quic_create_new_connection_id(u_char *p,
@@ -1258,6 +1260,9 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_MAX_DATA:
         return ngx_quic_create_max_data(p, &f->u.max_data);
 
+    case NGX_QUIC_FT_PATH_CHALLENGE:
+        return ngx_quic_create_path_challenge(p, &f->u.path_challenge);
+
     case NGX_QUIC_FT_PATH_RESPONSE:
         return ngx_quic_create_path_response(p, &f->u.path_response);
 
@@ -1781,6 +1786,27 @@ ngx_quic_create_max_data(u_char *p, ngx_quic_max_data_frame_t *md)
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_MAX_DATA);
     ngx_quic_build_int(&p, md->max_data);
+
+    return p - start;
+}
+
+
+static size_t
+ngx_quic_create_path_challenge(u_char *p, ngx_quic_path_challenge_frame_t *pc)
+{
+    size_t   len;
+    u_char  *start;
+
+    if (p == NULL) {
+        len = ngx_quic_varint_len(NGX_QUIC_FT_PATH_CHALLENGE);
+        len += sizeof(pc->data);
+        return len;
+    }
+
+    start = p;
+
+    ngx_quic_build_int(&p, NGX_QUIC_FT_PATH_CHALLENGE);
+    p = ngx_cpymem(p, &pc->data, sizeof(pc->data));
 
     return p - start;
 }
