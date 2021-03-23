@@ -2074,17 +2074,6 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                     return NGX_ERROR;
                 }
 
-                if (ctx->length != -1) {
-                    if ((off_t) ctx->rest > ctx->length) {
-                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                      "upstream sent response body larger "
-                                      "than indicated content length");
-                        return NGX_ERROR;
-                    }
-
-                    ctx->length -= ctx->rest;
-                }
-
                 if (ctx->rest > ctx->recv_window) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "upstream violated stream flow control, "
@@ -2450,12 +2439,36 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             b->pos = b->last;
             buf->last = b->pos;
 
+            if (ctx->length != -1) {
+
+                if (buf->last - buf->pos > ctx->length) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent response body larger "
+                                  "than indicated content length");
+                    return NGX_ERROR;
+                }
+
+                ctx->length -= buf->last - buf->pos;
+            }
+
             return NGX_AGAIN;
         }
 
         b->pos += ctx->rest - ctx->padding;
         buf->last = b->pos;
         ctx->rest = ctx->padding;
+
+        if (ctx->length != -1) {
+
+            if (buf->last - buf->pos > ctx->length) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent response body larger "
+                              "than indicated content length");
+                return NGX_ERROR;
+            }
+
+            ctx->length -= buf->last - buf->pos;
+        }
 
     done:
 
