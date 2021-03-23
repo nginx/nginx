@@ -68,6 +68,7 @@ types {
     application/x-xpinstall                          xpi;
     application/xhtml+xml                            xhtml;
     application/xspf+xml                             xspf;
+    application/wasm                                 wasm;
     application/zip                                  zip;
 
     application/octet-stream                         bin exe dll;
