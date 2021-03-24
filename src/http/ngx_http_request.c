@@ -2643,11 +2643,6 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         ngx_del_timer(c->write);
     }
 
-    if (c->read->eof) {
-        ngx_http_close_request(r, 0);
-        return;
-    }
-
     ngx_http_finalize_connection(r);
 }
 
@@ -2745,6 +2740,11 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
     }
 
     r = r->main;
+
+    if (r->connection->read->eof) {
+        ngx_http_close_request(r, 0);
+        return;
+    }
 
     if (r->reading_body) {
         r->keepalive = 0;
