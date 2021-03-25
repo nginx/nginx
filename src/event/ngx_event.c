@@ -257,9 +257,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         ngx_shmtx_unlock(&ngx_accept_mutex);
     }
 
-    if (delta) {
-        ngx_event_expire_timers();
-    }
+    ngx_event_expire_timers();
 
     ngx_event_process_posted(cycle, &ngx_posted_events);
 }
