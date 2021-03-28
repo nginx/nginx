@@ -3011,9 +3011,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 return;
             }
 
-            if (u->peer.connection->read->ready || u->length == 0) {
-                ngx_http_upstream_process_non_buffered_upstream(r, u);
-            }
+            ngx_http_upstream_process_non_buffered_upstream(r, u);
         }
 
         return;
