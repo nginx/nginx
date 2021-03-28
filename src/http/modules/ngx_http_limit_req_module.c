@@ -310,8 +310,13 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
     r->main->limit_req_status = NGX_HTTP_LIMIT_REQ_DELAYED;
 
-    if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    if (r->connection->read->ready) {
+        ngx_post_event(r->connection->read, &ngx_posted_events);
+
+    } else {
+        if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     r->read_event_handler = ngx_http_test_reading;

@@ -1190,8 +1190,13 @@ ngx_http_core_auth_delay(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "delaying unauthorized request");
 
-    if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    if (r->connection->read->ready) {
+        ngx_post_event(r->connection->read, &ngx_posted_events);
+
+    } else {
+        if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     r->read_event_handler = ngx_http_test_reading;

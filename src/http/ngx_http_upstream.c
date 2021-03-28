@@ -608,9 +608,14 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
 
-        if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+        if (r->connection->read->ready) {
+            ngx_post_event(r->connection->read, &ngx_posted_events);
+
+        } else {
+            if (ngx_handle_read_event(r->connection->read, 0) != NGX_OK) {
+                ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
         }
 
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
