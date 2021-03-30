@@ -1368,7 +1368,9 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
                                         ngx_http_core_module);
 
-    if (h2c->connection->requests >= clcf->keepalive_requests) {
+    if (clcf->keepalive_timeout == 0
+        || h2c->connection->requests >= clcf->keepalive_requests)
+    {
         h2c->goaway = 1;
 
         if (ngx_http_v2_send_goaway(h2c, NGX_HTTP_V2_NO_ERROR) == NGX_ERROR) {
