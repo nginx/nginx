@@ -5,6 +5,68 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.9" date="2021-03-30">
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с почтовым прокси-сервером,
+но без модуля ngx_mail_ssl_module;
+ошибка появилась в 1.19.8.
+</para>
+<para lang="en">
+nginx could not be built with the mail proxy module,
+but without the ngx_mail_ssl_module;
+the bug had appeared in 1.19.8.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при работе с gRPC-бэкендами могли возникать ошибки
+"upstream sent response body larger than indicated content length";
+ошибка появилась в 1.19.1.
+</para>
+<para lang="en">
+"upstream sent response body larger than indicated content length"
+errors might occur when working with gRPC backends;
+the bug had appeared in 1.19.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если клиент закрывал соединение в момент отбрасывания тела запроса,
+nginx мог не закрыть соединение до истечения keepalive-таймаута.
+</para>
+<para lang="en">
+nginx might not close a connection till keepalive timeout expiration
+if the connection was closed by the client while discarding the request body.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при ожидании задержки limit_req или auth_delay, а также при работе с бэкендами
+nginx мог не обнаружить, что соединение уже закрыто клиентом.
+</para>
+<para lang="en">
+nginx might not detect that a connection was already closed by the client
+when waiting for auth_delay or limit_req delay, or when working with backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в методе обработки соединений eventport.
+</para>
+<para lang="en">
+in the eventport method.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.8" date="2021-03-09">
 
 <change type="feature">
