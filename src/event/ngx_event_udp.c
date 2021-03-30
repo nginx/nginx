@@ -17,8 +17,7 @@ static ssize_t ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ngx_int_t ngx_create_udp_connection(ngx_connection_t *c);
 static ngx_connection_t *ngx_lookup_udp_connection(ngx_listening_t *ls,
-    ngx_str_t *key, struct sockaddr *sockaddr, socklen_t socklen,
-    struct sockaddr *local_sockaddr, socklen_t local_socklen);
+    ngx_str_t *key, struct sockaddr *local_sockaddr, socklen_t local_socklen);
 
 
 void
@@ -224,7 +223,24 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 #endif
 
-        ngx_str_null(&key);
+        key.data = (u_char *) sockaddr;
+        key.len = socklen;
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+
+        if (sockaddr->sa_family == AF_UNIX) {
+            struct sockaddr_un *saun = (struct sockaddr_un *) sockaddr;
+
+            if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)
+                || saun->sun_path[0] == '\0')
+            {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
+                               "unbound unix socket");
+                key.len = 0;
+            }
+        }
+
+#endif
 
 #if (NGX_QUIC)
         if (ls->quic) {
@@ -234,8 +250,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         }
 #endif
 
-        c = ngx_lookup_udp_connection(ls, &key, sockaddr, socklen,
-                                      local_sockaddr, local_socklen);
+        c = ngx_lookup_udp_connection(ls, &key, local_sockaddr, local_socklen);
 
         if (c) {
 
@@ -250,6 +265,13 @@ ngx_event_recvmsg(ngx_event_t *ev)
                                "recvmsg: fd:%d n:%z", c->fd, n);
 
                 c->log->handler = handler;
+            }
+#endif
+
+#if (NGX_QUIC)
+            if (ls->quic) {
+                c->socklen = socklen;
+                ngx_memcpy(c->sockaddr, sockaddr, socklen);
             }
 #endif
 
@@ -508,11 +530,6 @@ ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
             rc = ngx_memn2cmp(udp->key.data, udpt->key.data,
                               udp->key.len, udpt->key.len);
 
-            if (rc == 0 && udp->key.len == 0) {
-                rc = ngx_cmp_sockaddr(c->sockaddr, c->socklen,
-                                      ct->sockaddr, ct->socklen, 1);
-            }
-
             if (rc == 0 && c->listening->wildcard) {
                 rc = ngx_cmp_sockaddr(c->local_sockaddr, c->local_socklen,
                                       ct->local_sockaddr, ct->local_socklen, 1);
@@ -566,7 +583,8 @@ ngx_create_udp_connection(ngx_connection_t *c)
     cln->data = c;
     cln->handler = ngx_delete_udp_connection;
 
-    key.len = 0;
+    key.data = (u_char *) c->sockaddr;
+    key.len = c->socklen;
 
     ngx_insert_udp_connection(c, udp, &key);
 
@@ -585,10 +603,6 @@ ngx_insert_udp_connection(ngx_connection_t *c, ngx_udp_connection_t *udp,
     ngx_crc32_init(hash);
 
     ngx_crc32_update(&hash, key->data, key->len);
-
-    if (key->len == 0) {
-        ngx_crc32_update(&hash, (u_char *) c->sockaddr, c->socklen);
-    }
 
     if (c->listening->wildcard) {
         ngx_crc32_update(&hash, (u_char *) c->local_sockaddr, c->local_socklen);
@@ -621,7 +635,6 @@ ngx_delete_udp_connection(void *data)
 
 static ngx_connection_t *
 ngx_lookup_udp_connection(ngx_listening_t *ls, ngx_str_t *key,
-    struct sockaddr *sockaddr, socklen_t socklen,
     struct sockaddr *local_sockaddr, socklen_t local_socklen)
 {
     uint32_t               hash;
@@ -630,32 +643,15 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, ngx_str_t *key,
     ngx_rbtree_node_t     *node, *sentinel;
     ngx_udp_connection_t  *udp;
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-    if (sockaddr->sa_family == AF_UNIX) {
-        struct sockaddr_un *saun = (struct sockaddr_un *) sockaddr;
-
-        if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)
-            || saun->sun_path[0] == '\0')
-        {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                           "unbound unix socket");
-            return NULL;
-        }
+    if (key->len == 0) {
+        return NULL;
     }
-
-#endif
 
     node = ls->rbtree.root;
     sentinel = ls->rbtree.sentinel;
 
     ngx_crc32_init(hash);
-
     ngx_crc32_update(&hash, key->data, key->len);
-
-    if (key->len == 0) {
-        ngx_crc32_update(&hash, (u_char *) sockaddr, socklen);
-    }
 
     if (ls->wildcard) {
         ngx_crc32_update(&hash, (u_char *) local_sockaddr, local_socklen);
@@ -683,41 +679,12 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, ngx_str_t *key,
 
         rc = ngx_memn2cmp(key->data, udp->key.data, key->len, udp->key.len);
 
-        if (rc == 0 && key->len == 0) {
-            rc = ngx_cmp_sockaddr(sockaddr, socklen,
-                                  c->sockaddr, c->socklen, 1);
-        }
-
         if (rc == 0 && ls->wildcard) {
             rc = ngx_cmp_sockaddr(local_sockaddr, local_socklen,
                                   c->local_sockaddr, c->local_socklen, 1);
         }
 
         if (rc == 0) {
-            if (key->len) {
-                rc = ngx_cmp_sockaddr(sockaddr, socklen,
-                                      c->sockaddr, c->socklen, 1);
-
-                if (rc) {
-#if (NGX_DEBUG)
-                    if (c->log->log_level & NGX_LOG_DEBUG_EVENT) {
-                        ngx_str_t  addr;
-                        u_char     text[NGX_SOCKADDR_STRLEN];
-
-                        addr.data = text;
-                        addr.len = ngx_sock_ntop(sockaddr, socklen, text,
-                                                 NGX_SOCKADDR_STRLEN, 1);
-
-                        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                                       "client migrated to %V", &addr);
-                    }
-#endif
-
-                    ngx_memcpy(c->sockaddr, sockaddr, socklen);
-                    c->socklen = socklen;
-                }
-            }
-
             return c;
         }
 
