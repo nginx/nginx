@@ -74,6 +74,11 @@
 #define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
 
 
+#define ngx_http_v3_get_module_loc_conf(c, module)                            \
+    ngx_http_get_module_loc_conf(                                             \
+           ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
+           module)
+
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
     ngx_http_get_module_srv_conf(                                             \
            ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
@@ -127,6 +132,9 @@ typedef struct {
     /* the http connection must be first */
     ngx_http_connection_t         hc;
     ngx_http_v3_dynamic_table_t   table;
+
+    ngx_event_t                   keepalive;
+    ngx_uint_t                    nrequests;
 
     ngx_queue_t                   blocked;
     ngx_uint_t                    nblocked;
