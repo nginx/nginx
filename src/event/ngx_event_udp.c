@@ -279,6 +279,8 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
             buf.pos = buffer;
             buf.last = buffer + n;
+            buf.start = buf.pos;
+            buf.end = buffer + sizeof(buffer);
 
             rev = c->read;
 
