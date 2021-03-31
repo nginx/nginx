@@ -10,20 +10,9 @@
 #include <ngx_event_quic_transport.h>
 #include <ngx_event_quic_protection.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_event_quic_migration.h>
 #include <ngx_sha1.h>
 
-
-/*  0-RTT and 1-RTT data exist in the same packet number space,
- *  so we have 3 packet number spaces:
- *
- *  0 - Initial
- *  1 - Handshake
- *  2 - 0-RTT and 1-RTT
- */
-#define ngx_quic_get_send_ctx(qc, level)                                      \
-    ((level) == ssl_encryption_initial) ? &((qc)->send_ctx[0])                \
-        : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
-                                                 : &((qc)->send_ctx[2]))
 
 #define ngx_quic_lost_threshold(qc)                                           \
     ngx_max(NGX_QUIC_TIME_THR * ngx_max((qc)->latest_rtt, (qc)->avg_rtt),     \
@@ -141,8 +130,6 @@ static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
     ngx_msec_t *send_time);
 static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     enum ssl_encryption_level_t level, ngx_msec_t send_time);
-static ngx_inline ngx_msec_t ngx_quic_pto(ngx_connection_t *c,
-    ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_handle_stream_ack(ngx_connection_t *c,
     ngx_quic_frame_t *f);
 
@@ -177,8 +164,6 @@ static ngx_int_t ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f);
 static ngx_int_t ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_streams_frame_t *f);
-static ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
 static ngx_int_t ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f);
 static ngx_int_t ngx_quic_retire_connection_id(ngx_connection_t *c,
@@ -2755,6 +2740,17 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
             break;
 
+        case NGX_QUIC_FT_PATH_RESPONSE:
+
+            if (ngx_quic_handle_path_response_frame(c, pkt,
+                                                    &frame.u.path_response)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
 
             if (ngx_quic_handle_new_connection_id_frame(c, pkt, &frame.u.ncid)
@@ -2774,13 +2770,6 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 return NGX_ERROR;
             }
 
-            break;
-
-        case NGX_QUIC_FT_PATH_RESPONSE:
-
-            /* TODO: handle */
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic frame handler not implemented");
             break;
 
         default:
@@ -3510,7 +3499,7 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
 }
 
 
-static ngx_inline ngx_msec_t
+ngx_msec_t
 ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
     ngx_msec_t              duration;
@@ -4372,30 +4361,6 @@ ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
                            "quic max_streams_uni:%uL", f->limit);
         }
     }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
-{
-    ngx_quic_frame_t       *frame;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    frame = ngx_quic_alloc_frame(c);
-    if (frame == NULL) {
-        return NGX_ERROR;
-    }
-
-    frame->level = pkt->level;
-    frame->type = NGX_QUIC_FT_PATH_RESPONSE;
-    frame->u.path_response = *f;
-
-    ngx_quic_queue_frame(qc, frame);
 
     return NGX_OK;
 }

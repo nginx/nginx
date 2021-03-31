@@ -19,6 +19,18 @@
 
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 
+/*  0-RTT and 1-RTT data exist in the same packet number space,
+ *  so we have 3 packet number spaces:
+ *
+ *  0 - Initial
+ *  1 - Handshake
+ *  2 - 0-RTT and 1-RTT
+ */
+#define ngx_quic_get_send_ctx(qc, level)                                      \
+    ((level) == ssl_encryption_initial) ? &((qc)->send_ctx[0])                \
+        : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
+                                                 : &((qc)->send_ctx[2]))
+
 
 typedef struct {
     ngx_queue_t                       queue;
@@ -175,5 +187,6 @@ struct ngx_quic_connection_s {
 ngx_quic_frame_t *ngx_quic_alloc_frame(ngx_connection_t *c);
 void ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
+ngx_msec_t ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
 
 #endif
