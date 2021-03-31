@@ -1341,7 +1341,8 @@ if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
     ngx_module_incs=
     ngx_module_deps="src/event/quic/ngx_event_quic.h \
                      src/event/quic/ngx_event_quic_transport.h \
-                     src/event/quic/ngx_event_quic_protection.h"
+                     src/event/quic/ngx_event_quic_protection.h \
+                     src/event/quic/ngx_event_quic_connection.h"
     ngx_module_srcs="src/event/quic/ngx_event_quic.c \
                      src/event/quic/ngx_event_quic_transport.c \
                      src/event/quic/ngx_event_quic_protection.c"
