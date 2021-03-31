@@ -165,6 +165,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
 
     cipher = EVP_aes_128_gcm();
     digest = EVP_sha256();
+    is_len = SHA256_DIGEST_LENGTH;
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
                          (version & 0xff000000) ? salt29 : salt, sizeof(salt))
@@ -968,6 +969,7 @@ ngx_quic_derive_key(ngx_log_t *log, const char *label, ngx_str_t *secret,
     uint8_t        info[20];
 
     digest = EVP_sha256();
+    is_len = SHA256_DIGEST_LENGTH;
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
                          salt->data, salt->len)
