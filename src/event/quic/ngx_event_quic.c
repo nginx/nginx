@@ -1920,7 +1920,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         }
     }
 
-    b = c->udp->buffer;
+    b = c->udp->dgram->buffer;
 
     qc->received += (b->last - b->pos);
 

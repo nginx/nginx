@@ -169,11 +169,18 @@ struct ngx_event_aio_s {
 
 #if !(NGX_WIN32)
 
+typedef struct {
+    ngx_buf_t                 *buffer;
+    struct sockaddr           *sockaddr;
+    socklen_t                  socklen;
+} ngx_udp_dgram_t;
+
+
 struct ngx_udp_connection_s {
     ngx_rbtree_node_t          node;
     ngx_connection_t          *connection;
     ngx_str_t                  key;
-    ngx_buf_t                 *buffer;
+    ngx_udp_dgram_t           *dgram;
 };
 
 #endif

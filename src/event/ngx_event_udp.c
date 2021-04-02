@@ -29,12 +29,13 @@ ngx_event_recvmsg(ngx_event_t *ev)
     ngx_buf_t          buf;
     ngx_log_t         *log;
     ngx_err_t          err;
-    socklen_t          socklen, local_socklen;
+    socklen_t          local_socklen;
     ngx_event_t       *rev, *wev;
     struct iovec       iov[1];
     struct msghdr      msg;
     ngx_sockaddr_t     sa, lsa;
-    struct sockaddr   *sockaddr, *local_sockaddr;
+    ngx_udp_dgram_t    dgram;
+    struct sockaddr   *local_sockaddr;
     ngx_listening_t   *ls;
     ngx_event_conf_t  *ecf;
     ngx_connection_t  *c, *lc;
@@ -131,21 +132,21 @@ ngx_event_recvmsg(ngx_event_t *ev)
         }
 #endif
 
-        sockaddr = msg.msg_name;
-        socklen = msg.msg_namelen;
+        dgram.sockaddr = msg.msg_name;
+        dgram.socklen = msg.msg_namelen;
 
-        if (socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
-            socklen = sizeof(ngx_sockaddr_t);
+        if (dgram.socklen > (socklen_t) sizeof(ngx_sockaddr_t)) {
+            dgram.socklen = sizeof(ngx_sockaddr_t);
         }
 
-        if (socklen == 0) {
+        if (dgram.socklen == 0) {
 
             /*
              * on Linux recvmsg() returns zero msg_namelen
              * when receiving packets from unbound AF_UNIX sockets
              */
 
-            socklen = sizeof(struct sockaddr);
+            dgram.socklen = sizeof(struct sockaddr);
             ngx_memzero(&sa, sizeof(struct sockaddr));
             sa.sockaddr.sa_family = ls->sockaddr->sa_family;
         }
@@ -223,15 +224,16 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 #endif
 
-        key.data = (u_char *) sockaddr;
-        key.len = socklen;
+        key.data = (u_char *) dgram.sockaddr;
+        key.len = dgram.socklen;
 
 #if (NGX_HAVE_UNIX_DOMAIN)
 
-        if (sockaddr->sa_family == AF_UNIX) {
-            struct sockaddr_un *saun = (struct sockaddr_un *) sockaddr;
+        if (dgram.sockaddr->sa_family == AF_UNIX) {
+            struct sockaddr_un *saun = (struct sockaddr_un *) dgram.sockaddr;
 
-            if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)
+            if (dgram.socklen <= (socklen_t) offsetof(struct sockaddr_un,
+                                                      sun_path)
                 || saun->sun_path[0] == '\0')
             {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
@@ -268,13 +270,6 @@ ngx_event_recvmsg(ngx_event_t *ev)
             }
 #endif
 
-#if (NGX_QUIC)
-            if (ls->quic) {
-                c->socklen = socklen;
-                ngx_memcpy(c->sockaddr, sockaddr, socklen);
-            }
-#endif
-
             ngx_memzero(&buf, sizeof(ngx_buf_t));
 
             buf.pos = buffer;
@@ -284,7 +279,9 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
             rev = c->read;
 
-            c->udp->buffer = &buf;
+            dgram.buffer = &buf;
+
+            c->udp->dgram = &dgram;
 
             rev->ready = 1;
             rev->active = 0;
@@ -292,7 +289,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
             rev->handler(rev);
 
             if (c->udp) {
-                c->udp->buffer = NULL;
+                c->udp->dgram = NULL;
             }
 
             rev->ready = 0;
@@ -315,7 +312,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
         c->shared = 1;
         c->type = SOCK_DGRAM;
-        c->socklen = socklen;
+        c->socklen = dgram.socklen;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
@@ -327,7 +324,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
             return;
         }
 
-        len = socklen;
+        len = dgram.socklen;
 
 #if (NGX_QUIC)
         if (ls->quic) {
@@ -341,7 +338,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
             return;
         }
 
-        ngx_memcpy(c->sockaddr, sockaddr, socklen);
+        ngx_memcpy(c->sockaddr, dgram.sockaddr, dgram.socklen);
 
         log = ngx_palloc(c->pool, sizeof(ngx_log_t));
         if (log == NULL) {
@@ -483,17 +480,17 @@ ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf, size_t size)
     ssize_t     n;
     ngx_buf_t  *b;
 
-    if (c->udp == NULL || c->udp->buffer == NULL) {
+    if (c->udp == NULL || c->udp->dgram == NULL) {
         return NGX_AGAIN;
     }
 
-    b = c->udp->buffer;
+    b = c->udp->dgram->buffer;
 
     n = ngx_min(b->last - b->pos, (ssize_t) size);
 
     ngx_memcpy(buf, b->pos, n);
 
-    c->udp->buffer = NULL;
+    c->udp->dgram = NULL;
 
     c->read->ready = 0;
     c->read->active = 1;
