@@ -112,8 +112,6 @@ typedef struct {
 
 
 typedef struct {
-    ngx_udp_connection_t              udp;
-
     uint32_t                          version;
     ngx_str_t                         scid;  /* initial client ID */
     ngx_str_t                         dcid;  /* server (our own) ID */
@@ -198,6 +196,7 @@ typedef struct {
 
 typedef struct {
     ngx_udp_connection_t              udp;
+    ngx_quic_connection_t            *quic;
     ngx_queue_t                       queue;
     uint64_t                          seqnum;
     size_t                            len;
@@ -342,7 +341,7 @@ static ngx_int_t ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
 static ngx_int_t ngx_quic_issue_server_ids(ngx_connection_t *c);
 static void ngx_quic_clear_temp_server_ids(ngx_connection_t *c);
 static ngx_quic_server_id_t *ngx_quic_insert_server_id(ngx_connection_t *c,
-    ngx_str_t *id);
+    ngx_quic_connection_t *qc, ngx_str_t *id);
 static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 static ngx_quic_server_id_t *ngx_quic_alloc_server_id(ngx_connection_t *c,
@@ -1096,6 +1095,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 {
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
+    ngx_quic_server_id_t   *sid;
     ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
 
@@ -1247,17 +1247,18 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
-    c->udp = &qc->udp;
-
-    if (ngx_quic_insert_server_id(c, &qc->odcid) == NULL) {
+    if (ngx_quic_insert_server_id(c, qc, &qc->odcid) == NULL) {
         return NULL;
     }
 
     qc->server_seqnum = 0;
 
-    if (ngx_quic_insert_server_id(c, &qc->dcid) == NULL) {
+    sid = ngx_quic_insert_server_id(c, qc, &qc->dcid);
+    if (sid == NULL) {
         return NULL;
     }
+
+    c->udp = &sid->udp;
 
     qc->validated = pkt->validated;
 
@@ -4777,7 +4778,7 @@ ngx_quic_issue_server_ids(ngx_connection_t *c)
         dcid.len = NGX_QUIC_SERVER_CID_LEN;
         dcid.data = id;
 
-        sid = ngx_quic_insert_server_id(c, &dcid);
+        sid = ngx_quic_insert_server_id(c, qc, &dcid);
         if (sid == NULL) {
             return NGX_ERROR;
         }
@@ -4840,18 +4841,18 @@ ngx_quic_clear_temp_server_ids(ngx_connection_t *c)
 
 
 static ngx_quic_server_id_t *
-ngx_quic_insert_server_id(ngx_connection_t *c, ngx_str_t *id)
+ngx_quic_insert_server_id(ngx_connection_t *c, ngx_quic_connection_t *qc,
+    ngx_str_t *id)
 {
-    ngx_str_t               dcid;
-    ngx_quic_server_id_t   *sid;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_str_t              dcid;
+    ngx_quic_server_id_t  *sid;
 
     sid = ngx_quic_alloc_server_id(c, qc);
     if (sid == NULL) {
         return NULL;
     }
+
+    sid->quic = qc;
 
     sid->seqnum = qc->server_seqnum;
 

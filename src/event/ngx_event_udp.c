@@ -684,6 +684,13 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, ngx_str_t *key,
         }
 
         if (rc == 0) {
+
+#if (NGX_QUIC)
+            if (ls->quic && c->udp != udp) {
+                c->udp = udp;
+            }
+#endif
+
             return c;
         }
 

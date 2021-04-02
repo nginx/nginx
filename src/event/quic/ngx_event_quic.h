@@ -64,7 +64,8 @@
 
 #define NGX_QUIC_BUFFER_SIZE                 4096
 
-#define ngx_quic_get_connection(c)           ((ngx_quic_connection_t *)(c)->udp)
+#define ngx_quic_get_connection(c)                                            \
+    (((c)->udp) ? (((ngx_quic_server_id_t *)((c)->udp))->quic) : NULL)
 
 
 typedef struct {
