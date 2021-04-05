@@ -57,6 +57,7 @@ typedef struct {
     unsigned             nomem:1;
     unsigned             buffering:1;
     unsigned             intel:1;
+    unsigned             zlib_ng:1;
 
     size_t               zin;
     size_t               zout;
@@ -214,6 +215,7 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 static ngx_uint_t  ngx_http_gzip_assume_intel;
+static ngx_uint_t  ngx_http_gzip_assume_zlib_ng;
 
 
 static ngx_int_t
@@ -506,7 +508,7 @@ ngx_http_gzip_filter_memory(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
     if (!ngx_http_gzip_assume_intel) {
         ctx->allocated = 8192 + (1 << (wbits + 2)) + (1 << (memlevel + 9));
 
-    } else {
+    } else if (!ngx_http_gzip_assume_zlib_ng) {
         /*
          * A zlib variant from Intel, https://github.com/jtkukunas/zlib.
          * It can force window bits to 13 for fast compression level,
@@ -523,6 +525,20 @@ ngx_http_gzip_filter_memory(ngx_http_request_t *r, ngx_http_gzip_ctx_t *ctx)
                          + (1 << (ngx_max(memlevel, 8) + 8))
                          + (1 << (memlevel + 8));
         ctx->intel = 1;
+
+    } else {
+        /*
+         * Another zlib variant, https://github.com/zlib-ng/zlib-ng.
+         * Similar to Intel's variant, though uses 128K hash.
+         */
+
+        if (conf->level == 1) {
+            wbits = ngx_max(wbits, 13);
+        }
+
+        ctx->allocated = 8192 + 16 + (1 << (wbits + 2))
+                         + 131072 + (1 << (memlevel + 8));
+        ctx->zlib_ng = 1;
     }
 }
 
@@ -945,10 +961,13 @@ ngx_http_gzip_filter_alloc(void *opaque, u_int items, u_int size)
         return p;
     }
 
-    if (ctx->intel) {
+    if (ctx->zlib_ng) {
         ngx_log_error(NGX_LOG_ALERT, ctx->request->connection->log, 0,
                       "gzip filter failed to use preallocated memory: "
                       "%ud of %ui", items * size, ctx->allocated);
+
+    } else if (ctx->intel) {
+        ngx_http_gzip_assume_zlib_ng = 1;
 
     } else {
         ngx_http_gzip_assume_intel = 1;
