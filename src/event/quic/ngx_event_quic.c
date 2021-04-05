@@ -1348,8 +1348,8 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NGX_ERROR;
     }
 
-    ngx_log_debug(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                  "quic retry packet sent to %xV", &pkt.dcid);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic retry packet sent to %xV", &pkt.dcid);
 
     /*
      * quic-transport 17.2.5.1:  A server MUST NOT send more than one Retry
