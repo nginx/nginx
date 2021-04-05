@@ -98,8 +98,10 @@
 #define NGX_QUIC_ERR_APPLICATION_ERROR                   0x0C
 #define NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED              0x0D
 #define NGX_QUIC_ERR_KEY_UPDATE_ERROR                    0x0E
+#define NGX_QUIC_ERR_AEAD_LIMIT_REACHED                  0x0F
+#define NGX_QUIC_ERR_NO_VIABLE_PATH                      0x10
 
-#define NGX_QUIC_ERR_LAST                                0x0F
+#define NGX_QUIC_ERR_LAST                                0x11
 #define NGX_QUIC_ERR_CRYPTO_ERROR                       0x100
 
 #define NGX_QUIC_ERR_CRYPTO(e)  (NGX_QUIC_ERR_CRYPTO_ERROR + (e))

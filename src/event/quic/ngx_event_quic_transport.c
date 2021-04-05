@@ -157,6 +157,8 @@ static char *ngx_quic_errors[] = {
     "APPLICATION_ERROR",
     "CRYPTO_BUFFER_EXCEEDED",
     "KEY_UPDATE_ERROR",
+    "AEAD_LIMIT_REACHED",
+    "NO_VIABLE_PATH",
 };
 
 
