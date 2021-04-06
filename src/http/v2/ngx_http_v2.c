@@ -277,7 +277,7 @@ ngx_http_v2_init(ngx_event_t *rev)
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
     h2c->concurrent_pushes = h2scf->concurrent_pushes;
-    h2c->priority_limit = h2scf->concurrent_streams;
+    h2c->priority_limit = ngx_max(h2scf->concurrent_streams, 100);
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {
