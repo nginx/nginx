@@ -348,6 +348,8 @@ ngx_hkdf_expand(u_char *out_key, size_t out_len, const EVP_MD *digest,
         goto failed;
     }
 
+    EVP_PKEY_CTX_free(pctx);
+
     return NGX_OK;
 
 failed:
@@ -408,6 +410,8 @@ ngx_hkdf_extract(u_char *out_key, size_t *out_len, const EVP_MD *digest,
     if (EVP_PKEY_derive(pctx, out_key, out_len) <= 0) {
         goto failed;
     }
+
+    EVP_PKEY_CTX_free(pctx);
 
     return NGX_OK;
 
