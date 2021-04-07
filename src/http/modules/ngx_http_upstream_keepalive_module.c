@@ -159,7 +159,7 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
 
     ngx_conf_init_msec_value(kcf->time, 3600000);
     ngx_conf_init_msec_value(kcf->timeout, 60000);
-    ngx_conf_init_uint_value(kcf->requests, 100);
+    ngx_conf_init_uint_value(kcf->requests, 1000);
 
     if (kcf->original_init_upstream(cf, us) != NGX_OK) {
         return NGX_ERROR;
