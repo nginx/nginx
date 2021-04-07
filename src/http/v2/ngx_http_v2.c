@@ -1369,7 +1369,9 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                                         ngx_http_core_module);
 
     if (clcf->keepalive_timeout == 0
-        || h2c->connection->requests >= clcf->keepalive_requests)
+        || h2c->connection->requests >= clcf->keepalive_requests
+        || ngx_current_msec - h2c->connection->start_time
+           > clcf->keepalive_time)
     {
         h2c->goaway = 1;
 
