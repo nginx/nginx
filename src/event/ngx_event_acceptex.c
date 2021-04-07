@@ -80,6 +80,8 @@ ngx_event_acceptex(ngx_event_t *rev)
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
+    c->start_time = ngx_current_msec;
+
     ls->handler(c);
 
     return;
