@@ -3042,7 +3042,10 @@ static ngx_int_t
 ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t smallest, uint64_t largest)
 {
-    ngx_quic_frame_t  *frame;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
@@ -3055,6 +3058,8 @@ ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     frame->u.ack.delay = 0;
     frame->u.ack.range_count = 0;
     frame->u.ack.first_range = largest - smallest;
+
+    ngx_quic_queue_frame(qc, frame);
 
     return NGX_OK;
 }
