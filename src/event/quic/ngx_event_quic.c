@@ -69,6 +69,8 @@ static ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+static ngx_int_t ngx_quic_setup_connection_ids(ngx_connection_t *c,
+    ngx_quic_connection_t *qc, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
@@ -923,8 +925,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 {
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
-    ngx_quic_server_id_t   *sid;
-    ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
@@ -960,10 +960,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     }
 
     ngx_queue_init(&qc->free_frames);
-    ngx_queue_init(&qc->client_ids);
-    ngx_queue_init(&qc->server_ids);
-    ngx_queue_init(&qc->free_client_ids);
-    ngx_queue_init(&qc->free_server_ids);
 
     qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
     qc->rttvar = NGX_QUIC_INITIAL_RTT / 2;
@@ -971,9 +967,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     /*
      * qc->latest_rtt = 0
-     * qc->nclient_ids = 0
-     * qc->nserver_ids = 0
-     * qc->max_retired_seqnum = 0
      */
 
     qc->received = pkt->raw->last - pkt->raw->start;
@@ -1020,25 +1013,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->congestion.ssthresh = (size_t) -1;
     qc->congestion.recovery_start = ngx_current_msec;
 
-    qc->odcid.len = pkt->odcid.len;
-    qc->odcid.data = ngx_pstrdup(c->pool, &pkt->odcid);
-    if (qc->odcid.data == NULL) {
-        return NULL;
-    }
-
-    qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
-    qc->dcid.data = ngx_pnalloc(c->pool, qc->dcid.len);
-    if (qc->dcid.data == NULL) {
-        return NULL;
-    }
-
-    if (ngx_quic_create_server_id(c, qc->dcid.data) != NGX_OK) {
-        return NULL;
-    }
-
-    qc->tp.original_dcid = qc->odcid;
-    qc->tp.initial_scid = qc->dcid;
-
     if (pkt->validated && pkt->retried) {
         qc->tp.retry_scid.len = pkt->dcid.len;
         qc->tp.retry_scid.data = ngx_pstrdup(c->pool, &pkt->dcid);
@@ -1047,15 +1021,70 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         }
     }
 
-    qc->scid.len = pkt->scid.len;
-    qc->scid.data = ngx_pstrdup(c->pool, &pkt->scid);
-    if (qc->scid.data == NULL) {
+    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid,
+                                         qc->version)
+        != NGX_OK)
+    {
         return NULL;
     }
 
+    qc->validated = pkt->validated;
+
+    if (ngx_quic_setup_connection_ids(c, qc, pkt) != NGX_OK) {
+        return NULL;
+    }
+
+    return qc;
+}
+
+
+static ngx_int_t
+ngx_quic_setup_connection_ids(ngx_connection_t *c, ngx_quic_connection_t *qc,
+    ngx_quic_header_t *pkt)
+{
+    ngx_quic_server_id_t  *sid, *osid;
+    ngx_quic_client_id_t  *cid;
+
+    /*
+     * qc->nclient_ids = 0
+     * qc->nserver_ids = 0
+     * qc->max_retired_seqnum = 0
+     */
+
+    ngx_queue_init(&qc->client_ids);
+    ngx_queue_init(&qc->server_ids);
+    ngx_queue_init(&qc->free_client_ids);
+    ngx_queue_init(&qc->free_server_ids);
+
+    qc->odcid.len = pkt->odcid.len;
+    qc->odcid.data = ngx_pstrdup(c->pool, &pkt->odcid);
+    if (qc->odcid.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    qc->tp.original_dcid = qc->odcid;
+
+    qc->scid.len = pkt->scid.len;
+    qc->scid.data = ngx_pstrdup(c->pool, &pkt->scid);
+    if (qc->scid.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    qc->dcid.len = NGX_QUIC_SERVER_CID_LEN;
+    qc->dcid.data = ngx_pnalloc(c->pool, qc->dcid.len);
+    if (qc->dcid.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_quic_create_server_id(c, qc->dcid.data) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    qc->tp.initial_scid = qc->dcid;
+
     cid = ngx_quic_alloc_client_id(c, qc);
     if (cid == NULL) {
-        return NULL;
+        return NGX_ERROR;
     }
 
     cid->seqnum = 0;
@@ -1068,29 +1097,22 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc->server_seqnum = NGX_QUIC_UNSET_PN;
 
-    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid,
-                                         qc->version)
-        != NGX_OK)
-    {
-        return NULL;
-    }
-
-    if (ngx_quic_insert_server_id(c, qc, &qc->odcid) == NULL) {
-        return NULL;
+    osid = ngx_quic_insert_server_id(c, qc, &qc->odcid);
+    if (osid == NULL) {
+        return NGX_ERROR;
     }
 
     qc->server_seqnum = 0;
 
     sid = ngx_quic_insert_server_id(c, qc, &qc->dcid);
     if (sid == NULL) {
-        return NULL;
+        ngx_rbtree_delete(&c->listening->rbtree, &osid->udp.node);
+        return NGX_ERROR;
     }
 
     c->udp = &sid->udp;
 
-    qc->validated = pkt->validated;
-
-    return qc;
+    return NGX_OK;
 }
 
 
