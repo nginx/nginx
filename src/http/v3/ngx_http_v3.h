@@ -92,7 +92,6 @@
 
 
 typedef struct {
-    ngx_quic_tp_t                 quic;
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
