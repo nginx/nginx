@@ -16,6 +16,7 @@
 
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 
+#include <ngx_event_quic_frames.h>
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>
 
@@ -45,7 +46,6 @@ typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 
 #define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
 
-#define NGX_QUIC_BUFFER_SIZE                 4096
 
 #define NGX_QUIC_UNSET_PN                    (uint64_t) -1
 
@@ -219,8 +219,6 @@ struct ngx_quic_connection_s {
 };
 
 
-ngx_quic_frame_t *ngx_quic_alloc_frame(ngx_connection_t *c);
-void ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 ngx_msec_t ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
 
