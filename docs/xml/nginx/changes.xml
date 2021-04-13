@@ -5,6 +5,49 @@
 <change_log title="nginx">
 
 
+<changes ver="1.19.10" date="2021-04-13">
+
+<change type="change">
+<para lang="ru">
+в директиве keepalive_requests значение по умолчанию изменено на 1000.
+</para>
+<para lang="en">
+the default value of the "keepalive_requests" directive was changed to 1000.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива keepalive_time.
+</para>
+<para lang="en">
+the "keepalive_time" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $connection_time.
+</para>
+<para lang="en">
+the $connection_time variable.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании zlib-ng
+в логах появлялись сообщения "gzip filter failed to use preallocated memory".
+</para>
+<para lang="en">
+"gzip filter failed to use preallocated memory" alerts appeared in logs
+when using zlib-ng.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.9" date="2021-03-30">
 
 <change type="bugfix">
