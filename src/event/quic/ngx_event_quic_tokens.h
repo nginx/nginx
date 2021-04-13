@@ -1,0 +1,22 @@
+
+/*
+ * Copyright (C) Nginx, Inc.
+ */
+
+
+#ifndef _NGX_EVENT_QUIC_TOKENS_H_INCLUDED_
+#define _NGX_EVENT_QUIC_TOKENS_H_INCLUDED_
+
+
+#include <ngx_config.h>
+#include <ngx_core.h>
+
+
+ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
+    u_char *secret, u_char *token);
+ngx_int_t ngx_quic_new_token(ngx_connection_t *c, u_char *key,
+    ngx_str_t *token, ngx_str_t *odcid, time_t expires, ngx_uint_t is_retry);
+ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
+    u_char *key, ngx_quic_header_t *pkt);
+
+#endif /* _NGX_EVENT_QUIC_TOKENS_H_INCLUDED_ */

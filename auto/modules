@@ -1347,6 +1347,7 @@ if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
                      src/event/quic/ngx_event_quic_connid.h \
                      src/event/quic/ngx_event_quic_migration.h \
                      src/event/quic/ngx_event_quic_streams.h \
+                     src/event/quic/ngx_event_quic_tokens.h \
                      src/event/quic/ngx_event_quic_ack.h \
                      src/event/quic/ngx_event_quic_output.h"
     ngx_module_srcs="src/event/quic/ngx_event_quic.c \
@@ -1356,6 +1357,7 @@ if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
                      src/event/quic/ngx_event_quic_connid.c \
                      src/event/quic/ngx_event_quic_migration.c \
                      src/event/quic/ngx_event_quic_streams.c \
+                     src/event/quic/ngx_event_quic_tokens.c \
                      src/event/quic/ngx_event_quic_ack.c \
                      src/event/quic/ngx_event_quic_output.c"
 

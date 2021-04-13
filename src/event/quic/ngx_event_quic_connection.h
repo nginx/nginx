@@ -21,12 +21,10 @@ typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>
 #include <ngx_event_quic_streams.h>
+#include <ngx_event_quic_tokens.h>
 #include <ngx_event_quic_ack.h>
 #include <ngx_event_quic_output.h>
 
-
-#define NGX_QUIC_MAX_TOKEN_SIZE              64
-    /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
 /* quic-recovery, section 6.2.2, kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
@@ -206,10 +204,6 @@ struct ngx_quic_connection_s {
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
-ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
-    u_char *secret, u_char *token);
-ngx_int_t ngx_quic_new_token(ngx_connection_t *c, u_char *key,
-    ngx_str_t *token, ngx_str_t *odcid, time_t expires, ngx_uint_t is_retry);
 
 /********************************* DEBUG *************************************/
 
