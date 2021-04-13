@@ -15,38 +15,21 @@
 #include <ngx_event_quic_protection.h>
 
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
+typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
 
 #include <ngx_event_quic_frames.h>
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>
 #include <ngx_event_quic_streams.h>
+#include <ngx_event_quic_ack.h>
+#include <ngx_event_quic_output.h>
 
 
-#define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
-#define NGX_QUIC_MAX_LONG_HEADER             56
-    /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
-
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT         1252
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6        1232
-
-#define NGX_QUIC_RETRY_TOKEN_LIFETIME          3 /* seconds */
-#define NGX_QUIC_NEW_TOKEN_LIFETIME          600 /* seconds */
-#define NGX_QUIC_RETRY_BUFFER_SIZE           256
-    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
 #define NGX_QUIC_MAX_TOKEN_SIZE              64
     /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
 /* quic-recovery, section 6.2.2, kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
-
-/* quic-recovery, section 6.1.1, Packet Threshold */
-#define NGX_QUIC_PKT_THR                     3 /* packets */
-/* quic-recovery, section 6.1.2, Time Threshold */
-#define NGX_QUIC_TIME_THR                    1.125
-#define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
-
-#define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
-
 
 #define NGX_QUIC_UNSET_PN                    (uint64_t) -1
 
@@ -124,7 +107,7 @@ typedef struct {
  *  with Initial packet protection keys and acknowledged in packets which
  *  are also Initial packets.
 */
-typedef struct {
+struct ngx_quic_send_ctx_s {
     enum ssl_encryption_level_t       level;
 
     uint64_t                          pnum;        /* to be sent */
@@ -142,7 +125,7 @@ typedef struct {
     ngx_uint_t                        nranges;
     ngx_quic_ack_range_t              ranges[NGX_QUIC_MAX_RANGES];
     ngx_uint_t                        send_ack;
-} ngx_quic_send_ctx_t;
+};
 
 
 struct ngx_quic_connection_s {
@@ -221,15 +204,21 @@ struct ngx_quic_connection_s {
 
 
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
-ngx_msec_t ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
+void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
 ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
     u_char *secret, u_char *token);
-
-ngx_int_t ngx_quic_output(ngx_connection_t *c);
-void ngx_quic_shutdown_quic(ngx_connection_t *c);
+ngx_int_t ngx_quic_new_token(ngx_connection_t *c, u_char *key,
+    ngx_str_t *token, ngx_str_t *odcid, time_t expires, ngx_uint_t is_retry);
 
 /********************************* DEBUG *************************************/
+
+#if (NGX_DEBUG)
+void ngx_quic_connstate_dbg(ngx_connection_t *c);
+#else
+#define ngx_quic_connstate_dbg(c)
+#endif
+
 
 /* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
 /* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
