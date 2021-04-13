@@ -19,6 +19,7 @@ typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 #include <ngx_event_quic_frames.h>
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>
+#include <ngx_event_quic_streams.h>
 
 
 #define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
@@ -224,6 +225,9 @@ ngx_msec_t ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
 
 ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
     u_char *secret, u_char *token);
+
+ngx_int_t ngx_quic_output(ngx_connection_t *c);
+void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
 /********************************* DEBUG *************************************/
 
