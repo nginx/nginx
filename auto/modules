@@ -1343,10 +1343,12 @@ if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
                      src/event/quic/ngx_event_quic_transport.h \
                      src/event/quic/ngx_event_quic_protection.h \
                      src/event/quic/ngx_event_quic_connection.h \
+                     src/event/quic/ngx_event_quic_connid.h \
                      src/event/quic/ngx_event_quic_migration.h"
     ngx_module_srcs="src/event/quic/ngx_event_quic.c \
                      src/event/quic/ngx_event_quic_transport.c \
                      src/event/quic/ngx_event_quic_protection.c \
+                     src/event/quic/ngx_event_quic_connid.c \
                      src/event/quic/ngx_event_quic_migration.c"
 
     ngx_module_libs=
