@@ -70,13 +70,7 @@ typedef struct {
 } ngx_quic_conf_t;
 
 
-typedef struct {
-    uint64_t                   sent;
-    uint64_t                   received;
-    ngx_queue_t                frames;   /* reorder queue */
-    size_t                     total;    /* size of buffered data */
-} ngx_quic_frames_stream_t;
-
+typedef struct ngx_quic_frames_stream_s  ngx_quic_frames_stream_t;
 
 struct ngx_quic_stream_s {
     ngx_rbtree_node_t          node;
@@ -86,7 +80,7 @@ struct ngx_quic_stream_s {
     uint64_t                   acked;
     uint64_t                   send_max_data;
     ngx_buf_t                 *b;
-    ngx_quic_frames_stream_t   fs;
+    ngx_quic_frames_stream_t  *fs;
     ngx_uint_t                 cancelable;  /* unsigned  cancelable:1; */
 };
 

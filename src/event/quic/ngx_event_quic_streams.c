@@ -367,7 +367,13 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
         return NULL;
     }
 
-    ngx_queue_init(&sn->fs.frames);
+    sn->fs = ngx_pcalloc(pool, sizeof(ngx_quic_frames_stream_t));
+    if (sn->fs == NULL) {
+        ngx_destroy_pool(pool);
+        return NULL;
+    }
+
+    ngx_queue_init(&sn->fs->frames);
 
     log = ngx_palloc(pool, sizeof(ngx_log_t));
     if (log == NULL) {
@@ -503,7 +509,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         frame->level = ssl_encryption_application;
         frame->type = NGX_QUIC_FT_MAX_STREAM_DATA;
         frame->u.max_stream_data.id = qs->id;
-        frame->u.max_stream_data.limit = qs->fs.received + (b->pos - b->start)
+        frame->u.max_stream_data.limit = qs->fs->received + (b->pos - b->start)
                                          + (b->end - b->last);
 
         ngx_quic_queue_frame(qc, frame);
@@ -706,7 +712,7 @@ ngx_quic_stream_cleanup_handler(void *data)
                    "quic stream id:0x%xL cleanup", qs->id);
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
-    ngx_quic_free_frames(pc, &qs->fs.frames);
+    ngx_quic_free_frames(pc, &qs->fs->frames);
 
     if (qc->closing) {
         /* schedule handler call to continue ngx_quic_close_connection() */
@@ -834,7 +840,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
 
         sc = sn->c;
-        fs = &sn->fs;
+        fs = sn->fs;
         b = sn->b;
         window = b->end - b->last;
 
@@ -855,7 +861,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    fs = &sn->fs;
+    fs = sn->fs;
     b = sn->b;
     window = (b->pos - b->start) + (b->end - b->last);
 
@@ -1019,7 +1025,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
 
     } else {
         b = sn->b;
-        n = sn->fs.received + (b->pos - b->start) + (b->end - b->last);
+        n = sn->fs->received + (b->pos - b->start) + (b->end - b->last);
     }
 
     frame = ngx_quic_alloc_frame(c);

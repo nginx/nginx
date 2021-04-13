@@ -498,7 +498,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             }
 
             b = sn->b;
-            n = sn->fs.received + (b->pos - b->start) + (b->end - b->last);
+            n = sn->fs->received + (b->pos - b->start) + (b->end - b->last);
 
             if (f->u.max_stream_data.limit < n) {
                 f->u.max_stream_data.limit = n;

@@ -98,6 +98,14 @@ typedef struct {
 } ngx_quic_congestion_t;
 
 
+struct ngx_quic_frames_stream_s {
+    uint64_t                   sent;
+    uint64_t                   received;
+    ngx_queue_t                frames;   /* reorder queue */
+    size_t                     total;    /* size of buffered data */
+};
+
+
 /*
  * 12.3.  Packet Numbers
  *
