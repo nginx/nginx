@@ -85,9 +85,6 @@ struct ngx_quic_stream_s {
 };
 
 
-typedef struct ngx_quic_keys_s  ngx_quic_keys_t;
-
-
 void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
@@ -98,5 +95,7 @@ ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 uint32_t ngx_quic_version(ngx_connection_t *c);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
+ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,
+    ngx_str_t *secret, ngx_str_t *salt, u_char *out, size_t len);
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

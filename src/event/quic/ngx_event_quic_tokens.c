@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_sha1.h>
-#include <ngx_event_quic_protection.h>
+#include <ngx_event_quic_connection.h>
 
 
 #define NGX_QUIC_MAX_TOKEN_SIZE              64

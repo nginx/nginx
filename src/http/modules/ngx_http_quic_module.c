@@ -9,8 +9,6 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#include <ngx_event_quic_protection.h>
-
 
 static ngx_int_t ngx_http_variable_quic(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);

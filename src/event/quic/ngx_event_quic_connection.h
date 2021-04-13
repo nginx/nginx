@@ -11,12 +11,12 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-#include <ngx_event_quic_transport.h>
-#include <ngx_event_quic_protection.h>
-
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
+typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
+#include <ngx_event_quic_transport.h>
+#include <ngx_event_quic_protection.h>
 #include <ngx_event_quic_frames.h>
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>

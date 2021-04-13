@@ -9,8 +9,6 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
-#include <ngx_event_quic_protection.h>
-
 
 static ngx_int_t ngx_stream_variable_quic(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
