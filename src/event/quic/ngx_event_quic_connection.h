@@ -21,6 +21,7 @@ typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
 #include <ngx_event_quic_migration.h>
 #include <ngx_event_quic_connid.h>
 #include <ngx_event_quic_streams.h>
+#include <ngx_event_quic_ssl.h>
 #include <ngx_event_quic_tokens.h>
 #include <ngx_event_quic_ack.h>
 #include <ngx_event_quic_output.h>
@@ -201,6 +202,10 @@ struct ngx_quic_connection_s {
 };
 
 
+ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
+    ngx_quic_tp_t *ctp);
+void ngx_quic_discard_ctx(ngx_connection_t *c,
+    enum ssl_encryption_level_t level);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
 

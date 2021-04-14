@@ -469,10 +469,6 @@ done:
 }
 
 
-ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c,
-    ngx_quic_frame_t *frame, void *data);
-
-
 ngx_int_t
 ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
     ngx_quic_frame_t *frame, ngx_quic_frame_handler_pt handler, void *data)
