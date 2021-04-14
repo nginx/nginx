@@ -16,13 +16,7 @@
 #define NGX_QUIC_DRAFT_VERSION               29
 #endif
 
-#define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
-#define NGX_QUIC_MAX_LONG_HEADER             56
-    /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
-
 #define NGX_QUIC_MAX_UDP_PAYLOAD_SIZE        65527
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT         1252
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6        1232
 
 #define NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT  3
 #define NGX_QUIC_DEFAULT_MAX_ACK_DELAY       25
@@ -30,23 +24,7 @@
 #define NGX_QUIC_SR_KEY_LEN                  32
 #define NGX_QUIC_AV_KEY_LEN                  32
 
-#define NGX_QUIC_RETRY_TOKEN_LIFETIME          3 /* seconds */
-#define NGX_QUIC_NEW_TOKEN_LIFETIME          600 /* seconds */
-#define NGX_QUIC_RETRY_BUFFER_SIZE           256
-    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
-#define NGX_QUIC_MAX_TOKEN_SIZE              64
-    /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
-
-/* quic-recovery, section 6.2.2, kInitialRtt */
-#define NGX_QUIC_INITIAL_RTT                 333 /* ms */
-
-/* quic-recovery, section 6.1.1, Packet Threshold */
-#define NGX_QUIC_PKT_THR                     3 /* packets */
-/* quic-recovery, section 6.1.2, Time Threshold */
-#define NGX_QUIC_TIME_THR                    1.125
-#define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
-
-#define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
+#define NGX_QUIC_SR_TOKEN_LEN                16
 
 #define NGX_QUIC_MIN_INITIAL_SIZE            1200
 
@@ -54,18 +32,6 @@
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
 #define NGX_QUIC_STREAM_BUFSIZE              65536
-
-#define NGX_QUIC_MAX_CID_LEN                 20
-#define NGX_QUIC_SERVER_CID_LEN              NGX_QUIC_MAX_CID_LEN
-
-#define NGX_QUIC_SR_TOKEN_LEN                16
-
-#define NGX_QUIC_MAX_SERVER_IDS              8
-
-#define NGX_QUIC_BUFFER_SIZE                 4096
-
-#define ngx_quic_get_connection(c)                                            \
-    (((c)->udp) ? (((ngx_quic_server_id_t *)((c)->udp))->quic) : NULL)
 
 
 typedef struct {
@@ -138,13 +104,5 @@ ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 uint32_t ngx_quic_version(ngx_connection_t *c);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
-
-
-/********************************* DEBUG *************************************/
-
-/* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
-/* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
-/* #define NGX_QUIC_DEBUG_ALLOC */        /* log frames and bufs alloc */
-/* #define NGX_QUIC_DEBUG_CRYPTO */
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

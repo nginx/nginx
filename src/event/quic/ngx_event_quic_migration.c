@@ -7,9 +7,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_event_quic_transport.h>
 #include <ngx_event_quic_connection.h>
-#include <ngx_event_quic_migration.h>
 
 
 ngx_int_t

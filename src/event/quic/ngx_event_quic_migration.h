@@ -17,4 +17,4 @@ ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 ngx_int_t ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
 
-#endif
+#endif /* _NGX_EVENT_QUIC_MIGRATION_H_INCLUDED_ */

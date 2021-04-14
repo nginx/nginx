@@ -47,6 +47,8 @@
         : (lvl == ssl_encryption_initial) ? "init"                            \
             : (lvl == ssl_encryption_handshake) ? "hs" : "early"
 
+#define NGX_QUIC_MAX_CID_LEN                             20
+#define NGX_QUIC_SERVER_CID_LEN                          NGX_QUIC_MAX_CID_LEN
 
 /* 12.4.  Frames and Frame Types */
 #define NGX_QUIC_FT_PADDING                              0x00

@@ -7,11 +7,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_event_quic_transport.h>
-#include <ngx_event_quic_protection.h>
-#include <ngx_event_quic_connection.h>
-#include <ngx_event_quic_migration.h>
 #include <ngx_sha1.h>
+#include <ngx_event_quic_connection.h>
 
 
 #define ngx_quic_lost_threshold(qc)                                           \

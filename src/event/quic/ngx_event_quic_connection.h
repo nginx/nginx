@@ -10,14 +10,45 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+
 #include <ngx_event_quic_transport.h>
 #include <ngx_event_quic_protection.h>
 
-
-#define NGX_QUIC_SEND_CTX_LAST  (NGX_QUIC_ENCRYPTION_LAST - 1)
-
-
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
+
+#include <ngx_event_quic_migration.h>
+
+
+#define NGX_QUIC_MAX_SHORT_HEADER            25 /* 1 flags + 20 dcid + 4 pn */
+#define NGX_QUIC_MAX_LONG_HEADER             56
+    /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
+
+#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT         1252
+#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6        1232
+
+#define NGX_QUIC_RETRY_TOKEN_LIFETIME          3 /* seconds */
+#define NGX_QUIC_NEW_TOKEN_LIFETIME          600 /* seconds */
+#define NGX_QUIC_RETRY_BUFFER_SIZE           256
+    /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
+#define NGX_QUIC_MAX_TOKEN_SIZE              64
+    /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
+
+/* quic-recovery, section 6.2.2, kInitialRtt */
+#define NGX_QUIC_INITIAL_RTT                 333 /* ms */
+
+/* quic-recovery, section 6.1.1, Packet Threshold */
+#define NGX_QUIC_PKT_THR                     3 /* packets */
+/* quic-recovery, section 6.1.2, Time Threshold */
+#define NGX_QUIC_TIME_THR                    1.125
+#define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
+
+#define NGX_QUIC_CC_MIN_INTERVAL             1000 /* 1s */
+
+#define NGX_QUIC_MAX_SERVER_IDS              8
+
+#define NGX_QUIC_BUFFER_SIZE                 4096
+
+#define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
 
 /*  0-RTT and 1-RTT data exist in the same packet number space,
  *  so we have 3 packet number spaces:
@@ -30,6 +61,9 @@ typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
     ((level) == ssl_encryption_initial) ? &((qc)->send_ctx[0])                \
         : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
                                                  : &((qc)->send_ctx[2]))
+
+#define ngx_quic_get_connection(c)                                            \
+    (((c)->udp) ? (((ngx_quic_server_id_t *)((c)->udp))->quic) : NULL)
 
 
 typedef struct {
@@ -189,4 +223,11 @@ void ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 ngx_msec_t ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
 
-#endif
+/********************************* DEBUG *************************************/
+
+/* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
+/* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
+/* #define NGX_QUIC_DEBUG_ALLOC */        /* log frames and bufs alloc */
+/* #define NGX_QUIC_DEBUG_CRYPTO */
+
+#endif /* _NGX_EVENT_QUIC_CONNECTION_H_INCLUDED_ */
