@@ -718,6 +718,10 @@ ngx_quic_stream_cleanup_handler(void *data)
         return;
     }
 
+    if (qc->error) {
+        goto done;
+    }
+
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0
         || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
     {
