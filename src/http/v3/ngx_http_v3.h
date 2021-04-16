@@ -143,6 +143,8 @@ typedef struct {
     uint64_t                      next_push_id;
     uint64_t                      max_push_id;
 
+    ngx_uint_t                    goaway;  /* unsigned  goaway:1; */
+
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
 } ngx_http_v3_connection_t;
 

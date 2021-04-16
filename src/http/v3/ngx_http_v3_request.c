@@ -81,15 +81,22 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
-    n = c->quic->id >> 2;
+    h3c = c->quic->parent->data;
 
-    if (n >= clcf->keepalive_requests) {
+    if (h3c->goaway) {
         ngx_quic_reset_stream(c, NGX_HTTP_V3_ERR_REQUEST_REJECTED);
         ngx_http_close_connection(c);
         return;
     }
 
-    if (n + 1 == clcf->keepalive_requests) {
+    n = c->quic->id >> 2;
+
+    if (n + 1 == clcf->keepalive_requests
+        || ngx_current_msec - c->quic->parent->start_time
+           > clcf->keepalive_time)
+    {
+        h3c->goaway = 1;
+
         if (ngx_http_v3_send_goaway(c, (n + 1) << 2) != NGX_OK) {
             ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
                                             "goaway error");
@@ -110,7 +117,6 @@ ngx_http_v3_init(ngx_connection_t *c)
     cln->handler = ngx_http_v3_cleanup_request;
     cln->data = c;
 
-    h3c = c->quic->parent->data;
     h3c->nrequests++;
 
     if (h3c->keepalive.timer_set) {
