@@ -277,7 +277,7 @@ ngx_http_v2_init(ngx_event_t *rev)
     h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
     h2c->concurrent_pushes = h2scf->concurrent_pushes;
-    h2c->priority_limit = h2scf->concurrent_streams;
+    h2c->priority_limit = ngx_max(h2scf->concurrent_streams, 100);
 
     h2c->pool = ngx_create_pool(h2scf->pool_size, h2c->connection->log);
     if (h2c->pool == NULL) {
@@ -1369,7 +1369,9 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                                         ngx_http_core_module);
 
     if (clcf->keepalive_timeout == 0
-        || h2c->connection->requests >= clcf->keepalive_requests)
+        || h2c->connection->requests >= clcf->keepalive_requests
+        || ngx_current_msec - h2c->connection->start_time
+           > clcf->keepalive_time)
     {
         h2c->goaway = 1;
 

@@ -4459,6 +4459,8 @@ ngx_udp_connect(ngx_resolver_connection_t *rec)
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
 
+    c->start_time = ngx_current_msec;
+
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, &rec->log, 0,
                    "connect to %V, fd:%d #%uA", &rec->server, s, c->number);
 
@@ -4544,6 +4546,8 @@ ngx_tcp_connect(ngx_resolver_connection_t *rec)
     rec->tcp = c;
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+
+    c->start_time = ngx_current_msec;
 
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {

@@ -86,6 +86,31 @@ if [ $ngx_found = yes ]; then
                       ee.data.ptr = NULL;
                       epoll_ctl(efd, EPOLL_CTL_ADD, fd, &ee)"
     . auto/feature
+
+
+    # eventfd()
+
+    ngx_feature="eventfd()"
+    ngx_feature_name="NGX_HAVE_EVENTFD"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <sys/eventfd.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="(void) eventfd(0, 0)"
+    . auto/feature
+
+    if [ $ngx_found = yes ]; then
+        have=NGX_HAVE_SYS_EVENTFD_H . auto/have
+    fi
+
+
+    if [ $ngx_found = no ]; then
+
+        ngx_feature="eventfd() (SYS_eventfd)"
+        ngx_feature_incs="#include <sys/syscall.h>"
+        ngx_feature_test="(void) SYS_eventfd"
+        . auto/feature
+    fi
 fi
 
 

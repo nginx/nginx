@@ -495,6 +495,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, limit_rate_after),
       NULL },
 
+    { ngx_string("keepalive_time"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_time),
+      NULL },
+
     { ngx_string("keepalive_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
       ngx_http_core_keepalive,
@@ -1333,6 +1340,11 @@ ngx_http_update_location_config(ngx_http_request_t *r)
             r->keepalive = 0;
 
         } else if (r->connection->requests >= clcf->keepalive_requests) {
+            r->keepalive = 0;
+
+        } else if (ngx_current_msec - r->connection->start_time
+                   > clcf->keepalive_time)
+        {
             r->keepalive = 0;
 
         } else if (r->headers_in.msie6
@@ -3500,6 +3512,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->send_timeout = NGX_CONF_UNSET_MSEC;
     clcf->send_lowat = NGX_CONF_UNSET_SIZE;
     clcf->postpone_output = NGX_CONF_UNSET_SIZE;
+    clcf->keepalive_time = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
     clcf->keepalive_requests = NGX_CONF_UNSET_UINT;
@@ -3738,12 +3751,14 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->limit_rate_after = prev->limit_rate_after;
     }
 
+    ngx_conf_merge_msec_value(conf->keepalive_time,
+                              prev->keepalive_time, 3600000);
     ngx_conf_merge_msec_value(conf->keepalive_timeout,
                               prev->keepalive_timeout, 75000);
     ngx_conf_merge_sec_value(conf->keepalive_header,
                               prev->keepalive_header, 0);
     ngx_conf_merge_uint_value(conf->keepalive_requests,
-                              prev->keepalive_requests, 100);
+                              prev->keepalive_requests, 1000);
     ngx_conf_merge_uint_value(conf->lingering_close,
                               prev->lingering_close, NGX_HTTP_LINGERING_ON);
     ngx_conf_merge_msec_value(conf->lingering_time,
