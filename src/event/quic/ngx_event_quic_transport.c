@@ -1137,7 +1137,7 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
          /* NEW_CONNECTION_ID */     0x3,
          /* RETIRE_CONNECTION_ID */  0x3,
          /* PATH_CHALLENGE */        0x3,
-         /* PATH_RESPONSE */         0x3,
+         /* PATH_RESPONSE */         0x1,
          /* CONNECTION_CLOSE */      0xF,
          /* CONNECTION_CLOSE2 */     0x3,
          /* HANDSHAKE_DONE */        0x0, /* only sent by server */
