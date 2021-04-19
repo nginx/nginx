@@ -1003,6 +1003,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
+        if (f->u.streams_blocked.limit > 0x1000000000000000) {
+            goto error;
+        }
+
         f->u.streams_blocked.bidi =
                               (f->type == NGX_QUIC_FT_STREAMS_BLOCKED) ? 1 : 0;
         break;
@@ -1012,6 +1016,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         p = ngx_quic_parse_int(p, end, &f->u.max_streams.limit);
         if (p == NULL) {
+            goto error;
+        }
+
+        if (f->u.max_streams.limit > 0x1000000000000000) {
             goto error;
         }
 
