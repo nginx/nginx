@@ -75,7 +75,7 @@ typedef struct ngx_quic_frames_stream_s  ngx_quic_frames_stream_t;
 struct ngx_quic_stream_s {
     ngx_rbtree_node_t          node;
     ngx_connection_t          *parent;
-    ngx_connection_t          *c;
+    ngx_connection_t          *connection;
     uint64_t                   id;
     uint64_t                   acked;
     uint64_t                   send_max_data;
