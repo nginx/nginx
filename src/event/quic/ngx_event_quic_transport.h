@@ -83,6 +83,8 @@
 #define NGX_QUIC_FT_CONNECTION_CLOSE_APP                 0x1D
 #define NGX_QUIC_FT_HANDSHAKE_DONE                       0x1E
 
+#define NGX_QUIC_FT_LAST  NGX_QUIC_FT_HANDSHAKE_DONE
+
 /* 22.4.  QUIC Transport Error Codes Registry */
 /* Keep in sync with ngx_quic_errors[] */
 #define NGX_QUIC_ERR_NO_ERROR                            0x00

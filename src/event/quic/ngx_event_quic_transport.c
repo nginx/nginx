@@ -742,6 +742,13 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         return NGX_ERROR;
     }
 
+    if (varint > NGX_QUIC_FT_LAST) {
+        pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "quic unknown frame type 0x%xL", varint);
+        return NGX_ERROR;
+    }
+
     f->type = varint;
 
     if (ngx_quic_frame_allowed(pkt, f->type) != NGX_OK) {
