@@ -32,7 +32,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
 {
     size_t                  rcvbuf_size;
     uint64_t                id;
-    ngx_quic_stream_t      *qs, *sn;
+    ngx_quic_stream_t      *qs, *nqs;
     ngx_quic_connection_t  *qc;
 
     qs = c->quic;
@@ -84,12 +84,12 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
         rcvbuf_size = 0;
     }
 
-    sn = ngx_quic_create_stream(qs->parent, id, rcvbuf_size);
-    if (sn == NULL) {
+    nqs = ngx_quic_create_stream(qs->parent, id, rcvbuf_size);
+    if (nqs == NULL) {
         return NULL;
     }
 
-    return sn->connection;
+    return nqs->connection;
 }
 
 
@@ -237,7 +237,7 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
 {
     size_t                  n;
     uint64_t                min_id;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -314,12 +314,12 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
 
     for ( /* void */ ; min_id < id; min_id += 0x04) {
 
-        sn = ngx_quic_create_stream(c, min_id, n);
-        if (sn == NULL) {
+        qs = ngx_quic_create_stream(c, min_id, n);
+        if (qs == NULL) {
             return NULL;
         }
 
-        sn->connection->listening->handler(sn->connection);
+        qs->connection->listening->handler(qs->connection);
 
         if (qc->shutdown) {
             return NGX_QUIC_STREAM_GONE;
@@ -336,7 +336,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     ngx_log_t              *log;
     ngx_pool_t             *pool;
     ngx_connection_t       *sc;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_pool_cleanup_t     *cln;
     ngx_quic_connection_t  *qc;
 
@@ -350,29 +350,29 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
         return NULL;
     }
 
-    sn = ngx_pcalloc(pool, sizeof(ngx_quic_stream_t));
-    if (sn == NULL) {
+    qs = ngx_pcalloc(pool, sizeof(ngx_quic_stream_t));
+    if (qs == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    sn->node.key = id;
-    sn->parent = c;
-    sn->id = id;
+    qs->node.key = id;
+    qs->parent = c;
+    qs->id = id;
 
-    sn->b = ngx_create_temp_buf(pool, rcvbuf_size);
-    if (sn->b == NULL) {
+    qs->b = ngx_create_temp_buf(pool, rcvbuf_size);
+    if (qs->b == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    sn->fs = ngx_pcalloc(pool, sizeof(ngx_quic_frames_stream_t));
-    if (sn->fs == NULL) {
+    qs->fs = ngx_pcalloc(pool, sizeof(ngx_quic_frames_stream_t));
+    if (qs->fs == NULL) {
         ngx_destroy_pool(pool);
         return NULL;
     }
 
-    ngx_queue_init(&sn->fs->frames);
+    ngx_queue_init(&qs->fs->frames);
 
     log = ngx_palloc(pool, sizeof(ngx_log_t));
     if (log == NULL) {
@@ -389,9 +389,9 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
         return NULL;
     }
 
-    sn->connection = sc;
+    qs->connection = sc;
 
-    sc->quic = sn;
+    sc->quic = qs;
     sc->type = SOCK_STREAM;
     sc->pool = pool;
     sc->ssl = c->ssl;
@@ -419,14 +419,14 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
 
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
-            sn->send_max_data = qc->ctp.initial_max_stream_data_uni;
+            qs->send_max_data = qc->ctp.initial_max_stream_data_uni;
         }
 
     } else {
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
-            sn->send_max_data = qc->ctp.initial_max_stream_data_bidi_remote;
+            qs->send_max_data = qc->ctp.initial_max_stream_data_bidi_remote;
         } else {
-            sn->send_max_data = qc->ctp.initial_max_stream_data_bidi_local;
+            qs->send_max_data = qc->ctp.initial_max_stream_data_bidi_local;
         }
     }
 
@@ -440,9 +440,9 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id, size_t rcvbuf_size)
     cln->handler = ngx_quic_stream_cleanup_handler;
     cln->data = sc;
 
-    ngx_rbtree_insert(&qc->streams.tree, &sn->node);
+    ngx_rbtree_insert(&qc->streams.tree, &qs->node);
 
-    return sn;
+    return qs;
 }
 
 
@@ -813,7 +813,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_buf_t                 *b;
     ngx_pool_t                *pool;
     ngx_connection_t          *sc;
-    ngx_quic_stream_t         *sn;
+    ngx_quic_stream_t         *qs;
     ngx_quic_connection_t     *qc;
     ngx_quic_stream_frame_t   *f;
     ngx_quic_frames_stream_t  *fs;
@@ -831,22 +831,22 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     /* no overflow since both values are 62-bit */
     last = f->offset + f->length;
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->stream_id);
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->stream_id);
 
-    if (sn == NULL) {
-        sn = ngx_quic_create_client_stream(c, f->stream_id);
+    if (qs == NULL) {
+        qs = ngx_quic_create_client_stream(c, f->stream_id);
 
-        if (sn == NULL) {
+        if (qs == NULL) {
             return NGX_ERROR;
         }
 
-        if (sn == NGX_QUIC_STREAM_GONE) {
+        if (qs == NGX_QUIC_STREAM_GONE) {
             return NGX_OK;
         }
 
-        sc = sn->connection;
-        fs = sn->fs;
-        b = sn->b;
+        sc = qs->connection;
+        fs = qs->fs;
+        b = qs->b;
         window = b->end - b->last;
 
         if (last > window) {
@@ -855,7 +855,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
 
         if (ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input,
-                                          sn)
+                                          qs)
             != NGX_OK)
         {
             goto cleanup;
@@ -866,8 +866,8 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    fs = sn->fs;
-    b = sn->b;
+    fs = qs->fs;
+    b = qs->b;
     window = (b->pos - b->start) + (b->end - b->last);
 
     if (last > fs->received && last - fs->received > window) {
@@ -876,7 +876,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     return ngx_quic_handle_ordered_frame(c, fs, frame, ngx_quic_stream_input,
-                                         sn);
+                                         qs);
 
 cleanup:
 
@@ -896,17 +896,17 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
     ngx_buf_t                *b;
     ngx_event_t              *rev;
     ngx_chain_t              *cl;
-    ngx_quic_stream_t        *sn;
+    ngx_quic_stream_t        *qs;
     ngx_quic_connection_t    *qc;
     ngx_quic_stream_frame_t  *f;
 
     qc = ngx_quic_get_connection(c);
-    sn = data;
+    qs = data;
 
     f = &frame->u.stream;
     id = f->stream_id;
 
-    b = sn->b;
+    b = qs->b;
 
     if ((size_t) ((b->pos - b->start) + (b->end - b->last)) < f->length) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -924,7 +924,7 @@ ngx_quic_stream_input(ngx_connection_t *c, ngx_quic_frame_t *frame, void *data)
                              cl->buf->last - cl->buf->pos);
     }
 
-    rev = sn->connection->read;
+    rev = qs->connection->read;
     rev->ready = 1;
 
     if (f->fin) {
@@ -998,7 +998,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     size_t                  n;
     ngx_buf_t              *b;
     ngx_quic_frame_t       *frame;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1010,27 +1010,27 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
-    if (sn == NULL) {
-        sn = ngx_quic_create_client_stream(c, f->id);
+    if (qs == NULL) {
+        qs = ngx_quic_create_client_stream(c, f->id);
 
-        if (sn == NULL) {
+        if (qs == NULL) {
             return NGX_ERROR;
         }
 
-        if (sn == NGX_QUIC_STREAM_GONE) {
+        if (qs == NGX_QUIC_STREAM_GONE) {
             return NGX_OK;
         }
 
-        b = sn->b;
+        b = qs->b;
         n = b->end - b->last;
 
-        sn->connection->listening->handler(sn->connection);
+        qs->connection->listening->handler(qs->connection);
 
     } else {
-        b = sn->b;
-        n = sn->fs->received + (b->pos - b->start) + (b->end - b->last);
+        b = qs->b;
+        n = qs->fs->received + (b->pos - b->start) + (b->end - b->last);
     }
 
     frame = ngx_quic_alloc_frame(c);
@@ -1055,7 +1055,7 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
 {
     uint64_t                sent;
     ngx_event_t            *wev;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1067,36 +1067,36 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
-    if (sn == NULL) {
-        sn = ngx_quic_create_client_stream(c, f->id);
+    if (qs == NULL) {
+        qs = ngx_quic_create_client_stream(c, f->id);
 
-        if (sn == NULL) {
+        if (qs == NULL) {
             return NGX_ERROR;
         }
 
-        if (sn == NGX_QUIC_STREAM_GONE) {
+        if (qs == NGX_QUIC_STREAM_GONE) {
             return NGX_OK;
         }
 
-        if (f->limit > sn->send_max_data) {
-            sn->send_max_data = f->limit;
+        if (f->limit > qs->send_max_data) {
+            qs->send_max_data = f->limit;
         }
 
-        sn->connection->listening->handler(sn->connection);
+        qs->connection->listening->handler(qs->connection);
 
         return NGX_OK;
     }
 
-    if (f->limit <= sn->send_max_data) {
+    if (f->limit <= qs->send_max_data) {
         return NGX_OK;
     }
 
-    sent = sn->connection->sent;
+    sent = qs->connection->sent;
 
-    if (sent >= sn->send_max_data) {
-        wev = sn->connection->write;
+    if (sent >= qs->send_max_data) {
+        wev = qs->connection->write;
 
         if (wev->active) {
             wev->ready = 1;
@@ -1104,7 +1104,7 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
         }
     }
 
-    sn->send_max_data = f->limit;
+    qs->send_max_data = f->limit;
 
     return NGX_OK;
 }
@@ -1116,7 +1116,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
 {
     ngx_event_t            *rev;
     ngx_connection_t       *sc;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1128,20 +1128,20 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
-    if (sn == NULL) {
-        sn = ngx_quic_create_client_stream(c, f->id);
+    if (qs == NULL) {
+        qs = ngx_quic_create_client_stream(c, f->id);
 
-        if (sn == NULL) {
+        if (qs == NULL) {
             return NGX_ERROR;
         }
 
-        if (sn == NGX_QUIC_STREAM_GONE) {
+        if (qs == NGX_QUIC_STREAM_GONE) {
             return NGX_OK;
         }
 
-        sc = sn->connection;
+        sc = qs->connection;
 
         rev = sc->read;
         rev->error = 1;
@@ -1152,7 +1152,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
-    rev = sn->connection->read;
+    rev = qs->connection->read;
     rev->error = 1;
     rev->ready = 1;
 
@@ -1170,7 +1170,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
 {
     ngx_event_t            *wev;
     ngx_connection_t       *sc;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1182,20 +1182,20 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->id);
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->id);
 
-    if (sn == NULL) {
-        sn = ngx_quic_create_client_stream(c, f->id);
+    if (qs == NULL) {
+        qs = ngx_quic_create_client_stream(c, f->id);
 
-        if (sn == NULL) {
+        if (qs == NULL) {
             return NGX_ERROR;
         }
 
-        if (sn == NGX_QUIC_STREAM_GONE) {
+        if (qs == NGX_QUIC_STREAM_GONE) {
             return NGX_OK;
         }
 
-        sc = sn->connection;
+        sc = qs->connection;
 
         wev = sc->write;
         wev->error = 1;
@@ -1206,7 +1206,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
-    wev = sn->connection->write;
+    wev = qs->connection->write;
     wev->error = 1;
     wev->ready = 1;
 
@@ -1252,28 +1252,28 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
     uint64_t                sent, unacked;
     ngx_event_t            *wev;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    sn = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
-    if (sn == NULL) {
+    qs = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
+    if (qs == NULL) {
         return;
     }
 
-    wev = sn->connection->write;
-    sent = sn->connection->sent;
-    unacked = sent - sn->acked;
+    wev = qs->connection->write;
+    sent = qs->connection->sent;
+    unacked = sent - qs->acked;
 
     if (unacked >= NGX_QUIC_STREAM_BUFSIZE && wev->active) {
         wev->ready = 1;
         ngx_post_event(wev, &ngx_posted_events);
     }
 
-    sn->acked += f->u.stream.length;
+    qs->acked += f->u.stream.length;
 
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, sn->connection->log, 0,
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, qs->connection->log, 0,
                    "quic stream ack len:%uL acked:%uL unacked:%uL",
-                   f->u.stream.length, sn->acked, sent - sn->acked);
+                   f->u.stream.length, qs->acked, sent - qs->acked);
 }

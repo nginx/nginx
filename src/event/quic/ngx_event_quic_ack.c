@@ -436,7 +436,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     ngx_buf_t              *b;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f, *start;
-    ngx_quic_stream_t      *sn;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -490,15 +490,15 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             break;
 
         case NGX_QUIC_FT_MAX_STREAM_DATA:
-            sn = ngx_quic_find_stream(&qc->streams.tree,
+            qs = ngx_quic_find_stream(&qc->streams.tree,
                                       f->u.max_stream_data.id);
-            if (sn == NULL) {
+            if (qs == NULL) {
                 ngx_quic_free_frame(c, f);
                 break;
             }
 
-            b = sn->b;
-            n = sn->fs->received + (b->pos - b->start) + (b->end - b->last);
+            b = qs->b;
+            n = qs->fs->received + (b->pos - b->start) + (b->end - b->last);
 
             if (f->u.max_stream_data.limit < n) {
                 f->u.max_stream_data.limit = n;
@@ -515,9 +515,9 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         case NGX_QUIC_FT_STREAM5:
         case NGX_QUIC_FT_STREAM6:
         case NGX_QUIC_FT_STREAM7:
-            sn = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
+            qs = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
 
-            if (sn && sn->connection->write->error) {
+            if (qs && qs->connection->write->error) {
                 /* RESET_STREAM was sent */
                 ngx_quic_free_frame(c, f);
                 break;
