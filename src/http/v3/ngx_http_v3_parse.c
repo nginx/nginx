@@ -1069,6 +1069,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
             st->state = sw_max_push_id;
             break;
 
+        case NGX_HTTP_V3_FRAME_DATA:
+        case NGX_HTTP_V3_FRAME_HEADERS:
+            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
+
         default:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http3 parse skip unknown frame");
