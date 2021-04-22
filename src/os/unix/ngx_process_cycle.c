@@ -398,6 +398,8 @@ ngx_pass_open_channel(ngx_cycle_t *cycle)
     ngx_int_t      i;
     ngx_channel_t  ch;
 
+    ngx_memzero(&ch, sizeof(ngx_channel_t));
+
     ch.command = NGX_CMD_OPEN_CHANNEL;
     ch.pid = ngx_processes[ngx_process_slot].pid;
     ch.slot = ngx_process_slot;
