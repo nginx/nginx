@@ -309,7 +309,7 @@ done:
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse headers done");
 
     if (st->prefix.insert_count > 0) {
-        if (ngx_http_v3_client_ack_header(c, c->quic->id) != NGX_OK) {
+        if (ngx_http_v3_send_ack_header(c, c->quic->id) != NGX_OK) {
             return NGX_ERROR;
         }
     }

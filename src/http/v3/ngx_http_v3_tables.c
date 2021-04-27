@@ -224,7 +224,7 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
 
     /* TODO increment can be sent less often */
 
-    if (ngx_http_v3_client_inc_insert_count(c, 1) != NGX_OK) {
+    if (ngx_http_v3_send_inc_insert_count(c, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 

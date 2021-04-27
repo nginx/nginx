@@ -195,18 +195,18 @@ ngx_int_t ngx_http_v3_set_max_push_id(ngx_connection_t *c,
     uint64_t max_push_id);
 ngx_int_t ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id);
 
-ngx_int_t ngx_http_v3_client_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
+ngx_int_t ngx_http_v3_send_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
-ngx_int_t ngx_http_v3_client_insert(ngx_connection_t *c, ngx_str_t *name,
+ngx_int_t ngx_http_v3_send_insert(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
-ngx_int_t ngx_http_v3_client_set_capacity(ngx_connection_t *c,
+ngx_int_t ngx_http_v3_send_set_capacity(ngx_connection_t *c,
     ngx_uint_t capacity);
-ngx_int_t ngx_http_v3_client_duplicate(ngx_connection_t *c, ngx_uint_t index);
-ngx_int_t ngx_http_v3_client_ack_header(ngx_connection_t *c,
+ngx_int_t ngx_http_v3_send_duplicate(ngx_connection_t *c, ngx_uint_t index);
+ngx_int_t ngx_http_v3_send_ack_header(ngx_connection_t *c,
     ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_client_cancel_stream(ngx_connection_t *c,
+ngx_int_t ngx_http_v3_send_cancel_stream(ngx_connection_t *c,
     ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_client_inc_insert_count(ngx_connection_t *c,
+ngx_int_t ngx_http_v3_send_inc_insert_count(ngx_connection_t *c,
     ngx_uint_t inc);
 
 

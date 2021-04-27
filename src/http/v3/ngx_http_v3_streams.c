@@ -597,7 +597,7 @@ failed:
 
 
 ngx_int_t
-ngx_http_v3_client_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
+ngx_http_v3_send_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)
 {
     u_char            *p, buf[NGX_HTTP_V3_PREFIX_INT_LEN * 2];
@@ -643,8 +643,7 @@ failed:
 
 
 ngx_int_t
-ngx_http_v3_client_insert(ngx_connection_t *c, ngx_str_t *name,
-    ngx_str_t *value)
+ngx_http_v3_send_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
@@ -693,7 +692,7 @@ failed:
 
 
 ngx_int_t
-ngx_http_v3_client_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
+ngx_http_v3_send_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
@@ -720,7 +719,7 @@ ngx_http_v3_client_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 
 
 ngx_int_t
-ngx_http_v3_client_duplicate(ngx_connection_t *c, ngx_uint_t index)
+ngx_http_v3_send_duplicate(ngx_connection_t *c, ngx_uint_t index)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
@@ -747,7 +746,7 @@ ngx_http_v3_client_duplicate(ngx_connection_t *c, ngx_uint_t index)
 
 
 ngx_int_t
-ngx_http_v3_client_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
+ngx_http_v3_send_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
@@ -774,7 +773,7 @@ ngx_http_v3_client_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
 
 
 ngx_int_t
-ngx_http_v3_client_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
+ngx_http_v3_send_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
@@ -801,7 +800,7 @@ ngx_http_v3_client_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
 
 
 ngx_int_t
-ngx_http_v3_client_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
+ngx_http_v3_send_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
