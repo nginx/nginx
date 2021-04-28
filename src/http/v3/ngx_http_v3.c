@@ -79,6 +79,8 @@ ngx_http_v3_cleanup_session(void *data)
 {
     ngx_http_v3_session_t  *h3c = data;
 
+    ngx_http_v3_cleanup_table(h3c);
+
     if (h3c->keepalive.timer_set) {
         ngx_del_timer(&h3c->keepalive);
     }

@@ -14,7 +14,6 @@
 
 
 static ngx_int_t ngx_http_v3_evict(ngx_connection_t *c, size_t need);
-static void ngx_http_v3_cleanup_table(void *data);
 static void ngx_http_v3_unblock(void *data);
 static ngx_int_t ngx_http_v3_new_header(ngx_connection_t *c);
 
@@ -240,8 +239,6 @@ ngx_int_t
 ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 {
     ngx_uint_t                     max, prev_max;
-    ngx_connection_t              *pc;
-    ngx_pool_cleanup_t            *cln;
     ngx_http_v3_header_t         **elts;
     ngx_http_v3_session_t         *h3c;
     ngx_http_v3_srv_conf_t        *h3scf;
@@ -276,18 +273,7 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
             return NGX_ERROR;
         }
 
-        if (dt->elts == NULL) {
-            pc = c->quic->parent;
-
-            cln = ngx_pool_cleanup_add(pc->pool, 0);
-            if (cln == NULL) {
-                return NGX_ERROR;
-            }
-
-            cln->handler = ngx_http_v3_cleanup_table;
-            cln->data = dt;
-
-        } else {
+        if (dt->elts) {
             ngx_memcpy(elts, dt->elts, dt->nelts * sizeof(void *));
             ngx_free(dt->elts);
         }
@@ -301,12 +287,17 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
 }
 
 
-static void
-ngx_http_v3_cleanup_table(void *data)
+void
+ngx_http_v3_cleanup_table(ngx_http_v3_session_t *h3c)
 {
-    ngx_http_v3_dynamic_table_t  *dt = data;
+    ngx_uint_t                    n;
+    ngx_http_v3_dynamic_table_t  *dt;
 
-    ngx_uint_t  n;
+    dt = &h3c->table;
+
+    if (dt->elts == NULL) {
+        return;
+    }
 
     for (n = 0; n < dt->nelts; n++) {
         ngx_free(dt->elts[n]);
