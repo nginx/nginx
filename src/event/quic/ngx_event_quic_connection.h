@@ -11,6 +11,12 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+
+/* #define NGX_QUIC_DEBUG_PACKETS */  /* dump packet contents */
+/* #define NGX_QUIC_DEBUG_FRAMES */   /* dump frames contents */
+/* #define NGX_QUIC_DEBUG_ALLOC */    /* log frames and bufs alloc */
+/* #define NGX_QUIC_DEBUG_CRYPTO */
+
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
 typedef struct ngx_quic_client_id_s   ngx_quic_client_id_t;
@@ -253,19 +259,10 @@ void ngx_quic_discard_ctx(ngx_connection_t *c,
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
-
-/********************************* DEBUG *************************************/
-
 #if (NGX_DEBUG)
 void ngx_quic_connstate_dbg(ngx_connection_t *c);
 #else
 #define ngx_quic_connstate_dbg(c)
 #endif
-
-
-/* #define NGX_QUIC_DEBUG_PACKETS */      /* dump packet contents */
-/* #define NGX_QUIC_DEBUG_FRAMES */       /* dump frames contents */
-/* #define NGX_QUIC_DEBUG_ALLOC */        /* log frames and bufs alloc */
-/* #define NGX_QUIC_DEBUG_CRYPTO */
 
 #endif /* _NGX_EVENT_QUIC_CONNECTION_H_INCLUDED_ */
