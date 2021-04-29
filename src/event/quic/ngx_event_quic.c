@@ -87,7 +87,6 @@ ngx_quic_connstate_dbg(ngx_connection_t *c)
         p = ngx_slprintf(p, last, "%s", qc->closing ? " closing" : "");
         p = ngx_slprintf(p, last, "%s", qc->draining ? " draining" : "");
         p = ngx_slprintf(p, last, "%s", qc->key_phase ? " kp" : "");
-        p = ngx_slprintf(p, last, "%s", qc->validated? " valid" : "");
 
     } else {
         p = ngx_slprintf(p, last, " early");
@@ -127,12 +126,16 @@ ngx_quic_connstate_dbg(ngx_connection_t *c)
 ngx_int_t
 ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
 {
+    ngx_str_t               scid;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc->scid.len != ctp->initial_scid.len
-        || ngx_memcmp(qc->scid.data, ctp->initial_scid.data, qc->scid.len) != 0)
+    scid.data = qc->socket->cid->id;
+    scid.len = qc->socket->cid->len;
+
+    if (scid.len != ctp->initial_scid.len
+        || ngx_memcmp(scid.data, ctp->initial_scid.data, scid.len) != 0)
     {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic client initial_source_connection_id mismatch");
@@ -277,8 +280,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
      * qc->latest_rtt = 0
      */
 
-    qc->received = pkt->raw->last - pkt->raw->start;
-
     qc->pto.log = c->log;
     qc->pto.data = c;
     qc->pto.handler = ngx_quic_pto_handler;
@@ -289,18 +290,13 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->push.handler = ngx_quic_push_handler;
     qc->push.cancelable = 1;
 
+    qc->path_validation.log = c->log;
+    qc->path_validation.data = c;
+    qc->path_validation.handler = ngx_quic_path_validation_handler;
+    qc->path_validation.cancelable = 1;
+
     qc->conf = conf;
     qc->tp = conf->tp;
-
-    if (qc->tp.disable_active_migration) {
-        qc->sockaddr = ngx_palloc(c->pool, c->socklen);
-        if (qc->sockaddr == NULL) {
-            return NULL;
-        }
-
-        ngx_memcpy(qc->sockaddr, c->sockaddr, c->socklen);
-        qc->socklen = c->socklen;
-    }
 
     ctp = &qc->ctp;
 
@@ -338,9 +334,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc->validated = pkt->validated;
 
-    if (ngx_quic_setup_connection_ids(c, qc, pkt) != NGX_OK) {
+    if (ngx_quic_open_sockets(c, qc, pkt) != NGX_OK) {
         return NULL;
     }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic connection created");
 
     return qc;
 }
@@ -425,19 +424,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    if (qc->tp.disable_active_migration) {
-        if (c->socklen != qc->socklen
-            || ngx_memcmp(c->sockaddr, qc->sockaddr, c->socklen) != 0)
-        {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic dropping packet from new address");
-            return;
-        }
-    }
-
     b = c->udp->dgram->buffer;
-
-    qc->received += (b->last - b->pos);
 
     rc = ngx_quic_input(c, b, NULL);
 
@@ -506,9 +493,7 @@ static ngx_int_t
 ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
 {
     ngx_uint_t              i;
-    ngx_queue_t            *q;
     ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_server_id_t   *sid;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -601,22 +586,19 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         ngx_del_timer(&qc->pto);
     }
 
-    if (qc->push.posted) {
-        ngx_delete_posted_event(&qc->push);
+    if (qc->path_validation.timer_set) {
+        ngx_del_timer(&qc->path_validation);
     }
 
-    while (!ngx_queue_empty(&qc->server_ids)) {
-        q = ngx_queue_head(&qc->server_ids);
-        sid = ngx_queue_data(q, ngx_quic_server_id_t, queue);
-
-        ngx_queue_remove(q);
-        ngx_rbtree_delete(&c->listening->rbtree, &sid->udp.node);
-        qc->nserver_ids--;
+    if (qc->push.posted) {
+        ngx_delete_posted_event(&qc->push);
     }
 
     if (qc->close.timer_set) {
         return NGX_AGAIN;
     }
+
+    ngx_quic_close_sockets(c);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic part of connection is terminated");
@@ -801,6 +783,11 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             return NGX_DECLINED;
         }
 
+        rc = ngx_quic_check_migration(c, pkt);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
         if (pkt->level != ssl_encryption_application) {
 
             if (pkt->version != qc->version) {
@@ -946,6 +933,10 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->decrypted = 1;
 
+    if (ngx_quic_update_paths(c, pkt) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (c->ssl == NULL) {
         if (ngx_quic_init_connection(c) != NGX_OK) {
             return NGX_ERROR;
@@ -959,8 +950,8 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
          */
         ngx_quic_discard_ctx(c, ssl_encryption_initial);
 
-        if (qc->validated == 0) {
-            qc->validated = 1;
+        if (qc->socket->path->state != NGX_QUIC_PATH_VALIDATED) {
+            qc->socket->path->state = NGX_QUIC_PATH_VALIDATED;
             ngx_post_event(&qc->push, &ngx_posted_events);
         }
     }
@@ -1015,6 +1006,7 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
 {
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
+    ngx_quic_socket_t      *qsock;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -1049,7 +1041,11 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
     }
 
     if (level == ssl_encryption_initial) {
-        ngx_quic_clear_temp_server_ids(c);
+        /* close temporary listener with odcid */
+        qsock = ngx_quic_find_socket(c, NGX_QUIC_UNSET_PN);
+        if (qsock) {
+            ngx_quic_close_socket(c, qsock);
+        }
     }
 
     ctx->send_ack = 0;
@@ -1088,9 +1084,10 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
     u_char                 *end, *p;
     ssize_t                 len;
     ngx_buf_t               buf;
-    ngx_uint_t              do_close;
+    ngx_uint_t              do_close, nonprobing;
     ngx_chain_t             chain;
     ngx_quic_frame_t        frame;
+    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1099,11 +1096,13 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
     end = p + pkt->payload.len;
 
     do_close = 0;
+    nonprobing = 0;
 
     while (p < end) {
 
         c->log->action = "parsing frames";
 
+        ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
         ngx_memzero(&buf, sizeof(ngx_buf_t));
         buf.temporary = 1;
 
@@ -1123,6 +1122,19 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         c->log->action = "handling frames";
 
         p += len;
+
+        switch (frame.type) {
+        /* probing frames */
+        case NGX_QUIC_FT_PADDING:
+        case NGX_QUIC_FT_PATH_CHALLENGE:
+        case NGX_QUIC_FT_PATH_RESPONSE:
+            break;
+
+        /* non-probing frames */
+        default:
+            nonprobing = 1;
+            break;
+        }
 
         switch (frame.type) {
 
@@ -1311,6 +1323,26 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (do_close) {
         qc->draining = 1;
         ngx_quic_close_connection(c, NGX_OK);
+    }
+
+    qsock = ngx_quic_get_socket(c);
+
+    if (qsock != qc->socket) {
+
+        if (qsock->path != qc->socket->path && nonprobing) {
+            /*
+             * An endpoint can migrate a connection to a new local
+             * address by sending packets containing non-probing frames
+             * from that address.
+             */
+            if (ngx_quic_handle_migration(c, pkt) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+        /*
+         * else: packet arrived via non-default socket;
+         *       no reason to change active path
+         */
     }
 
     if (ngx_quic_ack_packet(c, pkt) != NGX_OK) {

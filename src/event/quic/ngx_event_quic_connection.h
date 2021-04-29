@@ -12,7 +12,11 @@
 #include <ngx_event.h>
 
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
+typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
+typedef struct ngx_quic_client_id_s   ngx_quic_client_id_t;
 typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
+typedef struct ngx_quic_socket_s      ngx_quic_socket_t;
+typedef struct ngx_quic_path_s        ngx_quic_path_t;
 typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
 #include <ngx_event_quic_transport.h>
@@ -25,6 +29,7 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 #include <ngx_event_quic_tokens.h>
 #include <ngx_event_quic_ack.h>
 #include <ngx_event_quic_output.h>
+#include <ngx_event_quic_socket.h>
 
 
 /* quic-recovery, section 6.2.2, kInitialRtt */
@@ -47,26 +52,57 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
                                                  : &((qc)->send_ctx[2]))
 
 #define ngx_quic_get_connection(c)                                            \
-    (((c)->udp) ? (((ngx_quic_server_id_t *)((c)->udp))->quic) : NULL)
+    (((c)->udp) ? (((ngx_quic_socket_t *)((c)->udp))->quic) : NULL)
+
+#define ngx_quic_get_socket(c)               ((ngx_quic_socket_t *)((c)->udp))
 
 
-typedef struct {
+struct ngx_quic_client_id_s {
     ngx_queue_t                       queue;
     uint64_t                          seqnum;
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
     u_char                            sr_token[NGX_QUIC_SR_TOKEN_LEN];
-} ngx_quic_client_id_t;
+    ngx_uint_t                        refcnt;
+};
 
 
-typedef struct {
-    ngx_udp_connection_t              udp;
-    ngx_quic_connection_t            *quic;
-    ngx_queue_t                       queue;
+struct ngx_quic_server_id_s {
     uint64_t                          seqnum;
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
-} ngx_quic_server_id_t;
+};
+
+
+struct ngx_quic_path_s {
+    ngx_queue_t                       queue;
+    struct sockaddr                  *sockaddr;
+    socklen_t                         socklen;
+    ngx_uint_t                        state;
+    ngx_msec_t                        expires;
+    ngx_uint_t                        tries;
+    off_t                             sent;
+    off_t                             received;
+    u_char                            challenge1[8];
+    u_char                            challenge2[8];
+    ngx_uint_t                        refcnt;
+    uint64_t                          seqnum;
+    time_t                            validated_at;
+    ngx_str_t                         addr_text;
+    u_char                            text[NGX_SOCKADDR_STRLEN];
+};
+
+
+struct ngx_quic_socket_s {
+    ngx_udp_connection_t              udp;
+    ngx_quic_connection_t            *quic;
+    ngx_queue_t                       queue;
+
+    ngx_quic_server_id_t              sid;
+
+    ngx_quic_path_t                  *path;
+    ngx_quic_client_id_t             *cid;
+};
 
 
 typedef struct {
@@ -138,22 +174,22 @@ struct ngx_quic_send_ctx_s {
 struct ngx_quic_connection_s {
     uint32_t                          version;
 
-    ngx_str_t                         scid;  /* initial client ID */
-    ngx_str_t                         dcid;  /* server (our own) ID */
-    ngx_str_t                         odcid; /* original server ID */
+    ngx_quic_socket_t                *socket;
+    ngx_quic_socket_t                *backup;
 
-    struct sockaddr                  *sockaddr;
-    socklen_t                         socklen;
-
+    ngx_queue_t                       sockets;
+    ngx_queue_t                       paths;
     ngx_queue_t                       client_ids;
-    ngx_queue_t                       server_ids;
+    ngx_queue_t                       free_sockets;
+    ngx_queue_t                       free_paths;
     ngx_queue_t                       free_client_ids;
-    ngx_queue_t                       free_server_ids;
+
+    ngx_uint_t                        nsockets;
     ngx_uint_t                        nclient_ids;
-    ngx_uint_t                        nserver_ids;
     uint64_t                          max_retired_seqnum;
     uint64_t                          client_seqnum;
     uint64_t                          server_seqnum;
+    uint64_t                          path_seqnum;
 
     ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
@@ -170,6 +206,7 @@ struct ngx_quic_connection_s {
     ngx_event_t                       push;
     ngx_event_t                       pto;
     ngx_event_t                       close;
+    ngx_event_t                       path_validation;
     ngx_msec_t                        last_cc;
 
     ngx_msec_t                        latest_rtt;
@@ -190,7 +227,6 @@ struct ngx_quic_connection_s {
 
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
-    off_t                             received;
 
     ngx_uint_t                        error;
     enum ssl_encryption_level_t       error_level;

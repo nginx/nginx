@@ -15,8 +15,8 @@
     /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
 
-static void ngx_quic_address_hash(ngx_connection_t *c, ngx_uint_t no_port,
-    u_char buf[20]);
+static void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
+    ngx_uint_t no_port, u_char buf[20]);
 
 
 ngx_int_t
@@ -46,8 +46,9 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
 
 
 ngx_int_t
-ngx_quic_new_token(ngx_connection_t *c, u_char *key, ngx_str_t *token,
-    ngx_str_t *odcid, time_t exp, ngx_uint_t is_retry)
+ngx_quic_new_token(ngx_connection_t *c, struct sockaddr *sockaddr,
+    socklen_t socklen, u_char *key, ngx_str_t *token, ngx_str_t *odcid,
+    time_t exp, ngx_uint_t is_retry)
 {
     int                len, iv_len;
     u_char            *p, *iv;
@@ -56,7 +57,7 @@ ngx_quic_new_token(ngx_connection_t *c, u_char *key, ngx_str_t *token,
 
     u_char             in[NGX_QUIC_MAX_TOKEN_SIZE];
 
-    ngx_quic_address_hash(c, !is_retry, in);
+    ngx_quic_address_hash(sockaddr, socklen, !is_retry, in);
 
     p = in + 20;
 
@@ -125,7 +126,8 @@ ngx_quic_new_token(ngx_connection_t *c, u_char *key, ngx_str_t *token,
 
 
 static void
-ngx_quic_address_hash(ngx_connection_t *c, ngx_uint_t no_port, u_char buf[20])
+ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
+    ngx_uint_t no_port, u_char buf[20])
 {
     size_t                len;
     u_char               *data;
@@ -135,15 +137,15 @@ ngx_quic_address_hash(ngx_connection_t *c, ngx_uint_t no_port, u_char buf[20])
     struct sockaddr_in6  *sin6;
 #endif
 
-    len = (size_t) c->socklen;
-    data = (u_char *) c->sockaddr;
+    len = (size_t) socklen;
+    data = (u_char *) sockaddr;
 
     if (no_port) {
-        switch (c->sockaddr->sa_family) {
+        switch (sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
         case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) c->sockaddr;
+            sin6 = (struct sockaddr_in6 *) sockaddr;
 
             len = sizeof(struct in6_addr);
             data = sin6->sin6_addr.s6_addr;
@@ -152,7 +154,7 @@ ngx_quic_address_hash(ngx_connection_t *c, ngx_uint_t no_port, u_char buf[20])
 #endif
 
         case AF_INET:
-            sin = (struct sockaddr_in *) c->sockaddr;
+            sin = (struct sockaddr_in *) sockaddr;
 
             len = sizeof(in_addr_t);
             data = (u_char *) &sin->sin_addr;
@@ -236,7 +238,7 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     pkt->retried = (*p++ == 1);
 
-    ngx_quic_address_hash(c, !pkt->retried, addr_hash);
+    ngx_quic_address_hash(c->sockaddr, c->socklen, !pkt->retried, addr_hash);
 
     if (ngx_memcmp(tdec, addr_hash, 20) != 0) {
         goto bad_token;

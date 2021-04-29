@@ -51,14 +51,13 @@ Experimental QUIC support for nginx
       subsequently reference them from header blocks
     + Version Negotiation packet is sent to client with unknown version
     + Lost packets are detected and retransmitted properly
+    + Clients may migrate to new address
 
      Not (yet) supported features:
 
     - Explicit Congestion Notification (ECN) as specified in quic-recovery [5]
     - A connection with the spin bit succeeds and the bit is spinning
     - Structured Logging
-    - NAT Rebinding
-    - Address Mobility
     - HTTP/3 trailers
 
     Since the code is experimental and still under development,

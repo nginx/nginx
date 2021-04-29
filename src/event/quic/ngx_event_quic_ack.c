@@ -722,7 +722,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
-        ctx = &qc->send_ctx[i];
+         ctx = &qc->send_ctx[i];
 
         if (ngx_queue_empty(&ctx->sent)) {
             continue;
