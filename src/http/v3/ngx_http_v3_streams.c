@@ -148,7 +148,7 @@ ngx_http_v3_close_uni_stream(ngx_connection_t *c)
     ngx_http_v3_uni_stream_t  *us;
 
     us = c->data;
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 close stream");
 
@@ -178,7 +178,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
 
     c = rev->data;
     us = c->data;
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read stream type");
 
@@ -410,7 +410,7 @@ ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
         goto failed;
     }
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
     h3c->npushing++;
 
     cln->handler = ngx_http_v3_push_cleanup;
@@ -466,7 +466,7 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
         index = -1;
     }
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     if (index >= 0) {
         if (h3c->known_streams[index]) {
@@ -525,7 +525,7 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
     ngx_http_v3_srv_conf_t    *h3scf;
     ngx_http_v3_connection_t  *h3c;
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
 
@@ -837,7 +837,7 @@ ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
 {
     ngx_http_v3_connection_t  *h3c;
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 MAX_PUSH_ID:%uL", max_push_id);
@@ -860,7 +860,7 @@ ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
     ngx_http_v3_push_t        *push;
     ngx_http_v3_connection_t  *h3c;
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 CANCEL_PUSH:%uL", push_id);

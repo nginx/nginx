@@ -81,7 +81,7 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     if (h3c->goaway) {
         ngx_quic_reset_stream(c, NGX_HTTP_V3_ERR_REQUEST_REJECTED);
@@ -188,7 +188,7 @@ ngx_http_v3_cleanup_request(void *data)
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_v3_connection_t  *h3c;
 
-    h3c = c->quic->parent->data;
+    h3c = ngx_http_v3_get_session(c);
 
     if (--h3c->nrequests == 0) {
         clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);

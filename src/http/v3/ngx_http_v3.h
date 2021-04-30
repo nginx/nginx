@@ -74,6 +74,9 @@
 #define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
 
 
+#define ngx_http_v3_get_session(c)                                            \
+    ((ngx_http_v3_connection_t *) (c)->quic->parent->data)
+
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
     ngx_http_get_module_loc_conf(                                             \
            ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
