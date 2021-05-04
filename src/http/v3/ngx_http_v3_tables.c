@@ -390,9 +390,9 @@ ngx_http_v3_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 ack header %ui", stream_id);
 
-    /* XXX */
+    /* we do not use dynamic tables */
 
-    return NGX_OK;
+    return NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR;
 }
 
 
@@ -402,7 +402,7 @@ ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 cancel stream %ui", stream_id);
 
-    /* XXX */
+    /* we do not use dynamic tables */
 
     return NGX_OK;
 }
@@ -414,9 +414,9 @@ ngx_http_v3_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 increment insert count %ui", inc);
 
-    /* XXX */
+    /* we do not use dynamic tables */
 
-    return NGX_OK;
+    return NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR;
 }
 
 
