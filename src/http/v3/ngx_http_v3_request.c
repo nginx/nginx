@@ -59,7 +59,7 @@ ngx_http_v3_init(ngx_connection_t *c)
     ngx_pool_cleanup_t        *cln;
     ngx_http_request_t        *r;
     ngx_http_connection_t     *hc;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
@@ -185,8 +185,8 @@ ngx_http_v3_cleanup_request(void *data)
 {
     ngx_connection_t  *c = data;
 
+    ngx_http_v3_session_t     *h3c;
     ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_v3_connection_t  *h3c;
 
     h3c = ngx_http_v3_get_session(c);
 

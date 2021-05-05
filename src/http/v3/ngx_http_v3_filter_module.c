@@ -775,12 +775,12 @@ static ngx_int_t
 ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
     ngx_chain_t ***ll)
 {
-    uint64_t                   push_id;
-    ngx_int_t                  rc;
-    ngx_chain_t               *cl;
-    ngx_connection_t          *c;
-    ngx_http_v3_srv_conf_t    *h3scf;
-    ngx_http_v3_connection_t  *h3c;
+    uint64_t                 push_id;
+    ngx_int_t                rc;
+    ngx_chain_t             *cl;
+    ngx_connection_t        *c;
+    ngx_http_v3_session_t   *h3c;
+    ngx_http_v3_srv_conf_t  *h3scf;
 
     c = r->connection;
     h3c = ngx_http_v3_get_session(c);
@@ -838,8 +838,8 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     ngx_http_request_t        *r;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_connection_t     *hc;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_v3_connection_t  *h3c;
 
     pc = pr->connection;
 

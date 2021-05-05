@@ -47,7 +47,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     ngx_connection_t          *pc;
     ngx_pool_cleanup_t        *cln;
     ngx_http_connection_t     *hc;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t     *h3c;
 
     pc = c->quic->parent;
     hc = pc->data;
@@ -58,7 +58,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init session");
 
-    h3c = ngx_pcalloc(pc->pool, sizeof(ngx_http_v3_connection_t));
+    h3c = ngx_pcalloc(pc->pool, sizeof(ngx_http_v3_session_t));
     if (h3c == NULL) {
         return NGX_ERROR;
     }
@@ -104,7 +104,7 @@ ngx_http_v3_keepalive_handler(ngx_event_t *ev)
 static void
 ngx_http_v3_cleanup_session(void *data)
 {
-    ngx_http_v3_connection_t  *h3c = data;
+    ngx_http_v3_session_t  *h3c = data;
 
     if (h3c->keepalive.timer_set) {
         ngx_del_timer(&h3c->keepalive);
@@ -142,7 +142,7 @@ static void
 ngx_http_v3_close_uni_stream(ngx_connection_t *c)
 {
     ngx_pool_t                *pool;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
     us = c->data;
@@ -171,7 +171,7 @@ ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
     ssize_t                    n;
     ngx_int_t                  index, rc;
     ngx_connection_t          *c;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
     c = rev->data;
@@ -379,12 +379,12 @@ ngx_http_v3_dummy_write_handler(ngx_event_t *wev)
 ngx_connection_t *
 ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
 {
-    u_char                    *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 2];
-    size_t                     n;
-    ngx_connection_t          *sc;
-    ngx_pool_cleanup_t        *cln;
-    ngx_http_v3_push_t        *push;
-    ngx_http_v3_connection_t  *h3c;
+    u_char                 *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 2];
+    size_t                  n;
+    ngx_connection_t       *sc;
+    ngx_pool_cleanup_t     *cln;
+    ngx_http_v3_push_t     *push;
+    ngx_http_v3_session_t  *h3c;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 create push stream id:%uL", push_id);
@@ -447,7 +447,7 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     size_t                     n;
     ngx_int_t                  index;
     ngx_connection_t          *sc;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
     switch (type) {
@@ -830,7 +830,7 @@ ngx_http_v3_client_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
 ngx_int_t
 ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
 {
-    ngx_http_v3_connection_t  *h3c;
+    ngx_http_v3_session_t  *h3c;
 
     h3c = ngx_http_v3_get_session(c);
 
@@ -850,10 +850,10 @@ ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
 ngx_int_t
 ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
 {
-    ngx_queue_t               *q;
-    ngx_http_request_t        *r;
-    ngx_http_v3_push_t        *push;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_queue_t            *q;
+    ngx_http_request_t     *r;
+    ngx_http_v3_push_t     *push;
+    ngx_http_v3_session_t  *h3c;
 
     h3c = ngx_http_v3_get_session(c);
 

@@ -319,7 +319,7 @@ typedef struct {
 #endif
 
 #if (NGX_HTTP_V3 || NGX_COMPAT)
-    ngx_http_v3_connection_t         *v3_session;
+    ngx_http_v3_session_t            *v3_session;
 #endif
 
     ngx_chain_t                      *busy;

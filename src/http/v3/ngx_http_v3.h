@@ -127,7 +127,7 @@ typedef struct {
 } ngx_http_v3_dynamic_table_t;
 
 
-struct ngx_http_v3_connection_s {
+struct ngx_http_v3_session_s {
     ngx_http_v3_dynamic_table_t   table;
 
     ngx_event_t                   keepalive;

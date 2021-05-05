@@ -189,7 +189,7 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
     u_char                       *p;
     size_t                        size;
     ngx_http_v3_header_t         *h;
-    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     size = ngx_http_v3_table_entry_size(name, value);
@@ -243,8 +243,8 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
     ngx_connection_t              *pc;
     ngx_pool_cleanup_t            *cln;
     ngx_http_v3_header_t         **elts;
+    ngx_http_v3_session_t         *h3c;
     ngx_http_v3_srv_conf_t        *h3scf;
-    ngx_http_v3_connection_t      *h3c;
     ngx_http_v3_dynamic_table_t   *dt;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -322,7 +322,7 @@ ngx_http_v3_evict(ngx_connection_t *c, size_t need)
     size_t                        size, target;
     ngx_uint_t                    n;
     ngx_http_v3_header_t         *h;
-    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     h3c = ngx_http_v3_get_session(c);
@@ -363,7 +363,7 @@ ngx_int_t
 ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index)
 {
     ngx_str_t                     name, value;
-    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 duplicate %ui", index);
@@ -449,7 +449,7 @@ ngx_http_v3_lookup(ngx_connection_t *c, ngx_uint_t index, ngx_str_t *name,
     ngx_str_t *value)
 {
     ngx_http_v3_header_t         *h;
-    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     h3c = ngx_http_v3_get_session(c);
@@ -486,7 +486,7 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
     ngx_uint_t                    max_entries, full_range, max_value,
                                   max_wrapped, req_insert_count;
     ngx_http_v3_srv_conf_t       *h3scf;
-    ngx_http_v3_connection_t     *h3c;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     /* QPACK 4.5.1.1. Required Insert Count */
@@ -539,8 +539,8 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
     size_t                        n;
     ngx_pool_cleanup_t           *cln;
     ngx_http_v3_block_t          *block;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_v3_srv_conf_t       *h3scf;
-    ngx_http_v3_connection_t     *h3c;
     ngx_http_v3_dynamic_table_t  *dt;
 
     h3c = ngx_http_v3_get_session(c);
@@ -617,10 +617,10 @@ ngx_http_v3_unblock(void *data)
 static ngx_int_t
 ngx_http_v3_new_header(ngx_connection_t *c)
 {
-    ngx_queue_t               *q;
-    ngx_connection_t          *bc;
-    ngx_http_v3_block_t       *block;
-    ngx_http_v3_connection_t  *h3c;
+    ngx_queue_t            *q;
+    ngx_connection_t       *bc;
+    ngx_http_v3_block_t    *block;
+    ngx_http_v3_session_t  *h3c;
 
     h3c = ngx_http_v3_get_session(c);
 
