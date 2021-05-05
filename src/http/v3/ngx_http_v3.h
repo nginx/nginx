@@ -12,7 +12,11 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+
 #include <ngx_http_v3_parse.h>
+#include <ngx_http_v3_encode.h>
+#include <ngx_http_v3_streams.h>
+#include <ngx_http_v3_tables.h>
 
 
 #define NGX_HTTP_V3_ALPN_ADVERTISE                 "\x02h3"
@@ -112,21 +116,6 @@ struct ngx_http_v3_parse_s {
 };
 
 
-typedef struct {
-    ngx_str_t                     name;
-    ngx_str_t                     value;
-} ngx_http_v3_header_t;
-
-
-typedef struct {
-    ngx_http_v3_header_t        **elts;
-    ngx_uint_t                    nelts;
-    ngx_uint_t                    base;
-    size_t                        size;
-    size_t                        capacity;
-} ngx_http_v3_dynamic_table_t;
-
-
 struct ngx_http_v3_session_s {
     ngx_http_v3_dynamic_table_t   table;
 
@@ -148,67 +137,10 @@ struct ngx_http_v3_session_s {
 
 
 void ngx_http_v3_init(ngx_connection_t *c);
+ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
+
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
-
-uintptr_t ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value);
-uintptr_t ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value,
-    ngx_uint_t prefix);
-
-uintptr_t ngx_http_v3_encode_header_block_prefix(u_char *p,
-    ngx_uint_t insert_count, ngx_uint_t sign, ngx_uint_t delta_base);
-uintptr_t ngx_http_v3_encode_header_ri(u_char *p, ngx_uint_t dynamic,
-    ngx_uint_t index);
-uintptr_t ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic,
-    ngx_uint_t index, u_char *data, size_t len);
-uintptr_t ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name,
-    ngx_str_t *value);
-uintptr_t ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index);
-uintptr_t ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index,
-    u_char *data, size_t len);
-
-ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
-void ngx_http_v3_init_uni_stream(ngx_connection_t *c);
-ngx_int_t ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type);
-ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
-    uint64_t push_id);
-ngx_int_t ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id);
-ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
-    ngx_uint_t index, ngx_str_t *value);
-ngx_int_t ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
-    ngx_str_t *value);
-ngx_int_t ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity);
-ngx_int_t ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index);
-ngx_int_t ngx_http_v3_ack_header(ngx_connection_t *c, ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc);
-ngx_int_t ngx_http_v3_lookup_static(ngx_connection_t *c, ngx_uint_t index,
-    ngx_str_t *name, ngx_str_t *value);
-ngx_int_t ngx_http_v3_lookup(ngx_connection_t *c, ngx_uint_t index,
-    ngx_str_t *name, ngx_str_t *value);
-ngx_int_t ngx_http_v3_decode_insert_count(ngx_connection_t *c,
-    ngx_uint_t *insert_count);
-ngx_int_t ngx_http_v3_check_insert_count(ngx_connection_t *c,
-    ngx_uint_t insert_count);
-ngx_int_t ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id,
-    uint64_t value);
-ngx_int_t ngx_http_v3_set_max_push_id(ngx_connection_t *c,
-    uint64_t max_push_id);
-ngx_int_t ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id);
-
-ngx_int_t ngx_http_v3_send_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
-    ngx_uint_t index, ngx_str_t *value);
-ngx_int_t ngx_http_v3_send_insert(ngx_connection_t *c, ngx_str_t *name,
-    ngx_str_t *value);
-ngx_int_t ngx_http_v3_send_set_capacity(ngx_connection_t *c,
-    ngx_uint_t capacity);
-ngx_int_t ngx_http_v3_send_duplicate(ngx_connection_t *c, ngx_uint_t index);
-ngx_int_t ngx_http_v3_send_ack_header(ngx_connection_t *c,
-    ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_send_cancel_stream(ngx_connection_t *c,
-    ngx_uint_t stream_id);
-ngx_int_t ngx_http_v3_send_inc_insert_count(ngx_connection_t *c,
-    ngx_uint_t inc);
 
 
 extern ngx_module_t  ngx_http_v3_module;
