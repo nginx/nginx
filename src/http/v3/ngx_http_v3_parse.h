@@ -108,6 +108,17 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                      state;
+    ngx_http_v3_parse_varlen_int_t  vlint;
+    union {
+        ngx_http_v3_parse_encoder_t  encoder;
+        ngx_http_v3_parse_decoder_t  decoder;
+        ngx_http_v3_parse_control_t  control;
+    } u;
+} ngx_http_v3_parse_uni_t;
+
+
+typedef struct {
+    ngx_uint_t                      state;
     ngx_uint_t                      type;
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
@@ -128,10 +139,8 @@ ngx_int_t ngx_http_v3_parse_headers(ngx_connection_t *c,
     ngx_http_v3_parse_headers_t *st, u_char ch);
 ngx_int_t ngx_http_v3_parse_data(ngx_connection_t *c,
     ngx_http_v3_parse_data_t *st, u_char ch);
-
-ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch);
-ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch);
-ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch);
+ngx_int_t ngx_http_v3_parse_uni(ngx_connection_t *c,
+    ngx_http_v3_parse_uni_t *st, u_char ch);
 
 
 #endif /* _NGX_HTTP_V3_PARSE_H_INCLUDED_ */

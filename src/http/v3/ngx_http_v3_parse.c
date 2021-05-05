@@ -14,9 +14,6 @@
     ((type) == 0x02 || (type) == 0x06 || (type) == 0x08 || (type) == 0x09)
 
 
-static ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
-    ngx_http_v3_parse_settings_t *st, u_char ch);
-
 static ngx_int_t ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
     ngx_http_v3_parse_varlen_int_t *st, u_char ch);
 static ngx_int_t ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
@@ -39,10 +36,20 @@ static ngx_int_t ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
 static ngx_int_t ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch);
 
+static ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c,
+    ngx_http_v3_parse_control_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
+    ngx_http_v3_parse_settings_t *st, u_char ch);
+
+static ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c,
+    ngx_http_v3_parse_encoder_t *st, u_char ch);
 static ngx_int_t ngx_http_v3_parse_header_inr(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch);
 static ngx_int_t ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
     ngx_http_v3_parse_header_t *st, u_char ch);
+
+static ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c,
+    ngx_http_v3_parse_decoder_t *st, u_char ch);
 
 static ngx_int_t ngx_http_v3_parse_lookup(ngx_connection_t *c,
     ngx_uint_t dynamic, ngx_uint_t index, ngx_str_t *name, ngx_str_t *value);
@@ -986,11 +993,10 @@ ngx_http_v3_parse_lookup(ngx_connection_t *c, ngx_uint_t dynamic,
 }
 
 
-ngx_int_t
-ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
+static ngx_int_t
+ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
+    u_char ch)
 {
-    ngx_http_v3_parse_control_t *st = data;
-
     ngx_int_t  rc;
     enum {
         sw_start = 0,
@@ -1208,11 +1214,10 @@ done:
 }
 
 
-ngx_int_t
-ngx_http_v3_parse_encoder(ngx_connection_t *c, void *data, u_char ch)
+static ngx_int_t
+ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
+    u_char ch)
 {
-    ngx_http_v3_parse_encoder_t *st = data;
-
     ngx_int_t  rc;
     enum {
         sw_start = 0,
@@ -1500,11 +1505,10 @@ done:
 }
 
 
-ngx_int_t
-ngx_http_v3_parse_decoder(ngx_connection_t *c, void *data, u_char ch)
+static ngx_int_t
+ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
+    u_char ch)
 {
-    ngx_http_v3_parse_decoder_t *st = data;
-
     ngx_int_t  rc;
     enum {
         sw_start = 0,
@@ -1673,4 +1677,93 @@ done:
 
     st->state = sw_start;
     return NGX_DONE;
+}
+
+
+ngx_int_t
+ngx_http_v3_parse_uni(ngx_connection_t *c, ngx_http_v3_parse_uni_t *st,
+    u_char ch)
+{
+    ngx_int_t  rc;
+    enum {
+        sw_start = 0,
+        sw_type,
+        sw_control,
+        sw_encoder,
+        sw_decoder,
+        sw_unknown
+    };
+
+    switch (st->state) {
+    case sw_start:
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse uni");
+
+        st->state = sw_type;
+
+        /* fall through */
+
+    case sw_type:
+
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+        if (rc != NGX_DONE) {
+            return rc;
+        }
+
+        rc = ngx_http_v3_register_uni_stream(c, st->vlint.value);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        switch (st->vlint.value) {
+        case NGX_HTTP_V3_STREAM_CONTROL:
+            st->state = sw_control;
+            break;
+
+        case NGX_HTTP_V3_STREAM_ENCODER:
+            st->state = sw_encoder;
+            break;
+
+        case NGX_HTTP_V3_STREAM_DECODER:
+            st->state = sw_decoder;
+            break;
+
+        default:
+            st->state = sw_unknown;
+        }
+
+        break;
+
+    case sw_control:
+
+        rc = ngx_http_v3_parse_control(c, &st->u.control, ch);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        break;
+
+    case sw_encoder:
+
+        rc = ngx_http_v3_parse_encoder(c, &st->u.encoder, ch);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        break;
+
+    case sw_decoder:
+
+        rc = ngx_http_v3_parse_decoder(c, &st->u.decoder, ch);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        break;
+
+    case sw_unknown:
+        break;
+    }
+
+    return NGX_AGAIN;
 }

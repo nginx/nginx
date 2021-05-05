@@ -10,13 +10,8 @@
 #include <ngx_http.h>
 
 
-typedef ngx_int_t (*ngx_http_v3_handler_pt)(ngx_connection_t *c, void *data,
-    u_char ch);
-
-
 typedef struct {
-    ngx_http_v3_handler_pt          handler;
-    void                           *data;
+    ngx_http_v3_parse_uni_t         parse;
     ngx_int_t                       index;
 } ngx_http_v3_uni_stream_t;
 
@@ -32,7 +27,6 @@ typedef struct {
 static void ngx_http_v3_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_v3_cleanup_session(void *data);
 static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
-static void ngx_http_v3_read_uni_stream_type(ngx_event_t *rev);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static void ngx_http_v3_dummy_write_handler(ngx_event_t *wev);
 static void ngx_http_v3_push_cleanup(void *data);
@@ -131,10 +125,10 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 
     c->data = us;
 
-    c->read->handler = ngx_http_v3_read_uni_stream_type;
+    c->read->handler = ngx_http_v3_uni_read_handler;
     c->write->handler = ngx_http_v3_dummy_write_handler;
 
-    ngx_http_v3_read_uni_stream_type(c->read);
+    ngx_http_v3_uni_read_handler(c->read);
 }
 
 
@@ -164,118 +158,59 @@ ngx_http_v3_close_uni_stream(ngx_connection_t *c)
 }
 
 
-static void
-ngx_http_v3_read_uni_stream_type(ngx_event_t *rev)
+ngx_int_t
+ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type)
 {
-    u_char                     ch;
-    ssize_t                    n;
-    ngx_int_t                  index, rc;
-    ngx_connection_t          *c;
+    ngx_int_t                  index;
     ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
-    c = rev->data;
-    us = c->data;
-    h3c = ngx_http_v3_get_session(c);
+    switch (type) {
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read stream type");
+    case NGX_HTTP_V3_STREAM_ENCODER:
 
-    while (rev->ready) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 encoder stream");
+        index = NGX_HTTP_V3_STREAM_CLIENT_ENCODER;
+        break;
 
-        n = c->recv(c, &ch, 1);
+    case NGX_HTTP_V3_STREAM_DECODER:
 
-        if (n == NGX_AGAIN) {
-            break;
-        }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 decoder stream");
+        index = NGX_HTTP_V3_STREAM_CLIENT_DECODER;
+        break;
 
-        if (n == 0) {
-            rc = NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR;
-            goto failed;
-        }
+    case NGX_HTTP_V3_STREAM_CONTROL:
 
-        if (n != 1) {
-            rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
-            goto failed;
-        }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 control stream");
+        index = NGX_HTTP_V3_STREAM_CLIENT_CONTROL;
 
-        switch (ch) {
+        break;
 
-        case NGX_HTTP_V3_STREAM_ENCODER:
+    default:
 
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http3 encoder stream");
-
-            index = NGX_HTTP_V3_STREAM_CLIENT_ENCODER;
-            us->handler = ngx_http_v3_parse_encoder;
-            n = sizeof(ngx_http_v3_parse_encoder_t);
-
-            break;
-
-        case NGX_HTTP_V3_STREAM_DECODER:
-
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http3 decoder stream");
-
-            index = NGX_HTTP_V3_STREAM_CLIENT_DECODER;
-            us->handler = ngx_http_v3_parse_decoder;
-            n = sizeof(ngx_http_v3_parse_decoder_t);
-
-            break;
-
-        case NGX_HTTP_V3_STREAM_CONTROL:
-
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http3 control stream");
-
-            index = NGX_HTTP_V3_STREAM_CLIENT_CONTROL;
-            us->handler = ngx_http_v3_parse_control;
-            n = sizeof(ngx_http_v3_parse_control_t);
-
-            break;
-
-        default:
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http3 stream 0x%02xi", (ngx_int_t) ch);
-            index = -1;
-            n = 0;
-        }
-
-        if (index >= 0) {
-            if (h3c->known_streams[index]) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream exists");
-                rc = NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR;
-                goto failed;
-            }
-
-            us->index = index;
-            h3c->known_streams[index] = c;
-        }
-
-        if (n) {
-            us->data = ngx_pcalloc(c->pool, n);
-            if (us->data == NULL) {
-                rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
-                goto failed;
-            }
-        }
-
-        rev->handler = ngx_http_v3_uni_read_handler;
-        ngx_http_v3_uni_read_handler(rev);
-        return;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 stream 0x%02xL", type);
+        index = -1;
     }
 
-    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-        rc = NGX_HTTP_V3_ERR_INTERNAL_ERROR;
-        goto failed;
+    if (index >= 0) {
+        h3c = ngx_http_v3_get_session(c);
+
+        if (h3c->known_streams[index]) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream exists");
+            return NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR;
+        }
+
+        h3c->known_streams[index] = c;
+
+        us = c->data;
+        us->index = index;
     }
 
-    return;
-
-failed:
-
-    ngx_http_v3_finalize_connection(c, rc, "could not read stream type");
-    ngx_http_v3_close_uni_stream(c);
+    return NGX_OK;
 }
 
 
@@ -317,13 +252,9 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
             break;
         }
 
-        if (us->handler == NULL) {
-            continue;
-        }
-
         for (i = 0; i < n; i++) {
 
-            rc = us->handler(c, us->data, buf[i]);
+            rc = ngx_http_v3_parse_uni(c, &us->parse, buf[i]);
 
             if (rc == NGX_DONE) {
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,

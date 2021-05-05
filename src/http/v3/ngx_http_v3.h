@@ -169,6 +169,7 @@ uintptr_t ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index,
 
 ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 void ngx_http_v3_init_uni_stream(ngx_connection_t *c);
+ngx_int_t ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type);
 ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
     uint64_t push_id);
 ngx_int_t ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id);
