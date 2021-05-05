@@ -891,3 +891,15 @@ ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
+{
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 cancel stream %ui", stream_id);
+
+    /* we do not use dynamic tables */
+
+    return NGX_OK;
+}
