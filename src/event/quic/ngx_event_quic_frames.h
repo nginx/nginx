@@ -28,6 +28,7 @@ ngx_chain_t *ngx_quic_copy_buf(ngx_connection_t *c, u_char *data,
     size_t len);
 ngx_chain_t *ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in,
     size_t limit);
+void ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in);
 
 ngx_int_t ngx_quic_handle_ordered_frame(ngx_connection_t *c,
     ngx_quic_frames_stream_t *fs, ngx_quic_frame_t *frame,

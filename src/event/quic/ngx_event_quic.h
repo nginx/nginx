@@ -79,7 +79,8 @@ struct ngx_quic_stream_s {
     uint64_t                   id;
     uint64_t                   acked;
     uint64_t                   send_max_data;
-    ngx_buf_t                 *b;
+    uint64_t                   recv_max_data;
+    ngx_chain_t               *in;
     ngx_quic_frames_stream_t  *fs;
     ngx_uint_t                 cancelable;  /* unsigned  cancelable:1; */
 };

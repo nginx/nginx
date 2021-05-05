@@ -432,8 +432,6 @@ ngx_quic_detect_lost(ngx_connection_t *c)
 void
 ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
-    size_t                  n;
-    ngx_buf_t              *b;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f, *start;
     ngx_quic_stream_t      *qs;
@@ -497,13 +495,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
                 break;
             }
 
-            b = qs->b;
-            n = qs->fs->received + (b->pos - b->start) + (b->end - b->last);
-
-            if (f->u.max_stream_data.limit < n) {
-                f->u.max_stream_data.limit = n;
-            }
-
+            f->u.max_stream_data.limit = qs->recv_max_data;
             ngx_quic_queue_frame(qc, f);
             break;
 

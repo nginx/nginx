@@ -13,7 +13,6 @@
 #define NGX_QUIC_BUFFER_SIZE  4096
 
 
-static void ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in);
 static ngx_chain_t *ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in,
     size_t len);
 
@@ -84,7 +83,7 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
 }
 
 
-static void
+void
 ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in)
 {
     ngx_buf_t              *b, *shadow;
