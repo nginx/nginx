@@ -357,6 +357,8 @@ ngx_http_auth_basic_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    conf->realm = NGX_CONF_UNSET_PTR;
+
     return conf;
 }
 
@@ -367,9 +369,7 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_auth_basic_loc_conf_t  *prev = parent;
     ngx_http_auth_basic_loc_conf_t  *conf = child;
 
-    if (conf->realm == NULL) {
-        conf->realm = prev->realm;
-    }
+    ngx_conf_merge_ptr_value(conf->realm, prev->realm, NULL);
 
     if (conf->user_file.value.data == NULL) {
         conf->user_file = prev->user_file;

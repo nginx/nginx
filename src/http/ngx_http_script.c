@@ -250,7 +250,7 @@ ngx_http_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cv = (ngx_http_complex_value_t **) (p + cmd->offset);
 
-    if (*cv != NULL) {
+    if (*cv != NGX_CONF_UNSET_PTR && *cv != NULL) {
         return "is duplicate";
     }
 

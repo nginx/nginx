@@ -1977,14 +1977,11 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
      *
      *     conf->ssl_protocols = 0;
      *     conf->ssl_ciphers = { 0, NULL };
-     *     conf->ssl_name = NULL;
      *     conf->ssl_trusted_certificate = { 0, NULL };
      *     conf->ssl_crl = { 0, NULL };
      *     conf->ssl_certificate = { 0, NULL };
      *     conf->ssl_certificate_key = { 0, NULL };
      *
-     *     conf->upload_rate = NULL;
-     *     conf->download_rate = NULL;
      *     conf->ssl = NULL;
      *     conf->upstream = NULL;
      *     conf->upstream_value = NULL;
@@ -1994,6 +1991,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->timeout = NGX_CONF_UNSET_MSEC;
     conf->next_upstream_timeout = NGX_CONF_UNSET_MSEC;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->upload_rate = NGX_CONF_UNSET_PTR;
+    conf->download_rate = NGX_CONF_UNSET_PTR;
     conf->requests = NGX_CONF_UNSET_UINT;
     conf->responses = NGX_CONF_UNSET_UINT;
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
@@ -2005,6 +2004,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
 #if (NGX_STREAM_SSL)
     conf->ssl_enable = NGX_CONF_UNSET;
     conf->ssl_session_reuse = NGX_CONF_UNSET;
+    conf->ssl_name = NGX_CONF_UNSET_PTR;
     conf->ssl_server_name = NGX_CONF_UNSET;
     conf->ssl_verify = NGX_CONF_UNSET;
     conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
@@ -2034,13 +2034,9 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->buffer_size,
                               prev->buffer_size, 16384);
 
-    if (conf->upload_rate == NULL) {
-        conf->upload_rate = prev->upload_rate;
-    }
+    ngx_conf_merge_ptr_value(conf->upload_rate, prev->upload_rate, NULL);
 
-    if (conf->download_rate == NULL) {
-        conf->download_rate = prev->download_rate;
-    }
+    ngx_conf_merge_ptr_value(conf->download_rate, prev->download_rate, NULL);
 
     ngx_conf_merge_uint_value(conf->requests,
                               prev->requests, 0);
@@ -2073,9 +2069,7 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->ssl_ciphers, prev->ssl_ciphers, "DEFAULT");
 
-    if (conf->ssl_name == NULL) {
-        conf->ssl_name = prev->ssl_name;
-    }
+    ngx_conf_merge_ptr_value(conf->ssl_name, prev->ssl_name, NULL);
 
     ngx_conf_merge_value(conf->ssl_server_name, prev->ssl_server_name, 0);
 

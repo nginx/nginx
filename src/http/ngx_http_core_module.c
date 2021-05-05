@@ -3479,8 +3479,6 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     clcf->exact_match = 0;
      *     clcf->auto_redirect = 0;
      *     clcf->alias = 0;
-     *     clcf->limit_rate = NULL;
-     *     clcf->limit_rate_after = NULL;
      *     clcf->gzip_proxied = 0;
      *     clcf->keepalive_disable = 0;
      */
@@ -3512,6 +3510,8 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->send_timeout = NGX_CONF_UNSET_MSEC;
     clcf->send_lowat = NGX_CONF_UNSET_SIZE;
     clcf->postpone_output = NGX_CONF_UNSET_SIZE;
+    clcf->limit_rate = NGX_CONF_UNSET_PTR;
+    clcf->limit_rate_after = NGX_CONF_UNSET_PTR;
     clcf->keepalive_time = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
@@ -3743,13 +3743,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
                               1460);
 
-    if (conf->limit_rate == NULL) {
-        conf->limit_rate = prev->limit_rate;
-    }
-
-    if (conf->limit_rate_after == NULL) {
-        conf->limit_rate_after = prev->limit_rate_after;
-    }
+    ngx_conf_merge_ptr_value(conf->limit_rate, prev->limit_rate, NULL);
+    ngx_conf_merge_ptr_value(conf->limit_rate_after,
+                              prev->limit_rate_after, NULL);
 
     ngx_conf_merge_msec_value(conf->keepalive_time,
                               prev->keepalive_time, 3600000);
