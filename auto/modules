@@ -431,7 +431,8 @@ if [ $HTTP = YES ]; then
                          src/http/v3/ngx_http_v3_parse.h \
                          src/http/v3/ngx_http_v3_tables.h \
                          src/http/v3/ngx_http_v3_streams.h"
-        ngx_module_srcs="src/http/v3/ngx_http_v3_encode.c \
+        ngx_module_srcs="src/http/v3/ngx_http_v3.c \
+                         src/http/v3/ngx_http_v3_encode.c \
                          src/http/v3/ngx_http_v3_parse.c \
                          src/http/v3/ngx_http_v3_tables.c \
                          src/http/v3/ngx_http_v3_streams.c \

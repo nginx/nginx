@@ -24,6 +24,7 @@ ngx_int_t ngx_http_v3_set_max_push_id(ngx_connection_t *c,
 ngx_int_t ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id);
 ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
 
+ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id);
 ngx_int_t ngx_http_v3_send_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
