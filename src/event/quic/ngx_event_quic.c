@@ -1265,8 +1265,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_PATH_CHALLENGE:
 
-            if (ngx_quic_handle_path_challenge_frame(c, pkt,
-                                                     &frame.u.path_challenge)
+            if (ngx_quic_handle_path_challenge_frame(c, &frame.u.path_challenge)
                 != NGX_OK)
             {
                 return NGX_ERROR;
@@ -1276,8 +1275,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_PATH_RESPONSE:
 
-            if (ngx_quic_handle_path_response_frame(c, pkt,
-                                                    &frame.u.path_response)
+            if (ngx_quic_handle_path_response_frame(c, &frame.u.path_response)
                 != NGX_OK)
             {
                 return NGX_ERROR;
@@ -1287,7 +1285,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_NEW_CONNECTION_ID:
 
-            if (ngx_quic_handle_new_connection_id_frame(c, pkt, &frame.u.ncid)
+            if (ngx_quic_handle_new_connection_id_frame(c, &frame.u.ncid)
                 != NGX_OK)
             {
                 return NGX_ERROR;
@@ -1297,7 +1295,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_RETIRE_CONNECTION_ID:
 
-            if (ngx_quic_handle_retire_connection_id_frame(c, pkt,
+            if (ngx_quic_handle_retire_connection_id_frame(c,
                                                            &frame.u.retire_cid)
                 != NGX_OK)
             {

@@ -13,9 +13,9 @@
 
 
 ngx_int_t ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_retire_cid_frame_t *f);
+    ngx_quic_retire_cid_frame_t *f);
 ngx_int_t ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f);
+    ngx_quic_new_conn_id_frame_t *f);
 
 ngx_int_t ngx_quic_create_sockets(ngx_connection_t *c);
 ngx_int_t ngx_quic_create_server_id(ngx_connection_t *c, u_char *id);

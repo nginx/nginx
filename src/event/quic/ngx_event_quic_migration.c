@@ -22,7 +22,7 @@ static ngx_quic_path_t *ngx_quic_alloc_path(ngx_connection_t *c);
 
 ngx_int_t
 ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
+    ngx_quic_path_challenge_frame_t *f)
 {
     off_t                   max, pad;
     ssize_t                 sent;
@@ -33,7 +33,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
-    frame.level = pkt->level;
+    frame.level = ssl_encryption_application;
     frame.type = NGX_QUIC_FT_PATH_RESPONSE;
     frame.u.path_response = *f;
 
@@ -70,7 +70,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
             return NGX_ERROR;
         }
 
-        fp->level = pkt->level;
+        fp->level = ssl_encryption_application;
         fp->type = NGX_QUIC_FT_PING;
 
         ngx_quic_queue_frame(qc, fp);
@@ -82,7 +82,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
 ngx_int_t
 ngx_quic_handle_path_response_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
+    ngx_quic_path_challenge_frame_t *f)
 {
     ngx_queue_t            *q;
     ngx_quic_path_t        *path, *prev;
@@ -556,7 +556,6 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     if (!qc->path_validation.timer_set) {
         ngx_add_timer(&qc->path_validation, pto);
     }
-
 
     return NGX_OK;
 }

@@ -26,9 +26,9 @@
 
 
 ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
+    ngx_quic_path_challenge_frame_t *f);
 ngx_int_t ngx_quic_handle_path_response_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
+    ngx_quic_path_challenge_frame_t *f);
 
 ngx_quic_path_t *ngx_quic_add_path(ngx_connection_t *c,
     struct sockaddr *sockaddr, socklen_t socklen);

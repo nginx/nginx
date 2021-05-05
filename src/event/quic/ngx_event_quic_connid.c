@@ -16,7 +16,7 @@
 static ngx_int_t ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id);
 #endif
 static ngx_int_t ngx_quic_send_retire_connection_id(ngx_connection_t *c,
-    enum ssl_encryption_level_t level, uint64_t seqnum);
+    uint64_t seqnum);
 
 static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
@@ -75,7 +75,7 @@ ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id)
 
 ngx_int_t
 ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_new_conn_id_frame_t *f)
+    ngx_quic_new_conn_id_frame_t *f)
 {
     ngx_str_t               id;
     ngx_queue_t            *q;
@@ -94,9 +94,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
          *  done so for that sequence number.
          */
 
-        if (ngx_quic_send_retire_connection_id(c, pkt->level, f->seqnum)
-            != NGX_OK)
-        {
+        if (ngx_quic_send_retire_connection_id(c, f->seqnum) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -174,9 +172,7 @@ retire:
 
         /* this connection id must be retired */
 
-        if (ngx_quic_send_retire_connection_id(c, pkt->level, cid->seqnum)
-            != NGX_OK)
-        {
+        if (ngx_quic_send_retire_connection_id(c, cid->seqnum) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -210,8 +206,7 @@ done:
 
 
 static ngx_int_t
-ngx_quic_send_retire_connection_id(ngx_connection_t *c,
-    enum ssl_encryption_level_t level, uint64_t seqnum)
+ngx_quic_send_retire_connection_id(ngx_connection_t *c, uint64_t seqnum)
 {
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -223,7 +218,7 @@ ngx_quic_send_retire_connection_id(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    frame->level = level;
+    frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
     frame->u.retire_cid.sequence_number = seqnum;
 
@@ -356,7 +351,7 @@ ngx_quic_used_client_id(ngx_connection_t *c, ngx_quic_path_t *path)
 
 ngx_int_t
 ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
-    ngx_quic_header_t *pkt, ngx_quic_retire_cid_frame_t *f)
+    ngx_quic_retire_cid_frame_t *f)
 {
     ngx_quic_path_t        *path;
     ngx_quic_socket_t      *qsock, **tmp;
