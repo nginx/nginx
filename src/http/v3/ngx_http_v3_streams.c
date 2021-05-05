@@ -46,13 +46,13 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 {
     ngx_connection_t          *pc;
     ngx_pool_cleanup_t        *cln;
-    ngx_http_connection_t     *phc;
+    ngx_http_connection_t     *hc;
     ngx_http_v3_connection_t  *h3c;
 
     pc = c->quic->parent;
-    phc = pc->data;
+    hc = pc->data;
 
-    if (phc->http3) {
+    if (hc->v3_session) {
         return NGX_OK;
     }
 
@@ -63,8 +63,6 @@ ngx_http_v3_init_session(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    h3c->hc = *phc;
-    h3c->hc.http3 = 1;
     h3c->max_push_id = (uint64_t) -1;
 
     ngx_queue_init(&h3c->blocked);
@@ -83,7 +81,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     cln->handler = ngx_http_v3_cleanup_session;
     cln->data = h3c;
 
-    pc->data = h3c;
+    hc->v3_session = h3c;
 
     return ngx_http_v3_send_settings(c);
 }
@@ -519,13 +517,10 @@ failed:
 static ngx_int_t
 ngx_http_v3_send_settings(ngx_connection_t *c)
 {
-    u_char                    *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
-    size_t                     n;
-    ngx_connection_t          *cc;
-    ngx_http_v3_srv_conf_t    *h3scf;
-    ngx_http_v3_connection_t  *h3c;
-
-    h3c = ngx_http_v3_get_session(c);
+    u_char                  *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
+    size_t                   n;
+    ngx_connection_t        *cc;
+    ngx_http_v3_srv_conf_t  *h3scf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
 
@@ -534,7 +529,7 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
         return NGX_DECLINED;
     }
 
-    h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
     n = ngx_http_v3_encode_varlen_int(NULL,
                                       NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY);

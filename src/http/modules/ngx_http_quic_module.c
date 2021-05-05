@@ -201,7 +201,7 @@ ngx_http_quic_init(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http init quic stream");
 
-    phc = c->quic->parent->data;
+    phc = ngx_http_quic_get_connection(c);
 
     if (phc->ssl_servername) {
         hc->ssl_servername = phc->ssl_servername;

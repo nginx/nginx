@@ -318,6 +318,10 @@ typedef struct {
 #endif
 #endif
 
+#if (NGX_HTTP_V3 || NGX_COMPAT)
+    ngx_http_v3_connection_t         *v3_session;
+#endif
+
     ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 
@@ -325,7 +329,6 @@ typedef struct {
 
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
-    unsigned                          http3:1;
 } ngx_http_connection_t;
 
 

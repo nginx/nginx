@@ -251,7 +251,7 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
                    "http3 set capacity %ui", capacity);
 
     h3c = ngx_http_v3_get_session(c);
-    h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
     if (capacity > h3scf->max_table_capacity) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -498,7 +498,7 @@ ngx_http_v3_decode_insert_count(ngx_connection_t *c, ngx_uint_t *insert_count)
     h3c = ngx_http_v3_get_session(c);
     dt = &h3c->table;
 
-    h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx, ngx_http_v3_module);
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
     max_entries = h3scf->max_table_capacity / 32;
     full_range = 2 * max_entries;
@@ -582,8 +582,7 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
     }
 
     if (block->queue.prev == NULL) {
-        h3scf = ngx_http_get_module_srv_conf(h3c->hc.conf_ctx,
-                                             ngx_http_v3_module);
+        h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
         if (h3c->nblocked == h3scf->max_blocked_streams) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,

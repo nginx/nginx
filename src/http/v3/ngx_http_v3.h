@@ -74,18 +74,15 @@
 #define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
 
 
-#define ngx_http_v3_get_session(c)                                            \
-    ((ngx_http_v3_connection_t *) (c)->quic->parent->data)
+#define ngx_http_v3_get_session(c)  ngx_http_quic_get_connection(c)->v3_session
 
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
-    ngx_http_get_module_loc_conf(                                             \
-           ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
-           module)
+    ngx_http_get_module_loc_conf(ngx_http_quic_get_connection(c)->conf_ctx,     \
+                                 module)
 
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
-    ngx_http_get_module_srv_conf(                                             \
-           ((ngx_http_v3_connection_t *) c->quic->parent->data)->hc.conf_ctx, \
-           module)
+    ngx_http_get_module_srv_conf(ngx_http_quic_get_connection(c)->conf_ctx,     \
+                                 module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
     ngx_quic_finalize_connection(c->quic->parent, code, reason)
@@ -130,9 +127,7 @@ typedef struct {
 } ngx_http_v3_dynamic_table_t;
 
 
-typedef struct {
-    /* the http connection must be first */
-    ngx_http_connection_t         hc;
+struct ngx_http_v3_connection_s {
     ngx_http_v3_dynamic_table_t   table;
 
     ngx_event_t                   keepalive;
@@ -149,7 +144,7 @@ typedef struct {
     ngx_uint_t                    goaway;  /* unsigned  goaway:1; */
 
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
-} ngx_http_v3_connection_t;
+};
 
 
 void ngx_http_v3_init(ngx_connection_t *c);

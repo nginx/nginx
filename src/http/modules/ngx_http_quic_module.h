@@ -18,6 +18,10 @@
 #define NGX_HTTP_QUIC_ALPN_DRAFT_FMT  "\x05hq-%02uD"
 
 
+#define ngx_http_quic_get_connection(c)                                       \
+    ((ngx_http_connection_t *) (c)->quic->parent->data)
+
+
 ngx_int_t ngx_http_quic_init(ngx_connection_t *c);
 
 
