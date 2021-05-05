@@ -187,6 +187,8 @@ static void ngx_http_upstream_ssl_handshake(ngx_http_request_t *,
 static void ngx_http_upstream_ssl_save_session(ngx_connection_t *c);
 static ngx_int_t ngx_http_upstream_ssl_name(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_connection_t *c);
+static ngx_int_t ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_connection_t *c);
 #endif
 
 
@@ -1692,6 +1694,16 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         }
     }
 
+    if (u->conf->ssl_certificate && (u->conf->ssl_certificate->lengths
+                                     || u->conf->ssl_certificate_key->lengths))
+    {
+        if (ngx_http_upstream_ssl_certificate(r, u, c) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
     if (u->conf->ssl_session_reuse) {
         c->ssl->save_session = ngx_http_upstream_ssl_save_session;
 
@@ -1908,6 +1920,45 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
 done:
 
     u->ssl_name = name;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_connection_t *c)
+{
+    ngx_str_t  cert, key;
+
+    if (ngx_http_complex_value(r, u->conf->ssl_certificate, &cert)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream ssl cert: \"%s\"", cert.data);
+
+    if (*cert.data == '\0') {
+        return NGX_OK;
+    }
+
+    if (ngx_http_complex_value(r, u->conf->ssl_certificate_key, &key)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream ssl key: \"%s\"", key.data);
+
+    if (ngx_ssl_connection_certificate(c, r->pool, &cert, &key,
+                                       u->conf->ssl_passwords)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }

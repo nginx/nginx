@@ -278,6 +278,44 @@ ngx_stream_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 char *
+ngx_stream_set_complex_value_zero_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    char  *p = conf;
+
+    ngx_str_t                            *value;
+    ngx_stream_complex_value_t          **cv;
+    ngx_stream_compile_complex_value_t    ccv;
+
+    cv = (ngx_stream_complex_value_t **) (p + cmd->offset);
+
+    if (*cv != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    *cv = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+    if (*cv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = *cv;
+    ccv.zero = 1;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
 ngx_stream_set_complex_value_size_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf)
 {
