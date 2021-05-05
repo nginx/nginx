@@ -1026,7 +1026,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 parse frame type:%ui", st->type);
 
-        if (ngx_http_v3_is_v2_frame(st->type)) {
+        if (ngx_http_v3_is_v2_frame(st->type)
+            || st->type == NGX_HTTP_V3_FRAME_DATA
+            || st->type == NGX_HTTP_V3_FRAME_HEADERS)
+        {
             return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
         }
 
@@ -1068,10 +1071,6 @@ ngx_http_v3_parse_control(ngx_connection_t *c, void *data, u_char ch)
         case NGX_HTTP_V3_FRAME_MAX_PUSH_ID:
             st->state = sw_max_push_id;
             break;
-
-        case NGX_HTTP_V3_FRAME_DATA:
-        case NGX_HTTP_V3_FRAME_HEADERS:
-            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
 
         default:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
