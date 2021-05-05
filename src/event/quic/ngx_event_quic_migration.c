@@ -348,16 +348,23 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
     }
 
+    /* prefer unused client IDs if available */
     cid = ngx_quic_next_client_id(c);
     if (cid == NULL) {
-        qc = ngx_quic_get_connection(c);
-        qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
-        qc->error_reason = "no available client ids for new path";
 
-        ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "no available client ids for new path");
+        /* try to reuse connection ID used on the same path */
+        cid = ngx_quic_used_client_id(c, path);
+        if (cid == NULL) {
 
-        return NGX_ERROR;
+            qc = ngx_quic_get_connection(c);
+            qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
+            qc->error_reason = "no available client ids for new path";
+
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "no available client ids for new path");
+
+            return NGX_ERROR;
+        }
     }
 
     ngx_quic_connect(c, qsock, path, cid);

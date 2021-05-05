@@ -325,6 +325,35 @@ ngx_quic_next_client_id(ngx_connection_t *c)
 }
 
 
+ngx_quic_client_id_t *
+ngx_quic_used_client_id(ngx_connection_t *c, ngx_quic_path_t *path)
+{
+    ngx_queue_t            *q;
+    ngx_quic_socket_t      *qsock;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    /* best guess: cid used by active path is good for us */
+    if (qc->socket->path == path) {
+        return qc->socket->cid;
+    }
+
+    for (q = ngx_queue_head(&qc->sockets);
+         q != ngx_queue_sentinel(&qc->sockets);
+         q = ngx_queue_next(q))
+    {
+        qsock = ngx_queue_data(q, ngx_quic_socket_t, queue);
+
+        if (qsock->path && qsock->path == path) {
+            return qsock->cid;
+        }
+    }
+
+    return NULL;
+}
+
+
 ngx_int_t
 ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_retire_cid_frame_t *f)

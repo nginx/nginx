@@ -23,6 +23,8 @@ ngx_int_t ngx_quic_create_server_id(ngx_connection_t *c, u_char *id);
 ngx_quic_client_id_t *ngx_quic_create_client_id(ngx_connection_t *c,
     ngx_str_t *id, uint64_t seqnum, u_char *token);
 ngx_quic_client_id_t *ngx_quic_next_client_id(ngx_connection_t *c);
+ngx_quic_client_id_t *ngx_quic_used_client_id(ngx_connection_t *c,
+    ngx_quic_path_t *path);
 void ngx_quic_unref_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid);
 
 #endif /* _NGX_EVENT_QUIC_CONNID_H_INCLUDED_ */
