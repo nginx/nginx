@@ -1128,6 +1128,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_PADDING:
         case NGX_QUIC_FT_PATH_CHALLENGE:
         case NGX_QUIC_FT_PATH_RESPONSE:
+        case NGX_QUIC_FT_NEW_CONNECTION_ID:
             break;
 
         /* non-probing frames */
