@@ -837,8 +837,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     ngx_connection_t          *c, *pc;
     ngx_http_request_t        *r;
     ngx_http_log_ctx_t        *ctx;
-    ngx_http_connection_t     *hc;
-    ngx_http_v3_session_t     *h3c;
+    ngx_http_connection_t     *hc, *phc;
     ngx_http_core_srv_conf_t  *cscf;
 
     pc = pr->connection;
@@ -858,8 +857,8 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
         goto failed;
     }
 
-    h3c = ngx_http_v3_get_session(c);
-    ngx_memcpy(hc, h3c, sizeof(ngx_http_connection_t));
+    phc = ngx_http_quic_get_connection(pc);
+    ngx_memcpy(hc, phc, sizeof(ngx_http_connection_t));
     c->data = hc;
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
