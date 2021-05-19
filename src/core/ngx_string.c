@@ -1573,7 +1573,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
-                    /* " ", """, "%", "'", %00-%1F, %7F-%FF */
+                    /* " ", """, "'", %00-%1F, %7F-%FF */
 
     static uint32_t   refresh[] = {
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
