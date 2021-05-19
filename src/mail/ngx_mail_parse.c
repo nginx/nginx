@@ -637,7 +637,9 @@ done:
 invalid:
 
     s->state = sw_start;
+    s->arg_start = NULL;
     s->quoted = 0;
+    s->backslash = 0;
     s->no_sync_literal = 0;
     s->literal_len = 0;
 
