@@ -874,7 +874,20 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
-    if (rc == NGX_IMAP_NEXT || rc == NGX_MAIL_PARSE_INVALID_COMMAND) {
+    if (rc == NGX_MAIL_PARSE_INVALID_COMMAND) {
+
+        s->errors++;
+
+        if (s->errors >= cscf->max_errors) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent too many invalid commands");
+            s->quit = 1;
+        }
+
+        return rc;
+    }
+
+    if (rc == NGX_IMAP_NEXT) {
         return rc;
     }
 
