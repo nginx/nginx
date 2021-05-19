@@ -101,10 +101,9 @@ ngx_mail_imap_init_protocol(ngx_event_t *rev)
 void
 ngx_mail_imap_auth_state(ngx_event_t *rev)
 {
-    u_char              *p, *dst, *src, *end;
-    ngx_str_t           *arg;
+    u_char              *p;
     ngx_int_t            rc;
-    ngx_uint_t           tag, i;
+    ngx_uint_t           tag;
     ngx_connection_t    *c;
     ngx_mail_session_t  *s;
 
@@ -157,27 +156,6 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
         ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0, "imap auth command: %i",
                        s->command);
-
-        if (s->backslash) {
-
-            arg = s->args.elts;
-
-            for (i = 0; i < s->args.nelts; i++) {
-                dst = arg[i].data;
-                end = dst + arg[i].len;
-
-                for (src = dst; src < end; dst++) {
-                    *dst = *src;
-                    if (*src++ == '\\') {
-                        *dst = *src++;
-                    }
-                }
-
-                arg[i].len = dst - arg[i].data;
-            }
-
-            s->backslash = 0;
-        }
 
         switch (s->mail_state) {
 

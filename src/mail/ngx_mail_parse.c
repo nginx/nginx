@@ -227,7 +227,7 @@ invalid:
 ngx_int_t
 ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 {
-    u_char      ch, *p, *c;
+    u_char      ch, *p, *c, *dst, *src, *end;
     ngx_str_t  *arg;
     enum {
         sw_start = 0,
@@ -470,6 +470,22 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
                 }
                 arg->len = p - s->arg_start;
                 arg->data = s->arg_start;
+
+                if (s->backslash) {
+                    dst = s->arg_start;
+                    end = p;
+
+                    for (src = dst; src < end; dst++) {
+                        *dst = *src;
+                        if (*src++ == '\\') {
+                            *dst = *src++;
+                        }
+                    }
+
+                    arg->len = dst - s->arg_start;
+                    s->backslash = 0;
+                }
+
                 s->arg_start = NULL;
 
                 switch (ch) {
