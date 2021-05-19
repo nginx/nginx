@@ -238,7 +238,6 @@ typedef struct {
     ngx_uint_t              state;
     u_char                 *cmd_start;
     u_char                 *arg_start;
-    u_char                 *arg_end;
     ngx_uint_t              literal_len;
 } ngx_mail_session_t;
 
