@@ -265,6 +265,17 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
             case LF:
                 s->state = sw_start;
                 return NGX_MAIL_PARSE_INVALID_COMMAND;
+            default:
+                if ((ch < 'A' || ch > 'Z') && (ch < 'a' || ch > 'z')
+                    && (ch < '0' || ch > '9') && ch != '-' && ch != '.'
+                    && ch != '_')
+                {
+                    goto invalid;
+                }
+                if (p - s->buffer->start > 31) {
+                    goto invalid;
+                }
+                break;
             }
             break;
 
