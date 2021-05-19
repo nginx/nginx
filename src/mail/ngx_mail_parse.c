@@ -231,6 +231,8 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
     ngx_str_t  *arg;
     enum {
         sw_start = 0,
+        sw_tag,
+        sw_invalid,
         sw_spaces_before_command,
         sw_command,
         sw_spaces_before_argument,
@@ -253,18 +255,21 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 
         /* IMAP tag */
         case sw_start:
+            s->tag_start = p;
+            state = sw_tag;
+
+            /* fall through */
+
+        case sw_tag:
             switch (ch) {
             case ' ':
-                s->tag.len = p - s->buffer->start + 1;
-                s->tag.data = s->buffer->start;
+                s->tag.len = p - s->tag_start + 1;
+                s->tag.data = s->tag_start;
                 state = sw_spaces_before_command;
                 break;
             case CR:
-                s->state = sw_start;
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
             case LF:
-                s->state = sw_start;
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
+                goto invalid;
             default:
                 if ((ch < 'A' || ch > 'Z') && (ch < 'a' || ch > 'z')
                     && (ch < '0' || ch > '9') && ch != '-' && ch != '.'
@@ -272,23 +277,23 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
                 {
                     goto invalid;
                 }
-                if (p - s->buffer->start > 31) {
+                if (p - s->tag_start > 31) {
                     goto invalid;
                 }
                 break;
             }
             break;
 
+        case sw_invalid:
+            goto invalid;
+
         case sw_spaces_before_command:
             switch (ch) {
             case ' ':
                 break;
             case CR:
-                s->state = sw_start;
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
             case LF:
-                s->state = sw_start;
-                return NGX_MAIL_PARSE_INVALID_COMMAND;
+                goto invalid;
             default:
                 s->cmd_start = p;
                 state = sw_command;
@@ -407,6 +412,9 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
                 default:
                     goto invalid;
                 }
+
+                s->cmd.data = s->cmd_start;
+                s->cmd.len = p - s->cmd_start;
 
                 switch (ch) {
                 case ' ':
@@ -631,13 +639,40 @@ done:
 
 invalid:
 
-    s->state = sw_start;
+    s->state = sw_invalid;
     s->quoted = 0;
     s->backslash = 0;
     s->no_sync_literal = 0;
     s->literal_len = 0;
 
-    return NGX_MAIL_PARSE_INVALID_COMMAND;
+    /* skip invalid command till LF */
+
+    for ( /* void */ ; p < s->buffer->last; p++) {
+        if (*p == LF) {
+            s->state = sw_start;
+            s->buffer->pos = p + 1;
+
+            /* detect non-synchronizing literals */
+
+            if ((size_t) (p - s->buffer->start) > sizeof("{1+}") - 1) {
+                p--;
+
+                if (*p == CR) {
+                    p--;
+                }
+
+                if (*p == '}' && *(p - 1) == '+') {
+                    s->quit = 1;
+                }
+            }
+
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+    }
+
+    s->buffer->pos = p;
+
+    return NGX_AGAIN;
 }
 
 

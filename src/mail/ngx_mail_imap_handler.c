@@ -226,6 +226,10 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
         ngx_str_set(&s->out, imap_next);
     }
 
+    if (s->buffer->pos < s->buffer->last) {
+        s->blocked = 1;
+    }
+
     switch (rc) {
 
     case NGX_DONE:
@@ -275,13 +279,14 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
 
         if (s->state) {
             /* preserve tag */
-            s->arg_start = s->buffer->start + s->tag.len;
-            s->buffer->pos = s->arg_start;
-            s->buffer->last = s->arg_start;
+            s->arg_start = s->buffer->pos;
 
         } else {
-            s->buffer->pos = s->buffer->start;
-            s->buffer->last = s->buffer->start;
+            if (s->buffer->pos == s->buffer->last) {
+                s->buffer->pos = s->buffer->start;
+                s->buffer->last = s->buffer->start;
+            }
+
             s->tag.len = 0;
         }
     }
@@ -459,6 +464,8 @@ ngx_mail_imap_starttls(ngx_mail_session_t *s, ngx_connection_t *c)
     if (c->ssl == NULL) {
         sslcf = ngx_mail_get_module_srv_conf(s, ngx_mail_ssl_module);
         if (sslcf->starttls) {
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
             c->read->handler = ngx_mail_starttls_handler;
             return NGX_OK;
         }

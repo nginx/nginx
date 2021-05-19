@@ -236,6 +236,7 @@ typedef struct {
     /* used to parse POP3/IMAP/SMTP command */
 
     ngx_uint_t              state;
+    u_char                 *tag_start;
     u_char                 *cmd_start;
     u_char                 *arg_start;
     ngx_uint_t              literal_len;
