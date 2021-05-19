@@ -843,7 +843,7 @@ invalid:
 
     /* skip invalid command till LF */
 
-    for (p = s->buffer->pos; p < s->buffer->last; p++) {
+    for ( /* void */ ; p < s->buffer->last; p++) {
         if (*p == LF) {
             s->state = sw_start;
             s->buffer->pos = p + 1;
