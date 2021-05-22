@@ -66,6 +66,9 @@
 #define ngx_quic_write_uint32_aligned(p, s)                                   \
     (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
 
+#define ngx_quic_build_int_set(p, value, len, bits)                           \
+    (*(p)++ = ((value >> ((len) * 8)) & 0xff) | ((bits) << 6))
+
 #define NGX_QUIC_VERSION(c)       (0xff000000 + (c))
 
 
@@ -244,40 +247,56 @@ ngx_quic_copy_bytes(u_char *pos, u_char *end, size_t len, u_char *dst)
 }
 
 
-static ngx_uint_t
+static ngx_inline ngx_uint_t
 ngx_quic_varint_len(uint64_t value)
 {
-    ngx_uint_t  bits;
-
-    bits = 0;
-    while (value >> ((8 << bits) - 2)) {
-        bits++;
+    if (value < (1 << 6)) {
+        return 1;
     }
 
-    return 1 << bits;
+    if (value < (1 << 14)) {
+        return 2;
+    }
+
+    if (value < (1 << 30)) {
+        return 4;
+    }
+
+    return 8;
 }
 
 
-static void
+static ngx_inline void
 ngx_quic_build_int(u_char **pos, uint64_t value)
 {
-    u_char      *p;
-    ngx_uint_t   bits, len;
+    u_char  *p;
 
     p = *pos;
-    bits = 0;
 
-    while (value >> ((8 << bits) - 2)) {
-        bits++;
+    if (value < (1 << 6)) {
+        ngx_quic_build_int_set(p, value, 0, 0);
+
+    } else if (value < (1 << 14)) {
+        ngx_quic_build_int_set(p, value, 1, 1);
+        ngx_quic_build_int_set(p, value, 0, 0);
+
+    } else if (value < (1 << 30)) {
+        ngx_quic_build_int_set(p, value, 3, 2);
+        ngx_quic_build_int_set(p, value, 2, 0);
+        ngx_quic_build_int_set(p, value, 1, 0);
+        ngx_quic_build_int_set(p, value, 0, 0);
+
+    } else {
+        ngx_quic_build_int_set(p, value, 7, 3);
+        ngx_quic_build_int_set(p, value, 6, 0);
+        ngx_quic_build_int_set(p, value, 5, 0);
+        ngx_quic_build_int_set(p, value, 4, 0);
+        ngx_quic_build_int_set(p, value, 3, 0);
+        ngx_quic_build_int_set(p, value, 2, 0);
+        ngx_quic_build_int_set(p, value, 1, 0);
+        ngx_quic_build_int_set(p, value, 0, 0);
     }
 
-    len = (1 << bits);
-
-    while (len--) {
-        *p++ = value >> (len * 8);
-    }
-
-    **pos |= bits << 6;
     *pos = p;
 }
 
