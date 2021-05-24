@@ -1043,12 +1043,14 @@ ngx_http_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
     }
 
     ngx_http_free_request(r, 0);
+    c->log->action = "SSL handshaking";
     c->destroyed = 0;
     return 1;
 
 failed:
 
     ngx_http_free_request(r, 0);
+    c->log->action = "SSL handshaking";
     c->destroyed = 0;
     return 0;
 }
