@@ -511,6 +511,10 @@ ngx_mail_init_session(ngx_connection_t *c)
 
     s->protocol = cscf->protocol->type;
 
+    if(s->ctx != NULL) {
+        return;
+    }
+
     s->ctx = ngx_pcalloc(c->pool, sizeof(void *) * ngx_mail_max_module);
     if (s->ctx == NULL) {
         ngx_mail_session_internal_server_error(s);
