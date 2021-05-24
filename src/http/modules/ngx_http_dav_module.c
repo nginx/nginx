@@ -1072,6 +1072,10 @@ ngx_http_dav_error(ngx_log_t *log, ngx_err_t err, ngx_int_t not_found,
 static ngx_int_t
 ngx_http_dav_location(ngx_http_request_t *r)
 {
+    u_char     *p;
+    size_t      len;
+    uintptr_t   escape;
+
     r->headers_out.location = ngx_list_push(&r->headers_out.headers);
     if (r->headers_out.location == NULL) {
         return NGX_ERROR;
@@ -1079,7 +1083,26 @@ ngx_http_dav_location(ngx_http_request_t *r)
 
     r->headers_out.location->hash = 1;
     ngx_str_set(&r->headers_out.location->key, "Location");
-    r->headers_out.location->value = r->uri;
+
+    escape = 2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len, NGX_ESCAPE_URI);
+
+    if (escape) {
+        len = r->uri.len + escape;
+
+        p = ngx_pnalloc(r->pool, len);
+        if (p == NULL) {
+            ngx_http_clear_location(r);
+            return NGX_ERROR;
+        }
+
+        r->headers_out.location->value.len = len;
+        r->headers_out.location->value.data = p;
+
+        ngx_escape_uri(p, r->uri.data, r->uri.len, NGX_ESCAPE_URI);
+
+    } else {
+        r->headers_out.location->value = r->uri;
+    }
 
     return NGX_OK;
 }
