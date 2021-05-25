@@ -857,6 +857,8 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             qs->final_size = last;
         }
 
+        qs->recv_last = last;
+
         if (f->offset == 0) {
             sc->read->ready = 1;
         }
@@ -884,6 +886,10 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
+    if (qs->recv_last < last) {
+        qs->recv_last = last;
+    }
+
     if (f->offset < qs->recv_offset) {
         ngx_quic_trim_bufs(frame->data, qs->recv_offset - f->offset);
         f->offset = qs->recv_offset;
@@ -895,6 +901,11 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     if (f->fin) {
         if (qs->final_size != (uint64_t) -1 && qs->final_size != last) {
+            qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+            return NGX_ERROR;
+        }
+
+        if (qs->recv_last > last) {
             qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
             return NGX_ERROR;
         }
@@ -1125,6 +1136,11 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     }
 
     if (qs->final_size != (uint64_t) -1 && qs->final_size != f->final_size) {
+        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        return NGX_ERROR;
+    }
+
+    if (qs->recv_last > f->final_size) {
         qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
         return NGX_ERROR;
     }
