@@ -77,7 +77,8 @@ if [ $HTTP = YES ]; then
                          src/http/ngx_http_variables.h \
                          src/http/ngx_http_script.h \
                          src/http/ngx_http_upstream.h \
-                         src/http/ngx_http_upstream_round_robin.h"
+                         src/http/ngx_http_upstream_round_robin.h \
+                         src/http/ngx_http_upstream_fair.h"
         ngx_module_srcs="src/http/ngx_http.c \
                          src/http/ngx_http_core_module.c \
                          src/http/ngx_http_special_response.c \
@@ -88,7 +89,8 @@ if [ $HTTP = YES ]; then
                          src/http/ngx_http_variables.c \
                          src/http/ngx_http_script.c \
                          src/http/ngx_http_upstream.c \
-                         src/http/ngx_http_upstream_round_robin.c"
+                         src/http/ngx_http_upstream_round_robin.c \
+                         src/http/ngx_http_upstream_fair.c"
         ngx_module_libs=
         ngx_module_link=YES
 
@@ -936,6 +938,11 @@ if [ $MAIL != NO ]; then
 
     ngx_module_incs=
 
+    if [ $MAIL_SASL = YES ]; then
+        USE_SASL=YES
+        have=NGX_MAIL_SASL . auto/have
+    fi
+
     if [ $MAIL_SSL = YES ]; then
         USE_OPENSSL=YES
         have=NGX_MAIL_SSL . auto/have
@@ -1268,6 +1275,8 @@ fi
 
 
 modules="$CORE_MODULES $EVENT_MODULES"
+modules="$modules $MEMCACHE_MODULE"
+modules="$modules $ZM_LOOKUP_MODULE"
 
 
 # thread pool module should be initialized after events

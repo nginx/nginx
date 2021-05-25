@@ -39,6 +39,8 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_module.h \
            src/core/ngx_resolver.h \
            src/core/ngx_open_file_cache.h \
+           src/core/ngx_memcache.h \
+           src/core/ngx_zm_lookup.h \
            src/core/ngx_crypt.h \
            src/core/ngx_proxy_protocol.h \
            src/core/ngx_syslog.h"
@@ -76,6 +78,8 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_module.c \
            src/core/ngx_resolver.c \
            src/core/ngx_open_file_cache.c \
+           src/core/ngx_memcache.c \
+           src/core/ngx_zm_lookup.c \
            src/core/ngx_crypt.c \
            src/core/ngx_proxy_protocol.c \
            src/core/ngx_syslog.c"
@@ -125,6 +129,9 @@ IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 
 FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
 LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
+
+MEMCACHE_MODULE=ngx_memcache_module
+ZM_LOOKUP_MODULE=ngx_zm_lookup_module
 
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 

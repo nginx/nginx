@@ -84,6 +84,24 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
     return dst;
 }
 
+ngx_str_t *
+ngx_pstrcpy(ngx_pool_t *pool, ngx_str_t *src) {
+    ngx_str_t * dst;
+
+    dst = ngx_pnalloc(pool, sizeof(ngx_str_t));
+    if (dst == NULL) {
+        return NULL;
+    }
+
+    dst->data = ngx_pnalloc(pool, src->len);
+    if (dst->data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(dst->data, src->data, src->len);
+    dst->len = src->len;
+    return dst;
+}
 
 /*
  * supported formats:

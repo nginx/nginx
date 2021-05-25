@@ -147,6 +147,10 @@ PCRE_JIT=NO
 USE_OPENSSL=NO
 OPENSSL=NONE
 
+USE_SASL=NO
+SASL=NONE
+SASL_OPT=
+
 USE_ZLIB=NO
 ZLIB=NONE
 ZLIB_OPT=
@@ -288,6 +292,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --with-http_stub_status_module)  HTTP_STUB_STATUS=YES       ;;
 
         --with-mail)                     MAIL=YES                   ;;
+        --with-mail-sasl)                MAIL_SASL=YES              ;;
         --with-mail=dynamic)             MAIL=DYNAMIC               ;;
         --with-mail_ssl_module)          MAIL_SSL=YES               ;;
         # STUB
@@ -356,6 +361,9 @@ use the \"--with-mail_ssl_module\" option instead"
 
         --with-openssl=*)                OPENSSL="$value"           ;;
         --with-openssl-opt=*)            OPENSSL_OPT="$value"       ;;
+
+        --with-sasl=*)                   SASL="$value"              ;;
+        --with-sasl-opt=*)               SASL_OPT="$value"          ;;
 
         --with-md5=*)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
@@ -518,6 +526,7 @@ cat << END
   --without-http-cache               disable HTTP cache
 
   --with-mail                        enable POP3/IMAP4/SMTP proxy module
+  --with-mail-sasl                   enable SASL support
   --with-mail=dynamic                enable dynamic POP3/IMAP4/SMTP proxy module
   --with-mail_ssl_module             enable ngx_mail_ssl_module
   --without-mail_pop3_module         disable ngx_mail_pop3_module
@@ -568,6 +577,9 @@ cat << END
   --with-pcre=DIR                    set path to PCRE library sources
   --with-pcre-opt=OPTIONS            set additional build options for PCRE
   --with-pcre-jit                    build PCRE with JIT compilation support
+
+  --with-sasl=DIR                    set path to sasl library sources
+  --with-sasl-opt=OPTIONS            set additional options for sasl building
 
   --with-zlib=DIR                    set path to zlib library sources
   --with-zlib-opt=OPTIONS            set additional build options for zlib

@@ -52,3 +52,7 @@ fi
 if [ $NGX_LIBATOMIC != NO ]; then
     . auto/lib/libatomic/conf
 fi
+
+if [ $USE_SASL = YES ]; then
+    . auto/lib/sasl/conf
+fi

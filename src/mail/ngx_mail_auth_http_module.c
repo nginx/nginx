@@ -1451,6 +1451,7 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->host_header = prev->host_header;
         conf->uri = prev->uri;
 
+        /* zimbra uses zmauth, so no auth_http
         if (conf->peer == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"auth_http\" is defined for server in %s:%ui",
@@ -1458,6 +1459,7 @@ ngx_mail_auth_http_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
             return NGX_CONF_ERROR;
         }
+        */
     }
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);

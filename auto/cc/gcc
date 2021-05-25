@@ -50,7 +50,8 @@ esac
 
 #NGX_GCC_OPT="-O2"
 #NGX_GCC_OPT="-Os"
-NGX_GCC_OPT="-O"
+#NGX_GCC_OPT="-O"
+NGX_GCC_OPT="-O0"
 
 #CFLAGS="$CFLAGS -fomit-frame-pointer"
 

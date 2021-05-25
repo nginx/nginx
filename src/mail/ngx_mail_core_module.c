@@ -85,6 +85,41 @@ static ngx_command_t  ngx_mail_core_commands[] = {
       offsetof(ngx_mail_core_srv_conf_t, resolver_timeout),
       NULL },
 
+    { ngx_string("sasl_app_name"),
+      NGX_MAIL_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, sasl_app_name),
+      NULL },
+
+    { ngx_string("sasl_service_name"),
+      NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, sasl_service_name),
+      NULL },
+
+    { ngx_string("zm_auth_wait"),
+      NGX_MAIL_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, auth_wait_intvl),
+      NULL },
+
+    { ngx_string("default_realm"),
+      NGX_MAIL_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, default_realm),
+      NULL },
+
+    { ngx_string("sasl_host_from_ip"),
+      NGX_MAIL_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_core_srv_conf_t, sasl_host_from_ip),
+      NULL },
+
       ngx_null_command
 };
 
@@ -160,10 +195,13 @@ ngx_mail_core_create_srv_conf(ngx_conf_t *cf)
      *     cscf->error_log = NULL;
      */
 
+    cscf->protocol = NGX_CONF_UNSET_PTR;
     cscf->timeout = NGX_CONF_UNSET_MSEC;
     cscf->resolver_timeout = NGX_CONF_UNSET_MSEC;
 
     cscf->resolver = NGX_CONF_UNSET_PTR;
+    cscf->auth_wait_intvl = NGX_CONF_UNSET_MSEC;
+    cscf->sasl_host_from_ip = NGX_CONF_UNSET;
 
     cscf->file_name = cf->conf_file->file.name.data;
     cscf->line = cf->conf_file->line;
@@ -182,6 +220,27 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->resolver_timeout, prev->resolver_timeout,
                               30000);
 
+    ngx_conf_merge_str_value(
+        conf->sasl_app_name, prev->sasl_app_name, "nginx");
+
+    ngx_conf_merge_str_value(
+        conf->sasl_service_name, prev->sasl_service_name, "");
+/* TO BE HANDLED */
+    if (conf->sasl_service_name.len == 0) {
+        if (conf->protocol->type == NGX_MAIL_IMAP_PROTOCOL) {
+            conf->sasl_service_name.data = (u_char *)"imap";
+            conf->sasl_service_name.len = sizeof("imap") - 1;
+        } else if (conf->protocol->type == NGX_MAIL_POP3_PROTOCOL) {
+            conf->sasl_service_name.data = (u_char *)"pop";
+            conf->sasl_service_name.len = sizeof("pop") - 1;
+        } else if (conf->protocol->type == NGX_MAIL_SMTP_PROTOCOL) {
+            conf->sasl_service_name.data = (u_char *)"smtp";
+            conf->sasl_service_name.len = sizeof("smtp") - 1;
+        } else {
+            conf->sasl_service_name.data = (u_char *)"unknown";
+            conf->sasl_service_name.len = sizeof("unknown") - 1;
+        }
+    }
 
     ngx_conf_merge_str_value(conf->server_name, prev->server_name, "");
 
@@ -203,6 +262,17 @@ ngx_mail_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             conf->error_log = &cf->cycle->new_log;
         }
     }
+
+    /*
+     * master_auth_username and master_auth_password is already set in ngx_zm_lookup module
+     *
+     * ngx_conf_merge_str_value(conf->master_auth_username, prev->master_auth_username, "");
+     * ngx_conf_merge_str_value(conf->master_auth_password, prev->master_auth_password, "");
+     */
+    ngx_conf_merge_msec_value (conf->auth_wait_intvl, prev->auth_wait_intvl, 10000);
+
+    ngx_conf_merge_str_value (conf->default_realm, prev->default_realm,"");
+    ngx_conf_merge_value (conf->sasl_host_from_ip, prev->sasl_host_from_ip, 0);
 
     ngx_conf_merge_ptr_value(conf->resolver, prev->resolver, NULL);
 
@@ -563,6 +633,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ls[n].addr_text = u.addrs[n].name;
         ls[n].wildcard = ngx_inet_wildcard(ls[n].sockaddr);
 
+        /* Zimbra ports can be same
         for (i = 0; i < cmcf->listen.nelts - u.naddrs + n; i++) {
 
             if (ngx_cmp_sockaddr(als[i].sockaddr, als[i].socklen,
@@ -577,6 +648,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                &ls[n].addr_text);
             return NGX_CONF_ERROR;
         }
+        */
     }
 
     return NGX_CONF_OK;
@@ -675,4 +747,36 @@ ngx_mail_capabilities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+ngx_mail_cleanup_t *
+ngx_mail_cleanup_add(ngx_mail_session_t *s, size_t size)
+{
+    ngx_mail_cleanup_t  *cln;
+
+    cln = ngx_palloc(s->connection->pool, sizeof(ngx_mail_cleanup_t));
+    if (cln == NULL) {
+        return NULL;
+    }
+
+    if (size) {
+        cln->data = ngx_palloc(s->connection->pool, size);
+        if (cln->data == NULL) {
+            return NULL;
+        }
+
+    } else {
+        cln->data = NULL;
+    }
+
+    cln->handler = NULL;
+    cln->next = s->cleanup;
+
+    s->cleanup = cln;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
+                   "mail cleanup add: %p", cln);
+
+    return cln;
 }
