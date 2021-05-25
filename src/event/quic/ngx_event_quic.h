@@ -70,8 +70,6 @@ typedef struct {
 } ngx_quic_conf_t;
 
 
-typedef struct ngx_quic_frames_stream_s  ngx_quic_frames_stream_t;
-
 struct ngx_quic_stream_s {
     ngx_rbtree_node_t          node;
     ngx_connection_t          *parent;
@@ -80,8 +78,9 @@ struct ngx_quic_stream_s {
     uint64_t                   acked;
     uint64_t                   send_max_data;
     uint64_t                   recv_max_data;
+    uint64_t                   recv_offset;
+    uint64_t                   final_size;
     ngx_chain_t               *in;
-    ngx_quic_frames_stream_t  *fs;
     ngx_uint_t                 cancelable;  /* unsigned  cancelable:1; */
 };
 

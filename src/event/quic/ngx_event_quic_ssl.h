@@ -16,7 +16,4 @@ ngx_int_t ngx_quic_init_connection(ngx_connection_t *c);
 ngx_int_t ngx_quic_handle_crypto_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
 
-ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c,
-    ngx_quic_frame_t *frame, void *data);
-
 #endif /* _NGX_EVENT_QUIC_SSL_H_INCLUDED_ */

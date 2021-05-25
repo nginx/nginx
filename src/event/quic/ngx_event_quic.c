@@ -266,10 +266,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->send_ctx[1].level = ssl_encryption_handshake;
     qc->send_ctx[2].level = ssl_encryption_application;
 
-    for (i = 0; i < NGX_QUIC_ENCRYPTION_LAST; i++) {
-        ngx_queue_init(&qc->crypto[i].frames);
-    }
-
     ngx_queue_init(&qc->free_frames);
 
     qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
@@ -1021,6 +1017,8 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
     qc->pto_count = 0;
 
     ctx = ngx_quic_get_send_ctx(qc, level);
+
+    ngx_quic_free_bufs(c, ctx->crypto);
 
     while (!ngx_queue_empty(&ctx->sent)) {
         q = ngx_queue_head(&ctx->sent);

@@ -14,8 +14,6 @@
 
 ngx_int_t ngx_quic_handle_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_frame_t *frame);
-ngx_int_t ngx_quic_stream_input(ngx_connection_t *c,
-    ngx_quic_frame_t *frame, void *data);
 void ngx_quic_handle_stream_ack(ngx_connection_t *c,
     ngx_quic_frame_t *f);
 ngx_int_t ngx_quic_handle_max_data_frame(ngx_connection_t *c,

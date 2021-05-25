@@ -140,14 +140,6 @@ typedef struct {
 } ngx_quic_congestion_t;
 
 
-struct ngx_quic_frames_stream_s {
-    uint64_t                   sent;
-    uint64_t                   received;
-    ngx_queue_t                frames;   /* reorder queue */
-    size_t                     total;    /* size of buffered data */
-};
-
-
 /*
  * 12.3.  Packet Numbers
  *
@@ -158,6 +150,10 @@ struct ngx_quic_frames_stream_s {
 */
 struct ngx_quic_send_ctx_s {
     enum ssl_encryption_level_t       level;
+
+    ngx_chain_t                      *crypto;
+    uint64_t                          crypto_received;
+    uint64_t                          crypto_sent;
 
     uint64_t                          pnum;        /* to be sent */
     uint64_t                          largest_ack; /* received from peer */
@@ -202,8 +198,6 @@ struct ngx_quic_connection_s {
     ngx_quic_tp_t                     ctp;
 
     ngx_quic_send_ctx_t               send_ctx[NGX_QUIC_SEND_CTX_LAST];
-
-    ngx_quic_frames_stream_t          crypto[NGX_QUIC_ENCRYPTION_LAST];
 
     ngx_quic_keys_t                  *keys;
 

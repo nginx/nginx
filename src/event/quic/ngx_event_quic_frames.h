@@ -28,11 +28,10 @@ ngx_chain_t *ngx_quic_copy_buf(ngx_connection_t *c, u_char *data,
     size_t len);
 ngx_chain_t *ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in,
     size_t limit);
+void ngx_quic_trim_bufs(ngx_chain_t *in, size_t size);
 void ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in);
-
-ngx_int_t ngx_quic_handle_ordered_frame(ngx_connection_t *c,
-    ngx_quic_frames_stream_t *fs, ngx_quic_frame_t *frame,
-    ngx_quic_frame_handler_pt handler, void *data);
+ngx_int_t ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out,
+    ngx_chain_t *in, size_t offset);
 
 #if (NGX_DEBUG)
 void ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx);

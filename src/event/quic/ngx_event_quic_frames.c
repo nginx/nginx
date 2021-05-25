@@ -16,11 +16,6 @@
 static ngx_chain_t *ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in,
     size_t len);
 
-static ngx_int_t ngx_quic_buffer_frame(ngx_connection_t *c,
-    ngx_quic_frames_stream_t *stream, ngx_quic_frame_t *f);
-static ngx_int_t ngx_quic_adjust_frame_offset(ngx_connection_t *c,
-    ngx_quic_frame_t *f, uint64_t offset_in);
-
 
 ngx_quic_frame_t *
 ngx_quic_alloc_frame(ngx_connection_t *c)
@@ -80,6 +75,26 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic free frame n:%ui", qc->nframes);
 #endif
+}
+
+
+void
+ngx_quic_trim_bufs(ngx_chain_t *in, size_t size)
+{
+    size_t      n;
+    ngx_buf_t  *b;
+
+    while (in && size > 0) {
+        b = in->buf;
+        n = ngx_min((size_t) (b->last - b->pos), size);
+
+        b->pos += n;
+        size -= n;
+
+        if (b->pos == b->last) {
+            in = in->next;
+        }
+    }
 }
 
 
@@ -469,216 +484,74 @@ done:
 
 
 ngx_int_t
-ngx_quic_handle_ordered_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
-    ngx_quic_frame_t *frame, ngx_quic_frame_handler_pt handler, void *data)
+ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
+    size_t offset)
 {
-    size_t                     full_len;
-    ngx_int_t                  rc;
-    ngx_queue_t               *q;
-    ngx_quic_ordered_frame_t  *f;
+    u_char       *p;
+    size_t        n;
+    ngx_buf_t    *b;
+    ngx_chain_t  *cl, *sl;
 
-    f = &frame->u.ord;
+    while (in) {
+        cl = *out;
 
-    if (f->offset > fs->received) {
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic out-of-order frame: expecting:%uL got:%uL",
-                       fs->received, f->offset);
-
-        return ngx_quic_buffer_frame(c, fs, frame);
-    }
-
-    if (f->offset < fs->received) {
-
-        if (ngx_quic_adjust_frame_offset(c, frame, fs->received)
-            == NGX_DONE)
-        {
-            /* old/duplicate data range */
-            return handler == ngx_quic_crypto_input ? NGX_DECLINED : NGX_OK;
-        }
-
-        /* intersecting data range, frame modified */
-    }
-
-    /* f->offset == fs->received */
-
-    rc = handler(c, frame, data);
-    if (rc == NGX_ERROR) {
-        return NGX_ERROR;
-
-    } else if (rc == NGX_DONE) {
-        /* handler destroyed stream, queue no longer exists */
-        return NGX_OK;
-    }
-
-    /* rc == NGX_OK */
-
-    fs->received += f->length;
-
-    /* now check the queue if we can continue with buffered frames */
-
-    do {
-        q = ngx_queue_head(&fs->frames);
-        if (q == ngx_queue_sentinel(&fs->frames)) {
-            break;
-        }
-
-        frame = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        f = &frame->u.ord;
-
-        if (f->offset > fs->received) {
-            /* gap found, nothing more to do */
-            break;
-        }
-
-        full_len = f->length;
-
-        if (f->offset < fs->received) {
-
-            if (ngx_quic_adjust_frame_offset(c, frame, fs->received)
-                == NGX_DONE)
-            {
-                /* old/duplicate data range */
-                ngx_queue_remove(q);
-                fs->total -= f->length;
-
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic skipped buffered frame, total:%ui",
-                               fs->total);
-                ngx_quic_free_frame(c, frame);
-                continue;
+        if (cl == NULL) {
+            cl = ngx_quic_alloc_buf(c);
+            if (cl == NULL) {
+                return NGX_ERROR;
             }
 
-            /* frame was adjusted, proceed to input */
+            cl->buf->last = cl->buf->end;
+            cl->buf->sync = 1; /* hole */
+            cl->next = NULL;
+            *out = cl;
         }
 
-        /* f->offset == fs->received */
-
-        rc = handler(c, frame, data);
-
-        if (rc == NGX_ERROR) {
-            return NGX_ERROR;
-
-        } else if (rc == NGX_DONE) {
-            /* handler destroyed stream, queue no longer exists */
-            return NGX_OK;
-        }
-
-        fs->received += f->length;
-        fs->total -= full_len;
-
-        ngx_queue_remove(q);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic consumed buffered frame, total:%ui", fs->total);
-
-        ngx_quic_free_frame(c, frame);
-
-    } while (1);
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_adjust_frame_offset(ngx_connection_t *c, ngx_quic_frame_t *frame,
-    uint64_t offset_in)
-{
-    size_t                     tail, n;
-    ngx_buf_t                 *b;
-    ngx_chain_t               *cl;
-    ngx_quic_ordered_frame_t  *f;
-
-    f = &frame->u.ord;
-
-    tail = offset_in - f->offset;
-
-    if (tail >= f->length) {
-        /* range preceeding already received data or duplicate, ignore */
-
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic old or duplicate data in ordered frame, ignored");
-        return NGX_DONE;
-    }
-
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic adjusted ordered frame data start to expected offset");
-
-    /* intersecting range: adjust data size */
-
-    f->offset += tail;
-    f->length -= tail;
-
-    for (cl = frame->data; cl; cl = cl->next) {
         b = cl->buf;
-        n = ngx_buf_size(b);
+        n = b->last - b->pos;
 
-        if (n >= tail) {
-            b->pos += tail;
-            break;
+        if (n <= offset) {
+            offset -= n;
+            out = &cl->next;
+            continue;
         }
 
-        cl->buf->pos = cl->buf->last;
-        tail -= n;
-    }
+        if (b->sync && offset > 0) {
+            sl = ngx_quic_split_bufs(c, cl, offset);
+            if (sl == NGX_CHAIN_ERROR) {
+                return NGX_ERROR;
+            }
 
-    return NGX_OK;
-}
+            cl->next = sl;
+            continue;
+        }
 
+        for (p = b->pos + offset; p != b->last && in; /* void */ ) {
+            n = ngx_min(b->last - p, in->buf->last - in->buf->pos);
 
-static ngx_int_t
-ngx_quic_buffer_frame(ngx_connection_t *c, ngx_quic_frames_stream_t *fs,
-    ngx_quic_frame_t *frame)
-{
-    ngx_queue_t               *q;
-    ngx_quic_frame_t          *dst, *item;
-    ngx_quic_ordered_frame_t  *f, *df;
+            if (b->sync) {
+                ngx_memcpy(p, in->buf->pos, n);
+            }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_buffer_frame");
+            p += n;
+            in->buf->pos += n;
+            offset += n;
 
-    f = &frame->u.ord;
+            if (in->buf->pos == in->buf->last) {
+                in = in->next;
+            }
+        }
 
-    /* frame start offset is in the future, buffer it */
+        if (b->sync && p != b->pos) {
+            sl = ngx_quic_split_bufs(c, cl, p - b->pos);
+            if (sl == NGX_CHAIN_ERROR) {
+                return NGX_ERROR;
+            }
 
-    dst = ngx_quic_alloc_frame(c);
-    if (dst == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_memcpy(dst, frame, sizeof(ngx_quic_frame_t));
-
-    dst->data = ngx_quic_copy_chain(c, frame->data, 0);
-    if (dst->data == NGX_CHAIN_ERROR) {
-        return NGX_ERROR;
-    }
-
-    df = &dst->u.ord;
-
-    fs->total += f->length;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ordered frame with unexpected offset:"
-                   " buffered total:%ui", fs->total);
-
-    if (ngx_queue_empty(&fs->frames)) {
-        ngx_queue_insert_after(&fs->frames, &dst->queue);
-        return NGX_OK;
-    }
-
-    for (q = ngx_queue_last(&fs->frames);
-         q != ngx_queue_sentinel(&fs->frames);
-         q = ngx_queue_prev(q))
-    {
-        item = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        f = &item->u.ord;
-
-        if (f->offset < df->offset) {
-            ngx_queue_insert_after(q, &dst->queue);
-            return NGX_OK;
+            cl->next = sl;
+            cl->buf->sync = 0;
         }
     }
-
-    ngx_queue_insert_after(&fs->frames, &dst->queue);
 
     return NGX_OK;
 }
