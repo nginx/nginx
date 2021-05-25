@@ -4008,15 +4008,15 @@ done:
             n = *src++;
 
         } else {
+            if (dst != name->data) {
+                *dst++ = '.';
+            }
+
             ngx_strlow(dst, src, n);
             dst += n;
             src += n;
 
             n = *src++;
-
-            if (n != 0) {
-                *dst++ = '.';
-            }
         }
 
         if (n == 0) {
