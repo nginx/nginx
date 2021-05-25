@@ -3958,6 +3958,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         }
 
         if (n & 0xc0) {
+            if (p >= last) {
+                err = "name is out of DNS response";
+                goto invalid;
+            }
+
             n = ((n & 0x3f) << 8) + *p;
             p = &buf[n];
 
