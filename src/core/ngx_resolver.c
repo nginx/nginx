@@ -3958,6 +3958,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         }
 
         if (n & 0xc0) {
+            if ((n & 0xc0) != 0xc0) {
+                err = "invalid label type in DNS response";
+                goto invalid;
+            }
+
             if (p >= last) {
                 err = "name is out of DNS response";
                 goto invalid;
