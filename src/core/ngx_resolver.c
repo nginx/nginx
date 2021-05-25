@@ -1798,6 +1798,12 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     i = sizeof(ngx_resolver_hdr_t);
 
     while (i < (ngx_uint_t) n) {
+
+        if (buf[i] & 0xc0) {
+            err = "unexpected compression pointer in DNS response";
+            goto done;
+        }
+
         if (buf[i] == '\0') {
             goto found;
         }
