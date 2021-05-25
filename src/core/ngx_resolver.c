@@ -4008,14 +4008,17 @@ done:
 
     name->data = dst;
 
-    n = *src++;
-
     for ( ;; ) {
+        n = *src++;
+
+        if (n == 0) {
+            name->len = dst - name->data;
+            return NGX_OK;
+        }
+
         if (n & 0xc0) {
             n = ((n & 0x3f) << 8) + *src;
             src = &buf[n];
-
-            n = *src++;
 
         } else {
             if (dst != name->data) {
@@ -4025,13 +4028,6 @@ done:
             ngx_strlow(dst, src, n);
             dst += n;
             src += n;
-
-            n = *src++;
-        }
-
-        if (n == 0) {
-            name->len = dst - name->data;
-            return NGX_OK;
         }
     }
 }
