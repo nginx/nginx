@@ -3939,11 +3939,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
 {
     char        *err;
     u_char      *p, *dst;
-    ssize_t      len;
+    size_t       len;
     ngx_uint_t   i, n;
 
     p = src;
-    len = -1;
+    len = 0;
 
     /*
      * compression pointers allow to create endless loop, so we set limit;
@@ -3996,7 +3996,7 @@ done:
         return NGX_OK;
     }
 
-    if (len == -1) {
+    if (len == 0) {
         ngx_str_null(name);
         return NGX_OK;
     }
@@ -4012,7 +4012,7 @@ done:
         n = *src++;
 
         if (n == 0) {
-            name->len = dst - name->data;
+            name->len = dst - name->data - 1;
             return NGX_OK;
         }
 
@@ -4021,13 +4021,10 @@ done:
             src = &buf[n];
 
         } else {
-            if (dst != name->data) {
-                *dst++ = '.';
-            }
-
             ngx_strlow(dst, src, n);
             dst += n;
             src += n;
+            *dst++ = '.';
         }
     }
 }
