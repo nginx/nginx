@@ -5,6 +5,32 @@
 <change_log title="nginx">
 
 
+<changes ver="1.20.1" date="2021-05-25">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки ответа DNS-сервера
+могла происходить перезапись одного байта памяти,
+что позволяло атакующему,
+имеющему возможность подделывать UDP-пакеты от DNS-сервера,
+вызвать падение рабочего процесса
+или, потенциально, выполнение произвольного кода (CVE-2021-23017).
+</para>
+<para lang="en">
+1-byte memory overwrite might occur
+during DNS server response processing
+if the "resolver" directive was used,
+allowing an attacker
+who is able to forge UDP packets from the DNS server
+to cause worker process crash
+or, potentially, arbitrary code execution (CVE-2021-23017).
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.20.0" date="2021-04-20">
 
 <change>
