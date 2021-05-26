@@ -814,6 +814,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 {
     uint64_t                  last;
     ngx_pool_t               *pool;
+    ngx_event_t              *rev;
     ngx_connection_t         *sc;
     ngx_quic_stream_t        *qs;
     ngx_quic_connection_t    *qc;
@@ -895,9 +896,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         f->offset = qs->recv_offset;
     }
 
-    if (f->offset == qs->recv_offset) {
-        qs->connection->read->ready = 1;
-    }
+    rev = qs->connection->read;
 
     if (f->fin) {
         if (qs->final_size != (uint64_t) -1 && qs->final_size != last) {
@@ -910,12 +909,26 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             return NGX_ERROR;
         }
 
-        qs->connection->read->pending_eof = 1;
+        rev->pending_eof = 1;
         qs->final_size = last;
     }
 
-    return ngx_quic_order_bufs(c, &qs->in, frame->data,
-                               f->offset - qs->recv_offset);
+    if (ngx_quic_order_bufs(c, &qs->in, frame->data,
+                            f->offset - qs->recv_offset)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (f->offset == qs->recv_offset) {
+        rev->ready = 1;
+
+        if (rev->active) {
+            rev->handler(rev);
+        }
+    }
+
+    return NGX_OK;
 
 cleanup:
 
