@@ -2513,7 +2513,7 @@ ngx_mail_proxy_ssl_handshake(ngx_connection_t *c)
 
     if (c->ssl->handshaked) {
 
-        c->write->handler = ngx_mail_proxy_dummy_handler;
+        c->write->handler = ngx_mail_proxy_write_handler;
         switch (s->protocol) {
 
             case NGX_MAIL_POP3_PROTOCOL:
