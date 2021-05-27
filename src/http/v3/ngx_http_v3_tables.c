@@ -159,11 +159,22 @@ ngx_int_t
 ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)
 {
-    ngx_str_t  name;
+    ngx_str_t                     name;
+    ngx_http_v3_session_t        *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
 
     if (dynamic) {
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 ref insert dynamic[%ui] \"%V\"", index, value);
+
+        h3c = ngx_http_v3_get_session(c);
+        dt = &h3c->table;
+
+        if (dt->base + dt->nelts <= index) {
+            return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
+        }
+
+        index = dt->base + dt->nelts - 1 - index;
 
         if (ngx_http_v3_lookup(c, index, &name, NULL) != NGX_OK) {
             return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
