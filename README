@@ -15,7 +15,7 @@ Experimental QUIC support for nginx
 
     The code is developed in a separate "quic" branch available
     at https://hg.nginx.org/nginx-quic.  Currently it is based
-    on nginx mainline 1.19.x.  We merge new nginx releases into
+    on nginx mainline 1.21.x.  We merge new nginx releases into
     this branch regularly.
 
     The project code base is under the same BSD license as nginx.
@@ -34,7 +34,7 @@ Experimental QUIC support for nginx
 
     What works now:
 
-    Currently we support IETF-QUIC draft-29 through draft-34.
+    Currently we support IETF-QUIC draft-29 through final RFC documents.
     Earlier drafts are NOT supported as they have incompatible wire format.
 
     nginx should be able to respond to HTTP/3 requests over QUIC and
@@ -66,7 +66,7 @@ Experimental QUIC support for nginx
     - Flow control mechanism is basic and intended to avoid CPU hog and make
       simple interactions possible
 
-    - Not all draft requirements are strictly followed; some of checks are
+    - Not all protocol requirements are strictly followed; some of checks are
       omitted for the sake of simplicity of initial implementation
 
 2. Installing
@@ -242,10 +242,10 @@ Example configuration:
 
 7. Links
 
-    [1] https://tools.ietf.org/html/draft-ietf-quic-transport
-    [2] https://tools.ietf.org/html/draft-ietf-quic-http
+    [1] https://datatracker.ietf.org/doc/html/rfc9000
+    [2] https://datatracker.ietf.org/doc/html/draft-ietf-quic-http
     [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
     [4] https://boringssl.googlesource.com/boringssl/
-    [5] https://tools.ietf.org/html/draft-ietf-quic-recovery
+    [5] https://datatracker.ietf.org/doc/html/rfc9002
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
