@@ -50,6 +50,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
 {
     u_char                    *last, *location;
     size_t                     root, len;
+    uintptr_t                  escape;
     ngx_str_t                  path;
     ngx_int_t                  rc;
     ngx_uint_t                 level;
@@ -155,14 +156,18 @@ ngx_http_static_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        len = r->uri.len + 1;
+        escape = 2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len,
+                                    NGX_ESCAPE_URI);
 
-        if (!clcf->alias && r->args.len == 0) {
+        if (!clcf->alias && r->args.len == 0 && escape == 0) {
+            len = r->uri.len + 1;
             location = path.data + root;
 
             *last = '/';
 
         } else {
+            len = r->uri.len + escape + 1;
+
             if (r->args.len) {
                 len += r->args.len + 1;
             }
@@ -173,7 +178,13 @@ ngx_http_static_handler(ngx_http_request_t *r)
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
 
-            last = ngx_copy(location, r->uri.data, r->uri.len);
+            if (escape) {
+                last = (u_char *) ngx_escape_uri(location, r->uri.data,
+                                                 r->uri.len, NGX_ESCAPE_URI);
+
+            } else {
+                last = ngx_copy(location, r->uri.data, r->uri.len);
+            }
 
             *last = '/';
 

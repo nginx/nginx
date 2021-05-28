@@ -1798,6 +1798,12 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
     i = sizeof(ngx_resolver_hdr_t);
 
     while (i < (ngx_uint_t) n) {
+
+        if (buf[i] & 0xc0) {
+            err = "unexpected compression pointer in DNS response";
+            goto done;
+        }
+
         if (buf[i] == '\0') {
             goto found;
         }
@@ -3939,11 +3945,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
 {
     char        *err;
     u_char      *p, *dst;
-    ssize_t      len;
+    size_t       len;
     ngx_uint_t   i, n;
 
     p = src;
-    len = -1;
+    len = 0;
 
     /*
      * compression pointers allow to create endless loop, so we set limit;
@@ -3958,6 +3964,16 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         }
 
         if (n & 0xc0) {
+            if ((n & 0xc0) != 0xc0) {
+                err = "invalid label type in DNS response";
+                goto invalid;
+            }
+
+            if (p >= last) {
+                err = "name is out of DNS response";
+                goto invalid;
+            }
+
             n = ((n & 0x3f) << 8) + *p;
             p = &buf[n];
 
@@ -3986,7 +4002,7 @@ done:
         return NGX_OK;
     }
 
-    if (len == -1) {
+    if (len == 0) {
         ngx_str_null(name);
         return NGX_OK;
     }
@@ -3998,30 +4014,23 @@ done:
 
     name->data = dst;
 
-    n = *src++;
-
     for ( ;; ) {
+        n = *src++;
+
+        if (n == 0) {
+            name->len = dst - name->data - 1;
+            return NGX_OK;
+        }
+
         if (n & 0xc0) {
             n = ((n & 0x3f) << 8) + *src;
             src = &buf[n];
-
-            n = *src++;
 
         } else {
             ngx_strlow(dst, src, n);
             dst += n;
             src += n;
-
-            n = *src++;
-
-            if (n != 0) {
-                *dst++ = '.';
-            }
-        }
-
-        if (n == 0) {
-            name->len = dst - name->data;
-            return NGX_OK;
+            *dst++ = '.';
         }
     }
 }

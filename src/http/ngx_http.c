@@ -37,6 +37,8 @@ static ngx_int_t ngx_http_init_locations(ngx_conf_t *cf,
     ngx_http_core_srv_conf_t *cscf, ngx_http_core_loc_conf_t *pclcf);
 static ngx_int_t ngx_http_init_static_location_trees(ngx_conf_t *cf,
     ngx_http_core_loc_conf_t *pclcf);
+static ngx_int_t ngx_http_escape_location_name(ngx_conf_t *cf,
+    ngx_http_core_loc_conf_t *clcf);
 static ngx_int_t ngx_http_cmp_locations(const ngx_queue_t *one,
     const ngx_queue_t *two);
 static ngx_int_t ngx_http_join_exact_locations(ngx_conf_t *cf,
@@ -881,6 +883,41 @@ ngx_http_add_location(ngx_conf_t *cf, ngx_queue_t **locations,
     ngx_queue_init(&lq->list);
 
     ngx_queue_insert_tail(*locations, &lq->queue);
+
+    if (ngx_http_escape_location_name(cf, clcf) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_escape_location_name(ngx_conf_t *cf, ngx_http_core_loc_conf_t *clcf)
+{
+    u_char     *p;
+    size_t      len;
+    uintptr_t   escape;
+
+    escape = 2 * ngx_escape_uri(NULL, clcf->name.data, clcf->name.len,
+                                NGX_ESCAPE_URI);
+
+    if (escape) {
+        len = clcf->name.len + escape;
+
+        p = ngx_pnalloc(cf->pool, len);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        clcf->escaped_name.len = len;
+        clcf->escaped_name.data = p;
+
+        ngx_escape_uri(p, clcf->name.data, clcf->name.len, NGX_ESCAPE_URI);
+
+    } else {
+        clcf->escaped_name = clcf->name;
+    }
 
     return NGX_OK;
 }

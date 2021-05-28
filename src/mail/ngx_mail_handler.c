@@ -833,20 +833,23 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_str_t                  l;
     ngx_mail_core_srv_conf_t  *cscf;
 
-    n = c->recv(c, s->buffer->last, s->buffer->end - s->buffer->last);
+    if (s->buffer->last < s->buffer->end) {
 
-    if (n == NGX_ERROR || n == 0) {
-        ngx_mail_close_connection(c);
-        return NGX_ERROR;
-    }
+        n = c->recv(c, s->buffer->last, s->buffer->end - s->buffer->last);
 
-    if (n > 0) {
-        s->buffer->last += n;
-    }
+        if (n == NGX_ERROR || n == 0) {
+            ngx_mail_close_connection(c);
+            return NGX_ERROR;
+        }
 
-    if (n == NGX_AGAIN) {
-        if (s->buffer->pos == s->buffer->last) {
-            return NGX_AGAIN;
+        if (n > 0) {
+            s->buffer->last += n;
+        }
+
+        if (n == NGX_AGAIN) {
+            if (s->buffer->pos == s->buffer->last) {
+                return NGX_AGAIN;
+            }
         }
     }
 
@@ -871,7 +874,20 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
-    if (rc == NGX_IMAP_NEXT || rc == NGX_MAIL_PARSE_INVALID_COMMAND) {
+    if (rc == NGX_MAIL_PARSE_INVALID_COMMAND) {
+
+        s->errors++;
+
+        if (s->errors >= cscf->max_errors) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent too many invalid commands");
+            s->quit = 1;
+        }
+
+        return rc;
+    }
+
+    if (rc == NGX_IMAP_NEXT) {
         return rc;
     }
 

@@ -115,6 +115,8 @@ typedef struct {
     ngx_msec_t              timeout;
     ngx_msec_t              resolver_timeout;
 
+    ngx_uint_t              max_errors;
+
     ngx_str_t               server_name;
 
     u_char                 *file_name;
@@ -231,14 +233,15 @@ typedef struct {
     ngx_uint_t              command;
     ngx_array_t             args;
 
+    ngx_uint_t              errors;
     ngx_uint_t              login_attempt;
 
     /* used to parse POP3/IMAP/SMTP command */
 
     ngx_uint_t              state;
+    u_char                 *tag_start;
     u_char                 *cmd_start;
     u_char                 *arg_start;
-    u_char                 *arg_end;
     ngx_uint_t              literal_len;
 } ngx_mail_session_t;
 

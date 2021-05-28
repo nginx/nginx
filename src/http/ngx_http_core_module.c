@@ -1010,10 +1010,10 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
         ngx_str_set(&r->headers_out.location->key, "Location");
 
         if (r->args.len == 0) {
-            r->headers_out.location->value = clcf->name;
+            r->headers_out.location->value = clcf->escaped_name;
 
         } else {
-            len = clcf->name.len + 1 + r->args.len;
+            len = clcf->escaped_name.len + 1 + r->args.len;
             p = ngx_pnalloc(r->pool, len);
 
             if (p == NULL) {
@@ -1025,7 +1025,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
             r->headers_out.location->value.len = len;
             r->headers_out.location->value.data = p;
 
-            p = ngx_cpymem(p, clcf->name.data, clcf->name.len);
+            p = ngx_cpymem(p, clcf->escaped_name.data, clcf->escaped_name.len);
             *p++ = '?';
             ngx_memcpy(p, r->args.data, r->args.len);
         }
@@ -3467,6 +3467,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
+     *     clcf->escaped_name = { 0, NULL };
      *     clcf->root = { 0, NULL };
      *     clcf->limit_except = 0;
      *     clcf->post_action = { 0, NULL };
@@ -3479,8 +3480,6 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
      *     clcf->exact_match = 0;
      *     clcf->auto_redirect = 0;
      *     clcf->alias = 0;
-     *     clcf->limit_rate = NULL;
-     *     clcf->limit_rate_after = NULL;
      *     clcf->gzip_proxied = 0;
      *     clcf->keepalive_disable = 0;
      */
@@ -3512,6 +3511,8 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->send_timeout = NGX_CONF_UNSET_MSEC;
     clcf->send_lowat = NGX_CONF_UNSET_SIZE;
     clcf->postpone_output = NGX_CONF_UNSET_SIZE;
+    clcf->limit_rate = NGX_CONF_UNSET_PTR;
+    clcf->limit_rate_after = NGX_CONF_UNSET_PTR;
     clcf->keepalive_time = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
@@ -3743,13 +3744,9 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->postpone_output, prev->postpone_output,
                               1460);
 
-    if (conf->limit_rate == NULL) {
-        conf->limit_rate = prev->limit_rate;
-    }
-
-    if (conf->limit_rate_after == NULL) {
-        conf->limit_rate_after = prev->limit_rate_after;
-    }
+    ngx_conf_merge_ptr_value(conf->limit_rate, prev->limit_rate, NULL);
+    ngx_conf_merge_ptr_value(conf->limit_rate_after,
+                              prev->limit_rate_after, NULL);
 
     ngx_conf_merge_msec_value(conf->keepalive_time,
                               prev->keepalive_time, 3600000);

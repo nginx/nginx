@@ -5,6 +5,100 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.0" date="2021-05-25">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+во время обработки ответа DNS-сервера
+могла происходить перезапись одного байта памяти,
+что позволяло атакующему,
+имеющему возможность подделывать UDP-пакеты от DNS-сервера,
+вызвать падение рабочего процесса
+или, потенциально, выполнение произвольного кода (CVE-2021-23017).
+</para>
+<para lang="en">
+1-byte memory overwrite might occur
+during DNS server response processing
+if the "resolver" directive was used,
+allowing an attacker
+who is able to forge UDP packets from the DNS server
+to cause worker process crash
+or, potentially, arbitrary code execution (CVE-2021-23017).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы proxy_ssl_certificate, proxy_ssl_certificate_key,
+grpc_ssl_certificate, grpc_ssl_certificate_key,
+uwsgi_ssl_certificate и uwsgi_ssl_certificate_key
+поддерживают переменные.
+</para>
+<para lang="en">
+variables support
+in the "proxy_ssl_certificate", "proxy_ssl_certificate_key"
+"grpc_ssl_certificate", "grpc_ssl_certificate_key",
+"uwsgi_ssl_certificate", and "uwsgi_ssl_certificate_key" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива max_errors в почтовом прокси-сервере.
+</para>
+<para lang="en">
+the "max_errors" directive in the mail proxy module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+почтовый прокси-сервер поддерживает POP3 и IMAP pipelining.
+</para>
+<para lang="en">
+the mail proxy module supports POP3 and IMAP pipelining.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр fastopen директивы listen в модуле stream.<br/>
+Спасибо Anbang Wen.
+</para>
+<para lang="en">
+the "fastopen" parameter of the "listen" directive in the stream module.<br/>
+Thanks to Anbang Wen.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+специальные символы не экранировались
+при автоматическом перенаправлении с добавлением завершающего слэша.
+</para>
+<para lang="en">
+special characters were not escaped
+during automatic redirect with appended trailing slash.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании SMTP pipelining
+соединения с клиентами в почтовом прокси-сервере
+могли неожиданно закрываться.
+</para>
+<para lang="en">
+connections with clients in the mail proxy module
+might be closed unexpectedly
+when using SMTP pipelining.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.19.10" date="2021-04-13">
 
 <change type="change">
