@@ -152,6 +152,7 @@ syn keyword ngxDirective contained auth_jwt_header_set
 syn keyword ngxDirective contained auth_jwt_key_file
 syn keyword ngxDirective contained auth_jwt_key_request
 syn keyword ngxDirective contained auth_jwt_leeway
+syn keyword ngxDirective contained auth_jwt_type
 syn keyword ngxDirective contained auth_request
 syn keyword ngxDirective contained auth_request_set
 syn keyword ngxDirective contained autoindex
@@ -332,16 +333,20 @@ syn keyword ngxDirective contained index
 syn keyword ngxDirective contained iocp_threads
 syn keyword ngxDirective contained ip_hash
 syn keyword ngxDirective contained js_access
+syn keyword ngxDirective contained js_body_filter
 syn keyword ngxDirective contained js_content
 syn keyword ngxDirective contained js_filter
+syn keyword ngxDirective contained js_header_filter
 syn keyword ngxDirective contained js_import
 syn keyword ngxDirective contained js_include
 syn keyword ngxDirective contained js_path
 syn keyword ngxDirective contained js_preread
 syn keyword ngxDirective contained js_set
+syn keyword ngxDirective contained js_var
 syn keyword ngxDirective contained keepalive
 syn keyword ngxDirective contained keepalive_disable
 syn keyword ngxDirective contained keepalive_requests
+syn keyword ngxDirective contained keepalive_time
 syn keyword ngxDirective contained keepalive_timeout
 syn keyword ngxDirective contained keyval
 syn keyword ngxDirective contained keyval_zone
@@ -373,6 +378,7 @@ syn keyword ngxDirective contained log_subrequest
 syn keyword ngxDirective contained map_hash_bucket_size
 syn keyword ngxDirective contained map_hash_max_size
 syn keyword ngxDirective contained master_process
+syn keyword ngxDirective contained max_errors
 syn keyword ngxDirective contained max_ranges
 syn keyword ngxDirective contained memcached_bind
 syn keyword ngxDirective contained memcached_buffer_size
@@ -1080,6 +1086,8 @@ syn keyword ngxDirectiveThirdParty contained nchan_subscriber_compound_etag_mess
 syn keyword ngxDirectiveThirdParty contained nchan_subscribe_request
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_first_message
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_http_raw_stream_separator
+syn keyword ngxDirectiveThirdParty contained nchan_subscriber_info
+syn keyword ngxDirectiveThirdParty contained nchan_subscriber_info_string
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_last_message_id
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_location
 syn keyword ngxDirectiveThirdParty contained nchan_subscriber_message_id_custom_etag_header
@@ -2368,9 +2376,9 @@ syn keyword ngxDirectiveThirdParty contained websockify_send_timeout
 
 " IP2Location Nginx
 " https://github.com/ip2location/ip2location-nginx
-syn keyword ngxDirectiveThirdParty contained ip2location_proxy
-syn keyword ngxDirectiveThirdParty contained ip2location_proxy_recursive
+syn keyword ngxDirectiveThirdParty contained ip2location_addresstype
 syn keyword ngxDirectiveThirdParty contained ip2location_areacode
+syn keyword ngxDirectiveThirdParty contained ip2location_category
 syn keyword ngxDirectiveThirdParty contained ip2location_city
 syn keyword ngxDirectiveThirdParty contained ip2location_country_long
 syn keyword ngxDirectiveThirdParty contained ip2location_country_short
@@ -2384,6 +2392,8 @@ syn keyword ngxDirectiveThirdParty contained ip2location_mcc
 syn keyword ngxDirectiveThirdParty contained ip2location_mnc
 syn keyword ngxDirectiveThirdParty contained ip2location_mobilebrand
 syn keyword ngxDirectiveThirdParty contained ip2location_netspeed
+syn keyword ngxDirectiveThirdParty contained ip2location_proxy
+syn keyword ngxDirectiveThirdParty contained ip2location_proxy_recursive
 syn keyword ngxDirectiveThirdParty contained ip2location_region
 syn keyword ngxDirectiveThirdParty contained ip2location_timezone
 syn keyword ngxDirectiveThirdParty contained ip2location_usagetype
@@ -2403,6 +2413,7 @@ syn keyword ngxDirectiveThirdParty contained ip2proxy_domain
 syn keyword ngxDirectiveThirdParty contained ip2proxy_isp
 syn keyword ngxDirectiveThirdParty contained ip2proxy_is_proxy
 syn keyword ngxDirectiveThirdParty contained ip2proxy_last_seen
+syn keyword ngxDirectiveThirdParty contained ip2proxy_provider
 syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy
 syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy_recursive
 syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy_type
