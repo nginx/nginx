@@ -495,21 +495,24 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
-            if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
-                           (const void *) &reuseaddr, sizeof(int))
-                == -1)
-            {
-                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                              "setsockopt(SO_REUSEADDR) %V failed",
-                              &ls[i].addr_text);
+            if (ls[i].type != SOCK_DGRAM || !ngx_test_config) {
 
-                if (ngx_close_socket(s) == -1) {
+                if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
+                               (const void *) &reuseaddr, sizeof(int))
+                    == -1)
+                {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_close_socket_n " %V failed",
+                                  "setsockopt(SO_REUSEADDR) %V failed",
                                   &ls[i].addr_text);
-                }
 
-                return NGX_ERROR;
+                    if (ngx_close_socket(s) == -1) {
+                        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                      ngx_close_socket_n " %V failed",
+                                      &ls[i].addr_text);
+                    }
+
+                    return NGX_ERROR;
+                }
             }
 
 #if (NGX_HAVE_REUSEPORT)
