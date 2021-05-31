@@ -135,17 +135,16 @@ Experimental QUIC support for nginx
         http3_push
         http3_push_preload
 
-    Two additional variables are available: $quic and $http3.
+    An additional variable is available: $quic.
     The value of $quic is "quic" if QUIC connection is used,
-    and empty string otherwise. The value of $http3 is a string
-    "h3-xx" where "xx" is the supported draft number.
+    or an empty string otherwise.
 
 Example configuration:
 
     http {
         log_format quic '$remote_addr - $remote_user [$time_local] '
                         '"$request" $status $body_bytes_sent '
-                        '"$http_referer" "$http_user_agent" "$quic" "$http3"';
+                        '"$http_referer" "$http_user_agent" "$quic"';
 
         access_log logs/access.log quic;
 
@@ -161,7 +160,7 @@ Example configuration:
 
             location / {
                 # required for browsers to direct them into quic port
-                add_header Alt-Svc '$http3=":8443"; ma=86400';
+                add_header Alt-Svc 'h3=":8443"; ma=86400';
             }
         }
     }
@@ -202,7 +201,7 @@ Example configuration:
    If you've got it right, in the access log you should see something like:
 
    127.0.0.1 - - [24/Apr/2020:11:27:29 +0300] "GET / HTTP/3" 200 805 "-"
-                                         "nghttp3/ngtcp2 client" "quic" "h3-29"
+                                         "nghttp3/ngtcp2 client" "quic"
 
 
 5. Troubleshooting

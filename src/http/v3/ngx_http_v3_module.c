@@ -10,9 +10,6 @@
 #include <ngx_http.h>
 
 
-static ngx_int_t ngx_http_variable_http3(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_v3_add_variables(ngx_conf_t *cf);
 static void *ngx_http_v3_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -64,7 +61,7 @@ static ngx_command_t  ngx_http_v3_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_v3_module_ctx = {
-    ngx_http_v3_add_variables,             /* preconfiguration */
+    NULL,                                  /* preconfiguration */
     NULL,                                  /* postconfiguration */
 
     NULL,                                  /* create main configuration */
@@ -92,52 +89,6 @@ ngx_module_t  ngx_http_v3_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
-
-
-static ngx_http_variable_t  ngx_http_v3_vars[] = {
-
-    { ngx_string("http3"), NULL, ngx_http_variable_http3, 0, 0, 0 },
-
-      ngx_http_null_variable
-};
-
-
-static ngx_int_t
-ngx_http_variable_http3(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data)
-{
-    v->valid = 1;
-    v->no_cacheable = 1;
-    v->not_found = 0;
-
-    v->data = ngx_pnalloc(r->pool, sizeof("h3-xx") - 1);
-    if (v->data == NULL) {
-        return NGX_ERROR;
-    }
-
-    v->len = ngx_sprintf(v->data, "h3-%d", NGX_QUIC_DRAFT_VERSION) - v->data;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_v3_add_variables(ngx_conf_t *cf)
-{
-    ngx_http_variable_t  *var, *v;
-
-    for (v = ngx_http_v3_vars; v->name.len; v++) {
-        var = ngx_http_add_variable(cf, &v->name, v->flags);
-        if (var == NULL) {
-            return NGX_ERROR;
-        }
-
-        var->get_handler = v->get_handler;
-        var->data = v->data;
-    }
-
-    return NGX_OK;
-}
 
 
 static void *
