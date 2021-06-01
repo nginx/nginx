@@ -3400,6 +3400,8 @@ ngx_http_set_lingering_close(ngx_connection_t *c)
     if (c->ssl) {
         ngx_int_t  rc;
 
+        c->ssl->shutdown_without_free = 1;
+
         rc = ngx_ssl_shutdown(c);
 
         if (rc == NGX_ERROR) {
