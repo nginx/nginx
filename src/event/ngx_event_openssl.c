@@ -3008,6 +3008,12 @@ failed:
 
 done:
 
+    if (c->ssl->shutdown_without_free) {
+        c->ssl->shutdown_without_free = 0;
+        c->recv = ngx_recv;
+        return rc;
+    }
+
     SSL_free(c->ssl->connection);
     c->ssl = NULL;
     c->recv = ngx_recv;
