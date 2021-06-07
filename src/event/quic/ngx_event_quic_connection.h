@@ -115,8 +115,10 @@ typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
 
-    uint64_t                          received;
     uint64_t                          sent;
+    uint64_t                          recv_offset;
+    uint64_t                          recv_window;
+    uint64_t                          recv_last;
     uint64_t                          recv_max_data;
     uint64_t                          send_max_data;
 
