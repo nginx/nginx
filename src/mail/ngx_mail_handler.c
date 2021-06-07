@@ -421,8 +421,6 @@ ngx_mail_ssl_handshake_handler(ngx_connection_t *c)
         ngx_mail_init_session(c);
         return;
     }
-
-    ngx_mail_close_connection(c);
 }
 
 

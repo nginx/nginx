@@ -1828,7 +1828,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     c->read->error = 1;
 
-    ngx_ssl_connection_error(c, sslerr, err, "SSL_do_handshake() failed");
+    ERR_clear_error();
 
     return NGX_ERROR;
 }
