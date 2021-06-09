@@ -18,19 +18,33 @@
 #define NGX_QUIC_TIME_THR                    1.125
 #define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
 
+/* quic-recovery, section 7.6.1 Persistent congestion duration */
+#define NGX_QUIC_PERSISTENT_CONGESTION_THR   3
+
 #define ngx_quic_lost_threshold(qc)                                           \
     ngx_max(NGX_QUIC_TIME_THR * ngx_max((qc)->latest_rtt, (qc)->avg_rtt),     \
             NGX_QUIC_TIME_GRANULARITY)
+
+
+/* send time of ACK'ed packets */
+typedef struct {
+    ngx_msec_t                               max_pn;
+    ngx_msec_t                               oldest;
+    ngx_msec_t                               newest;
+} ngx_quic_ack_stat_t;
 
 
 static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     enum ssl_encryption_level_t level, ngx_msec_t send_time);
 static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t min, uint64_t max,
-    ngx_msec_t *send_time);
+    ngx_quic_ack_stat_t *st);
 static void ngx_quic_drop_ack_ranges(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t pn);
-static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c);
+static ngx_int_t ngx_quic_detect_lost(ngx_connection_t *c,
+    ngx_quic_ack_stat_t *st);
+static ngx_msec_t ngx_quic_pcg_duration(ngx_connection_t *c);
+static void ngx_quic_persistent_congestion(ngx_connection_t *c);
 static void ngx_quic_congestion_lost(ngx_connection_t *c,
     ngx_quic_frame_t *frame);
 static void ngx_quic_lost_handler(ngx_event_t *ev);
@@ -43,8 +57,8 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ssize_t                 n;
     u_char                 *pos, *end;
     uint64_t                min, max, gap, range;
-    ngx_msec_t              send_time;
     ngx_uint_t              i;
+    ngx_quic_ack_stat_t     send_time;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_ack_frame_t   *ack;
     ngx_quic_connection_t  *qc;
@@ -74,6 +88,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     min = ack->largest - ack->first_range;
     max = ack->largest;
 
+    send_time.oldest = NGX_TIMER_INFINITE;
+    send_time.newest = NGX_TIMER_INFINITE;
+
     if (ngx_quic_handle_ack_frame_range(c, ctx, min, max, &send_time)
         != NGX_OK)
     {
@@ -94,8 +111,8 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
          *  - at least one of the newly acknowledged packets was ack-eliciting.
          */
 
-        if (send_time != NGX_TIMER_INFINITE) {
-            ngx_quic_rtt_sample(c, ack, pkt->level, send_time);
+        if (send_time.max_pn != NGX_TIMER_INFINITE) {
+            ngx_quic_rtt_sample(c, ack, pkt->level, send_time.max_pn);
         }
     }
 
@@ -141,7 +158,7 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         }
     }
 
-    return ngx_quic_detect_lost(c);
+    return ngx_quic_detect_lost(c, &send_time);
 }
 
 
@@ -161,6 +178,7 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
         qc->min_rtt = latest_rtt;
         qc->avg_rtt = latest_rtt;
         qc->rttvar = latest_rtt / 2;
+        qc->first_rtt = ngx_current_msec;
 
     } else {
         qc->min_rtt = ngx_min(qc->min_rtt, latest_rtt);
@@ -190,7 +208,7 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
 
 static ngx_int_t
 ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    uint64_t min, uint64_t max, ngx_msec_t *send_time)
+    uint64_t min, uint64_t max, ngx_quic_ack_stat_t *st)
 {
     ngx_uint_t              found;
     ngx_queue_t            *q;
@@ -199,7 +217,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     qc = ngx_quic_get_connection(c);
 
-    *send_time = NGX_TIMER_INFINITE;
+    st->max_pn = NGX_TIMER_INFINITE;
     found = 0;
 
     q = ngx_queue_last(&ctx->sent);
@@ -231,7 +249,16 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
             }
 
             if (f->pnum == max) {
-                *send_time = f->last;
+                st->max_pn = f->last;
+            }
+
+            /* save earliest and latest send times of frames ack'ed */
+            if (st->oldest == NGX_TIMER_INFINITE || f->last < st->oldest) {
+                st->oldest = f->last;
+            }
+
+            if (st->newest == NGX_TIMER_INFINITE || f->last > st->newest) {
+                st->newest = f->last;
             }
 
             ngx_queue_remove(&f->queue);
@@ -377,10 +404,10 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
 
 static ngx_int_t
-ngx_quic_detect_lost(ngx_connection_t *c)
+ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
 {
-    ngx_uint_t              i;
-    ngx_msec_t              now, wait, thr;
+    ngx_uint_t              i, nlost;
+    ngx_msec_t              now, wait, thr, oldest, newest;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *start;
     ngx_quic_send_ctx_t    *ctx;
@@ -389,6 +416,12 @@ ngx_quic_detect_lost(ngx_connection_t *c)
     qc = ngx_quic_get_connection(c);
     now = ngx_current_msec;
     thr = ngx_quic_lost_threshold(qc);
+
+    /* send time of lost packets across all send contexts */
+    oldest = NGX_TIMER_INFINITE;
+    newest = NGX_TIMER_INFINITE;
+
+    nlost = 0;
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
@@ -419,13 +452,77 @@ ngx_quic_detect_lost(ngx_connection_t *c)
                 break;
             }
 
+            if (start->last > qc->first_rtt) {
+
+                if (oldest == NGX_TIMER_INFINITE || start->last < oldest) {
+                    oldest = start->last;
+                }
+
+                if (newest == NGX_TIMER_INFINITE || start->last > newest) {
+                    newest = start->last;
+                }
+
+                nlost++;
+            }
+
             ngx_quic_resend_frames(c, ctx);
+        }
+    }
+
+
+    /* Establishing Persistent Congestion (7.6.2) */
+
+    /*
+     * Once acknowledged, packets are no longer tracked. Thus no send time
+     * information is available for such packets. This limits persistent
+     * congestion algorithm to packets mentioned within ACK ranges of the
+     * latest ACK frame.
+     */
+
+    if (st && nlost >= 2 && (st->newest < oldest || st->oldest > newest)) {
+
+        if (newest - oldest > ngx_quic_pcg_duration(c)) {
+            ngx_quic_persistent_congestion(c);
         }
     }
 
     ngx_quic_set_lost_timer(c);
 
     return NGX_OK;
+}
+
+
+static ngx_msec_t
+ngx_quic_pcg_duration(ngx_connection_t *c)
+{
+    ngx_msec_t              duration;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    duration = qc->avg_rtt;
+    duration += ngx_max(4 * qc->rttvar, NGX_QUIC_TIME_GRANULARITY);
+    duration += qc->ctp.max_ack_delay;
+    duration *= NGX_QUIC_PERSISTENT_CONGESTION_THR;
+
+    return duration;
+}
+
+
+static void
+ngx_quic_persistent_congestion(ngx_connection_t *c)
+{
+    ngx_quic_congestion_t  *cg;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
+
+    cg->recovery_start = ngx_current_msec;
+    cg->window = qc->tp.max_udp_payload_size * 2;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic persistent congestion win:%uz", cg->window);
 }
 
 
@@ -687,7 +784,7 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
 
     c = ev->data;
 
-    if (ngx_quic_detect_lost(c) != NGX_OK) {
+    if (ngx_quic_detect_lost(c, NULL) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
     }
 

@@ -271,6 +271,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->avg_rtt = NGX_QUIC_INITIAL_RTT;
     qc->rttvar = NGX_QUIC_INITIAL_RTT / 2;
     qc->min_rtt = NGX_TIMER_INFINITE;
+    qc->first_rtt = NGX_TIMER_INFINITE;
 
     /*
      * qc->latest_rtt = 0

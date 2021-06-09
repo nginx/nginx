@@ -211,6 +211,7 @@ struct ngx_quic_connection_s {
     ngx_event_t                       path_validation;
     ngx_msec_t                        last_cc;
 
+    ngx_msec_t                        first_rtt;
     ngx_msec_t                        latest_rtt;
     ngx_msec_t                        avg_rtt;
     ngx_msec_t                        min_rtt;
