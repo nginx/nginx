@@ -41,6 +41,7 @@ typedef struct {
     unsigned                ipv6only:1;
 #endif
     unsigned                so_keepalive:2;
+    unsigned                proxy_protocol:1;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                     tcp_keepidle;
     int                     tcp_keepintvl;
@@ -55,7 +56,8 @@ typedef struct {
 typedef struct {
     ngx_mail_conf_ctx_t    *ctx;
     ngx_str_t               addr_text;
-    ngx_uint_t              ssl;    /* unsigned   ssl:1; */
+    unsigned                ssl:1;
+    unsigned                proxy_protocol:1;
 } ngx_mail_addr_conf_t;
 
 typedef struct {
@@ -182,10 +184,12 @@ typedef enum {
     ngx_smtp_helo,
     ngx_smtp_noxclient,
     ngx_smtp_helo_xclient,
+    ngx_smtp_helo_auth,
     ngx_smtp_helo_from,
     ngx_smtp_xclient,
     ngx_smtp_xclient_from,
     ngx_smtp_xclient_helo,
+    ngx_smtp_xclient_auth,
     ngx_smtp_from,
     ngx_smtp_to
 } ngx_smtp_state_e;
@@ -200,6 +204,7 @@ typedef enum {
 typedef struct {
     ngx_peer_connection_t   upstream;
     ngx_buf_t              *buffer;
+    ngx_uint_t              proxy_protocol;  /* unsigned  proxy_protocol:1; */
 } ngx_mail_proxy_ctx_t;
 
 typedef void (*ngx_mail_cleanup_pt)(void *data);
@@ -232,6 +237,7 @@ typedef struct {
 
     ngx_str_t               greetings[3];
 
+    unsigned                ssl:1;
     unsigned                protocol:3;
     unsigned                blocked:1;
     unsigned                quit:1;
@@ -506,6 +512,7 @@ char *ngx_mail_capabilities(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 /* STUB */
 void ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer);
 void ngx_mail_auth_http_init(ngx_mail_session_t *s);
+ngx_int_t ngx_mail_realip_handler(ngx_mail_session_t *s);
 /**/
 
 ngx_mail_cleanup_t * ngx_mail_cleanup_add(ngx_mail_session_t * s, size_t size);

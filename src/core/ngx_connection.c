@@ -1070,7 +1070,8 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         if (ls[i].sockaddr->sa_family == AF_UNIX
             && ngx_process <= NGX_PROCESS_MASTER
-            && ngx_new_binary == 0)
+            && ngx_new_binary == 0
+            && (!ls[i].inherited || ngx_getppid() != ngx_parent))
         {
             u_char *name = ls[i].addr_text.data + sizeof("unix:") - 1;
 
@@ -1106,12 +1107,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    c = ngx_cycle->free_connections;
+    ngx_drain_connections((ngx_cycle_t *) ngx_cycle);
 
-    if (c == NULL) {
-        ngx_drain_connections((ngx_cycle_t *) ngx_cycle);
-        c = ngx_cycle->free_connections;
-    }
+    c = ngx_cycle->free_connections;
 
     if (c == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
@@ -1297,6 +1295,22 @@ ngx_drain_connections(ngx_cycle_t *cycle)
     ngx_queue_t       *q;
     ngx_connection_t  *c;
 
+    if (cycle->free_connection_n > cycle->connection_n / 16
+        || cycle->reusable_connections_n == 0)
+    {
+        return;
+    }
+
+    if (cycle->connections_reuse_time != ngx_time()) {
+        cycle->connections_reuse_time = ngx_time();
+
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "%ui worker_connections are not enough, "
+                      "reusing connections",
+                      cycle->connection_n);
+    }
+
+    c = NULL;
     n = ngx_max(ngx_min(32, cycle->reusable_connections_n / 8), 1);
 
     for (i = 0; i < n; i++) {
@@ -1309,6 +1323,21 @@ ngx_drain_connections(ngx_cycle_t *cycle)
 
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "reusing connection");
+
+        c->close = 1;
+        c->read->handler(c->read);
+    }
+
+    if (cycle->free_connection_n == 0 && c && c->reusable) {
+
+        /*
+         * if no connections were freed, try to reuse the last
+         * connection again: this should free it as long as
+         * previous reuse moved it to lingering close
+         */
+
+        ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0,
+                       "reusing connection again");
 
         c->close = 1;
         c->read->handler(c->read);

@@ -658,6 +658,19 @@ ngx_fs_bsize(u_char *name)
 }
 
 
+off_t
+ngx_fs_available(u_char *name)
+{
+    ULARGE_INTEGER  navail;
+
+    if (GetDiskFreeSpaceEx((const char *) name, &navail, NULL, NULL) == 0) {
+        return NGX_MAX_OFF_T_VALUE;
+    }
+
+    return (off_t) navail.QuadPart;
+}
+
+
 static ngx_int_t
 ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
 {

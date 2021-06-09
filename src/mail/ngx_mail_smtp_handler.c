@@ -449,6 +449,12 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
     if (s->out.len) {
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "smtp send handler busy");
         s->blocked = 1;
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_close_connection(c);
+            return;
+        }
+
         return;
     }
 
@@ -456,7 +462,16 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
 
     rc = ngx_mail_read_command(s, c);
 
-    if (rc == NGX_AGAIN || rc == NGX_ERROR) {
+    if (rc == NGX_AGAIN) {
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_session_internal_server_error(s);
+            return;
+        }
+
+        return;
+    }
+
+    if (rc == NGX_ERROR) {
         return;
     }
 
@@ -566,6 +581,11 @@ ngx_mail_smtp_auth_state(ngx_event_t *rev)
 
         if (s->state) {
             s->arg_start = s->buffer->pos;
+        }
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            ngx_mail_session_internal_server_error(s);
+            return;
         }
 
         ngx_mail_send(c->write);

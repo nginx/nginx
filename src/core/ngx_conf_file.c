@@ -1137,7 +1137,7 @@ ngx_conf_set_keyval_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     a = (ngx_array_t **) (p + cmd->offset);
 
-    if (*a == NULL) {
+    if (*a == NGX_CONF_UNSET_PTR || *a == NULL) {
         *a = ngx_array_create(cf->pool, 4, sizeof(ngx_keyval_t));
         if (*a == NULL) {
             return NGX_CONF_ERROR;

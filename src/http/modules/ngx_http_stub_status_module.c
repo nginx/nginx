@@ -103,16 +103,6 @@ ngx_http_stub_status_handler(ngx_http_request_t *r)
     ngx_str_set(&r->headers_out.content_type, "text/plain");
     r->headers_out.content_type_lowcase = NULL;
 
-    if (r->method == NGX_HTTP_HEAD) {
-        r->headers_out.status = NGX_HTTP_OK;
-
-        rc = ngx_http_send_header(r);
-
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-            return rc;
-        }
-    }
-
     size = sizeof("Active connections:  \n") + NGX_ATOMIC_T_LEN
            + sizeof("server accepts handled requests\n") - 1
            + 6 + 3 * NGX_ATOMIC_T_LEN
