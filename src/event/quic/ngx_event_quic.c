@@ -912,7 +912,8 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (!ngx_quic_keys_available(qc->keys, pkt->level)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no level %d keys yet, ignoring packet", pkt->level);
+                      "quic no %s keys, ignoring packet",
+                      ngx_quic_level_name(pkt->level));
         return NGX_DECLINED;
     }
 
