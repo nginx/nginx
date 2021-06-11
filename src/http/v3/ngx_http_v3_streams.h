@@ -21,6 +21,7 @@ ngx_connection_t *ngx_http_v3_create_push_stream(ngx_connection_t *c,
     uint64_t push_id);
 ngx_int_t ngx_http_v3_set_max_push_id(ngx_connection_t *c,
     uint64_t max_push_id);
+ngx_int_t ngx_http_v3_goaway(ngx_connection_t *c, uint64_t push_id);
 ngx_int_t ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id);
 ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
 

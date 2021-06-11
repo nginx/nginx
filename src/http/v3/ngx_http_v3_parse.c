@@ -1012,6 +1012,7 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
         sw_cancel_push,
         sw_settings,
         sw_max_push_id,
+        sw_goaway,
         sw_skip
     };
 
@@ -1091,6 +1092,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
             st->state = sw_max_push_id;
             break;
 
+        case NGX_HTTP_V3_FRAME_GOAWAY:
+            st->state = sw_goaway;
+            break;
+
         default:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http3 parse skip unknown frame");
@@ -1150,6 +1155,26 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
         }
 
         rc = ngx_http_v3_set_max_push_id(c, st->vlint.value);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        st->state = sw_type;
+        break;
+
+    case sw_goaway:
+
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, ch);
+
+        if (--st->length == 0 && rc == NGX_AGAIN) {
+            return NGX_HTTP_V3_ERR_FRAME_ERROR;
+        }
+
+        if (rc != NGX_DONE) {
+            return rc;
+        }
+
+        rc = ngx_http_v3_goaway(c, st->vlint.value);
         if (rc != NGX_OK) {
             return rc;
         }

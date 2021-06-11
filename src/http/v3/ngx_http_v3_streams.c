@@ -704,6 +704,21 @@ ngx_http_v3_set_max_push_id(ngx_connection_t *c, uint64_t max_push_id)
 
 
 ngx_int_t
+ngx_http_v3_goaway(ngx_connection_t *c, uint64_t push_id)
+{
+    ngx_http_v3_session_t  *h3c;
+
+    h3c = ngx_http_v3_get_session(c);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 GOAWAY:%uL", push_id);
+
+    h3c->goaway_push_id = push_id;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
 {
     ngx_queue_t            *q;

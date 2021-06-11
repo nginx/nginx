@@ -805,6 +805,12 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         return NGX_ABORT;
     }
 
+    if (h3c->goaway_push_id != (uint64_t) -1) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 abort pushes due to goaway");
+        return NGX_ABORT;
+    }
+
     if (h3c->npushing >= h3scf->max_concurrent_pushes) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 abort pushes due to max_concurrent_pushes");

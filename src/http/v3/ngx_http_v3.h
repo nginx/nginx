@@ -129,6 +129,7 @@ struct ngx_http_v3_session_s {
     ngx_uint_t                    npushing;
     uint64_t                      next_push_id;
     uint64_t                      max_push_id;
+    uint64_t                      goaway_push_id;
 
     ngx_uint_t                    goaway;  /* unsigned  goaway:1; */
 
