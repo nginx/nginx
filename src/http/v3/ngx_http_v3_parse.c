@@ -1031,17 +1031,17 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 parse frame type:%ui", st->type);
 
+        if (st->state == sw_first_type
+            && st->type != NGX_HTTP_V3_FRAME_SETTINGS)
+        {
+            return NGX_HTTP_V3_ERR_MISSING_SETTINGS;
+        }
+
         if (ngx_http_v3_is_v2_frame(st->type)
             || st->type == NGX_HTTP_V3_FRAME_DATA
             || st->type == NGX_HTTP_V3_FRAME_HEADERS)
         {
             return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
-        }
-
-        if (st->state == sw_first_type
-            && st->type != NGX_HTTP_V3_FRAME_SETTINGS)
-        {
-            return NGX_HTTP_V3_ERR_MISSING_SETTINGS;
         }
 
         st->state = sw_length;
