@@ -224,7 +224,14 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
         st->type = st->vlint.value;
 
-        if (ngx_http_v3_is_v2_frame(st->type)) {
+        if (ngx_http_v3_is_v2_frame(st->type)
+            || st->type == NGX_HTTP_V3_FRAME_DATA
+            || st->type == NGX_HTTP_V3_FRAME_GOAWAY
+            || st->type == NGX_HTTP_V3_FRAME_SETTINGS
+            || st->type == NGX_HTTP_V3_FRAME_MAX_PUSH_ID
+            || st->type == NGX_HTTP_V3_FRAME_CANCEL_PUSH
+            || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE)
+        {
             return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
         }
 
@@ -1037,9 +1044,16 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
             return NGX_HTTP_V3_ERR_MISSING_SETTINGS;
         }
 
+        if (st->state != sw_first_type
+            && st->type == NGX_HTTP_V3_FRAME_SETTINGS)
+        {
+            return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
+        }
+
         if (ngx_http_v3_is_v2_frame(st->type)
             || st->type == NGX_HTTP_V3_FRAME_DATA
-            || st->type == NGX_HTTP_V3_FRAME_HEADERS)
+            || st->type == NGX_HTTP_V3_FRAME_HEADERS
+            || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE)
         {
             return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
         }
@@ -1633,7 +1647,13 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
             goto done;
         }
 
-        if (ngx_http_v3_is_v2_frame(st->type)) {
+        if (ngx_http_v3_is_v2_frame(st->type)
+            || st->type == NGX_HTTP_V3_FRAME_GOAWAY
+            || st->type == NGX_HTTP_V3_FRAME_SETTINGS
+            || st->type == NGX_HTTP_V3_FRAME_MAX_PUSH_ID
+            || st->type == NGX_HTTP_V3_FRAME_CANCEL_PUSH
+            || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE)
+        {
             return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
         }
 
