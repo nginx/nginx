@@ -296,12 +296,11 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
     }
 
     /*
-     *   2.1.  Stream Types and Identifiers
+     * RFC 9000, 2.1.  Stream Types and Identifiers
      *
-     *   Within each type, streams are created with numerically increasing
-     *   stream IDs.  A stream ID that is used out of order results in all
-     *   streams of that type with lower-numbered stream IDs also being
-     *   opened.
+     * successive streams of each type are created with numerically increasing
+     * stream IDs.  A stream ID that is used out of order results in all
+     * streams of that type with lower-numbered stream IDs also being opened.
      */
 
     for ( /* void */ ; min_id < id; min_id += 0x04) {

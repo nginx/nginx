@@ -1127,7 +1127,11 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
 {
     uint8_t  ptype;
 
-    /* frame permissions per packet: 4 bits: IH01: 12.4, Table 3 */
+    /*
+     * RFC 9000, 12.4. Frames and Frame Types: Table 3
+     *
+     * Frame permissions per packet: 4 bits: IH01
+     */
     static uint8_t ngx_quic_frame_masks[] = {
          /* PADDING  */              0xF,
          /* PING */                  0xF,
@@ -1242,9 +1246,9 @@ ssize_t
 ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
 {
     /*
-     *  QUIC-recovery, section 2:
+     *  RFC 9002, 2.  Conventions and Definitions
      *
-     *  Ack-eliciting Frames:  All frames other than ACK, PADDING, and
+     *  Ack-eliciting frames:  All frames other than ACK, PADDING, and
      *  CONNECTION_CLOSE are considered ack-eliciting.
      */
     f->need_ack = 1;

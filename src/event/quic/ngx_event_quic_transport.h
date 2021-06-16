@@ -12,8 +12,12 @@
 #include <ngx_core.h>
 
 
-/* QUIC flags in first byte, see quic-transport 17.2 and 17.3 */
-
+/*
+ * RFC 9000, 17.2.  Long Header Packets
+ *           17.3.  Short Header Packets
+ *
+ * QUIC flags in first byte
+ */
 #define NGX_QUIC_PKT_LONG       0x80  /* header form */
 #define NGX_QUIC_PKT_FIXED_BIT  0x40
 #define NGX_QUIC_PKT_TYPE       0x30  /* in long packet */
@@ -85,7 +89,7 @@
 
 #define NGX_QUIC_FT_LAST  NGX_QUIC_FT_HANDSHAKE_DONE
 
-/* 22.4.  QUIC Transport Error Codes Registry */
+/* 22.5.  QUIC Transport Error Codes Registry */
 /* Keep in sync with ngx_quic_errors[] */
 #define NGX_QUIC_ERR_NO_ERROR                            0x00
 #define NGX_QUIC_ERR_INTERNAL_ERROR                      0x01
@@ -111,7 +115,7 @@
 #define NGX_QUIC_ERR_CRYPTO(e)  (NGX_QUIC_ERR_CRYPTO_ERROR + (e))
 
 
-/* Transport parameters */
+/* 22.3.  QUIC Transport Parameters Registry */
 #define NGX_QUIC_TP_ORIGINAL_DCID                        0x00
 #define NGX_QUIC_TP_MAX_IDLE_TIMEOUT                     0x01
 #define NGX_QUIC_TP_SR_TOKEN                             0x02

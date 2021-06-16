@@ -38,15 +38,17 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     frame.u.path_response = *f;
 
     /*
+     * RFC 9000, 8.2.2.  Path Validation Responses
+     *
      * A PATH_RESPONSE frame MUST be sent on the network path where the
-     * PATH_CHALLENGE was received.
+     * PATH_CHALLENGE frame was received.
      */
     qsock = ngx_quic_get_socket(c);
     path = qsock->path;
 
     /*
-     *  An endpoint MUST NOT expand the datagram containing the PATH_RESPONSE
-     *  if the resulting data exceeds the anti-amplification limit.
+     * An endpoint MUST NOT expand the datagram containing the PATH_RESPONSE
+     * if the resulting data exceeds the anti-amplification limit.
      */
     max = path->received * 3;
     max = (path->sent >= max) ? 0 : max - path->sent;
@@ -61,6 +63,8 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
     if (qsock == qc->socket) {
         /*
+         * RFC 9000, 9.3.3.  Off-Path Packet Forwarding
+         *
          * An endpoint that receives a PATH_CHALLENGE on an active path SHOULD
          * send a non-probing packet in response.
          */
@@ -91,6 +95,8 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     /*
+     * RFC 9000, 8.2.3.  Successful Path Validation
+     *
      * A PATH_RESPONSE frame received on any network path validates the path
      * on which the PATH_CHALLENGE was sent.
      */
@@ -120,11 +126,12 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
 valid:
 
     /*
+     * RFC 9000, 9.4.  Loss Detection and Congestion Control
+     *
      * On confirming a peer's ownership of its new address,
      * an endpoint MUST immediately reset the congestion controller
-     * and round-trip time estimator for the new path
-     * to initial values
-     * ...unless the only change in the peer's address is its port number.
+     * and round-trip time estimator for the new path to initial values
+     * unless the only change in the peer's address is its port number.
      */
 
     prev = qc->backup->path;
@@ -144,6 +151,8 @@ valid:
     }
 
     /*
+     * RFC 9000, 9.3.  Responding to Connection Migration
+     *
      *  After verifying a new client address, the server SHOULD
      *  send new address validation tokens (Section 8) to the client.
      */
@@ -474,6 +483,8 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
     /*
+     * RFC 9000, 9.3.  Responding to Connection Migration
+     *
      * An endpoint only changes the address to which it sends packets in
      * response to the highest-numbered non-probing packet.
      */
@@ -486,6 +497,8 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_set_connection_path(c, next);
 
     /*
+     * RFC 9000, 9.5.  Privacy Implications of Connection Migration
+     *
      * An endpoint MUST NOT reuse a connection ID when sending to
      * more than one destination address.
      */
@@ -578,6 +591,8 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_memcpy(frame.u.path_challenge.data, path->challenge1, 8);
 
     /*
+     * RFC 9000, 8.2.1.  Initiating Path Validation
+     *
      * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
      * to at least the smallest allowed maximum datagram size of 1200 bytes,
      * unless the anti-amplification limit for the path does not permit
@@ -675,9 +690,11 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
         path->state = NGX_QUIC_PATH_NEW;
 
         /*
+         * RFC 9000, 9.4.  Loss Detection and Congestion Control
+         *
          * If the timer fires before the PATH_RESPONSE is received, the
-         * endpoint might send a new PATH_CHALLENGE, and restart the timer for
-         * a longer period of time. This timer SHOULD be set as described in
+         * endpoint might send a new PATH_CHALLENGE and restart the timer for
+         * a longer period of time.  This timer SHOULD be set as described in
          * Section 6.2.1 of [QUIC-RECOVERY] and MUST NOT be more aggressive.
          */
 
@@ -708,9 +725,13 @@ ngx_quic_path_restore(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
 
-    /* Failure to validate a path does not cause the connection to end */
-
     /*
+     * RFC 9000, 9.1.  Probing a New Path
+     *
+     * Failure to validate a path does not cause the connection to end
+     *
+     * RFC 9000, 9.3.2.  On-Path Address Spoofing
+     *
      * To protect the connection from failing due to such a spurious
      * migration, an endpoint MUST revert to using the last validated
      * peer address when validation of a new peer address fails.

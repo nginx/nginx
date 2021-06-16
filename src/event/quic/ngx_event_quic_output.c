@@ -23,9 +23,11 @@
     /* 1 flags + 4 version + 3 x (1 + 20) s/o/dcid + itag + token(64) */
 
 /*
+ * RFC 9000, 10.3.  Stateless Reset
+ *
  * Endpoints MUST discard packets that are too small to be valid QUIC
  * packets.  With the set of AEAD functions defined in [QUIC-TLS],
- * packets that are smaller than 21 bytes are never valid.
+ * short header packets that are smaller than 21 bytes are never valid.
  */
 #define NGX_QUIC_MIN_PKT_LEN             21
 
@@ -170,11 +172,11 @@ ngx_quic_get_padding_level(ngx_connection_t *c)
     ngx_quic_connection_t  *qc;
 
     /*
-     * 14.1.  Initial Datagram Size
+     * RFC 9000, 14.1.  Initial Datagram Size
      *
      * Similarly, a server MUST expand the payload of all UDP datagrams
      * carrying ack-eliciting Initial packets to at least the smallest
-     * allowed maximum datagram size of 1200 bytes
+     * allowed maximum datagram size of 1200 bytes.
      */
 
     qc = ngx_quic_get_connection(c);
@@ -345,6 +347,8 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                + ngx_quic_create_header(&pkt, NULL, out.len, NULL);
 
         /*
+         * RFC 9000, 8.2.1.  Initiating Path Validation
+         *
          * An endpoint MUST expand datagrams that contain a
          * PATH_CHALLENGE frame to at least the smallest allowed
          * maximum datagram size of 1200 bytes, unless the
@@ -777,7 +781,9 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
                    "quic retry packet sent to %xV", &pkt.dcid);
 
     /*
-     * quic-transport 17.2.5.1:  A server MUST NOT send more than one Retry
+     * RFC 9000, 17.2.5.1.  Sending a Retry Packet
+     *
+     * A server MUST NOT send more than one Retry
      * packet in response to a single UDP datagram.
      * NGX_DONE will stop quic_input() from processing further
      */

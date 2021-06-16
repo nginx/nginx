@@ -12,13 +12,13 @@
 
 #define NGX_QUIC_MAX_ACK_GAP                 2
 
-/* quic-recovery, section 6.1.1, Packet Threshold */
+/* RFC 9002, 6.1.1. Packet Threshold: kPacketThreshold */
 #define NGX_QUIC_PKT_THR                     3 /* packets */
-/* quic-recovery, section 6.1.2, Time Threshold */
+/* RFC 9002, 6.1.2. Time Threshold: kTimeThreshold, kGranularity */
 #define NGX_QUIC_TIME_THR                    1.125
 #define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
 
-/* quic-recovery, section 7.6.1 Persistent congestion duration */
+/* RFC 9002, 7.6.1. Duration: kPersistentCongestionThreshold */
 #define NGX_QUIC_PERSISTENT_CONGESTION_THR   3
 
 #define ngx_quic_lost_threshold(qc)                                           \
@@ -73,9 +73,10 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ack = &f->u.ack;
 
     /*
+     * RFC 9000, 19.3.1.  ACK Ranges
+     *
      *  If any computed packet number is negative, an endpoint MUST
      *  generate a connection error of type FRAME_ENCODING_ERROR.
-     *  (19.3.1)
      */
 
     if (ack->first_range > ack->largest) {
@@ -97,13 +98,15 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    /* 13.2.3.  Receiver Tracking of ACK Frames */
+    /* RFC 9000, 13.2.4.  Limiting Ranges by Tracking ACK Frames */
     if (ctx->largest_ack < max || ctx->largest_ack == NGX_QUIC_UNSET_PN) {
         ctx->largest_ack = max;
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic updated largest received ack:%uL", max);
 
         /*
+         * RFC 9002, 5.1.  Generating RTT Samples
+         *
          *  An endpoint generates an RTT sample on receiving an
          *  ACK frame that meets the following two conditions:
          *
@@ -470,7 +473,7 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
     }
 
 
-    /* Establishing Persistent Congestion (7.6.2) */
+    /* RFC 9002, 7.6.2.  Establishing Persistent Congestion */
 
     /*
      * Once acknowledged, packets are no longer tracked. Thus no send time
@@ -757,7 +760,7 @@ ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     qc = ngx_quic_get_connection(c);
 
-    /* PTO calculation: quic-recovery, Appendix 8 */
+    /* RFC 9002, Appendix A.8.  Setting the Loss Detection Timer */
     duration = qc->avg_rtt;
 
     duration += ngx_max(4 * qc->rttvar, NGX_QUIC_TIME_GRANULARITY);

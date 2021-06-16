@@ -11,8 +11,9 @@
 
 
 /*
- * 7.4.  Cryptographic Message Buffering
- *       Implementations MUST support buffering at least 4096 bytes of data
+ * RFC 9000, 7.5.  Cryptographic Message Buffering
+ *
+ * Implementations MUST support buffering at least 4096 bytes of data
  */
 #define NGX_QUIC_MAX_BUFFERED    65535
 
@@ -198,7 +199,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
                        " params_len:%ui", client_params_len);
 
         if (client_params_len == 0) {
-            /* quic-tls 8.2 */
+            /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
             qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
             qc->error_reason = "missing transport parameters";
 
@@ -428,7 +429,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
         return NGX_ERROR;
     }
 
-    /* 12.4 Frames and frame types, figure 8 */
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
     ngx_quic_queue_frame(qc, frame);
@@ -440,8 +440,9 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
     }
 
     /*
+     * RFC 9001, 9.5.  Header Protection Timing Side Channels
+     *
      * Generating next keys before a key update is received.
-     * See quic-tls 9.4 Header Protection Timing Side-Channels.
      */
 
     if (ngx_quic_keys_update(c, qc->keys) != NGX_OK) {
@@ -449,8 +450,10 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
     }
 
     /*
-     * 4.10.2 An endpoint MUST discard its handshake keys
-     * when the TLS handshake is confirmed
+     * RFC 9001, 4.9.2.  Discarding Handshake Keys
+     *
+     * An endpoint MUST discard its Handshake keys
+     * when the TLS handshake is confirmed.
      */
     ngx_quic_discard_ctx(c, ssl_encryption_handshake);
 

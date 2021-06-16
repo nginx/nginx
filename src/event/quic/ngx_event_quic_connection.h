@@ -38,7 +38,7 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 #include <ngx_event_quic_socket.h>
 
 
-/* quic-recovery, section 6.2.2, kInitialRtt */
+/* RFC 9002, 6.2.2.  Handshakes and New Paths: kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
 
 #define NGX_QUIC_UNSET_PN                    (uint64_t) -1
@@ -143,13 +143,13 @@ typedef struct {
 
 
 /*
- * 12.3.  Packet Numbers
+ * RFC 9000, 12.3.  Packet Numbers
  *
  *  Conceptually, a packet number space is the context in which a packet
  *  can be processed and acknowledged.  Initial packets can only be sent
- *  with Initial packet protection keys and acknowledged in packets which
+ *  with Initial packet protection keys and acknowledged in packets that
  *  are also Initial packets.
-*/
+ */
 struct ngx_quic_send_ctx_s {
     enum ssl_encryption_level_t       level;
 

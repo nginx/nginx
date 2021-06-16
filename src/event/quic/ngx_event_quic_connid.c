@@ -86,11 +86,13 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
     if (f->seqnum < qc->max_retired_seqnum) {
         /*
+         * RFC 9000, 19.15.  NEW_CONNECTION_ID Frame
+         *
          *  An endpoint that receives a NEW_CONNECTION_ID frame with
          *  a sequence number smaller than the Retire Prior To field
          *  of a previously received NEW_CONNECTION_ID frame MUST send
          *  a corresponding RETIRE_CONNECTION_ID frame that retires
-         *  the newly received connection  ID, unless it has already
+         *  the newly received connection ID, unless it has already
          *  done so for that sequence number.
          */
 
@@ -117,8 +119,8 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
     if (cid) {
         /*
-         * Transmission errors, timeouts and retransmissions might cause the
-         * same NEW_CONNECTION_ID frame to be received multiple times
+         * Transmission errors, timeouts, and retransmissions might cause the
+         * same NEW_CONNECTION_ID frame to be received multiple times.
          */
 
         if (cid->len != f->len
@@ -126,7 +128,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
             || ngx_strncmp(cid->sr_token, f->srt, NGX_QUIC_SR_TOKEN_LEN) != 0)
         {
             /*
-             * ..a sequence number is used for different connection IDs,
+             * ..if a sequence number is used for different connection IDs,
              * the endpoint MAY treat that receipt as a connection error
              * of type PROTOCOL_VIOLATION.
              */
@@ -190,6 +192,8 @@ done:
 
     if (qc->nclient_ids > qc->tp.active_connection_id_limit) {
         /*
+         * RFC 9000, 5.1.1.  Issuing Connection IDs
+         *
          * After processing a NEW_CONNECTION_ID frame and
          * adding and retiring active connection IDs, if the number of active
          * connection IDs exceeds the value advertised in its

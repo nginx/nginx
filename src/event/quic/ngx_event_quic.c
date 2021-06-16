@@ -506,10 +506,11 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         if (rc == NGX_DONE) {
 
             /*
-             *  10.2.  Idle Timeout
+             * RFC 9000, 10.1.  Idle Timeout
              *
-             *  If the idle timeout is enabled by either peer, a connection is
-             *  silently closed and its state is discarded when it remains idle
+             *  If a max_idle_timeout is specified by either endpoint in its
+             *  transport parameters (Section 18.2), the connection is silently
+             *  closed and its state is discarded when it remains idle
              */
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -519,7 +520,7 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
         } else {
 
             /*
-             * 10.3.  Immediate Close
+             * RFC 9000, 10.2.  Immediate Close
              *
              *  An endpoint sends a CONNECTION_CLOSE frame (Section 19.19)
              *  to terminate the connection immediately.
@@ -708,10 +709,10 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
          * Instead of queueing it, we ignore it and rely on the sender's
          * retransmission:
          *
-         * 12.2.  Coalescing Packets:
+         * RFC 9000, 12.2.  Coalescing Packets
          *
          * For example, if decryption fails (because the keys are
-         * not available or any other reason), the receiver MAY either
+         * not available or for any other reason), the receiver MAY either
          * discard or buffer the packet for later processing and MUST
          * attempt to process the remaining packets.
          *
@@ -831,7 +832,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     c->log->action = "processing initial packet";
 
     if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
-        /* 7.2.  Negotiating Connection IDs */
+        /* RFC 9000, 7.2.  Negotiating Connection IDs */
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic too short dcid in initial"
                       " packet: len:%i", pkt->dcid.len);
@@ -944,7 +945,9 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (pkt->level == ssl_encryption_handshake) {
         /*
-         * 4.10.1. The successful use of Handshake packets indicates
+         * RFC 9001, 4.9.1.  Discarding Initial Keys
+         *
+         * The successful use of Handshake packets indicates
          * that no more Initial packets need to be exchanged
          */
         ngx_quic_discard_ctx(c, ssl_encryption_initial);
@@ -957,12 +960,13 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (qc->closing) {
         /*
-         * 10.1  Closing and Draining Connection States
+         * RFC 9000, 10.2.  Immediate Close
+         *
          * ... delayed or reordered packets are properly discarded.
          *
-         *  An endpoint retains only enough information to generate
-         *  a packet containing a CONNECTION_CLOSE frame and to identify
-         *  packets as belonging to the connection.
+         *  In the closing state, an endpoint retains only enough information
+         *  to generate a packet containing a CONNECTION_CLOSE frame and to
+         *  identify packets as belonging to the connection.
          */
 
         qc->error_level = pkt->level;
@@ -1331,6 +1335,8 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         if (qsock->path != qc->socket->path && nonprobing) {
             /*
+             * RFC 9000, 9.2.  Initiating Connection Migration
+             *
              * An endpoint can migrate a connection to a new local
              * address by sending packets containing non-probing frames
              * from that address.

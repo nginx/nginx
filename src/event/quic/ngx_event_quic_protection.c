@@ -160,7 +160,12 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     client = &keys->secrets[ssl_encryption_initial].client;
     server = &keys->secrets[ssl_encryption_initial].server;
 
-    /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
+    /*
+     * RFC 9001, section 5.  Packet Protection
+     *
+     * Initial packets use AEAD_AES_128_GCM.  The hash function
+     * for HKDF when deriving initial secrets and keys is SHA-256.
+     */
 
     cipher = EVP_aes_128_gcm();
     digest = EVP_sha256();
@@ -187,7 +192,6 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
                    "quic initial secret len:%uz %*xs", is_len, is_len, is);
 #endif
 
-    /* draft-ietf-quic-tls-23#section-5.2 */
     client->secret.len = SHA256_DIGEST_LENGTH;
     server->secret.len = SHA256_DIGEST_LENGTH;
 
@@ -206,7 +210,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
         ngx_str_t  *prk;
     } seq[] = {
 
-        /* draft-ietf-quic-tls-23#section-5.2 */
+        /* labels per RFC 9001, 5.1. Packet Protection Keys */
         { ngx_string("tls13 client in"), &client->secret, &iss },
         {
             ngx_string("tls13 quic key"),
@@ -219,14 +223,12 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
             &client->secret,
         },
         {
-            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
             &client->hp,
             &client->secret,
         },
         { ngx_string("tls13 server in"), &server->secret, &iss },
         {
-            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.3 */
             ngx_string("tls13 quic key"),
             &server->key,
             &server->secret,
@@ -237,7 +239,6 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
             &server->secret,
         },
         {
-            /* AEAD_AES_128_GCM prior to handshake, quic-tls-23#section-5.4.1 */
             ngx_string("tls13 quic hp"),
             &server->hp,
             &server->secret,
@@ -894,7 +895,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
         return NGX_ERROR;
     }
 
-    /* quic-tls: 5.4.1.  Header Protection Application */
+    /* RFC 9001, 5.4.1.  Header Protection Application */
     ad.data[0] ^= mask[0] & ngx_quic_pkt_hp_mask(pkt->flags);
 
     for (i = 0; i < pkt->num_len; i++) {
@@ -1095,10 +1096,13 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     p = pkt->raw->pos;
     len = pkt->data + pkt->len - p;
 
-    /* draft-ietf-quic-tls-23#section-5.4.2:
+    /*
+     * RFC 9001, 5.4.2. Header Protection Sample
+     *           5.4.3. AES-Based Header Protection
+     *           5.4.4. ChaCha20-Based Header Protection
+     *
      * the Packet Number field is assumed to be 4 bytes long
-     * draft-ietf-quic-tls-23#section-5.4.[34]:
-     * AES-Based and ChaCha20-Based header protections sample 16 bytes
+     * AES and ChaCha20 algorithms sample 16 bytes
      */
 
     if (len < EVP_GCM_TLS_TAG_LEN + 4) {
@@ -1172,6 +1176,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     if (pkt->payload.len == 0) {
         /*
+         * RFC 9000, 12.4.  Frames and Frame Types
+         *
          * An endpoint MUST treat receipt of a packet containing no
          * frames as a connection error of type PROTOCOL_VIOLATION.
          */
@@ -1182,6 +1188,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     if (pkt->flags & ngx_quic_pkt_rb_mask(pkt->flags)) {
         /*
+         * RFC 9000, Reserved Bits
+         *
          * An endpoint MUST treat receipt of a packet that has
          * a non-zero value for these bits, after removing both
          * packet and header protection, as a connection error
