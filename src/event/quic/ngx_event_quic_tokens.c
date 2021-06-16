@@ -14,6 +14,10 @@
 #define NGX_QUIC_MAX_TOKEN_SIZE              64
     /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
+/* RFC 3602, 2.1 and 2.4 for AES-CBC block size and IV length */
+#define NGX_QUIC_AES_256_CBC_IV_LEN          16
+#define NGX_QUIC_AES_256_CBC_BLOCK_SIZE      16
+
 
 static void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
     ngx_uint_t no_port, u_char buf[20]);
@@ -76,9 +80,9 @@ ngx_quic_new_token(ngx_connection_t *c, struct sockaddr *sockaddr,
     len = p - in;
 
     cipher = EVP_aes_256_cbc();
-    iv_len = EVP_CIPHER_iv_length(cipher);
+    iv_len = NGX_QUIC_AES_256_CBC_IV_LEN;
 
-    token->len = iv_len + len + EVP_CIPHER_block_size(cipher);
+    token->len = iv_len + len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE;
     token->data = ngx_pnalloc(c->pool, token->len);
     if (token->data == NULL) {
         return NGX_ERROR;
@@ -188,11 +192,11 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     cipher = EVP_aes_256_cbc();
     iv = pkt->token.data;
-    iv_len = EVP_CIPHER_iv_length(cipher);
+    iv_len = NGX_QUIC_AES_256_CBC_IV_LEN;
 
     /* sanity checks */
 
-    if (pkt->token.len < (size_t) iv_len + EVP_CIPHER_block_size(cipher)) {
+    if (pkt->token.len < (size_t) iv_len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE) {
         goto garbage;
     }
 
