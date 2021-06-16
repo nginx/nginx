@@ -10,7 +10,10 @@
 #include <ngx_event_quic_connection.h>
 
 
+/* RFC 5116, 5.1 and RFC 8439, 2.3 for all supported ciphers */
 #define NGX_QUIC_IV_LEN               12
+/* RFC 9001, 5.4.1.  Header Protection Application: 5-byte mask */
+#define NGX_QUIC_HP_LEN               5
 
 #define NGX_AES_128_GCM_SHA256        0x1301
 #define NGX_AES_256_GCM_SHA384        0x1302
@@ -627,15 +630,15 @@ ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
 {
     int              outlen;
     EVP_CIPHER_CTX  *ctx;
-    u_char           zero[5] = {0};
+    u_char           zero[NGX_QUIC_HP_LEN] = {0};
 
 #ifdef OPENSSL_IS_BORINGSSL
-    uint32_t counter;
+    uint32_t         cnt;
 
-    ngx_memcpy(&counter, in, sizeof(uint32_t));
+    ngx_memcpy(&cnt, in, sizeof(uint32_t));
 
     if (cipher == (const EVP_CIPHER *) EVP_aead_chacha20_poly1305()) {
-        CRYPTO_chacha_20(out, zero, 5, s->hp.data, &in[4], counter);
+        CRYPTO_chacha_20(out, zero, NGX_QUIC_HP_LEN, s->hp.data, &in[4], cnt);
         return NGX_OK;
     }
 #endif
@@ -650,12 +653,12 @@ ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
         goto failed;
     }
 
-    if (!EVP_EncryptUpdate(ctx, out, &outlen, zero, 5)) {
+    if (!EVP_EncryptUpdate(ctx, out, &outlen, zero, NGX_QUIC_HP_LEN)) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptUpdate() failed");
         goto failed;
     }
 
-    if (!EVP_EncryptFinal_ex(ctx, out + 5, &outlen)) {
+    if (!EVP_EncryptFinal_ex(ctx, out + NGX_QUIC_HP_LEN, &outlen)) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptFinal_Ex() failed");
         goto failed;
     }
@@ -857,7 +860,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_uint_t           i;
     ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
-    u_char               nonce[12], mask[16];
+    u_char               nonce[12], mask[NGX_QUIC_HP_LEN];
 
     out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
 
@@ -1084,7 +1087,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     ngx_str_t            in, ad;
     ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
-    uint8_t              mask[16], nonce[12];
+    uint8_t              nonce[12], mask[NGX_QUIC_HP_LEN];
 
     if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
     {
