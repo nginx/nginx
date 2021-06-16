@@ -15,6 +15,8 @@
 /* RFC 9001, 5.4.1.  Header Protection Application: 5-byte mask */
 #define NGX_QUIC_HP_LEN               5
 
+#define NGX_QUIC_AES_128_KEY_LEN      16
+
 #define NGX_AES_128_GCM_SHA256        0x1301
 #define NGX_AES_256_GCM_SHA384        0x1302
 #define NGX_CHACHA20_POLY1305_SHA256  0x1303
@@ -150,7 +152,6 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     uint8_t             is[SHA256_DIGEST_LENGTH];
     ngx_uint_t          i;
     const EVP_MD       *digest;
-    const EVP_CIPHER   *cipher;
     ngx_quic_secret_t  *client, *server;
 
     static const uint8_t salt[20] =
@@ -170,7 +171,6 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
      * for HKDF when deriving initial secrets and keys is SHA-256.
      */
 
-    cipher = EVP_aes_128_gcm();
     digest = EVP_sha256();
     is_len = SHA256_DIGEST_LENGTH;
 
@@ -198,11 +198,11 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     client->secret.len = SHA256_DIGEST_LENGTH;
     server->secret.len = SHA256_DIGEST_LENGTH;
 
-    client->key.len = EVP_CIPHER_key_length(cipher);
-    server->key.len = EVP_CIPHER_key_length(cipher);
+    client->key.len = NGX_QUIC_AES_128_KEY_LEN;
+    server->key.len = NGX_QUIC_AES_128_KEY_LEN;
 
-    client->hp.len = EVP_CIPHER_key_length(cipher);
-    server->hp.len = EVP_CIPHER_key_length(cipher);
+    client->hp.len = NGX_QUIC_AES_128_KEY_LEN;
+    server->hp.len = NGX_QUIC_AES_128_KEY_LEN;
 
     client->iv.len = NGX_QUIC_IV_LEN;
     server->iv.len = NGX_QUIC_IV_LEN;
