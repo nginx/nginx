@@ -204,8 +204,8 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     client->hp.len = EVP_CIPHER_key_length(cipher);
     server->hp.len = EVP_CIPHER_key_length(cipher);
 
-    client->iv.len = EVP_CIPHER_iv_length(cipher);
-    server->iv.len = EVP_CIPHER_iv_length(cipher);
+    client->iv.len = NGX_QUIC_IV_LEN;
+    server->iv.len = NGX_QUIC_IV_LEN;
 
     struct {
         ngx_str_t   label;
@@ -793,12 +793,12 @@ ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
 
     next->client.secret.len = current->client.secret.len;
     next->client.key.len = current->client.key.len;
-    next->client.iv.len = current->client.iv.len;
+    next->client.iv.len = NGX_QUIC_IV_LEN;
     next->client.hp = current->client.hp;
 
     next->server.secret.len = current->server.secret.len;
     next->server.key.len = current->server.key.len;
-    next->server.iv.len = current->server.iv.len;
+    next->server.iv.len = NGX_QUIC_IV_LEN;
     next->server.hp = current->server.hp;
 
     struct {
@@ -860,7 +860,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_uint_t           i;
     ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
-    u_char               nonce[12], mask[NGX_QUIC_HP_LEN];
+    u_char               nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
     out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
 
@@ -924,9 +924,9 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
         "\xbe\x0c\x69\x0b\x9f\x66\x57\x5a\x1d\x76\x6b\x54\xe3\x68\xc8\x4e";
     static u_char     key29[16] =
         "\xcc\xce\x18\x7e\xd0\x9a\x09\xd0\x57\x28\x15\x5a\x6c\xb9\x6b\xe1";
-    static u_char     nonce[12] =
+    static u_char     nonce[NGX_QUIC_IV_LEN] =
         "\x46\x15\x99\xd3\x5d\x63\x2b\xf2\x23\x98\x25\xbb";
-    static u_char     nonce29[12] =
+    static u_char     nonce29[NGX_QUIC_IV_LEN] =
         "\xe5\x49\x30\xf9\x7f\x21\x36\xf0\x53\x0a\x8c\x1c";
     static ngx_str_t  in = ngx_string("");
 
@@ -947,7 +947,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 
     secret.key.len = sizeof(key);
     secret.key.data = (pkt->version & 0xff000000) ? key29 : key;
-    secret.iv.len = sizeof(nonce);
+    secret.iv.len = NGX_QUIC_IV_LEN;
 
     if (ngx_quic_tls_seal(ciphers.c, &secret, &itag,
                           (pkt->version & 0xff000000) ? nonce29 : nonce,
@@ -1087,7 +1087,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     ngx_str_t            in, ad;
     ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
-    uint8_t              nonce[12], mask[NGX_QUIC_HP_LEN];
+    uint8_t              nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
     if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
     {
