@@ -124,6 +124,7 @@ typedef struct {
     unsigned                   done:1;
     unsigned                   status:1;
     unsigned                   rst:1;
+    unsigned                   goaway:1;
 
     ngx_http_request_t        *request;
 
@@ -1213,6 +1214,7 @@ ngx_http_grpc_reinit_request(ngx_http_request_t *r)
     ctx->done = 0;
     ctx->status = 0;
     ctx->rst = 0;
+    ctx->goaway = 0;
     ctx->connection = NULL;
 
     return NGX_OK;
@@ -1568,6 +1570,7 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
             && ctx->out == NULL
             && ctx->output_closed
             && !ctx->output_blocked
+            && !ctx->goaway
             && ctx->state == ngx_http_grpc_st_start)
         {
             u->keepalive = 1;
@@ -1716,6 +1719,8 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
 
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
+
+            ctx->goaway = 1;
 
             continue;
         }
@@ -1910,6 +1915,7 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                         && ctx->out == NULL
                         && ctx->output_closed
                         && !ctx->output_blocked
+                        && !ctx->goaway
                         && b->last == b->pos)
                     {
                         u->keepalive = 1;
@@ -2038,6 +2044,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                     if (ctx->in == NULL
                         && ctx->output_closed
                         && !ctx->output_blocked
+                        && !ctx->goaway
                         && ctx->state == ngx_http_grpc_st_start)
                     {
                         u->keepalive = 1;
@@ -2206,6 +2213,8 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
 
                 return NGX_ERROR;
             }
+
+            ctx->goaway = 1;
 
             continue;
         }
