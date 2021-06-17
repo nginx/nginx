@@ -212,41 +212,15 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
         ngx_str_t  *key;
         ngx_str_t  *prk;
     } seq[] = {
-
         /* labels per RFC 9001, 5.1. Packet Protection Keys */
         { ngx_string("tls13 client in"), &client->secret, &iss },
-        {
-            ngx_string("tls13 quic key"),
-            &client->key,
-            &client->secret,
-        },
-        {
-            ngx_string("tls13 quic iv"),
-            &client->iv,
-            &client->secret,
-        },
-        {
-            ngx_string("tls13 quic hp"),
-            &client->hp,
-            &client->secret,
-        },
+        { ngx_string("tls13 quic key"),  &client->key,    &client->secret },
+        { ngx_string("tls13 quic iv"),   &client->iv,     &client->secret },
+        { ngx_string("tls13 quic hp"),   &client->hp,     &client->secret },
         { ngx_string("tls13 server in"), &server->secret, &iss },
-        {
-            ngx_string("tls13 quic key"),
-            &server->key,
-            &server->secret,
-        },
-        {
-            ngx_string("tls13 quic iv"),
-            &server->iv,
-            &server->secret,
-        },
-        {
-            ngx_string("tls13 quic hp"),
-            &server->hp,
-            &server->secret,
-        },
-
+        { ngx_string("tls13 quic key"),  &server->key,    &server->secret },
+        { ngx_string("tls13 quic iv"),   &server->iv,     &server->secret },
+        { ngx_string("tls13 quic hp"),   &server->hp,     &server->secret },
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
