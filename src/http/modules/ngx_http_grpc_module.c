@@ -2177,6 +2177,8 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             }
 
             ctx->rst = 1;
+
+            continue;
         }
 
         if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
@@ -3483,6 +3485,8 @@ ngx_http_grpc_parse_rst_stream(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
     if (ctx->rest > 0) {
         return NGX_AGAIN;
     }
+
+    ctx->state = ngx_http_grpc_st_start;
 
     return NGX_OK;
 }
