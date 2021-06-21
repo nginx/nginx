@@ -39,7 +39,7 @@ ngx_quic_alloc_frame(ngx_connection_t *c)
 #endif
 
     } else {
-        frame = ngx_pcalloc(c->pool, sizeof(ngx_quic_frame_t));
+        frame = ngx_palloc(c->pool, sizeof(ngx_quic_frame_t));
         if (frame == NULL) {
             return NULL;
         }
