@@ -1828,7 +1828,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     c->read->error = 1;
 
-    ERR_clear_error();
+    ngx_ssl_connection_error(c, sslerr, err, "SSL_do_handshake() failed");
 
     return NGX_ERROR;
 }
@@ -2899,8 +2899,6 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     ngx_err_t   err;
     ngx_uint_t  tries;
 
-    ngx_ssl_ocsp_cleanup(c);
-
     if (SSL_in_init(c->ssl->connection)) {
         /*
          * OpenSSL 1.0.2f complains if SSL_shutdown() is called during
@@ -2914,6 +2912,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         return NGX_OK;
     }
+
+   ngx_ssl_ocsp_cleanup(c);
 
     if (c->timedout || c->error || c->buffered) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
