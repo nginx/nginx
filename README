@@ -227,7 +227,7 @@ Example configuration:
       be easily filtered out.
 
     + If you want to investigate deeper, you may want to enable
-      additional debugging in src/event/ngx_event_quic_connection.h:
+      additional debugging in src/event/quic/ngx_event_quic_connection.h:
 
         #define NGX_QUIC_DEBUG_PACKETS
         #define NGX_QUIC_DEBUG_FRAMES
