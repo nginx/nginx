@@ -2176,12 +2176,13 @@ ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool, ngx_uint_t alloc)
             }
             break;
 
-        case '\0':
-            return NGX_DECLINED;
-
         default:
 
             if (ngx_path_separator(ch)) {
+                return NGX_DECLINED;
+            }
+
+            if (ch <= 0x20 || ch == 0x7f) {
                 return NGX_DECLINED;
             }
 
