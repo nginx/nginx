@@ -3606,7 +3606,8 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
         { 4, "LOCK",      NGX_HTTP_LOCK },
         { 6, "UNLOCK",    NGX_HTTP_UNLOCK },
         { 5, "PATCH",     NGX_HTTP_PATCH },
-        { 5, "TRACE",     NGX_HTTP_TRACE }
+        { 5, "TRACE",     NGX_HTTP_TRACE },
+        { 7, "CONNECT",   NGX_HTTP_CONNECT }
     }, *test;
 
     if (r->method_name.len) {
