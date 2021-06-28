@@ -893,7 +893,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
-                if (ch == '\0') {
+                if (ch <= 0x20 || ch == 0x7f || ch == ':') {
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
 
@@ -961,7 +961,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch == '\0') {
+            if (ch <= 0x20 || ch == 0x7f) {
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
 

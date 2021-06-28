@@ -3384,7 +3384,7 @@ ngx_http_grpc_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
             return NGX_ERROR;
         }
 
-        if (ch == '\0' || ch == CR || ch == LF) {
+        if (ch <= 0x20 || ch == 0x7f) {
             return NGX_ERROR;
         }
     }

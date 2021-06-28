@@ -3457,7 +3457,7 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
             continue;
         }
 
-        if (ch == '\0' || ch == LF || ch == CR || ch == ':'
+        if (ch <= 0x20 || ch == 0x7f || ch == ':'
             || (ch >= 'A' && ch <= 'Z'))
         {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
