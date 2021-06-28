@@ -116,10 +116,8 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_host_end,
         sw_host_ip_literal,
         sw_port,
-        sw_host_http_09,
         sw_after_slash_in_uri,
         sw_check_uri,
-        sw_check_uri_http_09,
         sw_uri,
         sw_http_09,
         sw_http_H,
@@ -398,7 +396,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                  */
                 r->uri_start = r->schema_end + 1;
                 r->uri_end = r->schema_end + 2;
-                state = sw_host_http_09;
+                state = sw_http_09;
                 break;
             default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
@@ -472,34 +470,12 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                  */
                 r->uri_start = r->schema_end + 1;
                 r->uri_end = r->schema_end + 2;
-                state = sw_host_http_09;
+                state = sw_http_09;
                 break;
             default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
-
-        /* space+ after "http://host[:port] " */
-        case sw_host_http_09:
-            switch (ch) {
-            case ' ':
-                break;
-            case CR:
-                r->http_minor = 9;
-                state = sw_almost_done;
-                break;
-            case LF:
-                r->http_minor = 9;
-                goto done;
-            case 'H':
-                r->http_protocol.data = p;
-                state = sw_http_H;
-                break;
-            default:
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
-            }
-            break;
-
 
         /* check "/.", "//", "%", and "\" (Win32) in URI */
         case sw_after_slash_in_uri:
@@ -512,7 +488,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             switch (ch) {
             case ' ':
                 r->uri_end = p;
-                state = sw_check_uri_http_09;
+                state = sw_http_09;
                 break;
             case CR:
                 r->uri_end = p;
@@ -584,7 +560,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             case ' ':
                 r->uri_end = p;
-                state = sw_check_uri_http_09;
+                state = sw_http_09;
                 break;
             case CR:
                 r->uri_end = p;
@@ -620,31 +596,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
-
-        /* space+ after URI */
-        case sw_check_uri_http_09:
-            switch (ch) {
-            case ' ':
-                break;
-            case CR:
-                r->http_minor = 9;
-                state = sw_almost_done;
-                break;
-            case LF:
-                r->http_minor = 9;
-                goto done;
-            case 'H':
-                r->http_protocol.data = p;
-                state = sw_http_H;
-                break;
-            default:
-                r->space_in_uri = 1;
-                state = sw_check_uri;
-                p--;
-                break;
-            }
-            break;
-
 
         /* URI */
         case sw_uri:
@@ -692,10 +643,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 state = sw_http_H;
                 break;
             default:
-                r->space_in_uri = 1;
-                state = sw_uri;
-                p--;
-                break;
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
@@ -1171,9 +1119,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
 
             switch (ch) {
             case ' ':
-                r->space_in_uri = 1;
-                state = sw_check_uri;
-                break;
+                return NGX_ERROR;
             case '.':
                 r->complex_uri = 1;
                 state = sw_uri;
@@ -1232,8 +1178,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->uri_ext = p + 1;
                 break;
             case ' ':
-                r->space_in_uri = 1;
-                break;
+                return NGX_ERROR;
 #if (NGX_WIN32)
             case '\\':
                 r->complex_uri = 1;
@@ -1267,8 +1212,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
 
             switch (ch) {
             case ' ':
-                r->space_in_uri = 1;
-                break;
+                return NGX_ERROR;
             case '#':
                 r->complex_uri = 1;
                 break;
