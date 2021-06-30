@@ -176,7 +176,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         return NGX_ERROR;
     }
 
-    if (ctp->max_ack_delay > 16384) {
+    if (ctp->max_ack_delay >= 16384) {
         qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
         qc->error_reason = "invalid max_ack_delay";
 

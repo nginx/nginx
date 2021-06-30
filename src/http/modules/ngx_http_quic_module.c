@@ -394,7 +394,7 @@ ngx_http_quic_max_ack_delay(ngx_conf_t *cf, void *post, void *data)
 {
     ngx_msec_t *sp = data;
 
-    if (*sp > 16384) {
+    if (*sp >= 16384) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"quic_max_ack_delay\" must be less than 16384");
 
