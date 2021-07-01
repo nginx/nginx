@@ -3889,7 +3889,7 @@ ngx_http_log_error_handler(ngx_http_request_t *r, ngx_http_request_t *sr,
     }
 
     if (r->headers_in.referer) {
-        p = ngx_snprintf(buf, len, ", referrer: \"%V\"",
+        p = ngx_snprintf(buf, len, ", referer: \"%V\"",
                          &r->headers_in.referer->value);
         buf = p;
     }
