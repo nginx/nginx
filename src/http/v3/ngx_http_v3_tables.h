@@ -17,11 +17,11 @@
 typedef struct {
     ngx_str_t                     name;
     ngx_str_t                     value;
-} ngx_http_v3_header_t;
+} ngx_http_v3_field_t;
 
 
 typedef struct {
-    ngx_http_v3_header_t        **elts;
+    ngx_http_v3_field_t         **elts;
     ngx_uint_t                    nelts;
     ngx_uint_t                    base;
     size_t                        size;
@@ -36,7 +36,7 @@ ngx_int_t ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
 ngx_int_t ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity);
 ngx_int_t ngx_http_v3_duplicate(ngx_connection_t *c, ngx_uint_t index);
-ngx_int_t ngx_http_v3_ack_header(ngx_connection_t *c, ngx_uint_t stream_id);
+ngx_int_t ngx_http_v3_ack_section(ngx_connection_t *c, ngx_uint_t stream_id);
 ngx_int_t ngx_http_v3_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc);
 ngx_int_t ngx_http_v3_lookup_static(ngx_connection_t *c, ngx_uint_t index,
     ngx_str_t *name, ngx_str_t *value);

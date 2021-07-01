@@ -603,14 +603,14 @@ ngx_http_v3_send_duplicate(ngx_connection_t *c, ngx_uint_t index)
 
 
 ngx_int_t
-ngx_http_v3_send_ack_header(ngx_connection_t *c, ngx_uint_t stream_id)
+ngx_http_v3_send_ack_section(ngx_connection_t *c, ngx_uint_t stream_id)
 {
     u_char             buf[NGX_HTTP_V3_PREFIX_INT_LEN];
     size_t             n;
     ngx_connection_t  *dc;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 client ack header %ui", stream_id);
+                   "http3 client ack section %ui", stream_id);
 
     dc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
     if (dc == NULL) {

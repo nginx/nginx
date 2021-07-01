@@ -19,22 +19,22 @@ static ngx_int_t ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
 static ngx_int_t ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
     ngx_http_v3_parse_prefix_int_t *st, ngx_uint_t prefix, u_char ch);
 
-static ngx_int_t ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
-    ngx_http_v3_parse_header_block_prefix_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_rep(ngx_connection_t *c,
-    ngx_http_v3_parse_header_rep_t *st, ngx_uint_t base, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_section_prefix(ngx_connection_t *c,
+    ngx_http_v3_parse_field_section_prefix_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_rep(ngx_connection_t *c,
+    ngx_http_v3_parse_field_rep_t *st, ngx_uint_t base, u_char ch);
 static ngx_int_t ngx_http_v3_parse_literal(ngx_connection_t *c,
     ngx_http_v3_parse_literal_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_ri(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_lri(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_l(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_ri(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_lri(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_l(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_pbi(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_lpbi(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
 
 static ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c,
     ngx_http_v3_parse_control_t *st, u_char ch);
@@ -43,10 +43,10 @@ static ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
 
 static ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c,
     ngx_http_v3_parse_encoder_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_inr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
-static ngx_int_t ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_inr(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
+static ngx_int_t ngx_http_v3_parse_field_iln(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch);
 
 static ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c,
     ngx_http_v3_parse_decoder_t *st, u_char ch);
@@ -201,7 +201,7 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
         sw_skip,
         sw_prefix,
         sw_verify,
-        sw_header_rep,
+        sw_field_rep,
         sw_done
     };
 
@@ -277,7 +277,7 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
             return NGX_HTTP_V3_ERR_FRAME_ERROR;
         }
 
-        rc = ngx_http_v3_parse_header_block_prefix(c, &st->prefix, ch);
+        rc = ngx_http_v3_parse_field_section_prefix(c, &st->prefix, ch);
         if (rc != NGX_DONE) {
             return rc;
         }
@@ -292,14 +292,14 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
             return rc;
         }
 
-        st->state = sw_header_rep;
+        st->state = sw_field_rep;
 
         /* fall through */
 
-    case sw_header_rep:
+    case sw_field_rep:
 
-        rc = ngx_http_v3_parse_header_rep(c, &st->header_rep, st->prefix.base,
-                                          ch);
+        rc = ngx_http_v3_parse_field_rep(c, &st->field_rep, st->prefix.base,
+                                         ch);
 
         if (--st->length == 0 && rc == NGX_AGAIN) {
             return NGX_HTTP_V3_ERR_FRAME_ERROR;
@@ -323,7 +323,7 @@ done:
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse headers done");
 
     if (st->prefix.insert_count > 0) {
-        if (ngx_http_v3_send_ack_header(c, c->quic->id) != NGX_OK) {
+        if (ngx_http_v3_send_ack_section(c, c->quic->id) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -334,8 +334,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
-    ngx_http_v3_parse_header_block_prefix_t *st, u_char ch)
+ngx_http_v3_parse_field_section_prefix(ngx_connection_t *c,
+    ngx_http_v3_parse_field_section_prefix_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -350,7 +350,7 @@ ngx_http_v3_parse_header_block_prefix(ngx_connection_t *c,
     case sw_start:
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse header block prefix");
+                       "http3 parse field section prefix");
 
         st->state = sw_req_insert_count;
 
@@ -401,7 +401,7 @@ done:
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                  "http3 parse header block prefix done "
+                  "http3 parse field section prefix done "
                   "insert_count:%ui, sign:%ui, delta_base:%ui, base:%ui",
                   st->insert_count, st->sign, st->delta_base, st->base);
 
@@ -411,75 +411,75 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_rep(ngx_connection_t *c,
-    ngx_http_v3_parse_header_rep_t *st, ngx_uint_t base, u_char ch)
+ngx_http_v3_parse_field_rep(ngx_connection_t *c,
+    ngx_http_v3_parse_field_rep_t *st, ngx_uint_t base, u_char ch)
 {
     ngx_int_t  rc;
     enum {
         sw_start = 0,
-        sw_header_ri,
-        sw_header_lri,
-        sw_header_l,
-        sw_header_pbi,
-        sw_header_lpbi
+        sw_field_ri,
+        sw_field_lri,
+        sw_field_l,
+        sw_field_pbi,
+        sw_field_lpbi
     };
 
     if (st->state == sw_start) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse header representation");
+                       "http3 parse field representation");
 
-        ngx_memzero(&st->header, sizeof(ngx_http_v3_parse_header_t));
+        ngx_memzero(&st->field, sizeof(ngx_http_v3_parse_field_t));
 
-        st->header.base = base;
+        st->field.base = base;
 
         if (ch & 0x80) {
-            /* Indexed Header Field */
+            /* Indexed Field Line */
 
-            st->state = sw_header_ri;
+            st->state = sw_field_ri;
 
         } else if (ch & 0x40) {
-            /* Literal Header Field With Name Reference */
+            /* Literal Field Line With Name Reference */
 
-            st->state = sw_header_lri;
+            st->state = sw_field_lri;
 
         } else if (ch & 0x20) {
-            /* Literal Header Field Without Name Reference */
+            /* Literal Field Line With Literal Name */
 
-            st->state = sw_header_l;
+            st->state = sw_field_l;
 
         } else if (ch & 0x10) {
-            /* Indexed Header Field With Post-Base Index */
+            /* Indexed Field Line With Post-Base Index */
 
-            st->state = sw_header_pbi;
+            st->state = sw_field_pbi;
 
         } else {
-            /* Literal Header Field With Post-Base Name Reference */
+            /* Literal Field Line With Post-Base Name Reference */
 
-            st->state = sw_header_lpbi;
+            st->state = sw_field_lpbi;
         }
     }
 
     switch (st->state) {
 
-    case sw_header_ri:
-        rc = ngx_http_v3_parse_header_ri(c, &st->header, ch);
+    case sw_field_ri:
+        rc = ngx_http_v3_parse_field_ri(c, &st->field, ch);
         break;
 
-    case sw_header_lri:
-        rc = ngx_http_v3_parse_header_lri(c, &st->header, ch);
+    case sw_field_lri:
+        rc = ngx_http_v3_parse_field_lri(c, &st->field, ch);
         break;
 
-    case sw_header_l:
-        rc = ngx_http_v3_parse_header_l(c, &st->header, ch);
+    case sw_field_l:
+        rc = ngx_http_v3_parse_field_l(c, &st->field, ch);
         break;
 
-    case sw_header_pbi:
-        rc = ngx_http_v3_parse_header_pbi(c, &st->header, ch);
+    case sw_field_pbi:
+        rc = ngx_http_v3_parse_field_pbi(c, &st->field, ch);
         break;
 
-    case sw_header_lpbi:
-        rc = ngx_http_v3_parse_header_lpbi(c, &st->header, ch);
+    case sw_field_lpbi:
+        rc = ngx_http_v3_parse_field_lpbi(c, &st->field, ch);
         break;
 
     default:
@@ -491,7 +491,7 @@ ngx_http_v3_parse_header_rep(ngx_connection_t *c,
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header representation done");
+                   "http3 parse field representation done");
 
     st->state = sw_start;
     return NGX_DONE;
@@ -523,7 +523,7 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
 
         if (n > cscf->large_client_header_buffers.size) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent too large header field");
+                          "client sent too large field line");
             return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
         }
 
@@ -578,7 +578,7 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_ri(ngx_connection_t *c, ngx_http_v3_parse_header_t *st,
+ngx_http_v3_parse_field_ri(ngx_connection_t *c, ngx_http_v3_parse_field_t *st,
     u_char ch)
 {
     ngx_int_t  rc;
@@ -591,7 +591,7 @@ ngx_http_v3_parse_header_ri(ngx_connection_t *c, ngx_http_v3_parse_header_t *st,
 
     case sw_start:
 
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header ri");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field ri");
 
         st->dynamic = (ch & 0x40) ? 0 : 1;
         st->state = sw_index;
@@ -614,7 +614,7 @@ ngx_http_v3_parse_header_ri(ngx_connection_t *c, ngx_http_v3_parse_header_t *st,
 done:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header ri done %s%ui]",
+                   "http3 parse field ri done %s%ui]",
                    st->dynamic ? "dynamic[-" : "static[", st->index);
 
     if (st->dynamic) {
@@ -633,8 +633,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_lri(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_lri(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -649,7 +649,7 @@ ngx_http_v3_parse_header_lri(ngx_connection_t *c,
 
     case sw_start:
 
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header lri");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field lri");
 
         st->dynamic = (ch & 0x10) ? 0 : 1;
         st->state = sw_index;
@@ -705,7 +705,7 @@ ngx_http_v3_parse_header_lri(ngx_connection_t *c,
 done:
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header lri done %s%ui] \"%V\"",
+                   "http3 parse field lri done %s%ui] \"%V\"",
                    st->dynamic ? "dynamic[-" : "static[",
                    st->index, &st->value);
 
@@ -724,8 +724,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_l(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_l(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -741,7 +741,7 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
 
     case sw_start:
 
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header l");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field l");
 
         st->literal.huffman = (ch & 0x08) ? 1 : 0;
         st->state = sw_name_len;
@@ -812,7 +812,7 @@ ngx_http_v3_parse_header_l(ngx_connection_t *c,
 done:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header l done \"%V\" \"%V\"",
+                   "http3 parse field l done \"%V\" \"%V\"",
                    &st->name, &st->value);
 
     st->state = sw_start;
@@ -821,8 +821,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_pbi(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -834,7 +834,7 @@ ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
 
     case sw_start:
 
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header pbi");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field pbi");
 
         st->state = sw_index;
 
@@ -856,7 +856,7 @@ ngx_http_v3_parse_header_pbi(ngx_connection_t *c,
 done:
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header pbi done dynamic[+%ui]", st->index);
+                   "http3 parse field pbi done dynamic[+%ui]", st->index);
 
     rc = ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name,
                                   &st->value);
@@ -870,8 +870,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_lpbi(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -887,7 +887,7 @@ ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
     case sw_start:
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse header lpbi");
+                       "http3 parse field lpbi");
 
         st->state = sw_index;
 
@@ -942,7 +942,7 @@ ngx_http_v3_parse_header_lpbi(ngx_connection_t *c,
 done:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header lpbi done dynamic[+%ui] \"%V\"",
+                   "http3 parse field lpbi done dynamic[+%ui] \"%V\"",
                    st->index, &st->value);
 
     rc = ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name, NULL);
@@ -1260,7 +1260,7 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
     enum {
         sw_start = 0,
         sw_inr,
-        sw_iwnr,
+        sw_iln,
         sw_capacity,
         sw_duplicate
     };
@@ -1276,12 +1276,12 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
             st->state = sw_inr;
 
         } else if (ch & 0x40) {
-            /*  Insert Without Name Reference */
+            /* Insert With Literal Name */
 
-            st->state = sw_iwnr;
+            st->state = sw_iln;
 
         } else if (ch & 0x20) {
-            /*  Set Dynamic Table Capacity */
+            /* Set Dynamic Table Capacity */
 
             st->state = sw_capacity;
 
@@ -1296,16 +1296,16 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
 
     case sw_inr:
 
-        rc = ngx_http_v3_parse_header_inr(c, &st->header, ch);
+        rc = ngx_http_v3_parse_field_inr(c, &st->field, ch);
         if (rc != NGX_DONE) {
             return rc;
         }
 
         goto done;
 
-    case sw_iwnr:
+    case sw_iln:
 
-        rc = ngx_http_v3_parse_header_iwnr(c, &st->header, ch);
+        rc = ngx_http_v3_parse_field_iln(c, &st->field, ch);
         if (rc != NGX_DONE) {
             return rc;
         }
@@ -1354,8 +1354,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_inr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_inr(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -1370,7 +1370,7 @@ ngx_http_v3_parse_header_inr(ngx_connection_t *c,
 
     case sw_start:
 
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse header inr");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field inr");
 
         st->dynamic = (ch & 0x40) ? 0 : 1;
         st->state = sw_name_index;
@@ -1427,7 +1427,7 @@ ngx_http_v3_parse_header_inr(ngx_connection_t *c,
 done:
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header inr done %s[%ui] \"%V\"",
+                   "http3 parse field inr done %s[%ui] \"%V\"",
                    st->dynamic ? "dynamic" : "static",
                    st->index, &st->value);
 
@@ -1442,8 +1442,8 @@ done:
 
 
 static ngx_int_t
-ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
-    ngx_http_v3_parse_header_t *st, u_char ch)
+ngx_http_v3_parse_field_iln(ngx_connection_t *c,
+    ngx_http_v3_parse_field_t *st, u_char ch)
 {
     ngx_int_t  rc;
     enum {
@@ -1460,7 +1460,7 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
     case sw_start:
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 parse header iwnr");
+                       "http3 parse field iln");
 
         st->literal.huffman = (ch & 0x20) ? 1 : 0;
         st->state = sw_name_len;
@@ -1532,7 +1532,7 @@ ngx_http_v3_parse_header_iwnr(ngx_connection_t *c,
 done:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 parse header iwnr done \"%V\":\"%V\"",
+                   "http3 parse field iln done \"%V\":\"%V\"",
                    &st->name, &st->value);
 
     rc = ngx_http_v3_insert(c, &st->name, &st->value);
@@ -1552,7 +1552,7 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
     ngx_int_t  rc;
     enum {
         sw_start = 0,
-        sw_ack_header,
+        sw_ack_section,
         sw_cancel_stream,
         sw_inc_insert_count
     };
@@ -1563,9 +1563,9 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
                        "http3 parse decoder instruction");
 
         if (ch & 0x80) {
-            /* Header Acknowledgement */
+            /* Section Acknowledgment */
 
-            st->state = sw_ack_header;
+            st->state = sw_ack_section;
 
         } else if (ch & 0x40) {
             /*  Stream Cancellation */
@@ -1581,14 +1581,14 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
 
     switch (st->state) {
 
-    case sw_ack_header:
+    case sw_ack_section:
 
         rc = ngx_http_v3_parse_prefix_int(c, &st->pint, 7, ch);
         if (rc != NGX_DONE) {
             return rc;
         }
 
-        rc = ngx_http_v3_ack_header(c, st->pint.value);
+        rc = ngx_http_v3_ack_section(c, st->pint.value);
         if (rc != NGX_OK) {
             return rc;
         }

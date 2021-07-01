@@ -34,7 +34,7 @@ ngx_int_t ngx_http_v3_send_insert(ngx_connection_t *c, ngx_str_t *name,
 ngx_int_t ngx_http_v3_send_set_capacity(ngx_connection_t *c,
     ngx_uint_t capacity);
 ngx_int_t ngx_http_v3_send_duplicate(ngx_connection_t *c, ngx_uint_t index);
-ngx_int_t ngx_http_v3_send_ack_header(ngx_connection_t *c,
+ngx_int_t ngx_http_v3_send_ack_section(ngx_connection_t *c,
     ngx_uint_t stream_id);
 ngx_int_t ngx_http_v3_send_cancel_stream(ngx_connection_t *c,
     ngx_uint_t stream_id);

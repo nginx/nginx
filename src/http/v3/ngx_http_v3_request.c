@@ -304,8 +304,8 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
         /* rc == NGX_OK || rc == NGX_DONE */
 
-        if (ngx_http_v3_process_header(r, &st->header_rep.header.name,
-                                       &st->header_rep.header.value)
+        if (ngx_http_v3_process_header(r, &st->field_rep.field.name,
+                                       &st->field_rep.field.value)
             != NGX_OK)
         {
             break;

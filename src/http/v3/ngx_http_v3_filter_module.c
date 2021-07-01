@@ -159,16 +159,16 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         }
     }
 
-    len = ngx_http_v3_encode_header_block_prefix(NULL, 0, 0, 0);
+    len = ngx_http_v3_encode_field_section_prefix(NULL, 0, 0, 0);
 
     if (r->headers_out.status == NGX_HTTP_OK) {
-        len += ngx_http_v3_encode_header_ri(NULL, 0,
-                                            NGX_HTTP_V3_HEADER_STATUS_200);
+        len += ngx_http_v3_encode_field_ri(NULL, 0,
+                                           NGX_HTTP_V3_HEADER_STATUS_200);
 
     } else {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
-                                             NGX_HTTP_V3_HEADER_STATUS_200,
-                                             NULL, 3);
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
+                                            NGX_HTTP_V3_HEADER_STATUS_200,
+                                            NULL, 3);
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -184,14 +184,14 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n = sizeof("nginx") - 1;
         }
 
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
-                                             NGX_HTTP_V3_HEADER_SERVER,
-                                             NULL, n);
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
+                                            NGX_HTTP_V3_HEADER_SERVER,
+                                            NULL, n);
     }
 
     if (r->headers_out.date == NULL) {
-        len += ngx_http_v3_encode_header_lri(NULL, 0, NGX_HTTP_V3_HEADER_DATE,
-                                             NULL, ngx_cached_http_time.len);
+        len += ngx_http_v3_encode_field_lri(NULL, 0, NGX_HTTP_V3_HEADER_DATE,
+                                            NULL, ngx_cached_http_time.len);
     }
 
     if (r->headers_out.content_type.len) {
@@ -203,19 +203,19 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
 
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                     NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
                                     NULL, n);
     }
 
     if (r->headers_out.content_length == NULL) {
         if (r->headers_out.content_length_n > 0) {
-            len += ngx_http_v3_encode_header_lri(NULL, 0,
+            len += ngx_http_v3_encode_field_lri(NULL, 0,
                                         NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO,
                                         NULL, NGX_OFF_T_LEN);
 
         } else if (r->headers_out.content_length_n == 0) {
-            len += ngx_http_v3_encode_header_ri(NULL, 0,
+            len += ngx_http_v3_encode_field_ri(NULL, 0,
                                        NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO);
         }
     }
@@ -223,7 +223,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                   NGX_HTTP_V3_HEADER_LAST_MODIFIED, NULL,
                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
     }
@@ -267,7 +267,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n += sizeof(":65535") - 1;
         }
 
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                          NGX_HTTP_V3_HEADER_LOCATION, NULL, n);
 
     } else {
@@ -278,7 +278,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
         if (clcf->gzip_vary) {
-            len += ngx_http_v3_encode_header_ri(NULL, 0,
+            len += ngx_http_v3_encode_field_ri(NULL, 0,
                                       NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING);
 
         } else {
@@ -306,8 +306,8 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             continue;
         }
 
-        len += ngx_http_v3_encode_header_l(NULL, &header[i].key,
-                                           &header[i].value);
+        len += ngx_http_v3_encode_field_l(NULL, &header[i].key,
+                                          &header[i].value);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 header len:%uz", len);
@@ -317,15 +317,15 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    b->last = (u_char *) ngx_http_v3_encode_header_block_prefix(b->last,
-                                                                0, 0, 0);
+    b->last = (u_char *) ngx_http_v3_encode_field_section_prefix(b->last,
+                                                                 0, 0, 0);
 
     if (r->headers_out.status == NGX_HTTP_OK) {
-        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                 NGX_HTTP_V3_HEADER_STATUS_200);
 
     } else {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                  NGX_HTTP_V3_HEADER_STATUS_200,
                                                  NULL, 3);
         b->last = ngx_sprintf(b->last, "%03ui", r->headers_out.status);
@@ -345,13 +345,13 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n = sizeof("nginx") - 1;
         }
 
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                      NGX_HTTP_V3_HEADER_SERVER,
                                                      p, n);
     }
 
     if (r->headers_out.date == NULL) {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                      NGX_HTTP_V3_HEADER_DATE,
                                                      ngx_cached_http_time.data,
                                                      ngx_cached_http_time.len);
@@ -366,7 +366,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n += sizeof("; charset=") - 1 + r->headers_out.charset.len;
         }
 
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                     NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
                                     NULL, n);
 
@@ -394,7 +394,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             p = ngx_sprintf(b->last, "%O", r->headers_out.content_length_n);
             n = p - b->last;
 
-            b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+            b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                         NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO,
                                         NULL, n);
 
@@ -402,7 +402,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
                                   r->headers_out.content_length_n);
 
         } else if (r->headers_out.content_length_n == 0) {
-            b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+            b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                        NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO);
         }
     }
@@ -410,7 +410,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                   NGX_HTTP_V3_HEADER_LAST_MODIFIED, NULL,
                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
 
@@ -425,7 +425,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n += ngx_sprintf(b->last, ":%ui", port) - b->last;
         }
 
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                    NGX_HTTP_V3_HEADER_LOCATION,
                                                    NULL, n);
 
@@ -449,7 +449,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
-        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                       NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING);
     }
 #endif
@@ -473,9 +473,9 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             continue;
         }
 
-        b->last = (u_char *) ngx_http_v3_encode_header_l(b->last,
-                                                         &header[i].key,
-                                                         &header[i].value);
+        b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
+                                                        &header[i].key,
+                                                        &header[i].value);
     }
 
     if (r->header_only) {
@@ -1065,55 +1065,55 @@ ngx_http_v3_create_push_promise(ngx_http_request_t *r, ngx_str_t *path,
 
     len = ngx_http_v3_encode_varlen_int(NULL, push_id);
 
-    len += ngx_http_v3_encode_header_block_prefix(NULL, 0, 0, 0);
+    len += ngx_http_v3_encode_field_section_prefix(NULL, 0, 0, 0);
 
-    len += ngx_http_v3_encode_header_ri(NULL, 0,
-                                        NGX_HTTP_V3_HEADER_METHOD_GET);
+    len += ngx_http_v3_encode_field_ri(NULL, 0,
+                                       NGX_HTTP_V3_HEADER_METHOD_GET);
 
-    len += ngx_http_v3_encode_header_lri(NULL, 0,
-                                         NGX_HTTP_V3_HEADER_AUTHORITY,
-                                         NULL, r->headers_in.server.len);
+    len += ngx_http_v3_encode_field_lri(NULL, 0,
+                                        NGX_HTTP_V3_HEADER_AUTHORITY,
+                                        NULL, r->headers_in.server.len);
 
     if (path->len == 1 && path->data[0] == '/') {
-        len += ngx_http_v3_encode_header_ri(NULL, 0,
-                                            NGX_HTTP_V3_HEADER_PATH_ROOT);
+        len += ngx_http_v3_encode_field_ri(NULL, 0,
+                                           NGX_HTTP_V3_HEADER_PATH_ROOT);
 
     } else {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
-                                             NGX_HTTP_V3_HEADER_PATH_ROOT,
-                                             NULL, path->len);
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
+                                            NGX_HTTP_V3_HEADER_PATH_ROOT,
+                                            NULL, path->len);
     }
 
     if (r->schema.len == 5 && ngx_strncmp(r->schema.data, "https", 5) == 0) {
-        len += ngx_http_v3_encode_header_ri(NULL, 0,
-                                            NGX_HTTP_V3_HEADER_SCHEME_HTTPS);
+        len += ngx_http_v3_encode_field_ri(NULL, 0,
+                                           NGX_HTTP_V3_HEADER_SCHEME_HTTPS);
 
     } else if (r->schema.len == 4
                && ngx_strncmp(r->schema.data, "http", 4) == 0)
     {
-        len += ngx_http_v3_encode_header_ri(NULL, 0,
-                                            NGX_HTTP_V3_HEADER_SCHEME_HTTP);
+        len += ngx_http_v3_encode_field_ri(NULL, 0,
+                                           NGX_HTTP_V3_HEADER_SCHEME_HTTP);
 
     } else {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
-                                             NGX_HTTP_V3_HEADER_SCHEME_HTTP,
-                                             NULL, r->schema.len);
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
+                                            NGX_HTTP_V3_HEADER_SCHEME_HTTP,
+                                            NULL, r->schema.len);
     }
 
     if (r->headers_in.accept_encoding) {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                      NGX_HTTP_V3_HEADER_ACCEPT_ENCODING, NULL,
                                      r->headers_in.accept_encoding->value.len);
     }
 
     if (r->headers_in.accept_language) {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                      NGX_HTTP_V3_HEADER_ACCEPT_LANGUAGE, NULL,
                                      r->headers_in.accept_language->value.len);
     }
 
     if (r->headers_in.user_agent) {
-        len += ngx_http_v3_encode_header_lri(NULL, 0,
+        len += ngx_http_v3_encode_field_lri(NULL, 0,
                                           NGX_HTTP_V3_HEADER_USER_AGENT, NULL,
                                           r->headers_in.user_agent->value.len);
     }
@@ -1125,59 +1125,59 @@ ngx_http_v3_create_push_promise(ngx_http_request_t *r, ngx_str_t *path,
 
     b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last, push_id);
 
-    b->last = (u_char *) ngx_http_v3_encode_header_block_prefix(b->last,
-                                                                0, 0, 0);
+    b->last = (u_char *) ngx_http_v3_encode_field_section_prefix(b->last,
+                                                                 0, 0, 0);
 
-    b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+    b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                 NGX_HTTP_V3_HEADER_METHOD_GET);
 
-    b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+    b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                   NGX_HTTP_V3_HEADER_AUTHORITY,
                                                   r->headers_in.server.data,
                                                   r->headers_in.server.len);
 
     if (path->len == 1 && path->data[0] == '/') {
-        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                  NGX_HTTP_V3_HEADER_PATH_ROOT);
 
     } else {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                   NGX_HTTP_V3_HEADER_PATH_ROOT,
                                                   path->data, path->len);
     }
 
     if (r->schema.len == 5 && ngx_strncmp(r->schema.data, "https", 5) == 0) {
-        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                               NGX_HTTP_V3_HEADER_SCHEME_HTTPS);
 
     } else if (r->schema.len == 4
                && ngx_strncmp(r->schema.data, "http", 4) == 0)
     {
-        b->last = (u_char *) ngx_http_v3_encode_header_ri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                NGX_HTTP_V3_HEADER_SCHEME_HTTP);
 
     } else {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                 NGX_HTTP_V3_HEADER_SCHEME_HTTP,
                                                 r->schema.data, r->schema.len);
     }
 
     if (r->headers_in.accept_encoding) {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                      NGX_HTTP_V3_HEADER_ACCEPT_ENCODING,
                                      r->headers_in.accept_encoding->value.data,
                                      r->headers_in.accept_encoding->value.len);
     }
 
     if (r->headers_in.accept_language) {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                      NGX_HTTP_V3_HEADER_ACCEPT_LANGUAGE,
                                      r->headers_in.accept_language->value.data,
                                      r->headers_in.accept_language->value.len);
     }
 
     if (r->headers_in.user_agent) {
-        b->last = (u_char *) ngx_http_v3_encode_header_lri(b->last, 0,
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                           NGX_HTTP_V3_HEADER_USER_AGENT,
                                           r->headers_in.user_agent->value.data,
                                           r->headers_in.user_agent->value.len);

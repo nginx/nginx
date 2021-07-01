@@ -100,7 +100,7 @@ ngx_http_v3_encode_prefix_int(u_char *p, uint64_t value, ngx_uint_t prefix)
 
 
 uintptr_t
-ngx_http_v3_encode_header_block_prefix(u_char *p, ngx_uint_t insert_count,
+ngx_http_v3_encode_field_section_prefix(u_char *p, ngx_uint_t insert_count,
     ngx_uint_t sign, ngx_uint_t delta_base)
 {
     if (p == NULL) {
@@ -119,9 +119,9 @@ ngx_http_v3_encode_header_block_prefix(u_char *p, ngx_uint_t insert_count,
 
 
 uintptr_t
-ngx_http_v3_encode_header_ri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index)
+ngx_http_v3_encode_field_ri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index)
 {
-    /* Indexed Header Field */
+    /* Indexed Field Line */
 
     if (p == NULL) {
         return ngx_http_v3_encode_prefix_int(NULL, index, 6);
@@ -134,10 +134,10 @@ ngx_http_v3_encode_header_ri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index)
 
 
 uintptr_t
-ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
+ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
     u_char *data, size_t len)
 {
-    /* Literal Header Field With Name Reference */
+    /* Literal Field Line With Name Reference */
 
     if (p == NULL) {
         return ngx_http_v3_encode_prefix_int(NULL, index, 4)
@@ -160,9 +160,9 @@ ngx_http_v3_encode_header_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
 
 
 uintptr_t
-ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
+ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
 {
-    /* Literal Header Field Without Name Reference */
+    /* Literal Field Line With Literal Name */
 
     if (p == NULL) {
         return ngx_http_v3_encode_prefix_int(NULL, name->len, 3)
@@ -187,9 +187,9 @@ ngx_http_v3_encode_header_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
 
 
 uintptr_t
-ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index)
+ngx_http_v3_encode_field_pbi(u_char *p, ngx_uint_t index)
 {
-    /* Indexed Header Field With Post-Base Index */
+    /* Indexed Field Line With Post-Base Index */
 
     if (p == NULL) {
         return ngx_http_v3_encode_prefix_int(NULL, index, 4);
@@ -202,10 +202,10 @@ ngx_http_v3_encode_header_pbi(u_char *p, ngx_uint_t index)
 
 
 uintptr_t
-ngx_http_v3_encode_header_lpbi(u_char *p, ngx_uint_t index, u_char *data,
+ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
     size_t len)
 {
-    /* Literal Header Field With Post-Base Name Reference */
+    /* Literal Field Line With Post-Base Name Reference */
 
     if (p == NULL) {
         return ngx_http_v3_encode_prefix_int(NULL, index, 3)

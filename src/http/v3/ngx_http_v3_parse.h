@@ -41,7 +41,7 @@ typedef struct {
     ngx_uint_t                      sign;
     ngx_uint_t                      base;
     ngx_http_v3_parse_prefix_int_t  pint;
-} ngx_http_v3_parse_header_block_prefix_t;
+} ngx_http_v3_parse_field_section_prefix_t;
 
 
 typedef struct {
@@ -65,13 +65,13 @@ typedef struct {
 
     ngx_http_v3_parse_prefix_int_t  pint;
     ngx_http_v3_parse_literal_t     literal;
-} ngx_http_v3_parse_header_t;
+} ngx_http_v3_parse_field_t;
 
 
 typedef struct {
     ngx_uint_t                      state;
-    ngx_http_v3_parse_header_t      header;
-} ngx_http_v3_parse_header_rep_t;
+    ngx_http_v3_parse_field_t       field;
+} ngx_http_v3_parse_field_rep_t;
 
 
 typedef struct {
@@ -79,14 +79,14 @@ typedef struct {
     ngx_uint_t                      type;
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
-    ngx_http_v3_parse_header_block_prefix_t  prefix;
-    ngx_http_v3_parse_header_rep_t  header_rep;
+    ngx_http_v3_parse_field_section_prefix_t  prefix;
+    ngx_http_v3_parse_field_rep_t   field_rep;
 } ngx_http_v3_parse_headers_t;
 
 
 typedef struct {
     ngx_uint_t                      state;
-    ngx_http_v3_parse_header_t      header;
+    ngx_http_v3_parse_field_t       field;
     ngx_http_v3_parse_prefix_int_t  pint;
 } ngx_http_v3_parse_encoder_t;
 
