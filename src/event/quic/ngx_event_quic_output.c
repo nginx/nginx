@@ -368,6 +368,9 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     if (out.len < pad_len) {
+        /* compensate for potentially enlarged header in Length bytes */
+        pad_len -= ngx_quic_create_header(&pkt, NULL, pad_len, NULL)
+                   - ngx_quic_create_header(&pkt, NULL, out.len, NULL);
         ngx_memset(p, NGX_QUIC_FT_PADDING, pad_len - out.len);
         out.len = pad_len;
     }
