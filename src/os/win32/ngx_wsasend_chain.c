@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-#define NGX_WSABUFS  8
+#define NGX_WSABUFS  64
 
 
 ngx_chain_t *
@@ -47,7 +47,7 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     vec.elts = wsabufs;
     vec.size = sizeof(WSABUF);
-    vec.nalloc = NGX_WSABUFS;
+    vec.nalloc = ngx_min(NGX_WSABUFS, ngx_max_wsabufs);
     vec.pool = c->pool;
 
     for ( ;; ) {
@@ -59,10 +59,8 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         /* create the WSABUF and coalesce the neighbouring bufs */
 
-        for (cl = in;
-             cl && vec.nelts < ngx_max_wsabufs && send < limit;
-             cl = cl->next)
-        {
+        for (cl = in; cl && send < limit; cl = cl->next) {
+
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }
@@ -77,6 +75,10 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 wsabuf->len += cl->buf->last - cl->buf->pos;
 
             } else {
+                if (vec.nelts == vec.nalloc) {
+                    break;
+                }
+
                 wsabuf = ngx_array_push(&vec);
                 if (wsabuf == NULL) {
                     return NGX_CHAIN_ERROR;
@@ -169,7 +171,7 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         vec.elts = wsabufs;
         vec.nelts = 0;
         vec.size = sizeof(WSABUF);
-        vec.nalloc = NGX_WSABUFS;
+        vec.nalloc = ngx_min(NGX_WSABUFS, ngx_max_wsabufs);
         vec.pool = c->pool;
 
         send = 0;
@@ -178,10 +180,8 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         /* create the WSABUF and coalesce the neighbouring bufs */
 
-        for (cl = in;
-             cl && vec.nelts < ngx_max_wsabufs && send < limit;
-             cl = cl->next)
-        {
+        for (cl = in; cl && send < limit; cl = cl->next) {
+
             if (ngx_buf_special(cl->buf)) {
                 continue;
             }
@@ -196,6 +196,10 @@ ngx_overlapped_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 wsabuf->len += cl->buf->last - cl->buf->pos;
 
             } else {
+                if (vec.nelts == vec.nalloc) {
+                    break;
+                }
+
                 wsabuf = ngx_array_push(&vec);
                 if (wsabuf == NULL) {
                     return NGX_CHAIN_ERROR;

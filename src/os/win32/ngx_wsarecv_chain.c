@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-#define NGX_WSABUFS  8
+#define NGX_WSABUFS  64
 
 
 ssize_t
@@ -57,6 +57,10 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
             wsabuf->len += n;
 
         } else {
+            if (vec.nelts == vec.nalloc) {
+                break;
+            }
+
             wsabuf = ngx_array_push(&vec);
             if (wsabuf == NULL) {
                 return NGX_ERROR;
