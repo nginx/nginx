@@ -1643,6 +1643,10 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     } else {
         SSL_set_accept_state(sc->connection);
 
+#ifdef SSL_OP_ENABLE_KTLS
+	SSL_set_options(sc->connection, SSL_OP_ENABLE_KTLS);
+#endif
+
 #ifdef SSL_OP_NO_RENEGOTIATION
         SSL_set_options(sc->connection, SSL_OP_NO_RENEGOTIATION);
 #endif
