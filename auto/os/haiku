@@ -1,0 +1,18 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+have=NGX_HAIKU . auto/have_headers
+
+CORE_INCS="$UNIX_INCS"
+CORE_DEPS="$UNIX_DEPS $HAIKU_DEPS"
+CORE_SRCS="$UNIX_SRCS"
+CORE_LIBS="$CORE_LIBS -lnetwork"
+
+NGX_RPATH=YES
+
+ngx_spacer=
+
+
+CC_AUX_FLAGS="$CC_AUX_FLAGS -D_FILE_OFFSET_BITS=64 -lnetwork"

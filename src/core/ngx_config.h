@@ -37,6 +37,8 @@
 #elif (NGX_WIN32)
 #include <ngx_win32_config.h>
 
+#elif (NGX_HAIKU)
+#include <ngx_haiku_config.h>
 
 #else /* POSIX */
 #include <ngx_posix_config.h>
