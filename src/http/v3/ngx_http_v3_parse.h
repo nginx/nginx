@@ -136,11 +136,11 @@ typedef struct {
  */
 
 ngx_int_t ngx_http_v3_parse_headers(ngx_connection_t *c,
-    ngx_http_v3_parse_headers_t *st, u_char ch);
+    ngx_http_v3_parse_headers_t *st, ngx_buf_t *b);
 ngx_int_t ngx_http_v3_parse_data(ngx_connection_t *c,
-    ngx_http_v3_parse_data_t *st, u_char ch);
+    ngx_http_v3_parse_data_t *st, ngx_buf_t *b);
 ngx_int_t ngx_http_v3_parse_uni(ngx_connection_t *c,
-    ngx_http_v3_parse_uni_t *st, u_char ch);
+    ngx_http_v3_parse_uni_t *st, ngx_buf_t *b);
 
 
 #endif /* _NGX_HTTP_V3_PARSE_H_INCLUDED_ */

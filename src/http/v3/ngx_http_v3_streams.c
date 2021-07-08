@@ -168,7 +168,8 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
 {
     u_char                     buf[128];
     ssize_t                    n;
-    ngx_int_t                  rc, i;
+    ngx_buf_t                  b;
+    ngx_int_t                  rc;
     ngx_connection_t          *c;
     ngx_http_v3_uni_stream_t  *us;
 
@@ -176,6 +177,8 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
     us = c->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 read handler");
+
+    ngx_memzero(&b, sizeof(ngx_buf_t));
 
     while (rev->ready) {
 
@@ -201,25 +204,25 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
             break;
         }
 
-        for (i = 0; i < n; i++) {
+        b.pos = buf;
+        b.last = buf + n;
 
-            rc = ngx_http_v3_parse_uni(c, &us->parse, buf[i]);
+        rc = ngx_http_v3_parse_uni(c, &us->parse, &b);
 
-            if (rc == NGX_DONE) {
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                               "http3 read done");
-                ngx_http_v3_close_uni_stream(c);
-                return;
-            }
+        if (rc == NGX_DONE) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 read done");
+            ngx_http_v3_close_uni_stream(c);
+            return;
+        }
 
-            if (rc > 0) {
-                goto failed;
-            }
+        if (rc > 0) {
+            goto failed;
+        }
 
-            if (rc != NGX_AGAIN) {
-                rc = NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR;
-                goto failed;
-            }
+        if (rc != NGX_AGAIN) {
+            rc = NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR;
+            goto failed;
         }
     }
 

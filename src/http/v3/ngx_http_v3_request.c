@@ -207,6 +207,7 @@ ngx_http_v3_cleanup_request(void *data)
 static void
 ngx_http_v3_process_request(ngx_event_t *rev)
 {
+    u_char                       *p;
     ssize_t                       n;
     ngx_buf_t                    *b;
     ngx_int_t                     rc;
@@ -273,7 +274,9 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             b->last = b->start + n;
         }
 
-        rc = ngx_http_v3_parse_headers(c, st, *b->pos);
+        p = b->pos;
+
+        rc = ngx_http_v3_parse_headers(c, st, b);
 
         if (rc > 0) {
             ngx_http_v3_finalize_connection(c, rc,
@@ -302,8 +305,7 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             break;
         }
 
-        b->pos++;
-        r->request_length++;
+        r->request_length += b->pos - p;
 
         if (rc == NGX_AGAIN) {
             continue;
@@ -1024,6 +1026,7 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     off_t                      max;
     size_t                     size;
+    u_char                    *p;
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_uint_t                 last;
@@ -1078,9 +1081,11 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         while (cl->buf->pos < cl->buf->last) {
 
             if (st->length == 0) {
-                r->request_length++;
+                p = cl->buf->pos;
 
-                rc = ngx_http_v3_parse_data(r->connection, st, *cl->buf->pos++);
+                rc = ngx_http_v3_parse_data(r->connection, st, cl->buf);
+
+                r->request_length += cl->buf->pos - p;
 
                 if (rc == NGX_AGAIN) {
                     continue;
