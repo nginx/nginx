@@ -167,25 +167,6 @@ struct ngx_event_aio_s {
 #endif
 
 
-#if !(NGX_WIN32)
-
-typedef struct {
-    ngx_buf_t                 *buffer;
-    struct sockaddr           *sockaddr;
-    socklen_t                  socklen;
-} ngx_udp_dgram_t;
-
-
-struct ngx_udp_connection_s {
-    ngx_rbtree_node_t          node;
-    ngx_connection_t          *connection;
-    ngx_str_t                  key;
-    ngx_udp_dgram_t           *dgram;
-};
-
-#endif
-
-
 typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
@@ -516,14 +497,6 @@ extern ngx_module_t           ngx_event_core_module;
 
 
 void ngx_event_accept(ngx_event_t *ev);
-#if !(NGX_WIN32)
-void ngx_event_recvmsg(ngx_event_t *ev);
-void ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
-    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
-void ngx_insert_udp_connection(ngx_connection_t *c, ngx_udp_connection_t *udp,
-    ngx_str_t *key);
-#endif
-void ngx_delete_udp_connection(void *data);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -553,6 +526,7 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
+#include <ngx_event_udp.h>
 
 #if (NGX_WIN32)
 #include <ngx_iocp_module.h>
