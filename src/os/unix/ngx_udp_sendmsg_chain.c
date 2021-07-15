@@ -316,6 +316,71 @@ ngx_set_srcaddr_cmsg(struct cmsghdr *cmsg, struct sockaddr *local_sockaddr)
     return 0;
 }
 
+
+ngx_int_t
+ngx_get_srcaddr_cmsg(struct cmsghdr *cmsg, struct sockaddr *local_sockaddr)
+{
+
+#if (NGX_HAVE_IP_RECVDSTADDR)
+    struct in_addr       *addr;
+    struct sockaddr_in   *sin;
+#elif (NGX_HAVE_IP_PKTINFO)
+    struct in_pktinfo    *pkt;
+    struct sockaddr_in   *sin;
+#endif
+
+#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+    struct in6_pktinfo   *pkt6;
+    struct sockaddr_in6  *sin6;
+#endif
+
+
+ #if (NGX_HAVE_IP_RECVDSTADDR)
+
+    if (cmsg->cmsg_level == IPPROTO_IP
+        && cmsg->cmsg_type == IP_RECVDSTADDR
+        && local_sockaddr->sa_family == AF_INET)
+    {
+        addr = (struct in_addr *) CMSG_DATA(cmsg);
+        sin = (struct sockaddr_in *) local_sockaddr;
+        sin->sin_addr = *addr;
+
+        return NGX_OK;
+    }
+
+#elif (NGX_HAVE_IP_PKTINFO)
+
+    if (cmsg->cmsg_level == IPPROTO_IP
+        && cmsg->cmsg_type == IP_PKTINFO
+        && local_sockaddr->sa_family == AF_INET)
+    {
+        pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
+        sin = (struct sockaddr_in *) local_sockaddr;
+        sin->sin_addr = pkt->ipi_addr;
+
+        return NGX_OK;
+    }
+
+#endif
+
+#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+
+    if (cmsg->cmsg_level == IPPROTO_IPV6
+        && cmsg->cmsg_type == IPV6_PKTINFO
+        && local_sockaddr->sa_family == AF_INET6)
+    {
+        pkt6 = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+        sin6 = (struct sockaddr_in6 *) local_sockaddr;
+        sin6->sin6_addr = pkt6->ipi6_addr;
+
+        return NGX_OK;
+    }
+
+#endif
+
+    return NGX_DECLINED;
+}
+
 #endif
 
 
