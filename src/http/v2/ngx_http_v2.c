@@ -3457,7 +3457,7 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
             continue;
         }
 
-        if (ch == '\0' || ch == LF || ch == CR || ch == ':'
+        if (ch <= 0x20 || ch == 0x7f || ch == ':'
             || (ch >= 'A' && ch <= 'Z'))
         {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3606,7 +3606,8 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
         { 4, "LOCK",      NGX_HTTP_LOCK },
         { 6, "UNLOCK",    NGX_HTTP_UNLOCK },
         { 5, "PATCH",     NGX_HTTP_PATCH },
-        { 5, "TRACE",     NGX_HTTP_TRACE }
+        { 5, "TRACE",     NGX_HTTP_TRACE },
+        { 7, "CONNECT",   NGX_HTTP_CONNECT }
     }, *test;
 
     if (r->method_name.len) {

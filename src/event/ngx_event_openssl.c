@@ -2896,6 +2896,7 @@ ngx_int_t
 ngx_ssl_shutdown(ngx_connection_t *c)
 {
     int         n, sslerr, mode;
+    ngx_int_t   rc;
     ngx_err_t   err;
     ngx_uint_t  tries;
 
@@ -2906,6 +2907,8 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     }
 #endif
 
+    rc = NGX_OK;
+
     ngx_ssl_ocsp_cleanup(c);
 
     if (SSL_in_init(c->ssl->connection)) {
@@ -2915,11 +2918,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
          * Avoid calling SSL_shutdown() if handshake wasn't completed.
          */
 
-        SSL_free(c->ssl->connection);
-        c->ssl = NULL;
-        c->recv = ngx_recv;
-
-        return NGX_OK;
+        goto done;
     }
 
     if (c->timedout || c->error || c->buffered) {
@@ -2961,11 +2960,7 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_shutdown: %d", n);
 
         if (n == 1) {
-            SSL_free(c->ssl->connection);
-            c->ssl = NULL;
-            c->recv = ngx_recv;
-
-            return NGX_OK;
+            goto done;
         }
 
         if (n == 0 && tries-- > 1) {
@@ -2991,11 +2986,11 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             }
 
             if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
-                return NGX_ERROR;
+                goto failed;
             }
 
             if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-                return NGX_ERROR;
+                goto failed;
             }
 
             ngx_add_timer(c->read, 3000);
@@ -3004,23 +2999,33 @@ ngx_ssl_shutdown(ngx_connection_t *c)
         }
 
         if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
-            SSL_free(c->ssl->connection);
-            c->ssl = NULL;
-            c->recv = ngx_recv;
-
-            return NGX_OK;
+            goto done;
         }
 
         err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
         ngx_ssl_connection_error(c, sslerr, err, "SSL_shutdown() failed");
 
-        SSL_free(c->ssl->connection);
-        c->ssl = NULL;
-        c->recv = ngx_recv;
-
-        return NGX_ERROR;
+        break;
     }
+
+failed:
+
+    rc = NGX_ERROR;
+
+done:
+
+    if (c->ssl->shutdown_without_free) {
+        c->ssl->shutdown_without_free = 0;
+        c->recv = ngx_recv;
+        return rc;
+    }
+
+    SSL_free(c->ssl->connection);
+    c->ssl = NULL;
+    c->recv = ngx_recv;
+
+    return rc;
 }
 
 

@@ -51,9 +51,7 @@ typedef struct {
 } ngx_resolver_an_t;
 
 
-#define ngx_resolver_node(n)                                                 \
-    (ngx_resolver_node_t *)                                                  \
-        ((u_char *) (n) - offsetof(ngx_resolver_node_t, node))
+#define ngx_resolver_node(n)  ngx_rbtree_data(n, ngx_resolver_node_t, node)
 
 
 static ngx_int_t ngx_udp_connect(ngx_resolver_connection_t *rec);
