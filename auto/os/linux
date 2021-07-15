@@ -281,6 +281,27 @@ if [ $ngx_found = yes ]; then
 fi
 
 
+# UDP_SEGMENT socket option is used for segmentation offloading
+
+ngx_feature="UDP_SEGMENT"
+ngx_feature_name="NGX_HAVE_UDP_SEGMENT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <stdint.h>
+                  #include <netinet/udp.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="socklen_t optlen = sizeof(int);
+              int val;
+              getsockopt(0, SOL_UDP, UDP_SEGMENT, &val, &optlen)"
+. auto/feature
+
+if [ $ngx_found = yes ]; then
+    UDP_SEGMENT_FOUND=YES
+    have=NGX_HAVE_UDP_SEGMENT . auto/have
+fi
+
+
 # ngx_quic_bpf module uses sockhash to select socket from reuseport group,
 # support appeared in Linux-5.7:
 #

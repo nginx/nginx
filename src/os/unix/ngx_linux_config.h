@@ -103,6 +103,10 @@ typedef struct iocb  ngx_aiocb_t;
 #include <linux/capability.h>
 #endif
 
+#if (NGX_HAVE_UDP_SEGMENT)
+#include <netinet/udp.h>
+#endif
+
 
 #define NGX_LISTEN_BACKLOG        511
 

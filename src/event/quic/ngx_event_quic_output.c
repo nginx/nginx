@@ -17,6 +17,9 @@
 #define NGX_QUIC_MAX_UDP_PAYLOAD_OUT   1252
 #define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6  1232
 
+#define NGX_QUIC_MAX_UDP_SEGMENT_BUF  65487 /* 65K - IPv6 header */
+#define NGX_QUIC_MAX_SEGMENTS            64 /* UDP_MAX_SEGMENTS */
+
 #define NGX_QUIC_RETRY_TOKEN_LIFETIME     3 /* seconds */
 #define NGX_QUIC_NEW_TOKEN_LIFETIME     600 /* seconds */
 #define NGX_QUIC_RETRY_BUFFER_SIZE      256
@@ -39,6 +42,16 @@
 
 static ngx_int_t ngx_quic_socket_output(ngx_connection_t *c,
     ngx_quic_socket_t *qsock);
+static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c,
+    ngx_quic_socket_t *qsock);
+#if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
+static ngx_uint_t ngx_quic_allow_segmentation(ngx_connection_t *c,
+    ngx_quic_socket_t *qsock);
+static ngx_int_t ngx_quic_create_segments(ngx_connection_t *c,
+    ngx_quic_socket_t *qsock);
+static ssize_t ngx_quic_send_segments(ngx_connection_t *c, u_char *buf,
+    size_t len, struct sockaddr *sockaddr, socklen_t socklen, size_t segment);
+#endif
 static ssize_t ngx_quic_output_packet(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min,
     ngx_quic_socket_t *qsock);
@@ -84,16 +97,10 @@ ngx_quic_output(ngx_connection_t *c)
 static ngx_int_t
 ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 {
-    off_t                   max;
-    size_t                  len, min, in_flight;
-    ssize_t                 n;
-    u_char                 *p;
-    ngx_uint_t              i, pad;
-    ngx_quic_path_t        *path;
-    ngx_quic_send_ctx_t    *ctx;
+    size_t                  in_flight;
+    ngx_int_t               rc;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
-    static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     c->log->action = "sending frames";
 
@@ -101,6 +108,43 @@ ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     cg = &qc->congestion;
 
     in_flight = cg->in_flight;
+
+#if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
+    if (ngx_quic_allow_segmentation(c, qsock)) {
+        rc = ngx_quic_create_segments(c, qsock);
+    } else
+#endif
+    {
+        rc = ngx_quic_create_datagrams(c, qsock);
+    }
+
+    if (rc != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (in_flight != cg->in_flight && !qc->send_timer_set && !qc->closing) {
+        qc->send_timer_set = 1;
+        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+{
+    off_t                   max;
+    size_t                  len, min;
+    ssize_t                 n;
+    u_char                 *p;
+    ngx_uint_t              i, pad;
+    ngx_quic_path_t        *path;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+    static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+
+    qc = ngx_quic_get_connection(c);
 
     path = qsock->path;
 
@@ -153,14 +197,196 @@ ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
         path->sent += len;
     }
 
-    if (in_flight != cg->in_flight && !qc->send_timer_set && !qc->closing) {
-        qc->send_timer_set = 1;
-        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+    return NGX_OK;
+}
+
+
+#if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
+
+static ngx_uint_t
+ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+{
+    size_t                  bytes, len;
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    if (qsock->path->state != NGX_QUIC_PATH_VALIDATED) {
+        /* don't even try to be faster on non-validated paths */
+        return 0;
     }
 
+    qc = ngx_quic_get_connection(c);
+
+    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
+    if (!ngx_queue_empty(&ctx->frames)) {
+        return 0;
+    }
+
+    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_handshake);
+    if (!ngx_queue_empty(&ctx->frames)) {
+        return 0;
+    }
+
+    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+
+    bytes = 0;
+
+    len = ngx_min(qc->ctp.max_udp_payload_size,
+                  NGX_QUIC_MAX_UDP_SEGMENT_BUF);
+
+    for (q = ngx_queue_head(&ctx->frames);
+         q != ngx_queue_sentinel(&ctx->frames);
+         q = ngx_queue_next(q))
+    {
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        bytes += f->len;
+
+        if (bytes > len * 3) {
+            /* require at least ~3 full packets to batch */
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+static ngx_int_t
+ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+{
+    size_t                  len, segsize;
+    ssize_t                 n;
+    u_char                 *p, *end;
+    ngx_uint_t              nseg;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_path_t        *path;
+    ngx_quic_connection_t  *qc;
+    static u_char           dst[NGX_QUIC_MAX_UDP_SEGMENT_BUF];
+
+    qc = ngx_quic_get_connection(c);
+    path = qsock->path;
+
+    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+
+    if (ngx_quic_generate_ack(c, ctx) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    segsize = ngx_min(qc->ctp.max_udp_payload_size,
+                      NGX_QUIC_MAX_UDP_SEGMENT_BUF);
+    p = dst;
+    end = dst + sizeof(dst);
+
+    nseg = 0;
+
+    for ( ;; ) {
+
+        len = ngx_min(segsize, (size_t) (end - p));
+
+        if (len) {
+
+            n = ngx_quic_output_packet(c, ctx, p, len, len, qsock);
+            if (n == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            p += n;
+            nseg++;
+
+        } else {
+            n = 0;
+        }
+
+        if (p == dst) {
+            break;
+        }
+
+        if (n == 0 || nseg == NGX_QUIC_MAX_SEGMENTS) {
+            n = ngx_quic_send_segments(c, dst, p - dst, path->sockaddr,
+                                       path->socklen, segsize);
+            if (n == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            path->sent += n;
+
+            p = dst;
+            nseg = 0;
+        }
+    }
 
     return NGX_OK;
 }
+
+
+static ssize_t
+ngx_quic_send_segments(ngx_connection_t *c, u_char *buf, size_t len,
+    struct sockaddr *sockaddr, socklen_t socklen, size_t segment)
+{
+    size_t           clen;
+    ssize_t          n;
+    uint16_t        *valp;
+    struct iovec     iov;
+    struct msghdr    msg;
+    struct cmsghdr  *cmsg;
+
+#if defined(NGX_HAVE_ADDRINFO_CMSG)
+    char             msg_control[CMSG_SPACE(sizeof(uint16_t))
+                             + CMSG_SPACE(sizeof(ngx_addrinfo_t))];
+#else
+    char             msg_control[CMSG_SPACE(sizeof(uint16_t))];
+#endif
+
+    ngx_memzero(&msg, sizeof(struct msghdr));
+    ngx_memzero(msg_control, sizeof(msg_control));
+
+    iov.iov_len = len;
+    iov.iov_base = buf;
+
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    msg.msg_name = sockaddr;
+    msg.msg_namelen = socklen;
+
+    msg.msg_control = msg_control;
+    msg.msg_controllen = sizeof(msg_control);
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+
+    cmsg->cmsg_level = SOL_UDP;
+    cmsg->cmsg_type = UDP_SEGMENT;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+
+    clen = CMSG_SPACE(sizeof(uint16_t));
+
+    valp = (void *) CMSG_DATA(cmsg);
+    *valp = segment;
+
+#if defined(NGX_HAVE_ADDRINFO_CMSG)
+    if (c->listening && c->listening->wildcard && c->local_sockaddr) {
+        cmsg = CMSG_NXTHDR(&msg, cmsg);
+        clen += ngx_set_srcaddr_cmsg(cmsg, c->local_sockaddr);
+    }
+#endif
+
+    msg.msg_controllen = clen;
+
+    n = ngx_sendmsg(c, &msg, 0);
+    if (n == -1) {
+        return NGX_ERROR;
+    }
+
+    c->sent += n;
+
+    return n;
+}
+
+#endif
+
 
 
 static ngx_uint_t
