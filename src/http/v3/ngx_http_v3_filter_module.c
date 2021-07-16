@@ -483,7 +483,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         b->last_buf = 1;
     }
 
-    cl = ngx_alloc_chain_link(c->pool);
+    cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
         return NGX_ERROR;
     }
@@ -496,7 +496,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     len = ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_FRAME_HEADERS)
           + ngx_http_v3_encode_varlen_int(NULL, n);
 
-    b = ngx_create_temp_buf(c->pool, len);
+    b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
         return NGX_ERROR;
     }
@@ -505,7 +505,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
                                                     NGX_HTTP_V3_FRAME_HEADERS);
     b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last, n);
 
-    hl = ngx_alloc_chain_link(c->pool);
+    hl = ngx_alloc_chain_link(r->pool);
     if (hl == NULL) {
         return NGX_ERROR;
     }
@@ -523,7 +523,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
               + ngx_http_v3_encode_varlen_int(NULL,
                                               r->headers_out.content_length_n);
 
-        b = ngx_create_temp_buf(c->pool, len);
+        b = ngx_create_temp_buf(r->pool, len);
         if (b == NULL) {
             return NGX_ERROR;
         }
@@ -533,7 +533,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last,
                                               r->headers_out.content_length_n);
 
-        cl = ngx_alloc_chain_link(c->pool);
+        cl = ngx_alloc_chain_link(r->pool);
         if (cl == NULL) {
             return NGX_ERROR;
         }
