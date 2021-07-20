@@ -128,6 +128,13 @@ static ngx_command_t  ngx_stream_quic_commands[] = {
       offsetof(ngx_quic_conf_t, retry),
       NULL },
 
+    { ngx_string("quic_gso"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_quic_conf_t, gso_enabled),
+      NULL },
+
     { ngx_string("quic_host_key"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_stream_quic_host_key,
@@ -251,6 +258,7 @@ ngx_stream_quic_create_srv_conf(ngx_conf_t *cf)
     conf->tp.active_connection_id_limit = NGX_CONF_UNSET_UINT;
 
     conf->retry = NGX_CONF_UNSET;
+    conf->gso_enabled = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -308,6 +316,7 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->tp.active_connection_id_limit, 2);
 
     ngx_conf_merge_value(conf->retry, prev->retry, 0);
+    ngx_conf_merge_value(conf->gso_enabled, prev->gso_enabled, 0);
 
     ngx_conf_merge_str_value(conf->host_key, prev->host_key, "");
 

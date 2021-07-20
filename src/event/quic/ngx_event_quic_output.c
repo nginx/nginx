@@ -212,12 +212,16 @@ ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
+    qc = ngx_quic_get_connection(c);
+
+    if (!qc->conf->gso_enabled) {
+        return 0;
+    }
+
     if (qsock->path->state != NGX_QUIC_PATH_VALIDATED) {
         /* don't even try to be faster on non-validated paths */
         return 0;
     }
-
-    qc = ngx_quic_get_connection(c);
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
     if (!ngx_queue_empty(&ctx->frames)) {
