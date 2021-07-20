@@ -398,15 +398,6 @@ eintr:
 
     n = sendmsg(c->fd, msg, flags);
 
-#if (NGX_DEBUG)
-    for (i = 0, size = 0; i < (size_t) msg->msg_iovlen; i++) {
-        size += msg->msg_iov[i].iov_len;
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "sendmsg: %z of %uz", n, size);
-#endif
-
     if (n == -1) {
         err = ngx_errno;
 
@@ -427,6 +418,15 @@ eintr:
             return NGX_ERROR;
         }
     }
+
+#if (NGX_DEBUG)
+    for (i = 0, size = 0; i < (size_t) msg->msg_iovlen; i++) {
+        size += msg->msg_iov[i].iov_len;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "sendmsg: %z of %uz", n, size);
+#endif
 
     return n;
 }
