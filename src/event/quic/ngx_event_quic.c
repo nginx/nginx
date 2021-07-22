@@ -918,6 +918,20 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
+#if !defined (OPENSSL_IS_BORINGSSL)
+    /* OpenSSL provides read keys for an application level before it's ready */
+
+    if (pkt->level == ssl_encryption_application
+        && SSL_quic_read_level(c->ssl->connection)
+           < ssl_encryption_application)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic no %s keys ready, ignoring packet",
+                      ngx_quic_level_name(pkt->level));
+        return NGX_DECLINED;
+    }
+#endif
+
     pkt->keys = qc->keys;
     pkt->key_phase = qc->key_phase;
     pkt->plaintext = buf;
