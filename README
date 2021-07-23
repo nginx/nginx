@@ -127,6 +127,13 @@ Experimental QUIC support for nginx
 
         ssl_protocols TLSv1.3;
 
+    To enable GSO (Generic Segmentation Offloading):
+
+        quic_gso on;
+
+    By default this Linux-specific optimization [8] is disabled.
+    Enable if your network interface is configured to support GSO.
+
     A number of directives were added that configure HTTP/3:
 
         http3_max_table_capacity
@@ -248,3 +255,4 @@ Example configuration:
     [5] https://datatracker.ietf.org/doc/html/rfc9002
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
+    [8] http://vger.kernel.org/lpc_net2018_talks/willemdebruijn-lpc2018-udpgso-paper-DRAFT-1.pdf
