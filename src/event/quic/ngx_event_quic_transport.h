@@ -273,6 +273,7 @@ struct ngx_quic_frame_s {
     ngx_msec_t                                  last;
     ssize_t                                     len;
     unsigned                                    need_ack:1;
+    unsigned                                    pkt_need_ack:1;
     unsigned                                    flush:1;
 
     ngx_chain_t                                *data;

@@ -55,7 +55,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     pad = ngx_min(1200, max);
 
     sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent == -1) {
+    if (sent < 0) {
         return NGX_ERROR;
     }
 
@@ -606,7 +606,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     pad = ngx_min(1200, max);
 
     sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent == -1) {
+    if (sent < 0) {
         return NGX_ERROR;
     }
 
@@ -618,7 +618,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     pad = ngx_min(1200, max);
 
     sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent == -1) {
+    if (sent < 0) {
         return NGX_ERROR;
     }
 

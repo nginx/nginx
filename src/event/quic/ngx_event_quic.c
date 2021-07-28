@@ -255,6 +255,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         ngx_queue_init(&qc->send_ctx[i].frames);
+        ngx_queue_init(&qc->send_ctx[i].sending);
         ngx_queue_init(&qc->send_ctx[i].sent);
         qc->send_ctx[i].largest_pn = NGX_QUIC_UNSET_PN;
         qc->send_ctx[i].largest_ack = NGX_QUIC_UNSET_PN;
