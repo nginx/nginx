@@ -197,14 +197,7 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 
     switch (f->type) {
     case NGX_QUIC_FT_CRYPTO:
-    case NGX_QUIC_FT_STREAM0:
-    case NGX_QUIC_FT_STREAM1:
-    case NGX_QUIC_FT_STREAM2:
-    case NGX_QUIC_FT_STREAM3:
-    case NGX_QUIC_FT_STREAM4:
-    case NGX_QUIC_FT_STREAM5:
-    case NGX_QUIC_FT_STREAM6:
-    case NGX_QUIC_FT_STREAM7:
+    case NGX_QUIC_FT_STREAM:
         break;
 
     default:
@@ -663,15 +656,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
         break;
 
-    case NGX_QUIC_FT_STREAM0:
-    case NGX_QUIC_FT_STREAM1:
-    case NGX_QUIC_FT_STREAM2:
-    case NGX_QUIC_FT_STREAM3:
-    case NGX_QUIC_FT_STREAM4:
-    case NGX_QUIC_FT_STREAM5:
-    case NGX_QUIC_FT_STREAM6:
-    case NGX_QUIC_FT_STREAM7:
-
+    case NGX_QUIC_FT_STREAM:
         p = ngx_slprintf(p, last, "STREAM id:0x%xL", f->u.stream.stream_id);
 
         if (f->u.stream.off) {

@@ -1191,14 +1191,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         case NGX_QUIC_FT_PING:
             break;
 
-        case NGX_QUIC_FT_STREAM0:
-        case NGX_QUIC_FT_STREAM1:
-        case NGX_QUIC_FT_STREAM2:
-        case NGX_QUIC_FT_STREAM3:
-        case NGX_QUIC_FT_STREAM4:
-        case NGX_QUIC_FT_STREAM5:
-        case NGX_QUIC_FT_STREAM6:
-        case NGX_QUIC_FT_STREAM7:
+        case NGX_QUIC_FT_STREAM:
 
             if (ngx_quic_handle_stream_frame(c, pkt, &frame) != NGX_OK) {
                 return NGX_ERROR;

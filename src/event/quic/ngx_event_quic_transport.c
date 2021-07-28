@@ -14,6 +14,10 @@
 #define NGX_QUIC_LONG_DCID_OFFSET      6
 #define NGX_QUIC_SHORT_DCID_OFFSET     1
 
+#define NGX_QUIC_STREAM_FRAME_FIN      0x01
+#define NGX_QUIC_STREAM_FRAME_LEN      0x02
+#define NGX_QUIC_STREAM_FRAME_OFF      0x04
+
 
 #if (NGX_HAVE_NONALIGNED)
 
@@ -736,10 +740,6 @@ ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
 }
 
 
-#define ngx_quic_stream_bit_off(val)  (((val) & 0x04) ? 1 : 0)
-#define ngx_quic_stream_bit_len(val)  (((val) & 0x02) ? 1 : 0)
-#define ngx_quic_stream_bit_fin(val)  (((val) & 0x01) ? 1 : 0)
-
 ssize_t
 ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     ngx_quic_frame_t *f)
@@ -931,7 +931,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         break;
 
-    case NGX_QUIC_FT_STREAM0:
+    case NGX_QUIC_FT_STREAM:
     case NGX_QUIC_FT_STREAM1:
     case NGX_QUIC_FT_STREAM2:
     case NGX_QUIC_FT_STREAM3:
@@ -940,34 +940,36 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     case NGX_QUIC_FT_STREAM6:
     case NGX_QUIC_FT_STREAM7:
 
-        f->u.stream.type = f->type;
-
-        f->u.stream.off = ngx_quic_stream_bit_off(f->type);
-        f->u.stream.len = ngx_quic_stream_bit_len(f->type);
-        f->u.stream.fin = ngx_quic_stream_bit_fin(f->type);
+        f->u.stream.fin = (f->type & NGX_QUIC_STREAM_FRAME_FIN) ? 1 : 0;
 
         p = ngx_quic_parse_int(p, end, &f->u.stream.stream_id);
         if (p == NULL) {
             goto error;
         }
 
-        if (f->type & 0x04) {
+        if (f->type & NGX_QUIC_STREAM_FRAME_OFF) {
+            f->u.stream.off = 1;
+
             p = ngx_quic_parse_int(p, end, &f->u.stream.offset);
             if (p == NULL) {
                 goto error;
             }
 
         } else {
+            f->u.stream.off = 0;
             f->u.stream.offset = 0;
         }
 
-        if (f->type & 0x02) {
+        if (f->type & NGX_QUIC_STREAM_FRAME_LEN) {
+            f->u.stream.len = 1;
+
             p = ngx_quic_parse_int(p, end, &f->u.stream.length);
             if (p == NULL) {
                 goto error;
             }
 
         } else {
+            f->u.stream.len = 0;
             f->u.stream.length = end - p; /* up to packet end */
         }
 
@@ -977,6 +979,8 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         }
 
         b->last = p;
+
+        f->type = NGX_QUIC_FT_STREAM;
         break;
 
     case NGX_QUIC_FT_MAX_DATA:
@@ -1141,7 +1145,7 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
          /* STOP_SENDING */          0x3,
          /* CRYPTO */                0xD,
          /* NEW_TOKEN */             0x0, /* only sent by server */
-         /* STREAM0 */               0x3,
+         /* STREAM */                0x3,
          /* STREAM1 */               0x3,
          /* STREAM2 */               0x3,
          /* STREAM3 */               0x3,
@@ -1276,14 +1280,7 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
     case NGX_QUIC_FT_NEW_TOKEN:
         return ngx_quic_create_new_token(p, &f->u.token);
 
-    case NGX_QUIC_FT_STREAM0:
-    case NGX_QUIC_FT_STREAM1:
-    case NGX_QUIC_FT_STREAM2:
-    case NGX_QUIC_FT_STREAM3:
-    case NGX_QUIC_FT_STREAM4:
-    case NGX_QUIC_FT_STREAM5:
-    case NGX_QUIC_FT_STREAM6:
-    case NGX_QUIC_FT_STREAM7:
+    case NGX_QUIC_FT_STREAM:
         return ngx_quic_create_stream(p, &f->u.stream, f->data);
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
@@ -1499,20 +1496,34 @@ ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf,
     ngx_chain_t *data)
 {
     size_t      len;
-    u_char     *start;
+    u_char     *start, type;
     ngx_buf_t  *b;
 
+    type = NGX_QUIC_FT_STREAM;
+
+    if (sf->off) {
+        type |= NGX_QUIC_STREAM_FRAME_OFF;
+    }
+
+    if (sf->len) {
+        type |= NGX_QUIC_STREAM_FRAME_LEN;
+    }
+
+    if (sf->fin) {
+        type |= NGX_QUIC_STREAM_FRAME_FIN;
+    }
+
     if (p == NULL) {
-        len = ngx_quic_varint_len(sf->type);
+        len = ngx_quic_varint_len(type);
+        len += ngx_quic_varint_len(sf->stream_id);
 
         if (sf->off) {
             len += ngx_quic_varint_len(sf->offset);
         }
 
-        len += ngx_quic_varint_len(sf->stream_id);
-
-        /* length is always present in generated frames */
-        len += ngx_quic_varint_len(sf->length);
+        if (sf->len) {
+            len += ngx_quic_varint_len(sf->length);
+        }
 
         len += sf->length;
 
@@ -1521,15 +1532,16 @@ ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf,
 
     start = p;
 
-    ngx_quic_build_int(&p, sf->type);
+    ngx_quic_build_int(&p, type);
     ngx_quic_build_int(&p, sf->stream_id);
 
     if (sf->off) {
         ngx_quic_build_int(&p, sf->offset);
     }
 
-    /* length is always present in generated frames */
-    ngx_quic_build_int(&p, sf->length);
+    if (sf->len) {
+        ngx_quic_build_int(&p, sf->length);
+    }
 
     while (data) {
         b = data->buf;

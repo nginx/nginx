@@ -63,7 +63,7 @@
 #define NGX_QUIC_FT_STOP_SENDING                         0x05
 #define NGX_QUIC_FT_CRYPTO                               0x06
 #define NGX_QUIC_FT_NEW_TOKEN                            0x07
-#define NGX_QUIC_FT_STREAM0                              0x08
+#define NGX_QUIC_FT_STREAM                               0x08
 #define NGX_QUIC_FT_STREAM1                              0x09
 #define NGX_QUIC_FT_STREAM2                              0x0A
 #define NGX_QUIC_FT_STREAM3                              0x0B
@@ -190,7 +190,6 @@ typedef struct {
     uint64_t                                    offset;
     uint64_t                                    length;
 
-    uint8_t                                     type;
     uint64_t                                    stream_id;
     unsigned                                    off:1;
     unsigned                                    len:1;

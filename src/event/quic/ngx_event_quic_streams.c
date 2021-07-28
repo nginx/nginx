@@ -584,12 +584,11 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
     frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_STREAM6; /* OFF=1 LEN=1 FIN=0 */
+    frame->type = NGX_QUIC_FT_STREAM;
     frame->u.stream.off = 1;
     frame->u.stream.len = 1;
     frame->u.stream.fin = 0;
 
-    frame->u.stream.type = frame->type;
     frame->u.stream.stream_id = qs->id;
     frame->u.stream.offset = c->sent;
     frame->u.stream.length = n;
@@ -755,12 +754,11 @@ ngx_quic_stream_cleanup_handler(void *data)
     }
 
     frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_STREAM7; /* OFF=1 LEN=1 FIN=1 */
+    frame->type = NGX_QUIC_FT_STREAM;
     frame->u.stream.off = 1;
     frame->u.stream.len = 1;
     frame->u.stream.fin = 1;
 
-    frame->u.stream.type = frame->type;
     frame->u.stream.stream_id = qs->id;
     frame->u.stream.offset = c->sent;
     frame->u.stream.length = 0;

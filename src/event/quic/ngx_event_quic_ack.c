@@ -239,14 +239,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                 ngx_quic_drop_ack_ranges(c, ctx, f->u.ack.largest);
                 break;
 
-            case NGX_QUIC_FT_STREAM0:
-            case NGX_QUIC_FT_STREAM1:
-            case NGX_QUIC_FT_STREAM2:
-            case NGX_QUIC_FT_STREAM3:
-            case NGX_QUIC_FT_STREAM4:
-            case NGX_QUIC_FT_STREAM5:
-            case NGX_QUIC_FT_STREAM6:
-            case NGX_QUIC_FT_STREAM7:
+            case NGX_QUIC_FT_STREAM:
                 ngx_quic_handle_stream_ack(c, f);
                 break;
             }
@@ -599,14 +592,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             ngx_quic_queue_frame(qc, f);
             break;
 
-        case NGX_QUIC_FT_STREAM0:
-        case NGX_QUIC_FT_STREAM1:
-        case NGX_QUIC_FT_STREAM2:
-        case NGX_QUIC_FT_STREAM3:
-        case NGX_QUIC_FT_STREAM4:
-        case NGX_QUIC_FT_STREAM5:
-        case NGX_QUIC_FT_STREAM6:
-        case NGX_QUIC_FT_STREAM7:
+        case NGX_QUIC_FT_STREAM:
             qs = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
 
             if (qs && qs->connection->write->error) {
