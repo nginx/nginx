@@ -53,6 +53,7 @@
 #define NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY     16384
 #define NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS    16
 #define NGX_HTTP_V3_DEFAULT_MAX_CONCURRENT_PUSHES  10
+#define NGX_HTTP_V3_DEFAULT_MAX_UNI_STREAMS        3
 
 /* HTTP/3 errors */
 #define NGX_HTTP_V3_ERR_NO_ERROR                   0x100
@@ -99,6 +100,7 @@ typedef struct {
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
+    ngx_uint_t                    max_uni_streams;
 } ngx_http_v3_srv_conf_t;
 
 

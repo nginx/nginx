@@ -42,6 +42,13 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, max_concurrent_pushes),
       NULL },
 
+    { ngx_string("http3_max_uni_streams"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, max_uni_streams),
+      NULL },
+
     { ngx_string("http3_push"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_v3_push,
@@ -104,6 +111,7 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->max_table_capacity = NGX_CONF_UNSET_SIZE;
     h3scf->max_blocked_streams = NGX_CONF_UNSET_UINT;
     h3scf->max_concurrent_pushes = NGX_CONF_UNSET_UINT;
+    h3scf->max_uni_streams = NGX_CONF_UNSET_UINT;
 
     return h3scf;
 }
@@ -126,6 +134,10 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->max_concurrent_pushes,
                               prev->max_concurrent_pushes,
                               NGX_HTTP_V3_DEFAULT_MAX_CONCURRENT_PUSHES);
+
+    ngx_conf_merge_uint_value(conf->max_uni_streams,
+                              prev->max_uni_streams,
+                              NGX_HTTP_V3_DEFAULT_MAX_UNI_STREAMS);
 
     return NGX_CONF_OK;
 }
