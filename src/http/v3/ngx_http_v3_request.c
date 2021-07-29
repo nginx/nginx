@@ -81,6 +81,15 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
+    n = c->quic->id >> 2;
+
+    if (n >= clcf->keepalive_requests * 2) {
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                        "too many requests per connection");
+        ngx_http_close_connection(c);
+        return;
+    }
+
     h3c = ngx_http_v3_get_session(c);
 
     if (h3c->goaway) {
@@ -88,8 +97,6 @@ ngx_http_v3_init(ngx_connection_t *c)
         ngx_http_close_connection(c);
         return;
     }
-
-    n = c->quic->id >> 2;
 
     if (n + 1 == clcf->keepalive_requests
         || ngx_current_msec - c->quic->parent->start_time
