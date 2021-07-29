@@ -91,6 +91,8 @@ ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type)
     ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
+    h3c = ngx_http_v3_get_session(c);
+
     switch (type) {
 
     case NGX_HTTP_V3_STREAM_ENCODER:
@@ -119,12 +121,19 @@ ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type)
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http3 stream 0x%02xL", type);
+
+        if (h3c->known_streams[NGX_HTTP_V3_STREAM_CLIENT_ENCODER] == NULL
+            || h3c->known_streams[NGX_HTTP_V3_STREAM_CLIENT_DECODER] == NULL
+            || h3c->known_streams[NGX_HTTP_V3_STREAM_CLIENT_CONTROL] == NULL)
+        {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "missing mandatory stream");
+            return NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR;
+        }
+
         index = -1;
     }
 
     if (index >= 0) {
-        h3c = ngx_http_v3_get_session(c);
-
         if (h3c->known_streams[index]) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0, "stream exists");
             return NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR;
