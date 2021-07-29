@@ -293,6 +293,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 void
 ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
+    ngx_uint_t              blocked;
     ngx_msec_t              timer;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
@@ -304,6 +305,8 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    blocked = (cg->in_flight >= cg->window) ? 1 : 0;
+
     cg->in_flight -= f->plen;
 
     timer = f->last - cg->recovery_start;
@@ -313,7 +316,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
                        "quic congestion ack recovery win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
-        return;
+        goto done;
     }
 
     if (cg->window < cg->ssthresh) {
@@ -337,6 +340,12 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 
     if ((ngx_msec_int_t) timer < 0) {
         cg->recovery_start = ngx_current_msec - qc->tp.max_idle_timeout * 2;
+    }
+
+done:
+
+    if (blocked && cg->in_flight < cg->window) {
+        ngx_post_event(&qc->push, &ngx_posted_events);
     }
 }
 
@@ -620,6 +629,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 static void
 ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
+    ngx_uint_t              blocked;
     ngx_msec_t              timer;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
@@ -631,6 +641,8 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    blocked = (cg->in_flight >= cg->window) ? 1 : 0;
+
     cg->in_flight -= f->plen;
     f->plen = 0;
 
@@ -641,7 +653,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
                        "quic congestion lost recovery win:%uz ss:%z if:%uz",
                        cg->window, cg->ssthresh, cg->in_flight);
 
-        return;
+        goto done;
     }
 
     cg->recovery_start = ngx_current_msec;
@@ -656,6 +668,12 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic congestion lost win:%uz ss:%z if:%uz",
                    cg->window, cg->ssthresh, cg->in_flight);
+
+done:
+
+    if (blocked && cg->in_flight < cg->window) {
+        ngx_post_event(&qc->push, &ngx_posted_events);
+    }
 }
 
 

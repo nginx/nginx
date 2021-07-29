@@ -147,13 +147,16 @@ ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_uint_t              i, pad;
     ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
     static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
     path = qsock->path;
 
-    for ( ;; ) {
+    while (cg->in_flight < cg->window) {
+
         p = dst;
 
         len = ngx_min(qc->ctp.max_udp_payload_size,
@@ -339,10 +342,12 @@ ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_uint_t              nseg;
     ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
     static u_char           dst[NGX_QUIC_MAX_UDP_SEGMENT_BUF];
 
     qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
     path = qsock->path;
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
@@ -364,7 +369,7 @@ ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 
         len = ngx_min(segsize, (size_t) (end - p));
 
-        if (len) {
+        if (len && cg->in_flight < cg->window) {
 
             n = ngx_quic_output_packet(c, ctx, p, len, len, qsock);
             if (n == NGX_ERROR) {
@@ -531,7 +536,6 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_header_t       pkt;
-    ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
     static u_char           src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
@@ -545,7 +549,6 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                    max, min);
 
     qc = ngx_quic_get_connection(c);
-    cg = &qc->congestion;
 
     hlen = (ctx->level == ssl_encryption_application)
            ? NGX_QUIC_MAX_SHORT_HEADER
@@ -567,10 +570,6 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
          q = ngx_queue_next(q))
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-        if (!pkt.need_ack && f->need_ack && max > cg->window) {
-            max = cg->window;
-        }
 
         if (f->type == NGX_QUIC_FT_PATH_RESPONSE
             || f->type == NGX_QUIC_FT_PATH_CHALLENGE)
