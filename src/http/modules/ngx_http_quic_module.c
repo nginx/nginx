@@ -188,6 +188,7 @@ static ngx_str_t  ngx_http_quic_salt = ngx_string("ngx_quic");
 ngx_int_t
 ngx_http_quic_init(ngx_connection_t *c)
 {
+    uint64_t                   n;
     ngx_quic_conf_t           *qcf;
     ngx_http_connection_t     *hc, *phc;
     ngx_http_core_loc_conf_t  *clcf;
@@ -207,6 +208,40 @@ ngx_http_quic_init(ngx_connection_t *c)
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http init quic stream");
+
+#if (NGX_HTTP_V3)
+    if (!hc->addr_conf->http3)
+#endif
+    {
+        /* Use HTTP/3 General Protocol Error Code 0x101 for finalization */
+
+        if (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            ngx_quic_finalize_connection(c->quic->parent, 0x101,
+                                         "unexpected uni stream");
+            ngx_http_close_connection(c);
+            return NGX_DONE;
+        }
+
+        clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+
+        n = c->quic->id >> 2;
+
+        if (n >= clcf->keepalive_requests) {
+            ngx_quic_finalize_connection(c->quic->parent, 0x101,
+                                         "reached maximum number of requests");
+            ngx_http_close_connection(c);
+            return NGX_DONE;
+        }
+
+        if (ngx_current_msec - c->quic->parent->start_time
+            > clcf->keepalive_time)
+        {
+            ngx_quic_finalize_connection(c->quic->parent, 0x101,
+                                          "reached maximum time for requests");
+            ngx_http_close_connection(c);
+            return NGX_DONE;
+        }
+    }
 
     phc = ngx_http_quic_get_connection(c);
 
