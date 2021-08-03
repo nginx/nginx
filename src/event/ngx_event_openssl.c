@@ -1740,6 +1740,9 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
 
+        c->read->ready = 1;
+        c->write->ready = 1;
+
 #ifndef SSL_OP_NO_RENEGOTIATION
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
@@ -1884,6 +1887,9 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
         c->send = ngx_ssl_write;
         c->recv_chain = ngx_ssl_recv_chain;
         c->send_chain = ngx_ssl_send_chain;
+
+        c->read->ready = 1;
+        c->write->ready = 1;
 
         rc = ngx_ssl_ocsp_validate(c);
 
