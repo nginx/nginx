@@ -15,8 +15,10 @@
 
 static ngx_quic_stream_t *ngx_quic_create_client_stream(ngx_connection_t *c,
     uint64_t id);
+static ngx_int_t ngx_quic_init_stream(ngx_quic_stream_t *qs);
 static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
     uint64_t id);
+static void ngx_quic_empty_handler(ngx_event_t *ev);
 static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
@@ -146,6 +148,8 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, uint64_t id)
 ngx_int_t
 ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
+    ngx_pool_t         *pool;
+    ngx_queue_t        *q;
     ngx_event_t        *rev, *wev;
     ngx_rbtree_t       *tree;
     ngx_rbtree_node_t  *node;
@@ -154,6 +158,17 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 #if (NGX_DEBUG)
     ngx_uint_t          ns;
 #endif
+
+    while (!ngx_queue_empty(&qc->streams.uninitialized)) {
+        q = ngx_queue_head(&qc->streams.uninitialized);
+        ngx_queue_remove(q);
+
+        qs = ngx_queue_data(q, ngx_quic_stream_t, queue);
+        pool = qs->connection->pool;
+
+        ngx_close_connection(qs->connection);
+        ngx_destroy_pool(pool);
+    }
 
     tree = &qc->streams.tree;
 
@@ -310,7 +325,9 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
             return NULL;
         }
 
-        qs->connection->listening->handler(qs->connection);
+        if (ngx_quic_init_stream(qs) != NGX_OK) {
+            return NULL;
+        }
 
         if (qc->shutdown) {
             return NGX_QUIC_STREAM_GONE;
@@ -318,6 +335,59 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
     }
 
     return ngx_quic_create_stream(c, id);
+}
+
+
+static ngx_int_t
+ngx_quic_init_stream(ngx_quic_stream_t *qs)
+{
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(qs->parent);
+
+    c = qs->connection;
+
+    if (!qc->streams.initialized) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic postpone stream init");
+
+        ngx_queue_insert_tail(&qc->streams.uninitialized, &qs->queue);
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic init stream");
+
+    c->listening->handler(c);
+
+    return NGX_OK;
+}
+
+
+void
+ngx_quic_init_streams(ngx_connection_t *c)
+{
+    ngx_queue_t            *q;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic init streams");
+
+    qc = ngx_quic_get_connection(c);
+
+    while (!ngx_queue_empty(&qc->streams.uninitialized)) {
+        q = ngx_queue_head(&qc->streams.uninitialized);
+        ngx_queue_remove(q);
+
+        qs = ngx_queue_data(q, ngx_quic_stream_t, queue);
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, qs->connection->log, 0,
+                       "quic init postponed stream");
+
+        qs->connection->listening->handler(qs->connection);
+    }
+
+    qc->streams.initialized = 1;
 }
 
 
@@ -387,6 +457,9 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     sc->read->log = log;
     sc->write->log = log;
 
+    sc->read->handler = ngx_quic_empty_handler;
+    sc->write->handler = ngx_quic_empty_handler;
+
     log->connection = sc->number;
 
     if ((id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
@@ -429,6 +502,12 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     ngx_rbtree_insert(&qc->streams.tree, &qs->node);
 
     return qs;
+}
+
+
+static void
+ngx_quic_empty_handler(ngx_event_t *ev)
+{
 }
 
 
@@ -832,9 +911,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             goto cleanup;
         }
 
-        sc->listening->handler(sc);
-
-        return NGX_OK;
+        return ngx_quic_init_stream(qs);
     }
 
     sc = qs->connection;
@@ -986,7 +1063,9 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
 
         limit = qs->recv_max_data;
 
-        qs->connection->listening->handler(qs->connection);
+        if (ngx_quic_init_stream(qs) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
     } else {
         limit = qs->recv_max_data;
@@ -1043,9 +1122,7 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
             qs->send_max_data = f->limit;
         }
 
-        qs->connection->listening->handler(qs->connection);
-
-        return NGX_OK;
+        return ngx_quic_init_stream(qs);
     }
 
     if (f->limit <= qs->send_max_data) {
@@ -1117,9 +1194,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
             goto cleanup;
         }
 
-        sc->listening->handler(sc);
-
-        return NGX_OK;
+        return ngx_quic_init_stream(qs);
     }
 
     sc = qs->connection;
@@ -1202,9 +1277,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
         wev->error = 1;
         wev->ready = 1;
 
-        sc->listening->handler(sc);
-
-        return NGX_OK;
+        return ngx_quic_init_stream(qs);
     }
 
     wev = qs->connection->write;

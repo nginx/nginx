@@ -361,6 +361,7 @@ static ngx_int_t
 ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
 {
     int                     n, sslerr;
+    ngx_int_t               rc;
     ngx_buf_t              *b;
     ngx_chain_t            *cl;
     ngx_ssl_conn_t         *ssl_conn;
@@ -461,6 +462,19 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
     if (ngx_quic_create_sockets(c) != NGX_OK) {
         return NGX_ERROR;
     }
+
+    rc = ngx_ssl_ocsp_validate(c);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_AGAIN) {
+        c->ssl->handler = ngx_quic_init_streams;
+        return NGX_OK;
+    }
+
+    ngx_quic_init_streams(c);
 
     return NGX_OK;
 }

@@ -304,6 +304,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
     ctp->active_connection_id_limit = 2;
 
+    ngx_queue_init(&qc->streams.uninitialized);
+
     qc->streams.recv_max_data = qc->tp.initial_max_data;
     qc->streams.recv_window = qc->streams.recv_max_data;
 

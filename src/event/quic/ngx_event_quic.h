@@ -69,6 +69,7 @@ typedef struct {
 
 struct ngx_quic_stream_s {
     ngx_rbtree_node_t          node;
+    ngx_queue_t                queue;
     ngx_connection_t          *parent;
     ngx_connection_t          *connection;
     uint64_t                   id;
