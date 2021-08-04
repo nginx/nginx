@@ -124,20 +124,16 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v3_srv_conf_t *conf = child;
 
     ngx_conf_merge_size_value(conf->max_table_capacity,
-                              prev->max_table_capacity,
-                              NGX_HTTP_V3_DEFAULT_MAX_TABLE_CAPACITY);
+                              prev->max_table_capacity, 16384);
 
     ngx_conf_merge_uint_value(conf->max_blocked_streams,
-                              prev->max_blocked_streams,
-                              NGX_HTTP_V3_DEFAULT_MAX_BLOCKED_STREAMS);
+                              prev->max_blocked_streams, 16);
 
     ngx_conf_merge_uint_value(conf->max_concurrent_pushes,
-                              prev->max_concurrent_pushes,
-                              NGX_HTTP_V3_DEFAULT_MAX_CONCURRENT_PUSHES);
+                              prev->max_concurrent_pushes, 10);
 
     ngx_conf_merge_uint_value(conf->max_uni_streams,
-                              prev->max_uni_streams,
-                              NGX_HTTP_V3_DEFAULT_MAX_UNI_STREAMS);
+                              prev->max_uni_streams, 3);
 
     return NGX_CONF_OK;
 }
