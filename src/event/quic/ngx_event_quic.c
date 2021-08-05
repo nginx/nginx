@@ -421,7 +421,11 @@ ngx_quic_input_handler(ngx_event_t *rev)
     if (!rev->ready) {
         if (qc->closing) {
             ngx_quic_close_connection(c, NGX_OK);
+
+        } else if (qc->shutdown) {
+            ngx_quic_shutdown_quic(c);
         }
+
         return;
     }
 

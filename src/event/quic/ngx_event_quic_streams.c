@@ -849,7 +849,7 @@ done:
     (void) ngx_quic_output(pc);
 
     if (qc->shutdown) {
-        ngx_quic_shutdown_quic(pc);
+        ngx_post_event(pc->read, &ngx_posted_events);
     }
 }
 
