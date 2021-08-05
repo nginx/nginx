@@ -421,9 +421,6 @@ if [ $HTTP = YES ]; then
         have=NGX_HTTP_HEADERS . auto/have
         HTTP_QUIC=YES
 
-        # XXX for Huffman
-        HTTP_V2=YES
-
         ngx_module_name=ngx_http_v3_module
         ngx_module_incs=src/http/v3
         ngx_module_deps="src/http/v3/ngx_http_v3.h \
@@ -440,6 +437,12 @@ if [ $HTTP = YES ]; then
                          src/http/v3/ngx_http_v3_module.c"
         ngx_module_libs=
         ngx_module_link=$HTTP_V3
+
+        if [ $HTTP_V2 = NO ]; then
+            ngx_module_srcs="$ngx_module_srcs \
+                             src/http/v2/ngx_http_v2_huff_decode.c \
+                             src/http/v2/ngx_http_v2_huff_encode.c"
+        fi
 
         . auto/module
     fi
