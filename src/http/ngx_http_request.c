@@ -1983,6 +1983,14 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.transfer_encoding) {
+        if (r->http_version < NGX_HTTP_VERSION_11) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent HTTP/1.0 request with "
+                          "\"Transfer-Encoding\" header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
         if (r->headers_in.transfer_encoding->value.len == 7
             && ngx_strncasecmp(r->headers_in.transfer_encoding->value.data,
                                (u_char *) "chunked", 7) == 0)
