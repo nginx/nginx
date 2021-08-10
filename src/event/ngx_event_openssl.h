@@ -69,6 +69,11 @@
 #endif
 
 
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L && !defined ERR_peek_error_data)
+#define ERR_peek_error_data(d, f)    ERR_peek_error_line_data(NULL, NULL, d, f)
+#endif
+
+
 typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
 
 

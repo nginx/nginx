@@ -3280,7 +3280,7 @@ ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err, char *fmt, ...)
 
         for ( ;; ) {
 
-            n = ERR_peek_error_line_data(NULL, NULL, &data, &flags);
+            n = ERR_peek_error_data(&data, &flags);
 
             if (n == 0) {
                 break;
