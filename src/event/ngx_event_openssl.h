@@ -12,6 +12,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#define OPENSSL_SUPPRESS_DEPRECATED
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bn.h>
