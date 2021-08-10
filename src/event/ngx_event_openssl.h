@@ -64,6 +64,11 @@
 #endif
 
 
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined SSL_get_peer_certificate)
+#define SSL_get_peer_certificate(s)  SSL_get1_peer_certificate(s)
+#endif
+
+
 typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
 
 
