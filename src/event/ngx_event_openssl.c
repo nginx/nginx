@@ -1354,7 +1354,6 @@ ngx_ssl_passwords_cleanup(void *data)
 ngx_int_t
 ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 {
-    DH   *dh;
     BIO  *bio;
 
     if (file->len == 0) {
@@ -1371,6 +1370,10 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
                       "BIO_new_file(\"%s\") failed", file->data);
         return NGX_ERROR;
     }
+
+#ifdef SSL_CTX_set_tmp_dh
+    {
+    DH  *dh;
 
     dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
     if (dh == NULL) {
@@ -1389,6 +1392,33 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     }
 
     DH_free(dh);
+    }
+#else
+    {
+    EVP_PKEY  *dh;
+
+    /*
+     * PEM_read_bio_DHparams() and SSL_CTX_set_tmp_dh()
+     * are deprecated in OpenSSL 3.0
+     */
+
+    dh = PEM_read_bio_Parameters(bio, NULL);
+    if (dh == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "PEM_read_bio_Parameters(\"%s\") failed", file->data);
+        BIO_free(bio);
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set0_tmp_dh_pkey(ssl->ctx, dh) != 1) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set0_tmp_dh_pkey(\%s\") failed", file->data);
+        BIO_free(bio);
+        return NGX_ERROR;
+    }
+    }
+#endif
+
     BIO_free(bio);
 
     return NGX_OK;
