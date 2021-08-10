@@ -863,11 +863,6 @@ ngx_ssl_ciphers(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *ciphers,
         SSL_CTX_set_options(ssl->ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
     }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100001L && !defined LIBRESSL_VERSION_NUMBER)
-    /* a temporary 512-bit RSA key is required for export versions of MSIE */
-    SSL_CTX_set_tmp_rsa_callback(ssl->ctx, ngx_ssl_rsa512_key_callback);
-#endif
-
     return NGX_OK;
 }
 
@@ -1118,32 +1113,6 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
         }
     }
 }
-
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100001L && !defined LIBRESSL_VERSION_NUMBER)
-
-RSA *
-ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
-    int key_length)
-{
-    static RSA  *key;
-
-    if (key_length != 512) {
-        return NULL;
-    }
-
-#ifndef OPENSSL_NO_DEPRECATED
-
-    if (key == NULL) {
-        key = RSA_generate_key(512, RSA_F4, NULL, NULL);
-    }
-
-#endif
-
-    return key;
-}
-
-#endif
 
 
 ngx_array_t *
