@@ -1116,6 +1116,8 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 }
 
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100001L && !defined LIBRESSL_VERSION_NUMBER)
+
 RSA *
 ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
     int key_length)
@@ -1126,7 +1128,7 @@ ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
         return NULL;
     }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100003L && !defined OPENSSL_NO_DEPRECATED)
+#ifndef OPENSSL_NO_DEPRECATED
 
     if (key == NULL) {
         key = RSA_generate_key(512, RSA_F4, NULL, NULL);
@@ -1136,6 +1138,8 @@ ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
 
     return key;
 }
+
+#endif
 
 
 ngx_array_t *
