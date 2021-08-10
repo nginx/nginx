@@ -196,8 +196,10 @@ ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
+#if (OPENSSL_VERSION_NUMBER < 0x10100001L && !defined LIBRESSL_VERSION_NUMBER)
 RSA *ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
     int key_length);
+#endif
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
     ngx_array_t *passwords);
