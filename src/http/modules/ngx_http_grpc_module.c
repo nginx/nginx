@@ -4896,6 +4896,12 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = glcf->upstream.ssl;
 
+    if (ngx_ssl_ciphers(cf, glcf->upstream.ssl, &glcf->ssl_ciphers, 0)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     if (glcf->upstream.ssl_certificate) {
 
         if (glcf->upstream.ssl_certificate_key == NULL) {
@@ -4925,12 +4931,6 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
                 return NGX_ERROR;
             }
         }
-    }
-
-    if (ngx_ssl_ciphers(cf, glcf->upstream.ssl, &glcf->ssl_ciphers, 0)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
     }
 
     if (glcf->upstream.ssl_verify) {

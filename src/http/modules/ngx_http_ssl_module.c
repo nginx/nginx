@@ -797,6 +797,13 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                                           ngx_http_ssl_npn_advertised, NULL);
 #endif
 
+    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
+                        conf->prefer_server_ciphers)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     if (ngx_http_ssl_compile_certificates(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -827,13 +834,6 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         {
             return NGX_CONF_ERROR;
         }
-    }
-
-    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
-                        conf->prefer_server_ciphers)
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
     }
 
     conf->ssl.buffer_size = conf->buffer_size;
