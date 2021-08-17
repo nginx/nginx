@@ -222,7 +222,7 @@ ngx_quic_bpf_close(ngx_log_t *log, int fd, const char *name)
     }
 
     ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                  "quic bpf close %s fd:%i failed", name, fd);
+                  "quic bpf close %s fd:%d failed", name, fd);
 }
 
 
@@ -345,7 +345,7 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "quic bpf sockmap created fd:%i", grp->map_fd);
+                   "quic bpf sockmap created fd:%d", grp->map_fd);
     return grp;
 
 failed:
@@ -400,7 +400,7 @@ ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "quic bpf sockmap fd duplicated old:%i new:%i",
+                   "quic bpf sockmap fd duplicated old:%d new:%d",
                    ogrp->map_fd, grp->map_fd);
 
     return grp;
@@ -441,8 +441,8 @@ ngx_quic_bpf_group_add_socket(ngx_cycle_t *cycle,  ngx_listening_t *ls)
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                  "quic bpf sockmap fd:%d add socket:%d cookie:0x%xL worker:%d",
-                  grp->map_fd, ls->fd, cookie, ls->worker);
+                 "quic bpf sockmap fd:%d add socket:%d cookie:0x%xL worker:%ui",
+                 grp->map_fd, ls->fd, cookie, ls->worker);
 
     /* do not inherit this socket */
     ls->ignore = 1;
@@ -635,7 +635,7 @@ ngx_quic_bpf_import_maps(ngx_cycle_t *cycle)
 
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                            "quic bpf sockmap inherited with "
-                           "fd:%i address:%*s",
+                           "fd:%d address:%*s",
                            grp->map_fd, p - v, v);
             v = p + 1;
             break;
