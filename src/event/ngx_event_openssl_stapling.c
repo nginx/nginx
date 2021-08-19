@@ -986,7 +986,7 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
 
     for ( ;; ) {
 
-        if (ocsp->ncert == n - 1 || (ocf->depth == 2 && ocsp->ncert == 1)) {
+        if (ocsp->ncert == n || (ocf->depth == 2 && ocsp->ncert == 1)) {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "ssl ocsp validated, certs:%ui", ocsp->ncert);
             rc = NGX_OK;
