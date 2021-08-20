@@ -2113,6 +2113,10 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
             c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
         }
 
+        if (c->read->ready) {
+            ngx_post_event(c->read, &ngx_posted_events);
+        }
+
         return;
     }
 
