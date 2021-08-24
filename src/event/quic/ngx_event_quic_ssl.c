@@ -525,10 +525,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stateless reset token %*xs",
-                   (size_t) NGX_QUIC_SR_TOKEN_LEN, qc->tp.sr_token);
-
     len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
     /* always succeeds */
 
