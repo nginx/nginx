@@ -1518,6 +1518,19 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ccf->worker_processes = ngx_atoi(value[1].data, value[1].len);
 
+    // Often seen pattern is where the team wants to set 1 or 2 cores aside 
+    // for other systems disposable. This simplifies the process of counting cores.
+    // One can set aside x number of cores no matter system is 32 core or 64 core 
+
+
+    if (ccf->worker_processes < 0 && ngx_abs(ccf->worker_processes) < ngx_ncpu) {
+        ccf->worker_processes = ngx_ncpu + ccf->worker_processes + 1 ;
+        return NGX_CONF_OK;
+
+    }
+
+
+
     if (ccf->worker_processes == NGX_ERROR) {
         return "invalid value";
     }

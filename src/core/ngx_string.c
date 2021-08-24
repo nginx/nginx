@@ -965,8 +965,8 @@ ngx_filename_cmp(u_char *s1, u_char *s2, size_t n)
 
 ngx_int_t
 ngx_atoi(u_char *line, size_t n)
-{
-    ngx_int_t  value, cutoff, cutlim;
+{ 
+    ngx_int_t  value, cutoff, cutlim, sign = 1;
 
     if (n == 0) {
         return NGX_ERROR;
@@ -976,7 +976,7 @@ ngx_atoi(u_char *line, size_t n)
     cutlim = NGX_MAX_INT_T_VALUE % 10;
 
     for (value = 0; n--; line++) {
-        if (*line < '0' || *line > '9') {
+        if (*line != '-' &&  (*line < '0' || *line > '9' )) {
             return NGX_ERROR;
         }
 
@@ -984,8 +984,18 @@ ngx_atoi(u_char *line, size_t n)
             return NGX_ERROR;
         }
 
-        value = value * 10 + (*line - '0');
+        if (*line == '-'){
+            sign = -1;
+        } else {
+            value = value * 10 + (*line - '0');
+        }
     }
+    if (sign == -1) {
+        // to side step NGX_ERROR, we add -1 to the value
+        // -1 will be value -2
+        value = ((value + 1) * sign);
+
+    } 
 
     return value;
 }
