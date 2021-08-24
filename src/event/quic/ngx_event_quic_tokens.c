@@ -259,7 +259,6 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
         }
 
         odcid.data = p;
-        p += odcid.len;
     }
 
     now = ngx_time();
