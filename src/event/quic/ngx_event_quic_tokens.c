@@ -39,11 +39,9 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
         return NGX_ERROR;
     }
 
-#if (NGX_DEBUG)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic stateless reset token %*xs",
                     (size_t) NGX_QUIC_SR_TOKEN_LEN, token);
-#endif
 
     return NGX_OK;
 }
