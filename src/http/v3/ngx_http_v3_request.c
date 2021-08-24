@@ -1217,7 +1217,6 @@ done:
         b->last_buf = 1;
 
         *ll = tl;
-        ll = &tl->next;
 
     } else {
 
