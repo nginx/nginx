@@ -4034,6 +4034,9 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
     if (len < 0 || len > (off_t) clcf->client_body_buffer_size) {
         len = clcf->client_body_buffer_size;
+
+    } else {
+        len++;
     }
 
     if (r->request_body_no_buffering && !stream->in_closed) {
