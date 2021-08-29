@@ -4039,7 +4039,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         len++;
     }
 
-    if (r->request_body_no_buffering && !stream->in_closed) {
+    if (r->request_body_no_buffering) {
 
         /*
          * We need a room to store data up to the stream's initial window size,
