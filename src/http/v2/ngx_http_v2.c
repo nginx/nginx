@@ -173,7 +173,7 @@ static ngx_int_t ngx_http_v2_construct_cookie_header(ngx_http_request_t *r);
 static void ngx_http_v2_run_request(ngx_http_request_t *r);
 static void ngx_http_v2_run_request_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_v2_process_request_body(ngx_http_request_t *r,
-    u_char *pos, size_t size, ngx_uint_t last);
+    u_char *pos, size_t size, ngx_uint_t last, ngx_uint_t flush);
 static ngx_int_t ngx_http_v2_filter_request_body(ngx_http_request_t *r);
 static void ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r);
 
@@ -1092,7 +1092,7 @@ static u_char *
 ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    size_t                   size;
+    size_t                   size, window;
     ngx_buf_t               *buf;
     ngx_int_t                rc;
     ngx_connection_t        *fc;
@@ -1140,11 +1140,38 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
     h2c->payload_bytes += size;
 
     if (r->request_body) {
-        rc = ngx_http_v2_process_request_body(r, pos, size, stream->in_closed);
+        rc = ngx_http_v2_process_request_body(r, pos, size,
+                                              stream->in_closed, 0);
 
-        if (rc != NGX_OK) {
+        if (rc != NGX_OK && rc != NGX_AGAIN) {
             stream->skip_data = 1;
             ngx_http_finalize_request(r, rc);
+        }
+
+        if (rc == NGX_AGAIN && !stream->no_flow_control) {
+            buf = r->request_body->buf;
+            window = buf->end - buf->last;
+
+            window -= h2c->state.length - size;
+
+            if (window < stream->recv_window) {
+                ngx_log_error(NGX_LOG_ALERT, h2c->connection->log, 0,
+                              "http2 negative window update");
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+
+            if (window > stream->recv_window) {
+                if (ngx_http_v2_send_window_update(h2c, stream->node->id,
+                                                   window - stream->recv_window)
+                    == NGX_ERROR)
+                {
+                    return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+                }
+
+                stream->recv_window = window;
+            }
         }
 
         ngx_http_run_posted_requests(fc);
@@ -4027,6 +4054,17 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    rb->rest = 1;
+
+    /* set rb->filter_need_buffering */
+
+    rc = ngx_http_top_request_body_filter(r, NULL);
+
+    if (rc != NGX_OK) {
+        stream->skip_data = 1;
+        return rc;
+    }
+
     h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -4039,7 +4077,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         len++;
     }
 
-    if (r->request_body_no_buffering) {
+    if (r->request_body_no_buffering || rb->filter_need_buffering) {
 
         /*
          * We need a room to store data up to the stream's initial window size,
@@ -4062,36 +4100,45 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    rb->rest = 1;
-
     buf = stream->preread;
 
     if (stream->in_closed) {
-        r->request_body_no_buffering = 0;
+        if (!rb->filter_need_buffering) {
+            r->request_body_no_buffering = 0;
+        }
 
         if (buf) {
             rc = ngx_http_v2_process_request_body(r, buf->pos,
-                                                  buf->last - buf->pos, 1);
+                                                  buf->last - buf->pos, 1, 0);
             ngx_pfree(r->pool, buf->start);
+
+        } else {
+            rc = ngx_http_v2_process_request_body(r, NULL, 0, 1, 0);
+        }
+
+        if (rc != NGX_AGAIN) {
             return rc;
         }
 
-        return ngx_http_v2_process_request_body(r, NULL, 0, 1);
+        r->read_event_handler = ngx_http_v2_read_client_request_body_handler;
+        r->write_event_handler = ngx_http_request_empty_handler;
+
+        return NGX_AGAIN;
     }
 
     if (buf) {
         rc = ngx_http_v2_process_request_body(r, buf->pos,
-                                              buf->last - buf->pos, 0);
+                                              buf->last - buf->pos, 0, 0);
 
         ngx_pfree(r->pool, buf->start);
 
-        if (rc != NGX_OK) {
+        if (rc != NGX_OK && rc != NGX_AGAIN) {
             stream->skip_data = 1;
             return rc;
         }
     }
 
-    if (r->request_body_no_buffering) {
+    if (r->request_body_no_buffering || rb->filter_need_buffering) {
         size = (size_t) len - h2scf->preread_size;
 
     } else {
@@ -4133,7 +4180,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
 static ngx_int_t
 ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
-    size_t size, ngx_uint_t last)
+    size_t size, ngx_uint_t last, ngx_uint_t flush)
 {
     size_t                     n;
     ngx_int_t                  rc;
@@ -4147,8 +4194,8 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 process request body");
 
-    if (size == 0 && !last) {
-        return NGX_OK;
+    if (size == 0 && !last && !flush) {
+        return NGX_AGAIN;
     }
 
     for ( ;; ) {
@@ -4230,7 +4277,7 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                        "http2 request body rest %O", rb->rest);
 
-        if (rb->rest == 0) {
+        if (rb->rest == 0 && rb->last_saved) {
             break;
         }
 
@@ -4240,10 +4287,10 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
 
             if (r->request_body_no_buffering) {
                 ngx_post_event(fc->read, &ngx_posted_events);
-                return NGX_OK;
+                return NGX_AGAIN;
             }
 
-            return NGX_OK;
+            return NGX_AGAIN;
         }
     }
 
@@ -4279,7 +4326,7 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
     rb = r->request_body;
     buf = rb->buf;
 
-    if (buf->pos == buf->last && rb->rest) {
+    if (buf->pos == buf->last && (rb->rest || rb->last_sent)) {
         cl = NULL;
         goto update;
     }
@@ -4342,6 +4389,7 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
         }
 
         b->last_buf = 1;
+        rb->last_sent = 1;
     }
 
     b->tag = (ngx_buf_tag_t) &ngx_http_v2_filter_request_body;
@@ -4361,7 +4409,12 @@ update:
 static void
 ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
 {
-    ngx_connection_t  *fc;
+    size_t                     window;
+    ngx_buf_t                 *buf;
+    ngx_int_t                  rc;
+    ngx_connection_t          *fc;
+    ngx_http_v2_stream_t      *stream;
+    ngx_http_v2_connection_t  *h2c;
 
     fc = r->connection;
 
@@ -4385,6 +4438,63 @@ ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
         r->stream->skip_data = 1;
 
         ngx_http_finalize_request(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+        return;
+    }
+
+    rc = ngx_http_v2_process_request_body(r, NULL, 0, r->stream->in_closed, 1);
+
+    if (rc != NGX_OK && rc != NGX_AGAIN) {
+        r->stream->skip_data = 1;
+        ngx_http_finalize_request(r, rc);
+        return;
+    }
+
+    if (rc == NGX_OK) {
+        return;
+    }
+
+    if (r->request_body->rest == 0) {
+        return;
+    }
+
+    stream = r->stream;
+    h2c = stream->connection;
+
+    buf = r->request_body->buf;
+    window = buf->end - buf->start;
+
+    if (h2c->state.stream == stream) {
+        window -= h2c->state.length;
+    }
+
+    if (window <= stream->recv_window) {
+        if (window < stream->recv_window) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "http2 negative window update");
+
+            stream->skip_data = 1;
+
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        return;
+    }
+
+    if (ngx_http_v2_send_window_update(h2c, stream->node->id,
+                                       window - stream->recv_window)
+        == NGX_ERROR)
+    {
+        stream->skip_data = 1;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    stream->recv_window = window;
+
+    if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
+        stream->skip_data = 1;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
 }
@@ -4430,8 +4540,12 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
         return rc;
     }
 
-    if (!r->request_body->rest) {
+    if (r->request_body->rest == 0 && r->request_body->last_saved) {
         return NGX_OK;
+    }
+
+    if (r->request_body->rest == 0) {
+        return NGX_AGAIN;
     }
 
     if (r->request_body->busy != NULL) {
