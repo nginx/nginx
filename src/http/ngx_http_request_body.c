@@ -1246,6 +1246,12 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (rb->temp_file || r->request_body_in_file_only) {
 
+        if (rb->bufs && rb->bufs->buf->in_file) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "body already in file");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
         if (ngx_http_write_request_body(r) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
