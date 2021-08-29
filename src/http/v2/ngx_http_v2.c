@@ -4032,11 +4032,11 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
     len = r->headers_in.content_length_n;
 
-    if (r->request_body_no_buffering && !stream->in_closed) {
+    if (len < 0 || len > (off_t) clcf->client_body_buffer_size) {
+        len = clcf->client_body_buffer_size;
+    }
 
-        if (len < 0 || len > (off_t) clcf->client_body_buffer_size) {
-            len = clcf->client_body_buffer_size;
-        }
+    if (r->request_body_no_buffering && !stream->in_closed) {
 
         /*
          * We need a room to store data up to the stream's initial window size,
@@ -4050,21 +4050,9 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         if (len > NGX_HTTP_V2_MAX_WINDOW) {
             len = NGX_HTTP_V2_MAX_WINDOW;
         }
-
-        rb->buf = ngx_create_temp_buf(r->pool, (size_t) len);
-
-    } else if (len >= 0 && len <= (off_t) clcf->client_body_buffer_size
-               && !r->request_body_in_file_only)
-    {
-        rb->buf = ngx_create_temp_buf(r->pool, (size_t) len);
-
-    } else {
-        rb->buf = ngx_calloc_buf(r->pool);
-
-        if (rb->buf != NULL) {
-            rb->buf->sync = 1;
-        }
     }
+
+    rb->buf = ngx_create_temp_buf(r->pool, (size_t) len);
 
     if (rb->buf == NULL) {
         stream->skip_data = 1;
@@ -4144,7 +4132,7 @@ static ngx_int_t
 ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
     size_t size, ngx_uint_t last)
 {
-    ngx_buf_t                 *buf;
+    size_t                     n;
     ngx_int_t                  rc;
     ngx_connection_t          *fc;
     ngx_http_request_body_t   *rb;
@@ -4152,79 +4140,125 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
 
     fc = r->connection;
     rb = r->request_body;
-    buf = rb->buf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 process request body");
 
-    if (size) {
-        if (buf->sync) {
-            buf->pos = buf->start = pos;
-            buf->last = buf->end = pos + size;
+    if (size == 0 && !last) {
+        return NGX_OK;
+    }
 
-            r->request_body_in_file_only = 1;
+    for ( ;; ) {
+        for ( ;; ) {
+            if (rb->buf->last == rb->buf->end && size) {
 
-        } else {
-            if (size > (size_t) (buf->end - buf->last)) {
-                ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                              "client intended to send body data "
-                              "larger than declared");
+                if (r->request_body_no_buffering) {
 
-                return NGX_HTTP_BAD_REQUEST;
+                    /* should never happen due to flow control */
+
+                    ngx_log_error(NGX_LOG_ALERT, fc->log, 0,
+                                  "no space in http2 body buffer");
+
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                /* update chains */
+
+                ngx_log_error(NGX_LOG_DEBUG, fc->log, 0,
+                              "http2 body update chains");
+
+                rc = ngx_http_v2_filter_request_body(r);
+
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+
+                if (rb->busy != NULL) {
+                    ngx_log_error(NGX_LOG_ALERT, fc->log, 0,
+                                  "busy buffers after request body flush");
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                rb->buf->pos = rb->buf->start;
+                rb->buf->last = rb->buf->start;
             }
 
-            buf->last = ngx_cpymem(buf->last, pos, size);
+            /* copy body data to the buffer */
+
+            n = rb->buf->end - rb->buf->last;
+
+            if (n > size) {
+                n = size;
+            }
+
+            rb->buf->last = ngx_cpymem(rb->buf->last, pos, n);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 request body recv %uz", n);
+
+            pos += n;
+            size -= n;
+
+            if (size == 0 && last) {
+                rb->rest = 0;
+            }
+
+            if (r->request_body_no_buffering) {
+                break;
+            }
+
+            /* pass buffer to request body filter chain */
+
+            rc = ngx_http_v2_filter_request_body(r);
+
+            if (rc != NGX_OK) {
+                return rc;
+            }
+
+            if (rb->rest == 0) {
+                break;
+            }
+
+            if (size == 0) {
+                break;
+            }
         }
-    }
 
-    if (last) {
-        rb->rest = 0;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 request body rest %O", rb->rest);
 
-        if (fc->read->timer_set) {
-            ngx_del_timer(fc->read);
+        if (rb->rest == 0) {
+            break;
         }
 
-        if (r->request_body_no_buffering) {
-            ngx_post_event(fc->read, &ngx_posted_events);
+        if (size == 0) {
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_add_timer(fc->read, clcf->client_body_timeout);
+
+            if (r->request_body_no_buffering) {
+                ngx_post_event(fc->read, &ngx_posted_events);
+                return NGX_OK;
+            }
+
             return NGX_OK;
         }
-
-        rc = ngx_http_v2_filter_request_body(r);
-
-        if (rc != NGX_OK) {
-            return rc;
-        }
-
-        if (buf->sync) {
-            /* prevent reusing this buffer in the upstream module */
-            rb->buf = NULL;
-        }
-
-        if (r->headers_in.chunked) {
-            r->headers_in.content_length_n = rb->received;
-        }
-
-        r->read_event_handler = ngx_http_block_reading;
-        rb->post_handler(r);
-
-        return NGX_OK;
     }
 
-    if (size == 0) {
-        return NGX_OK;
+    if (fc->read->timer_set) {
+        ngx_del_timer(fc->read);
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-    ngx_add_timer(fc->read, clcf->client_body_timeout);
 
     if (r->request_body_no_buffering) {
         ngx_post_event(fc->read, &ngx_posted_events);
         return NGX_OK;
     }
 
-    if (buf->sync) {
-        return ngx_http_v2_filter_request_body(r);
+    if (r->headers_in.chunked) {
+        r->headers_in.content_length_n = rb->received;
     }
+
+    r->read_event_handler = ngx_http_block_reading;
+    rb->post_handler(r);
 
     return NGX_OK;
 }
