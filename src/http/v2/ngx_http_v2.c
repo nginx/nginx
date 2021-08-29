@@ -4154,6 +4154,9 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
     rb = r->request_body;
     buf = rb->buf;
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 process request body");
+
     if (size) {
         if (buf->sync) {
             buf->pos = buf->start = pos;
@@ -4363,6 +4366,9 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
 
     stream = r->stream;
     fc = r->connection;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 read unbuffered request body");
 
     if (fc->read->timedout) {
         if (stream->recv_window) {
