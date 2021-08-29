@@ -62,11 +62,13 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     /*
      * set by ngx_pcalloc():
      *
+     *     rb->temp_file = NULL;
      *     rb->bufs = NULL;
      *     rb->buf = NULL;
      *     rb->free = NULL;
      *     rb->busy = NULL;
      *     rb->chunked = NULL;
+     *     rb->received = 0;
      */
 
     rb->rest = -1;
