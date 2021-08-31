@@ -5,6 +5,113 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.2" date="2021-08-31">
+
+<change type="change">
+<para lang="ru">
+теперь nginx возвращает ошибку,
+если в запросе по протоколу HTTP/1.0 присутствует
+строка заголовка "Transfer-Encoding".
+</para>
+<para lang="en">
+now nginx rejects HTTP/1.0 requests
+with the "Transfer-Encoding" header line.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+экспортные шифры больше не поддерживаются.
+</para>
+<para lang="en">
+export ciphers are no longer supported.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+совместимость с OpenSSL 3.0.
+</para>
+<para lang="en">
+OpenSSL 3.0 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь серверу аутентификации почтового прокси-сервера
+передаются строки заголовка "Auth-SSL-Protocol" и "Auth-SSL-Cipher".<br/>
+Спасибо Rob Mueller.
+</para>
+<para lang="en">
+the "Auth-SSL-Protocol" and "Auth-SSL-Cipher" header lines
+are now passed to the mail proxy authentication server.<br/>
+Thanks to Rob Mueller.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+API для обработки тела запроса
+теперь позволяет буферизировать обрабатываемые данные.
+</para>
+<para lang="en">
+request body filters API
+now permits buffering of the data being processed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-соединения к бэкендам в модуле stream
+могли зависать после SSL handshake.
+</para>
+<para lang="en">
+backend SSL connections in the stream module
+might hang after an SSL handshake.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уровень безопасности, доступный в OpenSSL 1.1.0 и новее,
+не учитывался при загрузке сертификатов сервера,
+если был задан через "@SECLEVEL=N" в директиве ssl_ciphers.
+</para>
+<para lang="en">
+the security level, which is available in OpenSSL 1.1.0 or newer,
+did not affect loading of the server certificates
+when set with "@SECLEVEL=N" in the "ssl_ciphers" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-соединения с gRPC-бэкендами могли зависать,
+если использовались методы select, poll или /dev/poll.
+</para>
+<para lang="en">
+SSL connections with gRPC backends might hang
+if select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2
+тело запроса всегда записывалось на диск,
+если в запросе не было строки заголовка "Content-Length".
+</para>
+<para lang="en">
+when using HTTP/2
+client request body was always written to disk
+if the "Content-Length" header line was not present in the request.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.1" date="2021-07-06">
 
 <change type="change">
