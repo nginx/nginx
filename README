@@ -58,7 +58,6 @@ Experimental QUIC support for nginx
     - Explicit Congestion Notification (ECN) as specified in quic-recovery [5]
     - A connection with the spin bit succeeds and the bit is spinning
     - Structured Logging
-    - HTTP/3 trailers
 
     Since the code is experimental and still under development,
     a lot of things may not work as expected, for example:
