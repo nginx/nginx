@@ -12,6 +12,8 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#define OPENSSL_SUPPRESS_DEPRECATED
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bn.h>
@@ -35,7 +37,6 @@
 #include <openssl/ocsp.h>
 #endif
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -69,6 +70,16 @@
 
 #if (OPENSSL_VERSION_NUMBER < 0x10002000L)
 #define SSL_is_server(s)        (s)->server
+#endif
+
+
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined SSL_get_peer_certificate)
+#define SSL_get_peer_certificate(s)  SSL_get1_peer_certificate(s)
+#endif
+
+
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L && !defined ERR_peek_error_data)
+#define ERR_peek_error_data(d, f)    ERR_peek_error_line_data(NULL, NULL, d, f)
 #endif
 
 
@@ -204,8 +215,6 @@ ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
-RSA *ngx_ssl_rsa512_key_callback(ngx_ssl_conn_t *ssl_conn, int is_export,
-    int key_length);
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
     ngx_array_t *passwords);

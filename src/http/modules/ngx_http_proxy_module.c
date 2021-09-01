@@ -4944,6 +4944,12 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = plcf->upstream.ssl;
 
+    if (ngx_ssl_ciphers(cf, plcf->upstream.ssl, &plcf->ssl_ciphers, 0)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
     if (plcf->upstream.ssl_certificate) {
 
         if (plcf->upstream.ssl_certificate_key == NULL) {
@@ -4973,12 +4979,6 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
                 return NGX_ERROR;
             }
         }
-    }
-
-    if (ngx_ssl_ciphers(cf, plcf->upstream.ssl, &plcf->ssl_ciphers, 0)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
     }
 
     if (plcf->upstream.ssl_verify) {

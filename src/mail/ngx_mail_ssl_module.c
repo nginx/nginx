@@ -394,6 +394,13 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
+    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
+                        conf->prefer_server_ciphers)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
                              conf->certificate_keys, conf->passwords)
         != NGX_OK)
@@ -428,13 +435,6 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
-    }
-
-    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
-                        conf->prefer_server_ciphers)
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
