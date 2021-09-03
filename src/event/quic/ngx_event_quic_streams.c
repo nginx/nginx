@@ -1000,7 +1000,9 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
-    if (qc->streams.sent >= qc->streams.send_max_data) {
+    if (tree->root != tree->sentinel
+        && qc->streams.sent >= qc->streams.send_max_data)
+    {
 
         for (node = ngx_rbtree_min(tree->root, tree->sentinel);
              node;
