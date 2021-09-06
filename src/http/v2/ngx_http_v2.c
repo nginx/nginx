@@ -1148,10 +1148,18 @@ ngx_http_v2_state_read_data(ngx_http_v2_connection_t *h2c, u_char *pos,
             ngx_http_finalize_request(r, rc);
         }
 
-        if (rc == NGX_AGAIN && !stream->no_flow_control) {
+        if (rc == NGX_AGAIN
+            && !stream->no_flow_control
+            && !r->request_body_no_buffering)
+        {
             buf = r->request_body->buf;
-            window = buf->end - buf->last;
 
+            if (r->request_body->busy == NULL) {
+                buf->pos = buf->start;
+                buf->last = buf->start;
+            }
+
+            window = buf->end - buf->last;
             window -= h2c->state.length - size;
 
             if (window < stream->recv_window) {
@@ -4459,10 +4467,18 @@ ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
         return;
     }
 
+    if (r->request_body->busy != NULL) {
+        return;
+    }
+
     stream = r->stream;
     h2c = stream->connection;
 
     buf = r->request_body->buf;
+
+    buf->pos = buf->start;
+    buf->last = buf->start;
+
     window = buf->end - buf->start;
 
     if (h2c->state.stream == stream) {
