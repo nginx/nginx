@@ -1185,6 +1185,11 @@ ngx_close_connection(ngx_connection_t *c)
     ngx_uint_t    log_error, level;
     ngx_socket_t  fd;
 
+    if (c->fd == (ngx_socket_t) -1) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
+        return;
+    }
+
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
@@ -1193,7 +1198,7 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_del_timer(c->write);
     }
 
-    if (!c->shared && c->fd != (ngx_socket_t) -1) {
+    if (!c->shared) {
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
 
@@ -1224,11 +1229,6 @@ ngx_close_connection(ngx_connection_t *c)
     log_error = c->log_error;
 
     ngx_free_connection(c);
-
-    if (c->fd == (ngx_socket_t) -1) {
-        ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0, "connection has no fd");
-        return;
-    }
 
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
