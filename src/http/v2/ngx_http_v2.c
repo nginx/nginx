@@ -4263,7 +4263,7 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
                 rb->rest = 0;
             }
 
-            if (r->request_body_no_buffering) {
+            if (r->request_body_no_buffering && !flush) {
                 break;
             }
 
@@ -4296,7 +4296,10 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
             ngx_add_timer(fc->read, clcf->client_body_timeout);
 
             if (r->request_body_no_buffering) {
-                ngx_post_event(fc->read, &ngx_posted_events);
+                if (!flush) {
+                    ngx_post_event(fc->read, &ngx_posted_events);
+                }
+
                 return NGX_AGAIN;
             }
 
@@ -4309,7 +4312,10 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
     }
 
     if (r->request_body_no_buffering) {
-        ngx_post_event(fc->read, &ngx_posted_events);
+        if (!flush) {
+            ngx_post_event(fc->read, &ngx_posted_events);
+        }
+
         return NGX_OK;
     }
 
@@ -4527,7 +4533,6 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
     ngx_connection_t          *fc;
     ngx_http_v2_stream_t      *stream;
     ngx_http_v2_connection_t  *h2c;
-    ngx_http_core_loc_conf_t  *clcf;
 
     stream = r->stream;
     fc = r->connection;
@@ -4551,14 +4556,14 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
         return NGX_HTTP_BAD_REQUEST;
     }
 
-    rc = ngx_http_v2_filter_request_body(r);
+    rc = ngx_http_v2_process_request_body(r, NULL, 0, r->stream->in_closed, 1);
 
-    if (rc != NGX_OK) {
+    if (rc != NGX_OK && rc != NGX_AGAIN) {
         stream->skip_data = 1;
         return rc;
     }
 
-    if (r->request_body->rest == 0 && r->request_body->last_saved) {
+    if (rc == NGX_OK) {
         return NGX_OK;
     }
 
@@ -4604,11 +4609,6 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
     if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
         stream->skip_data = 1;
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    if (stream->recv_window == 0) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_add_timer(fc->read, clcf->client_body_timeout);
     }
 
     stream->recv_window = window;
