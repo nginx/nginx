@@ -5,6 +5,33 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.3" date="2021-09-07">
+
+<change type="change">
+<para lang="ru">
+оптимизация чтения тела запроса
+при использовании HTTP/2.
+</para>
+<para lang="en">
+optimization of client request body reading
+when using HTTP/2.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во внутреннем API для обработки тела запроса
+при использовании HTTP/2 и буферизации обрабатываемых данных.
+</para>
+<para lang="en">
+in request body filters internal API
+when using HTTP/2 and buffering of the data being processed.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.2" date="2021-08-31">
 
 <change type="change">
