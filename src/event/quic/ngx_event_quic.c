@@ -730,11 +730,6 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         /* b->pos is at header end, adjust by actual packet length */
         b->pos = pkt.data + pkt.len;
 
-        /* firefox workaround: skip zero padding at the end of quic packet */
-        while (b->pos < b->last && *(b->pos) == 0) {
-            b->pos++;
-        }
-
         p = b->pos;
     }
 
