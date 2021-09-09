@@ -150,7 +150,7 @@ if [ $USE_OPENSSL_QUIC = YES ]; then
     ngx_feature_incs="#include <openssl/ssl.h>"
     ngx_feature_path=
     ngx_feature_libs="-lssl -lcrypto $NGX_LIBDL $NGX_LIBPTHREAD"
-    ngx_feature_test="SSL_CTX_set_quic_method(NULL, NULL)"
+    ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
     . auto/feature
 
     if [ $ngx_found = no ]; then
