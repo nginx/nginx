@@ -93,6 +93,8 @@ void ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
 ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 uint32_t ngx_quic_version(ngx_connection_t *c);
+ngx_int_t ngx_quic_handle_read_event(ngx_event_t *rev, ngx_uint_t flags);
+ngx_int_t ngx_quic_handle_write_event(ngx_event_t *wev, size_t lowat);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,

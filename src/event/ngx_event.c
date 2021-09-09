@@ -273,15 +273,7 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
     c = rev->data;
 
     if (c->quic) {
-
-        if (!rev->active && !rev->ready) {
-            rev->active = 1;
-
-        } else if (rev->active && (rev->ready || (flags & NGX_CLOSE_EVENT))) {
-            rev->active = 0;
-        }
-
-        return NGX_OK;
+        return ngx_quic_handle_read_event(rev, flags);
     }
 
 #endif
@@ -358,27 +350,17 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 
     c = wev->data;
 
+#if (NGX_QUIC)
+    if (c->quic) {
+        return ngx_quic_handle_write_event(wev, lowat);
+    }
+#endif
+
     if (lowat) {
         if (ngx_send_lowat(c, lowat) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
-
-#if (NGX_QUIC)
-
-    if (c->quic) {
-
-        if (!wev->active && !wev->ready) {
-            wev->active = 1;
-
-        } else if (wev->active && wev->ready) {
-            wev->active = 0;
-        }
-
-        return NGX_OK;
-    }
-
-#endif
 
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
