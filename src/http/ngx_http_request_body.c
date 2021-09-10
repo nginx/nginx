@@ -1309,7 +1309,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (rb->rest > 0) {
 
-        if (rb->buf && rb->buf->last == rb->buf->end
+        if (rb->bufs && rb->buf && rb->buf->last == rb->buf->end
             && ngx_http_write_request_body(r) != NGX_OK)
         {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
