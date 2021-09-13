@@ -340,6 +340,10 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     b->last = (u_char *) ngx_http_v3_encode_field_section_prefix(b->last,
                                                                  0, 0, 0);
 
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 output header: \":status: %03ui\"",
+                   r->headers_out.status);
+
     if (r->headers_out.status == NGX_HTTP_OK) {
         b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                 NGX_HTTP_V3_HEADER_STATUS_200);
@@ -365,12 +369,19 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             n = sizeof("nginx") - 1;
         }
 
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"server: %*s\"", n, p);
+
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                      NGX_HTTP_V3_HEADER_SERVER,
                                                      p, n);
     }
 
     if (r->headers_out.date == NULL) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"date: %V\"",
+                       &ngx_cached_http_time);
+
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                                      NGX_HTTP_V3_HEADER_DATE,
                                                      ngx_cached_http_time.data,
@@ -403,13 +414,23 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             r->headers_out.content_type.data = p - n;
         }
 
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"content-type: %V\"",
+                       &r->headers_out.content_type);
+
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                     NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
                                     r->headers_out.content_type.data,
                                     r->headers_out.content_type.len);
     }
 
-    if (r->headers_out.content_length == NULL) {
+    if (r->headers_out.content_length == NULL
+        && r->headers_out.content_length_n >= 0)
+    {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"content-length: %O\"",
+                       r->headers_out.content_length_n);
+
         if (r->headers_out.content_length_n > 0) {
             p = ngx_sprintf(b->last, "%O", r->headers_out.content_length_n);
             n = p - b->last;
@@ -421,7 +442,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             b->last = ngx_sprintf(b->last, "%O",
                                   r->headers_out.content_length_n);
 
-        } else if (r->headers_out.content_length_n == 0) {
+        } else {
             b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                        NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO);
         }
@@ -439,12 +460,19 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
         ngx_http_time(p, r->headers_out.last_modified_time);
 
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"last-modified: %*s\"", n, p);
+
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                               NGX_HTTP_V3_HEADER_LAST_MODIFIED,
                                               p, n);
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"location: %V\"",
+                       &r->headers_out.location->value);
+
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                            NGX_HTTP_V3_HEADER_LOCATION,
                                            r->headers_out.location->value.data,
@@ -453,6 +481,9 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
 #if (NGX_HTTP_GZIP)
     if (r->gzip_vary) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"vary: Accept-Encoding\"");
+
         b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                       NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING);
     }
@@ -476,6 +507,10 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         if (header[i].hash == 0) {
             continue;
         }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 output header: \"%V: %V\"",
+                       &header[i].key, &header[i].value);
 
         b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
                                                         &header[i].key,
@@ -1417,7 +1452,7 @@ ngx_http_v3_create_trailers(ngx_http_request_t *r,
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 trailer: \"%V: %V\"",
+                       "http3 output trailer: \"%V: %V\"",
                        &header[i].key, &header[i].value);
 
         b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
