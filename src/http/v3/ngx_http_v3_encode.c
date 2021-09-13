@@ -137,6 +137,9 @@ uintptr_t
 ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
     u_char *data, size_t len)
 {
+    size_t   hlen;
+    u_char  *p1, *p2;
+
     /* Literal Field Line With Name Reference */
 
     if (p == NULL) {
@@ -148,11 +151,28 @@ ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
     *p = dynamic ? 0x40 : 0x50;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 4);
 
+    p1 = p;
     *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
 
     if (data) {
-        p = ngx_cpymem(p, data, len);
+        p2 = p;
+        hlen = ngx_http_v2_huff_encode(data, len, p, 0);
+
+        if (hlen) {
+            p = p1;
+            *p = 0x80;
+            p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
+
+            if (p != p2) {
+                ngx_memmove(p, p2, hlen);
+            }
+
+            p += hlen;
+
+        } else {
+            p = ngx_cpymem(p, data, len);
+        }
     }
 
     return (uintptr_t) p;
@@ -162,6 +182,9 @@ ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
 uintptr_t
 ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
 {
+    size_t   hlen;
+    u_char  *p1, *p2;
+
     /* Literal Field Line With Literal Name */
 
     if (p == NULL) {
@@ -171,16 +194,50 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
                + value->len;
     }
 
+    p1 = p;
     *p = 0x20;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
 
-    ngx_strlow(p, name->data, name->len);
-    p += name->len;
+    p2 = p;
+    hlen = ngx_http_v2_huff_encode(name->data, name->len, p, 1);
 
+    if (hlen) {
+        p = p1;
+        *p = 0x28;
+        p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 3);
+
+        if (p != p2) {
+            ngx_memmove(p, p2, hlen);
+        }
+
+        p += hlen;
+
+    } else {
+        ngx_strlow(p, name->data, name->len);
+        p += name->len;
+    }
+
+    p1 = p;
     *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, value->len, 7);
 
-    p = ngx_cpymem(p, value->data, value->len);
+    p2 = p;
+    hlen = ngx_http_v2_huff_encode(value->data, value->len, p, 0);
+
+    if (hlen) {
+        p = p1;
+        *p = 0x80;
+        p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
+
+        if (p != p2) {
+            ngx_memmove(p, p2, hlen);
+        }
+
+        p += hlen;
+
+    } else {
+        p = ngx_cpymem(p, value->data, value->len);
+    }
 
     return (uintptr_t) p;
 }
@@ -205,6 +262,9 @@ uintptr_t
 ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
     size_t len)
 {
+    size_t   hlen;
+    u_char  *p1, *p2;
+
     /* Literal Field Line With Post-Base Name Reference */
 
     if (p == NULL) {
@@ -216,11 +276,28 @@ ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
     *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 3);
 
+    p1 = p;
     *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
 
     if (data) {
-        p = ngx_cpymem(p, data, len);
+        p2 = p;
+        hlen = ngx_http_v2_huff_encode(data, len, p, 0);
+
+        if (hlen) {
+            p = p1;
+            *p = 0x80;
+            p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
+
+            if (p != p2) {
+                ngx_memmove(p, p2, hlen);
+            }
+
+            p += hlen;
+
+        } else {
+            p = ngx_cpymem(p, data, len);
+        }
     }
 
     return (uintptr_t) p;
