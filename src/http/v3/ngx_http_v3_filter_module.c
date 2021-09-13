@@ -411,11 +411,18 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     if (r->headers_out.last_modified == NULL
         && r->headers_out.last_modified_time != -1)
     {
-        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
-                                  NGX_HTTP_V3_HEADER_LAST_MODIFIED, NULL,
-                                  sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
+        n = sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
 
-        b->last = ngx_http_time(b->last, r->headers_out.last_modified_time);
+        p = ngx_pnalloc(r->pool, n);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_http_time(p, r->headers_out.last_modified_time);
+
+        b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
+                                              NGX_HTTP_V3_HEADER_LAST_MODIFIED,
+                                              p, n);
     }
 
     if (host.data) {
