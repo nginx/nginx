@@ -95,7 +95,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     u_char                    *p;
     size_t                     len, n;
     ngx_buf_t                 *b;
-    ngx_str_t                  host;
+    ngx_str_t                  host, location;
     ngx_uint_t                 i, port;
     ngx_chain_t               *out, *hl, *cl, **ll;
     ngx_list_part_t           *part;
@@ -229,51 +229,70 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
                                   sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1);
     }
 
-    if (r->headers_out.location
-        && r->headers_out.location->value.len
-        && r->headers_out.location->value.data[0] == '/'
-        && clcf->absolute_redirect)
-    {
-        r->headers_out.location->hash = 0;
+    if (r->headers_out.location && r->headers_out.location->value.len) {
 
-        if (clcf->server_name_in_redirect) {
-            cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-            host = cscf->server_name;
+        if (r->headers_out.location->value.data[0] == '/'
+            && clcf->absolute_redirect)
+        {
+            if (clcf->server_name_in_redirect) {
+                cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+                host = cscf->server_name;
 
-        } else if (r->headers_in.server.len) {
-            host = r->headers_in.server;
+            } else if (r->headers_in.server.len) {
+                host = r->headers_in.server;
 
-        } else {
-            host.len = NGX_SOCKADDR_STRLEN;
-            host.data = addr;
+            } else {
+                host.len = NGX_SOCKADDR_STRLEN;
+                host.data = addr;
 
-            if (ngx_connection_local_sockaddr(c, &host, 0) != NGX_OK) {
+                if (ngx_connection_local_sockaddr(c, &host, 0) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+            }
+
+            port = ngx_inet_get_port(c->local_sockaddr);
+
+            location.len = sizeof("https://") - 1 + host.len
+                           + r->headers_out.location->value.len;
+
+            if (clcf->port_in_redirect) {
+                port = (port == 443) ? 0 : port;
+
+            } else {
+                port = 0;
+            }
+
+            if (port) {
+                location.len += sizeof(":65535") - 1;
+            }
+
+            location.data = ngx_pnalloc(r->pool, location.len);
+            if (location.data == NULL) {
                 return NGX_ERROR;
             }
+
+            p = ngx_cpymem(location.data, "https://", sizeof("https://") - 1);
+            p = ngx_cpymem(p, host.data, host.len);
+
+            if (port) {
+                p = ngx_sprintf(p, ":%ui", port);
+            }
+
+            p = ngx_cpymem(p, r->headers_out.location->value.data,
+                              r->headers_out.location->value.len);
+
+            /* update r->headers_out.location->value for possible logging */
+
+            r->headers_out.location->value.len = p - location.data;
+            r->headers_out.location->value.data = location.data;
+            ngx_str_set(&r->headers_out.location->key, "Location");
         }
 
-        port = ngx_inet_get_port(c->local_sockaddr);
-
-        n = sizeof("https://") - 1 + host.len
-            + r->headers_out.location->value.len;
-
-        if (clcf->port_in_redirect) {
-            port = (port == 443) ? 0 : port;
-
-        } else {
-            port = 0;
-        }
-
-        if (port) {
-            n += sizeof(":65535") - 1;
-        }
+        r->headers_out.location->hash = 0;
 
         len += ngx_http_v3_encode_field_lri(NULL, 0,
-                                         NGX_HTTP_V3_HEADER_LOCATION, NULL, n);
-
-    } else {
-        ngx_str_null(&host);
-        port = 0;
+                                           NGX_HTTP_V3_HEADER_LOCATION, NULL,
+                                           r->headers_out.location->value.len);
     }
 
 #if (NGX_HTTP_GZIP)
@@ -425,34 +444,11 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
                                               p, n);
     }
 
-    if (host.data) {
-        n = sizeof("https://") - 1 + host.len
-            + r->headers_out.location->value.len;
-
-        if (port) {
-            n += ngx_sprintf(b->last, ":%ui", port) - b->last;
-        }
-
+    if (r->headers_out.location && r->headers_out.location->value.len) {
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
-                                                   NGX_HTTP_V3_HEADER_LOCATION,
-                                                   NULL, n);
-
-        p = b->last;
-        b->last = ngx_cpymem(b->last, "https://", sizeof("https://") - 1);
-        b->last = ngx_cpymem(b->last, host.data, host.len);
-
-        if (port) {
-            b->last = ngx_sprintf(b->last, ":%ui", port);
-        }
-
-        b->last = ngx_cpymem(b->last, r->headers_out.location->value.data,
-                             r->headers_out.location->value.len);
-
-        /* update r->headers_out.location->value for possible logging */
-
-        r->headers_out.location->value.len = b->last - p;
-        r->headers_out.location->value.data = p;
-        ngx_str_set(&r->headers_out.location->key, "Location");
+                                           NGX_HTTP_V3_HEADER_LOCATION,
+                                           r->headers_out.location->value.data,
+                                           r->headers_out.location->value.len);
     }
 
 #if (NGX_HTTP_GZIP)
