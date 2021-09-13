@@ -359,35 +359,35 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.content_type.len) {
-        n = r->headers_out.content_type.len;
-
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
             && r->headers_out.charset.len)
         {
-            n += sizeof("; charset=") - 1 + r->headers_out.charset.len;
+            n = r->headers_out.content_type.len + sizeof("; charset=") - 1
+                + r->headers_out.charset.len;
+
+            p = ngx_pnalloc(r->pool, n);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            p = ngx_cpymem(p, r->headers_out.content_type.data,
+                           r->headers_out.content_type.len);
+
+            p = ngx_cpymem(p, "; charset=", sizeof("; charset=") - 1);
+
+            p = ngx_cpymem(p, r->headers_out.charset.data,
+                           r->headers_out.charset.len);
+
+            /* updated r->headers_out.content_type is also needed for logging */
+
+            r->headers_out.content_type.len = n;
+            r->headers_out.content_type.data = p - n;
         }
 
         b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
                                     NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN,
-                                    NULL, n);
-
-        p = b->last;
-        b->last = ngx_cpymem(b->last, r->headers_out.content_type.data,
-                             r->headers_out.content_type.len);
-
-        if (r->headers_out.content_type_len == r->headers_out.content_type.len
-            && r->headers_out.charset.len)
-        {
-            b->last = ngx_cpymem(b->last, "; charset=",
-                                 sizeof("; charset=") - 1);
-            b->last = ngx_cpymem(b->last, r->headers_out.charset.data,
-                                 r->headers_out.charset.len);
-
-            /* update r->headers_out.content_type for possible logging */
-
-            r->headers_out.content_type.len = b->last - p;
-            r->headers_out.content_type.data = p;
-        }
+                                    r->headers_out.content_type.data,
+                                    r->headers_out.content_type.len);
     }
 
     if (r->headers_out.content_length == NULL) {
