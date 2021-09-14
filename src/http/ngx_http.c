@@ -1372,7 +1372,7 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
 #endif
 
-#if (NGX_HTTP_QUIC && !defined NGX_OPENSSL_QUIC)
+#if (NGX_HTTP_QUIC && !defined NGX_QUIC)
 
     if (lsopt->quic) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
