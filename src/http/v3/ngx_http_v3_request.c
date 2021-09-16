@@ -45,7 +45,8 @@ static const struct {
     { ngx_string("LOCK"),      NGX_HTTP_LOCK },
     { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
     { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-    { ngx_string("TRACE"),     NGX_HTTP_TRACE }
+    { ngx_string("TRACE"),     NGX_HTTP_TRACE },
+    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT }
 };
 
 
@@ -778,6 +779,18 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         if (n != 0) {
             r->headers_in.chunked = 1;
         }
+    }
+
+    if (r->method == NGX_HTTP_CONNECT) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return NGX_ERROR;
+    }
+
+    if (r->method == NGX_HTTP_TRACE) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent TRACE method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return NGX_ERROR;
     }
 
     return NGX_OK;
