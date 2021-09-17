@@ -917,7 +917,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     ctx->request = NULL;
     ctx->current_request = NULL;
 
-    c->log->handler = ngx_http_log_error;
+    c->log->handler = pc->log->handler;
     c->log->data = ctx;
     c->log->action = "processing pushed request headers";
 

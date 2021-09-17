@@ -50,6 +50,7 @@ static void ngx_http_lingering_close_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_post_action(ngx_http_request_t *r);
 static void ngx_http_log_request(ngx_http_request_t *r);
 
+static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static u_char *ngx_http_log_error_handler(ngx_http_request_t *r,
     ngx_http_request_t *sr, u_char *buf, size_t len);
 
@@ -3829,7 +3830,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 }
 
 
-u_char *
+static u_char *
 ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
     u_char              *p;
