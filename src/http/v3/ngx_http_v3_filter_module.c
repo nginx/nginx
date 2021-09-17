@@ -880,7 +880,6 @@ static ngx_int_t
 ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     uint64_t push_id)
 {
-    ngx_pool_t                *pool;
     ngx_connection_t          *c, *pc;
     ngx_http_request_t        *r;
     ngx_http_log_ctx_t        *ctx;
@@ -888,8 +887,6 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     ngx_http_core_srv_conf_t  *cscf;
 
     pc = pr->connection;
-
-    r = NULL;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "http3 create push request id:%uL", push_id);
@@ -901,7 +898,8 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
 
     hc = ngx_palloc(c->pool, sizeof(ngx_http_connection_t));
     if (hc == NULL) {
-        goto failed;
+        ngx_http_close_connection(c);
+        return NGX_ERROR;
     }
 
     phc = ngx_http_quic_get_connection(pc);
@@ -910,7 +908,8 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
-        goto failed;
+        ngx_http_close_connection(c);
+        return NGX_ERROR;
     }
 
     ctx->connection = c;
@@ -925,7 +924,8 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
 
     r = ngx_http_create_request(c);
     if (r == NULL) {
-        goto failed;
+        ngx_http_close_connection(c);
+        return NGX_ERROR;
     }
 
     c->data = r;
@@ -941,44 +941,49 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     r->header_in = ngx_create_temp_buf(r->pool,
                                        cscf->client_header_buffer_size);
     if (r->header_in == NULL) {
-        goto failed;
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
     }
 
     if (ngx_list_init(&r->headers_in.headers, r->pool, 4,
                       sizeof(ngx_table_elt_t))
         != NGX_OK)
     {
-        goto failed;
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
     }
 
     r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
     r->schema.data = ngx_pstrdup(r->pool, &pr->schema);
     if (r->schema.data == NULL) {
-        goto failed;
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
     }
 
     r->schema.len = pr->schema.len;
 
     r->uri_start = ngx_pstrdup(r->pool, path);
     if (r->uri_start == NULL) {
-        goto failed;
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
     }
 
     r->uri_end = r->uri_start + path->len;
 
     if (ngx_http_parse_uri(r) != NGX_OK) {
-        goto failed;
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
 
     if (ngx_http_process_request_uri(r) != NGX_OK) {
-        goto failed;
+        return NGX_ERROR;
     }
 
     if (ngx_http_v3_set_push_header(r, "host", &pr->headers_in.server)
         != NGX_OK)
     {
-        goto failed;
+        return NGX_ERROR;
     }
 
     if (pr->headers_in.accept_encoding) {
@@ -986,7 +991,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
                                         &pr->headers_in.accept_encoding->value)
             != NGX_OK)
         {
-            goto failed;
+            return NGX_ERROR;
         }
     }
 
@@ -995,7 +1000,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
                                         &pr->headers_in.accept_language->value)
             != NGX_OK)
         {
-            goto failed;
+            return NGX_ERROR;
         }
     }
 
@@ -1004,7 +1009,7 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
                                         &pr->headers_in.user_agent->value)
             != NGX_OK)
         {
-            goto failed;
+            return NGX_ERROR;
         }
     }
 
@@ -1014,22 +1019,6 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
     ngx_post_event(c->read, &ngx_posted_events);
 
     return NGX_OK;
-
-failed:
-
-    if (r) {
-        ngx_http_free_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    }
-
-    c->destroyed = 1;
-
-    pool = c->pool;
-
-    ngx_close_connection(c);
-
-    ngx_destroy_pool(pool);
-
-    return NGX_ERROR;
 }
 
 
@@ -1049,6 +1038,7 @@ ngx_http_v3_set_push_header(ngx_http_request_t *r, const char *name,
 
     p = ngx_pnalloc(r->pool, value->len + 1);
     if (p == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
@@ -1057,6 +1047,7 @@ ngx_http_v3_set_push_header(ngx_http_request_t *r, const char *name,
 
     h = ngx_list_push(&r->headers_in.headers);
     if (h == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
     }
 
