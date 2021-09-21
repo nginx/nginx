@@ -1253,6 +1253,7 @@ ngx_int_t
 ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f)
 {
+    ngx_pool_t             *pool;
     ngx_event_t            *wev;
     ngx_connection_t       *sc;
     ngx_quic_stream_t      *qs;
@@ -1282,16 +1283,23 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
 
         sc = qs->connection;
 
-        wev = sc->write;
-        wev->error = 1;
-        wev->ready = 1;
+        if (ngx_quic_reset_stream(sc, f->error_code) != NGX_OK) {
+            pool = sc->pool;
+
+            ngx_close_connection(sc);
+            ngx_destroy_pool(pool);
+
+            return NGX_ERROR;
+        }
 
         return ngx_quic_init_stream(qs);
     }
 
+    if (ngx_quic_reset_stream(qs->connection, f->error_code) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     wev = qs->connection->write;
-    wev->error = 1;
-    wev->ready = 1;
 
     if (wev->active) {
         wev->handler(wev);
