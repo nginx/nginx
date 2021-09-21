@@ -1342,7 +1342,7 @@ if [ $USE_OPENSSL = YES ]; then
 fi
 
 
-if [ $USE_OPENSSL$USE_OPENSSL_QUIC = YESYES ]; then
+if [ $USE_OPENSSL_QUIC = YES ]; then
     ngx_module_type=CORE
     ngx_module_name=ngx_quic_module
     ngx_module_incs=
