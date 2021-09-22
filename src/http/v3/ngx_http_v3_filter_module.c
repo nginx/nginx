@@ -896,6 +896,10 @@ ngx_http_v3_create_push_request(ngx_http_request_t *pr, ngx_str_t *path,
         return NGX_ABORT;
     }
 
+#if (NGX_STAT_STUB)
+    (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
+#endif
+
     hc = ngx_palloc(c->pool, sizeof(ngx_http_connection_t));
     if (hc == NULL) {
         ngx_http_close_connection(c);

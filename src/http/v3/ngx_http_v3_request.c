@@ -78,6 +78,10 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init request stream");
 
+#if (NGX_STAT_STUB)
+    (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
+#endif
+
     hc = c->data;
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
