@@ -221,6 +221,12 @@ ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
+    wev = c->write;
+
+    if (wev->error) {
+        return NGX_OK;
+    }
+
     qs = c->quic;
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
@@ -238,7 +244,6 @@ ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
 
     ngx_quic_queue_frame(qc, frame);
 
-    wev = c->write;
     wev->error = 1;
     wev->ready = 1;
 
