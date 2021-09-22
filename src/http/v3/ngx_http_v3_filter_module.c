@@ -858,6 +858,10 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         return NGX_ABORT;
     }
 
+    if (r->headers_in.host == NULL) {
+        return NGX_ABORT;
+    }
+
     push_id = h3c->next_push_id++;
 
     rc = ngx_http_v3_create_push_request(r, path, push_id);
