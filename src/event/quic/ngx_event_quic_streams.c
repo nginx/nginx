@@ -252,6 +252,56 @@ ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
 }
 
 
+ngx_int_t
+ngx_quic_shutdown_stream(ngx_connection_t *c, int how)
+{
+    ngx_event_t            *wev;
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    if (how != NGX_WRITE_SHUTDOWN) {
+        return NGX_OK;
+    }
+
+    wev = c->write;
+
+    if (wev->error) {
+        return NGX_OK;
+    }
+
+    qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    frame = ngx_quic_alloc_frame(pc);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id:0x%xL shutdown", qs->id);
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_STREAM;
+    frame->u.stream.off = 1;
+    frame->u.stream.len = 1;
+    frame->u.stream.fin = 1;
+
+    frame->u.stream.stream_id = qs->id;
+    frame->u.stream.offset = c->sent;
+    frame->u.stream.length = 0;
+
+    ngx_quic_queue_frame(qc, frame);
+
+    wev->ready = 1;
+    wev->error = 1;
+
+    return NGX_OK;
+}
+
+
 static ngx_quic_stream_t *
 ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
 {

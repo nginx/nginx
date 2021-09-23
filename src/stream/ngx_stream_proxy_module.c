@@ -1767,6 +1767,21 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         if (dst->type == SOCK_STREAM && pscf->half_close
             && src->read->eof && !u->half_closed && !dst->buffered)
         {
+
+#if (NGX_STREAM_QUIC)
+            if (dst->quic) {
+
+                if (ngx_quic_shutdown_stream(dst, NGX_WRITE_SHUTDOWN)
+                    != NGX_OK)
+                {
+                    ngx_stream_proxy_finalize(s,
+                                             NGX_STREAM_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+
+            } else
+#endif
+
             if (ngx_shutdown_socket(dst->fd, NGX_WRITE_SHUTDOWN) == -1) {
                 ngx_connection_error(c, ngx_socket_errno,
                                      ngx_shutdown_socket_n " failed");
