@@ -1967,8 +1967,6 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
         p = ngx_cpymem(p, value.data, value.len);                             \
     } while (0)
 
-    p = pos;
-
     len = ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_DATA, tp->initial_max_data);
 
     len += ngx_quic_tp_len(NGX_QUIC_TP_INITIAL_MAX_STREAMS_UNI,
@@ -2025,6 +2023,8 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     if (pos == NULL) {
         return len;
     }
+
+    p = pos;
 
     ngx_quic_tp_vint(NGX_QUIC_TP_INITIAL_MAX_DATA,
                      tp->initial_max_data);
