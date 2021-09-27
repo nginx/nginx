@@ -858,7 +858,7 @@ ngx_http_v3_push_resource(ngx_http_request_t *r, ngx_str_t *path,
         return NGX_ABORT;
     }
 
-    if (r->headers_in.host == NULL) {
+    if (r->headers_in.server.len == 0) {
         return NGX_ABORT;
     }
 
