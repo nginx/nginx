@@ -1070,7 +1070,10 @@ ngx_stream_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
 static ngx_int_t
 ngx_stream_ssl_init(ngx_conf_t *cf)
 {
+    ngx_uint_t                    i;
+    ngx_stream_listen_t          *listen;
     ngx_stream_handler_pt        *h;
+    ngx_stream_ssl_conf_t        *scf;
     ngx_stream_core_main_conf_t  *cmcf;
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
@@ -1081,6 +1084,24 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
     }
 
     *h = ngx_stream_ssl_handler;
+
+    listen = cmcf->listen.elts;
+
+    for (i = 0; i < cmcf->listen.nelts; i++) {
+        if (!listen[i].quic) {
+            continue;
+        }
+
+        scf = listen[i].ctx->srv_conf[ngx_stream_ssl_module.ctx_index];
+
+        if (scf->certificates && !(scf->protocols & NGX_SSL_TLSv1_3)) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "\"ssl_protocols\" must enable TLSv1.3 for "
+                          "the \"listen ... quic\" directive in %s:%ui",
+                          scf->file, scf->line);
+            return NGX_ERROR;
+        }
+    }
 
     return NGX_OK;
 }
