@@ -1385,14 +1385,23 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
             if (sscf->certificates) {
+
+                if (addr[a].opt.quic && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                  "\"ssl_protocols\" must enable TLSv1.3 for "
+                                  "the \"listen ... %s\" directive in %s:%ui",
+                                  name, cscf->file_name, cscf->line);
+                    return NGX_ERROR;
+                }
+
                 continue;
             }
 
             if (!sscf->reject_handshake) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
-                              "the \"listen ... ssl\" directive in %s:%ui",
-                              cscf->file_name, cscf->line);
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
 
@@ -1414,14 +1423,6 @@ ngx_http_ssl_init(ngx_conf_t *cf)
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
                               "the \"listen ... %s\" directive in %s:%ui",
-                              name, cscf->file_name, cscf->line);
-                return NGX_ERROR;
-            }
-
-            if (addr[a].opt.quic && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                              "\"ssl_protocols\" did not enable TLSv1.3 for "
-                              "the \"listen ... %s\" directives in %s:%ui",
                               name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
