@@ -198,8 +198,6 @@ ngx_http_quic_init(ngx_connection_t *c)
     hc->ssl = 1;
 
     if (c->quic == NULL) {
-        c->log->connection = c->number;
-
         qcf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_quic_module);
 
         ngx_quic_run(c, qcf);

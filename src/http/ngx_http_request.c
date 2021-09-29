@@ -299,14 +299,6 @@ ngx_http_init_connection(ngx_connection_t *c)
     /* the default server configuration for the address:port */
     hc->conf_ctx = hc->addr_conf->default_server->ctx;
 
-#if (NGX_HTTP_QUIC)
-    if (hc->addr_conf->quic) {
-        if (ngx_http_quic_init(c) == NGX_DONE) {
-            return;
-        }
-    }
-#endif
-
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
         ngx_http_close_connection(c);
@@ -323,6 +315,14 @@ ngx_http_init_connection(ngx_connection_t *c)
     c->log->action = "waiting for request";
 
     c->log_error = NGX_ERROR_INFO;
+
+#if (NGX_HTTP_QUIC)
+    if (hc->addr_conf->quic) {
+        if (ngx_http_quic_init(c) == NGX_DONE) {
+            return;
+        }
+    }
+#endif
 
     rev = c->read;
     rev->handler = ngx_http_wait_request_handler;
