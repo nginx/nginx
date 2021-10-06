@@ -297,6 +297,8 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             break;
         }
 
+        r->request_length += b->pos - p;
+
         if (rc == NGX_BUSY) {
             if (rev->error) {
                 ngx_http_close_request(r, NGX_HTTP_CLOSE);
@@ -309,8 +311,6 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
             break;
         }
-
-        r->request_length += b->pos - p;
 
         if (rc == NGX_AGAIN) {
             continue;
