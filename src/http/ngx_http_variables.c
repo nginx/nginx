@@ -1179,6 +1179,10 @@ ngx_http_variable_content_length(ngx_http_request_t *r,
         v->no_cacheable = 0;
         v->not_found = 0;
 
+    } else if (r->headers_in.chunked) {
+        v->not_found = 1;
+        v->no_cacheable = 1;
+
     } else {
         v->not_found = 1;
     }
