@@ -10,10 +10,6 @@
 #include <ngx_event_quic_connection.h>
 
 
-#define NGX_QUIC_MAX_SHORT_HEADER        25 /* 1 flags + 20 dcid + 4 pn */
-#define NGX_QUIC_MAX_LONG_HEADER         56
-    /* 1 flags + 4 version + 2 x (1 + 20) s/dcid + 4 pn + 4 len + token len */
-
 #define NGX_QUIC_MAX_UDP_PAYLOAD_OUT   1252
 #define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6  1232
 
@@ -532,12 +528,12 @@ static ssize_t
 ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     u_char *data, size_t max, size_t min, ngx_quic_socket_t *qsock)
 {
-    size_t              len, hlen, pad_len;
+    size_t              len, pad, min_payload, max_payload;
     u_char             *p;
     ssize_t             flen;
-    ngx_str_t           out, res;
+    ngx_str_t           res;
     ngx_int_t           rc;
-    ngx_uint_t          nframes, has_pr;
+    ngx_uint_t          nframes, expand;
     ngx_msec_t          now;
     ngx_queue_t        *q;
     ngx_quic_frame_t   *f;
@@ -555,18 +551,22 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     ngx_quic_init_packet(c, ctx, qsock, &pkt);
 
-    hlen = (ctx->level == ssl_encryption_application)
-           ? NGX_QUIC_MAX_SHORT_HEADER
-           : NGX_QUIC_MAX_LONG_HEADER;
+    min_payload = ngx_quic_payload_size(&pkt, min);
+    max_payload = ngx_quic_payload_size(&pkt, max);
 
-    hlen += EVP_GCM_TLS_TAG_LEN;
-    hlen -= NGX_QUIC_MAX_CID_LEN - qsock->cid->len;
+    /* RFC 9001, 5.4.2.  Header Protection Sample */
+    pad = 4 - pkt.num_len;
+    min_payload = ngx_max(min_payload, pad);
+
+    if (min_payload > max_payload) {
+        return 0;
+    }
 
     now = ngx_current_msec;
     nframes = 0;
     p = src;
     len = 0;
-    has_pr = 0;
+    expand = 0;
 
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
@@ -574,18 +574,39 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (f->type == NGX_QUIC_FT_PATH_RESPONSE
-            || f->type == NGX_QUIC_FT_PATH_CHALLENGE)
+        if (!expand && (f->type == NGX_QUIC_FT_PATH_RESPONSE
+                        || f->type == NGX_QUIC_FT_PATH_CHALLENGE))
         {
-            has_pr = 1;
+            /*
+             * RFC 9000, 8.2.1.  Initiating Path Validation
+             *
+             * An endpoint MUST expand datagrams that contain a
+             * PATH_CHALLENGE frame to at least the smallest allowed
+             * maximum datagram size of 1200 bytes...
+             *
+             * (same applies to PATH_RESPONSE frames)
+             */
+
+            if (max < 1200) {
+                /* expanded packet will not fit */
+                break;
+            }
+
+            if (min < 1200) {
+                min = 1200;
+
+                min_payload = ngx_quic_payload_size(&pkt, min);
+            }
+
+            expand = 1;
         }
 
-        if (hlen + len >= max) {
+        if (len >= max_payload) {
             break;
         }
 
-        if (hlen + len + f->len > max) {
-            rc = ngx_quic_split_frame(c, f, max - hlen - len);
+        if (len + f->len > max_payload) {
+            rc = ngx_quic_split_frame(c, f, max_payload - len);
 
             if (rc == NGX_ERROR) {
                 return NGX_ERROR;
@@ -626,53 +647,21 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         return 0;
     }
 
-    out.data = src;
-    out.len = len;
+    if (len < min_payload) {
+        ngx_memset(p, NGX_QUIC_FT_PADDING, min_payload - len);
+        len = min_payload;
+     }
 
-    pad_len = 4;
-
-    if (min || has_pr) {
-        hlen = EVP_GCM_TLS_TAG_LEN
-               + ngx_quic_create_header(&pkt, NULL, out.len, NULL);
-
-        /*
-         * RFC 9000, 8.2.1.  Initiating Path Validation
-         *
-         * An endpoint MUST expand datagrams that contain a
-         * PATH_CHALLENGE frame to at least the smallest allowed
-         * maximum datagram size of 1200 bytes, unless the
-         * anti-amplification limit for the path does not permit
-         * sending a datagram of this size.
-         *
-         * (same applies to PATH_RESPONSE frames)
-         */
-
-        if (has_pr) {
-            min = ngx_max(1200, min);
-        }
-
-        if (min > hlen + pad_len) {
-            pad_len = min - hlen;
-        }
-    }
-
-    if (out.len < pad_len) {
-        /* compensate for potentially enlarged header in Length bytes */
-        pad_len -= ngx_quic_create_header(&pkt, NULL, pad_len, NULL)
-                   - ngx_quic_create_header(&pkt, NULL, out.len, NULL);
-        ngx_memset(p, NGX_QUIC_FT_PADDING, pad_len - out.len);
-        out.len = pad_len;
-    }
-
-    pkt.payload = out;
+    pkt.payload.data = src;
+    pkt.payload.len = len;
 
     res.data = data;
 
     ngx_log_debug6(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic packet tx %s bytes:%ui"
                    " need_ack:%d number:%L encoded nl:%d trunc:0x%xD",
-                   ngx_quic_level_name(ctx->level), out.len, pkt.need_ack,
-                   pkt.number, pkt.num_len, pkt.trunc);
+                   ngx_quic_level_name(ctx->level), pkt.payload.len,
+                   pkt.need_ack, pkt.number, pkt.num_len, pkt.trunc);
 
     if (ngx_quic_encrypt(&pkt, &res) != NGX_OK) {
         return NGX_ERROR;
@@ -1253,6 +1242,7 @@ ssize_t
 ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     size_t min, struct sockaddr *sockaddr, socklen_t socklen)
 {
+    size_t                  min_payload, pad;
     ssize_t                 len;
     ngx_str_t               res;
     ngx_quic_header_t       pkt;
@@ -1267,6 +1257,11 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     ngx_quic_init_packet(c, ctx, qc->socket, &pkt);
 
+    min_payload = min ? ngx_quic_payload_size(&pkt, min) : 0;
+
+    pad = 4 - pkt.num_len;
+    min_payload = ngx_max(min_payload, pad);
+
     len = ngx_quic_create_frame(NULL, frame);
     if (len > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE) {
         return -1;
@@ -1279,10 +1274,10 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
         return -1;
     }
 
-    if (len < (ssize_t) min) {
-        ngx_memset(src + len, NGX_QUIC_FT_PADDING, min - len);
-        len = min;
-    }
+    if (len < (ssize_t) min_payload) {
+        ngx_memset(src + len, NGX_QUIC_FT_PADDING, min_payload - len);
+        len = min_payload;
+     }
 
     pkt.payload.data = src;
     pkt.payload.len = len;

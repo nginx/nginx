@@ -94,7 +94,7 @@ static ngx_int_t ngx_quic_supported_version(uint32_t version);
 static ngx_int_t ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt);
 
 static size_t ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
-    size_t pkt_len, u_char **pnp);
+    u_char **pnp);
 static size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
     u_char **pnp);
 
@@ -613,25 +613,63 @@ ngx_quic_create_version_negotiation(ngx_quic_header_t *pkt, u_char *out)
 }
 
 
+/* returns the amount of payload quic packet of "pkt_len" size may fit or 0 */
 size_t
-ngx_quic_create_header(ngx_quic_header_t *pkt, u_char *out, size_t pkt_len,
-    u_char **pnp)
+ngx_quic_payload_size(ngx_quic_header_t *pkt, size_t pkt_len)
+{
+    size_t  len;
+
+    if ngx_quic_short_pkt(pkt->flags) {
+
+        len = 1 + pkt->dcid.len + pkt->num_len + EVP_GCM_TLS_TAG_LEN;
+        if (len > pkt_len) {
+            return 0;
+        }
+
+        return pkt_len - len;
+    }
+
+    /* flags, version, dcid and scid with lengths and zero-length token */
+    len = 5 + 2 + pkt->dcid.len + pkt->scid.len
+           + (pkt->level == ssl_encryption_initial ? 1 : 0);
+
+    if (len > pkt_len) {
+        return 0;
+    }
+
+    /* (pkt_len - len) is 'remainder' packet length (see RFC 9000, 17.2) */
+    len += ngx_quic_varint_len(pkt_len - len)
+           + pkt->num_len + EVP_GCM_TLS_TAG_LEN;
+
+    if (len > pkt_len) {
+        return 0;
+    }
+
+    return pkt_len - len;
+}
+
+
+size_t
+ngx_quic_create_header(ngx_quic_header_t *pkt, u_char *out, u_char **pnp)
 {
     return ngx_quic_short_pkt(pkt->flags)
            ? ngx_quic_create_short_header(pkt, out, pnp)
-           : ngx_quic_create_long_header(pkt, out, pkt_len, pnp);
+           : ngx_quic_create_long_header(pkt, out, pnp);
 }
 
 
 static size_t
 ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
-    size_t pkt_len, u_char **pnp)
+    u_char **pnp)
 {
+    size_t   rem_len;
     u_char  *p, *start;
+
+    rem_len = pkt->num_len + pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
 
     if (out == NULL) {
         return 5 + 2 + pkt->dcid.len + pkt->scid.len
-               + ngx_quic_varint_len(pkt_len + pkt->num_len) + pkt->num_len
+               + ngx_quic_varint_len(rem_len) + pkt->num_len
                + (pkt->level == ssl_encryption_initial ? 1 : 0);
     }
 
@@ -651,7 +689,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
         ngx_quic_build_int(&p, 0);
     }
 
-    ngx_quic_build_int(&p, pkt_len + pkt->num_len);
+    ngx_quic_build_int(&p, rem_len);
 
     *pnp = p;
 

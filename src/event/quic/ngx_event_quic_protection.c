@@ -836,11 +836,10 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_quic_ciphers_t   ciphers;
     u_char               nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
-    out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
-
     ad.data = res->data;
-    ad.len = ngx_quic_create_header(pkt, ad.data, out.len, &pnp);
+    ad.len = ngx_quic_create_header(pkt, ad.data, &pnp);
 
+    out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
