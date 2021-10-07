@@ -96,7 +96,7 @@ static ngx_int_t ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt);
 static size_t ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     size_t pkt_len, u_char **pnp);
 static size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
-    size_t pkt_len, u_char **pnp);
+    u_char **pnp);
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
     ngx_uint_t frame_type);
@@ -618,7 +618,7 @@ ngx_quic_create_header(ngx_quic_header_t *pkt, u_char *out, size_t pkt_len,
     u_char **pnp)
 {
     return ngx_quic_short_pkt(pkt->flags)
-           ? ngx_quic_create_short_header(pkt, out, pkt_len, pnp)
+           ? ngx_quic_create_short_header(pkt, out, pnp)
            : ngx_quic_create_long_header(pkt, out, pkt_len, pnp);
 }
 
@@ -676,7 +676,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
 
 static size_t
 ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
-    size_t pkt_len, u_char **pnp)
+    u_char **pnp)
 {
     u_char  *p, *start;
 
