@@ -218,6 +218,7 @@ ngx_http_v3_process_request(ngx_event_t *rev)
     ngx_int_t                     rc;
     ngx_connection_t             *c;
     ngx_http_request_t           *r;
+    ngx_http_v3_session_t        *h3c;
     ngx_http_core_srv_conf_t     *cscf;
     ngx_http_v3_parse_headers_t  *st;
 
@@ -232,6 +233,8 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         ngx_http_close_request(r, NGX_HTTP_REQUEST_TIME_OUT);
         return;
     }
+
+    h3c = ngx_http_v3_get_session(c);
 
     st = &r->v3_parse->headers;
 
@@ -298,6 +301,12 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         }
 
         r->request_length += b->pos - p;
+        h3c->total_bytes += b->pos - p;
+
+        if (ngx_http_v3_check_flood(c) != NGX_OK) {
+            ngx_http_close_request(r, NGX_HTTP_CLOSE);
+            break;
+        }
 
         if (rc == NGX_BUSY) {
             if (rev->error) {
@@ -317,6 +326,10 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         }
 
         /* rc == NGX_OK || rc == NGX_DONE */
+
+        h3c->payload_bytes += ngx_http_v3_encode_field_l(NULL,
+                                                   &st->field_rep.field.name,
+                                                   &st->field_rep.field.value);
 
         if (ngx_http_v3_process_header(r, &st->field_rep.field.name,
                                        &st->field_rep.field.value)
@@ -1080,6 +1093,7 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_buf_t                 *b;
     ngx_uint_t                 last;
     ngx_chain_t               *cl, *out, *tl, **ll;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
@@ -1087,6 +1101,8 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     rb = r->request_body;
     st = &r->v3_parse->body;
+
+    h3c = ngx_http_v3_get_session(r->connection);
 
     if (rb->rest == -1) {
 
@@ -1135,6 +1151,11 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 rc = ngx_http_v3_parse_data(r->connection, st, cl->buf);
 
                 r->request_length += cl->buf->pos - p;
+                h3c->total_bytes += cl->buf->pos - p;
+
+                if (ngx_http_v3_check_flood(r->connection) != NGX_OK) {
+                    return NGX_HTTP_CLOSE;
+                }
 
                 if (rc == NGX_AGAIN) {
                     continue;
@@ -1178,6 +1199,8 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             {
                 rb->received += st->length;
                 r->request_length += st->length;
+                h3c->total_bytes += st->length;
+                h3c->payload_bytes += st->length;
 
                 if (st->length < 8) {
 
@@ -1222,12 +1245,16 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 cl->buf->pos += (size_t) st->length;
                 rb->received += st->length;
                 r->request_length += st->length;
+                h3c->total_bytes += st->length;
+                h3c->payload_bytes += st->length;
                 st->length = 0;
 
             } else {
                 st->length -= size;
                 rb->received += size;
                 r->request_length += size;
+                h3c->total_bytes += size;
+                h3c->payload_bytes += size;
                 cl->buf->pos = cl->buf->last;
             }
 

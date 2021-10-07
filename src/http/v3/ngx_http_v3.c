@@ -86,3 +86,22 @@ ngx_http_v3_cleanup_session(void *data)
         ngx_del_timer(&h3c->keepalive);
     }
 }
+
+
+ngx_int_t
+ngx_http_v3_check_flood(ngx_connection_t *c)
+{
+    ngx_http_v3_session_t  *h3c;
+
+    h3c = ngx_http_v3_get_session(c);
+
+    if (h3c->total_bytes / 8 > h3c->payload_bytes + 1048576) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "http3 flood detected");
+
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+                                        "HTTP/3 flood detected");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}

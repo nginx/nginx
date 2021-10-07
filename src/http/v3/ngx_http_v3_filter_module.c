@@ -101,6 +101,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *c;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_v3_filter_ctx_t  *ctx;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
@@ -119,6 +120,8 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
     if (r != r->main) {
         return NGX_OK;
     }
+
+    h3c = ngx_http_v3_get_session(r->connection);
 
     if (r->method == NGX_HTTP_HEAD) {
         r->header_only = 1;
@@ -531,6 +534,8 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     n = b->last - b->pos;
 
+    h3c->payload_bytes += n;
+
     len = ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_FRAME_HEADERS)
           + ngx_http_v3_encode_varlen_int(NULL, n);
 
@@ -571,6 +576,9 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         b->last = (u_char *) ngx_http_v3_encode_varlen_int(b->last,
                                               r->headers_out.content_length_n);
 
+        h3c->payload_bytes += r->headers_out.content_length_n;
+        h3c->total_bytes += r->headers_out.content_length_n;
+
         cl = ngx_alloc_chain_link(r->pool);
         if (cl == NULL) {
             return NGX_ERROR;
@@ -588,6 +596,10 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
         }
 
         ngx_http_set_ctx(r, ctx, ngx_http_v3_filter_module);
+    }
+
+    for (cl = out; cl; cl = cl->next) {
+        h3c->total_bytes += cl->buf->last - cl->buf->pos;
     }
 
     return ngx_http_write_filter(r, out);
@@ -1096,9 +1108,12 @@ static ngx_chain_t *
 ngx_http_v3_create_push_promise(ngx_http_request_t *r, ngx_str_t *path,
     uint64_t push_id)
 {
-    size_t        n, len;
-    ngx_buf_t    *b;
-    ngx_chain_t  *hl, *cl;
+    size_t                  n, len;
+    ngx_buf_t              *b;
+    ngx_chain_t            *hl, *cl;
+    ngx_http_v3_session_t  *h3c;
+
+    h3c = ngx_http_v3_get_session(r->connection);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 create push promise id:%uL", push_id);
@@ -1233,6 +1248,8 @@ ngx_http_v3_create_push_promise(ngx_http_request_t *r, ngx_str_t *path,
 
     n = b->last - b->pos;
 
+    h3c->payload_bytes += n;
+
     len = ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_FRAME_PUSH_PROMISE)
           + ngx_http_v3_encode_varlen_int(NULL, n);
 
@@ -1265,6 +1282,7 @@ ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_chain_t               *out, *cl, *tl, **ll;
+    ngx_http_v3_session_t     *h3c;
     ngx_http_v3_filter_ctx_t  *ctx;
 
     if (in == NULL) {
@@ -1275,6 +1293,8 @@ ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (ctx == NULL) {
         return ngx_http_next_body_filter(r, in);
     }
+
+    h3c = ngx_http_v3_get_session(r->connection);
 
     out = NULL;
     ll = &out;
@@ -1340,6 +1360,8 @@ ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         tl->next = out;
         out = tl;
+
+        h3c->payload_bytes += size;
     }
 
     if (cl->buf->last_buf) {
@@ -1356,6 +1378,10 @@ ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         *ll = NULL;
     }
 
+    for (cl = out; cl; cl = cl->next) {
+        h3c->total_bytes += cl->buf->last - cl->buf->pos;
+    }
+
     rc = ngx_http_next_body_filter(r, out);
 
     ngx_chain_update_chains(r->pool, &ctx->free, &ctx->busy, &out,
@@ -1369,13 +1395,16 @@ static ngx_chain_t *
 ngx_http_v3_create_trailers(ngx_http_request_t *r,
     ngx_http_v3_filter_ctx_t *ctx)
 {
-    size_t            len, n;
-    u_char           *p;
-    ngx_buf_t        *b;
-    ngx_uint_t        i;
-    ngx_chain_t      *cl, *hl;
-    ngx_list_part_t  *part;
-    ngx_table_elt_t  *header;
+    size_t                  len, n;
+    u_char                 *p;
+    ngx_buf_t              *b;
+    ngx_uint_t              i;
+    ngx_chain_t            *cl, *hl;
+    ngx_list_part_t        *part;
+    ngx_table_elt_t        *header;
+    ngx_http_v3_session_t  *h3c;
+
+    h3c = ngx_http_v3_get_session(r->connection);
 
     len = 0;
 
@@ -1460,6 +1489,8 @@ ngx_http_v3_create_trailers(ngx_http_request_t *r,
     }
 
     n = b->last - b->pos;
+
+    h3c->payload_bytes += n;
 
     hl = ngx_chain_get_free_buf(r->pool, &ctx->free);
     if (hl == NULL) {

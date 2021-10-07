@@ -128,6 +128,9 @@ struct ngx_http_v3_session_s {
     uint64_t                      max_push_id;
     uint64_t                      goaway_push_id;
 
+    off_t                         total_bytes;
+    off_t                         payload_bytes;
+
     ngx_uint_t                    goaway;  /* unsigned  goaway:1; */
 
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
@@ -136,6 +139,7 @@ struct ngx_http_v3_session_s {
 
 void ngx_http_v3_init(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
+ngx_int_t ngx_http_v3_check_flood(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
