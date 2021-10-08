@@ -2337,6 +2337,7 @@ ngx_http_proxy_non_buffered_copy_filter(void *data, ssize_t bytes)
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                       "upstream sent more data than specified in "
                       "\"Content-Length\" header");
+        u->keepalive = 0;
         return NGX_OK;
     }
 
