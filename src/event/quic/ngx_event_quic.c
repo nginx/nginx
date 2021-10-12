@@ -804,8 +804,11 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                 return NGX_DECLINED;
             }
 
-        } else {
+        }
 
+        rc = ngx_quic_process_payload(c, pkt);
+
+        if (rc == NGX_DECLINED && pkt->level == ssl_encryption_application) {
             if (ngx_quic_process_stateless_reset(c, pkt) == NGX_OK) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic stateless reset packet detected");
@@ -817,7 +820,7 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
         }
 
-        return ngx_quic_process_payload(c, pkt);
+        return rc;
     }
 
     /* packet does not belong to a connection */
