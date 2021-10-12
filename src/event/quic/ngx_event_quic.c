@@ -370,8 +370,11 @@ ngx_quic_process_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
     {
         cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
 
-        if (cid->seqnum == 0) {
-            /* no stateless reset token in initial connection id */
+        if (cid->seqnum == 0 || cid->refcnt == 0) {
+            /*
+             * No stateless reset token in initial connection id.
+             * Don't accept a token from an unused connection id.
+             */
             continue;
         }
 
