@@ -665,12 +665,16 @@ ngx_quic_close_timer_handler(ngx_event_t *ev)
 static ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 {
-    u_char             *p;
-    ngx_int_t           rc;
-    ngx_uint_t          good;
-    ngx_quic_header_t   pkt;
+    size_t                  size;
+    u_char                 *p;
+    ngx_int_t               rc;
+    ngx_uint_t              good;
+    ngx_quic_header_t       pkt;
+    ngx_quic_connection_t  *qc;
 
     good = 0;
+
+    size = b->last - b->pos;
 
     p = b->pos;
 
@@ -736,7 +740,27 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         p = b->pos;
     }
 
-    return good ? NGX_OK : NGX_DECLINED;
+    if (!good) {
+        return NGX_DECLINED;
+    }
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc) {
+        qc->received += size;
+
+        if ((uint64_t) (c->sent + qc->received) / 8 >
+            (qc->streams.sent + qc->streams.recv_last) + 1048576)
+        {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic flood detected");
+
+            qc->error = NGX_QUIC_ERR_NO_ERROR;
+            qc->error_reason = "QUIC flood detected";
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 

@@ -236,6 +236,8 @@ struct ngx_quic_connection_s {
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
 
+    off_t                             received;
+
     ngx_uint_t                        error;
     enum ssl_encryption_level_t       error_level;
     ngx_uint_t                        error_ftype;
