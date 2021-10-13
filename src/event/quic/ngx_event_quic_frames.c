@@ -38,18 +38,22 @@ ngx_quic_alloc_frame(ngx_connection_t *c)
                        "quic reuse frame n:%ui", qc->nframes);
 #endif
 
-    } else {
+    } else if (qc->nframes < 10000) {
         frame = ngx_palloc(c->pool, sizeof(ngx_quic_frame_t));
         if (frame == NULL) {
             return NULL;
         }
 
-#ifdef NGX_QUIC_DEBUG_ALLOC
         ++qc->nframes;
 
+#ifdef NGX_QUIC_DEBUG_ALLOC
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic alloc frame n:%ui", qc->nframes);
 #endif
+
+    } else {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic flood detected");
+        return NULL;
     }
 
     ngx_memzero(frame, sizeof(ngx_quic_frame_t));
