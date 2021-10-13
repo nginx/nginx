@@ -183,9 +183,10 @@ retire:
             if (ngx_quic_replace_retired_client_id(c, cid) != NGX_OK) {
                 return NGX_ERROR;
             }
-        }
 
-        ngx_quic_unref_client_id(c, cid);
+        } else {
+            ngx_quic_unref_client_id(c, cid);
+        }
     }
 
 done:
@@ -534,7 +535,9 @@ ngx_quic_unref_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
 {
     ngx_quic_connection_t  *qc;
 
-    cid->refcnt--;
+    if (cid->refcnt) {
+        cid->refcnt--;
+    } /* else: unused client id */
 
     if (cid->refcnt) {
         return;
