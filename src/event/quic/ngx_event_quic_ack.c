@@ -223,14 +223,18 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     st->max_pn = NGX_TIMER_INFINITE;
     found = 0;
 
-    q = ngx_queue_last(&ctx->sent);
+    q = ngx_queue_head(&ctx->sent);
 
     while (q != ngx_queue_sentinel(&ctx->sent)) {
 
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        q = ngx_queue_prev(q);
+        q = ngx_queue_next(q);
 
-        if (f->pnum >= min && f->pnum <= max) {
+        if (f->pnum > max) {
+            break;
+        }
+
+        if (f->pnum >= min) {
             ngx_quic_congestion_ack(c, f);
 
             switch (f->type) {
