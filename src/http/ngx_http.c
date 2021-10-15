@@ -1338,13 +1338,12 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     }
 
 #if (NGX_HTTP_V2 && NGX_HTTP_SSL                                              \
-     && !defined TLSEXT_TYPE_application_layer_protocol_negotiation           \
-     && !defined TLSEXT_TYPE_next_proto_neg)
+     && !defined TLSEXT_TYPE_application_layer_protocol_negotiation)
 
     if (lsopt->http2 && lsopt->ssl) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "nginx was built with OpenSSL that lacks ALPN "
-                           "and NPN support, HTTP/2 is not enabled for %V",
+                           "support, HTTP/2 is not enabled for %V",
                            &lsopt->addr_text);
     }
 
