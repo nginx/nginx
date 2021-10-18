@@ -279,6 +279,14 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 void
 ngx_http_v3_reset_connection(ngx_connection_t *c)
 {
+    ngx_http_v3_srv_conf_t  *h3scf;
+
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+
+    if (h3scf->max_table_capacity > 0 && !c->read->eof) {
+        (void) ngx_http_v3_send_cancel_stream(c, c->quic->id);
+    }
+
     if (c->timedout) {
         ngx_quic_reset_stream(c, NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR);
 
