@@ -90,6 +90,9 @@
 #define ngx_http_v3_shutdown_connection(c, code, reason)                      \
     ngx_quic_shutdown_connection(c->quic->parent, code, reason)
 
+#define ngx_http_v3_connection(c)                                             \
+    ((c)->quic ? ngx_http_quic_get_connection(c)->addr_conf->http3 : 0)
+
 
 typedef struct {
     size_t                        max_table_capacity;
@@ -138,6 +141,7 @@ struct ngx_http_v3_session_s {
 
 
 void ngx_http_v3_init(ngx_connection_t *c);
+void ngx_http_v3_reset_connection(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_check_flood(ngx_connection_t *c);
 

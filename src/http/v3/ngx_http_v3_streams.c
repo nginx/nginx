@@ -49,7 +49,8 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
         ngx_http_v3_finalize_connection(c,
                                       NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR,
                                       "reached maximum number of uni streams");
-        ngx_http_close_connection(c);
+        c->data = NULL;
+        ngx_http_v3_close_uni_stream(c);
         return;
     }
 
@@ -57,7 +58,11 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 
     us = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_uni_stream_t));
     if (us == NULL) {
-        ngx_http_close_connection(c);
+        ngx_http_v3_finalize_connection(c,
+                                        NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        "memory allocation error");
+        c->data = NULL;
+        ngx_http_v3_close_uni_stream(c);
         return;
     }
 
@@ -79,12 +84,12 @@ ngx_http_v3_close_uni_stream(ngx_connection_t *c)
     ngx_http_v3_session_t     *h3c;
     ngx_http_v3_uni_stream_t  *us;
 
-    us = c->data;
-    h3c = ngx_http_v3_get_session(c);
-
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 close stream");
 
-    if (us->index >= 0) {
+    us = c->data;
+
+    if (us && us->index >= 0) {
+        h3c = ngx_http_v3_get_session(c);
         h3c->known_streams[us->index] = NULL;
     }
 

@@ -3731,15 +3731,14 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
 
     log->action = "closing request";
 
-    if (r->connection->timedout) {
+    if (r->connection->timedout
+#if (NGX_HTTP_QUIC)
+        && r->connection->quic == NULL
+#endif
+       )
+    {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-#if (NGX_HTTP_V3)
-        if (r->connection->quic) {
-            (void) ngx_quic_reset_stream(r->connection,
-                                       NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR);
-        } else
-#endif
         if (clcf->reset_timedout_connection) {
             linger.l_onoff = 1;
             linger.l_linger = 0;
@@ -3751,14 +3750,6 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
                               "setsockopt(SO_LINGER) failed");
             }
         }
-
-    } else if (!r->response_sent) {
-#if (NGX_HTTP_V3)
-        if (r->connection->quic) {
-            (void) ngx_quic_reset_stream(r->connection,
-                                         NGX_HTTP_V3_ERR_INTERNAL_ERROR);
-        }
-#endif
     }
 
     /* the various request strings were allocated from r->pool */
@@ -3816,6 +3807,12 @@ ngx_http_close_connection(ngx_connection_t *c)
         }
     }
 
+#endif
+
+#if (NGX_HTTP_V3)
+    if (ngx_http_v3_connection(c)) {
+        ngx_http_v3_reset_connection(c);
+    }
 #endif
 
 #if (NGX_STAT_STUB)
