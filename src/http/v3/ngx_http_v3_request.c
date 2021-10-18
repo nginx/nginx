@@ -65,8 +65,6 @@ ngx_http_v3_init(ngx_connection_t *c)
     ngx_http_core_srv_conf_t  *cscf;
 
     if (ngx_http_v3_init_session(c) != NGX_OK) {
-        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                        "internal error");
         ngx_http_close_connection(c);
         return;
     }
@@ -110,8 +108,6 @@ ngx_http_v3_init(ngx_connection_t *c)
         h3c->goaway = 1;
 
         if (ngx_http_v3_send_goaway(c, (n + 1) << 2) != NGX_OK) {
-            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                            "goaway error");
             ngx_http_close_connection(c);
             return;
         }
@@ -287,15 +283,14 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         rc = ngx_http_v3_parse_headers(c, st, b);
 
         if (rc > 0) {
-            ngx_http_v3_finalize_connection(c, rc,
-                                            "could not parse request headers");
+            ngx_quic_reset_stream(c, rc);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "client sent invalid header");
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
             break;
         }
 
         if (rc == NGX_ERROR) {
-            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                            "internal error");
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             break;
         }
@@ -1167,17 +1162,13 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 if (rc > 0) {
-                    ngx_http_v3_finalize_connection(r->connection, rc,
-                                                   "client sent invalid body");
+                    ngx_quic_reset_stream(r->connection, rc);
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "client sent invalid body");
                     return NGX_HTTP_BAD_REQUEST;
                 }
 
                 if (rc == NGX_ERROR) {
-                    ngx_http_v3_finalize_connection(r->connection,
-                                                NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                                "internal error");
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 

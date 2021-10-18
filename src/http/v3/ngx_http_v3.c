@@ -33,7 +33,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 
     h3c = ngx_pcalloc(pc->pool, sizeof(ngx_http_v3_session_t));
     if (h3c == NULL) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     h3c->max_push_id = (uint64_t) -1;
@@ -49,7 +49,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 
     cln = ngx_pool_cleanup_add(pc->pool, 0);
     if (cln == NULL) {
-        return NGX_ERROR;
+        goto failed;
     }
 
     cln->handler = ngx_http_v3_cleanup_session;
@@ -58,6 +58,14 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     hc->v3_session = h3c;
 
     return ngx_http_v3_send_settings(c);
+
+failed:
+
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to create http3 session");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                    "failed to create http3 session");
+    return NGX_ERROR;
 }
 
 

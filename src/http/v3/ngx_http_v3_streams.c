@@ -283,7 +283,7 @@ ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
 
     sc = ngx_quic_open_stream(c, 0);
     if (sc == NULL) {
-        return NULL;
+        goto failed;
     }
 
     p = buf;
@@ -318,7 +318,13 @@ ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
 
 failed:
 
-    ngx_http_v3_close_uni_stream(sc);
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to create push stream");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR,
+                                    "failed to create push stream");
+    if (sc) {
+        ngx_http_v3_close_uni_stream(sc);
+    }
 
     return NULL;
 }
@@ -368,7 +374,7 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
 
     sc = ngx_quic_open_stream(c, 0);
     if (sc == NULL) {
-        return NULL;
+        goto failed;
     }
 
     sc->quic->cancelable = 1;
@@ -405,7 +411,13 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
 
 failed:
 
-    ngx_http_v3_close_uni_stream(sc);
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to create server stream");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_STREAM_CREATION_ERROR,
+                                    "failed to create server stream");
+    if (sc) {
+        ngx_http_v3_close_uni_stream(sc);
+    }
 
     return NULL;
 }
@@ -424,7 +436,7 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
 
     cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
     if (cc == NULL) {
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
@@ -457,6 +469,10 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
 
 failed:
 
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to send settings");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                    "failed to send settings");
     ngx_http_v3_close_uni_stream(cc);
 
     return NGX_ERROR;
@@ -475,7 +491,7 @@ ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id)
 
     cc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_CONTROL);
     if (cc == NULL) {
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     n = ngx_http_v3_encode_varlen_int(NULL, id);
@@ -495,6 +511,10 @@ ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id)
 
 failed:
 
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to send goaway");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                    "failed to send goaway");
     ngx_http_v3_close_uni_stream(cc);
 
     return NGX_ERROR;
@@ -510,7 +530,7 @@ ngx_http_v3_send_ack_section(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_http_v3_session_t  *h3c;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 client ack section %ui", stream_id);
+                   "http3 send section acknowledgement %ui", stream_id);
 
     dc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
     if (dc == NULL) {
@@ -524,11 +544,21 @@ ngx_http_v3_send_ack_section(ngx_connection_t *c, ngx_uint_t stream_id)
     h3c->total_bytes += n;
 
     if (dc->send(dc, buf, n) != (ssize_t) n) {
-        ngx_http_v3_close_uni_stream(dc);
-        return NGX_ERROR;
+        goto failed;
     }
 
     return NGX_OK;
+
+failed:
+
+    ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                  "failed to send section acknowledgement");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                    "failed to send section acknowledgement");
+    ngx_http_v3_close_uni_stream(dc);
+
+    return NGX_ERROR;
 }
 
 
@@ -541,7 +571,7 @@ ngx_http_v3_send_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
     ngx_http_v3_session_t  *h3c;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 client cancel stream %ui", stream_id);
+                   "http3 send stream cancellation %ui", stream_id);
 
     dc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
     if (dc == NULL) {
@@ -555,11 +585,20 @@ ngx_http_v3_send_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
     h3c->total_bytes += n;
 
     if (dc->send(dc, buf, n) != (ssize_t) n) {
-        ngx_http_v3_close_uni_stream(dc);
-        return NGX_ERROR;
+        goto failed;
     }
 
     return NGX_OK;
+
+failed:
+
+    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to send stream cancellation");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                    "failed to send stream cancellation");
+    ngx_http_v3_close_uni_stream(dc);
+
+    return NGX_ERROR;
 }
 
 
@@ -572,7 +611,7 @@ ngx_http_v3_send_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
     ngx_http_v3_session_t  *h3c;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http3 client increment insert count %ui", inc);
+                   "http3 send insert count increment %ui", inc);
 
     dc = ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER);
     if (dc == NULL) {
@@ -586,11 +625,21 @@ ngx_http_v3_send_inc_insert_count(ngx_connection_t *c, ngx_uint_t inc)
     h3c->total_bytes += n;
 
     if (dc->send(dc, buf, n) != (ssize_t) n) {
-        ngx_http_v3_close_uni_stream(dc);
-        return NGX_ERROR;
+        goto failed;
     }
 
     return NGX_OK;
+
+failed:
+
+    ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                  "failed to send insert count increment");
+
+    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_EXCESSIVE_LOAD,
+                                    "failed to send insert count increment");
+    ngx_http_v3_close_uni_stream(dc);
+
+    return NGX_ERROR;
 }
 
 

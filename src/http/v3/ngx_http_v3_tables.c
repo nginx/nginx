@@ -589,6 +589,10 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
         if (h3c->nblocked == h3scf->max_blocked_streams) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client exceeded http3_max_blocked_streams limit");
+
+            ngx_http_v3_finalize_connection(c,
+                                          NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED,
+                                          "too many blocked streams");
             return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
         }
 
