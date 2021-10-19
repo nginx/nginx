@@ -14,16 +14,11 @@
 
 /* RFC 9002, 6.1.1. Packet Threshold: kPacketThreshold */
 #define NGX_QUIC_PKT_THR                     3 /* packets */
-/* RFC 9002, 6.1.2. Time Threshold: kTimeThreshold, kGranularity */
-#define NGX_QUIC_TIME_THR                    1.125
+/* RFC 9002, 6.1.2. Time Threshold: kGranularity */
 #define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
 
 /* RFC 9002, 7.6.1. Duration: kPersistentCongestionThreshold */
 #define NGX_QUIC_PERSISTENT_CONGESTION_THR   3
-
-#define ngx_quic_lost_threshold(qc)                                           \
-    ngx_max(NGX_QUIC_TIME_THR * ngx_max((qc)->latest_rtt, (qc)->avg_rtt),     \
-            NGX_QUIC_TIME_GRANULARITY)
 
 
 /* send time of ACK'ed packets */
@@ -34,6 +29,7 @@ typedef struct {
 } ngx_quic_ack_stat_t;
 
 
+static ngx_inline ngx_msec_t ngx_quic_lost_threshold(ngx_quic_connection_t *qc);
 static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     enum ssl_encryption_level_t level, ngx_msec_t send_time);
 static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
@@ -48,6 +44,19 @@ static void ngx_quic_persistent_congestion(ngx_connection_t *c);
 static void ngx_quic_congestion_lost(ngx_connection_t *c,
     ngx_quic_frame_t *frame);
 static void ngx_quic_lost_handler(ngx_event_t *ev);
+
+
+/* RFC 9002, 6.1.2. Time Threshold: kTimeThreshold, kGranularity */
+static ngx_inline ngx_msec_t
+ngx_quic_lost_threshold(ngx_quic_connection_t *qc)
+{
+    ngx_msec_t  thr;
+
+    thr = ngx_max(qc->latest_rtt, qc->avg_rtt);
+    thr += thr >> 3;
+
+    return ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
+}
 
 
 ngx_int_t
@@ -198,9 +207,9 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
             adjusted_rtt -= ack_delay;
         }
 
-        qc->avg_rtt = 0.875 * qc->avg_rtt + 0.125 * adjusted_rtt;
+        qc->avg_rtt += (adjusted_rtt >> 3) - (qc->avg_rtt >> 3);
         rttvar_sample = ngx_abs((ngx_msec_int_t) (qc->avg_rtt - adjusted_rtt));
-        qc->rttvar = 0.75 * qc->rttvar + 0.25 * rttvar_sample;
+        qc->rttvar += (rttvar_sample >> 2) - (qc->rttvar >> 2);
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
