@@ -3134,6 +3134,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_CALLBACK_FAILED
             || n == SSL_R_CALLBACK_FAILED                            /*  234 */
 #endif
+#ifdef SSL_R_NO_APPLICATION_PROTOCOL
+            || n == SSL_R_NO_APPLICATION_PROTOCOL                    /*  235 */
+#endif
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
             || n == SSL_R_UNKNOWN_ALERT_TYPE                         /*  246 */
