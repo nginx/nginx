@@ -17,7 +17,7 @@ typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
 #define NGX_DEFAULT_CIPHERS     "HIGH:!aNULL:!MD5"
 #define NGX_DEFAULT_ECDH_CURVE  "auto"
 
-#define NGX_HTTP_ALPN_PROTO     "\x08http/1.1"
+#define NGX_HTTP_ALPN_PROTOS    "\x08http/1.1\x08http/1.0\x08http/0.9"
 
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
@@ -442,21 +442,20 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     hc = c->data;
 
     if (hc->addr_conf->http2) {
-        srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTO;
-        srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTO) - 1;
-
+        srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
+        srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
     } else
 #endif
     {
-        srv = (unsigned char *) NGX_HTTP_ALPN_PROTO;
-        srvlen = sizeof(NGX_HTTP_ALPN_PROTO) - 1;
+        srv = (unsigned char *) NGX_HTTP_ALPN_PROTOS;
+        srvlen = sizeof(NGX_HTTP_ALPN_PROTOS) - 1;
     }
 
     if (SSL_select_next_proto((unsigned char **) out, outlen, srv, srvlen,
                               in, inlen)
         != OPENSSL_NPN_NEGOTIATED)
     {
-        return SSL_TLSEXT_ERR_NOACK;
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
