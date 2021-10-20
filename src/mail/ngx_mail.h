@@ -324,6 +324,7 @@ typedef ngx_int_t (*ngx_mail_parse_command_pt)(ngx_mail_session_t *s);
 
 struct ngx_mail_protocol_s {
     ngx_str_t                   name;
+    ngx_str_t                   alpn;
     in_port_t                   port[4];
     ngx_uint_t                  type;
 

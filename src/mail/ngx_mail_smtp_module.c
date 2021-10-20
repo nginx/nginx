@@ -39,6 +39,7 @@ static ngx_str_t  ngx_mail_smtp_auth_methods_names[] = {
 
 static ngx_mail_protocol_t  ngx_mail_smtp_protocol = {
     ngx_string("smtp"),
+    ngx_string("\x04smtp"),
     { 25, 465, 587, 0 },
     NGX_MAIL_SMTP_PROTOCOL,
 

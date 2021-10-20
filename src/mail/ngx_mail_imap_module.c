@@ -46,6 +46,7 @@ static ngx_str_t  ngx_mail_imap_auth_methods_names[] = {
 
 static ngx_mail_protocol_t  ngx_mail_imap_protocol = {
     ngx_string("imap"),
+    ngx_string("\x04imap"),
     { 143, 993, 0, 0 },
     NGX_MAIL_IMAP_PROTOCOL,
 

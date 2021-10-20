@@ -46,6 +46,7 @@ static ngx_str_t  ngx_mail_pop3_auth_methods_names[] = {
 
 static ngx_mail_protocol_t  ngx_mail_pop3_protocol = {
     ngx_string("pop3"),
+    ngx_string("\x04pop3"),
     { 110, 995, 0, 0 },
     NGX_MAIL_POP3_PROTOCOL,
 

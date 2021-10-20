@@ -14,6 +14,12 @@
 #define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+static int ngx_mail_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **out, unsigned char *outlen,
+    const unsigned char *in, unsigned int inlen, void *arg);
+#endif
+
 static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
@@ -244,6 +250,54 @@ ngx_module_t  ngx_mail_ssl_module = {
 static ngx_str_t ngx_mail_ssl_sess_id_ctx = ngx_string("MAIL");
 
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+static int
+ngx_mail_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
+    unsigned char *outlen, const unsigned char *in, unsigned int inlen,
+    void *arg)
+{
+    unsigned int               srvlen;
+    unsigned char             *srv;
+    ngx_connection_t          *c;
+    ngx_mail_session_t        *s;
+    ngx_mail_core_srv_conf_t  *cscf;
+#if (NGX_DEBUG)
+    unsigned int               i;
+#endif
+
+    c = ngx_ssl_get_connection(ssl_conn);
+    s = c->data;
+
+#if (NGX_DEBUG)
+    for (i = 0; i < inlen; i += in[i] + 1) {
+        ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                       "SSL ALPN supported by client: %*s",
+                       (size_t) in[i], &in[i + 1]);
+    }
+#endif
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    srv = cscf->protocol->alpn.data;
+    srvlen = cscf->protocol->alpn.len;
+
+    if (SSL_select_next_proto((unsigned char **) out, outlen, srv, srvlen,
+                              in, inlen)
+        != OPENSSL_NPN_NEGOTIATED)
+    {
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "SSL ALPN selected: %*s", (size_t) *outlen, *out);
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+#endif
+
+
 static void *
 ngx_mail_ssl_create_conf(ngx_conf_t *cf)
 {
@@ -393,6 +447,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
+
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    SSL_CTX_set_alpn_select_cb(conf->ssl.ctx, ngx_mail_ssl_alpn_select, NULL);
+#endif
 
     if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
                         conf->prefer_server_ciphers)
