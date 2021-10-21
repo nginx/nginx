@@ -607,7 +607,7 @@ ngx_http_alloc_request(ngx_connection_t *c)
     }
 
 #if (NGX_HTTP_SSL)
-    if (c->ssl) {
+    if (c->ssl && !c->ssl->sendfile) {
         r->main_filter_need_in_memory = 1;
     }
 #endif

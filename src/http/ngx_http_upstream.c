@@ -1683,9 +1683,6 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         return;
     }
 
-    c->sendfile = 0;
-    u->output.sendfile = 0;
-
     if (u->conf->ssl_server_name || u->conf->ssl_verify) {
         if (ngx_http_upstream_ssl_name(r, u, c) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
@@ -1789,6 +1786,11 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
                               &u->ssl_name);
                 goto failed;
             }
+        }
+
+        if (!c->ssl->sendfile) {
+            c->sendfile = 0;
+            u->output.sendfile = 0;
         }
 
         c->write->handler = ngx_http_upstream_handler;

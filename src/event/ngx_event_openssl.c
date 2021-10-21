@@ -47,6 +47,8 @@ static void ngx_ssl_write_handler(ngx_event_t *wev);
 static ssize_t ngx_ssl_write_early(ngx_connection_t *c, u_char *data,
     size_t size);
 #endif
+static ssize_t ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file,
+    size_t size);
 static void ngx_ssl_read_handler(ngx_event_t *rev);
 static void ngx_ssl_shutdown_handler(ngx_event_t *ev);
 static void ngx_ssl_connection_error(ngx_connection_t *c, int sslerr,
@@ -1764,6 +1766,16 @@ ngx_ssl_handshake(ngx_connection_t *c)
 #endif
 #endif
 
+#ifdef BIO_get_ktls_send
+
+        if (BIO_get_ktls_send(SSL_get_wbio(c->ssl->connection)) == 1) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "BIO_get_ktls_send(): 1");
+            c->ssl->sendfile = 1;
+        }
+
+#endif
+
         rc = ngx_ssl_ocsp_validate(c);
 
         if (rc == NGX_ERROR) {
@@ -1898,6 +1910,16 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
 
         c->read->ready = 1;
         c->write->ready = 1;
+
+#ifdef BIO_get_ktls_send
+
+        if (BIO_get_ktls_send(SSL_get_wbio(c->ssl->connection)) == 1) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "BIO_get_ktls_send(): 1");
+            c->ssl->sendfile = 1;
+        }
+
+#endif
 
         rc = ngx_ssl_ocsp_validate(c);
 
@@ -2502,10 +2524,11 @@ ngx_ssl_write_handler(ngx_event_t *wev)
 ngx_chain_t *
 ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    int          n;
-    ngx_uint_t   flush;
-    ssize_t      send, size;
-    ngx_buf_t   *buf;
+    int           n;
+    ngx_uint_t    flush;
+    ssize_t       send, size, file_size;
+    ngx_buf_t    *buf;
+    ngx_chain_t  *cl;
 
     if (!c->ssl->buffer) {
 
@@ -2579,6 +2602,11 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 continue;
             }
 
+            if (in->buf->in_file && c->ssl->sendfile) {
+                flush = 1;
+                break;
+            }
+
             size = in->buf->last - in->buf->pos;
 
             if (size > buf->end - buf->last) {
@@ -2610,8 +2638,35 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         size = buf->last - buf->pos;
 
         if (size == 0) {
+
+            if (in && in->buf->in_file && send < limit) {
+
+                /* coalesce the neighbouring file bufs */
+
+                cl = in;
+                file_size = (size_t) ngx_chain_coalesce_file(&cl, limit - send);
+
+                n = ngx_ssl_sendfile(c, in->buf, file_size);
+
+                if (n == NGX_ERROR) {
+                    return NGX_CHAIN_ERROR;
+                }
+
+                if (n == NGX_AGAIN) {
+                    break;
+                }
+
+                in = ngx_chain_update_sent(in, n);
+
+                send += n;
+                flush = 0;
+
+                continue;
+            }
+
             buf->flush = 0;
             c->buffered &= ~NGX_SSL_BUFFERED;
+
             return in;
         }
 
@@ -2636,7 +2691,7 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         buf->pos = buf->start;
         buf->last = buf->start;
 
-        if (in == NULL || send == limit) {
+        if (in == NULL || send >= limit) {
             break;
         }
     }
@@ -2880,6 +2935,150 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
 }
 
 #endif
+
+
+static ssize_t
+ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
+{
+#ifdef BIO_get_ktls_send
+
+    int        sslerr;
+    ssize_t    n;
+    ngx_err_t  err;
+
+    ngx_ssl_clear_error(c->log);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "SSL to sendfile: @%O %uz",
+                   file->file_pos, size);
+
+    ngx_set_errno(0);
+
+    n = SSL_sendfile(c->ssl->connection, file->file->fd, file->file_pos,
+                     size, 0);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %d", n);
+
+    if (n > 0) {
+
+        if (c->ssl->saved_read_handler) {
+
+            c->read->handler = c->ssl->saved_read_handler;
+            c->ssl->saved_read_handler = NULL;
+            c->read->ready = 1;
+
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            ngx_post_event(c->read, &ngx_posted_events);
+        }
+
+        c->sent += n;
+
+        return n;
+    }
+
+    if (n == 0) {
+
+        /*
+         * if sendfile returns zero, then someone has truncated the file,
+         * so the offset became beyond the end of the file
+         */
+
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "SSL_sendfile() reported that \"%s\" was truncated at %O",
+                      file->file->name.data, file->file_pos);
+
+        return NGX_ERROR;
+    }
+
+    sslerr = SSL_get_error(c->ssl->connection, n);
+
+    if (sslerr == SSL_ERROR_ZERO_RETURN) {
+
+        /*
+         * OpenSSL fails to return SSL_ERROR_SYSCALL if an error
+         * happens during writing after close_notify alert from the
+         * peer, and returns SSL_ERROR_ZERO_RETURN instead
+         */
+
+        sslerr = SSL_ERROR_SYSCALL;
+    }
+
+    if (sslerr == SSL_ERROR_SSL
+        && ERR_GET_REASON(ERR_peek_error()) == SSL_R_UNINITIALIZED
+        && ngx_errno != 0)
+    {
+        /*
+         * OpenSSL fails to return SSL_ERROR_SYSCALL if an error
+         * happens in sendfile(), and returns SSL_ERROR_SSL with
+         * SSL_R_UNINITIALIZED reason instead
+         */
+
+        sslerr = SSL_ERROR_SYSCALL;
+    }
+
+    err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_get_error: %d", sslerr);
+
+    if (sslerr == SSL_ERROR_WANT_WRITE) {
+
+        if (c->ssl->saved_read_handler) {
+
+            c->read->handler = c->ssl->saved_read_handler;
+            c->ssl->saved_read_handler = NULL;
+            c->read->ready = 1;
+
+            if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            ngx_post_event(c->read, &ngx_posted_events);
+        }
+
+        c->write->ready = 0;
+        return NGX_AGAIN;
+    }
+
+    if (sslerr == SSL_ERROR_WANT_READ) {
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "SSL_sendfile: want read");
+
+        c->read->ready = 0;
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        /*
+         * we do not set the timer because there is already
+         * the write event timer
+         */
+
+        if (c->ssl->saved_read_handler == NULL) {
+            c->ssl->saved_read_handler = c->read->handler;
+            c->read->handler = ngx_ssl_read_handler;
+        }
+
+        return NGX_AGAIN;
+    }
+
+    c->ssl->no_wait_shutdown = 1;
+    c->ssl->no_send_shutdown = 1;
+    c->write->error = 1;
+
+    ngx_ssl_connection_error(c, sslerr, err, "SSL_sendfile() failed");
+
+#else
+    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                  "SSL_sendfile() not available");
+#endif
+
+    return NGX_ERROR;
+}
 
 
 static void
