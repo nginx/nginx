@@ -23,7 +23,8 @@ static ngx_int_t ngx_stream_ssl_init_connection(ngx_ssl_t *ssl,
     ngx_connection_t *c);
 static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-int ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
+static int ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad,
+    void *arg);
 #endif
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 static int ngx_stream_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
@@ -451,7 +452,7 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
-int
+static int
 ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
     return SSL_TLSEXT_ERR_OK;
@@ -502,7 +503,7 @@ ngx_stream_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
 
 #ifdef SSL_R_CERT_CB_ERROR
 
-int
+static int
 ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
 {
     ngx_str_t                    cert, key;

@@ -2767,7 +2767,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
 
-ssize_t
+static ssize_t
 ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
 {
     int        n, sslerr;
