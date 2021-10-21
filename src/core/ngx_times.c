@@ -200,10 +200,6 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
 
 #if defined(CLOCK_MONOTONIC_FAST)
     clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
-
-#elif defined(CLOCK_MONOTONIC_COARSE)
-    clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
-
 #else
     clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
