@@ -184,6 +184,10 @@ ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
             min = (i == pad && p - dst < NGX_QUIC_MIN_INITIAL_SIZE)
                   ? NGX_QUIC_MIN_INITIAL_SIZE - (p - dst) : 0;
 
+            if (min > len) {
+                continue;
+            }
+
             n = ngx_quic_output_packet(c, ctx, p, len, min, qsock);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
