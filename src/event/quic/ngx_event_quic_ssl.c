@@ -71,8 +71,20 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
                    secret_len, rsecret);
 #endif
 
-    return ngx_quic_keys_set_encryption_secret(c->pool, 0, qc->keys, level,
-                                               cipher, rsecret, secret_len);
+    if (ngx_quic_keys_set_encryption_secret(c->pool, 0, qc->keys, level,
+                                            cipher, rsecret, secret_len)
+        != 1)
+    {
+        return 0;
+    }
+
+    if (level == ssl_encryption_early_data) {
+        if (ngx_quic_init_streams(c) != NGX_OK) {
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 
@@ -131,6 +143,10 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
     if (level == ssl_encryption_early_data) {
+        if (ngx_quic_init_streams(c) != NGX_OK) {
+            return 0;
+        }
+
         return 1;
     }
 
