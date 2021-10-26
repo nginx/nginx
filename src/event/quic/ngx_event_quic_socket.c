@@ -350,6 +350,4 @@ ngx_quic_get_unconnected_socket(ngx_connection_t *c)
     }
 
     return NULL;
- }
-
-
+}

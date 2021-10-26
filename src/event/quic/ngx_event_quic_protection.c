@@ -1188,4 +1188,3 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     return NGX_OK;
 }
-
