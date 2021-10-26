@@ -16,6 +16,7 @@
 static ngx_quic_stream_t *ngx_quic_create_client_stream(ngx_connection_t *c,
     uint64_t id);
 static ngx_int_t ngx_quic_init_stream(ngx_quic_stream_t *qs);
+static void ngx_quic_init_streams_handler(ngx_connection_t *c);
 static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
     uint64_t id);
 static void ngx_quic_empty_handler(ngx_event_t *ev);
@@ -369,8 +370,37 @@ ngx_quic_init_stream(ngx_quic_stream_t *qs)
 }
 
 
-void
+ngx_int_t
 ngx_quic_init_streams(ngx_connection_t *c)
+{
+    ngx_int_t               rc;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->streams.initialized) {
+        return NGX_OK;
+    }
+
+    rc = ngx_ssl_ocsp_validate(c);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_AGAIN) {
+        c->ssl->handler = ngx_quic_init_streams_handler;
+        return NGX_OK;
+    }
+
+    ngx_quic_init_streams_handler(c);
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_quic_init_streams_handler(ngx_connection_t *c)
 {
     ngx_queue_t            *q;
     ngx_quic_stream_t      *qs;

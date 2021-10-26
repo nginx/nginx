@@ -31,7 +31,7 @@ ngx_int_t ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
 ngx_int_t ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_streams_frame_t *f);
 
-void ngx_quic_init_streams(ngx_connection_t *c);
+ngx_int_t ngx_quic_init_streams(ngx_connection_t *c);
 void ngx_quic_rbtree_insert_stream(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 ngx_quic_stream_t *ngx_quic_find_stream(ngx_rbtree_t *rbtree,
