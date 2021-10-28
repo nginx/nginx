@@ -70,6 +70,7 @@ typedef struct {
     ngx_uint_t            end_chunk_samples;
     uint64_t              start_chunk_samples_size;
     uint64_t              end_chunk_samples_size;
+    uint64_t              duration;
     off_t                 start_offset;
     off_t                 end_offset;
 
@@ -253,6 +254,8 @@ static void ngx_http_mp4_update_mdia_atom(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
+static void ngx_http_mp4_update_mdhd_atom(ngx_http_mp4_file_t *mp4,
+    ngx_http_mp4_trak_t *trak);
 static ngx_int_t ngx_http_mp4_read_hdlr_atom(ngx_http_mp4_file_t *mp4,
     uint64_t atom_data_size);
 static ngx_int_t ngx_http_mp4_read_minf_atom(ngx_http_mp4_file_t *mp4,
@@ -822,7 +825,7 @@ ngx_http_mp4_process(ngx_http_mp4_file_t *mp4)
 
         ngx_http_mp4_update_stbl_atom(mp4, &trak[i]);
         ngx_http_mp4_update_minf_atom(mp4, &trak[i]);
-        trak[i].size += trak[i].mdhd_size;
+        ngx_http_mp4_update_mdhd_atom(mp4, &trak[i]);
         trak[i].size += trak[i].hdlr_size;
         ngx_http_mp4_update_mdia_atom(mp4, &trak[i]);
         trak[i].size += trak[i].tkhd_size;
@@ -1749,15 +1752,9 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     trak = ngx_mp4_last_trak(mp4);
     trak->mdhd_size = atom_size;
     trak->timescale = timescale;
+    trak->duration = duration;
 
     ngx_mp4_set_32value(mdhd_atom->size, atom_size);
-
-    if (mdhd_atom->version[0] == 0) {
-        ngx_mp4_set_32value(mdhd_atom->duration, duration);
-
-    } else {
-        ngx_mp4_set_64value(mdhd64_atom->duration, duration);
-    }
 
     atom = &trak->mdhd_atom_buf;
     atom->temporary = 1;
@@ -1769,6 +1766,33 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     ngx_mp4_atom_next(mp4, atom_data_size);
 
     return NGX_OK;
+}
+
+
+static void
+ngx_http_mp4_update_mdhd_atom(ngx_http_mp4_file_t *mp4,
+            ngx_http_mp4_trak_t *trak)
+{
+    ngx_buf_t              *atom;
+    ngx_mp4_mdhd_atom_t    *mdhd_atom;
+    ngx_mp4_mdhd64_atom_t  *mdhd64_atom;
+
+    atom = trak->out[NGX_HTTP_MP4_MDHD_ATOM].buf;
+    if (atom == NULL) {
+        return;
+    }
+
+    mdhd_atom = (ngx_mp4_mdhd_atom_t *) atom->pos;
+    mdhd64_atom = (ngx_mp4_mdhd64_atom_t *) atom->pos;
+
+    if (mdhd_atom->version[0] == 0) {
+        ngx_mp4_set_32value(mdhd_atom->duration, trak->duration);
+
+    } else {
+        ngx_mp4_set_64value(mdhd64_atom->duration, trak->duration);
+    }
+
+    trak->size += trak->mdhd_size;
 }
 
 
