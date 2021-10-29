@@ -331,8 +331,7 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         && c->write->ready
         && c->sent - sent >= limit - (off_t) (2 * ngx_pagesize))
     {
-        c->write->delayed = 1;
-        ngx_add_timer(c->write, 1);
+        ngx_post_event(c->write, &ngx_posted_next_events);
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {
