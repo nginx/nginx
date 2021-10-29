@@ -38,6 +38,9 @@ static void ngx_linux_sendfile_thread_handler(void *data, ngx_log_t *log);
  * On Linux up to 2.6.16 sendfile() does not allow to pass the count parameter
  * more than 2G-1 bytes even on 64-bit platforms: it returns EINVAL,
  * so we limit it to 2G-1 bytes.
+ *
+ * On Linux 2.6.16 and later, sendfile() silently limits the count parameter
+ * to 2G minus the page size, even on 64-bit platforms.
  */
 
 #define NGX_SENDFILE_MAXSIZE  2147483647L
@@ -216,7 +219,6 @@ ngx_linux_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
              */
 
             send = prev_send + sent;
-            continue;
         }
 
         if (send >= limit || in == NULL) {
