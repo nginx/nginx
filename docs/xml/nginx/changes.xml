@@ -5,6 +5,137 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.4" date="2021-11-02">
+
+<change type="change">
+<para lang="ru">
+поддержка NPN вместо ALPN для установления HTTP/2-соединений
+упразднена.
+</para>
+<para lang="en">
+support for NPN instead of ALPN to establish HTTP/2 connections
+has been removed.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx закрывает SSL соединение, если клиент использует ALPN,
+но nginx не поддерживает ни один из присланных клиентом протоколов.
+</para>
+<para lang="en">
+now nginx rejects SSL connections if ALPN is used by the client,
+but no supported protocols can be negotiated.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в директиве sendfile_max_chunk значение по умолчанию
+изменено на 2 мегабайта.
+</para>
+<para lang="en">
+the default value of the "sendfile_max_chunk" directive
+was changed to 2 megabytes.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_half_close в модуле stream.
+</para>
+<para lang="en">
+the "proxy_half_close" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_alpn в модуле stream.
+</para>
+<para lang="en">
+the "ssl_alpn" directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_alpn_protocol.
+</para>
+<para lang="en">
+the $ssl_alpn_protocol variable.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка SSL_sendfile() при использовании OpenSSL 3.0.
+</para>
+<para lang="en">
+support for SSL_sendfile() when using OpenSSL 3.0.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива mp4_start_key_frame в модуле ngx_http_mp4_module.<br/>
+Спасибо Tracey Jaquith.
+</para>
+<para lang="en">
+the "mp4_start_key_frame" directive in the ngx_http_mp4_module.<br/>
+Thanks to Tracey Jaquith.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $content_length при использовании chunked transfer encoding.
+</para>
+<para lang="en">
+in the $content_length variable when using chunked transfer encoding.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при получении ответа некорректной длины от проксируемого бэкенда
+nginx мог тем не менее закэшировать соединение.<br/>
+Спасибо Awdhesh Mathpal.
+</para>
+<para lang="en">
+after receiving a response with incorrect length from a proxied backend
+nginx might nevertheless cache the connection.<br/>
+Thanks to Awdhesh Mathpal.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некорректные заголовки от бэкендов
+логгировались на уровне info вместо error;
+ошибка появилась в 1.21.1.
+</para>
+<para lang="en">
+invalid headers from backends
+were logged at the "info" level instead of "error";
+the bug had appeared in 1.21.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директивы aio_write
+запросы могли зависать.
+</para>
+<para lang="en">
+requests might hang
+when using HTTP/2 and the "aio_write" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.3" date="2021-09-07">
 
 <change type="change">
