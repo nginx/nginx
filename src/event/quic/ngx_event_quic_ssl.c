@@ -175,6 +175,10 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     ngx_connection_t       *c;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
+#if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
+    unsigned int            alpn_len;
+    const unsigned char    *alpn_data;
+#endif
 
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
     qc = ngx_quic_get_connection(c);
@@ -190,21 +194,18 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
          */
 
 #if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
-        if (qc->conf->require_alpn) {
-            unsigned int          len;
-            const unsigned char  *data;
 
-            SSL_get0_alpn_selected(ssl_conn, &data, &len);
+         SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
 
-            if (len == 0) {
-                qc->error = 0x100 + SSL_AD_NO_APPLICATION_PROTOCOL;
-                qc->error_reason = "unsupported protocol in ALPN extension";
+         if (alpn_len == 0) {
+             qc->error = 0x100 + SSL_AD_NO_APPLICATION_PROTOCOL;
+             qc->error_reason = "unsupported protocol in ALPN extension";
 
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic unsupported protocol in ALPN extension");
-                return 0;
-            }
-        }
+             ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                           "quic unsupported protocol in ALPN extension");
+             return 0;
+         }
+
 #endif
 
         SSL_get_peer_quic_transport_params(ssl_conn, &client_params,

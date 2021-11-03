@@ -241,7 +241,6 @@ ngx_stream_quic_create_srv_conf(ngx_conf_t *cf)
      *     conf->tp.retry_scid = { 0, NULL };
      *     conf->tp.preferred_address = NULL
      *     conf->host_key = { 0, NULL }
-     *     conf->require_alpn = 0;
      */
 
     conf->tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;

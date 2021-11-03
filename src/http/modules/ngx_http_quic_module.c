@@ -331,7 +331,6 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
 
     conf->retry = NGX_CONF_UNSET;
     conf->gso_enabled = NGX_CONF_UNSET;
-    conf->require_alpn = 1;
 
     return conf;
 }

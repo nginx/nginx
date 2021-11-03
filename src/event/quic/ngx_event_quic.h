@@ -60,7 +60,6 @@ typedef struct {
     ngx_quic_tp_t              tp;
     ngx_flag_t                 retry;
     ngx_flag_t                 gso_enabled;
-    ngx_flag_t                 require_alpn;
     ngx_str_t                  host_key;
     u_char                     av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                     sr_token_key[NGX_QUIC_SR_KEY_LEN];
