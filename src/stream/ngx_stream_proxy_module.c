@@ -31,6 +31,7 @@ typedef struct {
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
     ngx_flag_t                       proxy_protocol;
+    ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
 
@@ -243,6 +244,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol),
+      NULL },
+
+    { ngx_string("proxy_half_close"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, half_close),
       NULL },
 
 #if (NGX_STREAM_SSL)
@@ -1755,6 +1763,24 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     }
 
     if (dst) {
+
+        if (dst->type == SOCK_STREAM && pscf->half_close
+            && src->read->eof && !u->half_closed && !dst->buffered)
+        {
+            if (ngx_shutdown_socket(dst->fd, NGX_WRITE_SHUTDOWN) == -1) {
+                ngx_connection_error(c, ngx_socket_errno,
+                                     ngx_shutdown_socket_n " failed");
+
+                ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            u->half_closed = 1;
+            ngx_log_debug1(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
+                           "stream proxy %s socket shutdown",
+                           from_upstream ? "client" : "upstream");
+        }
+
         if (ngx_handle_write_event(dst->write, 0) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
@@ -1831,6 +1857,13 @@ ngx_stream_proxy_test_finalize(ngx_stream_session_t *s,
         || (!pc->read->eof && pc->buffered))
     {
         return NGX_DECLINED;
+    }
+
+    if (pscf->half_close) {
+        /* avoid closing live connections until both read ends get EOF */
+        if (!(c->read->eof && pc->read->eof && !c->buffered && !pc->buffered)) {
+             return NGX_DECLINED;
+        }
     }
 
     handler = c->log->handler;
@@ -2052,6 +2085,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->proxy_protocol = NGX_CONF_UNSET;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
+    conf->half_close = NGX_CONF_UNSET;
 
 #if (NGX_STREAM_SSL)
     conf->ssl_enable = NGX_CONF_UNSET;
@@ -2109,6 +2143,8 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->socket_keepalive,
                               prev->socket_keepalive, 0);
+
+    ngx_conf_merge_value(conf->half_close, prev->half_close, 0);
 
 #if (NGX_STREAM_SSL)
 

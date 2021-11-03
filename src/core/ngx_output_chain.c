@@ -803,6 +803,10 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    if (chain && c->write->ready) {
+        ngx_post_event(c->write, &ngx_posted_next_events);
+    }
+
     for (cl = ctx->out; cl && cl != chain; /* void */) {
         ln = cl;
         cl = cl->next;

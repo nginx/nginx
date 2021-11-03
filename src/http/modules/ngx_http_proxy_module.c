@@ -2021,7 +2021,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
         /* rc == NGX_HTTP_PARSE_INVALID_HEADER */
 
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent invalid header: \"%*s\\x%02xd...\"",
                       r->header_end - r->header_name_start,
                       r->header_name_start, *r->header_end);
@@ -2337,6 +2337,7 @@ ngx_http_proxy_non_buffered_copy_filter(void *data, ssize_t bytes)
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                       "upstream sent more data than specified in "
                       "\"Content-Length\" header");
+        u->keepalive = 0;
         return NGX_OK;
     }
 
