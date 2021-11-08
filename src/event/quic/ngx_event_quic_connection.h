@@ -200,7 +200,6 @@ struct ngx_quic_connection_s {
     uint64_t                          server_seqnum;
     uint64_t                          path_seqnum;
 
-    ngx_uint_t                        client_tp_done;
     ngx_quic_tp_t                     tp;
     ngx_quic_tp_t                     ctp;
 
@@ -253,6 +252,7 @@ struct ngx_quic_connection_s {
     unsigned                          draining:1;
     unsigned                          key_phase:1;
     unsigned                          validated:1;
+    unsigned                          client_tp_done:1;
 };
 
 
