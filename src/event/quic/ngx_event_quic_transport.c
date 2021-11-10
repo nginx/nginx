@@ -147,28 +147,6 @@ uint32_t  ngx_quic_versions[] = {
     (sizeof(ngx_quic_versions) / sizeof(ngx_quic_versions[0]))
 
 
-/* literal errors indexed by corresponding value */
-static char *ngx_quic_errors[] = {
-    "NO_ERROR",
-    "INTERNAL_ERROR",
-    "CONNECTION_REFUSED",
-    "FLOW_CONTROL_ERROR",
-    "STREAM_LIMIT_ERROR",
-    "STREAM_STATE_ERROR",
-    "FINAL_SIZE_ERROR",
-    "FRAME_ENCODING_ERROR",
-    "TRANSPORT_PARAMETER_ERROR",
-    "CONNECTION_ID_LIMIT_ERROR",
-    "PROTOCOL_VIOLATION",
-    "INVALID_TOKEN",
-    "APPLICATION_ERROR",
-    "CRYPTO_BUFFER_EXCEEDED",
-    "KEY_UPDATE_ERROR",
-    "AEAD_LIMIT_REACHED",
-    "NO_VIABLE_PATH",
-};
-
-
 static ngx_inline u_char *
 ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out)
 {
@@ -302,21 +280,6 @@ ngx_quic_build_int(u_char **pos, uint64_t value)
     }
 
     *pos = p;
-}
-
-
-u_char *
-ngx_quic_error_text(uint64_t error_code)
-{
-    if (error_code >= NGX_QUIC_ERR_CRYPTO_ERROR) {
-        return (u_char *) "handshake error";
-    }
-
-    if (error_code >= NGX_QUIC_ERR_LAST) {
-        return (u_char *) "unknown error";
-    }
-
-    return (u_char *) ngx_quic_errors[error_code];
 }
 
 

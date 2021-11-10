@@ -90,7 +90,6 @@
 #define NGX_QUIC_FT_LAST  NGX_QUIC_FT_HANDSHAKE_DONE
 
 /* 22.5.  QUIC Transport Error Codes Registry */
-/* Keep in sync with ngx_quic_errors[] */
 #define NGX_QUIC_ERR_NO_ERROR                            0x00
 #define NGX_QUIC_ERR_INTERNAL_ERROR                      0x01
 #define NGX_QUIC_ERR_CONNECTION_REFUSED                  0x02
@@ -109,7 +108,6 @@
 #define NGX_QUIC_ERR_AEAD_LIMIT_REACHED                  0x0F
 #define NGX_QUIC_ERR_NO_VIABLE_PATH                      0x10
 
-#define NGX_QUIC_ERR_LAST                                0x11
 #define NGX_QUIC_ERR_CRYPTO_ERROR                       0x100
 
 #define NGX_QUIC_ERR_CRYPTO(e)  (NGX_QUIC_ERR_CRYPTO_ERROR + (e))
