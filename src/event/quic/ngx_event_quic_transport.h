@@ -337,8 +337,6 @@ typedef struct {
 } ngx_quic_header_t;
 
 
-u_char *ngx_quic_error_text(uint64_t error_code);
-
 ngx_int_t ngx_quic_parse_packet(ngx_quic_header_t *pkt);
 
 size_t ngx_quic_create_version_negotiation(ngx_quic_header_t *pkt, u_char *out);
