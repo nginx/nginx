@@ -47,12 +47,20 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     path = qsock->path;
 
     /*
+     * An endpoint MUST expand datagrams that contain a PATH_RESPONSE frame
+     * to at least the smallest allowed maximum datagram size of 1200 bytes.
+     * ...
      * An endpoint MUST NOT expand the datagram containing the PATH_RESPONSE
      * if the resulting data exceeds the anti-amplification limit.
      */
-    max = path->received * 3;
-    max = (path->sent >= max) ? 0 : max - path->sent;
-    pad = ngx_min(1200, max);
+    if (path->state != NGX_QUIC_PATH_VALIDATED) {
+        max = path->received * 3;
+        max = (path->sent >= max) ? 0 : max - path->sent;
+        pad = ngx_min(1200, max);
+
+    } else {
+        pad = 1200;
+    }
 
     sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
     if (sent < 0) {
