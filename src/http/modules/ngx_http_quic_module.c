@@ -314,6 +314,7 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
      *     conf->tp.sr_enabled = 0
      *     conf->tp.preferred_address = NULL
      *     conf->host_key = { 0, NULL }
+     *     cong->stream_reject_code_uni = 0;
      */
 
     conf->tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;
@@ -331,6 +332,8 @@ ngx_http_quic_create_srv_conf(ngx_conf_t *cf)
 
     conf->retry = NGX_CONF_UNSET;
     conf->gso_enabled = NGX_CONF_UNSET;
+    conf->stream_close_code = NGX_HTTP_V3_ERR_NO_ERROR;
+    conf->stream_reject_code_bidi = NGX_HTTP_V3_ERR_REQUEST_REJECTED;
 
     return conf;
 }

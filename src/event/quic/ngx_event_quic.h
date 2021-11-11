@@ -61,6 +61,9 @@ typedef struct {
     ngx_flag_t                 retry;
     ngx_flag_t                 gso_enabled;
     ngx_str_t                  host_key;
+    ngx_int_t                  stream_close_code;
+    ngx_int_t                  stream_reject_code_uni;
+    ngx_int_t                  stream_reject_code_bidi;
     u_char                     av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                     sr_token_key[NGX_QUIC_SR_KEY_LEN];
 } ngx_quic_conf_t;
