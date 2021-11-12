@@ -314,7 +314,7 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc->shutdown) {
+    if (qc->shutdown || qc->closing) {
         return NGX_QUIC_STREAM_GONE;
     }
 
@@ -385,7 +385,7 @@ ngx_quic_create_client_stream(ngx_connection_t *c, uint64_t id)
             return NULL;
         }
 
-        if (qc->shutdown) {
+        if (qc->shutdown || qc->closing) {
             return NGX_QUIC_STREAM_GONE;
         }
     }
