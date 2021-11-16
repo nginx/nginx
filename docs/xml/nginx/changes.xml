@@ -5,6 +5,84 @@
 <change_log title="nginx">
 
 
+<changes ver="1.20.2" date="2021-11-16">
+
+<change type="feature">
+<para lang="ru">
+совместимость с OpenSSL 3.0.
+</para>
+<para lang="en">
+OpenSSL 3.0 compatibility.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-переменные могли быть пустыми при записи в лог;
+ошибка появилась в 1.19.5.
+</para>
+<para lang="en">
+SSL variables might be empty when used in logs;
+the bug had appeared in 1.19.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+keepalive-соединения с gRPC-бэкендами могли не закрываться
+после получения GOAWAY-фрейма.
+</para>
+<para lang="en">
+keepalive connections with gRPC backends might not be closed
+after receiving a GOAWAY frame.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-соединения к бэкендам в модуле stream
+могли зависать после SSL handshake.
+</para>
+<para lang="en">
+backend SSL connections in the stream module
+might hang after an SSL handshake.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+SSL-соединения с gRPC-бэкендами могли зависать,
+если использовались методы select, poll или /dev/poll.
+</para>
+<para lang="en">
+SSL connections with gRPC backends might hang
+if select, poll, or /dev/poll methods were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $content_length при использовании chunked transfer encoding.
+</para>
+<para lang="en">
+in the $content_length variable when using chunked transfer encoding.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директивы aio_write
+запросы могли зависать.
+</para>
+<para lang="en">
+requests might hang
+when using HTTP/2 and the "aio_write" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.20.1" date="2021-05-25">
 
 <change type="security">
