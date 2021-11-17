@@ -1252,6 +1252,17 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
             break;
 
+        case NGX_QUIC_FT_DATA_BLOCKED:
+
+            if (ngx_quic_handle_data_blocked_frame(c, pkt,
+                                                   &frame.u.data_blocked)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
+            break;
+
         case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
 
             if (ngx_quic_handle_stream_data_blocked_frame(c, pkt,

@@ -20,6 +20,8 @@ ngx_int_t ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     ngx_quic_max_data_frame_t *f);
 ngx_int_t ngx_quic_handle_streams_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_streams_blocked_frame_t *f);
+ngx_int_t ngx_quic_handle_data_blocked_frame(ngx_connection_t *c,
+    ngx_quic_header_t *pkt, ngx_quic_data_blocked_frame_t *f);
 ngx_int_t ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_data_blocked_frame_t *f);
 ngx_int_t ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
