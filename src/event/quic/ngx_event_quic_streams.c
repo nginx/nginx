@@ -31,6 +31,7 @@ static size_t ngx_quic_max_stream_flow(ngx_connection_t *c);
 static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_int_t ngx_quic_control_flow(ngx_connection_t *c, uint64_t last);
 static ngx_int_t ngx_quic_update_flow(ngx_connection_t *c, uint64_t last);
+static ngx_int_t ngx_quic_update_max_stream_data(ngx_connection_t *c);
 
 
 ngx_connection_t *
@@ -1190,8 +1191,6 @@ ngx_int_t
 ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_data_blocked_frame_t *f)
 {
-    uint64_t                limit;
-    ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1217,29 +1216,10 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
             return NGX_OK;
         }
 
-        limit = qs->recv_max_data;
-
-        if (ngx_quic_init_stream(qs) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-    } else {
-        limit = qs->recv_max_data;
+        return ngx_quic_init_stream(qs);
     }
 
-    frame = ngx_quic_alloc_frame(c);
-    if (frame == NULL) {
-        return NGX_ERROR;
-    }
-
-    frame->level = pkt->level;
-    frame->type = NGX_QUIC_FT_MAX_STREAM_DATA;
-    frame->u.max_stream_data.id = f->id;
-    frame->u.max_stream_data.limit = limit;
-
-    ngx_quic_queue_frame(qc, frame);
-
-    return NGX_OK;
+    return ngx_quic_update_max_stream_data(qs->connection);
 }
 
 
@@ -1587,22 +1567,9 @@ ngx_quic_update_flow(ngx_connection_t *c, uint64_t last)
     if (!rev->pending_eof && !rev->error
         && qs->recv_max_data <= qs->recv_offset + qs->recv_window / 2)
     {
-        qs->recv_max_data = qs->recv_offset + qs->recv_window;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic flow update msd:%uL", qs->recv_max_data);
-
-        frame = ngx_quic_alloc_frame(pc);
-        if (frame == NULL) {
+        if (ngx_quic_update_max_stream_data(c) != NGX_OK) {
             return NGX_ERROR;
         }
-
-        frame->level = ssl_encryption_application;
-        frame->type = NGX_QUIC_FT_MAX_STREAM_DATA;
-        frame->u.max_stream_data.id = qs->id;
-        frame->u.max_stream_data.limit = qs->recv_max_data;
-
-        ngx_quic_queue_frame(qc, frame);
     }
 
     qc->streams.recv_offset += len;
@@ -1627,6 +1594,46 @@ ngx_quic_update_flow(ngx_connection_t *c, uint64_t last)
 
         ngx_quic_queue_frame(qc, frame);
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_update_max_stream_data(ngx_connection_t *c)
+{
+    uint64_t                recv_max_data;
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    recv_max_data = qs->recv_offset + qs->recv_window;
+
+    if (qs->recv_max_data == recv_max_data) {
+        return NGX_OK;
+    }
+
+    qs->recv_max_data = recv_max_data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic flow update msd:%uL", qs->recv_max_data);
+
+    frame = ngx_quic_alloc_frame(pc);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_MAX_STREAM_DATA;
+    frame->u.max_stream_data.id = qs->id;
+    frame->u.max_stream_data.limit = qs->recv_max_data;
+
+    ngx_quic_queue_frame(qc, frame);
 
     return NGX_OK;
 }
