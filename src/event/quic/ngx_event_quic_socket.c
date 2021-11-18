@@ -288,12 +288,6 @@ ngx_quic_close_sockets(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
 
-    ngx_quic_close_socket(c, qc->socket);
-
-    if (qc->backup) {
-        ngx_quic_close_socket(c, qc->backup);
-    }
-
     while (!ngx_queue_empty(&qc->sockets)) {
         q = ngx_queue_head(&qc->sockets);
         qsock = ngx_queue_data(q, ngx_quic_socket_t, queue);
