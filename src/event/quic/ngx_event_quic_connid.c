@@ -365,6 +365,39 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
+    if (f->sequence_number >= qc->server_seqnum) {
+        /*
+         * RFC 9000, 19.16.
+         *
+         *  Receipt of a RETIRE_CONNECTION_ID frame containing a sequence
+         *  number greater than any previously sent to the peer MUST be
+         *  treated as a connection error of type PROTOCOL_VIOLATION.
+         */
+        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        qc->error_reason = "sequence number of id to retire was never issued";
+
+        return NGX_ERROR;
+    }
+
+    qsock = ngx_quic_get_socket(c);
+
+    if (qsock->sid.seqnum == f->sequence_number) {
+
+        /*
+         * RFC 9000, 19.16.
+         *
+         * The sequence number specified in a RETIRE_CONNECTION_ID frame MUST
+         * NOT refer to the Destination Connection ID field of the packet in
+         * which the frame is contained.  The peer MAY treat this as a
+         * connection error of type PROTOCOL_VIOLATION.
+         */
+
+        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        qc->error_reason = "sequence number of id to retire refers DCID";
+
+        return NGX_ERROR;
+    }
+
     qsock = ngx_quic_find_socket(c, f->sequence_number);
     if (qsock == NULL) {
         return NGX_OK;
