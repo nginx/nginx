@@ -403,6 +403,10 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic socket #%uL is retired", qsock->sid.seqnum);
+
+    /* check if client is willing to retire sid we have in use */
     if (qsock->sid.seqnum == qc->socket->sid.seqnum) {
         tmp = &qc->socket;
 
@@ -410,46 +414,68 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
         tmp = &qc->backup;
 
     } else {
-        tmp = NULL;
-    }
 
-    if (ngx_quic_create_sockets(c) != NGX_OK) {
-        return NGX_ERROR;
-    }
+        ngx_quic_close_socket(c, qsock);
 
-    if (tmp) {
-        /* replace socket in use (active or backup) */
-
-        ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic %s socket #%uL:%uL:%uL retired",
-                       (*tmp) == qc->socket ? "active" : "backup",
-                       (*tmp)->sid.seqnum, (*tmp)->cid->seqnum,
-                       (*tmp)->path->seqnum);
-
-        qsock = ngx_quic_get_unconnected_socket(c);
-        if (qsock == NULL) {
+        /* restore socket count up to a limit after deletion */
+        if (ngx_quic_create_sockets(c) != NGX_OK) {
             return NGX_ERROR;
         }
 
-        path = (*tmp)->path;
-        cid = (*tmp)->cid;
-
-        ngx_quic_connect(c, qsock, path, cid);
-
-
-        ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic %s socket is now #%uL:%uL:%uL (%s)",
-                       (*tmp) == qc->socket ? "active" : "backup",
-                       qsock->sid.seqnum, qsock->cid->seqnum,
-                       qsock->path->seqnum,
-                       ngx_quic_path_state_str(qsock->path));
-
-        ngx_quic_close_socket(c, *tmp); /* no longer used */
-
-        *tmp = qsock;
+        return NGX_OK;
     }
 
+    /* preserve path/cid from retired socket */
+    path = qsock->path;
+    cid = qsock->cid;
+
+    /* ensure that closing_socket will not drop path and cid */
+    path->refcnt++;
+    cid->refcnt++;
+
+    ngx_quic_close_socket(c, qsock);
+
+    /* restore original values */
+    path->refcnt--;
+    cid->refcnt--;
+
+    /* restore socket count up to a limit after deletion */
+    if (ngx_quic_create_sockets(c) != NGX_OK) {
+        goto failed;
+    }
+
+    qsock = ngx_quic_get_unconnected_socket(c);
+    if (qsock == NULL) {
+        qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
+        qc->error_reason = "not enough server IDs";
+        goto failed;
+    }
+
+    ngx_quic_connect(c, qsock, path, cid);
+
+    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic %s socket is now #%uL:%uL:%uL (%s)",
+                   (*tmp) == qc->socket ? "active" : "backup",
+                   qsock->sid.seqnum, qsock->cid->seqnum,
+                   qsock->path->seqnum,
+                   ngx_quic_path_state_str(qsock->path));
+
+    /* restore active/backup pointer in quic connection */
+    *tmp = qsock;
+
     return NGX_OK;
+
+failed:
+
+    /*
+     * socket was closed, path and cid were preserved artifically
+     * to be reused, but it didn't happen, thus unref here
+     */
+
+    ngx_quic_unref_path(c, path);
+    ngx_quic_unref_client_id(c, cid);
+
+    return NGX_ERROR;
 }
 
 

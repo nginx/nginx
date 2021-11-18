@@ -22,6 +22,7 @@ ngx_int_t ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_quic_socket_t *qsock);
 void ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock);
 
+void ngx_quic_unref_path(ngx_connection_t *c, ngx_quic_path_t *path);
 void ngx_quic_connect(ngx_connection_t *c, ngx_quic_socket_t *qsock,
     ngx_quic_path_t *path, ngx_quic_client_id_t *cid);
 

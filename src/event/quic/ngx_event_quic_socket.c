@@ -14,8 +14,6 @@ static ngx_int_t ngx_quic_create_temp_socket(ngx_connection_t *c,
     ngx_quic_connection_t *qc, ngx_str_t *dcid, ngx_quic_path_t *path,
     ngx_quic_client_id_t *cid);
 
-static void ngx_quic_unref_path(ngx_connection_t *c, ngx_quic_path_t *path);
-
 
 ngx_int_t
 ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
@@ -207,7 +205,7 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 }
 
 
-static void
+void
 ngx_quic_unref_path(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     ngx_quic_connection_t  *qc;
