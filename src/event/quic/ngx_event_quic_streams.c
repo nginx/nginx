@@ -1120,7 +1120,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         rev->ready = 1;
 
         if (rev->active) {
-            rev->handler(rev);
+            ngx_post_event(rev, &ngx_posted_events);
         }
     }
 
@@ -1367,7 +1367,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     }
 
     if (rev->active) {
-        rev->handler(rev);
+        ngx_post_event(rev, &ngx_posted_events);
     }
 
     return NGX_OK;
@@ -1436,7 +1436,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     wev = qs->connection->write;
 
     if (wev->active) {
-        wev->handler(wev);
+        ngx_post_event(wev, &ngx_posted_events);
     }
 
     return NGX_OK;
