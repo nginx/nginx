@@ -253,16 +253,32 @@ static void
 ngx_http_copy_aio_sendfile_event_handler(ngx_event_t *ev)
 {
     ngx_event_aio_t     *aio;
+    ngx_connection_t    *c;
     ngx_http_request_t  *r;
 
     aio = ev->data;
     r = aio->data;
+    c = r->connection;
 
     r->main->blocked--;
     r->aio = 0;
     ev->complete = 0;
 
-    r->connection->write->handler(r->connection->write);
+#if (NGX_HTTP_V2)
+
+    if (r->stream) {
+        /*
+         * for HTTP/2, update write event to make sure processing will
+         * reach the main connection to handle sendfile() preload
+         */
+
+        c->write->ready = 1;
+        c->write->active = 0;
+    }
+
+#endif
+
+    c->write->handler(c->write);
 }
 
 #endif
@@ -356,6 +372,20 @@ ngx_http_copy_thread_event_handler(ngx_event_t *ev)
 
     r->main->blocked--;
     r->aio = 0;
+
+#if (NGX_HTTP_V2)
+
+    if (r->stream) {
+        /*
+         * for HTTP/2, update write event to make sure processing will
+         * reach the main connection to handle sendfile() in threads
+         */
+
+        c->write->ready = 1;
+        c->write->active = 0;
+    }
+
+#endif
 
     if (r->done) {
         /*

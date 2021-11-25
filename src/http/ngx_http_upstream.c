@@ -3927,6 +3927,20 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
     r->main->blocked--;
     r->aio = 0;
 
+#if (NGX_HTTP_V2)
+
+    if (r->stream) {
+        /*
+         * for HTTP/2, update write event to make sure processing will
+         * reach the main connection to handle sendfile() in threads
+         */
+
+        c->write->ready = 1;
+        c->write->active = 0;
+    }
+
+#endif
+
     if (r->done) {
         /*
          * trigger connection event handler if the subrequest was
