@@ -379,15 +379,6 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size)
         return ctx->sent;
     }
 
-    if (task->event.active && ctx->file == file) {
-        /*
-         * tolerate duplicate calls; they can happen due to subrequests
-         * or multiple calls of the next body filter from a filter
-         */
-
-        return NGX_DONE;
-    }
-
     ctx->file = file;
     ctx->socket = c->fd;
     ctx->size = size;
