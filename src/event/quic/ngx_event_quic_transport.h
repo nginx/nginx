@@ -334,6 +334,7 @@ typedef struct {
     unsigned                                    decrypted:1;
     unsigned                                    validated:1;
     unsigned                                    retried:1;
+    unsigned                                    first:1;
 } ngx_quic_header_t;
 
 

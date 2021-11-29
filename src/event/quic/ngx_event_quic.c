@@ -358,7 +358,7 @@ ngx_quic_process_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc = ngx_quic_get_connection(c);
 
     /* A stateless reset uses an entire UDP datagram */
-    if (pkt->raw->start != pkt->data) {
+    if (!pkt->first) {
         return NGX_DECLINED;
     }
 
@@ -666,7 +666,7 @@ static ngx_int_t
 ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 {
     size_t                  size;
-    u_char                 *p;
+    u_char                 *p, *start;
     ngx_int_t               rc;
     ngx_uint_t              good;
     ngx_quic_header_t       pkt;
@@ -676,7 +676,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 
     size = b->last - b->pos;
 
-    p = b->pos;
+    p = start = b->pos;
 
     while (p < b->last) {
 
@@ -685,6 +685,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         pkt.data = p;
         pkt.len = b->last - p;
         pkt.log = c->log;
+        pkt.first = (p == start) ? 1 : 0;
         pkt.flags = p[0];
         pkt.raw->pos++;
 
@@ -979,8 +980,10 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->decrypted = 1;
 
-    if (ngx_quic_update_paths(c, pkt) != NGX_OK) {
-        return NGX_ERROR;
+    if (pkt->first) {
+        if (ngx_quic_update_paths(c, pkt) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     if (c->ssl == NULL) {

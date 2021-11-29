@@ -388,12 +388,7 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 update:
 
-    if (pkt->raw->start == pkt->data) {
-        len = pkt->raw->last - pkt->raw->start;
-
-    } else {
-        len = 0;
-    }
+    len = pkt->raw->last - pkt->raw->start;
 
     /* TODO: this may be too late in some cases;
      *       for example, if error happens during decrypt(), we cannot
