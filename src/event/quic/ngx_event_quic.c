@@ -812,17 +812,24 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             return NGX_DECLINED;
         }
 
-        rc = ngx_quic_check_migration(c, pkt);
-        if (rc != NGX_OK) {
-            return rc;
-        }
-
         if (pkt->level != ssl_encryption_application) {
 
             if (pkt->version != qc->version) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic version mismatch: 0x%xD", pkt->version);
                 return NGX_DECLINED;
+            }
+
+            if (pkt->first) {
+                if (ngx_quic_find_path(c, c->udp->dgram->sockaddr,
+                                       c->udp->dgram->socklen)
+                    == NULL)
+                {
+                    /* packet comes from unknown path, possibly migration */
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                  "quic too early migration attempt");
+                    return NGX_DECLINED;
+                }
             }
 
             if (ngx_quic_check_csid(qc, pkt) != NGX_OK) {

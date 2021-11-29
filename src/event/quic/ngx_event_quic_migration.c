@@ -279,66 +279,6 @@ ngx_quic_find_path(ngx_connection_t *c, struct sockaddr *sockaddr,
 
 
 ngx_int_t
-ngx_quic_check_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
-{
-    ngx_quic_path_t        *path;
-    ngx_quic_socket_t      *qsock;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    qsock = ngx_quic_get_socket(c);
-
-    if (c->udp->dgram == NULL) {
-        /* 2nd QUIC packet in first UDP datagram */
-        return NGX_OK;
-    }
-
-    path = ngx_quic_find_path(c, c->udp->dgram->sockaddr,
-                              c->udp->dgram->socklen);
-    if (path == NULL) {
-        /* packet comes from unknown path, possibly migration */
-
-        if (qc->tp.disable_active_migration) {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic migration disabled, dropping packet "
-                           "from unknown path");
-            return NGX_DECLINED;
-        }
-
-        if (pkt->level != ssl_encryption_application) {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic too early migration attempt");
-            return NGX_DECLINED;
-        }
-
-        return NGX_OK;
-    }
-
-    /* packet from known path */
-
-    if (qsock->path == NULL) {
-        /* client switched to previously unused server id */
-        return NGX_OK;
-    }
-
-    if (path == qsock->path) {
-        /* regular packet to expected path */
-        return NGX_OK;
-    }
-
-    /* client is trying to use server id already used on other path */
-
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic attempt to use socket #%uL:%uL:%uL with path #%uL",
-                   qsock->sid.seqnum, qsock->cid->seqnum,
-                   qsock->path->seqnum, path->seqnum);
-
-    return NGX_DECLINED;
-}
-
-
-ngx_int_t
 ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     off_t                   len;
@@ -348,9 +288,10 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_connection_t  *qc;
 
     qsock = ngx_quic_get_socket(c);
-    path = qsock->path;
 
-    if (path) {
+    if (c->udp->dgram == NULL && qsock->path) {
+        /* 1st ever packet in connection, path already exists */
+        path = qsock->path;
         goto update;
     }
 
@@ -363,6 +304,20 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (path == NULL) {
             return NGX_ERROR;
         }
+
+        if (qsock->path) {
+            /* NAT rebinding case: packet to same CID, but from new address */
+
+            ngx_quic_unref_path(c, qsock->path);
+
+            qsock->path = path;
+            path->refcnt++;
+
+            goto update;
+        }
+
+    } else if (qsock->path) {
+        goto update;
     }
 
     /* prefer unused client IDs if available */

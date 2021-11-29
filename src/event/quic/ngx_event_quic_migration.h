@@ -30,11 +30,11 @@ ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 ngx_int_t ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     ngx_quic_path_challenge_frame_t *f);
 
+ngx_quic_path_t *ngx_quic_find_path(ngx_connection_t *c,
+    struct sockaddr *sockaddr, socklen_t socklen);
 ngx_quic_path_t *ngx_quic_add_path(ngx_connection_t *c,
     struct sockaddr *sockaddr, socklen_t socklen);
 
-ngx_int_t ngx_quic_check_migration(ngx_connection_t *c,
-    ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_handle_migration(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
