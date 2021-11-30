@@ -34,6 +34,8 @@ static int ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 static int ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const uint8_t *data, size_t len);
 static int ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn);
+static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
+    enum ssl_encryption_level_t level, uint8_t alert);
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data);
 
 
@@ -283,6 +285,32 @@ ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_flush_flight()");
 #endif
+    return 1;
+}
+
+
+static int
+ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
+    uint8_t alert)
+{
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
+
+    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_send_alert() level:%s alert:%d",
+                   ngx_quic_level_name(level), (int) alert);
+
+    /* already closed on regular shutdown */
+
+    qc = ngx_quic_get_connection(c);
+    if (qc == NULL) {
+        return 1;
+    }
+
+    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
+
     return 1;
 }
 

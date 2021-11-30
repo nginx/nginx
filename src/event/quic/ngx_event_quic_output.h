@@ -19,9 +19,6 @@ ngx_int_t ngx_quic_output(ngx_connection_t *c);
 ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,
     ngx_quic_header_t *inpkt);
 
-int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, uint8_t alert);
-
 ngx_int_t ngx_quic_send_stateless_reset(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_send_cc(ngx_connection_t *c);

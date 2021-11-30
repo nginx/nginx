@@ -837,32 +837,6 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 }
 
 
-int
-ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
-    uint8_t alert)
-{
-    ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
-
-    c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_send_alert() level:%s alert:%d",
-                   ngx_quic_level_name(level), (int) alert);
-
-    /* already closed on regular shutdown */
-
-    qc = ngx_quic_get_connection(c);
-    if (qc == NULL) {
-        return 1;
-    }
-
-    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
-
-    return 1;
-}
-
-
 ngx_int_t
 ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_header_t *pkt)
