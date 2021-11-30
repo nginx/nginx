@@ -847,23 +847,17 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_send_alert() lvl:%d  alert:%d",
-                   (int) level, (int) alert);
+                   "quic ngx_quic_send_alert() level:%s alert:%d",
+                   ngx_quic_level_name(level), (int) alert);
+
+    /* already closed on regular shutdown */
 
     qc = ngx_quic_get_connection(c);
     if (qc == NULL) {
         return 1;
     }
 
-    qc->error_level = level;
     qc->error = NGX_QUIC_ERR_CRYPTO(alert);
-    qc->error_reason = "TLS alert";
-    qc->error_app = 0;
-    qc->error_ftype = 0;
-
-    if (ngx_quic_send_cc(c) != NGX_OK) {
-        return 0;
-    }
 
     return 1;
 }
