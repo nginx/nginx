@@ -141,7 +141,11 @@ Experimental QUIC support for nginx
         http3_push_preload
         http3_hq (requires NGX_HTTP_V3_HQ macro)
 
-    An additional variable is available: $quic.
+    In http, an additional variable is available: $http3.
+    The value of $http3 is "h3" for HTTP/3 connections,
+    "hq" for hq connections, or an empty string otherwise.
+
+    In stream, an additional variable is available: $quic.
     The value of $quic is "quic" if QUIC connection is used,
     or an empty string otherwise.
 

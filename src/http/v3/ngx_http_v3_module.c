@@ -10,7 +10,7 @@
 #include <ngx_http.h>
 
 
-static ngx_int_t ngx_http_v3_variable_quic(ngx_http_request_t *r,
+static ngx_int_t ngx_http_v3_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_v3_add_variables(ngx_conf_t *cf);
 static void *ngx_http_v3_create_srv_conf(ngx_conf_t *cf);
@@ -235,7 +235,7 @@ ngx_module_t  ngx_http_v3_module = {
 
 static ngx_http_variable_t  ngx_http_v3_vars[] = {
 
-    { ngx_string("quic"), NULL, ngx_http_v3_variable_quic, 0, 0, 0 },
+    { ngx_string("http3"), NULL, ngx_http_v3_variable, 0, 0, 0 },
 
       ngx_http_null_variable
 };
@@ -244,20 +244,38 @@ static ngx_str_t  ngx_http_quic_salt = ngx_string("ngx_quic");
 
 
 static ngx_int_t
-ngx_http_v3_variable_quic(ngx_http_request_t *r,
+ngx_http_v3_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     if (r->connection->quic) {
+#if (NGX_HTTP_V3_HQ)
 
-        v->len = 4;
+        ngx_http_v3_srv_conf_t  *h3scf;
+
+        h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
+
+        if (h3scf->hq) {
+            v->len = sizeof("hq") - 1;
+            v->valid = 1;
+            v->no_cacheable = 0;
+            v->not_found = 0;
+            v->data = (u_char *) "hq";
+
+            return NGX_OK;
+        }
+
+#endif
+
+        v->len = sizeof("h3") - 1;
         v->valid = 1;
-        v->no_cacheable = 1;
+        v->no_cacheable = 0;
         v->not_found = 0;
-        v->data = (u_char *) "quic";
+        v->data = (u_char *) "h3";
+
         return NGX_OK;
     }
 
-    v->not_found = 1;
+    *v = ngx_http_variable_null_value;
 
     return NGX_OK;
 }
