@@ -289,7 +289,7 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     qsock = ngx_quic_get_socket(c);
 
-    if (c->udp->dgram == NULL && qsock->path) {
+    if (c->udp->dgram == NULL) {
         /* 1st ever packet in connection, path already exists */
         path = qsock->path;
         goto update;
