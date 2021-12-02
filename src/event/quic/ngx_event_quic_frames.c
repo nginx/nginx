@@ -573,6 +573,20 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
     case NGX_QUIC_FT_CRYPTO:
         p = ngx_slprintf(p, last, "CRYPTO len:%uL off:%uL",
                          f->u.crypto.length, f->u.crypto.offset);
+
+#ifdef NGX_QUIC_DEBUG_FRAMES
+        {
+            ngx_chain_t  *cl;
+
+            p = ngx_slprintf(p, last, " data:");
+
+            for (cl = f->data; cl; cl = cl->next) {
+                p = ngx_slprintf(p, last, "%*xs",
+                                 cl->buf->last - cl->buf->pos, cl->buf->pos);
+            }
+        }
+#endif
+
         break;
 
     case NGX_QUIC_FT_PADDING:
