@@ -455,15 +455,15 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     if (hc->addr_conf->quic) {
 #if (NGX_HTTP_V3)
         if (hc->addr_conf->http3) {
-            srv = (unsigned char *) NGX_HTTP_V3_ALPN_ADVERTISE;
-            srvlen = sizeof(NGX_HTTP_V3_ALPN_ADVERTISE) - 1;
+            srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
             fmt = NGX_HTTP_V3_ALPN_DRAFT_FMT;
 
         } else
 #endif
         {
-            srv = (unsigned char *) NGX_HTTP_QUIC_ALPN_ADVERTISE;
-            srvlen = sizeof(NGX_HTTP_QUIC_ALPN_ADVERTISE) - 1;
+            srv = (unsigned char *) NGX_HTTP_QUIC_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_QUIC_ALPN_PROTO) - 1;
             fmt = NGX_HTTP_QUIC_ALPN_DRAFT_FMT;
         }
 

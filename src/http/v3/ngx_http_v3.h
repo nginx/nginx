@@ -19,7 +19,7 @@
 #include <ngx_http_v3_tables.h>
 
 
-#define NGX_HTTP_V3_ALPN_ADVERTISE                 "\x02h3"
+#define NGX_HTTP_V3_ALPN_PROTO                     "\x02h3"
 #define NGX_HTTP_V3_ALPN_DRAFT_FMT                 "\x05h3-%02uD"
 
 #define NGX_HTTP_V3_VARLEN_INT_LEN                 4
