@@ -77,6 +77,7 @@ ngx_int_t
 ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
     ngx_quic_new_conn_id_frame_t *f)
 {
+    uint64_t                seq;
     ngx_str_t               id;
     ngx_queue_t            *q;
     ngx_quic_client_id_t   *cid, *item;
@@ -173,10 +174,7 @@ retire:
         }
 
         /* this connection id must be retired */
-
-        if (ngx_quic_send_retire_connection_id(c, cid->seqnum) != NGX_OK) {
-            return NGX_ERROR;
-        }
+        seq = cid->seqnum;
 
         if (cid->refcnt) {
             /* we are going to retire client id which is in use */
@@ -186,6 +184,10 @@ retire:
 
         } else {
             ngx_quic_unref_client_id(c, cid);
+        }
+
+        if (ngx_quic_send_retire_connection_id(c, seq) != NGX_OK) {
+            return NGX_ERROR;
         }
     }
 
