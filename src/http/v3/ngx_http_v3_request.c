@@ -10,7 +10,9 @@
 #include <ngx_http.h>
 
 
+#if (NGX_HTTP_V3_HQ)
 static void ngx_http_v3_init_hq_stream(ngx_connection_t *c);
+#endif
 static void ngx_http_v3_init_request_stream(ngx_connection_t *c);
 static void ngx_http_v3_wait_request_handler(ngx_event_t *rev);
 static void ngx_http_v3_cleanup_request(void *data);
@@ -64,11 +66,10 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     hc->ssl = 1;
 
+    h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+
     if (c->quic == NULL) {
-        h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
-
         ngx_quic_run(c, &h3scf->quic);
-
         return;
     }
 
@@ -82,10 +83,12 @@ ngx_http_v3_init(ngx_connection_t *c)
         ngx_set_connection_log(c, clcf->error_log);
     }
 
-    if (!hc->addr_conf->http3) {
+#if (NGX_HTTP_V3_HQ)
+    if (h3scf->hq) {
         ngx_http_v3_init_hq_stream(c);
         return;
     }
+#endif
 
     if (ngx_http_v3_init_session(c) != NGX_OK) {
         ngx_http_close_connection(c);
@@ -100,6 +103,8 @@ ngx_http_v3_init(ngx_connection_t *c)
     }
 }
 
+
+#if (NGX_HTTP_V3_HQ)
 
 static void
 ngx_http_v3_init_hq_stream(ngx_connection_t *c)
@@ -167,6 +172,8 @@ ngx_http_v3_init_hq_stream(ngx_connection_t *c)
         return;
     }
 }
+
+#endif
 
 
 static void
@@ -387,16 +394,15 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 void
 ngx_http_v3_reset_connection(ngx_connection_t *c)
 {
-    ngx_http_connection_t   *hc;
     ngx_http_v3_srv_conf_t  *h3scf;
 
-    hc = ngx_http_quic_get_connection(c);
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
-    if (!hc->addr_conf->http3) {
+#if (NGX_HTTP_V3_HQ)
+    if (h3scf->hq) {
         return;
     }
-
-    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+#endif
 
     if (h3scf->max_table_capacity > 0 && !c->read->eof) {
         (void) ngx_http_v3_send_cancel_stream(c, c->quic->id);

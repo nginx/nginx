@@ -89,9 +89,8 @@ Experimental QUIC support for nginx
 
 3. Configuration
 
-    The HTTP "listen" directive got two new options: "http3" and "quic".
-    The "http3" option enables HTTP/3 over QUIC on the specified port.
-    The "quic" option enables QUIC for older HTTP versions on this port.
+    The HTTP "listen" directive got a new option "http3" which enables
+    HTTP/3 over QUIC on the specified port.
 
     The Stream "listen" directive got a new option "quic" which enables
     QUIC as client transport protocol instead of TCP or plain UDP.
@@ -140,6 +139,7 @@ Experimental QUIC support for nginx
         http3_max_concurrent_pushes
         http3_push
         http3_push_preload
+        http3_hq (requires NGX_HTTP_V3_HQ macro)
 
     An additional variable is available: $quic.
     The value of $quic is "quic" if QUIC connection is used,

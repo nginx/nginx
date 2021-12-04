@@ -417,18 +417,21 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     void *arg)
 {
 #if (NGX_HTTP_V3)
-    const char             *fmt;
+    const char              *fmt;
 #endif
-    unsigned int            srvlen;
-    unsigned char          *srv;
+    unsigned int             srvlen;
+    unsigned char           *srv;
 #if (NGX_DEBUG)
-    unsigned int            i;
+    unsigned int             i;
 #endif
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
-    ngx_http_connection_t  *hc;
+    ngx_http_connection_t   *hc;
+#endif
+#if (NGX_HTTP_V3 && NGX_HTTP_V3_HQ)
+    ngx_http_v3_srv_conf_t  *h3scf;
 #endif
 #if (NGX_HTTP_V2 || NGX_HTTP_V3 || NGX_DEBUG)
-    ngx_connection_t       *c;
+    ngx_connection_t        *c;
 
     c = ngx_ssl_get_connection(ssl_conn);
 #endif
@@ -452,16 +455,21 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     } else
 #endif
 #if (NGX_HTTP_V3)
-    if (hc->addr_conf->quic) {
-        if (hc->addr_conf->http3) {
+    if (hc->addr_conf->http3) {
+
+#if (NGX_HTTP_V3_HQ)
+        h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+
+        if (h3scf->hq) {
+            srv = (unsigned char *) NGX_HTTP_V3_HQ_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_V3_HQ_ALPN_PROTO) - 1;
+            fmt = NGX_HTTP_V3_HQ_ALPN_DRAFT_FMT;
+        } else
+#endif
+        {
             srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
             fmt = NGX_HTTP_V3_ALPN_DRAFT_FMT;
-
-        } else {
-            srv = (unsigned char *) NGX_HTTP_QUIC_ALPN_PROTO;
-            srvlen = sizeof(NGX_HTTP_QUIC_ALPN_PROTO) - 1;
-            fmt = NGX_HTTP_QUIC_ALPN_DRAFT_FMT;
         }
 
         /* QUIC draft */
@@ -1317,15 +1325,12 @@ ngx_http_ssl_init(ngx_conf_t *cf)
         addr = port[p].addrs.elts;
         for (a = 0; a < port[p].addrs.nelts; a++) {
 
-            if (!addr[a].opt.ssl && !addr[a].opt.quic) {
+            if (!addr[a].opt.ssl && !addr[a].opt.http3) {
                 continue;
             }
 
             if (addr[a].opt.http3) {
                 name = "http3";
-
-            } else if (addr[a].opt.quic) {
-                name = "quic";
 
             } else {
                 name = "ssl";
@@ -1336,7 +1341,7 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
             if (sscf->certificates) {
 
-                if (addr[a].opt.quic && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
+                if (addr[a].opt.http3 && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
                     ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                                   "\"ssl_protocols\" must enable TLSv1.3 for "
                                   "the \"listen ... %s\" directive in %s:%ui",

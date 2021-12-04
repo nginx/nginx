@@ -327,7 +327,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_HTTP_V3)
-    if (hc->addr_conf->quic) {
+    if (hc->addr_conf->http3) {
         ngx_http_v3_init(c);
         return;
     }

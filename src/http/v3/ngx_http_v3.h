@@ -22,8 +22,8 @@
 #define NGX_HTTP_V3_ALPN_PROTO                     "\x02h3"
 #define NGX_HTTP_V3_ALPN_DRAFT_FMT                 "\x05h3-%02uD"
 
-#define NGX_HTTP_QUIC_ALPN_PROTO                   "\x0Ahq-interop"
-#define NGX_HTTP_QUIC_ALPN_DRAFT_FMT               "\x05hq-%02uD"
+#define NGX_HTTP_V3_HQ_ALPN_PROTO                  "\x0Ahq-interop"
+#define NGX_HTTP_V3_HQ_ALPN_DRAFT_FMT              "\x05hq-%02uD"
 
 #define NGX_HTTP_V3_VARLEN_INT_LEN                 4
 #define NGX_HTTP_V3_PREFIX_INT_LEN                 11
@@ -102,6 +102,9 @@ typedef struct {
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
     ngx_uint_t                    max_uni_streams;
+#if (NGX_HTTP_V3_HQ)
+    ngx_flag_t                    hq;
+#endif
     ngx_quic_conf_t               quic;
 } ngx_http_v3_srv_conf_t;
 

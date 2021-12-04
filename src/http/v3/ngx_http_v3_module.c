@@ -68,6 +68,15 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, max_uni_streams),
       NULL },
 
+#if (NGX_HTTP_V3_HQ)
+    { ngx_string("http3_hq"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, hq),
+      NULL },
+#endif
+
     { ngx_string("http3_push"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_v3_push,
@@ -300,6 +309,9 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->max_blocked_streams = NGX_CONF_UNSET_UINT;
     h3scf->max_concurrent_pushes = NGX_CONF_UNSET_UINT;
     h3scf->max_uni_streams = NGX_CONF_UNSET_UINT;
+#if (NGX_HTTP_V3_HQ)
+    h3scf->hq = NGX_CONF_UNSET;
+#endif
 
     h3scf->quic.tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;
     h3scf->quic.tp.max_ack_delay = NGX_CONF_UNSET_MSEC;
@@ -342,6 +354,10 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->max_uni_streams,
                               prev->max_uni_streams, 3);
+
+#if (NGX_HTTP_V3_HQ)
+    ngx_conf_merge_value(conf->hq, prev->hq, 0);
+#endif
 
     ngx_conf_merge_msec_value(conf->quic.tp.max_idle_timeout,
                               prev->quic.tp.max_idle_timeout, 60000);

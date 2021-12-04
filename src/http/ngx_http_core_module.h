@@ -74,7 +74,6 @@ typedef struct {
     unsigned                   bind:1;
     unsigned                   wildcard:1;
     unsigned                   ssl:1;
-    unsigned                   quic:1;
     unsigned                   http2:1;
     unsigned                   http3:1;
 #if (NGX_HAVE_INET6)
