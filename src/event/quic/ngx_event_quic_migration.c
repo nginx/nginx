@@ -31,6 +31,8 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
+    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+
     frame.level = ssl_encryption_application;
     frame.type = NGX_QUIC_FT_PATH_RESPONSE;
     frame.u.path_response = *f;
@@ -523,6 +525,8 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path #%uL send path challenge tries:%ui",
                    path->seqnum, path->tries);
+
+    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
 
     frame.level = ssl_encryption_application;
     frame.type = NGX_QUIC_FT_PATH_CHALLENGE;
