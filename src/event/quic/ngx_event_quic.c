@@ -294,7 +294,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->path_validation.cancelable = 1;
 
     qc->conf = conf;
-    qc->tp = conf->tp;
+
+    if (ngx_quic_init_transport_params(&qc->tp, conf) != NGX_OK) {
+        return NULL;
+    }
 
     ctp = &qc->ctp;
 

@@ -16,110 +16,35 @@ static ngx_int_t ngx_stream_quic_add_variables(ngx_conf_t *cf);
 static void *ngx_stream_quic_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static char *ngx_stream_quic_max_ack_delay(ngx_conf_t *cf, void *post,
-    void *data);
-static char *ngx_stream_quic_max_udp_payload_size(ngx_conf_t *cf, void *post,
-    void *data);
+static char *ngx_stream_quic_mtu(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_stream_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-
-static ngx_conf_post_t  ngx_stream_quic_max_ack_delay_post =
-    { ngx_stream_quic_max_ack_delay };
-static ngx_conf_post_t  ngx_stream_quic_max_udp_payload_size_post =
-    { ngx_stream_quic_max_udp_payload_size };
-static ngx_conf_num_bounds_t  ngx_stream_quic_ack_delay_exponent_bounds =
-    { ngx_conf_check_num_bounds, 0, 20 };
-static ngx_conf_num_bounds_t
-                            ngx_stream_quic_active_connection_id_limit_bounds =
-    { ngx_conf_check_num_bounds, 2, -1 };
-
+static ngx_conf_post_t  ngx_stream_quic_mtu_post =
+    { ngx_stream_quic_mtu };
 
 static ngx_command_t  ngx_stream_quic_commands[] = {
 
-    { ngx_string("quic_max_idle_timeout"),
+    { ngx_string("quic_timeout"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.max_idle_timeout),
+      offsetof(ngx_quic_conf_t, timeout),
       NULL },
 
-    { ngx_string("quic_max_ack_delay"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.max_ack_delay),
-      &ngx_stream_quic_max_ack_delay_post },
-
-    { ngx_string("quic_max_udp_payload_size"),
+    { ngx_string("quic_mtu"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.max_udp_payload_size),
-      &ngx_stream_quic_max_udp_payload_size_post },
+      offsetof(ngx_quic_conf_t, mtu),
+      &ngx_stream_quic_mtu_post },
 
-    { ngx_string("quic_initial_max_data"),
+    { ngx_string("quic_stream_buffer_size"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_data),
+      offsetof(ngx_quic_conf_t, stream_buffer_size),
       NULL },
-
-    { ngx_string("quic_initial_max_stream_data_bidi_local"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_stream_data_bidi_local),
-      NULL },
-
-    { ngx_string("quic_initial_max_stream_data_bidi_remote"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_stream_data_bidi_remote),
-      NULL },
-
-    { ngx_string("quic_initial_max_stream_data_uni"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_stream_data_uni),
-      NULL },
-
-    { ngx_string("quic_initial_max_streams_bidi"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_streams_bidi),
-      NULL },
-
-    { ngx_string("quic_initial_max_streams_uni"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.initial_max_streams_uni),
-      NULL },
-
-    { ngx_string("quic_ack_delay_exponent"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.ack_delay_exponent),
-      &ngx_stream_quic_ack_delay_exponent_bounds },
-
-    { ngx_string("quic_disable_active_migration"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_flag_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.disable_active_migration),
-      NULL },
-
-    { ngx_string("quic_active_connection_id_limit"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, tp.active_connection_id_limit),
-      &ngx_stream_quic_active_connection_id_limit_bounds },
 
     { ngx_string("quic_retry"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
@@ -236,28 +161,17 @@ ngx_stream_quic_create_srv_conf(ngx_conf_t *cf)
     /*
      * set by ngx_pcalloc():
      *
-     *     conf->tp.original_dcid = { 0, NULL };
-     *     conf->tp.initial_scid = { 0, NULL };
-     *     conf->tp.retry_scid = { 0, NULL };
-     *     conf->tp.preferred_address = NULL
      *     conf->host_key = { 0, NULL }
      *     conf->stream_close_code = 0;
      *     conf->stream_reject_code_uni = 0;
      *     conf->stream_reject_code_bidi= 0;
      */
 
-    conf->tp.max_idle_timeout = NGX_CONF_UNSET_MSEC;
-    conf->tp.max_ack_delay = NGX_CONF_UNSET_MSEC;
-    conf->tp.max_udp_payload_size = NGX_CONF_UNSET_SIZE;
-    conf->tp.initial_max_data = NGX_CONF_UNSET_SIZE;
-    conf->tp.initial_max_stream_data_bidi_local = NGX_CONF_UNSET_SIZE;
-    conf->tp.initial_max_stream_data_bidi_remote = NGX_CONF_UNSET_SIZE;
-    conf->tp.initial_max_stream_data_uni = NGX_CONF_UNSET_SIZE;
-    conf->tp.initial_max_streams_bidi = NGX_CONF_UNSET_UINT;
-    conf->tp.initial_max_streams_uni = NGX_CONF_UNSET_UINT;
-    conf->tp.ack_delay_exponent = NGX_CONF_UNSET_UINT;
-    conf->tp.disable_active_migration = NGX_CONF_UNSET;
-    conf->tp.active_connection_id_limit = NGX_CONF_UNSET_UINT;
+    conf->timeout = NGX_CONF_UNSET_MSEC;
+    conf->mtu = NGX_CONF_UNSET_SIZE;
+    conf->stream_buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->max_concurrent_streams_bidi = NGX_CONF_UNSET_UINT;
+    conf->max_concurrent_streams_uni = NGX_CONF_UNSET_UINT;
 
     conf->retry = NGX_CONF_UNSET;
     conf->gso_enabled = NGX_CONF_UNSET;
@@ -274,48 +188,16 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_stream_ssl_conf_t  *scf;
 
-    ngx_conf_merge_msec_value(conf->tp.max_idle_timeout,
-                              prev->tp.max_idle_timeout, 60000);
+    ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
 
-    ngx_conf_merge_msec_value(conf->tp.max_ack_delay,
-                              prev->tp.max_ack_delay,
-                              NGX_QUIC_DEFAULT_MAX_ACK_DELAY);
-
-    ngx_conf_merge_size_value(conf->tp.max_udp_payload_size,
-                              prev->tp.max_udp_payload_size,
+    ngx_conf_merge_size_value(conf->mtu, prev->mtu,
                               NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
-    ngx_conf_merge_size_value(conf->tp.initial_max_data,
-                              prev->tp.initial_max_data,
-                              16 * NGX_QUIC_STREAM_BUFSIZE);
+    ngx_conf_merge_uint_value(conf->max_concurrent_streams_bidi,
+                              prev->max_concurrent_streams_bidi, 16);
 
-    ngx_conf_merge_size_value(conf->tp.initial_max_stream_data_bidi_local,
-                              prev->tp.initial_max_stream_data_bidi_local,
-                              NGX_QUIC_STREAM_BUFSIZE);
-
-    ngx_conf_merge_size_value(conf->tp.initial_max_stream_data_bidi_remote,
-                              prev->tp.initial_max_stream_data_bidi_remote,
-                              NGX_QUIC_STREAM_BUFSIZE);
-
-    ngx_conf_merge_size_value(conf->tp.initial_max_stream_data_uni,
-                              prev->tp.initial_max_stream_data_uni,
-                              NGX_QUIC_STREAM_BUFSIZE);
-
-    ngx_conf_merge_uint_value(conf->tp.initial_max_streams_bidi,
-                              prev->tp.initial_max_streams_bidi, 16);
-
-    ngx_conf_merge_uint_value(conf->tp.initial_max_streams_uni,
-                              prev->tp.initial_max_streams_uni, 16);
-
-    ngx_conf_merge_uint_value(conf->tp.ack_delay_exponent,
-                              prev->tp.ack_delay_exponent,
-                              NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT);
-
-    ngx_conf_merge_value(conf->tp.disable_active_migration,
-                              prev->tp.disable_active_migration, 0);
-
-    ngx_conf_merge_uint_value(conf->tp.active_connection_id_limit,
-                              prev->tp.active_connection_id_limit, 2);
+    ngx_conf_merge_uint_value(conf->max_concurrent_streams_uni,
+                              prev->max_concurrent_streams_uni, 3);
 
     ngx_conf_merge_value(conf->retry, prev->retry, 0);
     ngx_conf_merge_value(conf->gso_enabled, prev->gso_enabled, 0);
@@ -361,23 +243,7 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static char *
-ngx_stream_quic_max_ack_delay(ngx_conf_t *cf, void *post, void *data)
-{
-    ngx_msec_t *sp = data;
-
-    if (*sp >= 16384) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_max_ack_delay\" must be less than 16384");
-
-        return NGX_CONF_ERROR;
-    }
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_stream_quic_max_udp_payload_size(ngx_conf_t *cf, void *post, void *data)
+ngx_stream_quic_mtu(ngx_conf_t *cf, void *post, void *data)
 {
     size_t *sp = data;
 
@@ -385,8 +251,7 @@ ngx_stream_quic_max_udp_payload_size(ngx_conf_t *cf, void *post, void *data)
         || *sp > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_max_udp_payload_size\" must be between "
-                           "%d and %d",
+                           "\"quic_mtu\" must be between %d and %d",
                            NGX_QUIC_MIN_INITIAL_SIZE,
                            NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 

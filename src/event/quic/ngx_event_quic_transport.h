@@ -338,6 +338,31 @@ typedef struct {
 } ngx_quic_header_t;
 
 
+typedef struct {
+    ngx_msec_t                 max_idle_timeout;
+    ngx_msec_t                 max_ack_delay;
+
+    size_t                     max_udp_payload_size;
+    size_t                     initial_max_data;
+    size_t                     initial_max_stream_data_bidi_local;
+    size_t                     initial_max_stream_data_bidi_remote;
+    size_t                     initial_max_stream_data_uni;
+    ngx_uint_t                 initial_max_streams_bidi;
+    ngx_uint_t                 initial_max_streams_uni;
+    ngx_uint_t                 ack_delay_exponent;
+    ngx_uint_t                 active_connection_id_limit;
+    ngx_flag_t                 disable_active_migration;
+
+    ngx_str_t                  original_dcid;
+    ngx_str_t                  initial_scid;
+    ngx_str_t                  retry_scid;
+    u_char                     sr_token[NGX_QUIC_SR_TOKEN_LEN];
+
+    /* TODO */
+    void                      *preferred_address;
+} ngx_quic_tp_t;
+
+
 ngx_int_t ngx_quic_parse_packet(ngx_quic_header_t *pkt);
 
 size_t ngx_quic_create_version_negotiation(ngx_quic_header_t *pkt, u_char *out);
@@ -358,6 +383,8 @@ ssize_t ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start,
     u_char *end, uint64_t *gap, uint64_t *range);
 size_t ngx_quic_create_ack_range(u_char *p, uint64_t gap, uint64_t range);
 
+ngx_int_t ngx_quic_init_transport_params(ngx_quic_tp_t *tp,
+    ngx_quic_conf_t *qcf);
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
     ngx_quic_tp_t *tp, ngx_log_t *log);
 ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,

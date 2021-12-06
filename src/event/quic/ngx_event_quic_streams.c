@@ -851,7 +851,7 @@ ngx_quic_max_stream_flow(ngx_connection_t *c)
     qs = c->quic;
     qc = ngx_quic_get_connection(qs->parent);
 
-    size = NGX_QUIC_STREAM_BUFSIZE;
+    size = qc->conf->stream_buffer_size;
     sent = c->sent;
     unacked = sent - qs->acked;
 
@@ -859,15 +859,13 @@ ngx_quic_max_stream_flow(ngx_connection_t *c)
         qc->streams.send_max_data = qc->ctp.initial_max_data;
     }
 
-    if (unacked >= NGX_QUIC_STREAM_BUFSIZE) {
+    if (unacked >= size) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic send flow hit buffer size");
         return 0;
     }
 
-    if (unacked + size > NGX_QUIC_STREAM_BUFSIZE) {
-        size = NGX_QUIC_STREAM_BUFSIZE - unacked;
-    }
+    size -= unacked;
 
     if (qc->streams.sent >= qc->streams.send_max_data) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1493,7 +1491,7 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     sent = qs->connection->sent;
     unacked = sent - qs->acked;
 
-    if (unacked >= NGX_QUIC_STREAM_BUFSIZE && wev->active) {
+    if (unacked >= qc->conf->stream_buffer_size && wev->active) {
         wev->ready = 1;
         ngx_post_event(wev, &ngx_posted_events);
     }

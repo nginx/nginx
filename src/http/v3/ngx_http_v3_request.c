@@ -66,9 +66,11 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     hc->ssl = 1;
 
+    clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
     h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
 
     if (c->quic == NULL) {
+        h3scf->quic.timeout = clcf->keepalive_timeout;
         ngx_quic_run(c, &h3scf->quic);
         return;
     }
@@ -79,7 +81,6 @@ ngx_http_v3_init(ngx_connection_t *c)
         hc->ssl_servername = phc->ssl_servername;
         hc->conf_ctx = phc->conf_ctx;
 
-        clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
         ngx_set_connection_log(c, clcf->error_log);
     }
 

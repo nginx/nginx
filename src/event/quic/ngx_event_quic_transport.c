@@ -1937,6 +1937,50 @@ ngx_quic_create_retire_connection_id(u_char *p,
 }
 
 
+ngx_int_t
+ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
+{
+    ngx_uint_t  nstreams;
+
+    ngx_memzero(tp, sizeof(ngx_quic_tp_t));
+
+    /*
+     * set by ngx_memzero():
+     *
+     *     tp->disable_active_migration = 0;
+     *     tp->original_dcid = { 0, NULL };
+     *     tp->initial_scid = { 0, NULL };
+     *     tp->retry_scid = { 0, NULL };
+     *     tp->sr_token = { 0 }
+     *     tp->sr_enabled = 0
+     *     tp->preferred_address = NULL
+     */
+
+    tp->max_idle_timeout = qcf->timeout;
+
+    tp->max_udp_payload_size = qcf->mtu;
+
+    nstreams = qcf->max_concurrent_streams_bidi
+               + qcf->max_concurrent_streams_uni;
+
+    tp->initial_max_data = nstreams * qcf->stream_buffer_size;
+    tp->initial_max_stream_data_bidi_local = qcf->stream_buffer_size;
+    tp->initial_max_stream_data_bidi_remote = qcf->stream_buffer_size;
+    tp->initial_max_stream_data_uni = qcf->stream_buffer_size;
+
+    tp->initial_max_streams_bidi = qcf->max_concurrent_streams_bidi;
+    tp->initial_max_streams_uni = qcf->max_concurrent_streams_uni;
+
+    tp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
+    tp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
+
+    tp->active_connection_id_limit = 2;
+    tp->disable_active_migration = qcf->disable_active_migration;
+
+    return NGX_OK;
+}
+
+
 ssize_t
 ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     size_t *clen)

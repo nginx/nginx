@@ -27,43 +27,23 @@
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
-#define NGX_QUIC_STREAM_BUFSIZE              65536
-
-
-typedef struct {
-    /* configurable */
-    ngx_msec_t                 max_idle_timeout;
-    ngx_msec_t                 max_ack_delay;
-
-    size_t                     max_udp_payload_size;
-    size_t                     initial_max_data;
-    size_t                     initial_max_stream_data_bidi_local;
-    size_t                     initial_max_stream_data_bidi_remote;
-    size_t                     initial_max_stream_data_uni;
-    ngx_uint_t                 initial_max_streams_bidi;
-    ngx_uint_t                 initial_max_streams_uni;
-    ngx_uint_t                 ack_delay_exponent;
-    ngx_uint_t                 active_connection_id_limit;
-    ngx_flag_t                 disable_active_migration;
-    ngx_str_t                  original_dcid;
-    ngx_str_t                  initial_scid;
-    ngx_str_t                  retry_scid;
-    u_char                     sr_token[NGX_QUIC_SR_TOKEN_LEN];
-
-    /* TODO */
-    void                      *preferred_address;
-} ngx_quic_tp_t;
-
 
 typedef struct {
     ngx_ssl_t                 *ssl;
-    ngx_quic_tp_t              tp;
+
     ngx_flag_t                 retry;
     ngx_flag_t                 gso_enabled;
+    ngx_flag_t                 disable_active_migration;
+    ngx_msec_t                 timeout;
     ngx_str_t                  host_key;
+    size_t                     mtu;
+    size_t                     stream_buffer_size;
+    ngx_uint_t                 max_concurrent_streams_bidi;
+    ngx_uint_t                 max_concurrent_streams_uni;
     ngx_int_t                  stream_close_code;
     ngx_int_t                  stream_reject_code_uni;
     ngx_int_t                  stream_reject_code_bidi;
+
     u_char                     av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                     sr_token_key[NGX_QUIC_SR_KEY_LEN];
 } ngx_quic_conf_t;

@@ -45,6 +45,8 @@
 #define NGX_HTTP_V3_PARAM_MAX_HEADER_LIST_SIZE     0x06
 #define NGX_HTTP_V3_PARAM_BLOCKED_STREAMS          0x07
 
+#define NGX_HTTP_V3_MAX_TABLE_CAPACITY             4096
+
 #define NGX_HTTP_V3_STREAM_CLIENT_CONTROL          0
 #define NGX_HTTP_V3_STREAM_SERVER_CONTROL          1
 #define NGX_HTTP_V3_STREAM_CLIENT_ENCODER          2
@@ -52,6 +54,7 @@
 #define NGX_HTTP_V3_STREAM_CLIENT_DECODER          4
 #define NGX_HTTP_V3_STREAM_SERVER_DECODER          5
 #define NGX_HTTP_V3_MAX_KNOWN_STREAM               6
+#define NGX_HTTP_V3_MAX_UNI_STREAMS                3
 
 /* HTTP/3 errors */
 #define NGX_HTTP_V3_ERR_NO_ERROR                   0x100
@@ -101,7 +104,7 @@ typedef struct {
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
-    ngx_uint_t                    max_uni_streams;
+    ngx_uint_t                    max_concurrent_streams;
 #if (NGX_HTTP_V3_HQ)
     ngx_flag_t                    hq;
 #endif
