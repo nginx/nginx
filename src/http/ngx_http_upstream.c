@@ -525,7 +525,7 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 #endif
 
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
     if (c->quic) {
         ngx_http_upstream_init_request(r);
         return;
@@ -1365,7 +1365,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     }
 #endif
 
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
 
     if (c->quic) {
         if (c->write->error) {

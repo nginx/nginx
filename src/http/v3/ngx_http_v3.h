@@ -22,6 +22,9 @@
 #define NGX_HTTP_V3_ALPN_PROTO                     "\x02h3"
 #define NGX_HTTP_V3_ALPN_DRAFT_FMT                 "\x05h3-%02uD"
 
+#define NGX_HTTP_QUIC_ALPN_PROTO                   "\x0Ahq-interop"
+#define NGX_HTTP_QUIC_ALPN_DRAFT_FMT               "\x05hq-%02uD"
+
 #define NGX_HTTP_V3_VARLEN_INT_LEN                 4
 #define NGX_HTTP_V3_PREFIX_INT_LEN                 11
 
@@ -74,6 +77,9 @@
 #define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
 
 
+#define ngx_http_quic_get_connection(c)                                       \
+    ((ngx_http_connection_t *) (c)->quic->parent->data)
+
 #define ngx_http_v3_get_session(c)  ngx_http_quic_get_connection(c)->v3_session
 
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
@@ -90,15 +96,13 @@
 #define ngx_http_v3_shutdown_connection(c, code, reason)                      \
     ngx_quic_shutdown_connection(c->quic->parent, code, reason)
 
-#define ngx_http_v3_connection(c)                                             \
-    ((c)->quic ? ngx_http_quic_get_connection(c)->addr_conf->http3 : 0)
-
 
 typedef struct {
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
     ngx_uint_t                    max_uni_streams;
+    ngx_quic_conf_t               quic;
 } ngx_http_v3_srv_conf_t;
 
 

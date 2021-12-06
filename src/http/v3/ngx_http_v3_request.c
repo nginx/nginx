@@ -10,6 +10,8 @@
 #include <ngx_http.h>
 
 
+static void ngx_http_v3_init_hq_stream(ngx_connection_t *c);
+static void ngx_http_v3_init_request_stream(ngx_connection_t *c);
 static void ngx_http_v3_wait_request_handler(ngx_event_t *rev);
 static void ngx_http_v3_cleanup_request(void *data);
 static void ngx_http_v3_process_request(ngx_event_t *rev);
@@ -54,12 +56,36 @@ static const struct {
 void
 ngx_http_v3_init(ngx_connection_t *c)
 {
-    uint64_t                   n;
-    ngx_event_t               *rev;
-    ngx_http_connection_t     *hc;
-    ngx_http_v3_session_t     *h3c;
+    ngx_http_connection_t     *hc, *phc;
+    ngx_http_v3_srv_conf_t    *h3scf;
     ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_core_srv_conf_t  *cscf;
+
+    hc = c->data;
+
+    hc->ssl = 1;
+
+    if (c->quic == NULL) {
+        h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+
+        ngx_quic_run(c, &h3scf->quic);
+
+        return;
+    }
+
+    phc = ngx_http_quic_get_connection(c);
+
+    if (phc->ssl_servername) {
+        hc->ssl_servername = phc->ssl_servername;
+        hc->conf_ctx = phc->conf_ctx;
+
+        clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+        ngx_set_connection_log(c, clcf->error_log);
+    }
+
+    if (!hc->addr_conf->http3) {
+        ngx_http_v3_init_hq_stream(c);
+        return;
+    }
 
     if (ngx_http_v3_init_session(c) != NGX_OK) {
         ngx_http_close_connection(c);
@@ -68,8 +94,90 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     if (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         ngx_http_v3_init_uni_stream(c);
+
+    } else  {
+        ngx_http_v3_init_request_stream(c);
+    }
+}
+
+
+static void
+ngx_http_v3_init_hq_stream(ngx_connection_t *c)
+{
+    uint64_t                   n;
+    ngx_event_t               *rev;
+    ngx_http_connection_t     *hc;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init hq stream");
+
+#if (NGX_STAT_STUB)
+    (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
+#endif
+
+    hc = c->data;
+
+    /* Use HTTP/3 General Protocol Error Code 0x101 for finalization */
+
+    if (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+        ngx_quic_finalize_connection(c->quic->parent,
+                                     NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR,
+                                     "unexpected uni stream");
+        ngx_http_close_connection(c);
         return;
     }
+
+    clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+
+    n = c->quic->id >> 2;
+
+    if (n >= clcf->keepalive_requests) {
+        ngx_quic_finalize_connection(c->quic->parent,
+                                     NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR,
+                                     "reached maximum number of requests");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    if (ngx_current_msec - c->quic->parent->start_time
+        > clcf->keepalive_time)
+    {
+        ngx_quic_finalize_connection(c->quic->parent,
+                                     NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR,
+                                     "reached maximum time for requests");
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    rev = c->read;
+
+    if (rev->ready) {
+        rev->handler(rev);
+        return;
+    }
+
+    cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
+
+    ngx_add_timer(rev, cscf->client_header_timeout);
+    ngx_reusable_connection(c, 1);
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_http_close_connection(c);
+        return;
+    }
+}
+
+
+static void
+ngx_http_v3_init_request_stream(ngx_connection_t *c)
+{
+    uint64_t                   n;
+    ngx_event_t               *rev;
+    ngx_http_connection_t     *hc;
+    ngx_http_v3_session_t     *h3c;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init request stream");
 
@@ -279,7 +387,14 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 void
 ngx_http_v3_reset_connection(ngx_connection_t *c)
 {
+    ngx_http_connection_t   *hc;
     ngx_http_v3_srv_conf_t  *h3scf;
+
+    hc = ngx_http_quic_get_connection(c);
+
+    if (!hc->addr_conf->http3) {
+        return;
+    }
 
     h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 

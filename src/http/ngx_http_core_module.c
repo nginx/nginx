@@ -4097,14 +4097,14 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[n].data, "quic") == 0) {
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
             lsopt.quic = 1;
             lsopt.type = SOCK_DGRAM;
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the \"quic\" parameter requires "
-                               "ngx_http_quic_module");
+                               "ngx_http_v3_module");
             return NGX_CONF_ERROR;
 #endif
         }
@@ -4232,7 +4232,7 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 #endif
 
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
     if (lsopt.ssl && lsopt.quic) {
         return "\"ssl\" parameter is incompatible with \"quic\"";
     }

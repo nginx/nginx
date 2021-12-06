@@ -416,7 +416,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     unsigned char *outlen, const unsigned char *in, unsigned int inlen,
     void *arg)
 {
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
     const char             *fmt;
 #endif
     unsigned int            srvlen;
@@ -424,10 +424,10 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
 #if (NGX_DEBUG)
     unsigned int            i;
 #endif
-#if (NGX_HTTP_V2 || NGX_HTTP_QUIC)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
     ngx_http_connection_t  *hc;
 #endif
-#if (NGX_HTTP_V2 || NGX_HTTP_QUIC || NGX_DEBUG)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3 || NGX_DEBUG)
     ngx_connection_t       *c;
 
     c = ngx_ssl_get_connection(ssl_conn);
@@ -441,7 +441,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     }
 #endif
 
-#if (NGX_HTTP_V2 || NGX_HTTP_QUIC)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
     hc = c->data;
 #endif
 
@@ -451,17 +451,14 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
         srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
     } else
 #endif
-#if (NGX_HTTP_QUIC)
-    if (hc->addr_conf->quic) {
 #if (NGX_HTTP_V3)
+    if (hc->addr_conf->quic) {
         if (hc->addr_conf->http3) {
             srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
             fmt = NGX_HTTP_V3_ALPN_DRAFT_FMT;
 
-        } else
-#endif
-        {
+        } else {
             srv = (unsigned char *) NGX_HTTP_QUIC_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_QUIC_ALPN_PROTO) - 1;
             fmt = NGX_HTTP_QUIC_ALPN_DRAFT_FMT;

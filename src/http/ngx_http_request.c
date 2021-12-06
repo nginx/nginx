@@ -316,14 +316,6 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     c->log_error = NGX_ERROR_INFO;
 
-#if (NGX_HTTP_QUIC)
-    if (hc->addr_conf->quic) {
-        if (ngx_http_quic_init(c) == NGX_DONE) {
-            return;
-        }
-    }
-#endif
-
     rev = c->read;
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
@@ -335,7 +327,7 @@ ngx_http_init_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_HTTP_V3)
-    if (hc->addr_conf->http3) {
+    if (hc->addr_conf->quic) {
         ngx_http_v3_init(c);
         return;
     }
@@ -2746,7 +2738,7 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
     }
 #endif
 
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
     if (r->connection->quic) {
         ngx_http_close_request(r, 0);
         return;
@@ -2967,7 +2959,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
 #endif
 
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
 
     if (c->quic) {
         if (c->read->error) {
@@ -3732,7 +3724,7 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
     log->action = "closing request";
 
     if (r->connection->timedout
-#if (NGX_HTTP_QUIC)
+#if (NGX_HTTP_V3)
         && r->connection->quic == NULL
 #endif
        )
@@ -3810,7 +3802,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_HTTP_V3)
-    if (ngx_http_v3_connection(c)) {
+    if (c->quic) {
         ngx_http_v3_reset_connection(c);
     }
 #endif

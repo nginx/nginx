@@ -437,9 +437,11 @@ if [ $HTTP = YES ]; then
     fi
 
     if [ $HTTP_V3 = YES ]; then
+        USE_OPENSSL_QUIC=YES
+        HTTP_SSL=YES
+
         have=NGX_HTTP_V3 . auto/have
         have=NGX_HTTP_HEADERS . auto/have
-        HTTP_QUIC=YES
 
         ngx_module_name=ngx_http_v3_module
         ngx_module_incs=src/http/v3
@@ -709,21 +711,6 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_rewrite_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_REWRITE
-
-        . auto/module
-    fi
-
-    if [ $HTTP_QUIC = YES ]; then
-        USE_OPENSSL_QUIC=YES
-        have=NGX_HTTP_QUIC . auto/have
-        HTTP_SSL=YES
-
-        ngx_module_name=ngx_http_quic_module
-        ngx_module_incs=
-        ngx_module_deps=src/http/modules/ngx_http_quic_module.h
-        ngx_module_srcs=src/http/modules/ngx_http_quic_module.c
-        ngx_module_libs=
-        ngx_module_link=$HTTP_QUIC
 
         . auto/module
     fi
