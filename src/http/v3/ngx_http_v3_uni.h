@@ -5,8 +5,8 @@
  */
 
 
-#ifndef _NGX_HTTP_V3_STREAMS_H_INCLUDED_
-#define _NGX_HTTP_V3_STREAMS_H_INCLUDED_
+#ifndef _NGX_HTTP_V3_UNI_H_INCLUDED_
+#define _NGX_HTTP_V3_UNI_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -35,4 +35,4 @@ ngx_int_t ngx_http_v3_send_inc_insert_count(ngx_connection_t *c,
     ngx_uint_t inc);
 
 
-#endif /* _NGX_HTTP_V3_STREAMS_H_INCLUDED_ */
+#endif /* _NGX_HTTP_V3_UNI_H_INCLUDED_ */

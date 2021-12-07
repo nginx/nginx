@@ -15,8 +15,8 @@
 
 #include <ngx_http_v3_parse.h>
 #include <ngx_http_v3_encode.h>
-#include <ngx_http_v3_streams.h>
-#include <ngx_http_v3_tables.h>
+#include <ngx_http_v3_uni.h>
+#include <ngx_http_v3_table.h>
 
 
 #define NGX_HTTP_V3_ALPN_PROTO                     "\x02h3"

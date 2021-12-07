@@ -5,8 +5,8 @@
  */
 
 
-#ifndef _NGX_HTTP_V3_TABLES_H_INCLUDED_
-#define _NGX_HTTP_V3_TABLES_H_INCLUDED_
+#ifndef _NGX_HTTP_V3_TABLE_H_INCLUDED_
+#define _NGX_HTTP_V3_TABLE_H_INCLUDED_
 
 
 #include <ngx_config.h>
@@ -50,4 +50,4 @@ ngx_int_t ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id,
     uint64_t value);
 
 
-#endif /* _NGX_HTTP_V3_TABLES_H_INCLUDED_ */
+#endif /* _NGX_HTTP_V3_TABLE_H_INCLUDED_ */
