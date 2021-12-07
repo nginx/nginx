@@ -405,7 +405,9 @@ ngx_http_v3_reset_connection(ngx_connection_t *c)
     }
 #endif
 
-    if (h3scf->max_table_capacity > 0 && !c->read->eof) {
+    if (h3scf->max_table_capacity > 0 && !c->read->eof
+        && (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
+    {
         (void) ngx_http_v3_send_cancel_stream(c, c->quic->id);
     }
 
