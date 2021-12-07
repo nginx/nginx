@@ -649,7 +649,8 @@ failed:
 }
 
 
-int ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
+ngx_int_t
+ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     ngx_quic_keys_t *keys, enum ssl_encryption_level_t level,
     const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len)
 {
@@ -667,11 +668,7 @@ int ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
 
     if (key_len == NGX_ERROR) {
         ngx_ssl_error(NGX_LOG_INFO, pool->log, 0, "unexpected cipher");
-        return 0;
-    }
-
-    if (level == ssl_encryption_initial) {
-        return 0;
+        return NGX_ERROR;
     }
 
     peer_secret->secret.data = ngx_pnalloc(pool, secret_len);
@@ -702,11 +699,11 @@ int ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
                                  seq[i].secret, secret_len)
             != NGX_OK)
         {
-            return 0;
+            return NGX_ERROR;
         }
     }
 
-    return 1;
+    return NGX_OK;
 }
 
 

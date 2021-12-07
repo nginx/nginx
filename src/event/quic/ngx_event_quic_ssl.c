@@ -75,7 +75,7 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
 
     if (ngx_quic_keys_set_encryption_secret(c->pool, 0, qc->keys, level,
                                             cipher, rsecret, secret_len)
-        != 1)
+        != NGX_OK)
     {
         return 0;
     }
@@ -109,8 +109,14 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
                    secret_len, wsecret);
 #endif
 
-    return ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
-                                               cipher, wsecret, secret_len);
+    if (ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
+                                            cipher, wsecret, secret_len)
+        != NGX_OK)
+    {
+        return 0;
+    }
+
+    return 1;
 }
 
 #else
@@ -139,7 +145,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
     if (ngx_quic_keys_set_encryption_secret(c->pool, 0, qc->keys, level,
                                             cipher, rsecret, secret_len)
-        != 1)
+        != NGX_OK)
     {
         return 0;
     }
@@ -158,8 +164,14 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
                    secret_len, wsecret);
 #endif
 
-    return ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
-                                               cipher, wsecret, secret_len);
+    if (ngx_quic_keys_set_encryption_secret(c->pool, 1, qc->keys, level,
+                                            cipher, wsecret, secret_len)
+        != NGX_OK)
+    {
+        return 0;
+    }
+
+    return 1;
 }
 
 #endif
