@@ -238,7 +238,6 @@ struct ngx_http_addr_conf_s {
     ngx_http_virtual_names_t  *virtual_names;
 
     unsigned                   ssl:1;
-    unsigned                   quic:1;
     unsigned                   http2:1;
     unsigned                   http3:1;
     unsigned                   proxy_protocol:1;
