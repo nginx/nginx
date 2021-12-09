@@ -256,21 +256,8 @@ if [ $ngx_found = yes ]; then
     CORE_SRCS="$CORE_SRCS src/core/ngx_bpf.c"
     CORE_DEPS="$CORE_DEPS src/core/ngx_bpf.h"
 
-    # quic bpf module uses sockhash to select socket from reuseport group,
-    # support appeared in Linux 5.7:
-    #
-    # commit: 9fed9000c5c6cacfcaaa48aff74818072ae294cc
-    # bpf: Allow selecting reuseport socket from a SOCKMAP/SOCKHASH
-
     if [ $QUIC_BPF != NONE ]; then
-        echo $ngx_n "checking for BPF sockhash support in kernel ...$ngx_c"
-        if [ $version -lt 329472 ]; then
-            echo " not found (at least 5.7 is required)"
-            QUIC_BPF=NO
-        else
-            echo " found"
-            QUIC_BPF=YES
-        fi
+        QUIC_BPF=YES
     fi
 fi
 
