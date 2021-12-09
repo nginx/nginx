@@ -1365,7 +1365,7 @@ if [ $USE_OPENSSL_QUIC = YES ]; then
 
     . auto/module
 
-    if [ $NGX_QUIC_BPF$BPF_FOUND$SO_COOKIE_FOUND = YESYESYES ]; then
+    if [ $QUIC_BPF = YES -a $SO_COOKIE_FOUND = YES ]; then
         ngx_module_type=CORE
         ngx_module_name=ngx_quic_bpf_module
         ngx_module_incs=

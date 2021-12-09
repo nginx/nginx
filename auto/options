@@ -45,7 +45,7 @@ USE_THREADS=NO
 
 NGX_FILE_AIO=NO
 
-NGX_QUIC_BPF=YES
+QUIC_BPF=NO
 
 HTTP=YES
 
@@ -170,7 +170,6 @@ USE_GEOIP=NO
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
 
-BPF_FOUND=NO
 SO_COOKIE_FOUND=NO
 
 NGX_LIBATOMIC=NO
@@ -218,7 +217,7 @@ do
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
 
-        --without-quic_bpf_module)       NGX_QUIC_BPF=NO            ;;
+        --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
 
         --with-ipv6)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG

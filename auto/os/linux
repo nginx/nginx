@@ -235,33 +235,45 @@ ngx_include="sys/vfs.h";     . auto/include
 CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 
-# (E)BPF
+# BPF sockhash
 
-ngx_feature="BPF support"
+ngx_feature="BPF sockhash"
 ngx_feature_name="NGX_HAVE_BPF"
 ngx_feature_run=no
 ngx_feature_incs="#include <linux/bpf.h>
                   #include <sys/syscall.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="
-    union bpf_attr attr = { 0 };
-    /* only declare BPF support if all required features found */
-    attr.map_flags = 0;
-    attr.map_type = BPF_MAP_TYPE_SOCKHASH;
-    syscall(__NR_bpf, 0, &attr, 0);"
+ngx_feature_test="union bpf_attr attr = { 0 };
 
+                  attr.map_flags = 0;
+                  attr.map_type = BPF_MAP_TYPE_SOCKHASH;
+
+                  syscall(__NR_bpf, 0, &attr, 0);"
 . auto/feature
 
 if [ $ngx_found = yes ]; then
-    BPF_FOUND=YES
-
     CORE_SRCS="$CORE_SRCS src/core/ngx_bpf.c"
     CORE_DEPS="$CORE_DEPS src/core/ngx_bpf.h"
+
+    # quic bpf module uses sockhash to select socket from reuseport group,
+    # support appeared in Linux 5.7:
+    #
+    # commit: 9fed9000c5c6cacfcaaa48aff74818072ae294cc
+    # bpf: Allow selecting reuseport socket from a SOCKMAP/SOCKHASH
+
+    if [ $QUIC_BPF != NONE ]; then
+        echo $ngx_n "checking for BPF sockhash support in kernel ...$ngx_c"
+        if [ $version -lt 329472 ]; then
+            echo " not found (at least 5.7 is required)"
+            QUIC_BPF=NO
+        else
+            echo " found"
+            QUIC_BPF=YES
+        fi
+    fi
 fi
 
-
-# SO_COOKIE socket option
 
 ngx_feature="SO_COOKIE"
 ngx_feature_name="NGX_HAVE_SO_COOKIE"
@@ -271,17 +283,16 @@ ngx_feature_incs="#include <sys/socket.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="socklen_t optlen = sizeof(uint64_t);
-              uint64_t cookie;
-              getsockopt(0, SOL_SOCKET, SO_COOKIE, &cookie, &optlen)"
+                  uint64_t cookie;
+                  getsockopt(0, SOL_SOCKET, SO_COOKIE, &cookie, &optlen)"
 . auto/feature
 
 if [ $ngx_found = yes ]; then
     SO_COOKIE_FOUND=YES
-    have=NGX_HAVE_SO_COOKIE . auto/have
 fi
 
 
-# UDP_SEGMENT socket option is used for segmentation offloading
+# UDP segmentation offloading
 
 ngx_feature="UDP_SEGMENT"
 ngx_feature_name="NGX_HAVE_UDP_SEGMENT"
@@ -292,29 +303,6 @@ ngx_feature_incs="#include <sys/socket.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="socklen_t optlen = sizeof(int);
-              int val;
-              getsockopt(0, SOL_UDP, UDP_SEGMENT, &val, &optlen)"
+                  int val;
+                  getsockopt(0, SOL_UDP, UDP_SEGMENT, &val, &optlen)"
 . auto/feature
-
-if [ $ngx_found = yes ]; then
-    UDP_SEGMENT_FOUND=YES
-    have=NGX_HAVE_UDP_SEGMENT . auto/have
-fi
-
-
-# ngx_quic_bpf module uses sockhash to select socket from reuseport group,
-# support appeared in Linux-5.7:
-#
-# commit: 9fed9000c5c6cacfcaaa48aff74818072ae294cc
-# bpf: Allow selecting reuseport socket from a SOCKMAP/SOCKHASH
-#
-if [ $NGX_QUIC_BPF$BPF_FOUND = YESYES ]; then
-    echo $ngx_n "checking for kernel with reuseport/BPF support...$ngx_c"
-    if [ $version -lt 329472 ]; then
-        echo " not found (at least 5.7 is required)"
-        NGX_QUIC_BPF=NO
-    else
-        echo " found"
-    fi
-fi
-
