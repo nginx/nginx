@@ -24,8 +24,6 @@ ngx_int_t
 ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_path_challenge_frame_t *f)
 {
-    off_t                   max, pad;
-    ssize_t                 sent;
     ngx_quic_path_t        *path;
     ngx_quic_frame_t        frame, *fp;
     ngx_quic_socket_t      *qsock;
@@ -49,25 +47,10 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     /*
      * An endpoint MUST expand datagrams that contain a PATH_RESPONSE frame
      * to at least the smallest allowed maximum datagram size of 1200 bytes.
-     * ...
-     * An endpoint MUST NOT expand the datagram containing the PATH_RESPONSE
-     * if the resulting data exceeds the anti-amplification limit.
      */
-    if (path->state != NGX_QUIC_PATH_VALIDATED) {
-        max = path->received * 3;
-        max = (path->sent >= max) ? 0 : max - path->sent;
-        pad = ngx_min(1200, max);
-
-    } else {
-        pad = 1200;
-    }
-
-    sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent < 0) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, path) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    path->sent += sent;
 
     if (qsock == qc->socket) {
         /*
@@ -535,8 +518,6 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 static ngx_int_t
 ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
-    off_t             max, pad;
-    ssize_t           sent;
     ngx_quic_frame_t  frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -558,29 +539,15 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
      */
 
      /* same applies to PATH_RESPONSE frames */
-
-    max = path->received * 3;
-    max = (path->sent >= max) ? 0 : max - path->sent;
-    pad = ngx_min(1200, max);
-
-    sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent < 0) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, path) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    path->sent += sent;
 
     ngx_memcpy(frame.u.path_challenge.data, path->challenge2, 8);
 
-    max = (path->sent >= max) ? 0 : max - path->sent;
-    pad = ngx_min(1200, max);
-
-    sent = ngx_quic_frame_sendto(c, &frame, pad, path->sockaddr, path->socklen);
-    if (sent < 0) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, path) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    path->sent += sent;
 
     return NGX_OK;
 }

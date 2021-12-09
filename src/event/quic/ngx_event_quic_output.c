@@ -1208,12 +1208,13 @@ ngx_quic_send_ack_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 }
 
 
-ssize_t
+ngx_int_t
 ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
-    size_t min, struct sockaddr *sockaddr, socklen_t socklen)
+    size_t min, ngx_quic_path_t *path)
 {
+    off_t                   max;
     size_t                  min_payload, pad;
-    ssize_t                 len;
+    ssize_t                 len, sent;
     ngx_str_t               res;
     ngx_quic_header_t       pkt;
     ngx_quic_send_ctx_t    *ctx;
@@ -1227,6 +1228,15 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     ngx_quic_init_packet(c, ctx, qc->socket, &pkt);
 
+    /* account for anti-amplification limit: expand to allowed size */
+    if (path->state != NGX_QUIC_PATH_VALIDATED) {
+        max = path->received * 3;
+        max = (path->sent >= max) ? 0 : max - path->sent;
+        if ((off_t) min > max) {
+            min = max;
+        }
+    }
+
     min_payload = min ? ngx_quic_payload_size(&pkt, min) : 0;
 
     pad = 4 - pkt.num_len;
@@ -1234,14 +1244,14 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     len = ngx_quic_create_frame(NULL, frame);
     if (len > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE) {
-        return -1;
+        return NGX_ERROR;
     }
 
     ngx_quic_log_frame(c->log, frame, 1);
 
     len = ngx_quic_create_frame(src, frame);
     if (len == -1) {
-        return -1;
+        return NGX_ERROR;
     }
 
     if (len < (ssize_t) min_payload) {
@@ -1255,10 +1265,17 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     res.data = dst;
 
     if (ngx_quic_encrypt(&pkt, &res) != NGX_OK) {
-        return -1;
+        return NGX_ERROR;
     }
 
     ctx->pnum++;
 
-    return ngx_quic_send(c, res.data, res.len, sockaddr, socklen);
+    sent = ngx_quic_send(c, res.data, res.len, path->sockaddr, path->socklen);
+    if (sent < 0) {
+        return NGX_ERROR;
+    }
+
+    path->sent += sent;
+
+    return NGX_OK;
 }

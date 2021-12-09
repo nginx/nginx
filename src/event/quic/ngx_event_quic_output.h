@@ -34,7 +34,7 @@ ngx_int_t ngx_quic_send_ack(ngx_connection_t *c,
 ngx_int_t ngx_quic_send_ack_range(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, uint64_t smallest, uint64_t largest);
 
-ssize_t ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
-    size_t min, struct sockaddr *sockaddr, socklen_t socklen);
+ngx_int_t ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
+    size_t min, ngx_quic_path_t *path);
 
 #endif /* _NGX_EVENT_QUIC_OUTPUT_H_INCLUDED_ */
