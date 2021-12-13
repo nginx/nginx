@@ -158,6 +158,7 @@ valid:
                    "quic path #%uL successfully validated", path->seqnum);
 
     path->state = NGX_QUIC_PATH_VALIDATED;
+    path->limited = 0;
 
     return NGX_OK;
 }
@@ -214,6 +215,9 @@ ngx_quic_add_path(ngx_connection_t *c, struct sockaddr *sockaddr,
     if (path == NULL) {
         return NULL;
     }
+
+    path->state = NGX_QUIC_PATH_NEW;
+    path->limited = 1;
 
     path->seqnum = qc->path_seqnum++;
     path->last_seen = ngx_current_msec;
@@ -332,6 +336,7 @@ update:
         /* force limits/revalidation for paths that were not seen recently */
         if (ngx_current_msec - path->last_seen > qc->tp.max_idle_timeout) {
             path->state = NGX_QUIC_PATH_NEW;
+            path->limited = 1;
             path->sent = 0;
             path->received = 0;
         }
@@ -350,11 +355,11 @@ update:
      */
     path->received += len;
 
-    ngx_log_debug6(NGX_LOG_DEBUG_EVENT, c->log, 0,
+    ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic packet via #%uL:%uL:%uL"
-                   " size:%O path recvd:%O sent:%O",
+                   " size:%O path recvd:%O sent:%O limited:%ui",
                    qsock->sid.seqnum, qsock->cid->seqnum, path->seqnum,
-                   len, path->received, path->sent);
+                   len, path->received, path->sent, path->limited);
 
     return NGX_OK;
 }
@@ -607,6 +612,7 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
         /* found expired path */
 
         path->state = NGX_QUIC_PATH_NEW;
+        path->limited = 1;
 
         /*
          * RFC 9000, 9.4.  Loss Detection and Congestion Control

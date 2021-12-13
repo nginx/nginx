@@ -160,7 +160,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
         len = ngx_min(qc->ctp.max_udp_payload_size,
                       NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
-        if (path->state != NGX_QUIC_PATH_VALIDATED) {
+        if (path->limited) {
             max = path->received * 3;
             max = (path->sent >= max) ? 0 : max - path->sent;
 
@@ -294,7 +294,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
         return 0;
     }
 
-    if (qsock->path->state != NGX_QUIC_PATH_VALIDATED) {
+    if (qsock->path->limited) {
         /* don't even try to be faster on non-validated paths */
         return 0;
     }
@@ -1229,7 +1229,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     ngx_quic_init_packet(c, ctx, qc->socket, &pkt);
 
     /* account for anti-amplification limit: expand to allowed size */
-    if (path->state != NGX_QUIC_PATH_VALIDATED) {
+    if (path->limited) {
         max = path->received * 3;
         max = (path->sent >= max) ? 0 : max - path->sent;
         if ((off_t) min > max) {

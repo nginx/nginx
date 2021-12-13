@@ -82,6 +82,7 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
     if (pkt->validated) {
         path->state = NGX_QUIC_PATH_VALIDATED;
+        path->limited = 0;
     }
 
     /* now bind socket to client and path */

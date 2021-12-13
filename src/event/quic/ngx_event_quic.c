@@ -1013,6 +1013,7 @@ ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         if (qc->socket->path->state != NGX_QUIC_PATH_VALIDATED) {
             qc->socket->path->state = NGX_QUIC_PATH_VALIDATED;
+            qc->socket->path->limited = 0;
             ngx_post_event(&qc->push, &ngx_posted_events);
         }
     }

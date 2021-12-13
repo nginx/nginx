@@ -85,6 +85,7 @@ struct ngx_quic_path_s {
     struct sockaddr                  *sockaddr;
     socklen_t                         socklen;
     ngx_uint_t                        state;
+    ngx_uint_t                        limited; /* unsigned  limited:1; */
     ngx_msec_t                        expires;
     ngx_msec_t                        last_seen;
     ngx_uint_t                        tries;
