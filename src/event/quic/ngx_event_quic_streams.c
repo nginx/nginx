@@ -13,6 +13,8 @@
 #define NGX_QUIC_STREAM_GONE     (void *) -1
 
 
+static ngx_int_t ngx_quic_shutdown_stream_send(ngx_connection_t *c);
+static ngx_int_t ngx_quic_shutdown_stream_recv(ngx_connection_t *c);
 static ngx_quic_stream_t *ngx_quic_get_stream(ngx_connection_t *c, uint64_t id);
 static ngx_int_t ngx_quic_reject_stream(ngx_connection_t *c, uint64_t id);
 static void ngx_quic_init_stream_handler(ngx_event_t *ev);
@@ -257,15 +259,42 @@ ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
 ngx_int_t
 ngx_quic_shutdown_stream(ngx_connection_t *c, int how)
 {
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    if (how == NGX_RDWR_SHUTDOWN || how == NGX_WRITE_SHUTDOWN) {
+        if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED)
+            || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
+        {
+            if (ngx_quic_shutdown_stream_send(c) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    if (how == NGX_RDWR_SHUTDOWN || how == NGX_READ_SHUTDOWN) {
+        if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0
+            || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
+        {
+            if (ngx_quic_shutdown_stream_recv(c) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_shutdown_stream_send(ngx_connection_t *c)
+{
     ngx_event_t            *wev;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
-
-    if (how != NGX_WRITE_SHUTDOWN) {
-        return NGX_OK;
-    }
 
     wev = c->write;
 
@@ -283,7 +312,7 @@ ngx_quic_shutdown_stream(ngx_connection_t *c, int how)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id:0x%xL shutdown", qs->id);
+                   "quic stream id:0x%xL send shutdown", qs->id);
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_STREAM;
@@ -297,8 +326,51 @@ ngx_quic_shutdown_stream(ngx_connection_t *c, int how)
 
     ngx_quic_queue_frame(qc, frame);
 
-    wev->ready = 1;
     wev->error = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_shutdown_stream_recv(ngx_connection_t *c)
+{
+    ngx_event_t            *rev;
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    rev = c->read;
+
+    if (rev->pending_eof || rev->error) {
+        return NGX_OK;
+    }
+
+    qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    if (qc->conf->stream_close_code == 0) {
+        return NGX_OK;
+    }
+
+    frame = ngx_quic_alloc_frame(pc);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id:0x%xL recv shutdown", qs->id);
+
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_STOP_SENDING;
+    frame->u.stop_sending.id = qs->id;
+    frame->u.stop_sending.error_code = qc->conf->stream_close_code;
+
+    ngx_quic_queue_frame(qc, frame);
+
+    rev->error = 1;
 
     return NGX_OK;
 }
@@ -916,29 +988,9 @@ ngx_quic_stream_cleanup_handler(void *data)
         goto done;
     }
 
-    c->read->pending_eof = 1;
+    (void) ngx_quic_shutdown_stream(c, NGX_RDWR_SHUTDOWN);
 
     (void) ngx_quic_update_flow(c, qs->recv_last);
-
-    if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0
-        || (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
-    {
-        if (!c->read->pending_eof && !c->read->error
-            && qc->conf->stream_close_code)
-        {
-            frame = ngx_quic_alloc_frame(pc);
-            if (frame == NULL) {
-                goto done;
-            }
-
-            frame->level = ssl_encryption_application;
-            frame->type = NGX_QUIC_FT_STOP_SENDING;
-            frame->u.stop_sending.id = qs->id;
-            frame->u.stop_sending.error_code = qc->conf->stream_close_code;
-
-            ngx_quic_queue_frame(qc, frame);
-        }
-    }
 
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
         frame = ngx_quic_alloc_frame(pc);
@@ -959,36 +1011,7 @@ ngx_quic_stream_cleanup_handler(void *data)
         }
 
         ngx_quic_queue_frame(qc, frame);
-
-        if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
-            /* do not send fin for client unidirectional streams */
-            goto done;
-        }
     }
-
-    if (c->write->error) {
-        goto done;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic stream id:0x%xL send fin", qs->id);
-
-    frame = ngx_quic_alloc_frame(pc);
-    if (frame == NULL) {
-        goto done;
-    }
-
-    frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_STREAM;
-    frame->u.stream.off = 1;
-    frame->u.stream.len = 1;
-    frame->u.stream.fin = 1;
-
-    frame->u.stream.stream_id = qs->id;
-    frame->u.stream.offset = c->sent;
-    frame->u.stream.length = 0;
-
-    ngx_quic_queue_frame(qc, frame);
 
 done:
 
