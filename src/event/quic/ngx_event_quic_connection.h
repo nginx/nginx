@@ -86,6 +86,7 @@ struct ngx_quic_path_s {
     socklen_t                         socklen;
     ngx_uint_t                        state;
     ngx_msec_t                        expires;
+    ngx_msec_t                        last_seen;
     ngx_uint_t                        tries;
     off_t                             sent;
     off_t                             received;
@@ -93,7 +94,6 @@ struct ngx_quic_path_s {
     u_char                            challenge2[8];
     ngx_uint_t                        refcnt;
     uint64_t                          seqnum;
-    time_t                            validated_at;
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
 };

@@ -158,7 +158,6 @@ valid:
                    "quic path #%uL successfully validated", path->seqnum);
 
     path->state = NGX_QUIC_PATH_VALIDATED;
-    path->validated_at = ngx_time();
 
     return NGX_OK;
 }
@@ -217,6 +216,7 @@ ngx_quic_add_path(ngx_connection_t *c, struct sockaddr *sockaddr,
     }
 
     path->seqnum = qc->path_seqnum++;
+    path->last_seen = ngx_current_msec;
 
     path->socklen = socklen;
     ngx_memcpy(path->sockaddr, sockaddr, socklen);
@@ -272,6 +272,7 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
 
+    qc = ngx_quic_get_connection(c);
     qsock = ngx_quic_get_socket(c);
 
     if (c->udp->dgram == NULL) {
@@ -313,7 +314,6 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
         cid = ngx_quic_used_client_id(c, path);
         if (cid == NULL) {
 
-            qc = ngx_quic_get_connection(c);
             qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
             qc->error_reason = "no available client ids for new path";
 
@@ -327,6 +327,17 @@ ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_connect(c, qsock, path, cid);
 
 update:
+
+    if (path->state != NGX_QUIC_PATH_NEW) {
+        /* force limits/revalidation for paths that were not seen recently */
+        if (ngx_current_msec - path->last_seen > qc->tp.max_idle_timeout) {
+            path->state = NGX_QUIC_PATH_NEW;
+            path->sent = 0;
+            path->received = 0;
+        }
+    }
+
+    path->last_seen = ngx_current_msec;
 
     len = pkt->raw->last - pkt->raw->start;
 
@@ -396,31 +407,10 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
                    qsock->sid.seqnum, qsock->cid->seqnum, next->seqnum,
                    ngx_quic_path_state_str(next));
 
-    switch (next->state) {
-    case NGX_QUIC_PATH_NEW:
+    if (next->state == NGX_QUIC_PATH_NEW) {
         if (ngx_quic_validate_path(c, qsock) != NGX_OK) {
             return NGX_ERROR;
         }
-        break;
-
-    /* migration to previously known path */
-
-    case NGX_QUIC_PATH_VALIDATING:
-        /* alredy validating, nothing to do */
-        break;
-
-    case NGX_QUIC_PATH_VALIDATED:
-        /* if path is old enough, revalidate */
-        if (ngx_time() - next->validated_at > NGX_QUIC_PATH_VALID_TIME) {
-
-            next->state = NGX_QUIC_PATH_NEW;
-
-            if (ngx_quic_validate_path(c, qsock) != NGX_OK) {
-                return NGX_ERROR;
-            }
-        }
-
-        break;
     }
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);

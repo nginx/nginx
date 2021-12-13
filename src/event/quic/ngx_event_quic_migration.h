@@ -17,8 +17,6 @@
 #define NGX_QUIC_PATH_VALIDATING       1
 #define NGX_QUIC_PATH_VALIDATED        2
 
-#define NGX_QUIC_PATH_VALID_TIME       600 /* seconds */
-
 
 #define ngx_quic_path_state_str(p)                                            \
     ((p)->state == NGX_QUIC_PATH_NEW) ? "new" :                               \
