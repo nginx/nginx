@@ -777,7 +777,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         buf = ngx_cpymem(buf, b->pos, b->last - b->pos);
     }
 
-    ngx_quic_free_bufs(pc, in);
+    ngx_quic_free_chain(pc, in);
 
     if (qs->in == NULL) {
         rev->ready = rev->pending_eof;
@@ -975,8 +975,8 @@ ngx_quic_stream_cleanup_handler(void *data)
                    "quic stream id:0x%xL cleanup", qs->id);
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
-    ngx_quic_free_bufs(pc, qs->in);
-    ngx_quic_free_bufs(pc, qs->out);
+    ngx_quic_free_chain(pc, qs->in);
+    ngx_quic_free_chain(pc, qs->out);
 
     if (qc->closing) {
         /* schedule handler call to continue ngx_quic_close_connection() */
@@ -1079,7 +1079,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (f->offset < qs->recv_offset) {
-        ngx_quic_trim_bufs(frame->data, qs->recv_offset - f->offset);
+        ngx_quic_trim_chain(frame->data, qs->recv_offset - f->offset);
         f->offset = qs->recv_offset;
     }
 

@@ -66,7 +66,7 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
     qc = ngx_quic_get_connection(c);
 
     if (frame->data) {
-        ngx_quic_free_bufs(c, frame->data);
+        ngx_quic_free_chain(c, frame->data);
     }
 
     ngx_queue_insert_head(&qc->free_frames, &frame->queue);
@@ -79,7 +79,7 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
 
 
 void
-ngx_quic_trim_bufs(ngx_chain_t *in, size_t size)
+ngx_quic_trim_chain(ngx_chain_t *in, size_t size)
 {
     size_t      n;
     ngx_buf_t  *b;
@@ -99,7 +99,7 @@ ngx_quic_trim_bufs(ngx_chain_t *in, size_t size)
 
 
 void
-ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in)
+ngx_quic_free_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     ngx_buf_t              *b, *shadow;
     ngx_chain_t            *cl;
@@ -347,7 +347,7 @@ split:
 
 
 ngx_chain_t *
-ngx_quic_alloc_buf(ngx_connection_t *c)
+ngx_quic_alloc_chain(ngx_connection_t *c)
 {
     ngx_buf_t              *b;
     ngx_chain_t            *cl;
@@ -381,7 +381,7 @@ ngx_quic_alloc_buf(ngx_connection_t *c)
         return NULL;
     }
 
-    b->tag = (ngx_buf_tag_t) &ngx_quic_alloc_buf;
+    b->tag = (ngx_buf_tag_t) &ngx_quic_alloc_chain;
 
     cl->buf = b;
 
@@ -407,7 +407,7 @@ ngx_quic_copy_buf(ngx_connection_t *c, u_char *data, size_t len)
     ll = &out;
 
     while (len) {
-        cl = ngx_quic_alloc_buf(c);
+        cl = ngx_quic_alloc_chain(c);
         if (cl == NULL) {
             return NGX_CHAIN_ERROR;
         }
@@ -446,7 +446,7 @@ ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in, size_t limit)
             continue;
         }
 
-        cl = ngx_quic_alloc_buf(c);
+        cl = ngx_quic_alloc_chain(c);
         if (cl == NULL) {
             return NGX_CHAIN_ERROR;
         }
@@ -502,7 +502,7 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
         cl = *chain;
 
         if (cl == NULL) {
-            cl = ngx_quic_alloc_buf(c);
+            cl = ngx_quic_alloc_chain(c);
             if (cl == NULL) {
                 return NGX_CHAIN_ERROR;
             }

@@ -379,13 +379,13 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    ngx_quic_trim_bufs(frame->data, ctx->crypto_received - f->offset);
+    ngx_quic_trim_chain(frame->data, ctx->crypto_received - f->offset);
 
     if (ngx_quic_crypto_input(c, frame->data) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    ngx_quic_trim_bufs(ctx->crypto, last - ctx->crypto_received);
+    ngx_quic_trim_chain(ctx->crypto, last - ctx->crypto_received);
     ctx->crypto_received = last;
 
     cl = ctx->crypto;
@@ -413,7 +413,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
             return NGX_ERROR;
         }
 
-        ngx_quic_free_bufs(c, cl);
+        ngx_quic_free_chain(c, cl);
     }
 
     return NGX_OK;

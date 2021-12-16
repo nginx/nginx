@@ -1121,7 +1121,7 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         left = b ? b->end - b->last : 0;
 
         if (left < len) {
-            cl = ngx_quic_alloc_buf(c);
+            cl = ngx_quic_alloc_chain(c);
             if (cl == NULL) {
                 return NGX_ERROR;
             }
