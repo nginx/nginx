@@ -13,7 +13,7 @@
 static void ngx_quic_set_connection_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_validate_path(ngx_connection_t *c,
-    ngx_quic_socket_t *qsock);
+    ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_send_path_challenge(ngx_connection_t *c,
     ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_path_restore(ngx_connection_t *c);
@@ -422,7 +422,7 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
                    ngx_quic_path_state_str(next));
 
     if (next->state == NGX_QUIC_PATH_NEW) {
-        if (ngx_quic_validate_path(c, qsock) != NGX_OK) {
+        if (ngx_quic_validate_path(c, qsock->path) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -478,16 +478,13 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 
 static ngx_int_t
-ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     ngx_msec_t              pto;
-    ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
-
-    path = qsock->path;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic initiated validation of new path #%uL",
