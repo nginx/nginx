@@ -26,8 +26,6 @@ ngx_int_t ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f,
 ngx_chain_t *ngx_quic_alloc_chain(ngx_connection_t *c);
 ngx_chain_t *ngx_quic_copy_buf(ngx_connection_t *c, u_char *data,
     size_t len);
-ngx_chain_t *ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in,
-    size_t limit);
 void ngx_quic_trim_chain(ngx_chain_t *in, size_t size);
 void ngx_quic_free_chain(ngx_connection_t *c, ngx_chain_t *in);
 ngx_chain_t *ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain,

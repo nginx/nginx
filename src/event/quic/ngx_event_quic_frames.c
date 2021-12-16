@@ -431,65 +431,6 @@ ngx_quic_copy_buf(ngx_connection_t *c, u_char *data, size_t len)
 
 
 ngx_chain_t *
-ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in, size_t limit)
-{
-    size_t        n;
-    ngx_buf_t    *b;
-    ngx_chain_t  *cl, *out, **ll;
-
-    out = NULL;
-    ll = &out;
-
-    while (in) {
-        if (!ngx_buf_in_memory(in->buf) || ngx_buf_size(in->buf) == 0) {
-            in = in->next;
-            continue;
-        }
-
-        cl = ngx_quic_alloc_chain(c);
-        if (cl == NULL) {
-            return NGX_CHAIN_ERROR;
-        }
-
-        *ll = cl;
-        ll = &cl->next;
-
-        b = cl->buf;
-
-        while (in && b->last != b->end) {
-
-            n = ngx_min(in->buf->last - in->buf->pos, b->end - b->last);
-
-            if (limit > 0 && n > limit) {
-                n = limit;
-            }
-
-            b->last = ngx_cpymem(b->last, in->buf->pos, n);
-
-            in->buf->pos += n;
-            if (in->buf->pos == in->buf->last) {
-                in = in->next;
-            }
-
-            if (limit > 0) {
-                if (limit == n) {
-                    goto done;
-                }
-
-                limit -= n;
-            }
-        }
-    }
-
-done:
-
-    *ll = NULL;
-
-    return out;
-}
-
-
-ngx_chain_t *
 ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
     off_t limit, off_t offset)
 {
