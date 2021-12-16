@@ -81,6 +81,7 @@ ngx_int_t
 ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     ngx_quic_path_challenge_frame_t *f)
 {
+    ngx_uint_t              rst;
     ngx_queue_t            *q;
     ngx_quic_path_t        *path, *prev;
     ngx_quic_connection_t  *qc;
@@ -127,13 +128,21 @@ valid:
      * unless the only change in the peer's address is its port number.
      */
 
-    prev = qc->backup->path;
+    rst = 1;
 
-    if (ngx_cmp_sockaddr(prev->sockaddr, prev->socklen,
-                         path->sockaddr, path->socklen, 0)
-        != NGX_OK)
-    {
-        /* address has changed */
+    if (qc->backup) {
+        prev = qc->backup->path;
+
+        if (ngx_cmp_sockaddr(prev->sockaddr, prev->socklen,
+                             path->sockaddr, path->socklen, 0)
+            == NGX_OK)
+        {
+            /* address did not change */
+            rst = 0;
+        }
+    }
+
+    if (rst) {
         ngx_memzero(&qc->congestion, sizeof(ngx_quic_congestion_t));
 
         qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,
