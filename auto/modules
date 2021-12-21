@@ -102,6 +102,11 @@ if [ $HTTP = YES ]; then
     fi
 
 
+    if [ $HTTP_V2 = YES ]; then
+        HTTP_SRCS="$HTTP_SRCS $HTTP_HUFF_SRCS"
+    fi
+
+
     # the module order is important
     #     ngx_http_static_module
     #     ngx_http_gzip_static_module
@@ -414,8 +419,6 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs="src/http/v2/ngx_http_v2.c \
                          src/http/v2/ngx_http_v2_table.c \
                          src/http/v2/ngx_http_v2_encode.c \
-                         src/http/v2/ngx_http_v2_huff_decode.c \
-                         src/http/v2/ngx_http_v2_huff_encode.c \
                          src/http/v2/ngx_http_v2_module.c"
         ngx_module_libs=
         ngx_module_link=$HTTP_V2

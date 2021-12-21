@@ -1600,10 +1600,10 @@ ngx_http_v2_state_field_huff(ngx_http_v2_connection_t *h2c, u_char *pos,
     h2c->state.length -= size;
     h2c->state.field_rest -= size;
 
-    if (ngx_http_v2_huff_decode(&h2c->state.field_state, pos, size,
-                                &h2c->state.field_end,
-                                h2c->state.field_rest == 0,
-                                h2c->connection->log)
+    if (ngx_http_huff_decode(&h2c->state.field_state, pos, size,
+                             &h2c->state.field_end,
+                             h2c->state.field_rest == 0,
+                             h2c->connection->log)
         != NGX_OK)
     {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
