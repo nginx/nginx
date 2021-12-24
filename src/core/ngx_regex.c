@@ -15,6 +15,9 @@ typedef struct {
 } ngx_regex_conf_t;
 
 
+static ngx_inline void ngx_regex_malloc_init(ngx_pool_t *pool);
+static ngx_inline void ngx_regex_malloc_done(void);
+
 static void * ngx_libc_cdecl ngx_regex_malloc(size_t size);
 static void ngx_libc_cdecl ngx_regex_free(void *p);
 static void ngx_regex_cleanup(void *data);
@@ -64,8 +67,8 @@ ngx_module_t  ngx_regex_module = {
 };
 
 
-static ngx_pool_t  *ngx_pcre_pool;
-static ngx_list_t  *ngx_pcre_studies;
+static ngx_pool_t  *ngx_regex_pool;
+static ngx_list_t  *ngx_regex_studies;
 
 
 void
@@ -79,14 +82,14 @@ ngx_regex_init(void)
 static ngx_inline void
 ngx_regex_malloc_init(ngx_pool_t *pool)
 {
-    ngx_pcre_pool = pool;
+    ngx_regex_pool = pool;
 }
 
 
 static ngx_inline void
 ngx_regex_malloc_done(void)
 {
-    ngx_pcre_pool = NULL;
+    ngx_regex_pool = NULL;
 }
 
 
@@ -112,13 +115,13 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
            rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
                               "pcre_compile() failed: %s in \"%V\"",
                                errstr, &rc->pattern)
-                      - rc->err.data;
+                         - rc->err.data;
 
         } else {
            rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
                               "pcre_compile() failed: %s in \"%V\" at \"%s\"",
                                errstr, &rc->pattern, rc->pattern.data + erroff)
-                      - rc->err.data;
+                         - rc->err.data;
         }
 
         return NGX_ERROR;
@@ -133,8 +136,8 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
 
     /* do not study at runtime */
 
-    if (ngx_pcre_studies != NULL) {
-        elt = ngx_list_push(ngx_pcre_studies);
+    if (ngx_regex_studies != NULL) {
+        elt = ngx_list_push(ngx_regex_studies);
         if (elt == NULL) {
             goto nomem;
         }
@@ -229,11 +232,8 @@ ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log)
 static void * ngx_libc_cdecl
 ngx_regex_malloc(size_t size)
 {
-    ngx_pool_t      *pool;
-    pool = ngx_pcre_pool;
-
-    if (pool) {
-        return ngx_palloc(pool, size);
+    if (ngx_regex_pool) {
+        return ngx_palloc(ngx_regex_pool, size);
     }
 
     return NULL;
@@ -286,10 +286,10 @@ ngx_regex_cleanup(void *data)
 
     /*
      * On configuration parsing errors ngx_regex_module_init() will not
-     * be called.  Make sure ngx_pcre_studies is properly cleared anyway.
+     * be called.  Make sure ngx_regex_studies is properly cleared anyway.
      */
 
-    ngx_pcre_studies = NULL;
+    ngx_regex_studies = NULL;
 }
 
 
@@ -357,7 +357,7 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
 
     ngx_regex_malloc_done();
 
-    ngx_pcre_studies = NULL;
+    ngx_regex_studies = NULL;
 
     return NGX_OK;
 }
@@ -389,7 +389,7 @@ ngx_regex_create_conf(ngx_cycle_t *cycle)
         return NULL;
     }
 
-    ngx_pcre_studies = rcf->studies;
+    ngx_regex_studies = rcf->studies;
 
     return rcf;
 }
