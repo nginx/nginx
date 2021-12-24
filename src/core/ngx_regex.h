@@ -19,7 +19,6 @@
 #include <pcre2.h>
 
 #define NGX_REGEX_NO_MATCHED   PCRE2_ERROR_NOMATCH   /* -1 */
-#define NGX_REGEX_CASELESS     PCRE2_CASELESS
 
 typedef pcre2_code  ngx_regex_t;
 
@@ -28,7 +27,6 @@ typedef pcre2_code  ngx_regex_t;
 #include <pcre.h>
 
 #define NGX_REGEX_NO_MATCHED   PCRE_ERROR_NOMATCH    /* -1 */
-#define NGX_REGEX_CASELESS     PCRE_CASELESS
 
 typedef struct {
     pcre        *code;
@@ -38,10 +36,13 @@ typedef struct {
 #endif
 
 
+#define NGX_REGEX_CASELESS     0x00000001
+
+
 typedef struct {
     ngx_str_t     pattern;
     ngx_pool_t   *pool;
-    ngx_int_t     options;
+    ngx_uint_t    options;
 
     ngx_regex_t  *regex;
     int           captures;
@@ -61,19 +62,13 @@ typedef struct {
 void ngx_regex_init(void);
 ngx_int_t ngx_regex_compile(ngx_regex_compile_t *rc);
 
-#if (NGX_PCRE2)
-
 ngx_int_t ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures,
     ngx_uint_t size);
+
+#if (NGX_PCRE2)
 #define ngx_regex_exec_n       "pcre2_match()"
-
 #else
-
-#define ngx_regex_exec(re, s, captures, size)                                \
-    pcre_exec(re->code, re->extra, (const char *) (s)->data, (s)->len, 0, 0, \
-              captures, size)
 #define ngx_regex_exec_n       "pcre_exec()"
-
 #endif
 
 ngx_int_t ngx_regex_exec_array(ngx_array_t *a, ngx_str_t *s, ngx_log_t *log);

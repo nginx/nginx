@@ -118,6 +118,7 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
     char                   *p;
     u_char                  errstr[128];
     size_t                  erroff;
+    uint32_t                options;
     pcre2_code             *re;
     ngx_regex_elt_t        *elt;
     pcre2_general_context  *gctx;
@@ -152,11 +153,24 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
         ngx_regex_malloc_done();
     }
 
+    options = 0;
+
+    if (rc->options & NGX_REGEX_CASELESS) {
+        options |= PCRE2_CASELESS;
+    }
+
+    if (rc->options & ~NGX_REGEX_CASELESS) {
+        rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
+                            "regex \"%V\" compilation failed: invalid options",
+                            &rc->pattern)
+                      - rc->err.data;
+        return NGX_ERROR;
+    }
+
     ngx_regex_malloc_init(rc->pool);
 
-    re = pcre2_compile(rc->pattern.data, rc->pattern.len,
-                       (uint32_t) rc->options, &errcode, &erroff,
-                       ngx_regex_compile_context);
+    re = pcre2_compile(rc->pattern.data, rc->pattern.len, options,
+                       &errcode, &erroff, ngx_regex_compile_context);
 
     /* ensure that there is no current pool */
     ngx_regex_malloc_done();
@@ -252,11 +266,26 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
     char             *p;
     pcre             *re;
     const char       *errstr;
+    ngx_uint_t        options;
     ngx_regex_elt_t  *elt;
+
+    options = 0;
+
+    if (rc->options & NGX_REGEX_CASELESS) {
+        options |= PCRE_CASELESS;
+    }
+
+    if (rc->options & ~NGX_REGEX_CASELESS) {
+        rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
+                            "regex \"%V\" compilation failed: invalid options",
+                            &rc->pattern)
+                      - rc->err.data;
+        return NGX_ERROR;
+    }
 
     ngx_regex_malloc_init(rc->pool);
 
-    re = pcre_compile((const char *) rc->pattern.data, (int) rc->options,
+    re = pcre_compile((const char *) rc->pattern.data, (int) options,
                       &errstr, &erroff, NULL);
 
     /* ensure that there is no current pool */
@@ -411,6 +440,15 @@ failed:
     ngx_regex_malloc_done();
 
     return rc;
+}
+
+#else
+
+ngx_int_t
+ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_uint_t size)
+{
+    return pcre_exec(re->code, re->extra, (const char *) s->data, s->len,
+                     0, 0, captures, size);
 }
 
 #endif
