@@ -146,6 +146,7 @@ PCRE=NONE
 PCRE_OPT=
 PCRE_CONF_OPT=
 PCRE_JIT=NO
+PCRE2=YES
 
 USE_OPENSSL=NO
 OPENSSL=NONE
@@ -357,6 +358,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
         --with-pcre-jit)                 PCRE_JIT=YES               ;;
+        --without-pcre2)                 PCRE2=DISABLED             ;;
 
         --with-openssl=*)                OPENSSL="$value"           ;;
         --with-openssl-opt=*)            OPENSSL_OPT="$value"       ;;
@@ -573,6 +575,7 @@ cat << END
   --with-pcre=DIR                    set path to PCRE library sources
   --with-pcre-opt=OPTIONS            set additional build options for PCRE
   --with-pcre-jit                    build PCRE with JIT compilation support
+  --without-pcre2                    do not use PCRE2 library
 
   --with-zlib=DIR                    set path to zlib library sources
   --with-zlib-opt=OPTIONS            set additional build options for zlib
