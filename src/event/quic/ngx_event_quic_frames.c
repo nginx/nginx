@@ -13,10 +13,6 @@
 #define NGX_QUIC_BUFFER_SIZE  4096
 
 
-static ngx_chain_t *ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in,
-    size_t len);
-
-
 ngx_quic_frame_t *
 ngx_quic_alloc_frame(ngx_connection_t *c)
 {
@@ -243,8 +239,8 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
     onf->length = shrink;
     nf->len = ngx_quic_create_frame(NULL, nf);
 
-    nf->data = ngx_quic_split_bufs(c, f->data, of->length);
-    if (nf->data == NGX_CHAIN_ERROR) {
+    f->data = ngx_quic_read_chain(c, &nf->data, of->length);
+    if (f->data == NGX_CHAIN_ERROR) {
         return NGX_ERROR;
     }
 
@@ -254,36 +250,47 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 }
 
 
-static ngx_chain_t *
-ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in, size_t len)
+ngx_chain_t *
+ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
 {
-    size_t                  n;
+    off_t                   n;
     ngx_buf_t              *b;
-    ngx_chain_t            *out;
+    ngx_chain_t            *out, *in, *cl, **ll;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    while (in) {
-        n = ngx_buf_size(in->buf);
+    out = *chain;
 
-        if (n == len) {
-            out = in->next;
-            in->next = NULL;
-            return out;
-        }
+    for (ll = &out; *ll; ll = &(*ll)->next) {
+        b = (*ll)->buf;
 
-        if (n > len) {
+        if (b->sync) {
+            /* hole */
             break;
         }
 
-        len -= n;
-        in = in->next;
+        if (limit == 0) {
+            break;
+        }
+
+        n = b->last - b->pos;
+
+        if (n > limit) {
+            goto split;
+        }
+
+        limit -= n;
     }
 
-    if (in == NULL) {
-        return NULL;
-    }
+    *chain = *ll;
+    *ll = NULL;
+
+    return out;
+
+split:
+
+    in = *ll;
 
     /* split in->buf by creating shadow bufs which reference it */
 
@@ -305,8 +312,8 @@ ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in, size_t len)
         in->buf = b;
     }
 
-    out = ngx_alloc_chain_link(c->pool);
-    if (out == NULL) {
+    cl = ngx_alloc_chain_link(c->pool);
+    if (cl == NULL) {
         return NGX_CHAIN_ERROR;
     }
 
@@ -317,21 +324,23 @@ ngx_quic_split_bufs(ngx_connection_t *c, ngx_chain_t *in, size_t len)
     } else {
         b = ngx_alloc_buf(c->pool);
         if (b == NULL) {
-            ngx_free_chain(c->pool, out);
+            ngx_free_chain(c->pool, cl);
             return NGX_CHAIN_ERROR;
         }
     }
 
-    out->buf = b;
-    out->next = in->next;
+    cl->buf = b;
+    cl->next = in->next;
     in->next = NULL;
+    *chain = cl;
 
     *b = *in->buf;
     b->last_shadow = 0;
-    b->pos = b->pos + len;
+    b->pos += limit;
 
     in->buf->shadow = b;
-    in->buf->last = in->buf->pos + len;
+    in->buf->last = b->pos;
+    in->buf->last_buf = 0;
 
     return out;
 }
@@ -480,8 +489,8 @@ done:
 }
 
 
-ngx_int_t
-ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
+ngx_chain_t *
+ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
     off_t limit, off_t offset)
 {
     off_t         n;
@@ -490,18 +499,18 @@ ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
     ngx_chain_t  *cl, *sl;
 
     while (in && limit) {
-        cl = *out;
+        cl = *chain;
 
         if (cl == NULL) {
             cl = ngx_quic_alloc_buf(c);
             if (cl == NULL) {
-                return NGX_ERROR;
+                return NGX_CHAIN_ERROR;
             }
 
             cl->buf->last = cl->buf->end;
             cl->buf->sync = 1; /* hole */
             cl->next = NULL;
-            *out = cl;
+            *chain = cl;
         }
 
         b = cl->buf;
@@ -509,17 +518,25 @@ ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
 
         if (n <= offset) {
             offset -= n;
-            out = &cl->next;
+            chain = &cl->next;
             continue;
         }
 
         if (b->sync && offset > 0) {
-            sl = ngx_quic_split_bufs(c, cl, offset);
-            if (sl == NGX_CHAIN_ERROR) {
-                return NGX_ERROR;
+            /* split hole at offset */
+
+            b->sync = 0;
+
+            sl = ngx_quic_read_chain(c, &cl, offset);
+            if (cl == NGX_CHAIN_ERROR) {
+                return NGX_CHAIN_ERROR;
             }
 
-            cl->next = sl;
+            sl->buf->sync = 1;
+            cl->buf->sync = 1;
+
+            *chain = sl;
+            sl->next = cl;
             continue;
         }
 
@@ -541,18 +558,29 @@ ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
             }
         }
 
+        if (b->sync && p == b->last) {
+            b->sync = 0;
+            continue;
+        }
+
         if (b->sync && p != b->pos) {
-            sl = ngx_quic_split_bufs(c, cl, p - b->pos);
+            /* split hole at p - b->pos */
+
+            b->sync = 0;
+
+            sl = ngx_quic_read_chain(c, &cl, p - b->pos);
             if (sl == NGX_CHAIN_ERROR) {
-                return NGX_ERROR;
+                return NGX_CHAIN_ERROR;
             }
 
-            cl->next = sl;
-            cl->buf->sync = 0;
+            cl->buf->sync = 1;
+
+            *chain = sl;
+            sl->next = cl;
         }
     }
 
-    return NGX_OK;
+    return in;
 }
 
 

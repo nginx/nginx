@@ -30,7 +30,9 @@ ngx_chain_t *ngx_quic_copy_chain(ngx_connection_t *c, ngx_chain_t *in,
     size_t limit);
 void ngx_quic_trim_bufs(ngx_chain_t *in, size_t size);
 void ngx_quic_free_bufs(ngx_connection_t *c, ngx_chain_t *in);
-ngx_int_t ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out,
+ngx_chain_t *ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain,
+    off_t limit);
+ngx_chain_t *ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain,
     ngx_chain_t *in, off_t limit, off_t offset);
 
 #if (NGX_DEBUG)

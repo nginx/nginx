@@ -369,8 +369,14 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (f->offset > ctx->crypto_received) {
-        return ngx_quic_order_bufs(c, &ctx->crypto, frame->data, f->length,
-                                   f->offset - ctx->crypto_received);
+        if (ngx_quic_write_chain(c, &ctx->crypto, frame->data, f->length,
+                                 f->offset - ctx->crypto_received)
+            == NGX_CHAIN_ERROR)
+        {
+            return NGX_ERROR;
+        }
+
+        return NGX_OK;
     }
 
     ngx_quic_trim_bufs(frame->data, ctx->crypto_received - f->offset);

@@ -732,9 +732,9 @@ ngx_quic_empty_handler(ngx_event_t *ev)
 static ssize_t
 ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
-    ssize_t             len, n;
+    ssize_t             len;
     ngx_buf_t          *b;
-    ngx_chain_t        *cl, **ll;
+    ngx_chain_t        *cl, *in;
     ngx_event_t        *rev;
     ngx_connection_t   *pc;
     ngx_quic_stream_t  *qs;
@@ -764,33 +764,20 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         return NGX_AGAIN;
     }
 
-    len = 0;
-    cl = qs->in;
-
-    for (ll = &cl; *ll; ll = &(*ll)->next) {
-        b = (*ll)->buf;
-
-        if (b->sync) {
-            /* hole */
-            break;
-        }
-
-        n = ngx_min(b->last - b->pos, (ssize_t) size);
-        buf = ngx_cpymem(buf, b->pos, n);
-
-        len += n;
-        size -= n;
-        b->pos += n;
-
-        if (b->pos != b->last) {
-            break;
-        }
+    in = ngx_quic_read_chain(pc, &qs->in, size);
+    if (in == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
     }
 
-    qs->in = *ll;
-    *ll = NULL;
+    len = 0;
 
-    ngx_quic_free_bufs(pc, cl);
+    for (cl = in; cl; cl = cl->next) {
+        b = cl->buf;
+        len += b->last - b->pos;
+        buf = ngx_cpymem(buf, b->pos, b->last - b->pos);
+    }
+
+    ngx_quic_free_bufs(pc, in);
 
     if (qs->in == NULL) {
         rev->ready = rev->pending_eof;
@@ -837,10 +824,9 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 static ngx_chain_t *
 ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    size_t                  n, flow;
-    ngx_buf_t              *b;
+    off_t                   n, flow;
     ngx_event_t            *wev;
-    ngx_chain_t            *out, **ll;
+    ngx_chain_t            *out, *cl;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
@@ -861,36 +847,33 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         return in;
     }
 
-    n = (limit && (size_t) limit < flow) ? (size_t) limit : flow;
-
-    if (ngx_quic_order_bufs(pc, &qs->out, in, n, 0) != NGX_OK) {
-        return NGX_CHAIN_ERROR;
+    if (limit == 0 || limit > flow) {
+        limit = flow;
     }
 
     n = 0;
-    out = qs->out;
 
-    for (ll = &out; *ll; ll = &(*ll)->next) {
-        b = (*ll)->buf;
-
-        if (b->sync) {
-            /* hole */
+    for (cl = in; cl; cl = cl->next) {
+        n += cl->buf->last - cl->buf->pos;
+        if (n >= limit) {
+            n = limit;
             break;
         }
-
-        n += b->last - b->pos;
     }
 
-    qs->out = *ll;
-    *ll = NULL;
+    in = ngx_quic_write_chain(pc, &qs->out, in, n, 0);
+    if (in == NGX_CHAIN_ERROR) {
+        return NGX_CHAIN_ERROR;
+    }
+
+    out = ngx_quic_read_chain(pc, &qs->out, n);
+    if (out == NGX_CHAIN_ERROR) {
+        return NGX_CHAIN_ERROR;
+    }
 
     frame = ngx_quic_alloc_frame(pc);
     if (frame == NULL) {
         return NGX_CHAIN_ERROR;
-    }
-
-    while (in && ngx_buf_size(in->buf) == 0) {
-        in = in->next;
     }
 
     frame->level = ssl_encryption_application;
@@ -909,7 +892,9 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     ngx_quic_queue_frame(qc, frame);
 
-    wev->ready = (n < flow) ? 1 : 0;
+    if (in) {
+        wev->ready = 0;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic send_chain sent:%uz", n);
@@ -1113,9 +1098,9 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         qs->final_size = last;
     }
 
-    if (ngx_quic_order_bufs(c, &qs->in, frame->data, f->length,
-                            f->offset - qs->recv_offset)
-        != NGX_OK)
+    if (ngx_quic_write_chain(c, &qs->in, frame->data, f->length,
+                             f->offset - qs->recv_offset)
+        == NGX_CHAIN_ERROR)
     {
         return NGX_ERROR;
     }
