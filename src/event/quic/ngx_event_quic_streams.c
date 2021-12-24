@@ -838,8 +838,9 @@ static ngx_chain_t *
 ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
     size_t                  n, flow;
+    ngx_buf_t              *b;
     ngx_event_t            *wev;
-    ngx_chain_t            *cl;
+    ngx_chain_t            *out, **ll;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
@@ -862,18 +863,30 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     n = (limit && (size_t) limit < flow) ? (size_t) limit : flow;
 
+    if (ngx_quic_order_bufs(pc, &qs->out, in, n, 0) != NGX_OK) {
+        return NGX_CHAIN_ERROR;
+    }
+
+    n = 0;
+    out = qs->out;
+
+    for (ll = &out; *ll; ll = &(*ll)->next) {
+        b = (*ll)->buf;
+
+        if (b->sync) {
+            /* hole */
+            break;
+        }
+
+        n += b->last - b->pos;
+    }
+
+    qs->out = *ll;
+    *ll = NULL;
+
     frame = ngx_quic_alloc_frame(pc);
     if (frame == NULL) {
         return NGX_CHAIN_ERROR;
-    }
-
-    frame->data = ngx_quic_copy_chain(pc, in, n);
-    if (frame->data == NGX_CHAIN_ERROR) {
-        return NGX_CHAIN_ERROR;
-    }
-
-    for (n = 0, cl = frame->data; cl; cl = cl->next) {
-        n += ngx_buf_size(cl->buf);
     }
 
     while (in && ngx_buf_size(in->buf) == 0) {
@@ -882,6 +895,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_STREAM;
+    frame->data = out;
     frame->u.stream.off = 1;
     frame->u.stream.len = 1;
     frame->u.stream.fin = 0;
@@ -977,6 +991,7 @@ ngx_quic_stream_cleanup_handler(void *data)
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
     ngx_quic_free_bufs(pc, qs->in);
+    ngx_quic_free_bufs(pc, qs->out);
 
     if (qc->closing) {
         /* schedule handler call to continue ngx_quic_close_connection() */
@@ -1098,7 +1113,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         qs->final_size = last;
     }
 
-    if (ngx_quic_order_bufs(c, &qs->in, frame->data,
+    if (ngx_quic_order_bufs(c, &qs->in, frame->data, f->length,
                             f->offset - qs->recv_offset)
         != NGX_OK)
     {

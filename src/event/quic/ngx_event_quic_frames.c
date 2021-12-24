@@ -482,14 +482,14 @@ done:
 
 ngx_int_t
 ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
-    size_t offset)
+    off_t limit, off_t offset)
 {
+    off_t         n;
     u_char       *p;
-    size_t        n;
     ngx_buf_t    *b;
     ngx_chain_t  *cl, *sl;
 
-    while (in) {
+    while (in && limit) {
         cl = *out;
 
         if (cl == NULL) {
@@ -523,8 +523,9 @@ ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
             continue;
         }
 
-        for (p = b->pos + offset; p != b->last && in; /* void */ ) {
+        for (p = b->pos + offset; p != b->last && in && limit; /* void */ ) {
             n = ngx_min(b->last - p, in->buf->last - in->buf->pos);
+            n = ngx_min(n, limit);
 
             if (b->sync) {
                 ngx_memcpy(p, in->buf->pos, n);
@@ -533,6 +534,7 @@ ngx_quic_order_bufs(ngx_connection_t *c, ngx_chain_t **out, ngx_chain_t *in,
             p += n;
             in->buf->pos += n;
             offset += n;
+            limit -= n;
 
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
