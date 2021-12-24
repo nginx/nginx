@@ -638,8 +638,8 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
             ch = *b->pos++;
 
             if (st->huffman) {
-                if (ngx_http_v2_huff_decode(&st->huffstate, &ch, 1, &st->last,
-                                            st->length == 1, c->log)
+                if (ngx_http_huff_decode(&st->huffstate, &ch, 1, &st->last,
+                                         st->length == 1, c->log)
                     != NGX_OK)
                 {
                     return NGX_ERROR;

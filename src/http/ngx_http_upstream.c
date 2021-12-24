@@ -3867,12 +3867,34 @@ ngx_http_upstream_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
 {
     ngx_str_t                  name;
     ngx_event_pipe_t          *p;
+    ngx_connection_t          *c;
     ngx_thread_pool_t         *tp;
     ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
     r = file->thread_ctx;
     p = r->upstream->pipe;
+
+    if (r->aio) {
+        /*
+         * tolerate sendfile() calls if another operation is already
+         * running; this can happen due to subrequests, multiple calls
+         * of the next body filter from a filter, or in HTTP/2 due to
+         * a write event on the main connection
+         */
+
+        c = r->connection;
+
+#if (NGX_HTTP_V2)
+        if (r->stream) {
+            c = r->stream->connection->connection;
+        }
+#endif
+
+        if (task == c->sendfile_task) {
+            return NGX_OK;
+        }
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     tp = clcf->thread_pool;
@@ -3924,6 +3946,20 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
 
     r->main->blocked--;
     r->aio = 0;
+
+#if (NGX_HTTP_V2)
+
+    if (r->stream) {
+        /*
+         * for HTTP/2, update write event to make sure processing will
+         * reach the main connection to handle sendfile() in threads
+         */
+
+        c->write->ready = 1;
+        c->write->active = 0;
+    }
+
+#endif
 
     if (r->done) {
         /*

@@ -177,9 +177,9 @@ ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 #endif
 
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
-ngx_int_t ngx_http_v2_huff_decode(u_char *state, u_char *src, size_t len,
+ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
     u_char **dst, ngx_uint_t last, ngx_log_t *log);
-size_t ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst,
+size_t ngx_http_huff_encode(u_char *src, size_t len, u_char *dst,
     ngx_uint_t lower);
 #endif
 

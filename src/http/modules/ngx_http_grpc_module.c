@@ -3180,10 +3180,10 @@ ngx_http_grpc_parse_fragment(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
             ctx->field_rest -= size;
 
             if (ctx->field_huffman) {
-                if (ngx_http_v2_huff_decode(&ctx->field_state, p, size,
-                                            &ctx->field_end,
-                                            ctx->field_rest == 0,
-                                            r->connection->log)
+                if (ngx_http_huff_decode(&ctx->field_state, p, size,
+                                         &ctx->field_end,
+                                         ctx->field_rest == 0,
+                                         r->connection->log)
                     != NGX_OK)
                 {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -3289,10 +3289,10 @@ ngx_http_grpc_parse_fragment(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
             ctx->field_rest -= size;
 
             if (ctx->field_huffman) {
-                if (ngx_http_v2_huff_decode(&ctx->field_state, p, size,
-                                            &ctx->field_end,
-                                            ctx->field_rest == 0,
-                                            r->connection->log)
+                if (ngx_http_huff_decode(&ctx->field_state, p, size,
+                                         &ctx->field_end,
+                                         ctx->field_rest == 0,
+                                         r->connection->log)
                     != NGX_OK)
                 {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,

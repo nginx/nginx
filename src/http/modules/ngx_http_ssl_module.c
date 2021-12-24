@@ -342,6 +342,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_ciphers"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_ciphers, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_curve"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_curve, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_curves"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_curves, NGX_HTTP_VAR_CHANGEABLE, 0 },
 

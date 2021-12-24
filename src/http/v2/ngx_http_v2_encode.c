@@ -20,7 +20,7 @@ ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len, u_char *tmp,
 {
     size_t  hlen;
 
-    hlen = ngx_http_v2_huff_encode(src, len, tmp, lower);
+    hlen = ngx_http_huff_encode(src, len, tmp, lower);
 
     if (hlen > 0) {
         *dst = NGX_HTTP_V2_ENCODE_HUFF;

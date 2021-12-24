@@ -157,7 +157,7 @@ ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
 
     if (data) {
         p2 = p;
-        hlen = ngx_http_v2_huff_encode(data, len, p, 0);
+        hlen = ngx_http_huff_encode(data, len, p, 0);
 
         if (hlen) {
             p = p1;
@@ -199,7 +199,7 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
 
     p2 = p;
-    hlen = ngx_http_v2_huff_encode(name->data, name->len, p, 1);
+    hlen = ngx_http_huff_encode(name->data, name->len, p, 1);
 
     if (hlen) {
         p = p1;
@@ -222,7 +222,7 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, value->len, 7);
 
     p2 = p;
-    hlen = ngx_http_v2_huff_encode(value->data, value->len, p, 0);
+    hlen = ngx_http_huff_encode(value->data, value->len, p, 0);
 
     if (hlen) {
         p = p1;
@@ -282,7 +282,7 @@ ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
 
     if (data) {
         p2 = p;
-        hlen = ngx_http_v2_huff_encode(data, len, p, 0);
+        hlen = ngx_http_huff_encode(data, len, p, 0);
 
         if (hlen) {
             p = p1;

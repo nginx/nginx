@@ -152,6 +152,7 @@ syn keyword ngxDirective contained auth_jwt_header_set
 syn keyword ngxDirective contained auth_jwt_key_file
 syn keyword ngxDirective contained auth_jwt_key_request
 syn keyword ngxDirective contained auth_jwt_leeway
+syn keyword ngxDirective contained auth_jwt_require
 syn keyword ngxDirective contained auth_jwt_type
 syn keyword ngxDirective contained auth_request
 syn keyword ngxDirective contained auth_request_set
@@ -335,6 +336,10 @@ syn keyword ngxDirective contained ip_hash
 syn keyword ngxDirective contained js_access
 syn keyword ngxDirective contained js_body_filter
 syn keyword ngxDirective contained js_content
+syn keyword ngxDirective contained js_fetch_ciphers
+syn keyword ngxDirective contained js_fetch_protocols
+syn keyword ngxDirective contained js_fetch_trusted_certificate
+syn keyword ngxDirective contained js_fetch_verify_depth
 syn keyword ngxDirective contained js_filter
 syn keyword ngxDirective contained js_header_filter
 syn keyword ngxDirective contained js_import
@@ -402,6 +407,7 @@ syn keyword ngxDirective contained mp4_buffer_size
 syn keyword ngxDirective contained mp4_limit_rate
 syn keyword ngxDirective contained mp4_limit_rate_after
 syn keyword ngxDirective contained mp4_max_buffer_size
+syn keyword ngxDirective contained mp4_start_key_frame
 syn keyword ngxDirective contained msie_padding
 syn keyword ngxDirective contained msie_refresh
 syn keyword ngxDirective contained multi_accept
@@ -458,6 +464,7 @@ syn keyword ngxDirective contained proxy_cookie_flags
 syn keyword ngxDirective contained proxy_cookie_path
 syn keyword ngxDirective contained proxy_download_rate
 syn keyword ngxDirective contained proxy_force_ranges
+syn keyword ngxDirective contained proxy_half_close
 syn keyword ngxDirective contained proxy_headers_hash_bucket_size
 syn keyword ngxDirective contained proxy_headers_hash_max_size
 syn keyword ngxDirective contained proxy_hide_header
@@ -597,6 +604,7 @@ syn keyword ngxDirective contained ssi_min_file_chunk
 syn keyword ngxDirective contained ssi_silent_errors
 syn keyword ngxDirective contained ssi_types
 syn keyword ngxDirective contained ssi_value_length
+syn keyword ngxDirective contained ssl_alpn
 syn keyword ngxDirective contained ssl_buffer_size
 syn keyword ngxDirective contained ssl_certificate
 syn keyword ngxDirective contained ssl_certificate_key
@@ -788,11 +796,15 @@ syn keyword ngxDirectiveThirdParty contained auth_digest_user_file
 syn keyword ngxDirectiveThirdParty contained auth_gss
 syn keyword ngxDirectiveThirdParty contained auth_gss_allow_basic_fallback
 syn keyword ngxDirectiveThirdParty contained auth_gss_authorized_principal
+syn keyword ngxDirectiveThirdParty contained auth_gss_authorized_principal_regex
+syn keyword ngxDirectiveThirdParty contained auth_gss_constrained_delegation
+syn keyword ngxDirectiveThirdParty contained auth_gss_delegate_credentials
 syn keyword ngxDirectiveThirdParty contained auth_gss_force_realm
 syn keyword ngxDirectiveThirdParty contained auth_gss_format_full
 syn keyword ngxDirectiveThirdParty contained auth_gss_keytab
 syn keyword ngxDirectiveThirdParty contained auth_gss_map_to_local
 syn keyword ngxDirectiveThirdParty contained auth_gss_realm
+syn keyword ngxDirectiveThirdParty contained auth_gss_service_ccache
 syn keyword ngxDirectiveThirdParty contained auth_gss_service_name
 
 " LDAP Authentication
@@ -969,7 +981,6 @@ syn keyword ngxDirectiveThirdParty contained fancyindex_hide_parent_dir
 syn keyword ngxDirectiveThirdParty contained fancyindex_hide_symlinks
 syn keyword ngxDirectiveThirdParty contained fancyindex_ignore
 syn keyword ngxDirectiveThirdParty contained fancyindex_localtime
-syn keyword ngxDirectiveThirdParty contained fancyindex_name_length
 syn keyword ngxDirectiveThirdParty contained fancyindex_show_dotfiles
 syn keyword ngxDirectiveThirdParty contained fancyindex_show_path
 syn keyword ngxDirectiveThirdParty contained fancyindex_time_format
@@ -1059,7 +1070,9 @@ syn keyword ngxDirectiveThirdParty contained nchan_publisher_upstream_request
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub_channel_id
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub_location
+syn keyword ngxDirectiveThirdParty contained nchan_redis_cluster_check_interval
 syn keyword ngxDirectiveThirdParty contained nchan_redis_connect_timeout
+syn keyword ngxDirectiveThirdParty contained nchan_redis_discovered_ip_range_blacklist
 syn keyword ngxDirectiveThirdParty contained nchan_redis_fakesub_timer_interval
 syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_cache_timeout
 syn keyword ngxDirectiveThirdParty contained nchan_redis_namespace
@@ -1067,12 +1080,29 @@ syn keyword ngxDirectiveThirdParty contained nchan_redis_nostore_fastpublish
 syn keyword ngxDirectiveThirdParty contained nchan_redis_optimize_target
 syn keyword ngxDirectiveThirdParty contained nchan_redis_pass
 syn keyword ngxDirectiveThirdParty contained nchan_redis_pass_inheritable
+syn keyword ngxDirectiveThirdParty contained nchan_redis_password
 syn keyword ngxDirectiveThirdParty contained nchan_redis_ping_interval
 syn keyword ngxDirectiveThirdParty contained nchan_redis_publish_msgpacked_max_size
 syn keyword ngxDirectiveThirdParty contained nchan_redis_server
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_ciphers
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_client_certificate
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_client_certificate_key
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_server_name
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_trusted_certificate
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_trusted_certificate_path
+syn keyword ngxDirectiveThirdParty contained nchan_redis_ssl_verify_certificate
 syn keyword ngxDirectiveThirdParty contained nchan_redis_storage_mode
 syn keyword ngxDirectiveThirdParty contained nchan_redis_subscribe_weights
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_ciphers
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_client_certificate
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_server_name
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_trusted_certificate
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_trusted_certificate_path
+syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_verify_certificate
 syn keyword ngxDirectiveThirdParty contained nchan_redis_url
+syn keyword ngxDirectiveThirdParty contained nchan_redis_username
 syn keyword ngxDirectiveThirdParty contained nchan_redis_wait_after_connecting
 syn keyword ngxDirectiveThirdParty contained nchan_shared_memory_size
 syn keyword ngxDirectiveThirdParty contained nchan_storage_engine
@@ -1385,6 +1415,7 @@ syn keyword ngxDirectiveThirdParty contained lua_socket_read_timeout
 syn keyword ngxDirectiveThirdParty contained lua_socket_send_lowat
 syn keyword ngxDirectiveThirdParty contained lua_socket_send_timeout
 syn keyword ngxDirectiveThirdParty contained lua_ssl_ciphers
+syn keyword ngxDirectiveThirdParty contained lua_ssl_conf_command
 syn keyword ngxDirectiveThirdParty contained lua_ssl_crl
 syn keyword ngxDirectiveThirdParty contained lua_ssl_protocols
 syn keyword ngxDirectiveThirdParty contained lua_ssl_trusted_certificate
@@ -1392,6 +1423,7 @@ syn keyword ngxDirectiveThirdParty contained lua_ssl_verify_depth
 syn keyword ngxDirectiveThirdParty contained lua_thread_cache_max_entries
 syn keyword ngxDirectiveThirdParty contained lua_transform_underscores_in_response_headers
 syn keyword ngxDirectiveThirdParty contained lua_use_default_type
+syn keyword ngxDirectiveThirdParty contained lua_worker_thread_vm_pool_size
 syn keyword ngxDirectiveThirdParty contained rewrite_by_lua
 syn keyword ngxDirectiveThirdParty contained rewrite_by_lua_block
 syn keyword ngxDirectiveThirdParty contained rewrite_by_lua_file
@@ -1401,6 +1433,8 @@ syn keyword ngxDirectiveThirdParty contained set_by_lua_block
 syn keyword ngxDirectiveThirdParty contained set_by_lua_file
 syn keyword ngxDirectiveThirdParty contained ssl_certificate_by_lua_block
 syn keyword ngxDirectiveThirdParty contained ssl_certificate_by_lua_file
+syn keyword ngxDirectiveThirdParty contained ssl_client_hello_by_lua_block
+syn keyword ngxDirectiveThirdParty contained ssl_client_hello_by_lua_file
 syn keyword ngxDirectiveThirdParty contained ssl_session_fetch_by_lua_block
 syn keyword ngxDirectiveThirdParty contained ssl_session_fetch_by_lua_file
 syn keyword ngxDirectiveThirdParty contained ssl_session_store_by_lua_block
@@ -1719,15 +1753,18 @@ syn keyword ngxDirectiveThirdParty contained set_base32_alphabet
 syn keyword ngxDirectiveThirdParty contained set_base32_padding
 syn keyword ngxDirectiveThirdParty contained set_decode_base32
 syn keyword ngxDirectiveThirdParty contained set_decode_base64
+syn keyword ngxDirectiveThirdParty contained set_decode_base64url
 syn keyword ngxDirectiveThirdParty contained set_decode_hex
 syn keyword ngxDirectiveThirdParty contained set_encode_base32
 syn keyword ngxDirectiveThirdParty contained set_encode_base64
+syn keyword ngxDirectiveThirdParty contained set_encode_base64url
 syn keyword ngxDirectiveThirdParty contained set_encode_hex
 syn keyword ngxDirectiveThirdParty contained set_escape_uri
 syn keyword ngxDirectiveThirdParty contained set_formatted_gmt_time
 syn keyword ngxDirectiveThirdParty contained set_formatted_local_time
 syn keyword ngxDirectiveThirdParty contained set_hashed_upstream
 syn keyword ngxDirectiveThirdParty contained set_hmac_sha1
+syn keyword ngxDirectiveThirdParty contained set_hmac_sha256
 syn keyword ngxDirectiveThirdParty contained set_if_empty
 syn keyword ngxDirectiveThirdParty contained set_local_today
 syn keyword ngxDirectiveThirdParty contained set_misc_base32_padding
@@ -1849,6 +1886,7 @@ syn keyword ngxDirectiveThirdParty contained vod_notification_uri
 syn keyword ngxDirectiveThirdParty contained vod_open_file_thread_pool
 syn keyword ngxDirectiveThirdParty contained vod_output_buffer_pool
 syn keyword ngxDirectiveThirdParty contained vod_parse_hdlr_name
+syn keyword ngxDirectiveThirdParty contained vod_parse_udta_name
 syn keyword ngxDirectiveThirdParty contained vod_path_response_postfix
 syn keyword ngxDirectiveThirdParty contained vod_path_response_prefix
 syn keyword ngxDirectiveThirdParty contained vod_performance_counters
