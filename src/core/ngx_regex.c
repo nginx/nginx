@@ -159,7 +159,11 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
         options |= PCRE2_CASELESS;
     }
 
-    if (rc->options & ~NGX_REGEX_CASELESS) {
+    if (rc->options & NGX_REGEX_MULTILINE) {
+        options |= PCRE2_MULTILINE;
+    }
+
+    if (rc->options & ~(NGX_REGEX_CASELESS|NGX_REGEX_MULTILINE)) {
         rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
                             "regex \"%V\" compilation failed: invalid options",
                             &rc->pattern)
@@ -275,7 +279,11 @@ ngx_regex_compile(ngx_regex_compile_t *rc)
         options |= PCRE_CASELESS;
     }
 
-    if (rc->options & ~NGX_REGEX_CASELESS) {
+    if (rc->options & NGX_REGEX_MULTILINE) {
+        options |= PCRE_MULTILINE;
+    }
+
+    if (rc->options & ~(NGX_REGEX_CASELESS|NGX_REGEX_MULTILINE)) {
         rc->err.len = ngx_snprintf(rc->err.data, rc->err.len,
                             "regex \"%V\" compilation failed: invalid options",
                             &rc->pattern)

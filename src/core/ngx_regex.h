@@ -37,6 +37,7 @@ typedef struct {
 
 
 #define NGX_REGEX_CASELESS     0x00000001
+#define NGX_REGEX_MULTILINE    0x00000002
 
 
 typedef struct {
