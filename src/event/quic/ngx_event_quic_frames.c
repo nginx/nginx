@@ -12,6 +12,152 @@
 
 #define NGX_QUIC_BUFFER_SIZE  4096
 
+#define ngx_quic_buf_refs(b)         (b)->shadow->num
+#define ngx_quic_buf_inc_refs(b)     ngx_quic_buf_refs(b)++
+#define ngx_quic_buf_dec_refs(b)     ngx_quic_buf_refs(b)--
+#define ngx_quic_buf_set_refs(b, v)  ngx_quic_buf_refs(b) = v
+
+
+static ngx_buf_t *ngx_quic_alloc_buf(ngx_connection_t *c);
+static void ngx_quic_free_buf(ngx_connection_t *c, ngx_buf_t *b);
+static ngx_buf_t *ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b);
+
+
+static ngx_buf_t *
+ngx_quic_alloc_buf(ngx_connection_t *c)
+{
+    u_char                 *p;
+    ngx_buf_t              *b;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    b = qc->free_bufs;
+
+    if (b) {
+        qc->free_bufs = b->shadow;
+        p = b->start;
+
+    } else {
+        b = qc->free_shadow_bufs;
+
+        if (b) {
+            qc->free_shadow_bufs = b->shadow;
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic use shadow buffer n:%ui %ui",
+                           ++qc->nbufs, --qc->nshadowbufs);
+#endif
+
+        } else {
+            b = ngx_palloc(c->pool, sizeof(ngx_buf_t));
+            if (b == NULL) {
+                return NULL;
+            }
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic new buffer n:%ui", ++qc->nbufs);
+#endif
+        }
+
+        p = ngx_pnalloc(c->pool, NGX_QUIC_BUFFER_SIZE);
+        if (p == NULL) {
+            return NULL;
+        }
+    }
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic alloc buffer %p", b);
+#endif
+
+    ngx_memzero(b, sizeof(ngx_buf_t));
+
+    b->tag = (ngx_buf_tag_t) &ngx_quic_alloc_buf;
+    b->temporary = 1;
+    b->shadow = b;
+
+    b->start = p;
+    b->pos = p;
+    b->last = p;
+    b->end = p + NGX_QUIC_BUFFER_SIZE;
+
+    ngx_quic_buf_set_refs(b, 1);
+
+    return b;
+}
+
+
+static void
+ngx_quic_free_buf(ngx_connection_t *c, ngx_buf_t *b)
+{
+    ngx_buf_t              *shadow;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    ngx_quic_buf_dec_refs(b);
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic free buffer %p r:%ui",
+                   b, (ngx_uint_t) ngx_quic_buf_refs(b));
+#endif
+
+    shadow = b->shadow;
+
+    if (ngx_quic_buf_refs(b) == 0) {
+        shadow->shadow = qc->free_bufs;
+        qc->free_bufs = shadow;
+    }
+
+    if (b != shadow) {
+        b->shadow = qc->free_shadow_bufs;
+        qc->free_shadow_bufs = b;
+    }
+
+}
+
+
+static ngx_buf_t *
+ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b)
+{
+    ngx_buf_t              *nb;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    nb = qc->free_shadow_bufs;
+
+    if (nb) {
+        qc->free_shadow_bufs = nb->shadow;
+
+    } else {
+        nb = ngx_palloc(c->pool, sizeof(ngx_buf_t));
+        if (nb == NULL) {
+            return NULL;
+        }
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic new shadow buffer n:%ui", ++qc->nshadowbufs);
+#endif
+    }
+
+    *nb = *b;
+
+    ngx_quic_buf_inc_refs(b);
+
+#ifdef NGX_QUIC_DEBUG_ALLOC
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic clone buffer %p %p r:%ui",
+                   b, nb, (ngx_uint_t) ngx_quic_buf_refs(b));
+#endif
+
+    return nb;
+}
+
 
 ngx_quic_frame_t *
 ngx_quic_alloc_frame(ngx_connection_t *c)
@@ -101,47 +247,14 @@ ngx_quic_trim_chain(ngx_chain_t *in, size_t size)
 void
 ngx_quic_free_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
-    ngx_buf_t              *b, *shadow;
-    ngx_chain_t            *cl;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_chain_t  *cl;
 
     while (in) {
-#ifdef NGX_QUIC_DEBUG_ALLOC
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic free buffer n:%ui", qc->nbufs);
-#endif
-
         cl = in;
         in = in->next;
-        b = cl->buf;
 
-        if (b->shadow) {
-            if (!b->last_shadow) {
-                b->recycled = 1;
-                ngx_free_chain(c->pool, cl);
-                continue;
-            }
-
-            do {
-                shadow = b->shadow;
-                b->shadow = qc->free_shadow_bufs;
-                qc->free_shadow_bufs = b;
-                b = shadow;
-            } while (b->recycled);
-
-            if (b->shadow) {
-                b->last_shadow = 1;
-                ngx_free_chain(c->pool, cl);
-                continue;
-            }
-
-            cl->buf = b;
-        }
-
-        cl->next = qc->free_bufs;
-        qc->free_bufs = cl;
+        ngx_quic_free_buf(c, cl->buf);
+        ngx_free_chain(c->pool, cl);
     }
 }
 
@@ -253,12 +366,9 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 ngx_chain_t *
 ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
 {
-    off_t                   n;
-    ngx_buf_t              *b;
-    ngx_chain_t            *out, *in, *cl, **ll;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    off_t         n;
+    ngx_buf_t    *b;
+    ngx_chain_t  *out, *cl, **ll;
 
     out = *chain;
 
@@ -290,57 +400,24 @@ ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
 
 split:
 
-    in = *ll;
-
-    /* split in->buf by creating shadow bufs which reference it */
-
-    if (in->buf->shadow == NULL) {
-        if (qc->free_shadow_bufs) {
-            b = qc->free_shadow_bufs;
-            qc->free_shadow_bufs = b->shadow;
-
-        } else {
-            b = ngx_alloc_buf(c->pool);
-            if (b == NULL) {
-                return NGX_CHAIN_ERROR;
-            }
-        }
-
-        *b = *in->buf;
-        b->shadow = in->buf;
-        b->last_shadow = 1;
-        in->buf = b;
-    }
-
     cl = ngx_alloc_chain_link(c->pool);
     if (cl == NULL) {
         return NGX_CHAIN_ERROR;
     }
 
-    if (qc->free_shadow_bufs) {
-        b = qc->free_shadow_bufs;
-        qc->free_shadow_bufs = b->shadow;
-
-    } else {
-        b = ngx_alloc_buf(c->pool);
-        if (b == NULL) {
-            ngx_free_chain(c->pool, cl);
-            return NGX_CHAIN_ERROR;
-        }
+    cl->buf = ngx_quic_clone_buf(c, b);
+    if (cl->buf == NULL) {
+        return NGX_CHAIN_ERROR;
     }
 
-    cl->buf = b;
-    cl->next = in->next;
-    in->next = NULL;
+    cl->buf->pos += limit;
+    b->last = cl->buf->pos;
+    b->last_buf = 0;
+
+    ll = &(*ll)->next;
+    cl->next = *ll;
+    *ll = NULL;
     *chain = cl;
-
-    *b = *in->buf;
-    b->last_shadow = 0;
-    b->pos += limit;
-
-    in->buf->shadow = b;
-    in->buf->last = b->pos;
-    in->buf->last_buf = 0;
 
     return out;
 }
@@ -349,48 +426,17 @@ split:
 ngx_chain_t *
 ngx_quic_alloc_chain(ngx_connection_t *c)
 {
-    ngx_buf_t              *b;
-    ngx_chain_t            *cl;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    if (qc->free_bufs) {
-        cl = qc->free_bufs;
-        qc->free_bufs = cl->next;
-
-        b = cl->buf;
-        b->pos = b->start;
-        b->last = b->start;
-
-#ifdef NGX_QUIC_DEBUG_ALLOC
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic reuse buffer n:%ui", qc->nbufs);
-#endif
-
-        return cl;
-    }
+    ngx_chain_t  *cl;
 
     cl = ngx_alloc_chain_link(c->pool);
     if (cl == NULL) {
         return NULL;
     }
 
-    b = ngx_create_temp_buf(c->pool, NGX_QUIC_BUFFER_SIZE);
-    if (b == NULL) {
+    cl->buf = ngx_quic_alloc_buf(c);
+    if (cl->buf == NULL) {
         return NULL;
     }
-
-    b->tag = (ngx_buf_tag_t) &ngx_quic_alloc_chain;
-
-    cl->buf = b;
-
-#ifdef NGX_QUIC_DEBUG_ALLOC
-    ++qc->nbufs;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic alloc buffer n:%ui", qc->nbufs);
-#endif
 
     return cl;
 }

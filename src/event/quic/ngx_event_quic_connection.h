@@ -225,12 +225,13 @@ struct ngx_quic_connection_s {
     ngx_uint_t                        pto_count;
 
     ngx_queue_t                       free_frames;
-    ngx_chain_t                      *free_bufs;
+    ngx_buf_t                        *free_bufs;
     ngx_buf_t                        *free_shadow_bufs;
 
     ngx_uint_t                        nframes;
 #ifdef NGX_QUIC_DEBUG_ALLOC
     ngx_uint_t                        nbufs;
+    ngx_uint_t                        nshadowbufs;
 #endif
 
     ngx_quic_streams_t                streams;
