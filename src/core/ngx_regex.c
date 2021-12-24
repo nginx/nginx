@@ -10,15 +10,14 @@
 
 
 typedef struct {
-    ngx_flag_t  pcre_jit;
+    ngx_flag_t   pcre_jit;
+    ngx_list_t  *studies;
 } ngx_regex_conf_t;
 
 
 static void * ngx_libc_cdecl ngx_regex_malloc(size_t size);
 static void ngx_libc_cdecl ngx_regex_free(void *p);
-#if (NGX_HAVE_PCRE_JIT)
-static void ngx_pcre_free_studies(void *data);
-#endif
+static void ngx_regex_cleanup(void *data);
 
 static ngx_int_t ngx_regex_module_init(ngx_cycle_t *cycle);
 
@@ -248,18 +247,17 @@ ngx_regex_free(void *p)
 }
 
 
-#if (NGX_HAVE_PCRE_JIT)
-
 static void
-ngx_pcre_free_studies(void *data)
+ngx_regex_cleanup(void *data)
 {
-    ngx_list_t *studies = data;
+#if (NGX_HAVE_PCRE_JIT)
+    ngx_regex_conf_t *rcf = data;
 
     ngx_uint_t        i;
     ngx_list_part_t  *part;
     ngx_regex_elt_t  *elts;
 
-    part = &studies->part;
+    part = &rcf->studies->part;
     elts = part->elts;
 
     for (i = 0; /* void */ ; i++) {
@@ -274,56 +272,50 @@ ngx_pcre_free_studies(void *data)
             i = 0;
         }
 
-        if (elts[i].regex->extra != NULL) {
-            pcre_free_study(elts[i].regex->extra);
-        }
-    }
-}
-
-#endif
-
-
-static ngx_int_t
-ngx_regex_module_init(ngx_cycle_t *cycle)
-{
-    int               opt;
-    const char       *errstr;
-    ngx_uint_t        i;
-    ngx_list_part_t  *part;
-    ngx_regex_elt_t  *elts;
-
-    opt = 0;
-
-#if (NGX_HAVE_PCRE_JIT)
-    {
-    ngx_regex_conf_t    *rcf;
-    ngx_pool_cleanup_t  *cln;
-
-    rcf = (ngx_regex_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_regex_module);
-
-    if (rcf->pcre_jit) {
-        opt = PCRE_STUDY_JIT_COMPILE;
-
         /*
          * The PCRE JIT compiler uses mmap for its executable codes, so we
          * have to explicitly call the pcre_free_study() function to free
          * this memory.
          */
 
-        cln = ngx_pool_cleanup_add(cycle->pool, 0);
-        if (cln == NULL) {
-            return NGX_ERROR;
+        if (elts[i].regex->extra != NULL) {
+            pcre_free_study(elts[i].regex->extra);
         }
-
-        cln->handler = ngx_pcre_free_studies;
-        cln->data = ngx_pcre_studies;
     }
+#endif
+
+    /*
+     * On configuration parsing errors ngx_regex_module_init() will not
+     * be called.  Make sure ngx_pcre_studies is properly cleared anyway.
+     */
+
+    ngx_pcre_studies = NULL;
+}
+
+
+static ngx_int_t
+ngx_regex_module_init(ngx_cycle_t *cycle)
+{
+    int                opt;
+    const char        *errstr;
+    ngx_uint_t         i;
+    ngx_list_part_t   *part;
+    ngx_regex_elt_t   *elts;
+    ngx_regex_conf_t  *rcf;
+
+    opt = 0;
+
+    rcf = (ngx_regex_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_regex_module);
+
+#if (NGX_HAVE_PCRE_JIT)
+    if (rcf->pcre_jit) {
+        opt = PCRE_STUDY_JIT_COMPILE;
     }
 #endif
 
     ngx_regex_malloc_init(cycle->pool);
 
-    part = &ngx_pcre_studies->part;
+    part = &rcf->studies->part;
     elts = part->elts;
 
     for (i = 0; /* void */ ; i++) {
@@ -374,7 +366,8 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
 static void *
 ngx_regex_create_conf(ngx_cycle_t *cycle)
 {
-    ngx_regex_conf_t  *rcf;
+    ngx_regex_conf_t    *rcf;
+    ngx_pool_cleanup_t  *cln;
 
     rcf = ngx_pcalloc(cycle->pool, sizeof(ngx_regex_conf_t));
     if (rcf == NULL) {
@@ -383,10 +376,20 @@ ngx_regex_create_conf(ngx_cycle_t *cycle)
 
     rcf->pcre_jit = NGX_CONF_UNSET;
 
-    ngx_pcre_studies = ngx_list_create(cycle->pool, 8, sizeof(ngx_regex_elt_t));
-    if (ngx_pcre_studies == NULL) {
+    cln = ngx_pool_cleanup_add(cycle->pool, 0);
+    if (cln == NULL) {
         return NULL;
     }
+
+    cln->handler = ngx_regex_cleanup;
+    cln->data = rcf;
+
+    rcf->studies = ngx_list_create(cycle->pool, 8, sizeof(ngx_regex_elt_t));
+    if (rcf->studies == NULL) {
+        return NULL;
+    }
+
+    ngx_pcre_studies = rcf->studies;
 
     return rcf;
 }
