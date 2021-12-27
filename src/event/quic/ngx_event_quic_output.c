@@ -38,26 +38,20 @@
 #define NGX_QUIC_SOCKET_RETRY_DELAY      10 /* ms, for NGX_AGAIN on write */
 
 
-static ngx_int_t ngx_quic_socket_output(ngx_connection_t *c,
-    ngx_quic_socket_t *qsock);
-static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c,
-    ngx_quic_socket_t *qsock);
+static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c);
 static void ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t pnum);
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
-static ngx_uint_t ngx_quic_allow_segmentation(ngx_connection_t *c,
-    ngx_quic_socket_t *qsock);
-static ngx_int_t ngx_quic_create_segments(ngx_connection_t *c,
-    ngx_quic_socket_t *qsock);
+static ngx_uint_t ngx_quic_allow_segmentation(ngx_connection_t *c);
+static ngx_int_t ngx_quic_create_segments(ngx_connection_t *c);
 static ssize_t ngx_quic_send_segments(ngx_connection_t *c, u_char *buf,
     size_t len, struct sockaddr *sockaddr, socklen_t socklen, size_t segment);
 #endif
 static ssize_t ngx_quic_output_packet(ngx_connection_t *c,
-    ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min,
-    ngx_quic_socket_t *qsock);
+    ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min);
 static void ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    ngx_quic_socket_t *qsock, ngx_quic_header_t *pkt);
+    ngx_quic_header_t *pkt);
 static ngx_uint_t ngx_quic_get_padding_level(ngx_connection_t *c);
 static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     struct sockaddr *sockaddr, socklen_t socklen);
@@ -85,23 +79,6 @@ ngx_quic_max_udp_payload(ngx_connection_t *c)
 ngx_int_t
 ngx_quic_output(ngx_connection_t *c)
 {
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    if (ngx_quic_socket_output(c, qc->socket) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    ngx_quic_set_lost_timer(c);
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
-{
     size_t                  in_flight;
     ngx_int_t               rc;
     ngx_quic_congestion_t  *cg;
@@ -115,12 +92,12 @@ ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     in_flight = cg->in_flight;
 
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
-    if (ngx_quic_allow_segmentation(c, qsock)) {
-        rc = ngx_quic_create_segments(c, qsock);
+    if (ngx_quic_allow_segmentation(c)) {
+        rc = ngx_quic_create_segments(c);
     } else
 #endif
     {
-        rc = ngx_quic_create_datagrams(c, qsock);
+        rc = ngx_quic_create_datagrams(c);
     }
 
     if (rc != NGX_OK) {
@@ -132,12 +109,14 @@ ngx_quic_socket_output(ngx_connection_t *c, ngx_quic_socket_t *qsock)
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
 
+    ngx_quic_set_lost_timer(c);
+
     return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+ngx_quic_create_datagrams(ngx_connection_t *c)
 {
     size_t                  len, min;
     ssize_t                 n;
@@ -152,7 +131,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
-    path = qsock->path;
+    path = qc->socket->path;
 
     while (cg->in_flight < cg->window) {
 
@@ -182,7 +161,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c, ngx_quic_socket_t *qsock)
                 continue;
             }
 
-            n = ngx_quic_output_packet(c, ctx, p, len, min, qsock);
+            n = ngx_quic_output_packet(c, ctx, p, len, min);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -276,7 +255,7 @@ ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
 
 static ngx_uint_t
-ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+ngx_quic_allow_segmentation(ngx_connection_t *c)
 {
     size_t                  bytes, len;
     ngx_queue_t            *q;
@@ -290,7 +269,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
         return 0;
     }
 
-    if (qsock->path->limited) {
+    if (qc->socket->path->limited) {
         /* don't even try to be faster on non-validated paths */
         return 0;
     }
@@ -331,7 +310,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 
 
 static ngx_int_t
-ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
+ngx_quic_create_segments(ngx_connection_t *c)
 {
     size_t                  len, segsize;
     ssize_t                 n;
@@ -346,7 +325,7 @@ ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
-    path = qsock->path;
+    path = qc->socket->path;
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
 
@@ -369,7 +348,7 @@ ngx_quic_create_segments(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 
         if (len && cg->in_flight < cg->window) {
 
-            n = ngx_quic_output_packet(c, ctx, p, len, len, qsock);
+            n = ngx_quic_output_packet(c, ctx, p, len, len);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -524,7 +503,7 @@ ngx_quic_get_padding_level(ngx_connection_t *c)
 
 static ssize_t
 ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    u_char *data, size_t max, size_t min, ngx_quic_socket_t *qsock)
+    u_char *data, size_t max, size_t min)
 {
     size_t              len, pad, min_payload, max_payload;
     u_char             *p;
@@ -542,12 +521,11 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         return 0;
     }
 
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic output sock #%uL %s packet max:%uz min:%uz",
-                   qsock->sid.seqnum, ngx_quic_level_name(ctx->level),
-                   max, min);
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic output %s packet max:%uz min:%uz",
+                   ngx_quic_level_name(ctx->level), max, min);
 
-    ngx_quic_init_packet(c, ctx, qsock, &pkt);
+    ngx_quic_init_packet(c, ctx, &pkt);
 
     min_payload = ngx_quic_payload_size(&pkt, min);
     max_payload = ngx_quic_payload_size(&pkt, max);
@@ -690,11 +668,14 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
 static void
 ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    ngx_quic_socket_t *qsock, ngx_quic_header_t *pkt)
+    ngx_quic_header_t *pkt)
 {
+    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
+
+    qsock = qc->socket;
 
     ngx_memzero(pkt, sizeof(ngx_quic_header_t));
 
@@ -1221,7 +1202,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
 
-    ngx_quic_init_packet(c, ctx, qc->socket, &pkt);
+    ngx_quic_init_packet(c, ctx, &pkt);
 
     min = ngx_quic_path_limit(c, path, min);
 
