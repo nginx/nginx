@@ -16,7 +16,7 @@ ngx_int_t ngx_quic_open_sockets(ngx_connection_t *c,
     ngx_quic_connection_t *qc, ngx_quic_header_t *pkt);
 void ngx_quic_close_sockets(ngx_connection_t *c);
 
-ngx_quic_socket_t *ngx_quic_alloc_socket(ngx_connection_t *c,
+ngx_quic_socket_t *ngx_quic_create_socket(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
 ngx_int_t ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_quic_socket_t *qsock);

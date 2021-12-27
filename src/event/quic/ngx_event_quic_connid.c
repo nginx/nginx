@@ -497,7 +497,7 @@ ngx_quic_create_sockets(ngx_connection_t *c)
 
     while (qc->nsockets < n) {
 
-        qsock = ngx_quic_alloc_socket(c, qc);
+        qsock = ngx_quic_create_socket(c, qc);
         if (qsock == NULL) {
             return NGX_ERROR;
         }
