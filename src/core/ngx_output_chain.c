@@ -256,15 +256,24 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
     }
 #endif
 
-    if (buf->in_file && buf->file->directio) {
-        return 0;
-    }
-
     sendfile = ctx->sendfile;
 
 #if (NGX_SENDFILE_LIMIT)
 
     if (buf->in_file && buf->file_pos >= NGX_SENDFILE_LIMIT) {
+        sendfile = 0;
+    }
+
+#endif
+
+#if !(NGX_HAVE_SENDFILE_NODISKIO)
+
+    /*
+     * With DIRECTIO, disable sendfile() unless sendfile(SF_NOCACHE)
+     * is available.
+     */
+
+    if (buf->in_file && buf->file->directio) {
         sendfile = 0;
     }
 

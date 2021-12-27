@@ -2955,7 +2955,13 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
     ngx_set_errno(0);
 
 #if (NGX_HAVE_SENDFILE_NODISKIO)
+
     flags = (c->busy_count <= 2) ? SF_NODISKIO : 0;
+
+    if (file->file->directio) {
+        flags |= SF_NOCACHE;
+    }
+
 #else
     flags = 0;
 #endif

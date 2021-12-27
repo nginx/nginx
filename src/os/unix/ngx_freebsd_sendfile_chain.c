@@ -174,7 +174,13 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             sent = 0;
 
 #if (NGX_HAVE_SENDFILE_NODISKIO)
+
             flags = (c->busy_count <= 2) ? SF_NODISKIO : 0;
+
+            if (file->file->directio) {
+                flags |= SF_NOCACHE;
+            }
+
 #endif
 
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
