@@ -90,9 +90,6 @@ struct ngx_output_chain_ctx_s {
 
 #if (NGX_HAVE_FILE_AIO || NGX_COMPAT)
     ngx_output_chain_aio_pt      aio_handler;
-#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
-    ssize_t                    (*aio_preload)(ngx_buf_t *file);
-#endif
 #endif
 
 #if (NGX_THREADS || NGX_COMPAT)

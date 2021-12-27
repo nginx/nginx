@@ -147,10 +147,6 @@ struct ngx_event_aio_s {
 
     ngx_fd_t                   fd;
 
-#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
-    ssize_t                  (*preload_handler)(ngx_buf_t *file);
-#endif
-
 #if (NGX_HAVE_EVENTFD)
     int64_t                    res;
 #endif
