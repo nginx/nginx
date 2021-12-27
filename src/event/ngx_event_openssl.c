@@ -2942,7 +2942,7 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 {
 #ifdef BIO_get_ktls_send
 
-    int        sslerr;
+    int        sslerr, flags;
     ssize_t    n;
     ngx_err_t  err;
 
@@ -2954,8 +2954,14 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 
     ngx_set_errno(0);
 
+#if (NGX_HAVE_SENDFILE_NODISKIO)
+    flags = (c->busy_count <= 2) ? SF_NODISKIO : 0;
+#else
+    flags = 0;
+#endif
+
     n = SSL_sendfile(c->ssl->connection, file->file->fd, file->file_pos,
-                     size, 0);
+                     size, flags);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %d", n);
 
@@ -2973,6 +2979,10 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 
             ngx_post_event(c->read, &ngx_posted_events);
         }
+
+#if (NGX_HAVE_SENDFILE_NODISKIO)
+        c->busy_count = 0;
+#endif
 
         c->sent += n;
 
@@ -3037,6 +3047,23 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 
             ngx_post_event(c->read, &ngx_posted_events);
         }
+
+#if (NGX_HAVE_SENDFILE_NODISKIO)
+
+        if (ngx_errno == EBUSY) {
+            c->busy_count++;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "SSL_sendfile() busy, count:%d", c->busy_count);
+
+            if (c->write->posted) {
+                ngx_delete_posted_event(c->write);
+            }
+
+            ngx_post_event(c->write, &ngx_posted_next_events);
+        }
+
+#endif
 
         c->write->ready = 0;
         return NGX_AGAIN;
