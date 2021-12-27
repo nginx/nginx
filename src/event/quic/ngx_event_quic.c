@@ -12,18 +12,18 @@
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_process_stateless_reset(ngx_connection_t *c,
+static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
 static ngx_int_t ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc);
 static void ngx_quic_close_timer_handler(ngx_event_t *ev);
 
-static ngx_int_t ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b,
+static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
     ngx_quic_conf_t *conf);
-static ngx_int_t ngx_quic_process_packet(ngx_connection_t *c,
+static ngx_int_t ngx_quic_handle_packet(ngx_connection_t *c,
     ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
-static ngx_int_t ngx_quic_process_payload(ngx_connection_t *c,
+static ngx_int_t ngx_quic_handle_payload(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_check_csid(ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt);
@@ -208,7 +208,7 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic run");
 
-    rc = ngx_quic_input(c, c->buffer, conf);
+    rc = ngx_quic_handle_datagram(c, c->buffer, conf);
     if (rc != NGX_OK) {
         ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
         return;
@@ -350,7 +350,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
 
 static ngx_int_t
-ngx_quic_process_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
+ngx_quic_handle_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     u_char                 *tail, ch;
     ngx_uint_t              i;
@@ -437,7 +437,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
 
     b = c->udp->dgram->buffer;
 
-    rc = ngx_quic_input(c, b, NULL);
+    rc = ngx_quic_handle_datagram(c, b, NULL);
 
     if (rc == NGX_ERROR) {
         ngx_quic_close_connection(c, NGX_ERROR);
@@ -666,7 +666,8 @@ ngx_quic_close_timer_handler(ngx_event_t *ev)
 
 
 static ngx_int_t
-ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
+ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
+    ngx_quic_conf_t *conf)
 {
     size_t                  size;
     u_char                 *p, *start;
@@ -692,7 +693,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
         pkt.flags = p[0];
         pkt.raw->pos++;
 
-        rc = ngx_quic_process_packet(c, conf, &pkt);
+        rc = ngx_quic_handle_packet(c, conf, &pkt);
 
 #if (NGX_DEBUG)
         if (pkt.parsed) {
@@ -769,7 +770,7 @@ ngx_quic_input(ngx_connection_t *c, ngx_buf_t *b, ngx_quic_conf_t *conf)
 
 
 static ngx_int_t
-ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
+ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
@@ -841,10 +842,10 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
         }
 
-        rc = ngx_quic_process_payload(c, pkt);
+        rc = ngx_quic_handle_payload(c, pkt);
 
         if (rc == NGX_DECLINED && pkt->level == ssl_encryption_application) {
-            if (ngx_quic_process_stateless_reset(c, pkt) == NGX_OK) {
+            if (ngx_quic_handle_stateless_reset(c, pkt) == NGX_OK) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic stateless reset packet detected");
 
@@ -935,12 +936,12 @@ ngx_quic_process_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NGX_ERROR;
     }
 
-    return ngx_quic_process_payload(c, pkt);
+    return ngx_quic_handle_payload(c, pkt);
 }
 
 
 static ngx_int_t
-ngx_quic_process_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
+ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
     ngx_quic_send_ctx_t    *ctx;
