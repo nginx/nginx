@@ -130,6 +130,14 @@ ngx_quic_bpf_module_init(ngx_cycle_t *cycle)
     ngx_pool_cleanup_t   *cln;
     ngx_quic_bpf_conf_t  *bcf;
 
+    if (ngx_test_config) {
+        /*
+         * during config test, SO_REUSEPORT socket option is
+         * not set, thus making further processing meaningless
+         */
+        return NGX_OK;
+    }
+
     ccf = ngx_core_get_conf(cycle);
     bcf = ngx_quic_bpf_get_conf(cycle);
 
