@@ -5,6 +5,58 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.5" date="2021-12-28">
+
+<change type="change">
+<para lang="ru">
+теперь nginx по умолчанию собирается с библиотекой PCRE2.
+</para>
+<para lang="en">
+now nginx is built with the PCRE2 library by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx всегда использует sendfile(SF_NODISKIO) на FreeBSD.
+</para>
+<para lang="en">
+now nginx always uses sendfile(SF_NODISKIO) on FreeBSD.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка sendfile(SF_NOCACHE) на FreeBSD.
+</para>
+<para lang="en">
+support for sendfile(SF_NOCACHE) on FreeBSD.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_curve.
+</para>
+<para lang="en">
+the $ssl_curve variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 без SSL вместе с директивами sendfile и aio
+соединения могли зависать.
+</para>
+<para lang="en">
+connections might hang
+when using HTTP/2 without SSL with the "sendfile" and "aio" directives.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.4" date="2021-11-02">
 
 <change type="change">
