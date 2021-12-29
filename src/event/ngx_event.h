@@ -462,6 +462,7 @@ extern ngx_uint_t             ngx_accept_events;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;
 extern ngx_int_t              ngx_accept_disabled;
+extern ngx_uint_t             ngx_use_exclusive_accept;
 
 
 #if (NGX_STAT_STUB)
