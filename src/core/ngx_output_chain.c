@@ -29,10 +29,6 @@
 
 static ngx_inline ngx_int_t
     ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf);
-#if (NGX_HAVE_AIO_SENDFILE)
-static ngx_int_t ngx_output_chain_aio_setup(ngx_output_chain_ctx_t *ctx,
-    ngx_file_t *file);
-#endif
 static ngx_int_t ngx_output_chain_add_copy(ngx_pool_t *pool,
     ngx_chain_t **chain, ngx_chain_t *in);
 static ngx_int_t ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx,
@@ -260,15 +256,24 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
     }
 #endif
 
-    if (buf->in_file && buf->file->directio) {
-        return 0;
-    }
-
     sendfile = ctx->sendfile;
 
 #if (NGX_SENDFILE_LIMIT)
 
     if (buf->in_file && buf->file_pos >= NGX_SENDFILE_LIMIT) {
+        sendfile = 0;
+    }
+
+#endif
+
+#if !(NGX_HAVE_SENDFILE_NODISKIO)
+
+    /*
+     * With DIRECTIO, disable sendfile() unless sendfile(SF_NOCACHE)
+     * is available.
+     */
+
+    if (buf->in_file && buf->file->directio) {
         sendfile = 0;
     }
 
@@ -283,12 +288,6 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
         buf->in_file = 0;
     }
 
-#if (NGX_HAVE_AIO_SENDFILE)
-    if (ctx->aio_preload && buf->in_file) {
-        (void) ngx_output_chain_aio_setup(ctx, buf->file);
-    }
-#endif
-
     if (ctx->need_in_memory && !ngx_buf_in_memory(buf)) {
         return 0;
     }
@@ -299,28 +298,6 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 
     return 1;
 }
-
-
-#if (NGX_HAVE_AIO_SENDFILE)
-
-static ngx_int_t
-ngx_output_chain_aio_setup(ngx_output_chain_ctx_t *ctx, ngx_file_t *file)
-{
-    ngx_event_aio_t  *aio;
-
-    if (file->aio == NULL && ngx_file_aio_init(file, ctx->pool) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    aio = file->aio;
-
-    aio->data = ctx->filter_ctx;
-    aio->preload_handler = ctx->aio_preload;
-
-    return NGX_OK;
-}
-
-#endif
 
 
 static ngx_int_t

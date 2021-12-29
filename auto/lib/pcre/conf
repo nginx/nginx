@@ -4,87 +4,62 @@
 
 
 if [ $PCRE != NONE ]; then
-    CORE_INCS="$CORE_INCS $PCRE"
 
-    case "$NGX_CC_NAME" in
+    if [ -f $PCRE/src/pcre2.h.generic ]; then
 
-        msvc | owc | bcc)
-            have=NGX_PCRE . auto/have
+        PCRE_LIBRARY=PCRE2
+
+        have=NGX_PCRE . auto/have
+        have=NGX_PCRE2 . auto/have
+
+        if [ "$NGX_PLATFORM" = win32 ]; then
+            have=PCRE2_STATIC . auto/have
+        fi
+
+        CORE_INCS="$CORE_INCS $PCRE/src/"
+        CORE_DEPS="$CORE_DEPS $PCRE/src/pcre2.h"
+
+        case "$NGX_CC_NAME" in
+
+            msvc)
+                LINK_DEPS="$LINK_DEPS $PCRE/src/pcre2-8.lib"
+                CORE_LIBS="$CORE_LIBS $PCRE/src/pcre2-8.lib"
+            ;;
+
+            *)
+                LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre2-8.a"
+                CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre2-8.a"
+            ;;
+
+        esac
+
+    else
+
+        PCRE_LIBRARY=PCRE
+
+        have=NGX_PCRE . auto/have
+
+        if [ "$NGX_PLATFORM" = win32 ]; then
             have=PCRE_STATIC . auto/have
-            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
-            LINK_DEPS="$LINK_DEPS $PCRE/pcre.lib"
-            CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
-        ;;
+        fi
 
-        icc)
-            have=NGX_PCRE . auto/have
-            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
+        CORE_INCS="$CORE_INCS $PCRE"
+        CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
 
-            LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
+        case "$NGX_CC_NAME" in
 
-            echo $ngx_n "checking for PCRE library ...$ngx_c"
+            msvc | owc | bcc)
+                LINK_DEPS="$LINK_DEPS $PCRE/pcre.lib"
+                CORE_LIBS="$CORE_LIBS $PCRE/pcre.lib"
+            ;;
 
-            if [ -f $PCRE/pcre.h ]; then
-                ngx_pcre_ver=`grep PCRE_MAJOR $PCRE/pcre.h \
-                              | sed -e 's/^.*PCRE_MAJOR.* \(.*\)$/\1/'`
+            *)
+                LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
+                CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre.a"
+            ;;
 
-            else if [ -f $PCRE/configure.in ]; then
-                ngx_pcre_ver=`grep PCRE_MAJOR= $PCRE/configure.in \
-                              | sed -e 's/^.*=\(.*\)$/\1/'`
-
-            else
-                ngx_pcre_ver=`grep pcre_major, $PCRE/configure.ac \
-                              | sed -e 's/^.*pcre_major,.*\[\(.*\)\].*$/\1/'`
-            fi
-            fi
-
-            echo " $ngx_pcre_ver major version found"
-
-            # to allow -ipo optimization we link with the *.o but not library
-
-            case "$ngx_pcre_ver" in
-                4|5)
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre.o"
-                ;;
-
-                6)
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_chartables.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_compile.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_exec.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_fullinfo.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_globals.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_tables.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_try_flipped.o"
-                ;;
-
-                *)
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_chartables.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_compile.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_exec.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_fullinfo.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_globals.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_tables.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_try_flipped.o"
-                    CORE_LIBS="$CORE_LIBS $PCRE/pcre_newline.o"
-                ;;
-
-            esac
-        ;;
-
-        *)
-            have=NGX_PCRE . auto/have
-
-            if [ "$NGX_PLATFORM" = win32 ]; then
-                have=PCRE_STATIC . auto/have
-            fi
-
-            CORE_DEPS="$CORE_DEPS $PCRE/pcre.h"
-            LINK_DEPS="$LINK_DEPS $PCRE/.libs/libpcre.a"
-            CORE_LIBS="$CORE_LIBS $PCRE/.libs/libpcre.a"
-        ;;
-
-    esac
-
+        esac
+    fi
 
     if [ $PCRE_JIT = YES ]; then
         have=NGX_HAVE_PCRE_JIT . auto/have
@@ -94,8 +69,48 @@ if [ $PCRE != NONE ]; then
 else
 
     if [ "$NGX_PLATFORM" != win32 ]; then
-
         PCRE=NO
+    fi
+
+    if [ $PCRE = NO -a $PCRE2 != DISABLED ]; then
+
+        ngx_feature="PCRE2 library"
+        ngx_feature_name="NGX_PCRE2"
+        ngx_feature_run=no
+        ngx_feature_incs="#define PCRE2_CODE_UNIT_WIDTH 8
+                          #include <pcre2.h>"
+        ngx_feature_path=
+        ngx_feature_libs="-lpcre2-8"
+        ngx_feature_test="pcre2_code *re;
+                          re = pcre2_compile(NULL, 0, 0, NULL, NULL, NULL);
+                          if (re == NULL) return 1"
+        . auto/feature
+
+        if [ $ngx_found = no ]; then
+
+            # pcre2-config
+
+            ngx_pcre2_prefix=`pcre2-config --prefix 2>/dev/null`
+
+            if [ -n "$ngx_pcre2_prefix" ]; then
+                ngx_feature="PCRE2 library in $ngx_pcre2_prefix"
+                ngx_feature_path=`pcre2-config --cflags \
+                                  | sed -n -e 's/.*-I *\([^ ][^ ]*\).*/\1/p'`
+                ngx_feature_libs=`pcre2-config --libs8`
+                . auto/feature
+            fi
+        fi
+
+        if [ $ngx_found = yes ]; then
+            have=NGX_PCRE . auto/have
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            PCRE=YES
+            PCRE_LIBRARY=PCRE2
+        fi
+    fi
+
+    if [ $PCRE = NO ]; then
 
         ngx_feature="PCRE library"
         ngx_feature_name="NGX_PCRE"
@@ -171,6 +186,7 @@ else
             CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             PCRE=YES
+            PCRE_LIBRARY=PCRE
         fi
 
         if [ $PCRE = YES ]; then
