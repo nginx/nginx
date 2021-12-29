@@ -628,7 +628,7 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
         }
     }
 
-    if (name->len &&  name->data[0] == ':') {
+    if (name->len && name->data[0] == ':') {
         return ngx_http_v3_process_pseudo_header(r, name, value);
     }
 
