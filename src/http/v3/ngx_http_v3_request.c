@@ -25,6 +25,8 @@ static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_process_request_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_v3_cookie(ngx_http_request_t *r, ngx_str_t *value);
+static ngx_int_t ngx_http_v3_construct_cookie_header(ngx_http_request_t *r);
 static void ngx_http_v3_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_request_body_filter(ngx_http_request_t *r,
@@ -601,6 +603,8 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
 
+    static ngx_str_t cookie = ngx_string("cookie");
+
     len = name->len + value->len;
 
     if (len > r->v3_parse->header_limit) {
@@ -636,24 +640,34 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_ERROR;
     }
 
-    h = ngx_list_push(&r->headers_in.headers);
-    if (h == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return NGX_ERROR;
-    }
+    if (name->len == cookie.len
+        && ngx_memcmp(name->data, cookie.data, cookie.len) == 0)
+    {
+        if (ngx_http_v3_cookie(r, value) != NGX_OK) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
 
-    h->key = *name;
-    h->value = *value;
-    h->lowcase_key = h->key.data;
-    h->hash = ngx_hash_key(h->key.data, h->key.len);
+    } else {
+        h = ngx_list_push(&r->headers_in.headers);
+        if (h == NULL) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+        h->key = *name;
+        h->value = *value;
+        h->lowcase_key = h->key.data;
+        h->hash = ngx_hash_key(h->key.data, h->key.len);
 
-    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
-                       h->lowcase_key, h->key.len);
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
-    if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-        return NGX_ERROR;
+        hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                           h->lowcase_key, h->key.len);
+
+        if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -981,6 +995,10 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    if (ngx_http_v3_construct_cookie_header(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (r->headers_in.server.len == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client sent neither \":authority\" nor \"Host\" header");
@@ -1053,6 +1071,125 @@ failed:
 
     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
     return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_v3_cookie(ngx_http_request_t *r, ngx_str_t *value)
+{
+    ngx_str_t    *val;
+    ngx_array_t  *cookies;
+
+    cookies = r->v3_parse->cookies;
+
+    if (cookies == NULL) {
+        cookies = ngx_array_create(r->pool, 2, sizeof(ngx_str_t));
+        if (cookies == NULL) {
+            return NGX_ERROR;
+        }
+
+        r->v3_parse->cookies = cookies;
+    }
+
+    val = ngx_array_push(cookies);
+    if (val == NULL) {
+        return NGX_ERROR;
+    }
+
+    *val = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v3_construct_cookie_header(ngx_http_request_t *r)
+{
+    u_char                     *buf, *p, *end;
+    size_t                      len;
+    ngx_str_t                  *vals;
+    ngx_uint_t                  i;
+    ngx_array_t                *cookies;
+    ngx_table_elt_t            *h;
+    ngx_http_header_t          *hh;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    static ngx_str_t cookie = ngx_string("cookie");
+
+    cookies = r->v3_parse->cookies;
+
+    if (cookies == NULL) {
+        return NGX_OK;
+    }
+
+    vals = cookies->elts;
+
+    i = 0;
+    len = 0;
+
+    do {
+        len += vals[i].len + 2;
+    } while (++i != cookies->nelts);
+
+    len -= 2;
+
+    buf = ngx_pnalloc(r->pool, len + 1);
+    if (buf == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    p = buf;
+    end = buf + len;
+
+    for (i = 0; /* void */ ; i++) {
+
+        p = ngx_cpymem(p, vals[i].data, vals[i].len);
+
+        if (p == end) {
+            *p = '\0';
+            break;
+        }
+
+        *p++ = ';'; *p++ = ' ';
+    }
+
+    h = ngx_list_push(&r->headers_in.headers);
+    if (h == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
+                                    ngx_hash('c', 'o'), 'o'), 'k'), 'i'), 'e');
+
+    h->key.len = cookie.len;
+    h->key.data = cookie.data;
+
+    h->value.len = len;
+    h->value.data = buf;
+
+    h->lowcase_key = cookie.data;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                       h->lowcase_key, h->key.len);
+
+    if (hh == NULL) {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    if (hh->handler(r, h, hh->offset) != NGX_OK) {
+        /*
+         * request has been finalized already
+         * in ngx_http_process_multi_header_lines()
+         */
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 

@@ -123,6 +123,7 @@ struct ngx_http_v3_parse_s {
     size_t                        header_limit;
     ngx_http_v3_parse_headers_t   headers;
     ngx_http_v3_parse_data_t      body;
+    ngx_array_t                  *cookies;
 };
 
 
