@@ -1074,7 +1074,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    if (last <= qs->recv_offset) {
+    if (last < qs->recv_offset) {
         return NGX_OK;
     }
 
