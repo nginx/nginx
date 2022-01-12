@@ -942,7 +942,14 @@ ngx_http_test_expect(ngx_http_request_t *r)
 
     if (r->expect_tested
         || r->headers_in.expect == NULL
-        || r->http_version != NGX_HTTP_VERSION_11)
+        || r->http_version < NGX_HTTP_VERSION_11
+#if (NGX_HTTP_V2)
+        || r->stream != NULL
+#endif
+#if (NGX_HTTP_V3)
+        || r->connection->quic != NULL
+#endif
+       )
     {
         return NGX_OK;
     }
