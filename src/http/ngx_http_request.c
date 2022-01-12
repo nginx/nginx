@@ -2970,7 +2970,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
 #if (NGX_HTTP_V3)
 
     if (c->quic) {
-        if (c->read->error) {
+        if (rev->error) {
             err = 0;
             goto closed;
         }
