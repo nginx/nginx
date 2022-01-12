@@ -2971,6 +2971,7 @@ ngx_http_test_reading(ngx_http_request_t *r)
 
     if (c->quic) {
         if (rev->error) {
+            c->error = 1;
             err = 0;
             goto closed;
         }
