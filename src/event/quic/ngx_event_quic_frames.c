@@ -478,12 +478,16 @@ ngx_quic_copy_buf(ngx_connection_t *c, u_char *data, size_t len)
 
 ngx_chain_t *
 ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
-    off_t limit, off_t offset)
+    off_t limit, off_t offset, size_t *size)
 {
     off_t         n;
     u_char       *p;
     ngx_buf_t    *b;
     ngx_chain_t  *cl, *sl;
+
+    if (size) {
+        *size = 0;
+    }
 
     while (in && limit) {
         cl = *chain;
@@ -549,6 +553,10 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
             in->buf->pos += n;
             offset += n;
             limit -= n;
+
+            if (size) {
+                *size += n;
+            }
         }
 
         if (b->sync && p == b->last) {

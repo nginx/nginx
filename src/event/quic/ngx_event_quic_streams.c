@@ -824,9 +824,10 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 static ngx_chain_t *
 ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    off_t                   n, flow;
+    off_t                   flow;
+    size_t                  n;
     ngx_event_t            *wev;
-    ngx_chain_t            *out, *cl;
+    ngx_chain_t            *out;
     ngx_connection_t       *pc;
     ngx_quic_frame_t       *frame;
     ngx_quic_stream_t      *qs;
@@ -851,17 +852,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         limit = flow;
     }
 
-    n = 0;
-
-    for (cl = in; cl; cl = cl->next) {
-        n += cl->buf->last - cl->buf->pos;
-        if (n >= limit) {
-            n = limit;
-            break;
-        }
-    }
-
-    in = ngx_quic_write_chain(pc, &qs->out, in, limit, 0);
+    in = ngx_quic_write_chain(pc, &qs->out, in, limit, 0, &n);
     if (in == NGX_CHAIN_ERROR) {
         return NGX_CHAIN_ERROR;
     }
@@ -1099,7 +1090,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (ngx_quic_write_chain(c, &qs->in, frame->data, f->length,
-                             f->offset - qs->recv_offset)
+                             f->offset - qs->recv_offset, NULL)
         == NGX_CHAIN_ERROR)
     {
         return NGX_ERROR;

@@ -31,7 +31,7 @@ void ngx_quic_free_chain(ngx_connection_t *c, ngx_chain_t *in);
 ngx_chain_t *ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain,
     off_t limit);
 ngx_chain_t *ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain,
-    ngx_chain_t *in, off_t limit, off_t offset);
+    ngx_chain_t *in, off_t limit, off_t offset, size_t *size);
 
 #if (NGX_DEBUG)
 void ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx);
