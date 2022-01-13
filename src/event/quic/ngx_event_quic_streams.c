@@ -861,7 +861,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
     }
 
-    in = ngx_quic_write_chain(pc, &qs->out, in, n, 0);
+    in = ngx_quic_write_chain(pc, &qs->out, in, limit, 0);
     if (in == NGX_CHAIN_ERROR) {
         return NGX_CHAIN_ERROR;
     }

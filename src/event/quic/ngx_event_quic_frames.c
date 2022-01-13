@@ -527,7 +527,17 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
             continue;
         }
 
-        for (p = b->pos + offset; p != b->last && in && limit; /* void */ ) {
+        for (p = b->pos + offset; p != b->last && in; /* void */ ) {
+
+            if (!ngx_buf_in_memory(in->buf) || in->buf->pos == in->buf->last) {
+                in = in->next;
+                continue;
+            }
+
+            if (limit == 0) {
+                break;
+            }
+
             n = ngx_min(b->last - p, in->buf->last - in->buf->pos);
             n = ngx_min(n, limit);
 
@@ -539,10 +549,6 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
             in->buf->pos += n;
             offset += n;
             limit -= n;
-
-            if (in->buf->pos == in->buf->last) {
-                in = in->next;
-            }
         }
 
         if (b->sync && p == b->last) {
