@@ -1362,17 +1362,6 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
 #endif
 
-#if (NGX_HTTP_V3 && !defined NGX_QUIC)
-
-    if (lsopt->http3) {
-        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "nginx was built with OpenSSL that lacks QUIC "
-                           "support, HTTP/3 is not enabled for %V",
-                           &lsopt->addr_text);
-    }
-
-#endif
-
     addr = ngx_array_push(&port->addrs);
     if (addr == NULL) {
         return NGX_ERROR;
