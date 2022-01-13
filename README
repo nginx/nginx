@@ -74,11 +74,17 @@ Experimental QUIC support for nginx
 
     $ hg clone -b quic https://hg.nginx.org/nginx-quic
     $ cd nginx-quic
-    $ ./auto/configure --with-debug --with-http_v3_module       \
-                       --with-cc-opt="-I../boringssl/include"   \
-                       --with-ld-opt="-L../boringssl/build/ssl  \
+    $ ./auto/configure --with-debug --with-http_v3_module         \
+                       --with-cc-opt="-I../boringssl/include"     \
+                       --with-ld-opt="-L../boringssl/build/ssl    \
                                       -L../boringssl/build/crypto"
     $ make
+
+    Alternatively, nginx can be configured with QuicTLS [9]
+
+    $ ./auto/configure --with-debug --with-http_v3_module         \
+                       --with-cc-opt="-I../quictls/build/include" \
+                       --with-ld-opt="-L../quictls/build/lib"
 
     When configuring nginx, you can enable QUIC and HTTP/3 using the
     following new configuration options:
@@ -252,3 +258,4 @@ Example configuration:
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
     [8] http://vger.kernel.org/lpc_net2018_talks/willemdebruijn-lpc2018-udpgso-paper-DRAFT-1.pdf
+    [9] https://github.com/quictls/openssl
