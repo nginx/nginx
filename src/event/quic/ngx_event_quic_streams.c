@@ -888,7 +888,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic send_chain sent:%O", n);
+                   "quic send_chain sent:%uz", n);
 
     return in;
 }
