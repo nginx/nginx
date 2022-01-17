@@ -21,6 +21,8 @@
 static ngx_buf_t *ngx_quic_alloc_buf(ngx_connection_t *c);
 static void ngx_quic_free_buf(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_buf_t *ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b);
+static ngx_int_t ngx_quic_split_chain(ngx_connection_t *c, ngx_chain_t *cl,
+    off_t offset);
 
 
 static ngx_buf_t *
@@ -156,6 +158,38 @@ ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b)
 #endif
 
     return nb;
+}
+
+
+static ngx_int_t
+ngx_quic_split_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t offset)
+{
+    ngx_buf_t    *b, *tb;
+    ngx_chain_t  *tail;
+
+    b = cl->buf;
+
+    tail = ngx_alloc_chain_link(c->pool);
+    if (tail == NULL) {
+        return NGX_ERROR;
+    }
+
+    tb = ngx_quic_clone_buf(c, b);
+    if (tb == NULL) {
+        return NGX_ERROR;
+    }
+
+    tail->buf = tb;
+
+    tb->pos += offset;
+
+    b->last = tb->pos;
+    b->last_buf = 0;
+
+    tail->next = cl->next;
+    cl->next = tail;
+
+    return NGX_OK;
 }
 
 
@@ -368,7 +402,7 @@ ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
 {
     off_t         n;
     ngx_buf_t    *b;
-    ngx_chain_t  *out, *cl, **ll;
+    ngx_chain_t  *out, **ll;
 
     out = *chain;
 
@@ -387,7 +421,11 @@ ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
         n = b->last - b->pos;
 
         if (n > limit) {
-            goto split;
+            if (ngx_quic_split_chain(c, *ll, limit) != NGX_OK) {
+                return NGX_CHAIN_ERROR;
+            }
+
+            n = limit;
         }
 
         limit -= n;
@@ -395,29 +433,6 @@ ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
 
     *chain = *ll;
     *ll = NULL;
-
-    return out;
-
-split:
-
-    cl = ngx_alloc_chain_link(c->pool);
-    if (cl == NULL) {
-        return NGX_CHAIN_ERROR;
-    }
-
-    cl->buf = ngx_quic_clone_buf(c, b);
-    if (cl->buf == NULL) {
-        return NGX_CHAIN_ERROR;
-    }
-
-    cl->buf->pos += limit;
-    b->last = cl->buf->pos;
-    b->last_buf = 0;
-
-    ll = &(*ll)->next;
-    cl->next = *ll;
-    *ll = NULL;
-    *chain = cl;
 
     return out;
 }
@@ -483,7 +498,7 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
     off_t         n;
     u_char       *p;
     ngx_buf_t    *b;
-    ngx_chain_t  *cl, *sl;
+    ngx_chain_t  *cl;
 
     if (size) {
         *size = 0;
@@ -514,20 +529,10 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
         }
 
         if (b->sync && offset > 0) {
-            /* split hole at offset */
-
-            b->sync = 0;
-
-            sl = ngx_quic_read_chain(c, &cl, offset);
-            if (cl == NGX_CHAIN_ERROR) {
+            if (ngx_quic_split_chain(c, cl, offset) != NGX_OK) {
                 return NGX_CHAIN_ERROR;
             }
 
-            sl->buf->sync = 1;
-            cl->buf->sync = 1;
-
-            *chain = sl;
-            sl->next = cl;
             continue;
         }
 
@@ -565,19 +570,11 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
         }
 
         if (b->sync && p != b->pos) {
-            /* split hole at p - b->pos */
-
-            b->sync = 0;
-
-            sl = ngx_quic_read_chain(c, &cl, p - b->pos);
-            if (sl == NGX_CHAIN_ERROR) {
+            if (ngx_quic_split_chain(c, cl, p - b->pos) != NGX_OK) {
                 return NGX_CHAIN_ERROR;
             }
 
-            cl->buf->sync = 1;
-
-            *chain = sl;
-            sl->next = cl;
+            b->sync = 0;
         }
     }
 
