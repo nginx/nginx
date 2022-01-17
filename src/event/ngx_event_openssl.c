@@ -1383,6 +1383,9 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     if (SSL_CTX_set0_tmp_dh_pkey(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set0_tmp_dh_pkey(\%s\") failed", file->data);
+#if (OPENSSL_VERSION_NUMBER >= 0x3000001fL)
+        EVP_PKEY_free(dh);
+#endif
         BIO_free(bio);
         return NGX_ERROR;
     }
