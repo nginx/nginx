@@ -1974,7 +1974,7 @@ ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
     tp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
     tp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
 
-    tp->active_connection_id_limit = 2;
+    tp->active_connection_id_limit = qcf->active_connection_id_limit;
     tp->disable_active_migration = qcf->disable_active_migration;
 
     return NGX_OK;

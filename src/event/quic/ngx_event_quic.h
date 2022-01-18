@@ -40,6 +40,7 @@ typedef struct {
     size_t                     stream_buffer_size;
     ngx_uint_t                 max_concurrent_streams_bidi;
     ngx_uint_t                 max_concurrent_streams_uni;
+    ngx_uint_t                 active_connection_id_limit;
     ngx_int_t                  stream_close_code;
     ngx_int_t                  stream_reject_code_uni;
     ngx_int_t                  stream_reject_code_bidi;
